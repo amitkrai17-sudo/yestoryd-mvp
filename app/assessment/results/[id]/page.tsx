@@ -19,17 +19,10 @@ import {
 } from 'lucide-react';
 
 function getScoreColor(score: number) {
-  if (score >= 8) return { bg: 'bg-green-500', text: 'text-green-500', border: 'border-green-500', label: 'Excellent!', emoji: '🌟' };
-  if (score >= 6) return { bg: 'bg-yellow-500', text: 'text-yellow-500', border: 'border-yellow-500', label: 'Good Progress!', emoji: '⭐' };
-  if (score >= 4) return { bg: 'bg-orange-500', text: 'text-orange-500', border: 'border-orange-500', label: 'Keep Practicing!', emoji: '💪' };
-  return { bg: 'bg-red-500', text: 'text-red-500', border: 'border-red-500', label: 'Needs Improvement', emoji: '📚' };
-}
-
-function getScoreRingColor(score: number) {
-  if (score >= 8) return 'stroke-green-500';
-  if (score >= 6) return 'stroke-yellow-500';
-  if (score >= 4) return 'stroke-orange-500';
-  return 'stroke-red-500';
+  if (score >= 8) return { bg: 'bg-green-500', text: 'text-green-400', ring: 'stroke-green-500', label: 'Excellent Reader!', emoji: '🌟' };
+  if (score >= 6) return { bg: 'bg-yellow-500', text: 'text-yellow-400', ring: 'stroke-yellow-500', label: 'Good Progress!', emoji: '⭐' };
+  if (score >= 4) return { bg: 'bg-orange-500', text: 'text-orange-400', ring: 'stroke-orange-500', label: 'Keep Practicing!', emoji: '💪' };
+  return { bg: 'bg-red-500', text: 'text-red-400', ring: 'stroke-red-500', label: 'Needs Practice', emoji: '📚' };
 }
 
 function ResultsContent() {
@@ -47,16 +40,15 @@ function ResultsContent() {
   const parentEmail = searchParams.get('parentEmail') || '';
 
   const scoreInfo = getScoreColor(score);
-  const ringColor = getScoreRingColor(score);
 
-  const radius = 70;
+  const radius = 60;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 10) * circumference;
 
   const getWhatsAppMessage = useCallback(() => {
     const message = `🎉 *${childName}'s Reading Assessment Results*
 
-📊 *Overall Score: ${score}/10* ${scoreInfo.emoji}
+📊 *Score: ${score}* ${scoreInfo.emoji}
 
 📈 *Performance:*
 • Reading Speed: ${wpm} words/min
@@ -66,7 +58,7 @@ function ResultsContent() {
 💬 *Feedback:*
 ${feedback}
 
-🚀 Want to improve your child's reading? Get a FREE assessment at:
+🚀 Get a FREE reading assessment for your child:
 https://yestoryd-mvp.vercel.app/assessment
 
 Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
@@ -74,8 +66,7 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
   }, [childName, score, scoreInfo.emoji, wpm, fluency, pronunciation, feedback]);
 
   const shareOnWhatsApp = () => {
-    const message = getWhatsAppMessage();
-    window.open(`https://wa.me/?text=${message}`, '_blank');
+    window.open(`https://wa.me/?text=${getWhatsAppMessage()}`, '_blank');
   };
 
   const handleNativeShare = async () => {
@@ -83,7 +74,7 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
       try {
         await navigator.share({
           title: `${childName}'s Reading Assessment`,
-          text: `${childName} scored ${score}/10 on their Yestoryd Reading Assessment! 🎉`,
+          text: `${childName} scored ${score} on their Yestoryd Reading Assessment!`,
           url: window.location.href,
         });
       } catch (err) {
@@ -125,17 +116,18 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
   }, [sendCertificateEmail]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-gray-900">
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-400 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <span className="text-2xl font-bold">
               <span className="text-pink-500">Yest</span>
-              <span className="text-gray-900">or</span>
-              <span className="text-amber-500">yd</span>
+              <span className="text-white">or</span>
+              <span className="text-yellow-400">yd</span>
             </span>
           </Link>
           <button
@@ -143,39 +135,44 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
             className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all active:scale-95 text-sm font-medium"
           >
             <MessageCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Share on WhatsApp</span>
+            <span className="hidden sm:inline">Share</span>
           </button>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className={`bg-white rounded-3xl shadow-xl overflow-hidden border-4 ${scoreInfo.border}`}>
-          <div className="bg-gradient-to-r from-amber-400 to-amber-500 p-6 text-center">
-            <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
-              <span className="text-5xl">🐨</span>
+      <main className="container mx-auto px-4 py-8 max-w-xl">
+        {/* Certificate Card */}
+        <div className="bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-700">
+          {/* Dark Header */}
+          <div className="bg-gradient-to-r from-gray-800 to-gray-700 p-6 text-center border-b border-gray-600">
+            <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-yellow-400 rounded-full mx-auto mb-3 flex items-center justify-center shadow-lg">
+              <span className="text-3xl">🐨</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Yestoryd</h1>
-            <p className="text-gray-700 text-sm">READING ASSESSMENT REPORT</p>
+            <h1 className="text-xl font-bold text-white">Yestoryd</h1>
+            <p className="text-gray-400 text-xs uppercase tracking-wider">Reading Assessment Report</p>
           </div>
 
+          {/* Body */}
           <div className="p-6 text-center">
+            {/* Child Info */}
             <div className="mb-6">
-              <h2 className="text-blue-500 text-xl font-bold mb-2">Certificate of Achievement</h2>
-              <p className="text-gray-500 text-sm">Proudly presented to</p>
-              <h3 className="text-3xl font-bold text-gray-900 mt-2">{childName}</h3>
-              <p className="text-gray-500 text-sm mt-1">for completing the reading assessment</p>
-              {childAge && <p className="text-gray-400 text-xs">Age {childAge} Level</p>}
+              <p className="text-blue-400 text-sm font-semibold mb-1">Certificate of Achievement</p>
+              <p className="text-gray-500 text-xs">Proudly presented to</p>
+              <h2 className="text-2xl font-bold text-white mt-1">{childName}</h2>
+              <p className="text-gray-500 text-xs mt-1">for completing the reading assessment</p>
+              {childAge && <p className="text-gray-600 text-xs">Age {childAge}</p>}
             </div>
 
-            <div className="relative w-40 h-40 mx-auto mb-6">
+            {/* Score Circle - No /10 */}
+            <div className="relative w-32 h-32 mx-auto mb-4">
               <svg className="w-full h-full transform -rotate-90">
-                <circle cx="80" cy="80" r={radius} stroke="#E5E7EB" strokeWidth="12" fill="none" />
+                <circle cx="64" cy="64" r={radius} stroke="#374151" strokeWidth="10" fill="none" />
                 <circle
-                  cx="80"
-                  cy="80"
+                  cx="64"
+                  cy="64"
                   r={radius}
-                  className={ringColor}
-                  strokeWidth="12"
+                  className={scoreInfo.ring}
+                  strokeWidth="10"
                   fill="none"
                   strokeDasharray={circumference}
                   strokeDashoffset={circumference - progress}
@@ -184,66 +181,70 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className={`text-5xl font-black ${scoreInfo.text}`}>{score}</span>
-                <span className="text-gray-400 text-sm">/10</span>
               </div>
             </div>
 
-            <div className={`inline-flex items-center gap-2 ${scoreInfo.bg} text-white px-6 py-2 rounded-full mb-6`}>
-              <span className="text-xl">{scoreInfo.emoji}</span>
+            {/* Score Label */}
+            <div className={`inline-flex items-center gap-2 ${scoreInfo.bg} text-white px-5 py-2 rounded-full mb-6 text-sm`}>
+              <span>{scoreInfo.emoji}</span>
               <span className="font-bold">{scoreInfo.label}</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <Zap className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                <p className="text-xs text-gray-500">Reading Speed</p>
-                <p className="font-bold text-gray-900">{wpm} words/min</p>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-gray-700/50 rounded-xl p-3">
+                <Zap className="w-5 h-5 text-blue-400 mx-auto mb-1" />
+                <p className="text-[10px] text-gray-500 uppercase">Speed</p>
+                <p className="font-bold text-white text-sm">{wpm} wpm</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4">
-                <Volume2 className="w-6 h-6 text-green-500 mx-auto mb-2" />
-                <p className="text-xs text-gray-500">Fluency Level</p>
-                <p className="font-bold text-gray-900">{fluency}</p>
+              <div className="bg-gray-700/50 rounded-xl p-3">
+                <Volume2 className="w-5 h-5 text-green-400 mx-auto mb-1" />
+                <p className="text-[10px] text-gray-500 uppercase">Fluency</p>
+                <p className="font-bold text-white text-sm">{fluency}</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4">
-                <MessageSquare className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-                <p className="text-xs text-gray-500">Pronunciation</p>
-                <p className="font-bold text-gray-900">{pronunciation}</p>
+              <div className="bg-gray-700/50 rounded-xl p-3">
+                <MessageSquare className="w-5 h-5 text-purple-400 mx-auto mb-1" />
+                <p className="text-[10px] text-gray-500 uppercase">Clarity</p>
+                <p className="font-bold text-white text-sm">{pronunciation}</p>
               </div>
             </div>
 
+            {/* Coach Feedback - 90 words */}
             {feedback && (
-              <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+              <div className="bg-gray-700/30 rounded-xl p-4 mb-6 text-left border border-gray-600">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-amber-500" />
-                  <h4 className="font-bold text-gray-900">Coach&#39;s Feedback</h4>
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                  <h4 className="font-bold text-white text-sm">Coach&#39;s Feedback</h4>
                 </div>
-                <p className="text-gray-700 text-sm leading-relaxed">{feedback}</p>
+                <p className="text-gray-300 text-sm leading-relaxed">{feedback}</p>
               </div>
             )}
 
+            {/* Email Status */}
             {parentEmail && (
-              <div className={`flex items-center justify-center gap-2 text-sm mb-6 ${emailSent ? 'text-green-600' : 'text-gray-500'}`}>
+              <div className={`flex items-center justify-center gap-2 text-xs mb-4 ${emailSent ? 'text-green-400' : 'text-gray-500'}`}>
                 {sendingEmail ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending certificate to {parentEmail}...
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Sending certificate...
                   </span>
                 ) : emailSent ? (
-                  <span className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
                     Certificate sent to {parentEmail}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    Certificate will be sent to {parentEmail}
+                  <span className="flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    Sending to {parentEmail}
                   </span>
                 )}
               </div>
             )}
 
-            <div className="bg-green-50 rounded-xl p-4 mb-6">
-              <p className="text-gray-700 font-medium mb-3">📲 Share this achievement!</p>
+            {/* WhatsApp Share */}
+            <div className="bg-green-500/10 rounded-xl p-4 mb-6 border border-green-500/30">
+              <p className="text-white font-medium text-sm mb-3">📲 Share this achievement!</p>
               <button
                 onClick={shareOnWhatsApp}
                 className="w-full py-3 bg-green-500 text-white font-bold rounded-full hover:bg-green-600 transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -253,63 +254,57 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
               </button>
             </div>
 
-            <div className="border-t pt-6">
-              <p className="text-gray-600 mb-4 flex items-center justify-center gap-2">
-                🚀 Take Your Reading to the Next Level!
-              </p>
-              <div className="space-y-3">
-                <Link href="/book" className="block">
-                  <button className="w-full py-4 bg-pink-500 text-white font-bold rounded-full hover:bg-pink-600 transition-all active:scale-95 flex items-center justify-center gap-2">
-                    <Calendar className="w-5 h-5" />
-                    Book a Free Coach Call
-                  </button>
-                </Link>
-                <Link href="/" className="block">
-                  <button className="w-full py-4 bg-white border-2 border-gray-200 text-gray-700 font-semibold rounded-full hover:bg-gray-50 transition-all active:scale-95 flex items-center justify-center gap-2">
-                    👋 Explore Our Services
-                  </button>
-                </Link>
-              </div>
-              <p className="text-gray-400 text-xs mt-6">
-                Keep reading and growing! 📚✨
-                <br />
-                — The Yestoryd Team
-              </p>
+            {/* CTAs */}
+            <div className="space-y-3">
+              <Link href="/book" className="block">
+                <button className="w-full py-4 bg-pink-500 text-white font-bold rounded-full hover:bg-pink-600 transition-all active:scale-95 flex items-center justify-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Book a Free Coach Call
+                </button>
+              </Link>
+              <Link href="/" className="block">
+                <button className="w-full py-3 bg-gray-700 text-gray-300 font-semibold rounded-full hover:bg-gray-600 transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
+                  👋 Explore Our Services
+                </button>
+              </Link>
             </div>
-          </div>
 
-          <div className="bg-gray-50 px-6 py-4 text-center text-xs text-gray-400">
-            <p>This assessment was conducted on {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-            <p>Questions? Reply to this email or visit our website.</p>
+            <p className="text-gray-600 text-xs mt-6">
+              Keep reading and growing! 📚✨
+              <br />
+              — The Yestoryd Team
+            </p>
           </div>
         </div>
 
+        {/* Share Bar */}
         <div className="mt-6 grid grid-cols-3 gap-3">
           <button 
             onClick={shareOnWhatsApp}
-            className="flex flex-col items-center gap-2 p-4 bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-all active:scale-95"
+            className="flex flex-col items-center gap-2 p-3 bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-all active:scale-95"
           >
-            <MessageCircle className="w-6 h-6" />
+            <MessageCircle className="w-5 h-5" />
             <span className="text-xs font-medium">WhatsApp</span>
           </button>
           <button 
             onClick={() => window.print()}
-            className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-200 rounded-2xl text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+            className="flex flex-col items-center gap-2 p-3 bg-gray-800 border border-gray-700 rounded-2xl text-gray-400 hover:bg-gray-700 transition-all active:scale-95"
           >
-            <Download className="w-6 h-6" />
+            <Download className="w-5 h-5" />
             <span className="text-xs font-medium">Download</span>
           </button>
           <button 
             onClick={handleNativeShare}
-            className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-200 rounded-2xl text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+            className="flex flex-col items-center gap-2 p-3 bg-gray-800 border border-gray-700 rounded-2xl text-gray-400 hover:bg-gray-700 transition-all active:scale-95"
           >
-            <Share2 className="w-6 h-6" />
+            <Share2 className="w-5 h-5" />
             <span className="text-xs font-medium">More</span>
           </button>
         </div>
 
+        {/* Retake */}
         <div className="mt-6 text-center">
-          <Link href="/assessment" className="text-blue-500 font-medium hover:underline">
+          <Link href="/assessment" className="text-blue-400 font-medium hover:underline text-sm">
             🔄 Take Another Assessment
           </Link>
         </div>
@@ -320,10 +315,10 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-amber-50 to-white">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900">
       <div className="text-center">
-        <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-        <p className="text-gray-600">Loading your results...</p>
+        <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
+        <p className="text-gray-400">Loading your results...</p>
       </div>
     </div>
   );
