@@ -59,7 +59,7 @@ Return ONLY this JSON:
 Return ONLY valid JSON.`;
 
     // CORRECT MODEL NAME
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const audioData = audio.split(',')[1] || audio;
 
     const result = await model.generateContent([
