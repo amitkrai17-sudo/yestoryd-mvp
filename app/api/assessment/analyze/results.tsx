@@ -16,15 +16,14 @@ import {
   Mail,
   CheckCircle,
   Loader2,
-  Sparkles,
-  MessageCircle
+  Sparkles
 } from 'lucide-react';
 
 function getScoreColor(score: number) {
-  if (score >= 8) return { bg: 'bg-green-500', text: 'text-green-500', border: 'border-green-500', label: 'Excellent!', emoji: '🌟' };
-  if (score >= 6) return { bg: 'bg-yellow-500', text: 'text-yellow-500', border: 'border-yellow-500', label: 'Good Progress!', emoji: '⭐' };
-  if (score >= 4) return { bg: 'bg-orange-500', text: 'text-orange-500', border: 'border-orange-500', label: 'Keep Practicing!', emoji: '💪' };
-  return { bg: 'bg-red-500', text: 'text-red-500', border: 'border-red-500', label: 'Needs Improvement', emoji: '📚' };
+  if (score >= 8) return { bg: 'bg-green-500', text: 'text-green-500', label: 'Excellent!', emoji: '🌟' };
+  if (score >= 6) return { bg: 'bg-yellow-500', text: 'text-yellow-500', label: 'Good Progress!', emoji: '⭐' };
+  if (score >= 4) return { bg: 'bg-orange-500', text: 'text-orange-500', label: 'Keep Practicing!', emoji: '💪' };
+  return { bg: 'bg-red-500', text: 'text-red-500', label: 'Needs Improvement', emoji: '📚' };
 }
 
 function getScoreRingColor(score: number) {
@@ -56,58 +55,6 @@ function ResultsContent() {
   const radius = 70;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 10) * circumference;
-
-  // WhatsApp share message
-  const getWhatsAppMessage = () => {
-    const message = `🎉 *${childName}'s Reading Assessment Results*
-
-📊 *Overall Score: ${score}/10* ${scoreInfo.emoji}
-
-📈 *Performance:*
-• Reading Speed: ${wpm} words/min
-• Fluency: ${fluency}
-• Pronunciation: ${pronunciation}
-
-💬 *Feedback:*
-${feedback}
-
-🚀 Want to improve your child's reading? Get a FREE assessment at:
-https://yestoryd-mvp.vercel.app/assessment
-
-Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
-
-    return encodeURIComponent(message);
-  };
-
-  // Share functions
-  const shareOnWhatsApp = () => {
-    const message = getWhatsAppMessage();
-    window.open(`https://wa.me/?text=${message}`, '_blank');
-  };
-
-  const shareOnWhatsAppDirect = (phoneNumber?: string) => {
-    const message = getWhatsAppMessage();
-    if (phoneNumber) {
-      window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
-    } else {
-      window.open(`https://wa.me/?text=${message}`, '_blank');
-    }
-  };
-
-  // Native share
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${childName}'s Reading Assessment`,
-          text: `${childName} scored ${score}/10 on their Yestoryd Reading Assessment! 🎉`,
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.log('Share cancelled');
-      }
-    }
-  };
 
   // Send certificate email
   const sendCertificateEmail = async () => {
@@ -162,21 +109,12 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
               <span className="text-[#FBBF24]">yd</span>
             </span>
           </Link>
-          
-          {/* WhatsApp Share Button in Header */}
-          <button
-            onClick={shareOnWhatsApp}
-            className="flex items-center gap-2 px-4 py-2 bg-[#25D366] text-white rounded-full hover:bg-[#128C7E] transition-all active:scale-95 text-sm font-medium"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Share on WhatsApp</span>
-          </button>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         {/* Certificate Card */}
-        <div className={`bg-white rounded-3xl shadow-xl overflow-hidden border-4 ${scoreInfo.border}`}>
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border-4 border-[#FBBF24]">
           {/* Certificate Header */}
           <div className="bg-gradient-to-r from-[#FBBF24] to-[#F59E0B] p-6 text-center">
             <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
@@ -284,18 +222,6 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
               </div>
             )}
 
-            {/* Share Section */}
-            <div className="bg-[#25D366]/10 rounded-xl p-4 mb-6">
-              <p className="text-gray-700 font-medium mb-3">📲 Share this achievement!</p>
-              <button
-                onClick={shareOnWhatsApp}
-                className="w-full py-3 bg-[#25D366] text-white font-bold rounded-full hover:bg-[#128C7E] transition-all active:scale-95 flex items-center justify-center gap-2"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Share on WhatsApp
-              </button>
-            </div>
-
             {/* CTA Section */}
             <div className="border-t pt-6">
               <p className="text-gray-600 mb-4 flex items-center justify-center gap-2">
@@ -318,7 +244,8 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
               </div>
 
               <p className="text-gray-400 text-xs mt-6">
-                Keep reading and growing! 📚✨<br>
+                Keep reading and growing! 📚✨
+                <br />
                 — The Yestoryd Team
               </p>
             </div>
@@ -331,40 +258,30 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
           </div>
         </div>
 
-        {/* Share & Download Options */}
-        <div className="mt-6 grid grid-cols-3 gap-3">
-          <button 
-            onClick={shareOnWhatsApp}
-            className="flex flex-col items-center gap-2 p-4 bg-[#25D366] text-white rounded-2xl hover:bg-[#128C7E] transition-all active:scale-95"
-          >
-            <MessageCircle className="w-6 h-6" />
-            <span className="text-xs font-medium">WhatsApp</span>
-          </button>
-          
+        {/* Share Options */}
+        <div className="mt-6 flex justify-center gap-4">
           <button 
             onClick={() => window.print()}
-            className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-200 rounded-2xl text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50 text-sm"
           >
-            <Download className="w-6 h-6" />
-            <span className="text-xs font-medium">Download</span>
+            <Download className="w-4 h-4" />
+            Download PDF
           </button>
-          
           <button 
-            onClick={handleNativeShare}
-            className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-200 rounded-2xl text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: `${childName}'s Reading Assessment`,
+                  text: `${childName} scored ${score}/10 on their Yestoryd Reading Assessment!`,
+                  url: window.location.href,
+                });
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50 text-sm"
           >
-            <Share2 className="w-6 h-6" />
-            <span className="text-xs font-medium">More</span>
+            <Share2 className="w-4 h-4" />
+            Share Result
           </button>
-        </div>
-
-        {/* Retake Assessment */}
-        <div className="mt-6 text-center">
-          <Link href="/assessment">
-            <button className="text-[#3B82F6] font-medium hover:underline">
-              🔄 Take Another Assessment
-            </button>
-          </Link>
         </div>
       </main>
     </div>

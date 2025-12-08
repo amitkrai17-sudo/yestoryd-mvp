@@ -13,14 +13,50 @@ import {
   Baby,
   Mic,
   Square,
-  Play,
   Loader2,
   CheckCircle,
   ArrowRight,
   ArrowLeft,
   AlertCircle,
   BookOpen,
+  Sparkles,
+  Globe,
+  ChevronDown,
 } from 'lucide-react';
+
+// Country codes for top 30 countries
+const COUNTRY_CODES = [
+  { code: '+91', country: 'India', flag: '🇮🇳' },
+  { code: '+1', country: 'USA/Canada', flag: '🇺🇸' },
+  { code: '+44', country: 'UK', flag: '🇬🇧' },
+  { code: '+61', country: 'Australia', flag: '🇦🇺' },
+  { code: '+971', country: 'UAE', flag: '🇦🇪' },
+  { code: '+65', country: 'Singapore', flag: '🇸🇬' },
+  { code: '+60', country: 'Malaysia', flag: '🇲🇾' },
+  { code: '+49', country: 'Germany', flag: '🇩🇪' },
+  { code: '+33', country: 'France', flag: '🇫🇷' },
+  { code: '+39', country: 'Italy', flag: '🇮🇹' },
+  { code: '+34', country: 'Spain', flag: '🇪🇸' },
+  { code: '+31', country: 'Netherlands', flag: '🇳🇱' },
+  { code: '+41', country: 'Switzerland', flag: '🇨🇭' },
+  { code: '+46', country: 'Sweden', flag: '🇸🇪' },
+  { code: '+47', country: 'Norway', flag: '🇳🇴' },
+  { code: '+45', country: 'Denmark', flag: '🇩🇰' },
+  { code: '+358', country: 'Finland', flag: '🇫🇮' },
+  { code: '+64', country: 'New Zealand', flag: '🇳🇿' },
+  { code: '+27', country: 'South Africa', flag: '🇿🇦' },
+  { code: '+234', country: 'Nigeria', flag: '🇳🇬' },
+  { code: '+254', country: 'Kenya', flag: '🇰🇪' },
+  { code: '+86', country: 'China', flag: '🇨🇳' },
+  { code: '+81', country: 'Japan', flag: '🇯🇵' },
+  { code: '+82', country: 'South Korea', flag: '🇰🇷' },
+  { code: '+66', country: 'Thailand', flag: '🇹🇭' },
+  { code: '+63', country: 'Philippines', flag: '🇵🇭' },
+  { code: '+62', country: 'Indonesia', flag: '🇮🇩' },
+  { code: '+84', country: 'Vietnam', flag: '🇻🇳' },
+  { code: '+880', country: 'Bangladesh', flag: '🇧🇩' },
+  { code: '+92', country: 'Pakistan', flag: '🇵🇰' },
+];
 
 // Reading passages by age group
 const PASSAGES: Record<string, { title: string; text: string; wordCount: number }> = {
@@ -59,18 +95,39 @@ export function AssessmentForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     parentName: '',
     parentEmail: '',
-    parentPhone: '',
+    countryCode: '+91',
+    phoneNumber: '',
     childName: '',
     childAge: '',
   });
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCountryDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCountries = COUNTRY_CODES.filter(
+    (c) =>
+      c.country.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.code.includes(countrySearch)
+  );
 
   const getAgeGroup = (age: number): string => {
     if (age <= 5) return '4-5';
@@ -87,6 +144,12 @@ export function AssessmentForm() {
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError('');
+  };
+
+  const selectCountry = (code: string) => {
+    updateField('countryCode', code);
+    setShowCountryDropdown(false);
+    setCountrySearch('');
   };
 
   const startRecording = async () => {
@@ -146,7 +209,6 @@ export function AssessmentForm() {
     setError('');
 
     try {
-      // Convert audio to base64
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
 
@@ -164,7 +226,7 @@ export function AssessmentForm() {
             childName: formData.childName,
             parentName: formData.parentName,
             parentEmail: formData.parentEmail,
-            parentPhone: formData.parentPhone,
+            parentPhone: `${formData.countryCode}${formData.phoneNumber}`,
             recordingDuration: recordingTime,
           }),
         });
@@ -172,15 +234,15 @@ export function AssessmentForm() {
         const result = await response.json();
 
         if (result.success) {
-          // Navigate to results with data
           const params = new URLSearchParams({
             score: result.score?.toString() || '0',
             wpm: result.wpm?.toString() || '0',
-            fluency: result.fluency?.toString() || '0',
-            pronunciation: result.pronunciation?.toString() || '0',
+            fluency: result.fluency || '',
+            pronunciation: result.pronunciation || '',
             feedback: result.feedback || '',
             childName: formData.childName,
             childAge: formData.childAge,
+            parentEmail: formData.parentEmail,
           });
           router.push(`/assessment/results/new?${params.toString()}`);
         } else {
@@ -202,8 +264,10 @@ export function AssessmentForm() {
     };
   }, []);
 
-  const isStep1Valid = formData.parentName && formData.parentEmail && formData.parentPhone;
+  const isStep1Valid = formData.parentName && formData.parentEmail && formData.phoneNumber;
   const isStep2Valid = formData.childName && formData.childAge && parseInt(formData.childAge) >= 4 && parseInt(formData.childAge) <= 15;
+
+  const selectedCountry = COUNTRY_CODES.find((c) => c.code === formData.countryCode);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -238,10 +302,16 @@ export function AssessmentForm() {
       {step === 1 && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <User className="w-5 h-5 text-[#3B82F6]" />
-              Parent Information
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <User className="w-5 h-5 text-[#3B82F6]" />
+                Parent Information
+              </CardTitle>
+              <span className="flex items-center gap-1 text-xs bg-[#FBBF24]/20 text-[#FBBF24] px-3 py-1 rounded-full">
+                <Sparkles className="w-3 h-3" />
+                Powered by AI
+              </span>
+            </div>
             <CardDescription className="text-gray-400">
               We'll send the assessment results to your email
             </CardDescription>
@@ -268,18 +338,66 @@ export function AssessmentForm() {
                 placeholder="your@email.com"
                 className="mt-1 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#3B82F6]"
               />
+              <p className="text-xs text-[#FBBF24] mt-1.5 flex items-center gap-1">
+                🎓 A certificate will be sent to this email
+              </p>
             </div>
             
             <div>
-              <Label htmlFor="parentPhone" className="text-gray-200">Phone Number *</Label>
-              <Input
-                id="parentPhone"
-                type="tel"
-                value={formData.parentPhone}
-                onChange={(e) => updateField('parentPhone', e.target.value)}
-                placeholder="+91 9876543210"
-                className="mt-1 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#3B82F6]"
-              />
+              <Label className="text-gray-200">Phone Number *</Label>
+              <div className="flex gap-2 mt-1">
+                {/* Country Code Selector */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                    className="flex items-center gap-1 h-10 px-3 bg-gray-800 border border-gray-700 rounded-md text-white hover:bg-gray-700 transition-colors min-w-[100px]"
+                  >
+                    <span>{selectedCountry?.flag}</span>
+                    <span className="text-sm">{formData.countryCode}</span>
+                    <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
+                  </button>
+                  
+                  {showCountryDropdown && (
+                    <div className="absolute z-50 mt-1 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-hidden">
+                      <div className="p-2 border-b border-gray-700">
+                        <Input
+                          placeholder="Search country..."
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          className="bg-gray-900 border-gray-600 text-white placeholder:text-gray-500 h-8 text-sm"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {filteredCountries.map((country) => (
+                          <button
+                            key={country.code}
+                            onClick={() => selectCountry(country.code)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-white hover:bg-gray-700 transition-colors text-sm"
+                          >
+                            <span>{country.flag}</span>
+                            <span className="font-medium">{country.code}</span>
+                            <span className="text-gray-400 text-xs">{country.country}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Phone Number Input */}
+                <Input
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={(e) => updateField('phoneNumber', e.target.value.replace(/\D/g, ''))}
+                  placeholder="9876543210"
+                  className="flex-1 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#3B82F6]"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                💡 Type to search country code or use +91 for India
+              </p>
             </div>
 
             <Button
@@ -299,10 +417,16 @@ export function AssessmentForm() {
       {step === 2 && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Baby className="w-5 h-5 text-[#3B82F6]" />
-              Child Information
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Baby className="w-5 h-5 text-[#3B82F6]" />
+                Child Information
+              </CardTitle>
+              <span className="flex items-center gap-1 text-xs bg-[#FBBF24]/20 text-[#FBBF24] px-3 py-1 rounded-full">
+                <Sparkles className="w-3 h-3" />
+                Powered by AI
+              </span>
+            </div>
             <CardDescription className="text-gray-400">
               Tell us about your child so we can personalize the assessment
             </CardDescription>
@@ -362,10 +486,16 @@ export function AssessmentForm() {
       {step === 3 && passage && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <BookOpen className="w-5 h-5 text-[#3B82F6]" />
-              Reading Passage
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <BookOpen className="w-5 h-5 text-[#3B82F6]" />
+                Reading Passage
+              </CardTitle>
+              <span className="flex items-center gap-1 text-xs bg-[#FBBF24]/20 text-[#FBBF24] px-3 py-1 rounded-full">
+                <Sparkles className="w-3 h-3" />
+                Powered by AI
+              </span>
+            </div>
             <CardDescription className="text-gray-400">
               Ask {formData.childName} to read this passage aloud
             </CardDescription>
