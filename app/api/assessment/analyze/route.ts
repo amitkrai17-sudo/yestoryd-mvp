@@ -115,7 +115,7 @@ IMPORTANT:
 
 Respond ONLY with valid JSON. No additional text.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const audioData = audio.split(',')[1] || audio;
 
