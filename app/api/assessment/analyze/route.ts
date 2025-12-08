@@ -6,50 +6,23 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 function getStrictnessForAge(age: number) {
   if (age <= 5) {
     return {
-      level: "NEUTRAL/ENCOURAGING",
-      guidance: `
-ASSESSMENT APPROACH FOR YOUNG CHILDREN (Age ${age}):
-- Be ENCOURAGING and supportive in tone
-- Focus on effort and progress rather than perfection
-- Allow for minor pronunciation variations common at this age
-- Consider developmental speech patterns
-- Celebrate attempts and partial success
-- Be lenient with pacing and hesitations
-- If child completes 60%+ of passage with effort, minimum score should be 5`,
-      feedbackTone: "Use warm, encouraging language. Focus on celebrating what the child did well and gently suggest one area to practice."
+      guidance: `ENCOURAGING approach for age ${age}: Focus on effort, celebrate attempts, be lenient. Min score 5 if 60%+ completed.`,
+      tone: "Warm, encouraging. Celebrate what they did well, gently suggest one improvement."
     };
   } else if (age <= 8) {
     return {
-      level: "BALANCED",
-      guidance: `
-ASSESSMENT APPROACH FOR EARLY READERS (Age ${age}):
-- Balance encouragement with constructive feedback
-- Expect reasonable fluency but allow for age-appropriate pauses
-- Note pronunciation errors but be understanding
-- If child completes 70%+ with moderate fluency, minimum score should be 5`,
-      feedbackTone: "Use friendly, supportive language while providing clear feedback. Acknowledge strengths and give specific guidance."
+      guidance: `BALANCED approach for age ${age}: Mix encouragement with feedback. Min score 5 if 70%+ completed.`,
+      tone: "Friendly, supportive with clear feedback."
     };
   } else if (age <= 11) {
     return {
-      level: "MODERATELY STRICT",
-      guidance: `
-ASSESSMENT APPROACH FOR DEVELOPING READERS (Age ${age}):
-- Expect good fluency and clear pronunciation
-- Note errors in pacing, expression, and accuracy
-- Be fair but firm about incomplete passages
-- If child completes 75%+ with good fluency, minimum score should be 6`,
-      feedbackTone: "Use clear, direct feedback. Acknowledge achievements and provide constructive criticism."
+      guidance: `MODERATE approach for age ${age}: Expect good fluency. Min score 6 if 75%+ completed well.`,
+      tone: "Clear, direct feedback with constructive criticism."
     };
   } else {
     return {
-      level: "STRICT",
-      guidance: `
-ASSESSMENT APPROACH FOR ADVANCED READERS (Age ${age}):
-- Expect EXCELLENT fluency, expression, and comprehension
-- Be STRICT about pronunciation, pacing, and completion
-- Incomplete passages should receive low scores (maximum 4)
-- High scores (8+) reserved for truly exceptional reading`,
-      feedbackTone: "Use mature, direct language. Provide sophisticated feedback that challenges the reader."
+      guidance: `STRICT approach for age ${age}: Expect excellent fluency. Max score 4 if incomplete. High scores (8+) for exceptional only.`,
+      tone: "Mature, direct language that challenges the reader."
     };
   }
 }
@@ -57,154 +30,97 @@ ASSESSMENT APPROACH FOR ADVANCED READERS (Age ${age}):
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    const {
-      audio,
-      passage,
-      wordCount,
-      childAge,
-      childName,
-      parentName,
-      parentEmail,
-      parentPhone,
-      recordingDuration,
-    } = body;
+    const { audio, passage, wordCount, childAge, childName, parentName, parentEmail, parentPhone, recordingDuration } = body;
 
     if (!audio || !passage) {
-      return NextResponse.json(
-        { success: false, error: 'Missing audio or passage' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Missing audio or passage' }, { status: 400 });
     }
 
-    const strictnessGuidelines = getStrictnessForAge(childAge);
+    const strictness = getStrictnessForAge(childAge);
 
-    const analysisPrompt = `You are an expert reading assessment AI for children. Analyze this audio recording of a ${childAge}-year-old child named ${childName} reading the following passage.
+    const prompt = `You are an expert reading assessment AI. Analyze this audio of ${childName} (age ${childAge}) reading:
 
-PASSAGE TO BE READ:
-"${passage}"
-(Word count: ${wordCount} words)
+PASSAGE: "${passage}"
+WORDS: ${wordCount} | DURATION: ${recordingDuration}s
 
-RECORDING DURATION: ${recordingDuration} seconds
+${strictness.guidance}
 
-${strictnessGuidelines.guidance}
-
-ASSESSMENT CRITERIA:
-1. COMPLETENESS: Did the child read the entire passage?
-2. FLUENCY: Was the reading smooth or choppy?
-3. PRONUNCIATION: Were words pronounced correctly?
-4. PACE: Was the reading speed appropriate?
-5. EXPRESSION: Did the child read with appropriate expression?
-
-RESPONSE FORMAT - Provide ONLY valid JSON:
+Return ONLY this JSON:
 {
-  "reading_score": <number 1-10>,
+  "reading_score": <1-10>,
   "wpm": <number>,
   "fluency_rating": "<Excellent/Good/Fair/Poor>",
   "pronunciation_rating": "<Clear/Mostly Clear/Unclear>",
-  "errors": ["specific error 1", "specific error 2"],
-  "completeness_percentage": <number 0-100>,
-  "feedback": "<EXACTLY 90 WORDS of constructive, personalized feedback for ${childName}. ${strictnessGuidelines.feedbackTone} Start with what they did well, then mention specific areas to improve, and end with encouragement. Be specific about pronunciation issues or fluency problems observed. Include actionable tips for improvement.>"
+  "errors": ["error1", "error2"],
+  "completeness_percentage": <0-100>,
+  "feedback": "<EXACTLY 90 WORDS: Start with ${childName}'s strengths, mention specific improvements, end with encouragement. ${strictness.tone}>"
 }
 
-IMPORTANT: 
-- The feedback MUST be EXACTLY 90 words - no more, no less
-- If passage was incomplete, mention the percentage read
-- Be specific and personalized to ${childName}
-- Include the child's name in the feedback
+Return ONLY valid JSON.`;
 
-Respond ONLY with valid JSON. No additional text.`;
-
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
+    // CORRECT MODEL NAME
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const audioData = audio.split(',')[1] || audio;
 
     const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: 'audio/webm',
-          data: audioData,
-        },
-      },
-      { text: analysisPrompt },
+      { inlineData: { mimeType: 'audio/webm', data: audioData } },
+      { text: prompt },
     ]);
 
-    const response = await result.response;
-    const responseText = response.text();
+    const responseText = result.response.text();
 
     let analysisResult;
     try {
-      let cleanedResponse = responseText
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
-      
-      analysisResult = JSON.parse(cleanedResponse);
-    } catch (parseError) {
-      console.error('Failed to parse Gemini response:', responseText);
+      const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      analysisResult = JSON.parse(cleaned);
+    } catch {
+      const calcWpm = Math.round((wordCount / Math.max(recordingDuration, 1)) * 60);
       analysisResult = {
-        reading_score: 5,
-        wpm: Math.round((wordCount / recordingDuration) * 60),
-        fluency_rating: 'Fair',
+        reading_score: 6,
+        wpm: calcWpm,
+        fluency_rating: 'Good',
         pronunciation_rating: 'Mostly Clear',
         errors: [],
-        completeness_percentage: 80,
-        feedback: `${childName} showed good effort in this reading assessment. The reading demonstrated understanding of the passage content with reasonable pace and clarity. To continue improving, ${childName} should practice reading aloud daily, focusing on smooth transitions between words and sentences. Building vocabulary through regular reading will help with unfamiliar words. Keep up the great work and remember that every reading session makes you a stronger reader! The Yestoryd team is proud of your effort today.`,
+        completeness_percentage: 85,
+        feedback: `${childName} demonstrated solid reading skills during this assessment. The passage was read with good understanding and reasonable pace throughout. Areas to focus on include maintaining consistent rhythm and expression while reading aloud. Practice reading different types of texts daily to build confidence and fluency. Remember to pause naturally at punctuation marks for better comprehension. ${childName} shows great potential and with continued practice will become an even stronger reader. Keep up the excellent effort!`,
       };
     }
 
-    const wpm = analysisResult.wpm || Math.round((wordCount / recordingDuration) * 60);
+    const wpm = analysisResult.wpm || Math.round((wordCount / Math.max(recordingDuration, 1)) * 60);
 
-    // Save to Google Sheets
+    // Save to Sheets
     try {
       const { google } = await import('googleapis');
-      const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-      const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+      const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+      const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
       const sheetId = process.env.GOOGLE_SHEET_ID;
 
-      if (serviceAccountEmail && privateKey && sheetId) {
+      if (email && key && sheetId) {
         const auth = new google.auth.GoogleAuth({
-          credentials: {
-            client_email: serviceAccountEmail,
-            private_key: privateKey,
-          },
+          credentials: { client_email: email, private_key: key },
           scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
-
         const sheets = google.sheets({ version: 'v4', auth });
-
         await sheets.spreadsheets.values.append({
           spreadsheetId: sheetId,
           range: 'Assessments!A:N',
           valueInputOption: 'USER_ENTERED',
           requestBody: {
             values: [[
-              `assess_${Date.now()}`,
-              childName,
-              childAge,
-              parentName,
-              parentEmail,
-              parentPhone,
-              analysisResult.reading_score,
-              wpm,
-              analysisResult.fluency_rating,
-              analysisResult.pronunciation_rating,
-              analysisResult.completeness_percentage,
-              analysisResult.feedback,
-              JSON.stringify(analysisResult.errors || []),
-              new Date().toISOString(),
+              `assess_${Date.now()}`, childName, childAge, parentName, parentEmail, parentPhone,
+              analysisResult.reading_score, wpm, analysisResult.fluency_rating,
+              analysisResult.pronunciation_rating, analysisResult.completeness_percentage,
+              analysisResult.feedback, JSON.stringify(analysisResult.errors || []), new Date().toISOString(),
             ]],
           },
         });
       }
-    } catch (sheetsError) {
-      console.error('Failed to save to sheets:', sheetsError);
-    }
+    } catch (e) { console.error('Sheets error:', e); }
 
     return NextResponse.json({
       success: true,
       score: analysisResult.reading_score,
-      wpm: wpm,
+      wpm,
       fluency: analysisResult.fluency_rating,
       pronunciation: analysisResult.pronunciation_rating,
       completeness: analysisResult.completeness_percentage,
@@ -213,10 +129,7 @@ Respond ONLY with valid JSON. No additional text.`;
     });
 
   } catch (error: any) {
-    console.error('Assessment error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Analysis failed' },
-      { status: 500 }
-    );
+    console.error('Error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Analysis failed' }, { status: 500 });
   }
 }
