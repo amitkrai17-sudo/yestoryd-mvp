@@ -4,36 +4,29 @@ import './globals.css';
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-poppins',
-  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Yestoryd - AI Reading Coach for Kids',
-  description: 'Personalized reading coaching and AI-powered assessments to help every child become a confident reader.',
-  keywords: ['reading', 'kids', 'education', 'AI', 'coaching', 'assessment', 'children', 'learning'],
-  authors: [{ name: 'Yestoryd' }],
+  title: 'Yestoryd - AI-Powered Reading Intelligence for Children',
+  description: 'Personalized reading assessment and coaching for children aged 4-15. Take a free AI assessment and get matched with expert coaches.',
+  keywords: 'reading assessment, children reading, phonics, reading coach, AI assessment, Yestoryd',
   openGraph: {
-    title: 'Yestoryd - AI Reading Coach for Kids',
-    description: 'Personalized reading coaching and AI-powered assessments',
-    type: 'website',
-    locale: 'en_IN',
+    title: 'Yestoryd - AI-Powered Reading Intelligence',
+    description: 'Unlock your child\'s reading potential with AI-powered assessment and personalized coaching.',
+    images: ['/og-image.png'],
   },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={poppins.variable}>
-      <head>
-        <link rel="icon" href="/favicon.ico" />
-        <meta name="theme-color" content="#030712" />
-      </head>
-      <body className={`${poppins.className} antialiased`}>
+    <html lang="en">
+      <body className={`${poppins.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>
