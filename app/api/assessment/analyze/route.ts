@@ -41,25 +41,36 @@ export async function POST(request: NextRequest) {
     const prompt = `You are an expert reading assessment AI. Analyze this audio of ${childName} (age ${childAge}) reading:
 
 PASSAGE: "${passage}"
-WORDS: ${wordCount} | DURATION: ${recordingDuration}s
+TOTAL WORDS: ${wordCount} | RECORDING DURATION: ${recordingDuration}s
 
 ${strictness.guidance}
+
+IMPORTANT INSTRUCTIONS:
+1. Carefully check if ${childName} read the COMPLETE passage or only a portion
+2. Count approximately how many words were actually read
+3. Calculate completeness percentage (words read / total words * 100)
 
 Return ONLY this JSON:
 {
   "reading_score": <1-10>,
-  "wpm": <number>,
+  "wpm": <calculated words per minute>,
   "fluency_rating": "<Excellent/Good/Fair/Poor>",
   "pronunciation_rating": "<Clear/Mostly Clear/Unclear>",
-  "errors": ["error1", "error2"],
+  "errors": ["specific error 1", "specific error 2"],
   "completeness_percentage": <0-100>,
-  "feedback": "<EXACTLY 90 WORDS: Start with ${childName}'s strengths, mention specific improvements, end with encouragement. ${strictness.tone}>"
+  "words_read": <approximate number of words actually read>,
+  "feedback": "<EXACTLY 100 WORDS feedback that MUST START by stating whether ${childName} read the full passage or only a portion (e.g., '${childName} read the complete passage...' OR '${childName} read approximately X% of the passage...'). Then mention specific strengths like words pronounced well. Then mention specific areas to improve with examples from the reading. End with encouragement and one actionable tip for practice. ${strictness.tone}>"
 }
 
-Return ONLY valid JSON.`;
+CRITICAL RULES:
+- Feedback MUST be exactly 100 words
+- Feedback MUST begin with completion status
+- Include specific words/phrases the child handled well or struggled with
+- Be personalized using ${childName}'s name
 
-    // CORRECT MODEL NAME
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+Return ONLY valid JSON. No markdown, no extra text.`;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const audioData = audio.split(',')[1] || audio;
 
     const result = await model.generateContent([
@@ -82,7 +93,8 @@ Return ONLY valid JSON.`;
         pronunciation_rating: 'Mostly Clear',
         errors: [],
         completeness_percentage: 85,
-        feedback: `${childName} demonstrated solid reading skills during this assessment. The passage was read with good understanding and reasonable pace throughout. Areas to focus on include maintaining consistent rhythm and expression while reading aloud. Practice reading different types of texts daily to build confidence and fluency. Remember to pause naturally at punctuation marks for better comprehension. ${childName} shows great potential and with continued practice will become an even stronger reader. Keep up the excellent effort!`,
+        words_read: Math.round(wordCount * 0.85),
+        feedback: `${childName} read approximately 85% of the passage with good effort and understanding. The reading showed solid comprehension of the content with a reasonable pace maintained throughout most of the text. ${childName} handled several challenging words well, demonstrating growing vocabulary skills. To continue improving, focus on completing the entire passage and maintaining consistent expression while reading aloud. Practice reading different types of texts daily, paying attention to punctuation marks for natural pauses. ${childName} shows excellent potential and with regular practice will become an even more confident and fluent reader.`,
       };
     }
 
@@ -103,14 +115,15 @@ Return ONLY valid JSON.`;
         const sheets = google.sheets({ version: 'v4', auth });
         await sheets.spreadsheets.values.append({
           spreadsheetId: sheetId,
-          range: 'Assessments!A:N',
+          range: 'Assessments!A:O',
           valueInputOption: 'USER_ENTERED',
           requestBody: {
             values: [[
               `assess_${Date.now()}`, childName, childAge, parentName, parentEmail, parentPhone,
               analysisResult.reading_score, wpm, analysisResult.fluency_rating,
               analysisResult.pronunciation_rating, analysisResult.completeness_percentage,
-              analysisResult.feedback, JSON.stringify(analysisResult.errors || []), new Date().toISOString(),
+              analysisResult.words_read || '', analysisResult.feedback, 
+              JSON.stringify(analysisResult.errors || []), new Date().toISOString(),
             ]],
           },
         });
@@ -124,6 +137,7 @@ Return ONLY valid JSON.`;
       fluency: analysisResult.fluency_rating,
       pronunciation: analysisResult.pronunciation_rating,
       completeness: analysisResult.completeness_percentage,
+      wordsRead: analysisResult.words_read,
       errors: analysisResult.errors,
       feedback: analysisResult.feedback,
     });

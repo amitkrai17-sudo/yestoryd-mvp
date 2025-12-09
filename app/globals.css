@@ -1,261 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import Google Fonts - Clean modern fonts */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+:root {
+  --font-poppins: 'Poppins', sans-serif;
+  --background: #030712;
+  --foreground: #f9fafb;
+}
 
-/* Base styles */
+* {
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 @layer base {
-  :root {
-    /* Dark Theme Colors */
-    --bg-dark: #0D0D0D;
-    --bg-card: #1A1A1A;
-    --bg-card-hover: #222222;
-    --bg-input: #2A2A2A;
-    
-    /* Text Colors */
-    --text-white: #FFFFFF;
-    --text-gray: #9CA3AF;
-    --text-gray-light: #6B7280;
-    
-    /* Accent Colors */
-    --pink-bright: #FF2D92;
-    --pink-hover: #FF1A85;
-    --blue-bright: #3B82F6;
-    --blue-hover: #2563EB;
-    --yellow-bright: #FBBF24;
-    --yellow-light: #FCD34D;
-    
-    /* Brand */
-    --brand-pink: #FF2D92;
-    --brand-yellow: #FBBF24;
-    --brand-cyan: #22D3EE;
+  html {
+    font-family: 'Poppins', sans-serif;
   }
-
-  * {
-    @apply border-gray-700;
-  }
-
-  body {
-    @apply bg-[#0D0D0D] text-white;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-
+  
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Poppins', system-ui, sans-serif;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+  }
+  
+  button {
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  input, textarea, select {
+    font-family: 'Poppins', sans-serif;
   }
 }
 
-/* Component styles */
-@layer components {
-  /* Dark Card */
-  .card {
-    @apply rounded-2xl border border-gray-800 bg-[#1A1A1A] text-white;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  }
-
-  .card-hover {
-    @apply transition-all duration-300 hover:bg-[#222222] hover:border-gray-700;
-  }
-
-  /* Buttons */
-  .btn {
-    @apply inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0D0D] disabled:opacity-50 disabled:pointer-events-none;
-  }
-
-  .btn-pink {
-    @apply bg-[#FF2D92] text-white hover:bg-[#FF1A85] shadow-lg;
-    box-shadow: 0 4px 15px rgba(255, 45, 146, 0.4);
-  }
-
-  .btn-pink:hover {
-    box-shadow: 0 6px 20px rgba(255, 45, 146, 0.5);
-  }
-
-  .btn-blue {
-    @apply bg-[#3B82F6] text-white hover:bg-[#2563EB] shadow-lg;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-  }
-
-  .btn-blue:hover {
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
-  }
-
-  .btn-outline {
-    @apply border-2 border-gray-600 bg-transparent text-white hover:bg-gray-800 hover:border-gray-500;
-  }
-
-  /* Input styles - Dark theme */
-  .input {
-    @apply flex h-14 w-full rounded-xl border border-gray-700 bg-[#2A2A2A] px-4 py-3 text-base text-white ring-offset-[#0D0D0D] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF2D92] focus-visible:border-[#FF2D92] disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200;
-  }
-
-  /* Yellow instruction text */
-  .text-instruction {
-    @apply text-[#FBBF24] text-sm;
-  }
-
-  /* Brand gradient text */
-  .text-brand {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(90deg, #FF2D92 0%, #FBBF24 100%);
-  }
-
-  /* Pink text */
-  .text-pink {
-    color: #FF2D92;
-  }
-
-  /* Yellow text */
-  .text-yellow {
-    color: #FBBF24;
-  }
-
-  /* Cyan text */
-  .text-cyan {
-    color: #22D3EE;
-  }
-
-  /* Step indicator */
-  .step-active {
-    @apply bg-[#FF2D92] text-white;
-  }
-
-  .step-inactive {
-    @apply bg-gray-700 text-gray-400;
-  }
-
-  .step-completed {
-    @apply bg-green-500 text-white;
-  }
-
-  /* Section backgrounds */
-  .bg-dark {
-    background-color: #0D0D0D;
-  }
-
-  .bg-dark-card {
-    background-color: #1A1A1A;
-  }
-
-  .bg-dark-lighter {
-    background-color: #222222;
-  }
-
-  /* Gradient backgrounds */
-  .bg-gradient-dark {
-    background: linear-gradient(180deg, #0D0D0D 0%, #1A1A1A 100%);
-  }
-
-  .bg-gradient-card {
-    background: linear-gradient(145deg, #1A1A1A 0%, #222222 100%);
-  }
-
-  /* Glowing effects */
-  .glow-pink {
-    box-shadow: 0 0 30px rgba(255, 45, 146, 0.3);
-  }
-
-  .glow-blue {
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
-  }
-
-  /* Score badges */
-  .score-badge {
-    @apply inline-flex items-center justify-center w-20 h-20 rounded-full text-3xl font-bold;
-  }
-
-  .score-badge.excellent {
-    @apply bg-gradient-to-br from-green-400 to-green-500 text-white;
-    box-shadow: 0 0 30px rgba(74, 222, 128, 0.4);
-  }
-
-  .score-badge.good {
-    @apply bg-gradient-to-br from-blue-400 to-blue-500 text-white;
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
-  }
-
-  .score-badge.fair {
-    @apply bg-gradient-to-br from-yellow-400 to-yellow-500 text-white;
-    box-shadow: 0 0 30px rgba(251, 191, 36, 0.4);
-  }
-
-  .score-badge.poor {
-    @apply bg-gradient-to-br from-red-400 to-red-500 text-white;
-    box-shadow: 0 0 30px rgba(248, 113, 113, 0.4);
-  }
-
-  /* Divider */
-  .divider {
-    @apply w-24 h-1 mx-auto rounded-full;
-    background: linear-gradient(90deg, #FF2D92, #FBBF24);
-  }
-}
-
-/* Utility classes */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-
-  /* Elegant shadows for dark theme */
-  .shadow-dark {
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  }
-
-  .shadow-glow-pink {
-    box-shadow: 0 0 40px rgba(255, 45, 146, 0.2);
-  }
-
-  .shadow-glow-blue {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
-  }
 }
 
-/* Audio player - dark theme */
-audio {
-  @apply w-full h-12 rounded-xl;
-}
-
-audio::-webkit-media-controls-panel {
-  background: #2A2A2A;
-  border-radius: 12px;
-}
-
-audio::-webkit-media-controls-play-button,
-audio::-webkit-media-controls-mute-button {
-  filter: invert(1);
-}
-
-/* Custom scrollbar - dark theme */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1A1A1A;
-  border-radius: 4px;
+  background: #1f2937;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #FF2D92, #3B82F6);
+  background: #4b5563;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #FF1A85, #2563EB);
+  background: #6b7280;
 }
 
-/* Selection color */
-::selection {
-  background-color: #FF2D92;
-  color: white;
+/* Print styles */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
 
-/* Focus ring for accessibility */
-*:focus-visible {
-  outline: 2px solid #FF2D92;
-  outline-offset: 2px;
+/* Pulsating animation for mic */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-in-out infinite;
 }
