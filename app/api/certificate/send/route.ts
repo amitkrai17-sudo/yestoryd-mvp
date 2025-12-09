@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 // Get score color for email
 function getScoreStyle(score: number) {
   if (score >= 8) return { color: '#22C55E', label: 'Excellent!', emoji: '🌟' };
-  if (score >= 6) return { color: '#EAB308', label: 'Good Progress!', emoji: '⭐' };
+  if (score >= 6) return { color: '#EAB308', label: 'Good Progress!', emoji: '👍' };
   if (score >= 4) return { color: '#F97316', label: 'Keep Practicing!', emoji: '💪' };
   return { color: '#EF4444', label: 'Needs Improvement', emoji: '📚' };
 }
@@ -12,7 +12,7 @@ function getScoreStyle(score: number) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     const {
       email,
       childName,
@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
       year: 'numeric',
     });
 
-    // Create booking link with calendar integration
-    const bookingUrl = `https://yestoryd-mvp.vercel.app/book?childName=${encodeURIComponent(childName)}`;
+    // Direct Cal.com booking link for discovery call
+    const calBookingUrl = 'https://cal.com/yestoryd/discovery';
+    const bookingPageUrl = `https://yestoryd-mvp.vercel.app/book?childName=${encodeURIComponent(childName)}`;
 
     // Create the email HTML
     const emailHtml = `
@@ -52,11 +53,11 @@ export async function POST(request: NextRequest) {
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff;">
-    
+
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%); padding: 30px; text-align: center;">
       <div style="width: 70px; height: 70px; background-color: white; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <span style="font-size: 40px;">🐨</span>
+        <span style="font-size: 40px;">🐿</span>
       </div>
       <h1 style="margin: 0; color: #1F2937; font-size: 24px; font-weight: bold;">Yestoryd</h1>
       <p style="margin: 5px 0 0; color: #4B5563; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Reading Assessment Report</p>
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     <!-- Certificate Body -->
     <div style="padding: 30px; text-align: center;">
-      
+
       <!-- Title -->
       <h2 style="color: #3B82F6; font-size: 20px; margin: 0 0 10px;">Certificate of Achievement</h2>
       <p style="color: #6B7280; font-size: 14px; margin: 0;">Proudly presented to</p>
@@ -120,18 +121,28 @@ export async function POST(request: NextRequest) {
 
       <!-- CTA Section -->
       <div style="border-top: 1px solid #E5E7EB; padding-top: 25px;">
-        <p style="color: #4B5563; margin: 0 0 20px; font-size: 16px;">🚀 Take Your Reading to the Next Level!</p>
+        <p style="color: #4B5563; margin: 0 0 15px; font-size: 16px;">🚀 Take Your Reading to the Next Level!</p>
         
-        <a href="${bookingUrl}" style="display: block; background-color: #FF2D92; color: white; text-decoration: none; padding: 16px 30px; border-radius: 30px; font-weight: bold; font-size: 16px; margin-bottom: 12px;">
-          📅 Book a Free Coach Call
+        <p style="color: #6B7280; font-size: 13px; margin: 0 0 20px;">
+          Book a <strong>FREE 30-minute discovery call</strong> with our reading coach to create a personalized learning plan for ${childName}.
+        </p>
+
+        <!-- Primary CTA: Direct Cal.com link -->
+        <a href="${calBookingUrl}" style="display: block; background-color: #FF2D92; color: white; text-decoration: none; padding: 16px 30px; border-radius: 30px; font-weight: bold; font-size: 16px; margin-bottom: 12px;">
+          📅 Book FREE Discovery Call
         </a>
-        
-        <a href="https://yestoryd-mvp.vercel.app" style="display: block; background-color: white; color: #4B5563; text-decoration: none; padding: 14px 30px; border-radius: 30px; font-weight: 600; border: 2px solid #E5E7EB; font-size: 14px;">
-          👋 Explore Our Services
+
+        <!-- Secondary CTA -->
+        <a href="${bookingPageUrl}" style="display: block; background-color: white; color: #4B5563; text-decoration: none; padding: 14px 30px; border-radius: 30px; font-weight: 600; border: 2px solid #E5E7EB; font-size: 14px; margin-bottom: 12px;">
+          📚 View All Session Types
+        </a>
+
+        <a href="https://yestoryd-mvp.vercel.app" style="display: block; color: #3B82F6; text-decoration: none; font-size: 14px; margin-top: 15px;">
+          🌐 Explore Our Services →
         </a>
 
         <p style="color: #9CA3AF; font-size: 12px; margin-top: 25px;">
-          Keep reading and growing! 📚✨<br>
+          Keep reading and growing! 📖✨<br>
           — The Yestoryd Team
         </p>
       </div>
@@ -142,6 +153,9 @@ export async function POST(request: NextRequest) {
       <p style="color: #9CA3AF; font-size: 11px; margin: 0;">
         This assessment was conducted on ${assessmentDate}<br>
         Questions? Reply to this email or visit our website.
+      </p>
+      <p style="color: #D1D5DB; font-size: 10px; margin: 10px 0 0;">
+        © ${new Date().getFullYear()} Yestoryd. AI-Powered Reading Intelligence for Children.
       </p>
     </div>
 
@@ -159,7 +173,7 @@ export async function POST(request: NextRequest) {
       // In production, you'd use SendGrid, Gmail API, or another email service
       console.log(`Certificate email would be sent to: ${email}`);
       console.log(`Subject: ${childName}'s Reading Assessment Certificate 🎓`);
-      
+
       // Save email record to sheets
       try {
         const sheetId = process.env.GOOGLE_SHEET_ID;
