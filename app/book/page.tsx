@@ -9,18 +9,12 @@ declare global {
   }
 }
 
-// Cal.com Configuration
-const CAL_CONFIG = {
-  username: 'yestoryd',
-  namespace: 'yestoryd-booking',
-  brandColor: '#E91E63',
-};
-
 const CAL_EVENTS = {
   discovery: {
     name: 'Free Discovery Call',
     duration: 30,
     link: 'yestoryd/discovery',
+    url: 'https://cal.com/yestoryd/discovery',
     description: 'A free 30-minute call to discuss your child\'s reading journey and create a personalized plan.',
     icon: '🎯',
     color: 'from-green-400 to-emerald-500',
@@ -30,6 +24,7 @@ const CAL_EVENTS = {
     name: 'Coaching Session',
     duration: 60,
     link: 'yestoryd/coaching',
+    url: 'https://cal.com/yestoryd/coaching',
     description: 'One-on-one personalized reading coaching session with expert guidance.',
     icon: '📚',
     color: 'from-blue-400 to-indigo-500',
@@ -39,6 +34,7 @@ const CAL_EVENTS = {
     name: 'Parent Check-in',
     duration: 15,
     link: 'yestoryd/parent-checkin',
+    url: 'https://cal.com/yestoryd/parent-checkin',
     description: 'Quick check-in to discuss your child\'s progress and next steps.',
     icon: '💬',
     color: 'from-purple-400 to-pink-500',
@@ -51,50 +47,58 @@ type CalEventType = 'discovery' | 'coaching' | 'checkin';
 export default function BookPage() {
   const [calLoaded, setCalLoaded] = useState(false);
 
-  // Load Cal.com script
   useEffect(() => {
-    if (window.Cal) {
-      setCalLoaded(true);
-      return;
-    }
-
+    // Load Cal.com script
     const script = document.createElement('script');
     script.src = 'https://app.cal.com/embed/embed.js';
     script.async = true;
 
     script.onload = () => {
-      if (window.Cal) {
-        window.Cal('init', CAL_CONFIG.namespace, {
-          origin: 'https://app.cal.com',
-        });
-        window.Cal.ns[CAL_CONFIG.namespace]('ui', {
-          theme: 'light',
-          styles: {
-            branding: {
-              brandColor: CAL_CONFIG.brandColor,
-            },
-          },
-        });
-        setCalLoaded(true);
+      try {
+        if (window.Cal) {
+          window.Cal('init', 'yestoryd-booking', {
+            origin: 'https://app.cal.com',
+          });
+          window.Cal.ns['yestoryd-booking']('ui', {
+            theme: 'light',
+            styles: { branding: { brandColor: '#E91E63' } },
+          });
+          setCalLoaded(true);
+        }
+      } catch (e) {
+        console.log('Cal.com init error:', e);
       }
     };
 
+    script.onerror = () => {
+      console.log('Cal.com script failed to load');
+    };
+
     document.head.appendChild(script);
+
+    // Fallback: set loaded after 3 seconds anyway
+    const timeout = setTimeout(() => setCalLoaded(true), 3000);
+    return () => clearTimeout(timeout);
   }, []);
 
-  const openCalPopup = (eventType: CalEventType) => {
+  const handleBooking = (eventType: CalEventType) => {
     const event = CAL_EVENTS[eventType];
 
-    if (window.Cal && window.Cal.ns && window.Cal.ns[CAL_CONFIG.namespace]) {
-      window.Cal.ns[CAL_CONFIG.namespace]('modal', {
-        calLink: event.link,
-        config: {
-          layout: 'month_view',
-        },
-      });
-    } else {
-      window.open(`https://cal.com/${event.link}`, '_blank');
+    // Try popup first
+    if (window.Cal?.ns?.['yestoryd-booking']) {
+      try {
+        window.Cal.ns['yestoryd-booking']('modal', {
+          calLink: event.link,
+          config: { layout: 'month_view' },
+        });
+        return;
+      } catch (e) {
+        console.log('Popup failed, opening direct link');
+      }
     }
+
+    // Fallback: open direct link
+    window.open(event.url, '_blank');
   };
 
   const eventTypes: CalEventType[] = ['discovery', 'coaching', 'checkin'];
@@ -158,11 +162,10 @@ export default function BookPage() {
                     {event.description}
                   </p>
                   <button
-                    onClick={() => openCalPopup(eventType)}
-                    disabled={!calLoaded}
-                    className={`w-full bg-gradient-to-r ${event.color} text-white font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50`}
+                    onClick={() => handleBooking(eventType)}
+                    className={`w-full bg-gradient-to-r ${event.color} text-white font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg active:scale-95`}
                   >
-                    {calLoaded ? 'Book Now →' : 'Loading...'}
+                    Book Now →
                   </button>
                 </div>
               </div>
