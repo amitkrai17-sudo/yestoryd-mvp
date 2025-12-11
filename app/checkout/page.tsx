@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Script from 'next/script';
 
@@ -36,7 +36,7 @@ const PACKAGES = {
   },
 };
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -44,7 +44,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  // Get data from URL params (passed from assessment results page)
+  // Get data from URL params
   const childId = searchParams.get('childId') || '';
   const childName = searchParams.get('childName') || '';
   const parentName = searchParams.get('parentName') || '';
@@ -66,7 +66,6 @@ export default function CheckoutPage() {
     setError('');
 
     try {
-      // 1. Create order on backend
       const orderRes = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +87,6 @@ export default function CheckoutPage() {
         throw new Error(orderData.error || 'Failed to create order');
       }
 
-      // 2. Open Razorpay checkout
       const options = {
         key: orderData.keyId,
         amount: orderData.amount * 100,
@@ -102,10 +100,9 @@ export default function CheckoutPage() {
           contact: parentPhone,
         },
         theme: {
-          color: '#6366f1', // Indigo
+          color: '#6366f1',
         },
         handler: async function (response: any) {
-          // 3. Verify payment on backend
           try {
             const verifyRes = await fetch('/api/payment/verify', {
               method: 'POST',
@@ -128,7 +125,6 @@ export default function CheckoutPage() {
             const verifyData = await verifyRes.json();
 
             if (verifyData.success) {
-              // Redirect to success page
               router.push(`/enrollment/success?childId=${childId}&childName=${encodeURIComponent(childName)}`);
             } else {
               setError('Payment verification failed. Please contact support.');
@@ -165,19 +161,16 @@ export default function CheckoutPage() {
 
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 py-12 px-4">
         <div className="max-w-2xl mx-auto">
-          {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Complete Your Enrollment
             </h1>
             <p className="text-gray-600">
-              Start {childName}'s reading transformation journey
+              Start {childName || 'your child'}'s reading transformation journey
             </p>
           </div>
 
-          {/* Package Card */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            {/* Package Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8 text-white">
               <h2 className="text-2xl font-bold">{selectedPackage.name}</h2>
               <div className="mt-4 flex items-baseline">
@@ -186,7 +179,6 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Features */}
             <div className="px-6 py-6">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
                 What's Included
@@ -194,16 +186,8 @@ export default function CheckoutPage() {
               <ul className="space-y-3">
                 {selectedPackage.features.map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <svg
-                      className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
+                    <svg className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span className="text-gray-700">{feature}</span>
                   </li>
@@ -211,23 +195,20 @@ export default function CheckoutPage() {
               </ul>
             </div>
 
-            {/* Child Info */}
             <div className="px-6 py-4 bg-gray-50 border-t">
               <div className="text-sm text-gray-600">
-                <p><span className="font-medium">Child:</span> {childName}</p>
-                <p><span className="font-medium">Parent:</span> {parentName}</p>
-                <p><span className="font-medium">Email:</span> {parentEmail}</p>
+                <p><span className="font-medium">Child:</span> {childName || 'Not specified'}</p>
+                <p><span className="font-medium">Parent:</span> {parentName || 'Not specified'}</p>
+                <p><span className="font-medium">Email:</span> {parentEmail || 'Not specified'}</p>
               </div>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="px-6 py-3 bg-red-50 border-t border-red-100">
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            {/* Pay Button */}
             <div className="px-6 py-6 border-t">
               <button
                 onClick={handlePayment}
@@ -257,7 +238,6 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Trust Badges */}
           <div className="mt-8 flex justify-center items-center space-x-6 text-gray-400">
             <div className="flex items-center">
               <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -275,5 +255,24 @@ export default function CheckoutPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading checkout...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

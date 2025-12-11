@@ -2,9 +2,9 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-export default function EnrollmentSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const childName = searchParams.get('childName') || 'your child';
   const childId = searchParams.get('childId') || '';
@@ -12,14 +12,12 @@ export default function EnrollmentSuccessPage() {
   const [showConfetti, setShowConfetti] = useState(true);
 
   useEffect(() => {
-    // Hide confetti after 5 seconds
     const timer = setTimeout(() => setShowConfetti(false), 5000);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12 px-4">
-      {/* Simple confetti effect */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           {[...Array(50)].map((_, i) => (
@@ -47,26 +45,14 @@ export default function EnrollmentSuccessPage() {
       )}
 
       <div className="max-w-2xl mx-auto text-center">
-        {/* Success Icon */}
         <div className="mb-8">
           <div className="mx-auto w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-            <svg
-              className="w-12 h-12 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
+            <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
         </div>
 
-        {/* Success Message */}
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
           🎉 Welcome to Yestoryd!
         </h1>
@@ -75,7 +61,6 @@ export default function EnrollmentSuccessPage() {
           {childName}'s reading journey begins now!
         </p>
 
-        {/* What's Next Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 text-left mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">
             What happens next?
@@ -132,7 +117,6 @@ export default function EnrollmentSuccessPage() {
           </div>
         </div>
 
-        {/* Contact Info */}
         <div className="bg-indigo-50 rounded-xl p-6 mb-8">
           <p className="text-indigo-900">
             <span className="font-semibold">Questions?</span> WhatsApp us at{' '}
@@ -142,7 +126,6 @@ export default function EnrollmentSuccessPage() {
           </p>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/dashboard"
@@ -159,5 +142,24 @@ export default function EnrollmentSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function EnrollmentSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SuccessContent />
+    </Suspense>
   );
 }
