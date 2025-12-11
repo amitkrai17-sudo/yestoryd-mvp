@@ -1,32 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createOrder } from '@/lib/razorpay/client';
-import { PackageType } from '@/lib/utils/revenue-split';
+import { createOrder, PACKAGES, PackageType } from '@/lib/razorpay';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     const {
-      studentId,
-      coachId,
-      packageType,
-      source,
-      assignedBy,
+      childId,
+      childName,
+      coachId = 'rucha', // Default to Rucha
+      packageType = 'coaching-6',
       parentName,
       parentEmail,
       parentPhone,
+      source = 'yestoryd.com',
     } = body;
 
     // Validate required fields
-    if (!studentId || !coachId || !packageType || !parentEmail) {
+    if (!childId || !childName || !parentEmail) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Missing required fields: childId, childName, parentEmail' },
         { status: 400 }
       );
     }
 
     // Validate package type
-    if (!['6-sessions', '2-sessions'].includes(packageType)) {
+    if (!PACKAGES[packageType as PackageType]) {
       return NextResponse.json(
         { success: false, error: 'Invalid package type' },
         { status: 400 }
@@ -35,14 +34,14 @@ export async function POST(request: NextRequest) {
 
     // Create Razorpay order
     const order = await createOrder({
-      studentId,
+      childId,
+      childName,
       coachId,
       packageType: packageType as PackageType,
-      source: source || 'yestoryd.com',
-      assignedBy: assignedBy || 'auto',
       parentName: parentName || '',
       parentEmail,
       parentPhone: parentPhone || '',
+      source,
     });
 
     return NextResponse.json({
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Payment creation error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to create payment' },
+      { success: false, error: error.message || 'Failed to create order' },
       { status: 500 }
     );
   }

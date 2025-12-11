@@ -1,73 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { verifyWebhookSignature } from '@/lib/razorpay';
+import { createClient } from '@supabase/supabase-js';
 
-// Verify Razorpay webhook signature
-function verifyWebhookSignature(body: string, signature: string, secret: string): boolean {
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(body)
-    .digest('hex');
-  return expectedSignature === signature;
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const signature = request.headers.get('x-razorpay-signature') || '';
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+    const signature = request.headers.get('x-razorpay-signature');
 
-    // Verify signature (skip in development if no secret)
-    if (webhookSecret && !verifyWebhookSignature(body, signature, webhookSecret)) {
+    // Verify webhook signature
+    if (!signature || !verifyWebhookSignature(body, signature)) {
       console.error('Invalid webhook signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid signature' },
+        { status: 400 }
+      );
     }
 
     const event = JSON.parse(body);
-    console.log('Webhook event received:', event.event);
+    console.log('Razorpay webhook:', event.event);
 
-    // Handle payment.captured event
-    if (event.event === 'payment.captured') {
-      const payment = event.payload.payment.entity;
-      
-      console.log('Payment captured:', {
-        paymentId: payment.id,
-        amount: payment.amount / 100,
-        email: payment.email,
-      });
+    // Handle different events
+    switch (event.event) {
+      case 'payment.captured':
+        await handlePaymentCaptured(event.payload.payment.entity);
+        break;
 
-      // TODO: Save payment to Google Sheets when configured
-      // TODO: Update parent's coaching status
-      // TODO: Send confirmation email
+      case 'payment.failed':
+        await handlePaymentFailed(event.payload.payment.entity);
+        break;
 
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Payment recorded' 
-      });
+      case 'order.paid':
+        console.log('Order paid:', event.payload.order.entity.id);
+        break;
+
+      default:
+        console.log('Unhandled event:', event.event);
     }
 
-    // Handle payment.failed event
-    if (event.event === 'payment.failed') {
-      const payment = event.payload.payment.entity;
-      
-      console.log('Payment failed:', {
-        paymentId: payment.id,
-        reason: payment.error_description,
-      });
-
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Failure recorded' 
-      });
-    }
-
-    // Return success for other events
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ status: 'ok' });
 
   } catch (error: any) {
     console.error('Webhook error:', error);
     return NextResponse.json(
-      { error: error.message || 'Webhook processing failed' },
+      { error: error.message },
       { status: 500 }
     );
   }
+}
+
+async function handlePaymentCaptured(payment: any) {
+  const notes = payment.notes || {};
+  
+  console.log('Payment captured:', {
+    paymentId: payment.id,
+    amount: payment.amount / 100,
+    childId: notes.childId,
+    childName: notes.childName,
+  });
+
+  // Update payment status
+  const { error } = await supabase
+    .from('payments')
+    .update({ status: 'captured', captured_at: new Date().toISOString() })
+    .eq('razorpay_payment_id', payment.id);
+
+  if (error) {
+    console.error('Error updating payment:', error);
+  }
+
+  // Trigger auto-scheduling (you can call your scheduling API here)
+  // await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/enrollment/complete`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ childId: notes.childId, coachId: notes.coachId }),
+  // });
+}
+
+async function handlePaymentFailed(payment: any) {
+  console.log('Payment failed:', {
+    paymentId: payment.id,
+    reason: payment.error_description,
+  });
+
+  // Update payment status
+  await supabase
+    .from('payments')
+    .update({ 
+      status: 'failed', 
+      failure_reason: payment.error_description,
+    })
+    .eq('razorpay_payment_id', payment.id);
 }
