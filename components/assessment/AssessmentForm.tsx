@@ -19,6 +19,7 @@ import {
   BookOpen,
   Sparkles,
   ChevronDown,
+  Mail,
 } from 'lucide-react';
 
 // Country codes
@@ -40,91 +41,166 @@ const COUNTRY_CODES = [
   { code: '+968', country: 'Oman', flag: '🇴🇲' },
 ];
 
-// 3 passages per age group (50-130 words, increasing complexity)
-const PASSAGES: Record<string, Array<{ title: string; text: string; wordCount: number }>> = {
+// 5 passages per age group (Oxford/Cambridge level, strictly 50-130 words)
+const PASSAGES: Record<string, Array<{ title: string; text: string; wordCount: number; level: string }>> = {
   '4-5': [
     {
       title: 'My Red Ball',
-      text: 'I have a red ball. The ball is big and round. I kick the ball. It goes far away. I run fast to get it. My dog runs with me. We play all day. I love my ball.',
-      wordCount: 50,
+      text: 'I have a red ball. The ball is big and round. I kick the ball. It goes far away. I run fast to get it. My dog runs with me. We play all day. The sun is hot. I am very happy.',
+      wordCount: 42,
+      level: 'Pre-A1 Starters',
     },
     {
-      title: 'The Cat',
-      text: 'I see a cat. The cat is small and soft. It has white fur. The cat likes to sleep on my bed. It purrs when I pet it. The cat drinks milk from a bowl. I love my cat very much. We are best friends.',
-      wordCount: 55,
+      title: 'The Little Cat',
+      text: 'I see a small cat. The cat has soft white fur. It has big green eyes. The cat sleeps on my bed. It likes warm milk. I love my cat. We play with a red ball. The cat is my best friend.',
+      wordCount: 42,
+      level: 'Pre-A1 Starters',
     },
     {
       title: 'At the Park',
-      text: 'I go to the park with Mom. The park has swings and slides. I play on the swing first. Then I go down the big slide. I see birds in the trees. A butterfly flies by me. The sun is warm and bright. I have so much fun at the park today.',
-      wordCount: 60,
+      text: 'I go to the park with Mum. The park has big trees and green grass. I play on the swing. It goes up and down. I see a yellow bird in a tree. A butterfly flies near me. I run and jump. It is a fun day at the park.',
+      wordCount: 50,
+      level: 'Pre-A1 Starters',
+    },
+    {
+      title: 'My Family',
+      text: 'I live in a small house. My dad is tall. My mum has long hair. I have a baby sister. She is two years old. We eat dinner together. Dad makes rice and fish. After dinner, we watch TV. I love my family very much. They make me happy every day.',
+      wordCount: 51,
+      level: 'Pre-A1 Starters',
+    },
+    {
+      title: 'A Sunny Morning',
+      text: 'I wake up early in the morning. The sun is bright in the sky. Birds sing in the garden. I brush my teeth and wash my face. Mum gives me toast and milk for breakfast. I put on my blue shirt and brown shoes. Dad takes me to school in his car. I wave goodbye and walk to my class. My teacher smiles at me. It is a good day.',
+      wordCount: 70,
+      level: 'Pre-A1 Starters',
     },
   ],
   '6-7': [
     {
-      title: 'My Pet Dog Max',
-      text: 'I have a pet dog named Max. He has soft brown fur and a wagging tail. Max likes to play fetch in the park every morning. He runs very fast and always brings the ball back to me. At night, Max sleeps near my bed. He is my best friend and I love him very much.',
-      wordCount: 65,
+      title: 'My Pet Dog',
+      text: 'I have a pet dog named Max. He has soft brown fur and a long tail. Max likes to play in the garden every morning. He runs very fast and catches the ball. At night, Max sleeps near my bed. He is my best friend.',
+      wordCount: 45,
+      level: 'A1 Movers',
     },
     {
       title: 'The Birthday Party',
-      text: 'Today is my birthday and I am very happy. My mom made a big chocolate cake with candles on top. All my friends came to my house for the party. We played games and danced to music. I got many wonderful gifts. The best gift was a new bicycle from my parents. It was the best birthday ever.',
-      wordCount: 70,
+      text: 'Today is my birthday. I am seven years old. Mum made a big chocolate cake with candles. My friends came to my house. We played games and danced to music. I got many nice gifts. The best gift was a new bicycle from Dad. It was the best birthday.',
+      wordCount: 49,
+      level: 'A1 Movers',
     },
     {
-      title: 'A Day at School',
-      text: 'I wake up early every morning for school. My mom makes breakfast and I eat quickly. The school bus comes at eight o clock. At school, I learn reading, writing and math. My favorite subject is art because I love to draw and paint. During lunch, I sit with my friends. After school, I do my homework and then play outside.',
-      wordCount: 75,
+      title: 'Going to School',
+      text: 'I wake up at seven every morning. Mum makes breakfast for me. I eat bread and drink milk. The school bus comes at eight. At school, I learn reading and maths. My favourite lesson is art. I like to paint pictures of animals. After school, I play with my friends. Then I go home and do my homework.',
+      wordCount: 58,
+      level: 'A1 Movers',
+    },
+    {
+      title: 'The Helpful Robot',
+      text: 'Sam got a new robot for his birthday. The robot was small and silver. It could walk and talk. Every morning, the robot helped Sam find his books. One day, Sam lost his toy car. The robot looked everywhere. It found the car under the bed. Sam was very happy. He gave the robot a big hug.',
+      wordCount: 57,
+      level: 'A1 Movers',
+    },
+    {
+      title: 'The Magic Garden',
+      text: 'Behind my grandmother\'s house, there is a beautiful garden. Colourful flowers grow there all year. Butterflies fly from plant to plant. In the middle, there is an old apple tree. Grandmother says if you make a kind wish near the flowers, it might come true. One day, I wished for my sick friend to get better. The next week, she came back to school. I think the garden really is magic.',
+      wordCount: 71,
+      level: 'A1 Movers',
     },
   ],
   '8-9': [
     {
       title: 'The Library Visit',
-      text: 'Last Saturday, I visited the library with my mother. The library was quiet and filled with thousands of books on tall wooden shelves. I found a fascinating book about dinosaurs and spent an hour reading about the mighty T-Rex and other prehistoric creatures. The friendly librarian helped me find more books about ancient animals. I borrowed three interesting books to read at home during the week.',
-      wordCount: 80,
+      text: 'Last Saturday, I went to the library with my mother. The library was quiet and full of books. I found a book about dinosaurs and read for one hour. The librarian helped me find more books about animals. I borrowed three books to read at home.',
+      wordCount: 46,
+      level: 'A2 Flyers',
     },
     {
-      title: 'My Garden Adventure',
-      text: 'My grandmother has a beautiful garden behind her house. Every weekend, I help her plant flowers and vegetables. We grow tomatoes, carrots, and sunflowers together. Last month, we planted some mango seeds and watched them sprout. Grandmother taught me how to water the plants properly and remove the weeds. Working in the garden makes me feel peaceful and happy. I have learned that plants need sunlight, water, and love to grow strong.',
-      wordCount: 90,
+      title: 'My Grandmother\'s Garden',
+      text: 'My grandmother has a vegetable garden behind her house. Every weekend, I help her plant flowers and vegetables. We grow tomatoes, carrots and sunflowers. Last month, we planted mango seeds and watched them grow. Grandmother taught me how to water the plants. Working in the garden makes me feel happy and peaceful.',
+      wordCount: 52,
+      level: 'A2 Flyers',
     },
     {
-      title: 'The Rainy Day',
-      text: 'Yesterday, dark clouds covered the sky and it started raining heavily. The thunder was loud and lightning flashed across the sky. I watched the raindrops racing down my window glass. My little sister was scared, so I told her stories to make her feel better. When the rain stopped, we went outside and jumped in the puddles. We saw a beautiful rainbow stretching across the sky with all its wonderful colors. It was a magical afternoon.',
-      wordCount: 95,
+      title: 'The Thunderstorm',
+      text: 'Yesterday, dark clouds covered the sky and it started raining heavily. Thunder made loud sounds and lightning flashed across the sky. I sat by the window and watched the raindrops. My little sister was scared, so I told her stories to make her feel better. When the rain stopped, we went outside and jumped in the puddles. We saw a beautiful rainbow with many colours.',
+      wordCount: 65,
+      level: 'A2 Flyers',
+    },
+    {
+      title: 'The School Trip',
+      text: 'Our class went on a trip to the zoo last week. We travelled by bus for one hour. At the zoo, we saw many animals like lions, elephants and monkeys. The monkeys were very funny. They jumped from tree to tree. We ate our lunch near the lake and watched the ducks swim. Our teacher took many photos. It was the best school trip ever.',
+      wordCount: 65,
+      level: 'A2 Flyers',
+    },
+    {
+      title: 'The Science Museum',
+      text: 'During the holidays, my father took me to the Science Museum. The building had five floors with many interesting things to see. My favourite part was about space. I saw real spacesuits and models of rockets. I learned how planets move around the sun. There was a special room where I could feel what it is like to walk on the moon. I pressed buttons and did experiments all day. It was amazing.',
+      wordCount: 73,
+      level: 'A2 Flyers',
     },
   ],
   '10-11': [
     {
-      title: 'The Science Fair Project',
-      text: 'Our school organized an exciting science fair last month where students from all grades participated with their innovative projects. My project was about solar energy and how it can power small electronic devices. I built a miniature car that runs entirely on sunlight using solar panels. The judges were quite impressed by my demonstration and asked many questions about renewable energy. I won second place and received a certificate. This wonderful experience taught me that science can solve real-world problems and help protect our environment.',
-      wordCount: 100,
+      title: 'The Science Fair',
+      text: 'Our school had a science fair last month. Students from all classes showed their projects. My project was about solar energy. I made a small car that runs on sunlight. The judges liked my work and asked many questions. I won second place and got a certificate. This experience taught me that science can help solve problems.',
+      wordCount: 57,
+      level: 'B1 Preliminary',
     },
     {
       title: 'The Football Match',
-      text: 'Last Sunday, our school football team played an important match against our rival school. The stadium was packed with cheering students and proud parents. Our team practiced hard for many weeks before this big game. In the first half, the other team scored one goal and we were worried. During halftime, our coach gave us an inspiring speech about teamwork and determination. In the second half, we played with more energy and scored two goals. We won the match and celebrated together. It taught me that hard work and never giving up leads to success.',
-      wordCount: 110,
+      text: 'Last Sunday, our school team played an important football match. The stadium was full of students and parents. Our team had practised for many weeks. In the first half, the other team scored one goal. During the break, our coach told us to work together. In the second half, we scored two goals. We won the match and celebrated together.',
+      wordCount: 60,
+      level: 'B1 Preliminary',
     },
     {
-      title: 'Visiting the Museum',
-      text: 'During our summer vacation, my family visited the National Museum in Delhi. The museum was enormous with countless fascinating exhibits spread across three floors. We saw ancient artifacts from the Indus Valley civilization that were thousands of years old. The guide explained how people lived in those times without modern technology. My favorite section displayed armor and weapons used by brave warriors in medieval India. We also saw beautiful paintings by famous artists and sculptures carved from marble. I took many photographs to show my classmates. This educational trip made history come alive for me.',
-      wordCount: 115,
+      title: 'The Mountain Trek',
+      text: 'During the October holidays, my family went on a trek to a hill station. We started early when the air was cool. The path went through forests with tall trees and colourful birds. As we climbed higher, the air became colder. My brother found it difficult, but we helped him. After four hours, we reached the top. The view was beautiful with green valleys below. We ate lunch together and felt proud of ourselves.',
+      wordCount: 74,
+      level: 'B1 Preliminary',
+    },
+    {
+      title: 'The Robotics Club',
+      text: 'This year, I joined my school\'s robotics club. We meet every Wednesday afternoon. Our teacher Mr Sharma teaches us to build and programme robots. At first, I made many mistakes and my robot did not work. But I kept trying and my teammates helped me. Last month, we entered a competition. Our robot could move through a maze and pick up objects. We did not win first place, but the judges liked our ideas. I learned that working together and not giving up are important.',
+      wordCount: 85,
+      level: 'B1 Preliminary',
+    },
+    {
+      title: 'Saving Our Environment',
+      text: 'My friends and I started a campaign to reduce plastic in our neighbourhood. We made posters explaining why plastic is harmful to animals and the earth. Every weekend, we visited houses and gave people cloth bags instead of plastic. At first, many people did not listen. But we did not stop. Slowly, more people started using less plastic. The local newspaper wrote about us. I believe young people can make a difference when they work together.',
+      wordCount: 76,
+      level: 'B1 Preliminary',
     },
   ],
   '12-15': [
     {
-      title: 'The Mountain Expedition',
-      text: 'The expedition to the Himalayan foothills was the most challenging adventure of my life so far. Our group of twelve trekkers began the journey from a small village in Uttarakhand early in the morning. The trail wound through ancient pine forests, across wooden suspension bridges, and past traditional mountain villages where locals welcomed us warmly. As we ascended higher along the steep paths, the air grew thinner and colder, making each step more demanding than the last. Despite the physical challenges and aching muscles, the breathtaking views of snow-capped peaks and the strong camaraderie among team members made every difficult moment completely worthwhile.',
-      wordCount: 120,
+      title: 'The Himalayan Trek',
+      text: 'The trek to the Himalayan foothills was the most challenging adventure of my life. Our group started from a small village at dawn. The path went through pine forests, across old bridges, and past mountain villages. As we climbed higher, the air became thin and cold. Despite tired muscles, the views of snow-covered peaks made every step worthwhile.',
+      wordCount: 58,
+      level: 'B2 First',
     },
     {
       title: 'The Power of Books',
-      text: 'Books have been my faithful companions since I learned to read at the age of five. Through the pages of countless novels, I have traveled to distant galaxies, explored ancient civilizations, and lived through historical events. Reading has expanded my vocabulary and improved my understanding of complex ideas significantly. My favorite genre is science fiction because it challenges me to imagine possibilities beyond our current reality. Last year, I started a book club at school where we discuss different literary works and share our interpretations. Books have taught me empathy by allowing me to experience life through different perspectives. I believe that a person who reads lives a thousand different lives.',
-      wordCount: 125,
+      text: 'Books have been my companions since I learned to read at five. Through stories, I have travelled to distant places, met interesting characters, and learned about different times in history. Reading has improved my vocabulary and helped me understand complex ideas. Last year, I started a book club at school where we discuss different stories. I believe that reading allows us to live many lives through the characters we meet.',
+      wordCount: 70,
+      level: 'B2 First',
     },
     {
-      title: 'Climate Change and Our Responsibility',
-      text: 'Climate change has become one of the most pressing challenges facing humanity in the twenty-first century. Scientists around the world have documented rising global temperatures, melting polar ice caps, and increasingly severe weather patterns that threaten ecosystems everywhere. As young citizens of this planet, we have both the responsibility and the power to make meaningful changes in our daily lives. Simple actions like reducing plastic usage, conserving electricity, planting trees, and choosing sustainable transportation options can collectively make an enormous difference. At my school, we started an environmental club that organizes awareness campaigns and tree plantation drives in our community. I firmly believe that if every individual commits to protecting our environment, we can create a sustainable future for generations to come.',
-      wordCount: 130,
+      title: 'Climate Change',
+      text: 'Climate change is one of the biggest challenges facing our world today. Scientists have found that temperatures are rising, ice is melting, and weather patterns are changing. Simple actions like using less plastic, saving electricity, and planting trees can help. At my school, we started a club that organises tree planting and teaches people about protecting the environment. I believe that if everyone makes small changes, we can create a better future for the next generation.',
+      wordCount: 76,
+      level: 'B2 First',
+    },
+    {
+      title: 'Technology and Learning',
+      text: 'Technology has changed how we learn and communicate with each other. Today, students can watch educational videos, attend online classes, and find information about any topic quickly. However, too much screen time can harm our health and focus. It is important to balance technology with physical activities and real conversations. In my experience, the best learning happens when we combine digital tools with traditional methods like reading books and talking with teachers.',
+      wordCount: 72,
+      level: 'B2 First',
+    },
+    {
+      title: 'The Art of Public Speaking',
+      text: 'Public speaking used to frighten me more than anything else. My hands would shake and my voice would tremble when speaking in front of others. Last year, I joined the debate club to face this fear. At first, I forgot my points and stumbled over words. But with practice and support from teammates, I slowly improved. Now I can express ideas clearly and confidently. This taught me that the only way to beat fear is to face it. Every challenge we overcome makes us stronger.',
+      wordCount: 85,
+      level: 'B2 First',
     },
   ],
 };
@@ -139,7 +215,7 @@ export function AssessmentForm() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
-  const [selectedPassage, setSelectedPassage] = useState<{ title: string; text: string; wordCount: number } | null>(null);
+  const [selectedPassage, setSelectedPassage] = useState<{ title: string; text: string; wordCount: number; level: string } | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -177,7 +253,6 @@ export function AssessmentForm() {
     return '12-15';
   };
 
-  // Select random passage when moving to step 3
   const selectRandomPassage = () => {
     if (formData.childAge) {
       const ageGroup = getAgeGroup(parseInt(formData.childAge));
@@ -275,6 +350,7 @@ export function AssessmentForm() {
             childName: formData.childName,
             childAge: formData.childAge,
             parentEmail: formData.parentEmail,
+            parentPhone: `${formData.countryCode}${formData.phoneNumber}`,
           });
           router.push(`/assessment/results/new?${params.toString()}`);
         } else {
@@ -292,191 +368,187 @@ export function AssessmentForm() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  // Validation: 7-15 digits for phone
   const isPhoneValid = formData.phoneNumber.length >= 7 && formData.phoneNumber.length <= 15;
-  const isStep1Valid = formData.parentName && formData.parentEmail && isPhoneValid;
-  const isStep2Valid = formData.childName && formData.childAge && parseInt(formData.childAge) >= 4 && parseInt(formData.childAge) <= 15;
+  const isEmailValid = formData.parentEmail.includes('@') && formData.parentEmail.includes('.');
+  const isFormValid = formData.parentName && isEmailValid && isPhoneValid && formData.childName && formData.childAge && parseInt(formData.childAge) >= 4 && parseInt(formData.childAge) <= 15;
 
   const selectedCountry = COUNTRY_CODES.find((c) => c.code === formData.countryCode);
 
-  const goToStep3 = () => {
+  const goToStep2 = () => {
     selectRandomPassage();
-    setStep(3);
+    setStep(2);
   };
 
   return (
     <div className="max-w-2xl mx-auto">
       {/* Progress Steps */}
-      <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8">
+      <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8">
         {[
-          { num: 1, label: 'Parent' },
-          { num: 2, label: 'Child' },
-          { num: 3, label: 'Record' },
+          { num: 1, label: 'Details' },
+          { num: 2, label: 'Record' },
         ].map((s, i) => (
           <div key={s.num} className="flex items-center">
             <div className="flex flex-col items-center">
-              <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= s.num ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= s.num ? 'bg-pink-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
                 {step > s.num ? <CheckCircle className="w-5 h-5" /> : s.num}
               </div>
-              <span className="text-[10px] sm:text-xs mt-1 text-gray-400">{s.label}</span>
+              <span className="text-xs sm:text-sm mt-1 text-gray-400">{s.label}</span>
             </div>
-            {i < 2 && <div className={`w-6 sm:w-12 h-0.5 mx-1 sm:mx-2 rounded ${step > s.num ? 'bg-blue-500' : 'bg-gray-700'}`} />}
+            {i < 1 && <div className={`w-12 sm:w-20 h-1 mx-2 sm:mx-4 rounded ${step > s.num ? 'bg-pink-500' : 'bg-gray-700'}`} />}
           </div>
         ))}
       </div>
 
-      {/* Step 1: Parent Info */}
+      {/* Step 1: Combined Parent + Child Info */}
       {step === 1 && (
         <Card className="bg-gray-800 border-gray-700">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-white text-lg">
-                <User className="w-5 h-5 text-blue-400" />
-                Parent Information
+              <CardTitle className="flex items-center gap-2 text-white text-xl">
+                <BookOpen className="w-6 h-6 text-pink-400" />
+                Free Reading Assessment
               </CardTitle>
-              <span className="flex items-center gap-1 text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full whitespace-nowrap">
+              <span className="flex items-center gap-1 text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">
                 <Sparkles className="w-3 h-3" /> AI Powered
               </span>
             </div>
-            <CardDescription className="text-gray-400 text-sm">Results will be sent to your email</CardDescription>
+            <CardDescription className="text-gray-400">Fill in details to start the assessment</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label className="text-gray-200 text-sm">Your Name *</Label>
-              <Input
-                value={formData.parentName}
-                onChange={(e) => updateField('parentName', e.target.value)}
-                placeholder="Full name"
-                className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-200 text-sm">Email *</Label>
-              <Input
-                type="email"
-                value={formData.parentEmail}
-                onChange={(e) => updateField('parentEmail', e.target.value)}
-                placeholder="your@email.com"
-                className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
-              />
-              <p className="text-[11px] text-yellow-400 mt-1">🎓 Certificate will be sent here</p>
-            </div>
-            
-            <div>
-              <Label className="text-gray-200 text-sm">Phone *</Label>
-              <div className="flex gap-2 mt-1">
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                    className="flex items-center gap-1 h-10 px-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm min-w-[90px]"
-                  >
-                    <span>{selectedCountry?.flag}</span>
-                    <span>{formData.countryCode}</span>
-                    <ChevronDown className="w-3 h-3 ml-auto text-gray-400" />
-                  </button>
-                  
-                  {showCountryDropdown && (
-                    <div className="absolute z-50 mt-1 w-56 bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-48 overflow-hidden">
-                      <div className="p-2 border-b border-gray-600">
-                        <Input
-                          placeholder="Search..."
-                          value={countrySearch}
-                          onChange={(e) => setCountrySearch(e.target.value)}
-                          className="bg-gray-800 border-gray-600 text-white h-8 text-sm"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="max-h-36 overflow-y-auto">
-                        {filteredCountries.map((country) => (
-                          <button
-                            key={country.code}
-                            onClick={() => selectCountry(country.code)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-white hover:bg-gray-600 text-sm"
-                          >
-                            <span>{country.flag}</span>
-                            <span>{country.code}</span>
-                            <span className="text-gray-400 text-xs">{country.country}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
+          <CardContent className="space-y-5">
+            {/* Parent Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-blue-400 font-medium">
+                <User className="w-4 h-4" />
+                <span>Parent Information</span>
+              </div>
+              
+              <div>
+                <Label className="text-gray-200 text-sm">Your Name *</Label>
                 <Input
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={(e) => updateField('phoneNumber', e.target.value.replace(/\D/g, '').slice(0, 15))}
-                  placeholder="Phone number"
-                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
+                  value={formData.parentName}
+                  onChange={(e) => updateField('parentName', e.target.value)}
+                  placeholder="Full name"
+                  className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
                 />
               </div>
-              <p className="text-[11px] text-gray-500 mt-1">💡 7-15 digits allowed</p>
+              
+              <div>
+                <Label className="text-gray-200 text-sm">Email *</Label>
+                <Input
+                  type="email"
+                  value={formData.parentEmail}
+                  onChange={(e) => updateField('parentEmail', e.target.value)}
+                  placeholder="your@email.com"
+                  className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-200 text-sm">Phone *</Label>
+                <div className="flex gap-2 mt-1">
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                      className="flex items-center gap-1 h-10 px-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm min-w-[90px]"
+                    >
+                      <span>{selectedCountry?.flag}</span>
+                      <span>{formData.countryCode}</span>
+                      <ChevronDown className="w-3 h-3 ml-auto text-gray-400" />
+                    </button>
+                    
+                    {showCountryDropdown && (
+                      <div className="absolute z-50 mt-1 w-56 bg-gray-700 border border-gray-600 rounded-lg shadow-xl max-h-48 overflow-hidden">
+                        <div className="p-2 border-b border-gray-600">
+                          <Input
+                            placeholder="Search..."
+                            value={countrySearch}
+                            onChange={(e) => setCountrySearch(e.target.value)}
+                            className="bg-gray-800 border-gray-600 text-white h-8 text-sm"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-36 overflow-y-auto">
+                          {filteredCountries.map((country) => (
+                            <button
+                              key={country.code}
+                              onClick={() => selectCountry(country.code)}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-left text-white hover:bg-gray-600 text-sm"
+                            >
+                              <span>{country.flag}</span>
+                              <span>{country.code}</span>
+                              <span className="text-gray-400 text-xs">{country.country}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Input
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) => updateField('phoneNumber', e.target.value.replace(/\D/g, '').slice(0, 15))}
+                    placeholder="Phone number"
+                    className="flex-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
+                  />
+                </div>
+              </div>
             </div>
 
-            <Button onClick={() => setStep(2)} disabled={!isStep1Valid} className="w-full bg-pink-500 hover:bg-pink-600 text-white" size="lg">
-              Continue <ArrowRight className="w-4 h-4 ml-2" />
+            {/* Divider */}
+            <div className="border-t border-gray-700 my-2"></div>
+
+            {/* Child Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-green-400 font-medium">
+                <Baby className="w-4 h-4" />
+                <span>Child Information</span>
+              </div>
+              
+              <div>
+                <Label className="text-gray-200 text-sm">Child&apos;s Name *</Label>
+                <Input
+                  value={formData.childName}
+                  onChange={(e) => updateField('childName', e.target.value)}
+                  placeholder="Child's name"
+                  className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-gray-200 text-sm">Child&apos;s Age *</Label>
+                <Input
+                  type="number"
+                  min="4"
+                  max="15"
+                  value={formData.childAge}
+                  onChange={(e) => updateField('childAge', e.target.value)}
+                  placeholder="Age (4-15 years)"
+                  className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">📚 Passage difficulty adjusts based on age</p>
+              </div>
+            </div>
+
+            {/* Certificate Email Notice */}
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 flex items-start gap-2">
+              <Mail className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="text-yellow-400 font-medium">Certificate will be emailed</p>
+                <p className="text-gray-400 text-xs mt-0.5">Check your spam/junk folder if not in inbox</p>
+              </div>
+            </div>
+
+            <Button onClick={goToStep2} disabled={!isFormValid} className="w-full bg-pink-500 hover:bg-pink-600 text-white text-lg py-6">
+              Continue to Recording <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 2: Child Info */}
-      {step === 2 && (
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-white text-lg">
-                <Baby className="w-5 h-5 text-blue-400" />
-                Child Information
-              </CardTitle>
-              <span className="flex items-center gap-1 text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full whitespace-nowrap">
-                <Sparkles className="w-3 h-3" /> AI Powered
-              </span>
-            </div>
-            <CardDescription className="text-gray-400 text-sm">Personalized assessment based on age</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label className="text-gray-200 text-sm">Child&apos;s Name *</Label>
-              <Input
-                value={formData.childName}
-                onChange={(e) => updateField('childName', e.target.value)}
-                placeholder="Child's name"
-                className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-gray-200 text-sm">Child&apos;s Age *</Label>
-              <Input
-                type="number"
-                min="4"
-                max="15"
-                value={formData.childAge}
-                onChange={(e) => updateField('childAge', e.target.value)}
-                placeholder="Age (4-15)"
-                className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
-              />
-              <p className="text-[11px] text-yellow-400 mt-1">📚 Ages 4-15 supported</p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button onClick={() => setStep(1)} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back
-              </Button>
-              <Button onClick={goToStep3} disabled={!isStep2Valid} className="flex-1 bg-pink-500 hover:bg-pink-600 text-white">
-                Continue <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 3: Recording */}
-      {step === 3 && selectedPassage && (
+      {/* Step 2: Recording */}
+      {step === 2 && selectedPassage && (
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -484,18 +556,16 @@ export function AssessmentForm() {
                 <BookOpen className="w-5 h-5 text-blue-400" />
                 Reading Passage
               </CardTitle>
-              <span className="flex items-center gap-1 text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full whitespace-nowrap">
-                <Sparkles className="w-3 h-3" /> AI Powered
-              </span>
+              <span className="text-xs text-gray-500">{selectedPassage.level}</span>
             </div>
-            <CardDescription className="text-gray-400 text-sm">Ask {formData.childName} to read aloud</CardDescription>
+            <CardDescription className="text-gray-400 text-sm">Ask {formData.childName} to read aloud clearly</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Passage */}
             <div className="bg-white rounded-xl p-4 sm:p-5">
-              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2">{selectedPassage.title}</h3>
-              <p className="text-gray-800 text-sm sm:text-base leading-relaxed">{selectedPassage.text}</p>
-              <p className="text-xs text-gray-500 mt-2">{selectedPassage.wordCount} words</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">{selectedPassage.title}</h3>
+              <p className="text-gray-800 text-base leading-relaxed">{selectedPassage.text}</p>
+              <p className="text-xs text-gray-500 mt-3">{selectedPassage.wordCount} words</p>
             </div>
 
             {/* Recording Controls */}
@@ -503,44 +573,44 @@ export function AssessmentForm() {
               {!audioBlob ? (
                 <>
                   {isRecording ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {/* Pulsating Mic */}
-                      <div className="relative w-20 h-20 mx-auto">
+                      <div className="relative w-24 h-24 mx-auto">
                         <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-25"></div>
                         <div className="absolute inset-2 bg-red-500 rounded-full animate-pulse opacity-40"></div>
-                        <div className="relative w-20 h-20 bg-red-500 rounded-full flex items-center justify-center">
-                          <Mic className="w-8 h-8 text-white animate-pulse" />
+                        <div className="relative w-24 h-24 bg-red-500 rounded-full flex items-center justify-center shadow-lg shadow-red-500/50">
+                          <Mic className="w-10 h-10 text-white" />
                         </div>
                       </div>
-                      <p className="text-2xl font-mono text-white">{formatTime(recordingTime)}</p>
-                      <p className="text-yellow-400 text-sm">Recording... Tap to stop</p>
-                      <Button onClick={stopRecording} variant="destructive" size="lg" className="bg-red-600 hover:bg-red-700">
-                        <Square className="w-4 h-4 mr-2" /> Stop
+                      <p className="text-3xl font-mono text-white">{formatTime(recordingTime)}</p>
+                      <p className="text-yellow-400 text-sm">🎤 Recording... Tap to stop</p>
+                      <Button onClick={stopRecording} variant="destructive" size="lg" className="bg-red-600 hover:bg-red-700 px-8">
+                        <Square className="w-4 h-4 mr-2" /> Stop Recording
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <div className="w-20 h-20 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center">
-                        <Mic className="w-8 h-8 text-blue-400" />
+                    <div className="space-y-4">
+                      <div className="w-24 h-24 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center border-2 border-blue-500/50">
+                        <Mic className="w-10 h-10 text-blue-400" />
                       </div>
-                      <p className="text-gray-400 text-sm">Tap to start recording</p>
-                      <Button onClick={startRecording} size="lg" className="bg-blue-500 hover:bg-blue-600 text-white">
-                        <Mic className="w-4 h-4 mr-2" /> Start Recording
+                      <p className="text-gray-400">Tap to start recording</p>
+                      <Button onClick={startRecording} size="lg" className="bg-blue-500 hover:bg-blue-600 text-white px-8">
+                        <Mic className="w-5 h-5 mr-2" /> Start Recording
                       </Button>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="space-y-3">
-                  <div className="w-20 h-20 mx-auto bg-green-500/20 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-8 h-8 text-green-400" />
+                <div className="space-y-4">
+                  <div className="w-24 h-24 mx-auto bg-green-500/20 rounded-full flex items-center justify-center border-2 border-green-500/50">
+                    <CheckCircle className="w-10 h-10 text-green-400" />
                   </div>
-                  <p className="text-green-400 text-sm">Recording complete ({formatTime(recordingTime)})</p>
+                  <p className="text-green-400 font-medium">Recording complete! ({formatTime(recordingTime)})</p>
                   <div className="flex gap-3 justify-center">
-                    <Button onClick={() => setAudioBlob(null)} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
+                    <Button onClick={() => { setAudioBlob(null); setRecordingTime(0); }} variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
                       Record Again
                     </Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-pink-500 hover:bg-pink-600 text-white">
+                    <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-pink-500 hover:bg-pink-600 text-white px-6">
                       {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <>Get Results <ArrowRight className="w-4 h-4 ml-2" /></>}
                     </Button>
                   </div>
@@ -554,8 +624,8 @@ export function AssessmentForm() {
               </div>
             )}
 
-            <Button onClick={() => setStep(2)} variant="ghost" className="text-gray-400 hover:text-white text-sm">
-              <ArrowLeft className="w-3 h-3 mr-1" /> Back
+            <Button onClick={() => setStep(1)} variant="ghost" className="text-gray-400 hover:text-white text-sm">
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back to Details
             </Button>
           </CardContent>
         </Card>

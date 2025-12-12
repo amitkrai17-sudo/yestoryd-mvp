@@ -6,23 +6,42 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 function getStrictnessForAge(age: number) {
   if (age <= 5) {
     return {
-      guidance: `ENCOURAGING approach for age ${age}: Focus on effort, celebrate attempts, be lenient. Min score 5 if 60%+ completed.`,
-      tone: "Warm, encouraging. Celebrate what they did well, gently suggest one improvement."
+      guidance: `ASSESSMENT APPROACH FOR YOUNG CHILDREN (Age ${age}):
+- Be ENCOURAGING and supportive in tone
+- Focus on effort and progress rather than perfection
+- Allow for minor pronunciation variations common at this age
+- Consider developmental speech patterns
+- Celebrate attempts and partial success
+- Be lenient with pacing and hesitations
+- If child completes 60%+ of passage with effort, minimum score should be 5`,
+      feedbackTone: "Use warm, encouraging language. Focus on celebrating what the child did well and gently suggest one area to practice."
     };
   } else if (age <= 8) {
     return {
-      guidance: `BALANCED approach for age ${age}: Mix encouragement with feedback. Min score 5 if 70%+ completed.`,
-      tone: "Friendly, supportive with clear feedback."
+      guidance: `ASSESSMENT APPROACH FOR EARLY READERS (Age ${age}):
+- Balance encouragement with constructive feedback
+- Expect reasonable fluency but allow for age-appropriate pauses
+- Note pronunciation errors but be understanding
+- If child completes 70%+ with moderate fluency, minimum score should be 5`,
+      feedbackTone: "Use friendly, supportive language while providing clear feedback. Acknowledge strengths and give specific guidance."
     };
   } else if (age <= 11) {
     return {
-      guidance: `MODERATE approach for age ${age}: Expect good fluency. Min score 6 if 75%+ completed well.`,
-      tone: "Clear, direct feedback with constructive criticism."
+      guidance: `ASSESSMENT APPROACH FOR DEVELOPING READERS (Age ${age}):
+- Expect good fluency and clear pronunciation
+- Note errors in pacing, expression, and accuracy
+- Be fair but firm about incomplete passages
+- If child completes 75%+ with good fluency, minimum score should be 6`,
+      feedbackTone: "Use clear, direct feedback. Acknowledge achievements and provide constructive criticism."
     };
   } else {
     return {
-      guidance: `STRICT approach for age ${age}: Expect excellent fluency. Max score 4 if incomplete. High scores (8+) for exceptional only.`,
-      tone: "Mature, direct language that challenges the reader."
+      guidance: `ASSESSMENT APPROACH FOR ADVANCED READERS (Age ${age}):
+- Expect EXCELLENT fluency, expression, and comprehension
+- Be STRICT about pronunciation, pacing, and completion
+- Incomplete passages should receive low scores (maximum 4)
+- High scores (8+) reserved for truly exceptional reading`,
+      feedbackTone: "Use mature, direct language. Provide sophisticated feedback that challenges the reader."
     };
   }
 }
@@ -30,120 +49,123 @@ function getStrictnessForAge(age: number) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { audio, passage, wordCount, childAge, childName, parentName, parentEmail, parentPhone, recordingDuration } = body;
+    
+    const {
+      audio,
+      passage,
+      wordCount,
+      childAge,
+      childName,
+      parentName,
+      parentEmail,
+      parentPhone,
+      recordingDuration,
+    } = body;
 
     if (!audio || !passage) {
-      return NextResponse.json({ success: false, error: 'Missing audio or passage' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'Missing audio or passage' },
+        { status: 400 }
+      );
     }
 
-    const strictness = getStrictnessForAge(childAge);
+    // Get age-appropriate strictness
+    const strictnessGuidelines = getStrictnessForAge(childAge);
 
-    const prompt = `You are an expert reading assessment AI. Analyze this audio of ${childName} (age ${childAge}) reading:
+    // Build the analysis prompt - YOUR EXACT PROMPT
+    const analysisPrompt = `You are an expert reading assessment AI. Analyze this audio recording of a ${childAge}-year-old child reading the following passage.
 
-PASSAGE: "${passage}"
-TOTAL WORDS: ${wordCount} | RECORDING DURATION: ${recordingDuration}s
+PASSAGE TO BE READ:
+"${passage}"
+(Word count: ${wordCount} words)
 
-${strictness.guidance}
+RECORDING DURATION: ${recordingDuration} seconds
 
-IMPORTANT INSTRUCTIONS:
-1. Carefully check if ${childName} read the COMPLETE passage or only a portion
-2. Count approximately how many words were actually read
-3. Calculate completeness percentage (words read / total words * 100)
+${strictnessGuidelines.guidance}
 
-Return ONLY this JSON:
+ASSESSMENT CRITERIA:
+1. COMPLETENESS: Did the child read the entire passage? Calculate percentage read.
+2. FLUENCY: Was the reading smooth or choppy? Were there long pauses?
+3. PRONUNCIATION: Were words pronounced correctly?
+4. PACE: Was the reading speed appropriate (not too fast/slow)?
+5. EXPRESSION: Did the child read with appropriate expression?
+
+RESPONSE FORMAT - Provide ONLY valid JSON:
 {
-  "reading_score": <1-10>,
-  "wpm": <calculated words per minute>,
-  "fluency_rating": "<Excellent/Good/Fair/Poor>",
-  "pronunciation_rating": "<Clear/Mostly Clear/Unclear>",
-  "errors": ["specific error 1", "specific error 2"],
-  "completeness_percentage": <0-100>,
-  "words_read": <approximate number of words actually read>,
-  "feedback": "<EXACTLY 100 WORDS feedback that MUST START by stating whether ${childName} read the full passage or only a portion (e.g., '${childName} read the complete passage...' OR '${childName} read approximately X% of the passage...'). Then mention specific strengths like words pronounced well. Then mention specific areas to improve with examples from the reading. End with encouragement and one actionable tip for practice. ${strictness.tone}>"
+  "reading_score": <number 1-10>,
+  "wpm": <number>,
+  "fluency_rating": "<Excellent/Good/Fair/Poor/Very Poor>",
+  "pronunciation_rating": "<Clear/Mostly Clear/Unclear/Very Unclear>",
+  "errors": ["specific error 1", "specific error 2", "missing sentence X", "skipped words"],
+  "completeness_percentage": <number 0-100>,
+  "feedback": "<80-100 word constructive feedback that MUST mention if the passage was incomplete. If less than 80% was read, feedback MUST say 'Only X% of the passage was read' and explain this is why the score is low. ${strictnessGuidelines.feedbackTone}>"
 }
 
-CRITICAL RULES:
-- Feedback MUST be exactly 100 words
-- Feedback MUST begin with completion status
-- Include specific words/phrases the child handled well or struggled with
-- Be personalized using ${childName}'s name
+BE STRICT: If the child did not read the full passage or made many errors, score MUST be low (1-4). Do not give high scores for incomplete readings.
 
-Return ONLY valid JSON. No markdown, no extra text.`;
+Respond ONLY with valid JSON. No additional text.`;
 
+    // Use Gemini 2.5 Flash model
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    // For audio analysis, extract the base64 data
     const audioData = audio.split(',')[1] || audio;
 
+    // Create the request with audio
     const result = await model.generateContent([
-      { inlineData: { mimeType: 'audio/webm', data: audioData } },
-      { text: prompt },
+      {
+        inlineData: {
+          mimeType: 'audio/webm',
+          data: audioData,
+        },
+      },
+      { text: analysisPrompt },
     ]);
 
-    const responseText = result.response.text();
+    const response = await result.response;
+    const responseText = response.text();
 
+    // Parse the JSON response
     let analysisResult;
     try {
-      const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      analysisResult = JSON.parse(cleaned);
-    } catch {
-      const calcWpm = Math.round((wordCount / Math.max(recordingDuration, 1)) * 60);
+      // Clean up the response - remove markdown code blocks if present
+      let cleanedResponse = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      
+      analysisResult = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response:', responseText);
+      // Provide default values if parsing fails
       analysisResult = {
-        reading_score: 6,
-        wpm: calcWpm,
-        fluency_rating: 'Good',
+        reading_score: 5,
+        wpm: Math.round((wordCount / Math.max(recordingDuration, 1)) * 60),
+        fluency_rating: 'Fair',
         pronunciation_rating: 'Mostly Clear',
         errors: [],
-        completeness_percentage: 85,
-        words_read: Math.round(wordCount * 0.85),
-        feedback: `${childName} read approximately 85% of the passage with good effort and understanding. The reading showed solid comprehension of the content with a reasonable pace maintained throughout most of the text. ${childName} handled several challenging words well, demonstrating growing vocabulary skills. To continue improving, focus on completing the entire passage and maintaining consistent expression while reading aloud. Practice reading different types of texts daily, paying attention to punctuation marks for natural pauses. ${childName} shows excellent potential and with regular practice will become an even more confident and fluent reader.`,
+        completeness_percentage: 80,
+        feedback: `${childName} showed good effort in this reading assessment. The reading demonstrated understanding of the passage content with reasonable pace and clarity. To continue improving, ${childName} should practice reading aloud daily, focusing on smooth transitions between words and sentences. Building vocabulary through regular reading will help with unfamiliar words. Keep up the great work and remember that every reading session makes you a stronger reader!`
       };
     }
 
-    const wpm = analysisResult.wpm || Math.round((wordCount / Math.max(recordingDuration, 1)) * 60);
-
-    // Save to Sheets
-    try {
-      const { google } = await import('googleapis');
-      const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-      const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-      const sheetId = process.env.GOOGLE_SHEET_ID;
-
-      if (email && key && sheetId) {
-        const auth = new google.auth.GoogleAuth({
-          credentials: { client_email: email, private_key: key },
-          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        });
-        const sheets = google.sheets({ version: 'v4', auth });
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: sheetId,
-          range: 'Assessments!A:O',
-          valueInputOption: 'USER_ENTERED',
-          requestBody: {
-            values: [[
-              `assess_${Date.now()}`, childName, childAge, parentName, parentEmail, parentPhone,
-              analysisResult.reading_score, wpm, analysisResult.fluency_rating,
-              analysisResult.pronunciation_rating, analysisResult.completeness_percentage,
-              analysisResult.words_read || '', analysisResult.feedback, 
-              JSON.stringify(analysisResult.errors || []), new Date().toISOString(),
-            ]],
-          },
-        });
-      }
-    } catch (e) { console.error('Sheets error:', e); }
-
+    // Return success response
     return NextResponse.json({
       success: true,
       score: analysisResult.reading_score,
-      wpm,
+      wpm: analysisResult.wpm,
       fluency: analysisResult.fluency_rating,
       pronunciation: analysisResult.pronunciation_rating,
-      completeness: analysisResult.completeness_percentage,
-      wordsRead: analysisResult.words_read,
       errors: analysisResult.errors,
+      completeness: analysisResult.completeness_percentage,
       feedback: analysisResult.feedback,
     });
 
   } catch (error: any) {
-    console.error('Error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Analysis failed' }, { status: 500 });
+    console.error('Assessment analysis error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Analysis failed' },
+      { status: 500 }
+    );
   }
 }

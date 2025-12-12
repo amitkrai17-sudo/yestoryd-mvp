@@ -15,20 +15,87 @@ import {
   CheckCircle,
   Loader2,
   Sparkles,
-  MessageCircle
+  MessageCircle,
+  Shield,
+  Users,
+  Star,
+  ArrowRight,
+  AlertTriangle,
 } from 'lucide-react';
 
-function getScoreColor(score: number) {
-  if (score >= 8) return { bg: 'bg-green-500', text: 'text-green-400', ring: 'stroke-green-500', label: 'Excellent!', emoji: '🌟' };
-  if (score >= 6) return { bg: 'bg-yellow-500', text: 'text-yellow-400', ring: 'stroke-yellow-500', label: 'Good Progress!', emoji: '⭐' };
-  if (score >= 4) return { bg: 'bg-orange-500', text: 'text-orange-400', ring: 'stroke-orange-500', label: 'Keep Practicing!', emoji: '💪' };
-  return { bg: 'bg-red-500', text: 'text-red-400', ring: 'stroke-red-500', label: 'Needs Practice', emoji: '📚' };
+// Score-based configuration
+function getScoreConfig(score: number, childName: string) {
+  if (score >= 8) {
+    return {
+      color: { bg: 'bg-green-500', text: 'text-green-400', ring: 'stroke-green-500' },
+      label: 'Excellent!',
+      emoji: '🌟',
+      headline: `${childName} is a reading star!`,
+      subheadline: 'Take their skills to the advanced level',
+      primaryCTA: `Take ${childName} to Advanced Level`,
+      ctaStyle: 'from-green-500 to-emerald-600',
+    };
+  }
+  if (score >= 6) {
+    return {
+      color: { bg: 'bg-yellow-500', text: 'text-yellow-400', ring: 'stroke-yellow-500' },
+      label: 'Good Progress!',
+      emoji: '⭐',
+      headline: `${childName} shows great potential!`,
+      subheadline: 'Unlock their full reading abilities',
+      primaryCTA: `Unlock ${childName}'s Full Potential`,
+      ctaStyle: 'from-yellow-500 to-amber-600',
+    };
+  }
+  if (score >= 4) {
+    return {
+      color: { bg: 'bg-orange-500', text: 'text-orange-400', ring: 'stroke-orange-500' },
+      label: 'Keep Practicing!',
+      emoji: '💪',
+      headline: `${childName} is ready to improve!`,
+      subheadline: 'Accelerate their reading progress',
+      primaryCTA: `Accelerate ${childName}'s Progress`,
+      ctaStyle: 'from-orange-500 to-red-500',
+    };
+  }
+  return {
+    color: { bg: 'bg-red-500', text: 'text-red-400', ring: 'stroke-red-500' },
+    label: 'Needs Support',
+    emoji: '📚',
+    headline: `${childName} needs expert guidance`,
+    subheadline: 'Get personalized support from our coaches',
+    primaryCTA: `Get ${childName} the Help They Need`,
+    ctaStyle: 'from-red-500 to-pink-600',
+  };
 }
+
+// Testimonials
+const TESTIMONIALS = [
+  {
+    text: "My daughter's score improved from 4 to 8 in just 6 weeks! The personalized coaching made all the difference.",
+    name: "Priya M.",
+    child: "Mother of Ananya, Age 7",
+    rating: 5,
+  },
+  {
+    text: "The coaches understood exactly where my son was struggling. Now he actually enjoys reading!",
+    name: "Rahul S.",
+    child: "Father of Arjun, Age 9",
+    rating: 5,
+  },
+  {
+    text: "Best investment we made for our child's education. The progress reports helped us support her at home.",
+    name: "Meera K.",
+    child: "Mother of Diya, Age 6",
+    rating: 5,
+  },
+];
 
 function ResultsContent() {
   const searchParams = useSearchParams();
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
   const score = parseInt(searchParams.get('score') || '0');
   const wpm = parseInt(searchParams.get('wpm') || '0');
@@ -38,50 +105,44 @@ function ResultsContent() {
   const childName = searchParams.get('childName') || 'Student';
   const childAge = searchParams.get('childAge') || '';
   const parentEmail = searchParams.get('parentEmail') || '';
+  const parentPhone = searchParams.get('parentPhone') || '';
 
-  const scoreInfo = getScoreColor(score);
+  const config = getScoreConfig(score, childName);
 
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 10) * circumference;
 
-  const getWhatsAppMessage = useCallback(() => {
-    const message = `🐘 *Yestoryd Reading Report for ${childName}:*
+  // Rotate testimonials
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-${scoreInfo.emoji} *Score: ${score}/10*
+  const getWhatsAppMessage = useCallback(() => {
+    const message = `🎉 *${childName}'s Reading Assessment Results*
+
+${config.emoji} *Score: ${score}/10* - ${config.label}
 ⚡ *Speed:* ${wpm} WPM
 🎯 *Fluency:* ${fluency}
 🗣️ *Pronunciation:* ${pronunciation}
 
 📝 *Feedback:* ${feedback}
 
-✉️ Check your email for the full certificate!
+✉️ Certificate sent to email!
 
 ━━━━━━━━━━━━━━━
-📅 *Book a FREE Coach Call:*
-https://yestoryd-mvp.vercel.app/book?childName=${encodeURIComponent(childName)}
-
 🚀 *Get FREE Assessment:*
-https://yestoryd-mvp.vercel.app/assessment
+https://yestoryd.com/assessment
 ━━━━━━━━━━━━━━━
-Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
+Powered by *Yestoryd* - AI Reading Coach 📚`;
     return encodeURIComponent(message);
-  }, [childName, score, scoreInfo.emoji, wpm, fluency, pronunciation, feedback]);
+  }, [childName, score, config.emoji, config.label, wpm, fluency, pronunciation, feedback]);
 
   const shareOnWhatsApp = () => {
     window.open(`https://wa.me/?text=${getWhatsAppMessage()}`, '_blank');
-  };
-
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${childName}'s Reading Assessment`,
-          text: `${childName} scored ${score}/10 on Yestoryd!`,
-          url: window.location.href,
-        });
-      } catch (err) {}
-    }
   };
 
   const sendCertificateEmail = useCallback(async () => {
@@ -105,8 +166,11 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
     sendCertificateEmail();
   }, [sendCertificateEmail]);
 
+  // Build checkout URL with params
+  const checkoutUrl = `/checkout?childId=new&childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}&package=coaching-6&source=assessment`;
+
   return (
-    <div className="min-h-screen bg-gray-900 font-[family-name:var(--font-poppins)]">
+    <div className="min-h-screen bg-gray-900">
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 print:hidden">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -127,11 +191,10 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg">
-        {/* Certificate */}
+        {/* Certificate Card */}
         <div id="certificate" className="bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-700 print:shadow-none">
           {/* Header with Mascot */}
           <div className="bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 p-5 text-center border-b border-gray-600">
-            {/* Mascot - No crop, transparent background */}
             <div className="w-24 h-24 mx-auto mb-3">
               <img 
                 src="/images/vedant-mascot.png" 
@@ -139,7 +202,7 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
                 className="w-full h-full object-contain drop-shadow-lg"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" x="50%" dominant-baseline="middle" text-anchor="middle" font-size="60">🐘</text></svg>';
+                  target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" x="50%" dominant-baseline="middle" text-anchor="middle" font-size="60">📚</text></svg>';
                 }}
               />
             </div>
@@ -149,7 +212,6 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
 
           {/* Body */}
           <div className="p-6 text-center">
-            {/* Child Info */}
             <p className="text-blue-400 text-base font-semibold">Certificate of Achievement</p>
             <p className="text-gray-400 text-sm mt-1">Proudly presented to</p>
             <h2 className="text-3xl font-bold text-white mt-2">{childName}</h2>
@@ -161,7 +223,7 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
                 <circle cx="72" cy="72" r={radius} stroke="#374151" strokeWidth="10" fill="none" />
                 <circle
                   cx="72" cy="72" r={radius}
-                  className={scoreInfo.ring}
+                  className={config.color.ring}
                   strokeWidth="10"
                   fill="none"
                   strokeDasharray={circumference}
@@ -170,14 +232,14 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-5xl font-black ${scoreInfo.text}`}>{score}</span>
+                <span className={`text-5xl font-black ${config.color.text}`}>{score}</span>
               </div>
             </div>
 
             {/* Score Label */}
-            <div className={`inline-flex items-center gap-2 ${scoreInfo.bg} text-white px-6 py-2 rounded-full text-base mb-5`}>
-              <span className="text-xl">{scoreInfo.emoji}</span>
-              <span className="font-bold">{scoreInfo.label}</span>
+            <div className={`inline-flex items-center gap-2 ${config.color.bg} text-white px-6 py-2 rounded-full text-base mb-5`}>
+              <span className="text-xl">{config.emoji}</span>
+              <span className="font-bold">{config.label}</span>
             </div>
 
             {/* Stats */}
@@ -200,7 +262,7 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
               </div>
             </div>
 
-            {/* Feedback - 100 words */}
+            {/* Feedback */}
             {feedback && (
               <div className="bg-gray-700/30 rounded-xl p-4 mb-5 text-left border border-gray-600">
                 <div className="flex items-center gap-2 mb-2">
@@ -211,62 +273,144 @@ Powered by *Yestoryd* - AI Reading Coach for Kids 📚`;
               </div>
             )}
 
-            {/* Email Status - Hide in Print */}
+            {/* Email Status with Spam Notice */}
             <div className="print:hidden">
               {parentEmail && (
-                <div className={`flex items-center justify-center gap-2 text-sm mb-4 ${emailSent ? 'text-green-400' : 'text-gray-500'}`}>
-                  {sendingEmail ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Sending certificate...</>
-                  ) : emailSent ? (
-                    <><CheckCircle className="w-4 h-4" /> Certificate sent to {parentEmail}</>
-                  ) : (
-                    <><Mail className="w-4 h-4" /> Sending certificate...</>
+                <div className="mb-4">
+                  <div className={`flex items-center justify-center gap-2 text-sm ${emailSent ? 'text-green-400' : 'text-gray-500'}`}>
+                    {sendingEmail ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Sending certificate...</>
+                    ) : emailSent ? (
+                      <><CheckCircle className="w-4 h-4" /> Certificate sent to {parentEmail}</>
+                    ) : (
+                      <><Mail className="w-4 h-4" /> Sending certificate...</>
+                    )}
+                  </div>
+                  {emailSent && (
+                    <div className="flex items-center justify-center gap-1 mt-1 text-xs text-yellow-400">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>Check spam/junk folder if not in inbox</span>
+                    </div>
                   )}
                 </div>
               )}
-
-              {/* WhatsApp Share */}
-              <button onClick={shareOnWhatsApp} className="w-full py-3 bg-green-500 text-white font-bold rounded-full text-base mb-3 flex items-center justify-center gap-2 hover:bg-green-600 transition-all active:scale-95">
-                <MessageCircle className="w-5 h-5" /> Share on WhatsApp
-              </button>
-
-              {/* CTAs */}
-              <Link href="/book" className="block mb-3">
-                <button className="w-full py-3.5 bg-pink-500 text-white font-bold rounded-full text-base flex items-center justify-center gap-2 hover:bg-pink-600 transition-all active:scale-95">
-                  <Calendar className="w-5 h-5" /> Book Free Coach Call
-                </button>
-              </Link>
-              <Link href="/" className="block">
-                <button className="w-full py-2.5 bg-gray-700 text-gray-300 font-semibold rounded-full text-sm hover:bg-gray-600 transition-all">
-                  Explore Our Services
-                </button>
-              </Link>
             </div>
 
             {/* Footer */}
-            <p className="text-gray-500 text-xs mt-5 print:mt-3">
+            <p className="text-gray-500 text-xs mt-3 print:mt-3">
               {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} • yestoryd.com
             </p>
           </div>
         </div>
 
-        {/* Share Bar - Hide in Print */}
-        <div className="mt-5 grid grid-cols-3 gap-3 print:hidden">
-          <button onClick={shareOnWhatsApp} className="flex flex-col items-center gap-1.5 p-3 bg-green-500 text-white rounded-2xl text-sm font-medium hover:bg-green-600 transition-all active:scale-95">
-            <MessageCircle className="w-6 h-6" /> WhatsApp
+        {/* CTA Section - Score Based */}
+        <div className="mt-6 print:hidden">
+          {/* Headline */}
+          <div className="text-center mb-4">
+            <h3 className="text-xl font-bold text-white">{config.headline}</h3>
+            <p className="text-gray-400 text-sm mt-1">{config.subheadline}</p>
+          </div>
+
+          {/* Primary CTA - Enroll */}
+          <div className="bg-gray-800 rounded-2xl p-5 border border-gray-700 mb-4">
+            <Link href={checkoutUrl}>
+              <button className={`w-full py-4 bg-gradient-to-r ${config.ctaStyle} text-white font-bold rounded-xl text-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[0.98] shadow-lg`}>
+                {config.primaryCTA}
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </Link>
+            
+            {/* Features */}
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <span>6 personalized coaching sessions for {childName}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <span>Dedicated reading coach assigned</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <span>FREE access to all learning resources</span>
+              </div>
+            </div>
+
+            {/* Social Proof */}
+            <div className="mt-4 pt-4 border-t border-gray-700 flex items-center justify-center gap-2 text-sm text-yellow-400">
+              <Users className="w-4 h-4" />
+              <span className="font-medium">🔥 12 parents enrolled today</span>
+            </div>
+
+            {/* Trust Badge */}
+            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
+              <Shield className="w-4 h-4 text-green-400" />
+              <span>100% refund if not satisfied</span>
+            </div>
+
+            {/* Price */}
+            <div className="mt-3 text-center">
+              <span className="text-2xl font-bold text-white">₹5,999</span>
+              <span className="text-gray-500 text-sm ml-2">one-time</span>
+            </div>
+          </div>
+
+          {/* Secondary CTA - Talk to Coach */}
+          <Link href="/book">
+            <button className="w-full py-3.5 bg-gray-700 text-white font-semibold rounded-xl text-base flex items-center justify-center gap-2 hover:bg-gray-600 transition-all border border-gray-600 mb-4">
+              <Calendar className="w-5 h-5" />
+              Talk to {childName}&apos;s Coach First
+            </button>
+          </Link>
+          <p className="text-center text-xs text-gray-500 -mt-2 mb-4">Free 15-min call • No obligation</p>
+
+          {/* Tertiary CTA - Share Results */}
+          <button 
+            onClick={shareOnWhatsApp}
+            className="w-full py-3 bg-green-600 text-white font-semibold rounded-xl text-base flex items-center justify-center gap-2 hover:bg-green-500 transition-all mb-6"
+          >
+            <MessageCircle className="w-5 h-5" />
+            Share {childName}&apos;s Results
           </button>
-          <button onClick={() => window.print()} className="flex flex-col items-center gap-1.5 p-3 bg-gray-800 border border-gray-700 text-gray-400 rounded-2xl text-sm font-medium hover:bg-gray-700 transition-all active:scale-95">
-            <Download className="w-6 h-6" /> Download
-          </button>
-          <button onClick={handleNativeShare} className="flex flex-col items-center gap-1.5 p-3 bg-gray-800 border border-gray-700 text-gray-400 rounded-2xl text-sm font-medium hover:bg-gray-700 transition-all active:scale-95">
-            <Share2 className="w-6 h-6" /> Share
-          </button>
+
+          {/* Testimonial */}
+          <div className="bg-gray-800/50 rounded-2xl p-4 border border-gray-700">
+            <div className="flex items-center gap-1 mb-2">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+              ))}
+            </div>
+            <p className="text-gray-300 text-sm italic mb-3">
+              &ldquo;{TESTIMONIALS[currentTestimonial].text}&rdquo;
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                {TESTIMONIALS[currentTestimonial].name.charAt(0)}
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium">{TESTIMONIALS[currentTestimonial].name}</p>
+                <p className="text-gray-500 text-xs">{TESTIMONIALS[currentTestimonial].child}</p>
+              </div>
+            </div>
+            {/* Dots indicator */}
+            <div className="flex justify-center gap-1 mt-3">
+              {TESTIMONIALS.map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`w-2 h-2 rounded-full transition-all ${i === currentTestimonial ? 'bg-pink-500 w-4' : 'bg-gray-600'}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Retake - Hide in Print */}
-        <div className="mt-5 text-center print:hidden">
-          <Link href="/assessment" className="text-blue-400 font-semibold text-base hover:underline">
-            🔄 Take Another Assessment
+        {/* Action Buttons Row */}
+        <div className="mt-5 grid grid-cols-2 gap-3 print:hidden">
+          <button onClick={() => window.print()} className="flex flex-col items-center gap-1.5 p-3 bg-gray-800 border border-gray-700 text-gray-400 rounded-xl text-sm font-medium hover:bg-gray-700 transition-all active:scale-95">
+            <Download className="w-5 h-5" /> Download
+          </button>
+          <Link href="/assessment" className="flex flex-col items-center gap-1.5 p-3 bg-gray-800 border border-gray-700 text-gray-400 rounded-xl text-sm font-medium hover:bg-gray-700 transition-all active:scale-95">
+            <Share2 className="w-5 h-5" /> Try Again
           </Link>
         </div>
       </main>
