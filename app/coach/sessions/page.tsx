@@ -349,7 +349,9 @@ export default function CoachSessionsPage() {
                                 <p className="text-white font-medium">{session.child_name}</p>
                                 {getStatusBadge(session.status)}
                                 {session.has_notes && (
-                                  <FileText className="w-4 h-4 text-yellow-400" title="Has notes" />
+                                  <span title="Has notes">
+                                    <FileText className="w-4 h-4 text-yellow-400" />
+                                  </span>
                                 )}
                               </div>
                               <p className="text-gray-400 text-sm">{session.session_type}</p>
