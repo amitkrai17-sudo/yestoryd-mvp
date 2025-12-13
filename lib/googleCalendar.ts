@@ -43,9 +43,12 @@ interface ScheduledSession {
 }
 
 interface CreateAllSessionsParams {
+  childId?: string;
   childName: string;
   parentEmail: string;
+  parentName?: string;
   coachEmail: string;
+  coachId?: string;
   startDate: Date;
   preferredDay?: number;
   preferredTime?: string;
