@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/parent/ParentLayout';
 import {
@@ -12,8 +12,12 @@ import {
   Award,
   FileText,
   Calendar,
-  ChevronRight,
 } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Child {
   id: string;
@@ -51,7 +55,6 @@ export default function ParentProgressPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchData();
@@ -64,7 +67,6 @@ export default function ParentProgressPage() {
       return;
     }
 
-    // Get child
     const { data: childData } = await supabase
       .from('children')
       .select('*')
@@ -75,7 +77,6 @@ export default function ParentProgressPage() {
     if (childData) {
       setChild(childData);
 
-      // Get session notes
       const { data: notes } = await supabase
         .from('session_notes')
         .select('*, scheduled_sessions(session_number, session_type, scheduled_date)')
@@ -85,7 +86,6 @@ export default function ParentProgressPage() {
 
       setSessionNotes(notes || []);
 
-      // Get assessments
       const { data: assessmentsData } = await supabase
         .from('assessments')
         .select('*')
@@ -141,13 +141,11 @@ export default function ParentProgressPage() {
   return (
     <ParentLayout>
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-800">Progress Report</h1>
           <p className="text-gray-500">{child.child_name || child.name}'s reading journey</p>
         </div>
 
-        {/* Progress Overview */}
         <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-6 mb-6">
           <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Target className="w-5 h-5 text-amber-500" />
@@ -155,22 +153,12 @@ export default function ParentProgressPage() {
           </h2>
           
           <div className="grid sm:grid-cols-3 gap-6">
-            {/* Overall Progress */}
             <div className="text-center">
               <div className="relative w-32 h-32 mx-auto mb-3">
                 <svg className="w-32 h-32 transform -rotate-90">
+                  <circle cx="64" cy="64" r="56" stroke="#fef3c7" strokeWidth="12" fill="none" />
                   <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="#fef3c7"
-                    strokeWidth="12"
-                    fill="none"
-                  />
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
+                    cx="64" cy="64" r="56"
                     stroke="url(#gradient)"
                     strokeWidth="12"
                     fill="none"
@@ -191,7 +179,6 @@ export default function ParentProgressPage() {
               <p className="text-gray-500">Overall Progress</p>
             </div>
 
-            {/* Sessions */}
             <div className="text-center">
               <div className="w-32 h-32 mx-auto mb-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex flex-col items-center justify-center">
                 <span className="text-4xl font-bold text-green-600">{child.sessions_completed}</span>
@@ -200,7 +187,6 @@ export default function ParentProgressPage() {
               <p className="text-gray-500">Sessions Completed</p>
             </div>
 
-            {/* Latest Score */}
             <div className="text-center">
               <div className="w-32 h-32 mx-auto mb-3 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex flex-col items-center justify-center">
                 <span className={`text-4xl font-bold ${getScoreColor(child.latest_assessment_score || 0)}`}>
@@ -213,7 +199,6 @@ export default function ParentProgressPage() {
           </div>
         </div>
 
-        {/* Assessment History */}
         {assessments.length > 0 && (
           <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden mb-6">
             <div className="p-5 border-b border-amber-100">
@@ -255,7 +240,6 @@ export default function ParentProgressPage() {
           </div>
         )}
 
-        {/* Session Notes */}
         <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-amber-100">
             <h2 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -289,7 +273,6 @@ export default function ParentProgressPage() {
           )}
         </div>
 
-        {/* Milestones */}
         <div className="mt-6 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
           <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
             <Award className="w-5 h-5" />

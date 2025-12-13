@@ -1,15 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { BookOpen, Mail, ArrowRight, Sparkles } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function ParentLoginPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
-  const supabase = createClientComponentClient();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -72,12 +76,10 @@ export default function ParentLoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex items-center justify-center p-4">
-      {/* Decorative elements */}
       <div className="absolute top-20 left-20 w-32 h-32 bg-amber-200 rounded-full blur-3xl opacity-40" />
       <div className="absolute bottom-20 right-20 w-40 h-40 bg-orange-200 rounded-full blur-3xl opacity-40" />
       
       <div className="max-w-md w-full relative">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
             <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-400/30">
@@ -90,7 +92,6 @@ export default function ParentLoginPage() {
           <p className="text-amber-700/70 mt-1">Parent Dashboard</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-white rounded-3xl shadow-2xl shadow-amber-200/50 p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 rounded-full mb-4">
@@ -107,7 +108,6 @@ export default function ParentLoginPage() {
             </div>
           )}
 
-          {/* Google Login */}
           <button
             onClick={handleGoogleLogin}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 mb-4"
@@ -130,7 +130,6 @@ export default function ParentLoginPage() {
             </div>
           </div>
 
-          {/* Email Login */}
           <form onSubmit={handleLogin}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">

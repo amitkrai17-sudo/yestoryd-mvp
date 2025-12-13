@@ -1,4 +1,3 @@
-// app/api/parent/dashboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -9,7 +8,6 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user from auth header or session
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader) {
@@ -23,7 +21,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get child for this parent
     const { data: child, error: childError } = await supabase
       .from('children')
       .select(`
@@ -47,7 +44,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get upcoming sessions
     const { data: upcomingSessions } = await supabase
       .from('scheduled_sessions')
       .select('*')
@@ -57,14 +53,12 @@ export async function GET(request: NextRequest) {
       .order('scheduled_date', { ascending: true })
       .limit(5);
 
-    // Get completed sessions count
     const { count: completedCount } = await supabase
       .from('scheduled_sessions')
       .select('*', { count: 'exact', head: true })
       .eq('child_id', child.id)
       .eq('status', 'completed');
 
-    // Get recent session notes
     const { data: recentNotes } = await supabase
       .from('session_notes')
       .select('*, scheduled_sessions(session_number, session_type)')

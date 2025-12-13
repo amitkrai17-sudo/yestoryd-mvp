@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/parent/ParentLayout';
 import {
@@ -14,6 +14,11 @@ import {
   ChevronDown,
   ExternalLink,
 } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Session {
   id: string;
@@ -31,7 +36,6 @@ export default function ParentSessionsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchSessions();
@@ -44,7 +48,6 @@ export default function ParentSessionsPage() {
       return;
     }
 
-    // Get child
     const { data: child } = await supabase
       .from('children')
       .select('id')
@@ -139,8 +142,7 @@ export default function ParentSessionsPage() {
     const sessionDateTime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
     const timeDiff = sessionDateTime.getTime() - now.getTime();
     const minutesDiff = timeDiff / (1000 * 60);
-    // Can join 10 minutes before
-    return minutesDiff <= 10 && minutesDiff >= -session.duration_minutes;
+    return minutesDiff <= 10 && minutesDiff >= -(session.duration_minutes || 45);
   }
 
   if (loading) {
@@ -156,14 +158,12 @@ export default function ParentSessionsPage() {
   return (
     <ParentLayout>
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Sessions</h1>
             <p className="text-gray-500">View and join your scheduled sessions</p>
           </div>
 
-          {/* Filter */}
           <div className="relative">
             <select
               value={filter}
@@ -178,7 +178,6 @@ export default function ParentSessionsPage() {
           </div>
         </div>
 
-        {/* Sessions List */}
         <div className="space-y-4">
           {filteredSessions().map((session, index) => {
             const upcoming = isUpcoming(session);
@@ -192,7 +191,6 @@ export default function ParentSessionsPage() {
                 }`}
               >
                 <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                  {/* Session Number */}
                   <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
                     session.status === 'completed' 
                       ? 'bg-green-100' 
@@ -209,7 +207,6 @@ export default function ParentSessionsPage() {
                     )}
                   </div>
 
-                  {/* Session Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800">
@@ -226,11 +223,10 @@ export default function ParentSessionsPage() {
                         <Clock className="w-4 h-4" />
                         {formatTime(session.scheduled_time)}
                       </span>
-                      <span>{session.duration_minutes} min</span>
+                      <span>{session.duration_minutes || 45} min</span>
                     </div>
                   </div>
 
-                  {/* Join Button */}
                   {session.google_meet_link && session.status !== 'cancelled' && session.status !== 'completed' && (
                     <a
                       href={session.google_meet_link}
@@ -249,7 +245,6 @@ export default function ParentSessionsPage() {
                   )}
                 </div>
 
-                {/* Upcoming Session Banner */}
                 {upcoming && index === 0 && session.status === 'scheduled' && (
                   <div className="px-5 py-3 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-100">
                     <p className="text-sm text-amber-700">
@@ -269,7 +264,6 @@ export default function ParentSessionsPage() {
           )}
         </div>
 
-        {/* Legend */}
         <div className="mt-8 p-4 bg-amber-50 rounded-xl">
           <h3 className="font-medium text-amber-800 mb-3">Session Types</h3>
           <div className="grid sm:grid-cols-2 gap-3 text-sm">

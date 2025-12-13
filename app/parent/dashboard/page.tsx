@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/parent/ParentLayout';
 import {
@@ -16,6 +16,11 @@ import {
   BookOpen,
   Target,
 } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Child {
   id: string;
@@ -49,7 +54,6 @@ export default function ParentDashboardPage() {
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchData();
@@ -62,7 +66,6 @@ export default function ParentDashboardPage() {
       return;
     }
 
-    // Get child data
     const { data: childData } = await supabase
       .from('children')
       .select('*, coaches(*)')
@@ -73,7 +76,6 @@ export default function ParentDashboardPage() {
     if (childData) {
       setChild(childData);
 
-      // Get upcoming sessions
       const { data: sessions } = await supabase
         .from('scheduled_sessions')
         .select('*')
@@ -136,9 +138,7 @@ export default function ParentDashboardPage() {
         <div className="text-center py-12">
           <BookOpen className="w-16 h-16 text-amber-300 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-800 mb-2">No Active Enrollment</h2>
-          <p className="text-gray-500 mb-6">
-            You don't have an active enrollment yet.
-          </p>
+          <p className="text-gray-500 mb-6">You don't have an active enrollment yet.</p>
           <a
             href="https://yestoryd.com/assessment"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all"
@@ -154,19 +154,12 @@ export default function ParentDashboardPage() {
   return (
     <ParentLayout>
       <div className="max-w-5xl mx-auto">
-        {/* Welcome Header */}
         <div className="mb-8">
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
-            Welcome back! 👋
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Track {child.child_name || child.name}'s reading journey
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Welcome back! 👋</h1>
+          <p className="text-gray-500 mt-1">Track {child.child_name || child.name}'s reading journey</p>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* Progress */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
@@ -183,7 +176,6 @@ export default function ParentDashboardPage() {
             </div>
           </div>
 
-          {/* Sessions */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
@@ -191,13 +183,10 @@ export default function ParentDashboardPage() {
               </div>
               <span className="text-sm text-gray-500">Sessions</span>
             </div>
-            <p className="text-2xl font-bold text-gray-800">
-              {child.sessions_completed}/{child.total_sessions}
-            </p>
+            <p className="text-2xl font-bold text-gray-800">{child.sessions_completed}/{child.total_sessions}</p>
             <p className="text-sm text-gray-400 mt-1">Completed</p>
           </div>
 
-          {/* Assessment Score */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -205,13 +194,10 @@ export default function ParentDashboardPage() {
               </div>
               <span className="text-sm text-gray-500">Score</span>
             </div>
-            <p className="text-2xl font-bold text-gray-800">
-              {child.latest_assessment_score || '--'}/10
-            </p>
+            <p className="text-2xl font-bold text-gray-800">{child.latest_assessment_score || '--'}/10</p>
             <p className="text-sm text-gray-400 mt-1">Latest</p>
           </div>
 
-          {/* Days Remaining */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -225,19 +211,14 @@ export default function ParentDashboardPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Upcoming Sessions */}
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
             <div className="p-5 border-b border-amber-100 flex items-center justify-between">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-amber-500" />
                 Upcoming Sessions
               </h2>
-              <a
-                href="/parent/sessions"
-                className="text-sm text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1"
-              >
-                View All
-                <ChevronRight className="w-4 h-4" />
+              <a href="/parent/sessions" className="text-sm text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1">
+                View All <ChevronRight className="w-4 h-4" />
               </a>
             </div>
             <div className="divide-y divide-amber-50">
@@ -278,7 +259,6 @@ export default function ParentDashboardPage() {
             </div>
           </div>
 
-          {/* Coach Info */}
           <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
             <div className="p-5 border-b border-amber-100">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -299,12 +279,10 @@ export default function ParentDashboardPage() {
                 </div>
               </div>
               {child.coaches?.bio && (
-                <p className="text-sm text-gray-500 mb-4 line-clamp-3">
-                  {child.coaches.bio}
-                </p>
+                <p className="text-sm text-gray-500 mb-4 line-clamp-3">{child.coaches.bio}</p>
               )}
               <a
-                href={`https://wa.me/91${child.coaches?.email?.replace('@yestoryd.com', '')}?text=Hi ${child.coaches?.name}, I'm ${child.child_name || child.name}'s parent.`}
+                href={`https://wa.me/919876543210?text=Hi ${child.coaches?.name}, I'm ${child.child_name || child.name}'s parent.`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
@@ -316,7 +294,6 @@ export default function ParentDashboardPage() {
           </div>
         </div>
 
-        {/* Quick Tips */}
         <div className="mt-6 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">

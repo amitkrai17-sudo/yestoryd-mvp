@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import ParentLayout from '@/components/parent/ParentLayout';
 import {
@@ -17,6 +17,11 @@ import {
   Clock,
   Calendar,
 } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Coach {
   name: string;
@@ -57,7 +62,6 @@ export default function ParentSupportPage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchData();
@@ -98,14 +102,12 @@ export default function ParentSupportPage() {
   return (
     <ParentLayout>
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-800">Support</h1>
           <p className="text-gray-500">Get help and contact us</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          {/* Contact Coach */}
           {coach && (
             <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
               <div className="p-5 border-b border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50">
@@ -152,7 +154,6 @@ export default function ParentSupportPage() {
             </div>
           )}
 
-          {/* Contact Yestoryd */}
           <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -197,7 +198,6 @@ export default function ParentSupportPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-5 mb-8">
           <h2 className="font-semibold text-gray-800 mb-4">Quick Actions</h2>
           <div className="grid sm:grid-cols-3 gap-4">
@@ -236,7 +236,6 @@ export default function ParentSupportPage() {
           </div>
         </div>
 
-        {/* FAQs */}
         <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-amber-100">
             <h2 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -268,7 +267,6 @@ export default function ParentSupportPage() {
           </div>
         </div>
 
-        {/* Emergency Contact */}
         <div className="mt-6 p-5 bg-red-50 border border-red-200 rounded-2xl">
           <h3 className="font-semibold text-red-800 mb-2">Need Urgent Help?</h3>
           <p className="text-red-700 text-sm mb-3">

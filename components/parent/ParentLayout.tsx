@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import {
   Home,
   Calendar,
@@ -15,6 +15,11 @@ import {
   User,
   BookOpen,
 } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface ParentLayoutProps {
   children: React.ReactNode;
@@ -33,7 +38,6 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
   const [childName, setChildName] = useState('');
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchParentInfo();
@@ -46,7 +50,6 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
       return;
     }
 
-    // Get child info for this parent
     const { data: child } = await supabase
       .from('children')
       .select('*, coaches(*)')
@@ -67,7 +70,6 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
-      {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden"
@@ -75,14 +77,12 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-50 h-full w-72 bg-white shadow-xl transform transition-transform duration-300 ease-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="p-6 border-b border-amber-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -105,7 +105,6 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
             </div>
           </div>
 
-          {/* Child Info Card */}
           {childName && (
             <div className="mx-4 mt-4 p-4 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl">
               <div className="flex items-center gap-3">
@@ -120,7 +119,6 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
             </div>
           )}
 
-          {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = pathname === item.href;
@@ -142,7 +140,6 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
             })}
           </nav>
 
-          {/* User section */}
           <div className="p-4 border-t border-amber-100">
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
@@ -164,9 +161,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="lg:pl-72">
-        {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-amber-100">
           <div className="flex items-center justify-between px-4 py-3">
             <button
@@ -185,7 +180,6 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="p-4 lg:p-8">{children}</main>
       </div>
     </div>
