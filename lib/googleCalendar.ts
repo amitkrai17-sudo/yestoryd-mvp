@@ -35,14 +35,18 @@ interface SessionDetails {
   sessionType: 'coaching' | 'parent_checkin';
 }
 
+// ScheduledSession with property names matching what routes expect
 interface ScheduledSession {
   eventId: string;
   meetLink: string;
   startTime: string;
   endTime: string;
-  sessionNumber?: number;
-  sessionType?: string;
-  title?: string;
+  number: number;        // Route uses session.number
+  type: string;          // Route uses session.type
+  title: string;
+  weekNumber: number;
+  date: string;
+  time: string;
 }
 
 interface CreateAllSessionsParams {
@@ -124,15 +128,15 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
   
   const sessions: ScheduledSession[] = [];
   const sessionSchedule = [
-    { week: 1, type: 'coaching' as const, title: 'Session 1: Initial Assessment', number: 1 },
-    { week: 2, type: 'coaching' as const, title: 'Session 2: Phonics Foundation', number: 2 },
-    { week: 3, type: 'coaching' as const, title: 'Session 3: Reading Fluency', number: 3 },
-    { week: 4, type: 'parent_checkin' as const, title: 'Parent Check-in 1', number: 4 },
-    { week: 5, type: 'coaching' as const, title: 'Session 4: Comprehension Skills', number: 5 },
-    { week: 6, type: 'coaching' as const, title: 'Session 5: Vocabulary Building', number: 6 },
-    { week: 7, type: 'coaching' as const, title: 'Session 6: Reading Practice', number: 7 },
-    { week: 8, type: 'parent_checkin' as const, title: 'Parent Check-in 2', number: 8 },
-    { week: 12, type: 'parent_checkin' as const, title: 'Final Parent Check-in', number: 9 },
+    { week: 1, type: 'coaching', title: 'Session 1: Initial Assessment', number: 1 },
+    { week: 2, type: 'coaching', title: 'Session 2: Phonics Foundation', number: 2 },
+    { week: 3, type: 'coaching', title: 'Session 3: Reading Fluency', number: 3 },
+    { week: 4, type: 'parent_checkin', title: 'Parent Check-in 1', number: 4 },
+    { week: 5, type: 'coaching', title: 'Session 4: Comprehension Skills', number: 5 },
+    { week: 6, type: 'coaching', title: 'Session 5: Vocabulary Building', number: 6 },
+    { week: 7, type: 'coaching', title: 'Session 6: Reading Practice', number: 7 },
+    { week: 8, type: 'parent_checkin', title: 'Parent Check-in 2', number: 8 },
+    { week: 12, type: 'parent_checkin', title: 'Final Parent Check-in', number: 9 },
   ];
 
   try {
@@ -160,7 +164,7 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
           startTime: sessionDate,
           endTime: endTime,
           attendees: [parentEmail, coachEmail, CALENDAR_EMAIL].filter(Boolean),
-          sessionType: schedule.type,
+          sessionType: schedule.type as 'coaching' | 'parent_checkin',
         });
 
         sessions.push({
@@ -168,9 +172,12 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
           meetLink: result.meetLink,
           startTime: sessionDate.toISOString(),
           endTime: endTime.toISOString(),
-          sessionNumber: schedule.number,
-          sessionType: schedule.type,
+          number: schedule.number,
+          type: schedule.type,
           title: schedule.title,
+          weekNumber: schedule.week,
+          date: sessionDate.toISOString().split('T')[0],
+          time: sessionDate.toTimeString().slice(0, 5),
         });
       } catch (error) {
         console.error(`Error scheduling ${schedule.title}:`, error);
