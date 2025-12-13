@@ -49,9 +49,11 @@ interface CreateAllSessionsParams {
   parentName?: string;
   coachEmail: string;
   coachId?: string;
+  coachName?: string;
   startDate: Date;
   preferredDay?: number;
   preferredTime?: string;
+  preferredHour?: number;
 }
 
 // Schedule a single calendar event
