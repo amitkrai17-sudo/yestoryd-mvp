@@ -1,26 +1,30 @@
+// app/api/parent/dashboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 
-const supabaseAdmin = createClient(
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerComponentClient({ cookies: () => cookieStore });
+    // Get user from auth header or session
+    const authHeader = request.headers.get('authorization');
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get child for this parent
-    const { data: child, error: childError } = await supabaseAdmin
+    const { data: child, error: childError } = await supabase
       .from('children')
       .select(`
         *,
@@ -44,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get upcoming sessions
-    const { data: upcomingSessions } = await supabaseAdmin
+    const { data: upcomingSessions } = await supabase
       .from('scheduled_sessions')
       .select('*')
       .eq('child_id', child.id)
@@ -54,26 +58,24 @@ export async function GET(request: NextRequest) {
       .limit(5);
 
     // Get completed sessions count
-    const { count: completedCount } = await supabaseAdmin
+    const { count: completedCount } = await supabase
       .from('scheduled_sessions')
       .select('*', { count: 'exact', head: true })
       .eq('child_id', child.id)
       .eq('status', 'completed');
 
     // Get recent session notes
-    const { data: recentNotes } = await supabaseAdmin
+    const { data: recentNotes } = await supabase
       .from('session_notes')
       .select('*, scheduled_sessions(session_number, session_type)')
       .eq('child_id', child.id)
       .order('created_at', { ascending: false })
       .limit(3);
 
-    // Calculate progress
     const totalSessions = child.total_sessions || 9;
     const sessionsCompleted = completedCount || 0;
     const progressPercentage = Math.round((sessionsCompleted / totalSessions) * 100);
 
-    // Calculate days remaining
     const programEnd = new Date(child.program_end_date);
     const today = new Date();
     const daysRemaining = Math.max(0, Math.ceil((programEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
