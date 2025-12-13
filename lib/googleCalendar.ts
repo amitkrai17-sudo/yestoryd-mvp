@@ -35,19 +35,32 @@ interface SessionDetails {
   sessionType: 'coaching' | 'parent_checkin';
 }
 
-// ScheduledSession with EXACT property names matching what routes expect
+// ScheduledSession with ALL property names used by different routes
 interface ScheduledSession {
   eventId: string;
   meetLink: string;
-  number: number;        // session.number
-  type: string;          // session.type
   title: string;
-  week: number;          // session.week
-  scheduledAt: string;   // session.scheduledAt
+  
+  // Different routes use different names for the same data
+  number: number;
+  sessionNumber: number;      // alias for number
+  
+  type: string;
+  sessionType: string;        // alias for type
+  
+  week: number;
+  weekNumber: number;         // alias for week
+  
+  scheduledAt: string;
+  scheduledDate: string;      // just the date part
+  scheduledTime: string;      // just the time part
+  
   startTime: string;
   endTime: string;
   date: string;
   time: string;
+  
+  durationMinutes: number;
 }
 
 interface CreateAllSessionsParams {
@@ -155,8 +168,12 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
         sessionDate.setHours(16, 0, 0, 0);
       }
 
+      const durationMinutes = schedule.type === 'coaching' ? 45 : 30;
       const endTime = new Date(sessionDate);
-      endTime.setMinutes(endTime.getMinutes() + (schedule.type === 'coaching' ? 45 : 30));
+      endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+
+      const dateStr = sessionDate.toISOString().split('T')[0];
+      const timeStr = sessionDate.toTimeString().slice(0, 8);
 
       try {
         const result = await scheduleCalendarEvent({
@@ -171,15 +188,28 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
         sessions.push({
           eventId: result.eventId,
           meetLink: result.meetLink,
-          number: schedule.number,
-          type: schedule.type,
           title: schedule.title,
+          
+          // Provide both naming conventions
+          number: schedule.number,
+          sessionNumber: schedule.number,
+          
+          type: schedule.type,
+          sessionType: schedule.type,
+          
           week: schedule.week,
+          weekNumber: schedule.week,
+          
           scheduledAt: sessionDate.toISOString(),
+          scheduledDate: dateStr,
+          scheduledTime: timeStr,
+          
           startTime: sessionDate.toISOString(),
           endTime: endTime.toISOString(),
-          date: sessionDate.toISOString().split('T')[0],
-          time: sessionDate.toTimeString().slice(0, 5),
+          date: dateStr,
+          time: timeStr.slice(0, 5),
+          
+          durationMinutes: durationMinutes,
         });
       } catch (error) {
         console.error(`Error scheduling ${schedule.title}:`, error);
