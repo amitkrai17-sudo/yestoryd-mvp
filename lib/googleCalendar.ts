@@ -301,9 +301,9 @@ export async function rescheduleEvent(
     });
 
     return {
-      success: true,
-      meetLink: event.data.conferenceData?.entryPoints?.[0]?.uri,
-    };
+  	success: true,
+  	meetLink: event.data.conferenceData?.entryPoints?.[0]?.uri || undefined,
+	};
   } catch (error: any) {
     console.error('Failed to reschedule event:', error);
     return { success: false, error: error.message };
