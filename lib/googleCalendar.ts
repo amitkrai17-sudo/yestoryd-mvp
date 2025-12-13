@@ -139,11 +139,16 @@ export async function scheduleAllSessions(
 // Get available time slots for a coach
 export async function getAvailableSlots(
   coachEmail: string,
-  startDate: Date,
-  endDate: Date
+  date: Date,
+  durationMinutes: number = 60
 ): Promise<{ start: string; end: string }[]> {
   try {
     const calendar = getCalendarClient();
+
+    // Get slots for the next 14 days from the given date
+    const startDate = new Date(date);
+    const endDate = new Date(date);
+    endDate.setDate(endDate.getDate() + 14);
 
     // Get busy times
     const busyResponse = await calendar.freebusy.query({
@@ -156,7 +161,7 @@ export async function getAvailableSlots(
 
     const busyTimes = busyResponse.data.calendars?.[coachEmail]?.busy || [];
 
-    // Generate available slots (9 AM to 6 PM IST, 1-hour slots)
+    // Generate available slots (9 AM to 6 PM IST)
     const availableSlots: { start: string; end: string }[] = [];
     const currentDate = new Date(startDate);
 
@@ -168,7 +173,10 @@ export async function getAvailableSlots(
           slotStart.setHours(hour, 0, 0, 0);
 
           const slotEnd = new Date(slotStart);
-          slotEnd.setHours(hour + 1, 0, 0, 0);
+          slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
+
+          // Don't go past 6 PM
+          if (slotEnd.getHours() > 18) continue;
 
           // Check if slot overlaps with busy times
           const isAvailable = !busyTimes.some((busy) => {
@@ -264,16 +272,3 @@ export async function getEventDetails(eventId: string) {
     return null;
   }
 }
-// Alias for backward compatibility
-export { scheduleAllSessions as createAllSessions };
-
-// Constants used by other routes
-export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-export const formatTime = (time: string): string => {
-  const [hours, minutes] = time.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
-};
