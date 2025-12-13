@@ -6,42 +6,27 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 function getStrictnessForAge(age: number) {
   if (age <= 5) {
     return {
-      guidance: `ASSESSMENT APPROACH FOR YOUNG CHILDREN (Age ${age}):
-- Be ENCOURAGING and supportive in tone
-- Focus on effort and progress rather than perfection
-- Allow for minor pronunciation variations common at this age
-- Consider developmental speech patterns
-- Celebrate attempts and partial success
-- Be lenient with pacing and hesitations
-- If child completes 60%+ of passage with effort, minimum score should be 5`,
-      feedbackTone: "Use warm, encouraging language. Focus on celebrating what the child did well and gently suggest one area to practice."
+      level: "ENCOURAGING",
+      guidance: "Be warm and encouraging. Focus on effort over perfection. Allow developmental speech patterns. Minimum score 5 if 60%+ completed.",
+      minCompleteness: 60
     };
   } else if (age <= 8) {
     return {
-      guidance: `ASSESSMENT APPROACH FOR EARLY READERS (Age ${age}):
-- Balance encouragement with constructive feedback
-- Expect reasonable fluency but allow for age-appropriate pauses
-- Note pronunciation errors but be understanding
-- If child completes 70%+ with moderate fluency, minimum score should be 5`,
-      feedbackTone: "Use friendly, supportive language while providing clear feedback. Acknowledge strengths and give specific guidance."
+      level: "BALANCED",
+      guidance: "Balance encouragement with constructive feedback. Allow age-appropriate pauses. Minimum score 5 if 70%+ completed.",
+      minCompleteness: 70
     };
   } else if (age <= 11) {
     return {
-      guidance: `ASSESSMENT APPROACH FOR DEVELOPING READERS (Age ${age}):
-- Expect good fluency and clear pronunciation
-- Note errors in pacing, expression, and accuracy
-- Be fair but firm about incomplete passages
-- If child completes 75%+ with good fluency, minimum score should be 6`,
-      feedbackTone: "Use clear, direct feedback. Acknowledge achievements and provide constructive criticism."
+      level: "MODERATELY STRICT",
+      guidance: "Expect good fluency and clear pronunciation. Be fair but firm. Minimum score 6 if 75%+ completed.",
+      minCompleteness: 75
     };
   } else {
     return {
-      guidance: `ASSESSMENT APPROACH FOR ADVANCED READERS (Age ${age}):
-- Expect EXCELLENT fluency, expression, and comprehension
-- Be STRICT about pronunciation, pacing, and completion
-- Incomplete passages should receive low scores (maximum 4)
-- High scores (8+) reserved for truly exceptional reading`,
-      feedbackTone: "Use mature, direct language. Provide sophisticated feedback that challenges the reader."
+      level: "STRICT",
+      guidance: "Expect excellent fluency, expression, and accuracy. High scores (8+) reserved for exceptional reading. Maximum score 4 for incomplete passages.",
+      minCompleteness: 80
     };
   }
 }
@@ -53,7 +38,6 @@ export async function POST(request: NextRequest) {
     const {
       audio,
       passage,
-      wordCount,
       childAge,
       childName,
       parentName,
@@ -70,43 +54,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Get age-appropriate strictness
-    const strictnessGuidelines = getStrictnessForAge(childAge);
+    const strictness = getStrictnessForAge(childAge);
 
-    // Build the analysis prompt - YOUR EXACT PROMPT
-    const analysisPrompt = `You are an expert reading assessment AI. Analyze this audio recording of a ${childAge}-year-old child reading the following passage.
+    // Build the analysis prompt - Phonics & Reading Specialist with 4-tier strictness
+    const analysisPrompt = `Role: Expert Phonics & Reading Specialist.
+Task: Analyze audio of a ${childAge}-year-old child named ${childName} reading the passage below.
 
-PASSAGE TO BE READ:
+PASSAGE CONTEXT:
 "${passage}"
-(Word count: ${wordCount} words)
+(Approx. Word Count: ${passage.split(' ').length} words)
 
-RECORDING DURATION: ${recordingDuration} seconds
+AGE-BASED ASSESSMENT (${strictness.level}):
+${strictness.guidance}
 
-${strictnessGuidelines.guidance}
+CRITICAL SCORING RULES:
+1. COMPLETENESS CHECK: If the child reads less than ${strictness.minCompleteness}% of the text, the 'reading_score' MUST be 4 or lower.
+2. EVIDENCE REQUIRED: Do not be generic. You must quote specific misread words (e.g., "Read 'Hop' as 'hobbed'").
+3. ACCURACY: Note substitutions, omissions, and mispronunciations with exact examples.
 
-ASSESSMENT CRITERIA:
-1. COMPLETENESS: Did the child read the entire passage? Calculate percentage read.
-2. FLUENCY: Was the reading smooth or choppy? Were there long pauses?
-3. PRONUNCIATION: Were words pronounced correctly?
-4. PACE: Was the reading speed appropriate (not too fast/slow)?
-5. EXPRESSION: Did the child read with appropriate expression?
-
-RESPONSE FORMAT - Provide ONLY valid JSON:
+Generate a JSON response with this EXACT structure:
 {
-  "reading_score": <number 1-10>,
-  "wpm": <number>,
-  "fluency_rating": "<Excellent/Good/Fair/Poor/Very Poor>",
-  "pronunciation_rating": "<Clear/Mostly Clear/Unclear/Very Unclear>",
-  "errors": ["specific error 1", "specific error 2", "missing sentence X", "skipped words"],
-  "completeness_percentage": <number 0-100>,
-  "feedback": "<80-100 word constructive feedback that MUST mention if the passage was incomplete. If less than 80% was read, feedback MUST say 'Only X% of the passage was read' and explain this is why the score is low. ${strictnessGuidelines.feedbackTone}>"
+    "reading_score": (integer 1-10 based on accuracy & completeness),
+    "wpm": (integer estimated words per minute),
+    "fluency_rating": (string: "Smooth", "Choppy", "Monotone", or "Fast"),
+    "pronunciation_rating": (string: "Clear", "Slurred", or "Inconsistent"),
+    "completeness_percentage": (integer 0-100),
+    "feedback": (string, exactly 3 sentences, 60-80 words total),
+    "errors": (list of specific words missed or misread with format "Read 'X' as 'Y'" or "Skipped 'X'")
 }
 
-BE STRICT: If the child did not read the full passage or made many errors, score MUST be low (1-4). Do not give high scores for incomplete readings.
+FEEDBACK REQUIREMENTS (must be 60-80 words, exactly 3 sentences):
+- Sentence 1: Comment on completeness and overall fluency (e.g., "${childName} read 90% of the passage with good pace.").
+- Sentence 2: Cite specific evidence of errors OR praise accuracy if minimal errors (e.g., "A substitution occurred where 'text' was read as 'test'." OR "Pronunciation was clear throughout with no significant errors.").
+- Sentence 3: Give one actionable technical tip for improvement (e.g., "Focus on decoding the 'th' sound before speeding up." OR "Practice blending consonant clusters like 'str' and 'bl'.").
 
 Respond ONLY with valid JSON. No additional text.`;
 
     // Use Gemini 2.5 Flash model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     // For audio analysis, extract the base64 data
     const audioData = audio.split(',')[1] || audio;
@@ -140,12 +125,12 @@ Respond ONLY with valid JSON. No additional text.`;
       // Provide default values if parsing fails
       analysisResult = {
         reading_score: 5,
-        wpm: Math.round((wordCount / Math.max(recordingDuration, 1)) * 60),
-        fluency_rating: 'Fair',
-        pronunciation_rating: 'Mostly Clear',
+        wpm: 60,
+        fluency_rating: 'Choppy',
+        pronunciation_rating: 'Inconsistent',
         errors: [],
         completeness_percentage: 80,
-        feedback: `${childName} showed good effort in this reading assessment. The reading demonstrated understanding of the passage content with reasonable pace and clarity. To continue improving, ${childName} should practice reading aloud daily, focusing on smooth transitions between words and sentences. Building vocabulary through regular reading will help with unfamiliar words. Keep up the great work and remember that every reading session makes you a stronger reader!`
+        feedback: `${childName} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily with finger-tracking to build smoother word recognition and confidence.`
       };
     }
 
