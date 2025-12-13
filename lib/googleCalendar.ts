@@ -1,258 +1,266 @@
 import { google } from 'googleapis';
 
-const SCOPES = ['https://www.googleapis.com/auth/calendar'];
-
-// Initialize auth with service account + domain-wide delegation
-function getAuth() {
+// Initialize Google Calendar API
+const getCalendarClient = () => {
+  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}');
+  
   const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: SCOPES,
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/calendar'],
   });
 
-  const authClient = auth.fromJSON({
-    type: 'service_account',
-    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  }) as any;
+  return google.calendar({ version: 'v3', auth });
+};
 
-  // Impersonate engage@yestoryd.com
-  authClient.subject = process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com';
+// Email to impersonate (must have domain-wide delegation)
+const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || 'engage@yestoryd.com';
 
-  return authClient;
-}
-
-function getCalendar() {
-  return google.calendar({ version: 'v3', auth: getAuth() });
-}
-
-// Session types for the 3-month program
-type SessionType = 'coaching' | 'parent-checkin';
-
-interface SessionConfig {
-  type: SessionType;
-  week: number;
+interface SessionDetails {
   title: string;
   description: string;
+  startTime: Date;
+  endTime: Date;
+  attendees: string[];
+  sessionType: 'coaching' | 'parent_checkin';
 }
 
-// 9 sessions over 12 weeks: 6 coaching + 3 parent check-ins
-const SESSION_SCHEDULE: SessionConfig[] = [
-  { type: 'coaching', week: 1, title: 'Coaching Session 1', description: 'Initial assessment and goal setting' },
-  { type: 'coaching', week: 2, title: 'Coaching Session 2', description: 'Phonics and reading fundamentals' },
-  { type: 'parent-checkin', week: 3, title: 'Parent Check-in 1', description: 'Progress review and home practice tips' },
-  { type: 'coaching', week: 4, title: 'Coaching Session 3', description: 'Fluency building exercises' },
-  { type: 'coaching', week: 6, title: 'Coaching Session 4', description: 'Comprehension strategies' },
-  { type: 'parent-checkin', week: 7, title: 'Parent Check-in 2', description: 'Mid-program review and adjustments' },
-  { type: 'coaching', week: 9, title: 'Coaching Session 5', description: 'Advanced reading techniques' },
-  { type: 'coaching', week: 11, title: 'Coaching Session 6', description: 'Final assessment and next steps' },
-  { type: 'parent-checkin', week: 12, title: 'Parent Check-in 3', description: 'Program completion and recommendations' },
-];
-
-interface CreateSessionsInput {
-  childId: string;
-  childName: string;
-  parentEmail: string;
-  parentName: string;
-  coachEmail: string;
-  coachName: string;
-  preferredDay: number; // 0 = Sunday, 1 = Monday, etc.
-  preferredTime: string; // "16:00" format
-  startDate?: Date;
-}
-
-interface CreatedSession {
-  sessionNumber: number;
-  type: SessionType;
-  title: string;
-  scheduledDate: string;
-  scheduledTime: string;
-  googleEventId: string;
+interface ScheduledSession {
+  eventId: string;
   meetLink: string;
+  startTime: string;
+  endTime: string;
 }
 
-// Calculate date for a specific week and day
-function getSessionDate(startDate: Date, weekNumber: number, preferredDay: number): Date {
-  const date = new Date(startDate);
-  
-  // Find first occurrence of preferred day
-  const currentDay = date.getDay();
-  const daysUntilPreferred = (preferredDay - currentDay + 7) % 7;
-  date.setDate(date.getDate() + daysUntilPreferred);
-  
-  // Add weeks
-  date.setDate(date.getDate() + (weekNumber - 1) * 7);
-  
-  return date;
-}
-
-// Create all 9 sessions for an enrollment
-export async function createAllSessions(input: CreateSessionsInput): Promise<{
-  success: boolean;
-  sessions?: CreatedSession[];
-  error?: string;
-}> {
-  const calendar = getCalendar();
-  const startDate = input.startDate || new Date();
-  const createdSessions: CreatedSession[] = [];
-
+// Schedule a single calendar event
+export async function scheduleCalendarEvent(
+  session: SessionDetails
+): Promise<{ eventId: string; meetLink: string }> {
   try {
-    for (let i = 0; i < SESSION_SCHEDULE.length; i++) {
-      const session = SESSION_SCHEDULE[i];
-      const sessionDate = getSessionDate(startDate, session.week, input.preferredDay);
-      
-      // Parse preferred time
-      const [hours, minutes] = input.preferredTime.split(':').map(Number);
-      sessionDate.setHours(hours, minutes, 0, 0);
+    const calendar = getCalendarClient();
 
-      // End time (60 min session)
-      const endDate = new Date(sessionDate);
-      endDate.setMinutes(endDate.getMinutes() + 60);
+    const event = {
+      summary: session.title,
+      description: session.description,
+      start: {
+        dateTime: session.startTime.toISOString(),
+        timeZone: 'Asia/Kolkata',
+      },
+      end: {
+        dateTime: session.endTime.toISOString(),
+        timeZone: 'Asia/Kolkata',
+      },
+      attendees: session.attendees.map((email) => ({ email })),
+      conferenceData: {
+        createRequest: {
+          requestId: `yestoryd-${Date.now()}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 24 * 60 },
+          { method: 'popup', minutes: 60 },
+        ],
+      },
+    };
 
-      const event = {
-        summary: `${session.title} - ${input.childName}`,
-        description: `
-${session.description}
+    const response = await calendar.events.insert({
+      calendarId: CALENDAR_EMAIL,
+      requestBody: event,
+      conferenceDataVersion: 1,
+      sendUpdates: 'all',
+    });
 
-Child: ${input.childName}
-Parent: ${input.parentName}
-Coach: ${input.coachName}
+    return {
+      eventId: response.data.id || '',
+      meetLink: response.data.hangoutLink || response.data.conferenceData?.entryPoints?.[0]?.uri || '',
+    };
+  } catch (error) {
+    console.error('Error scheduling calendar event:', error);
+    throw error;
+  }
+}
 
-Powered by Yestoryd
-        `.trim(),
+// Schedule all 9 sessions for a child enrollment
+export async function scheduleAllSessions(
+  childName: string,
+  parentEmail: string,
+  coachEmail: string,
+  startDate: Date
+): Promise<ScheduledSession[]> {
+  const sessions: ScheduledSession[] = [];
+  const sessionSchedule = [
+    { week: 1, type: 'coaching' as const, title: 'Session 1: Initial Assessment' },
+    { week: 2, type: 'coaching' as const, title: 'Session 2: Phonics Foundation' },
+    { week: 3, type: 'coaching' as const, title: 'Session 3: Reading Fluency' },
+    { week: 4, type: 'parent_checkin' as const, title: 'Parent Check-in 1' },
+    { week: 5, type: 'coaching' as const, title: 'Session 4: Comprehension Skills' },
+    { week: 6, type: 'coaching' as const, title: 'Session 5: Vocabulary Building' },
+    { week: 7, type: 'coaching' as const, title: 'Session 6: Reading Practice' },
+    { week: 8, type: 'parent_checkin' as const, title: 'Parent Check-in 2' },
+    { week: 12, type: 'parent_checkin' as const, title: 'Final Parent Check-in' },
+  ];
+
+  for (const schedule of sessionSchedule) {
+    const sessionDate = new Date(startDate);
+    sessionDate.setDate(sessionDate.getDate() + (schedule.week - 1) * 7);
+    
+    // Set time to 4 PM IST
+    sessionDate.setHours(16, 0, 0, 0);
+
+    const endTime = new Date(sessionDate);
+    endTime.setMinutes(endTime.getMinutes() + (schedule.type === 'coaching' ? 45 : 30));
+
+    try {
+      const result = await scheduleCalendarEvent({
+        title: `${schedule.title} - ${childName}`,
+        description: `Yestoryd Reading Session for ${childName}\n\nType: ${schedule.type}\nCoach will join via Google Meet.`,
+        startTime: sessionDate,
+        endTime: endTime,
+        attendees: [parentEmail, coachEmail, CALENDAR_EMAIL],
+        sessionType: schedule.type,
+      });
+
+      sessions.push({
+        eventId: result.eventId,
+        meetLink: result.meetLink,
+        startTime: sessionDate.toISOString(),
+        endTime: endTime.toISOString(),
+      });
+    } catch (error) {
+      console.error(`Error scheduling ${schedule.title}:`, error);
+    }
+  }
+
+  return sessions;
+}
+
+// Get available time slots for a coach
+export async function getAvailableSlots(
+  coachEmail: string,
+  startDate: Date,
+  endDate: Date
+): Promise<{ start: string; end: string }[]> {
+  try {
+    const calendar = getCalendarClient();
+
+    // Get busy times
+    const busyResponse = await calendar.freebusy.query({
+      requestBody: {
+        timeMin: startDate.toISOString(),
+        timeMax: endDate.toISOString(),
+        items: [{ id: coachEmail }],
+      },
+    });
+
+    const busyTimes = busyResponse.data.calendars?.[coachEmail]?.busy || [];
+
+    // Generate available slots (9 AM to 6 PM IST, 1-hour slots)
+    const availableSlots: { start: string; end: string }[] = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate < endDate) {
+      // Skip weekends
+      if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+        for (let hour = 9; hour < 18; hour++) {
+          const slotStart = new Date(currentDate);
+          slotStart.setHours(hour, 0, 0, 0);
+
+          const slotEnd = new Date(slotStart);
+          slotEnd.setHours(hour + 1, 0, 0, 0);
+
+          // Check if slot overlaps with busy times
+          const isAvailable = !busyTimes.some((busy) => {
+            const busyStart = new Date(busy.start || '');
+            const busyEnd = new Date(busy.end || '');
+            return slotStart < busyEnd && slotEnd > busyStart;
+          });
+
+          if (isAvailable) {
+            availableSlots.push({
+              start: slotStart.toISOString(),
+              end: slotEnd.toISOString(),
+            });
+          }
+        }
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return availableSlots;
+  } catch (error) {
+    console.error('Error getting available slots:', error);
+    return [];
+  }
+}
+
+// Reschedule an existing event
+export async function rescheduleEvent(
+  eventId: string,
+  newStartTime: Date,
+  newEndTime: Date
+): Promise<{ success: boolean; meetLink?: string }> {
+  try {
+    const calendar = getCalendarClient();
+
+    const response = await calendar.events.patch({
+      calendarId: CALENDAR_EMAIL,
+      eventId: eventId,
+      requestBody: {
         start: {
-          dateTime: sessionDate.toISOString(),
+          dateTime: newStartTime.toISOString(),
           timeZone: 'Asia/Kolkata',
         },
         end: {
-          dateTime: endDate.toISOString(),
+          dateTime: newEndTime.toISOString(),
           timeZone: 'Asia/Kolkata',
         },
-        attendees: [
-          { email: input.parentEmail, displayName: input.parentName },
-          { email: input.coachEmail, displayName: input.coachName },
-          { email: 'engage@yestoryd.com', displayName: 'Yestoryd' },
-        ],
-        conferenceData: {
-          createRequest: {
-            requestId: `yestoryd-${input.childId}-session-${i + 1}-${Date.now()}`,
-            conferenceSolutionKey: { type: 'hangoutsMeet' },
-          },
-        },
-        reminders: {
-          useDefault: false,
-          overrides: [
-            { method: 'email', minutes: 24 * 60 }, // 24 hours before
-            { method: 'popup', minutes: 60 }, // 1 hour before
-          ],
-        },
-      };
-
-      const response = await calendar.events.insert({
-        calendarId: 'primary',
-        requestBody: event,
-        conferenceDataVersion: 1,
-        sendUpdates: 'all', // Send invites to all attendees
-      });
-
-      createdSessions.push({
-        sessionNumber: i + 1,
-        type: session.type,
-        title: session.title,
-        scheduledDate: sessionDate.toISOString().split('T')[0],
-        scheduledTime: input.preferredTime,
-        googleEventId: response.data.id || '',
-        meetLink: response.data.conferenceData?.entryPoints?.[0]?.uri || '',
-      });
-    }
-
-    return { success: true, sessions: createdSessions };
-  } catch (error: any) {
-    console.error('Failed to create sessions:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Check coach availability for a specific slot across 12 weeks
-export async function checkSlotAvailability(
-  coachEmail: string,
-  preferredDay: number,
-  preferredTime: string,
-  startDate?: Date
-): Promise<{
-  available: boolean;
-  conflicts: number;
-  conflictWeeks: number[];
-}> {
-  const calendar = getCalendar();
-  const start = startDate || new Date();
-  const conflictWeeks: number[] = [];
-
-  try {
-    for (const session of SESSION_SCHEDULE) {
-      const sessionDate = getSessionDate(start, session.week, preferredDay);
-      const [hours, minutes] = preferredTime.split(':').map(Number);
-      sessionDate.setHours(hours, minutes, 0, 0);
-
-      const endDate = new Date(sessionDate);
-      endDate.setMinutes(endDate.getMinutes() + 60);
-
-      // Check for conflicts
-      const events = await calendar.events.list({
-        calendarId: coachEmail,
-        timeMin: sessionDate.toISOString(),
-        timeMax: endDate.toISOString(),
-        singleEvents: true,
-      });
-
-      if (events.data.items && events.data.items.length > 0) {
-        conflictWeeks.push(session.week);
-      }
-    }
+      },
+      sendUpdates: 'all',
+    });
 
     return {
-      available: conflictWeeks.length === 0,
-      conflicts: conflictWeeks.length,
-      conflictWeeks,
+      success: true,
+      meetLink: response.data.hangoutLink || '',
     };
-  } catch (error: any) {
-    console.error('Failed to check availability:', error);
-    // If we can't check, assume available
-    return { available: true, conflicts: 0, conflictWeeks: [] };
+  } catch (error) {
+    console.error('Error rescheduling event:', error);
+    return { success: false };
   }
 }
 
-// Get coach's available time slots (from Supabase or defaults)
-export interface CoachAvailability {
-  days: number[]; // 0-6 (Sun-Sat)
-  startHour: number; // 9 = 9 AM
-  endHour: number; // 18 = 6 PM
-}
+// Cancel an event
+export async function cancelEvent(eventId: string): Promise<{ success: boolean }> {
+  try {
+    const calendar = getCalendarClient();
 
-export function generateTimeSlots(availability: CoachAvailability): { day: number; time: string }[] {
-  const slots: { day: number; time: string }[] = [];
+    await calendar.events.delete({
+      calendarId: CALENDAR_EMAIL,
+      eventId: eventId,
+      sendUpdates: 'all',
+    });
 
-  for (const day of availability.days) {
-    for (let hour = availability.startHour; hour < availability.endHour; hour++) {
-      slots.push({
-        day,
-        time: `${hour.toString().padStart(2, '0')}:00`,
-      });
-    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error canceling event:', error);
+    return { success: false };
   }
-
-  return slots;
 }
 
-// Day number to name
-export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Get event details
+export async function getEventDetails(eventId: string) {
+  try {
+    const calendar = getCalendarClient();
 
-// Format time for display
-export function formatTime(time: string): string {
-  const [hours] = time.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours % 12 || 12;
-  return `${displayHours}:00 ${period}`;
+    const response = await calendar.events.get({
+      calendarId: CALENDAR_EMAIL,
+      eventId: eventId,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error getting event details:', error);
+    return null;
+  }
 }
