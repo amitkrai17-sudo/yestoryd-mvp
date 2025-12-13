@@ -35,32 +35,24 @@ interface SessionDetails {
   sessionType: 'coaching' | 'parent_checkin';
 }
 
-// ScheduledSession with ALL property names used by different routes
+// ScheduledSession with ALL property names used by ALL routes
 interface ScheduledSession {
+  // Used by enrollment/complete
   eventId: string;
+  number: number;
+  week: number;
+  scheduledAt: string;
+  
+  // Used by sessions/confirm
+  googleEventId: string;
+  sessionNumber: number;
+  scheduledDate: string;
+  scheduledTime: string;
+  
+  // Common
   meetLink: string;
   title: string;
-  
-  // Different routes use different names for the same data
-  number: number;
-  sessionNumber: number;      // alias for number
-  
   type: string;
-  sessionType: string;        // alias for type
-  
-  week: number;
-  weekNumber: number;         // alias for week
-  
-  scheduledAt: string;
-  scheduledDate: string;      // just the date part
-  scheduledTime: string;      // just the time part
-  
-  startTime: string;
-  endTime: string;
-  date: string;
-  time: string;
-  
-  durationMinutes: number;
 }
 
 interface CreateAllSessionsParams {
@@ -138,7 +130,7 @@ export async function scheduleCalendarEvent(
 
 // Create all sessions - returns { success, sessions, error }
 export async function createAllSessions(params: CreateAllSessionsParams): Promise<CreateAllSessionsResult> {
-  const { childName, parentEmail, coachEmail, startDate, preferredTime, preferredHour } = params;
+  const { childName, parentEmail, coachEmail, startDate, preferredTime, preferredHour, preferredDay } = params;
   
   const sessions: ScheduledSession[] = [];
   const sessionSchedule = [
@@ -156,14 +148,23 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
   try {
     for (const schedule of sessionSchedule) {
       const sessionDate = new Date(startDate);
+      
+      // If preferredDay is set, find the next occurrence of that day
+      if (preferredDay !== undefined) {
+        const currentDay = sessionDate.getDay();
+        const daysUntilPreferred = (preferredDay - currentDay + 7) % 7;
+        sessionDate.setDate(sessionDate.getDate() + daysUntilPreferred);
+      }
+      
+      // Add weeks
       sessionDate.setDate(sessionDate.getDate() + (schedule.week - 1) * 7);
       
-      // Use preferred hour, preferred time, or default to 4 PM IST
+      // Set time
       if (preferredHour !== undefined) {
         sessionDate.setHours(preferredHour, 0, 0, 0);
       } else if (preferredTime) {
         const [hours, minutes] = preferredTime.split(':');
-        sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        sessionDate.setHours(parseInt(hours), parseInt(minutes || '0'), 0, 0);
       } else {
         sessionDate.setHours(16, 0, 0, 0);
       }
@@ -186,30 +187,22 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
         });
 
         sessions.push({
+          // For enrollment/complete route
           eventId: result.eventId,
-          meetLink: result.meetLink,
-          title: schedule.title,
-          
-          // Provide both naming conventions
           number: schedule.number,
-          sessionNumber: schedule.number,
-          
-          type: schedule.type,
-          sessionType: schedule.type,
-          
           week: schedule.week,
-          weekNumber: schedule.week,
-          
           scheduledAt: sessionDate.toISOString(),
+          
+          // For sessions/confirm route
+          googleEventId: result.eventId,
+          sessionNumber: schedule.number,
           scheduledDate: dateStr,
           scheduledTime: timeStr,
           
-          startTime: sessionDate.toISOString(),
-          endTime: endTime.toISOString(),
-          date: dateStr,
-          time: timeStr.slice(0, 5),
-          
-          durationMinutes: durationMinutes,
+          // Common
+          meetLink: result.meetLink,
+          title: schedule.title,
+          type: schedule.type,
         });
       } catch (error) {
         console.error(`Error scheduling ${schedule.title}:`, error);
@@ -244,12 +237,10 @@ export async function getAvailableSlots(
   try {
     const calendar = getCalendarClient();
 
-    // Get slots for the next 14 days from the given date
     const startDate = new Date(date);
     const endDate = new Date(date);
     endDate.setDate(endDate.getDate() + 14);
 
-    // Get busy times
     const busyResponse = await calendar.freebusy.query({
       requestBody: {
         timeMin: startDate.toISOString(),
@@ -260,12 +251,10 @@ export async function getAvailableSlots(
 
     const busyTimes = busyResponse.data.calendars?.[coachEmail]?.busy || [];
 
-    // Generate available slots (9 AM to 6 PM IST)
     const availableSlots: { start: string; end: string }[] = [];
     const currentDate = new Date(startDate);
 
     while (currentDate < endDate) {
-      // Skip weekends
       if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
         for (let hour = 9; hour < 18; hour++) {
           const slotStart = new Date(currentDate);
@@ -274,10 +263,8 @@ export async function getAvailableSlots(
           const slotEnd = new Date(slotStart);
           slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
 
-          // Don't go past 6 PM
           if (slotEnd.getHours() > 18) continue;
 
-          // Check if slot overlaps with busy times
           const isAvailable = !busyTimes.some((busy) => {
             const busyStart = new Date(busy.start || '');
             const busyEnd = new Date(busy.end || '');
@@ -303,20 +290,24 @@ export async function getAvailableSlots(
 }
 
 // Reschedule an existing event
+// Route calls: rescheduleEvent(eventId, newDate, duration)
 export async function rescheduleEvent(
   eventId: string,
-  newStartTime: Date,
-  newEndTime: Date
-): Promise<{ success: boolean; meetLink?: string }> {
+  newDateTime: Date,
+  durationMinutes: number = 45
+): Promise<{ success: boolean; error?: string; meetLink?: string }> {
   try {
     const calendar = getCalendarClient();
+
+    const newEndTime = new Date(newDateTime);
+    newEndTime.setMinutes(newEndTime.getMinutes() + durationMinutes);
 
     const response = await calendar.events.patch({
       calendarId: CALENDAR_EMAIL,
       eventId: eventId,
       requestBody: {
         start: {
-          dateTime: newStartTime.toISOString(),
+          dateTime: newDateTime.toISOString(),
           timeZone: 'Asia/Kolkata',
         },
         end: {
@@ -333,25 +324,35 @@ export async function rescheduleEvent(
     };
   } catch (error) {
     console.error('Error rescheduling event:', error);
-    return { success: false };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to reschedule'
+    };
   }
 }
 
 // Cancel an event
-export async function cancelEvent(eventId: string): Promise<{ success: boolean }> {
+// Route calls: cancelEvent(eventId, true)
+export async function cancelEvent(
+  eventId: string, 
+  sendNotifications: boolean = true
+): Promise<{ success: boolean; error?: string }> {
   try {
     const calendar = getCalendarClient();
 
     await calendar.events.delete({
       calendarId: CALENDAR_EMAIL,
       eventId: eventId,
-      sendUpdates: 'all',
+      sendUpdates: sendNotifications ? 'all' : 'none',
     });
 
     return { success: true };
   } catch (error) {
     console.error('Error canceling event:', error);
-    return { success: false };
+    return { 
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to cancel'
+    };
   }
 }
 
@@ -380,7 +381,7 @@ export async function cancelAllFutureSessions(
   let failed = 0;
 
   for (const eventId of sessionEventIds) {
-    const result = await cancelEvent(eventId);
+    const result = await cancelEvent(eventId, true);
     if (result.success) {
       cancelled++;
     } else {
