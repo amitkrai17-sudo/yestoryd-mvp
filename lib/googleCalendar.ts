@@ -40,6 +40,9 @@ interface ScheduledSession {
   meetLink: string;
   startTime: string;
   endTime: string;
+  sessionNumber?: number;
+  sessionType?: string;
+  title?: string;
 }
 
 interface CreateAllSessionsParams {
@@ -47,6 +50,7 @@ interface CreateAllSessionsParams {
   childName: string;
   parentEmail: string;
   parentName?: string;
+  parentPhone?: string;
   coachEmail: string;
   coachId?: string;
   coachName?: string;
@@ -54,6 +58,13 @@ interface CreateAllSessionsParams {
   preferredDay?: number;
   preferredTime?: string;
   preferredHour?: number;
+  enrollmentId?: string;
+}
+
+interface CreateAllSessionsResult {
+  success: boolean;
+  sessions: ScheduledSession[];
+  error?: string;
 }
 
 // Schedule a single calendar event
@@ -77,7 +88,7 @@ export async function scheduleCalendarEvent(
       attendees: session.attendees.map((email) => ({ email })),
       conferenceData: {
         createRequest: {
-          requestId: `yestoryd-${Date.now()}`,
+          requestId: `yestoryd-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
       },
@@ -107,60 +118,79 @@ export async function scheduleCalendarEvent(
   }
 }
 
-// Create all sessions - used by /api/sessions/confirm
-export async function createAllSessions(params: CreateAllSessionsParams): Promise<ScheduledSession[]> {
-  const { childName, parentEmail, coachEmail, startDate, preferredTime } = params;
+// Create all sessions - returns { success, sessions, error }
+export async function createAllSessions(params: CreateAllSessionsParams): Promise<CreateAllSessionsResult> {
+  const { childName, parentEmail, coachEmail, startDate, preferredTime, preferredHour } = params;
   
   const sessions: ScheduledSession[] = [];
   const sessionSchedule = [
-    { week: 1, type: 'coaching' as const, title: 'Session 1: Initial Assessment' },
-    { week: 2, type: 'coaching' as const, title: 'Session 2: Phonics Foundation' },
-    { week: 3, type: 'coaching' as const, title: 'Session 3: Reading Fluency' },
-    { week: 4, type: 'parent_checkin' as const, title: 'Parent Check-in 1' },
-    { week: 5, type: 'coaching' as const, title: 'Session 4: Comprehension Skills' },
-    { week: 6, type: 'coaching' as const, title: 'Session 5: Vocabulary Building' },
-    { week: 7, type: 'coaching' as const, title: 'Session 6: Reading Practice' },
-    { week: 8, type: 'parent_checkin' as const, title: 'Parent Check-in 2' },
-    { week: 12, type: 'parent_checkin' as const, title: 'Final Parent Check-in' },
+    { week: 1, type: 'coaching' as const, title: 'Session 1: Initial Assessment', number: 1 },
+    { week: 2, type: 'coaching' as const, title: 'Session 2: Phonics Foundation', number: 2 },
+    { week: 3, type: 'coaching' as const, title: 'Session 3: Reading Fluency', number: 3 },
+    { week: 4, type: 'parent_checkin' as const, title: 'Parent Check-in 1', number: 4 },
+    { week: 5, type: 'coaching' as const, title: 'Session 4: Comprehension Skills', number: 5 },
+    { week: 6, type: 'coaching' as const, title: 'Session 5: Vocabulary Building', number: 6 },
+    { week: 7, type: 'coaching' as const, title: 'Session 6: Reading Practice', number: 7 },
+    { week: 8, type: 'parent_checkin' as const, title: 'Parent Check-in 2', number: 8 },
+    { week: 12, type: 'parent_checkin' as const, title: 'Final Parent Check-in', number: 9 },
   ];
 
-  for (const schedule of sessionSchedule) {
-    const sessionDate = new Date(startDate);
-    sessionDate.setDate(sessionDate.getDate() + (schedule.week - 1) * 7);
-    
-    // Use preferred time or default to 4 PM IST
-    if (preferredTime) {
-      const [hours, minutes] = preferredTime.split(':');
-      sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    } else {
-      sessionDate.setHours(16, 0, 0, 0);
+  try {
+    for (const schedule of sessionSchedule) {
+      const sessionDate = new Date(startDate);
+      sessionDate.setDate(sessionDate.getDate() + (schedule.week - 1) * 7);
+      
+      // Use preferred hour, preferred time, or default to 4 PM IST
+      if (preferredHour !== undefined) {
+        sessionDate.setHours(preferredHour, 0, 0, 0);
+      } else if (preferredTime) {
+        const [hours, minutes] = preferredTime.split(':');
+        sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      } else {
+        sessionDate.setHours(16, 0, 0, 0);
+      }
+
+      const endTime = new Date(sessionDate);
+      endTime.setMinutes(endTime.getMinutes() + (schedule.type === 'coaching' ? 45 : 30));
+
+      try {
+        const result = await scheduleCalendarEvent({
+          title: `${schedule.title} - ${childName}`,
+          description: `Yestoryd Reading Session for ${childName}\n\nType: ${schedule.type}\nCoach will join via Google Meet.`,
+          startTime: sessionDate,
+          endTime: endTime,
+          attendees: [parentEmail, coachEmail, CALENDAR_EMAIL].filter(Boolean),
+          sessionType: schedule.type,
+        });
+
+        sessions.push({
+          eventId: result.eventId,
+          meetLink: result.meetLink,
+          startTime: sessionDate.toISOString(),
+          endTime: endTime.toISOString(),
+          sessionNumber: schedule.number,
+          sessionType: schedule.type,
+          title: schedule.title,
+        });
+      } catch (error) {
+        console.error(`Error scheduling ${schedule.title}:`, error);
+        // Continue with other sessions even if one fails
+      }
     }
 
-    const endTime = new Date(sessionDate);
-    endTime.setMinutes(endTime.getMinutes() + (schedule.type === 'coaching' ? 45 : 30));
-
-    try {
-      const result = await scheduleCalendarEvent({
-        title: `${schedule.title} - ${childName}`,
-        description: `Yestoryd Reading Session for ${childName}\n\nType: ${schedule.type}\nCoach will join via Google Meet.`,
-        startTime: sessionDate,
-        endTime: endTime,
-        attendees: [parentEmail, coachEmail, CALENDAR_EMAIL],
-        sessionType: schedule.type,
-      });
-
-      sessions.push({
-        eventId: result.eventId,
-        meetLink: result.meetLink,
-        startTime: sessionDate.toISOString(),
-        endTime: endTime.toISOString(),
-      });
-    } catch (error) {
-      console.error(`Error scheduling ${schedule.title}:`, error);
-    }
+    return {
+      success: sessions.length > 0,
+      sessions,
+      error: sessions.length === 0 ? 'Failed to schedule any sessions' : undefined,
+    };
+  } catch (error) {
+    console.error('Error in createAllSessions:', error);
+    return {
+      success: false,
+      sessions: [],
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
   }
-
-  return sessions;
 }
 
 // Alias for backward compatibility
