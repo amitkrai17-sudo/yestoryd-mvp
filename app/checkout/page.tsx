@@ -1,8 +1,49 @@
 'use client';
 
-import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Script from 'next/script';
+import { Suspense, useState } from 'react';
+import { Calendar, Clock, CreditCard, Loader2, Shield, CheckCircle } from 'lucide-react';
+
+const DAY_OPTIONS = [
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+  { value: 0, label: 'Sunday' },
+];
+
+const TIME_OPTIONS = [
+  { value: '09:00', label: '9:00 AM' },
+  { value: '10:00', label: '10:00 AM' },
+  { value: '11:00', label: '11:00 AM' },
+  { value: '12:00', label: '12:00 PM' },
+  { value: '14:00', label: '2:00 PM' },
+  { value: '15:00', label: '3:00 PM' },
+  { value: '16:00', label: '4:00 PM' },
+  { value: '17:00', label: '5:00 PM' },
+  { value: '18:00', label: '6:00 PM' },
+  { value: '19:00', label: '7:00 PM' },
+];
+
+const PACKAGES = {
+  'coaching-6': {
+    name: '3-Month Reading Coaching',
+    sessions: 6,
+    checkins: 3,
+    duration: '12 weeks',
+    price: 5999,
+    features: [
+      '6 one-on-one coaching sessions',
+      '3 parent check-in calls',
+      'Personalized learning plan',
+      'Progress tracking dashboard',
+      'Access to e-learning modules',
+      'WhatsApp support',
+    ],
+  },
+};
 
 declare global {
   interface Window {
@@ -10,55 +51,29 @@ declare global {
   }
 }
 
-const PACKAGES = {
-  'coaching-6': {
-    name: '3-Month Coaching Program',
-    price: 5999,
-    features: [
-      '6 personalized coaching sessions (45 mins each)',
-      '3 parent check-in calls (15 mins each)',
-      'AI-powered progress tracking',
-      'FREE access to all e-learning modules',
-      'FREE storytelling workshops',
-      'FREE physical classes access',
-      'Weekly progress reports',
-      'WhatsApp support',
-    ],
-  },
-  'coaching-trial': {
-    name: 'Trial Session',
-    price: 999,
-    features: [
-      '1 coaching session (45 mins)',
-      'Detailed assessment report',
-      'Personalized recommendations',
-    ],
-  },
-};
-
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  // Get data from URL params
   const childId = searchParams.get('childId') || '';
   const childName = searchParams.get('childName') || '';
   const parentName = searchParams.get('parentName') || '';
   const parentEmail = searchParams.get('parentEmail') || '';
   const parentPhone = searchParams.get('parentPhone') || '';
+  const coachId = searchParams.get('coachId') || 'rucha';
   const packageType = (searchParams.get('package') || 'coaching-6') as keyof typeof PACKAGES;
   const source = searchParams.get('source') || 'yestoryd.com';
-  const coachId = searchParams.get('coachId') || 'rucha';
 
-  const selectedPackage = PACKAGES[packageType] || PACKAGES['coaching-6'];
+  const pkg = PACKAGES[packageType] || PACKAGES['coaching-6'];
 
-  async function handlePayment() {
-    if (!scriptLoaded) {
-      setError('Payment system loading. Please wait...');
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handlePayment = async () => {
+    if (selectedDay === null || !selectedTime) {
+      setError('Please select your preferred day and time');
       return;
     }
 
@@ -66,72 +81,95 @@ function CheckoutContent() {
     setError('');
 
     try {
+      // Load Razorpay script
+      if (!window.Razorpay) {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve) => (script.onload = resolve));
+      }
+
+      // Create order
       const orderRes = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          amount: pkg.price,
           childId,
           childName,
-          coachId,
-          packageType,
           parentName,
           parentEmail,
           parentPhone,
+          coachId,
+          packageType,
           source,
+          preferredDay: selectedDay,
+          preferredTime: selectedTime,
         }),
       });
 
       const orderData = await orderRes.json();
 
-      if (!orderData.success) {
+      if (!orderRes.ok) {
         throw new Error(orderData.error || 'Failed to create order');
       }
 
+      // Open Razorpay checkout
       const options = {
-        key: orderData.keyId,
-        amount: orderData.amount * 100,
-        currency: orderData.currency,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: 'INR',
         name: 'Yestoryd',
-        description: selectedPackage.name,
+        description: pkg.name,
         order_id: orderData.orderId,
         prefill: {
           name: parentName,
           email: parentEmail,
           contact: parentPhone,
         },
+        notes: {
+          childId,
+          childName,
+          coachId,
+          packageType,
+          source,
+          preferredDay: selectedDay,
+          preferredTime: selectedTime,
+        },
         theme: {
-          color: '#6366f1',
+          color: '#ec4899',
         },
         handler: async function (response: any) {
-          try {
-            const verifyRes = await fetch('/api/payment/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                childId,
-                childName,
-                coachId,
-                packageType,
-                parentName,
-                parentEmail,
-                parentPhone,
-                source,
-              }),
-            });
+          // Verify payment
+          const verifyRes = await fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              childId,
+              childName,
+              parentName,
+              parentEmail,
+              parentPhone,
+              coachId,
+              packageType,
+              source,
+              preferredDay: selectedDay,
+              preferredTime: selectedTime,
+            }),
+          });
 
-            const verifyData = await verifyRes.json();
+          const verifyData = await verifyRes.json();
 
-            if (verifyData.success) {
-              router.push(`/enrollment/success?childId=${childId}&childName=${encodeURIComponent(childName)}`);
-            } else {
-              setError('Payment verification failed. Please contact support.');
-            }
-          } catch (err) {
-            console.error('Verification error:', err);
-            setError('Payment completed but verification failed. Please contact support.');
+          if (verifyRes.ok && verifyData.success) {
+            router.push(
+              `/enrollment/success?enrollmentId=${verifyData.enrollmentId}&childName=${encodeURIComponent(childName)}`
+            );
+          } else {
+            setError('Payment verification failed. Please contact support.');
           }
         },
         modal: {
@@ -141,129 +179,142 @@ function CheckoutContent() {
         },
       };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
     } catch (err: any) {
-      console.error('Payment error:', err);
       setError(err.message || 'Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <>
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        onLoad={() => setScriptLoaded(true)}
-      />
+    <div className="min-h-screen bg-gray-900 py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Complete Enrollment</h1>
+          <p className="text-gray-400">
+            Enrolling <span className="text-pink-400 font-medium">{childName}</span> in reading coaching
+          </p>
+        </div>
 
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Complete Your Enrollment
-            </h1>
-            <p className="text-gray-600">
-              Start {childName || 'your child'}'s reading transformation journey
-            </p>
+        {/* Package Details */}
+        <div className="bg-gray-800 rounded-2xl p-6 mb-6 border border-gray-700">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-white">{pkg.name}</h2>
+              <p className="text-gray-400 text-sm">{pkg.duration}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-pink-500">₹{pkg.price.toLocaleString()}</p>
+              <p className="text-gray-500 text-sm">one-time</p>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8 text-white">
-              <h2 className="text-2xl font-bold">{selectedPackage.name}</h2>
-              <div className="mt-4 flex items-baseline">
-                <span className="text-5xl font-extrabold">₹{selectedPackage.price.toLocaleString()}</span>
-                <span className="ml-2 text-indigo-200">one-time</span>
-              </div>
-            </div>
+          <div className="border-t border-gray-700 pt-4">
+            <p className="text-sm text-gray-400 mb-3">What's included:</p>
+            <ul className="space-y-2">
+              {pkg.features.map((feature, idx) => (
+                <li key={idx} className="flex items-center gap-2 text-gray-300">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <span className="text-sm">{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
 
-            <div className="px-6 py-6">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
-                What's Included
-              </h3>
-              <ul className="space-y-3">
-                {selectedPackage.features.map((feature, index) => (
-                  <li key={index} className="flex items-start">
-                    <svg className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Schedule Preference */}
+        <div className="bg-gray-800 rounded-2xl p-6 mb-6 border border-gray-700">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-500" />
+            Preferred Weekly Slot
+          </h2>
+          <p className="text-sm text-gray-400 mb-4">
+            All 9 sessions will be scheduled at this time. Coach will confirm or suggest alternatives.
+          </p>
 
-            <div className="px-6 py-4 bg-gray-50 border-t">
-              <div className="text-sm text-gray-600">
-                <p><span className="font-medium">Child:</span> {childName || 'Not specified'}</p>
-                <p><span className="font-medium">Parent:</span> {parentName || 'Not specified'}</p>
-                <p><span className="font-medium">Email:</span> {parentEmail || 'Not specified'}</p>
-              </div>
-            </div>
-
-            {error && (
-              <div className="px-6 py-3 bg-red-50 border-t border-red-100">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-
-            <div className="px-6 py-6 border-t">
-              <button
-                onClick={handlePayment}
-                disabled={loading || !scriptLoaded}
-                className={`w-full py-4 px-6 rounded-xl text-lg font-semibold text-white transition-all
-                  ${loading || !scriptLoaded
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+          {/* Day Selection */}
+          <div className="mb-4">
+            <label className="text-sm text-gray-400 mb-2 block">Preferred Day</label>
+            <div className="grid grid-cols-4 gap-2">
+              {DAY_OPTIONS.map((day) => (
+                <button
+                  key={day.value}
+                  type="button"
+                  onClick={() => setSelectedDay(day.value)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    selectedDay === day.value
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  `Pay ₹${selectedPackage.price.toLocaleString()}`
-                )}
-              </button>
-
-              <p className="text-center text-xs text-gray-500 mt-4">
-                Secure payment powered by Razorpay. By proceeding, you agree to our Terms of Service.
-              </p>
+                >
+                  {day.label.slice(0, 3)}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="mt-8 flex justify-center items-center space-x-6 text-gray-400">
-            <div className="flex items-center">
-              <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm">Secure</span>
-            </div>
-            <div className="flex items-center">
-              <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
-              </svg>
-              <span className="text-sm">100% Refund Policy</span>
+          {/* Time Selection */}
+          <div>
+            <label className="text-sm text-gray-400 mb-2 block flex items-center gap-1">
+              <Clock className="w-4 h-4" /> Preferred Time
+            </label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {TIME_OPTIONS.map((time) => (
+                <button
+                  key={time.value}
+                  type="button"
+                  onClick={() => setSelectedTime(time.value)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    selectedTime === time.value
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {time.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-      </div>
-    </>
-  );
-}
 
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading checkout...</p>
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Pay Button */}
+        <button
+          onClick={handlePayment}
+          disabled={loading}
+          className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-lg"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CreditCard className="w-5 h-5" />
+              Pay ₹{pkg.price.toLocaleString()}
+            </>
+          )}
+        </button>
+
+        {/* Trust Badges */}
+        <div className="flex items-center justify-center gap-4 mt-6 text-gray-500 text-sm">
+          <div className="flex items-center gap-1">
+            <Shield className="w-4 h-4" />
+            <span>Secure Payment</span>
+          </div>
+          <span>•</span>
+          <span>100% Refund Policy</span>
+        </div>
       </div>
     </div>
   );
@@ -271,7 +322,13 @@ function LoadingFallback() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<LoadingFallback />}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+        </div>
+      }
+    >
       <CheckoutContent />
     </Suspense>
   );

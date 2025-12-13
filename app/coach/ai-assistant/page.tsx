@@ -10,10 +10,9 @@ import {
   Sparkles,
   User,
   Search,
-  MessageSquare,
-  Lightbulb,
-  BookOpen,
   Users,
+  X,
+  ChevronLeft,
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -44,6 +43,7 @@ export default function AIAssistantPage() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -84,6 +84,11 @@ export default function AIAssistantPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStudentSelect = (student: Student | null) => {
+    setSelectedStudent(student);
+    setSidebarOpen(false); // Close sidebar on mobile after selection
   };
 
   const sendMessage = async () => {
@@ -198,14 +203,39 @@ export default function AIAssistantPage() {
 
   return (
     <CoachLayout coach={coach}>
-      <div className="h-[calc(100vh-120px)] flex gap-6">
+      <div className="h-[calc(100vh-120px)] flex gap-4 lg:gap-6 relative">
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Student Selection Sidebar */}
-        <div className="w-72 bg-gray-800 rounded-xl border border-gray-700 flex flex-col overflow-hidden">
+        <div
+          className={`
+            fixed lg:relative inset-y-0 left-0 z-50 lg:z-0
+            w-72 bg-gray-800 rounded-none lg:rounded-xl border-r lg:border border-gray-700 
+            flex flex-col overflow-hidden
+            transform transition-transform duration-300 ease-in-out
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            lg:transform-none
+          `}
+        >
           <div className="p-4 border-b border-gray-700">
-            <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-400" />
-              Select Student
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-400" />
+                Select Student
+              </h2>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-1 text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
@@ -221,7 +251,7 @@ export default function AIAssistantPage() {
           <div className="flex-1 overflow-y-auto">
             {/* General Chat Option */}
             <button
-              onClick={() => setSelectedStudent(null)}
+              onClick={() => handleStudentSelect(null)}
               className={`w-full p-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-700 ${
                 !selectedStudent ? 'bg-gray-700/50 border-l-2 border-pink-500' : ''
               }`}
@@ -241,7 +271,7 @@ export default function AIAssistantPage() {
             {filteredStudents.map((student) => (
               <button
                 key={student.id}
-                onClick={() => setSelectedStudent(student)}
+                onClick={() => handleStudentSelect(student)}
                 className={`w-full p-3 text-left hover:bg-gray-700/50 transition-colors ${
                   selectedStudent?.id === student.id ? 'bg-gray-700/50 border-l-2 border-pink-500' : ''
                 }`}
@@ -267,10 +297,22 @@ export default function AIAssistantPage() {
           {/* Header */}
           <div className="p-4 border-b border-gray-700">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+              {/* Mobile: Student selector button */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden flex items-center gap-2 bg-gray-700 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-600 transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                <span className="text-sm">
+                  {selectedStudent ? selectedStudent.child_name : 'Select'}
+                </span>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="hidden lg:flex w-10 h-10 bg-purple-500 rounded-xl items-center justify-center">
                 <Bot className="w-5 h-5 text-white" />
               </div>
-              <div>
+              <div className="hidden lg:block">
                 <h1 className="font-semibold text-white">AI Assistant</h1>
                 <p className="text-gray-400 text-sm">
                   {selectedStudent
@@ -278,7 +320,13 @@ export default function AIAssistantPage() {
                     : 'General coaching assistant'}
                 </p>
               </div>
-              <span className="ml-auto text-xs bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full">
+
+              {/* Mobile title */}
+              <div className="lg:hidden flex-1">
+                <h1 className="font-semibold text-white">AI Assistant</h1>
+              </div>
+
+              <span className="ml-auto text-xs bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full hidden sm:block">
                 RAG Powered
               </span>
             </div>
@@ -287,9 +335,9 @@ export default function AIAssistantPage() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-purple-400" />
+              <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                <div className="w-14 h-14 lg:w-16 lg:h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-4">
+                  <Sparkles className="w-7 h-7 lg:w-8 lg:h-8 text-purple-400" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">
                   {selectedStudent
@@ -308,7 +356,7 @@ export default function AIAssistantPage() {
                     <button
                       key={prompt}
                       onClick={() => setInput(prompt)}
-                      className="text-sm bg-gray-700 text-gray-300 px-4 py-2 rounded-full hover:bg-gray-600 transition-colors"
+                      className="text-xs sm:text-sm bg-gray-700 text-gray-300 px-3 sm:px-4 py-2 rounded-full hover:bg-gray-600 transition-colors"
                     >
                       {prompt}
                     </button>
@@ -319,24 +367,24 @@ export default function AIAssistantPage() {
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
+                  className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Bot className="w-4 h-4 text-white" />
                     </div>
                   )}
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
                       message.role === 'user'
                         ? 'bg-pink-500 text-white'
                         : 'bg-gray-700 text-gray-200'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p className="whitespace-pre-wrap text-sm sm:text-base">{message.content}</p>
                   </div>
                   {message.role === 'user' && (
-                    <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       <User className="w-4 h-4 text-white" />
                     </div>
                   )}
@@ -345,11 +393,11 @@ export default function AIAssistantPage() {
             )}
 
             {sending && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+              <div className="flex gap-2 sm:gap-3">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-500 rounded-lg flex items-center justify-center">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <div className="bg-gray-700 rounded-2xl px-4 py-3">
+                <div className="bg-gray-700 rounded-2xl px-3 sm:px-4 py-2 sm:py-3">
                   <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
                 </div>
               </div>
@@ -357,8 +405,8 @@ export default function AIAssistantPage() {
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-gray-700">
-            <div className="flex gap-3">
+          <div className="p-3 sm:p-4 border-t border-gray-700">
+            <div className="flex gap-2 sm:gap-3">
               <input
                 type="text"
                 value={input}
@@ -369,12 +417,12 @@ export default function AIAssistantPage() {
                     ? `Ask about ${selectedStudent.child_name}...`
                     : 'Ask me anything about coaching...'
                 }
-                className="flex-1 bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500"
+                className="flex-1 bg-gray-700 border border-gray-600 rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-white text-sm sm:text-base placeholder:text-gray-500 focus:outline-none focus:border-purple-500"
               />
               <button
                 onClick={sendMessage}
                 disabled={sending || !input.trim()}
-                className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="bg-purple-500 hover:bg-purple-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </button>

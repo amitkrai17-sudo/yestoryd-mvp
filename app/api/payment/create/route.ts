@@ -1,58 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createOrder, PACKAGES, PackageType } from '@/lib/razorpay';
+import Razorpay from 'razorpay';
+
+console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID);
+console.log('RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? 'EXISTS' : 'MISSING');
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
     const {
+      amount,
       childId,
       childName,
-      coachId = 'rucha', // Default to Rucha
-      packageType = 'coaching-6',
       parentName,
       parentEmail,
       parentPhone,
-      source = 'yestoryd.com',
+      coachId,
+      packageType,
+      source,
+      preferredDay,
+      preferredTime,
     } = body;
 
     // Validate required fields
-    if (!childId || !childName || !parentEmail) {
+    if (!amount || !childName || !parentEmail) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: childId, childName, parentEmail' },
-        { status: 400 }
-      );
-    }
-
-    // Validate package type
-    if (!PACKAGES[packageType as PackageType]) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid package type' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
     // Create Razorpay order
-    const order = await createOrder({
-      childId,
-      childName,
-      coachId,
-      packageType: packageType as PackageType,
-      parentName: parentName || '',
-      parentEmail,
-      parentPhone: parentPhone || '',
-      source,
+    const order = await razorpay.orders.create({
+      amount: amount * 100, // Convert to paise
+      currency: 'INR',
+      receipt: `yestoryd_${Date.now()}`,
+      notes: {
+        childId: childId || 'new',
+        childName,
+        parentName,
+        parentEmail,
+        parentPhone,
+        coachId: coachId || 'rucha',
+        packageType: packageType || 'coaching-6',
+        source: source || 'yestoryd.com',
+        preferredDay: String(preferredDay),
+        preferredTime: preferredTime || '',
+      },
     });
 
     return NextResponse.json({
       success: true,
-      ...order,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
     });
-
   } catch (error: any) {
-    console.error('Payment creation error:', error);
+    console.error('Create order error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to create order' },
+      { error: error.message || 'Failed to create order' },
       { status: 500 }
     );
   }
