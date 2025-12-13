@@ -15,6 +15,17 @@ const getCalendarClient = () => {
 // Email to impersonate (must have domain-wide delegation)
 const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || 'engage@yestoryd.com';
 
+// Constants
+export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export const formatTime = (time: string): string => {
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+};
+
 interface SessionDetails {
   title: string;
   description: string;
@@ -29,6 +40,15 @@ interface ScheduledSession {
   meetLink: string;
   startTime: string;
   endTime: string;
+}
+
+interface CreateAllSessionsParams {
+  childName: string;
+  parentEmail: string;
+  coachEmail: string;
+  startDate: Date;
+  preferredDay?: number;
+  preferredTime?: string;
 }
 
 // Schedule a single calendar event
@@ -82,13 +102,10 @@ export async function scheduleCalendarEvent(
   }
 }
 
-// Schedule all 9 sessions for a child enrollment
-export async function scheduleAllSessions(
-  childName: string,
-  parentEmail: string,
-  coachEmail: string,
-  startDate: Date
-): Promise<ScheduledSession[]> {
+// Create all sessions - used by /api/sessions/confirm
+export async function createAllSessions(params: CreateAllSessionsParams): Promise<ScheduledSession[]> {
+  const { childName, parentEmail, coachEmail, startDate, preferredTime } = params;
+  
   const sessions: ScheduledSession[] = [];
   const sessionSchedule = [
     { week: 1, type: 'coaching' as const, title: 'Session 1: Initial Assessment' },
@@ -106,8 +123,13 @@ export async function scheduleAllSessions(
     const sessionDate = new Date(startDate);
     sessionDate.setDate(sessionDate.getDate() + (schedule.week - 1) * 7);
     
-    // Set time to 4 PM IST
-    sessionDate.setHours(16, 0, 0, 0);
+    // Use preferred time or default to 4 PM IST
+    if (preferredTime) {
+      const [hours, minutes] = preferredTime.split(':');
+      sessionDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    } else {
+      sessionDate.setHours(16, 0, 0, 0);
+    }
 
     const endTime = new Date(sessionDate);
     endTime.setMinutes(endTime.getMinutes() + (schedule.type === 'coaching' ? 45 : 30));
@@ -135,6 +157,9 @@ export async function scheduleAllSessions(
 
   return sessions;
 }
+
+// Alias for backward compatibility
+export { createAllSessions as scheduleAllSessions };
 
 // Get available time slots for a coach
 export async function getAvailableSlots(
@@ -271,4 +296,23 @@ export async function getEventDetails(eventId: string) {
     console.error('Error getting event details:', error);
     return null;
   }
+}
+
+// Cancel all future sessions for a child (for termination)
+export async function cancelAllFutureSessions(
+  sessionEventIds: string[]
+): Promise<{ cancelled: number; failed: number }> {
+  let cancelled = 0;
+  let failed = 0;
+
+  for (const eventId of sessionEventIds) {
+    const result = await cancelEvent(eventId);
+    if (result.success) {
+      cancelled++;
+    } else {
+      failed++;
+    }
+  }
+
+  return { cancelled, failed };
 }

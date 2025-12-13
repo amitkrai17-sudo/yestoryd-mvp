@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       date,
       coachEmail,
       slots: slots.map(slot => ({
-        start: slot.start.toISOString(),
-        end: slot.end.toISOString(),
+  	start: slot.start,  // ✅ Already a string
+  	end: slot.end,      // ✅ Already a string
         startFormatted: slot.start.toLocaleTimeString('en-IN', {
           hour: '2-digit',
           minute: '2-digit',
