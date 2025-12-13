@@ -25,13 +25,17 @@ export async function GET(request: NextRequest) {
       date,
       coachEmail,
       slots: slots.map(slot => ({
-  	start: slot.start,  // ✅ Already a string
-  	end: slot.end,      // ✅ Already a string
-        startFormatted: slot.start.toLocaleTimeString('en-IN', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      })),
+  start: slot.start,
+  end: slot.end,
+  startFormatted: new Date(slot.start).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+  endFormatted: new Date(slot.end).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+})),
     });
 
   } catch (error: any) {
