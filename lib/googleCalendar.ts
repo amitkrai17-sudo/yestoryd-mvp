@@ -35,16 +35,17 @@ interface SessionDetails {
   sessionType: 'coaching' | 'parent_checkin';
 }
 
-// ScheduledSession with property names matching what routes expect
+// ScheduledSession with EXACT property names matching what routes expect
 interface ScheduledSession {
   eventId: string;
   meetLink: string;
+  number: number;        // session.number
+  type: string;          // session.type
+  title: string;
+  week: number;          // session.week
+  scheduledAt: string;   // session.scheduledAt
   startTime: string;
   endTime: string;
-  number: number;        // Route uses session.number
-  type: string;          // Route uses session.type
-  title: string;
-  weekNumber: number;
   date: string;
   time: string;
 }
@@ -170,12 +171,13 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
         sessions.push({
           eventId: result.eventId,
           meetLink: result.meetLink,
-          startTime: sessionDate.toISOString(),
-          endTime: endTime.toISOString(),
           number: schedule.number,
           type: schedule.type,
           title: schedule.title,
-          weekNumber: schedule.week,
+          week: schedule.week,
+          scheduledAt: sessionDate.toISOString(),
+          startTime: sessionDate.toISOString(),
+          endTime: endTime.toISOString(),
           date: sessionDate.toISOString().split('T')[0],
           time: sessionDate.toTimeString().slice(0, 5),
         });
