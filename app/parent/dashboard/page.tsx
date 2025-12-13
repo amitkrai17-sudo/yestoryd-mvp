@@ -68,7 +68,7 @@ export default function ParentDashboardPage() {
 
     const { data: childData } = await supabase
       .from('children')
-      .select('*, coaches(*)')
+      .select('*, coaches!children_assigned_coach_id_fkey(*)')
       .eq('parent_email', user.email)
       .eq('enrollment_status', 'active')
       .single();
