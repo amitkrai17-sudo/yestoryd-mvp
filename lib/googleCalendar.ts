@@ -264,3 +264,16 @@ export async function getEventDetails(eventId: string) {
     return null;
   }
 }
+// Alias for backward compatibility
+export { scheduleAllSessions as createAllSessions };
+
+// Constants used by other routes
+export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export const formatTime = (time: string): string => {
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+};
