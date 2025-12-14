@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Sparkles,
   Square,
+  X,
 } from 'lucide-react';
 
 interface SessionCompleteFormProps {
@@ -218,22 +219,22 @@ export default function SessionCompleteForm({
 
   if (success) {
     return (
-      <div className="bg-white rounded-2xl p-8 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8 text-green-600" />
+      <div className="bg-gray-800 rounded-2xl p-8 text-center max-w-md w-full mx-4">
+        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-8 h-8 text-green-400" />
         </div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Session Completed!</h2>
-        <p className="text-gray-500 mb-6">
+        <h2 className="text-xl font-bold text-white mb-2">Session Completed!</h2>
+        <p className="text-gray-400 mb-6">
           {childName}'s progress has been recorded and saved.
         </p>
         {quizTopic && (
-          <p className="text-sm text-purple-600 mb-4">
+          <p className="text-sm text-purple-400 mb-4">
             📝 Quiz on "{quizTopic}" will be sent to the parent.
           </p>
         )}
         <button
           onClick={onClose}
-          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
         >
           Close
         </button>
@@ -242,36 +243,44 @@ export default function SessionCompleteForm({
   }
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden max-w-lg w-full">
+    <div className="bg-gray-800 rounded-2xl overflow-hidden max-w-lg w-full mx-4 max-h-[90vh] flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 text-white">
-        <h2 className="text-lg font-semibold">Complete Session</h2>
-        <p className="text-purple-200 text-sm">{sessionTitle} • {childName}</p>
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Complete Session</h2>
+          <p className="text-purple-200 text-sm">{sessionTitle} • {childName}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5 text-white" />
+        </button>
       </div>
 
       {/* Progress Steps */}
-      <div className="flex border-b border-gray-100">
+      <div className="flex border-b border-gray-700">
         {[1, 2, 3].map((s) => (
           <button
             key={s}
             onClick={() => setStep(s)}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
               step === s
-                ? 'text-purple-600 border-b-2 border-purple-600'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'text-purple-400 border-b-2 border-purple-500 bg-purple-500/10'
+                : 'text-gray-500 hover:text-gray-300'
             }`}
           >
             {s === 1 && '📊 Progress'}
-            {s === 2 && '🎤 Voice Note'}
+            {s === 2 && '🎤 Voice'}
             {s === 3 && '📝 Quiz'}
           </button>
         ))}
       </div>
 
-      {/* Form Content */}
-      <div className="p-6">
+      {/* Form Content - Scrollable */}
+      <div className="p-4 sm:p-6 overflow-y-auto flex-1">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-red-500/20 text-red-400 rounded-lg text-sm border border-red-500/30">
             {error}
           </div>
         )}
@@ -281,14 +290,14 @@ export default function SessionCompleteForm({
           <div className="space-y-5">
             {/* Focus Area */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 <BookOpen className="w-4 h-4 inline mr-1" />
                 Focus Area *
               </label>
               <select
                 value={focusArea}
                 onChange={(e) => setFocusArea(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Select focus area...</option>
                 {FOCUS_AREAS.map((area) => (
@@ -299,7 +308,7 @@ export default function SessionCompleteForm({
 
             {/* Progress Rating */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 <TrendingUp className="w-4 h-4 inline mr-1" />
                 Progress *
               </label>
@@ -311,8 +320,8 @@ export default function SessionCompleteForm({
                     onClick={() => setProgressRating(rating.value)}
                     className={`p-3 rounded-xl text-left transition-all ${
                       progressRating === rating.value
-                        ? 'bg-purple-100 border-2 border-purple-500'
-                        : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                        ? 'bg-purple-500/30 border-2 border-purple-500 text-white'
+                        : 'bg-gray-700 border-2 border-transparent text-gray-300 hover:bg-gray-600'
                     }`}
                   >
                     <span className="mr-2">{rating.emoji}</span>
@@ -324,7 +333,7 @@ export default function SessionCompleteForm({
 
             {/* Engagement Level */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 <Users className="w-4 h-4 inline mr-1" />
                 Engagement *
               </label>
@@ -334,10 +343,10 @@ export default function SessionCompleteForm({
                     key={level.value}
                     type="button"
                     onClick={() => setEngagementLevel(level.value)}
-                    className={`px-4 py-2 rounded-full text-sm transition-all ${
+                    className={`px-3 py-2 rounded-full text-sm transition-all ${
                       engagementLevel === level.value
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
                     {level.emoji} {level.label}
@@ -353,9 +362,9 @@ export default function SessionCompleteForm({
                   type="checkbox"
                   checked={homeworkAssigned}
                   onChange={(e) => setHomeworkAssigned(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-500 focus:ring-purple-500"
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-300">
                   <ClipboardList className="w-4 h-4 inline mr-1" />
                   Homework Assigned
                 </span>
@@ -365,7 +374,7 @@ export default function SessionCompleteForm({
                   value={homeworkDescription}
                   onChange={(e) => setHomeworkDescription(e.target.value)}
                   placeholder="Describe the homework..."
-                  className="mt-2 w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="mt-2 w-full p-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   rows={2}
                 />
               )}
@@ -374,7 +383,7 @@ export default function SessionCompleteForm({
             <button
               onClick={() => setStep(2)}
               disabled={!focusArea || !progressRating || !engagementLevel}
-              className="w-full py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-purple-500 text-white rounded-xl font-medium hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next: Voice Note
             </button>
@@ -385,7 +394,7 @@ export default function SessionCompleteForm({
         {step === 2 && (
           <div className="space-y-5">
             <div className="text-center py-4">
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-400 mb-6">
                 Record a quick voice note about {childName}'s session (optional)
               </p>
 
@@ -393,39 +402,39 @@ export default function SessionCompleteForm({
                 <div className="space-y-4">
                   <button
                     onClick={isRecording ? stopRecording : startRecording}
-                    className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto transition-all ${
+                    className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto transition-all ${
                       isRecording
                         ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                        : 'bg-purple-600 hover:bg-purple-700'
+                        : 'bg-purple-500 hover:bg-purple-600'
                     }`}
                   >
                     {isRecording ? (
-                      <Square className="w-8 h-8 text-white" />
+                      <Square className="w-10 h-10 text-white" />
                     ) : (
-                      <Mic className="w-8 h-8 text-white" />
+                      <Mic className="w-10 h-10 text-white" />
                     )}
                   </button>
                   {isRecording && (
-                    <p className="text-red-500 font-medium">
+                    <p className="text-red-400 font-medium text-lg">
                       Recording... {formatTime(recordingTime)}
                     </p>
                   )}
                   {!isRecording && (
-                    <p className="text-gray-400 text-sm">Tap to record</p>
+                    <p className="text-gray-500 text-sm">Tap to record</p>
                   )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="bg-gray-100 rounded-xl p-4 inline-flex items-center gap-3">
-                    <Mic className="w-5 h-5 text-purple-600" />
-                    <span className="text-gray-700">
+                  <div className="bg-gray-700 rounded-xl p-4 inline-flex items-center gap-3">
+                    <Mic className="w-5 h-5 text-purple-400" />
+                    <span className="text-white">
                       Voice note recorded ({formatTime(recordingTime)})
                     </span>
                   </div>
                   <div>
                     <button
                       onClick={clearRecording}
-                      className="text-red-500 text-sm hover:underline"
+                      className="text-red-400 text-sm hover:underline"
                     >
                       Delete and re-record
                     </button>
@@ -437,13 +446,13 @@ export default function SessionCompleteForm({
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-colors"
               >
                 Back
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-colors"
+                className="flex-1 py-3 bg-purple-500 text-white rounded-xl font-medium hover:bg-purple-600 transition-colors"
               >
                 {audioBlob ? 'Next: Quiz' : 'Skip to Quiz'}
               </button>
@@ -455,14 +464,14 @@ export default function SessionCompleteForm({
         {step === 3 && (
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 <Sparkles className="w-4 h-4 inline mr-1" />
                 Assign Quiz for {childName} (optional)
               </label>
               <select
                 value={quizTopic}
                 onChange={(e) => setQuizTopic(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">No quiz</option>
                 {QUIZ_TOPICS.map((topic) => (
@@ -477,17 +486,17 @@ export default function SessionCompleteForm({
                   type="checkbox"
                   checked={generateQuiz}
                   onChange={(e) => setGenerateQuiz(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-500 focus:ring-purple-500"
                 />
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-400">
                   Generate new quiz using AI (if not in quiz bank)
                 </span>
               </label>
             )}
 
-            <div className="bg-purple-50 rounded-xl p-4 text-sm text-purple-700">
-              <p className="font-medium mb-1">What happens next?</p>
-              <ul className="space-y-1 text-purple-600">
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-sm">
+              <p className="font-medium text-purple-400 mb-2">What happens next?</p>
+              <ul className="space-y-1 text-gray-400">
                 <li>✓ Session progress saved to {childName}'s history</li>
                 {audioBlob && <li>✓ Voice note will be transcribed</li>}
                 {quizTopic && <li>✓ Quiz link sent to parent via WhatsApp</li>}
@@ -498,14 +507,14 @@ export default function SessionCompleteForm({
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-colors"
               >
                 Back
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex-1 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -515,7 +524,7 @@ export default function SessionCompleteForm({
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    Complete Session
+                    Complete
                   </>
                 )}
               </button>

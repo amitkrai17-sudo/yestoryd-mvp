@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { CoachLayout } from '@/components/coach/CoachLayout';
+import { SessionCompleteForm } from '@/components/coach';
 import {
   Calendar,
   Clock,
@@ -28,6 +29,7 @@ interface Session {
   id: string;
   child_id: string;
   child_name: string;
+  child_age: number;
   parent_name: string;
   scheduled_date: string;
   scheduled_time: string;
@@ -44,6 +46,10 @@ export default function CoachSessionsPage() {
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  
+  // Modal state for session completion
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -84,7 +90,8 @@ export default function CoachSessionsPage() {
           google_meet_link,
           children (
             child_name,
-            parent_name
+            parent_name,
+            age
           )
         `)
         .eq('coach_id', coachData.id)
@@ -103,6 +110,7 @@ export default function CoachSessionsPage() {
         id: s.id,
         child_id: s.child_id,
         child_name: s.children?.child_name || 'Unknown',
+        child_age: s.children?.age || 8,
         parent_name: s.children?.parent_name || '',
         scheduled_date: s.scheduled_date,
         scheduled_time: s.scheduled_time,
@@ -118,6 +126,19 @@ export default function CoachSessionsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Open complete session modal
+  const openCompleteModal = (session: Session) => {
+    setSelectedSession(session);
+    setShowCompleteModal(true);
+  };
+
+  // Handle session completed
+  const handleSessionCompleted = (result: any) => {
+    loadSessions(); // Refresh sessions list
+    setShowCompleteModal(false);
+    setSelectedSession(null);
   };
 
   const formatDate = (dateStr: string) => {
@@ -333,20 +354,21 @@ export default function CoachSessionsPage() {
                     {/* Date Header */}
                     <div className={`px-4 py-2 ${isToday(date) ? 'bg-pink-500/20' : 'bg-gray-700/50'}`}>
                       <p className={`font-medium ${isToday(date) ? 'text-pink-400' : 'text-gray-300'}`}>
-                        {isToday(date) ? '📍 Today - ' : ''}{formatDate(date)}
+                        {isToday(date) ? '📅 Today - ' : ''}{formatDate(date)}
                       </p>
                     </div>
                     {/* Sessions for this date */}
                     {dateSessions.map((session) => (
                       <div key={session.id} className="p-4 hover:bg-gray-700/50 transition-colors">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="text-center min-w-[60px]">
-                              <p className="text-white font-medium">{formatTime(session.scheduled_time)}</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          {/* Session Info */}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="text-center min-w-[50px]">
+                              <p className="text-white font-medium text-sm">{formatTime(session.scheduled_time)}</p>
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-white font-medium">{session.child_name}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-white font-medium truncate">{session.child_name}</p>
                                 {getStatusBadge(session.status)}
                                 {session.has_notes && (
                                   <span title="Has notes">
@@ -357,21 +379,34 @@ export default function CoachSessionsPage() {
                               <p className="text-gray-400 text-sm">{session.session_type}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 ml-[50px] sm:ml-0">
+                            {/* Complete Session Button */}
+                            {session.status === 'scheduled' && (
+                              <button
+                                onClick={() => openCompleteModal(session)}
+                                className="flex items-center gap-1.5 bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-purple-600 transition-colors"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span className="hidden xs:inline">Complete</span>
+                                <span className="xs:hidden">✓</span>
+                              </button>
+                            )}
+                            {/* Join Meeting Button */}
                             {session.google_meet_link && session.status === 'scheduled' && (
                               <a
                                 href={session.google_meet_link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                                className="flex items-center gap-1.5 bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
                               >
-                                <Video className="w-4 h-4" />
+                                <Video className="w-3.5 h-3.5" />
                                 Join
                               </a>
                             )}
                             <a
                               href={`/coach/students/${session.child_id}`}
-                              className="p-2 bg-gray-700 text-gray-400 rounded-lg hover:bg-gray-600 hover:text-white transition-colors"
+                              className="p-1.5 bg-gray-700 text-gray-400 rounded-lg hover:bg-gray-600 hover:text-white transition-colors"
                               title="View Student"
                             >
                               <User className="w-4 h-4" />
@@ -441,11 +476,12 @@ export default function CoachSessionsPage() {
                         {daySessions.slice(0, 2).map((session) => (
                           <div
                             key={session.id}
-                            className={`text-xs px-1 py-0.5 rounded truncate ${
+                            className={`text-xs px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${
                               session.status === 'completed'
                                 ? 'bg-green-500/20 text-green-400'
                                 : 'bg-blue-500/20 text-blue-400'
                             }`}
+                            onClick={() => session.status === 'scheduled' && openCompleteModal(session)}
                           >
                             {formatTime(session.scheduled_time)} {session.child_name}
                           </div>
@@ -462,6 +498,25 @@ export default function CoachSessionsPage() {
           </div>
         )}
       </div>
+
+      {/* Session Complete Modal */}
+      {showCompleteModal && selectedSession && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <SessionCompleteForm
+            sessionId={selectedSession.id}
+            childId={selectedSession.child_id}
+            childName={selectedSession.child_name}
+            childAge={selectedSession.child_age}
+            sessionTitle={selectedSession.session_type}
+            coachId={coach.id}
+            onComplete={handleSessionCompleted}
+            onClose={() => {
+              setShowCompleteModal(false);
+              setSelectedSession(null);
+            }}
+          />
+        </div>
+      )}
     </CoachLayout>
   );
 }
