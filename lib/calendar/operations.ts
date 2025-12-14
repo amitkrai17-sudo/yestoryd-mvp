@@ -355,7 +355,7 @@ export function generateSessionSchedule(
   // Parent check-in: Weeks 4, 8, 12
   const coachingWeeks = [1, 2, 4, 6, 8, 10];
   const checkinWeeks = [4, 8, 12];
-  const allWeeks = [...new Set([...coachingWeeks, ...checkinWeeks])].sort((a, b) => a - b);
+  const allWeeks = Array.from(new Set([...coachingWeeks, ...checkinWeeks])).sort((a, b) => a - b);
 
   for (const week of allWeeks) {
     const weekStart = new Date(startDate);
