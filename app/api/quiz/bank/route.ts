@@ -47,7 +47,9 @@ export async function GET(request: NextRequest) {
       .select('topic')
       .eq('is_active', true);
 
-    const uniqueTopics = Array.from(new Set(topics?.map((t) => t.topic) || []));
+    const topicSet = new Set(topics?.map((t) => t.topic) || []);
+    const uniqueTopics: string[] = [];
+    topicSet.forEach((topic) => uniqueTopics.push(topic));
 
     return NextResponse.json({
       quizzes,
