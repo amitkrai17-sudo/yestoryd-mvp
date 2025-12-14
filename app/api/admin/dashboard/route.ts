@@ -73,15 +73,21 @@ export async function GET() {
     const totalRevenue = paymentsResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
     const thisMonthRevenue = monthPaymentsResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
 
-    // Format recent enrollments
-    const recentEnrollments = recentEnrollmentsResult.data?.map(enrollment => ({
-      id: enrollment.id,
-      childName: enrollment.child?.name || 'Unknown',
-      parentName: enrollment.parent?.name || 'Unknown',
-      parentEmail: enrollment.parent?.email || '',
-      amount: enrollment.amount || 0,
-      createdAt: enrollment.created_at,
-    })) || [];
+    // Format recent enrollments with safe type handling
+    const recentEnrollments = recentEnrollmentsResult.data?.map((enrollment: any) => {
+      // Handle joined data - Supabase returns arrays for joins
+      const child = Array.isArray(enrollment.child) ? enrollment.child[0] : enrollment.child;
+      const parent = Array.isArray(enrollment.parent) ? enrollment.parent[0] : enrollment.parent;
+      
+      return {
+        id: enrollment.id,
+        childName: child?.name || 'Unknown',
+        parentName: parent?.name || 'Unknown',
+        parentEmail: parent?.email || '',
+        amount: enrollment.amount || 0,
+        createdAt: enrollment.created_at,
+      };
+    }) || [];
 
     return NextResponse.json({
       stats: {
