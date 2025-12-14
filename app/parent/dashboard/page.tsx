@@ -1,5 +1,5 @@
 'use client';
-
+import { ChatWidget } from '@/components/chat';
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -130,9 +130,18 @@ export default function ParentDashboardPage() {
         <div className="flex items-center justify-center h-64">
           <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      </ParentLayout>
-    );
-  }
+      {/* AI Chat Widget */}
+      {user && child && (
+        <ChatWidget
+          childId={child.id}
+          childName={child.child_name || child.name}
+          userRole="parent"
+          userEmail={user.email}
+        />
+      )}
+    </ParentLayout>
+  );
+}
 
   if (!child) {
     return (
