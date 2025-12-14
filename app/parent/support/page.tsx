@@ -79,7 +79,9 @@ export default function ParentSupportPage() {
       .select('*')
       .eq('parent_email', user.email)
       .eq('enrollment_status', 'active')
-      .single();
+	.order('created_at', { ascending: false })
+	.limit(1)
+	.maybeSingle();
 
     if (child) {
       setChildName(child.child_name || child.name);

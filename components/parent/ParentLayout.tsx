@@ -55,7 +55,9 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
       .select('*')
       .eq('parent_email', user.email)
       .eq('enrollment_status', 'active')
-      .single();
+	.order('created_at', { ascending: false })
+	.limit(1)
+	.maybeSingle();
 
     if (child) {
       setParentName(child.parent_name || user.email?.split('@')[0] || 'Parent');
