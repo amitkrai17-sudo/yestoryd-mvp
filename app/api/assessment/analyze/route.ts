@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
+// 4-tier age strictness function
 function getStrictnessForAge(age: number) {
   if (age <= 5) {
     return {
@@ -43,7 +44,6 @@ export async function POST(request: NextRequest) {
       parentName,
       parentEmail,
       parentPhone,
-      recordingDuration,
     } = body;
 
     if (!audio || !passage) {
@@ -53,47 +53,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get age-appropriate strictness
-    const strictness = getStrictnessForAge(childAge);
+    // Validate childName
+    const name = childName?.trim() || 'the child';
+    const age = parseInt(childAge) || 6;
+    const strictness = getStrictnessForAge(age);
+    const wordCount = passage.split(' ').length;
 
-    // Build the analysis prompt - Phonics & Reading Specialist with 4-tier strictness
-    const analysisPrompt = `Role: Expert Phonics & Reading Specialist.
-Task: Analyze audio of a ${childAge}-year-old child named ${childName} reading the passage below.
+    // Build the analysis prompt with STRICT name enforcement
+    const analysisPrompt = `
+Role: Expert Phonics & Reading Specialist.
+Task: Analyze audio of a ${age}-year-old child named "${name}" reading the passage below.
+
+IMPORTANT: The child's name is "${name}". You MUST use exactly "${name}" (not any other name) in your feedback.
 
 PASSAGE CONTEXT:
 "${passage}"
-(Approx. Word Count: ${passage.split(' ').length} words)
-
-AGE-BASED ASSESSMENT (${strictness.level}):
-${strictness.guidance}
+(Approx. Word Count: ${wordCount} words)
 
 CRITICAL SCORING RULES:
-1. COMPLETENESS CHECK: If the child reads less than ${strictness.minCompleteness}% of the text, the 'reading_score' MUST be 4 or lower.
+1. COMPLETENESS CHECK: If the child reads less than 80% of the text, the 'reading_score' MUST be 4 or lower.
 2. EVIDENCE REQUIRED: Do not be generic. You must quote specific misread words (e.g., "Read 'Hop' as 'hobbed'").
-3. ACCURACY: Note substitutions, omissions, and mispronunciations with exact examples.
+3. STRICTNESS LEVEL: ${strictness.level}
+   ${strictness.guidance}
+4. NAME REQUIREMENT: Always refer to the child as "${name}" - never use any other name.
 
 Generate a JSON response with this EXACT structure:
 {
     "reading_score": (integer 1-10 based on accuracy & completeness),
     "wpm": (integer estimated words per minute),
     "fluency_rating": (string: "Smooth", "Choppy", "Monotone", or "Fast"),
-    "pronunciation_rating": (string: "Clear", "Slurred", or "Inconsistent"),
+    "pronunciation_rating": (string: "Clear", "Slurred", "Inconsistent"),
     "completeness_percentage": (integer 0-100),
-    "feedback": (string, exactly 3 sentences, 60-80 words total),
-    "errors": (list of specific words missed or misread with format "Read 'X' as 'Y'" or "Skipped 'X'")
+    "feedback": (string, 80-100 words, 4 sentences - MUST use the name "${name}"),
+    "errors": (list of specific words missed or misread)
 }
 
-FEEDBACK REQUIREMENTS (must be 60-80 words, exactly 3 sentences):
-- Sentence 1: Comment on completeness and overall fluency (e.g., "${childName} read 90% of the passage with good pace.").
-- Sentence 2: Cite specific evidence of errors OR praise accuracy if minimal errors (e.g., "A substitution occurred where 'text' was read as 'test'." OR "Pronunciation was clear throughout with no significant errors.").
-- Sentence 3: Give one actionable technical tip for improvement (e.g., "Focus on decoding the 'th' sound before speeding up." OR "Practice blending consonant clusters like 'str' and 'bl'.").
+Requirements for 'feedback' (4 sentences, 80-100 words total):
+- Sentence 1: Comment on completeness and fluency. Start with "${name} read..." 
+- Sentence 2: Cite specific evidence of errors OR praise accuracy if minimal errors.
+- Sentence 3: Give one actionable technical tip for improvement.
+- Sentence 4: Encouraging closing about progress. Must include "${name}".
+
+CRITICAL: Use ONLY the name "${name}" in your response. Do not use any other name.
 
 Respond ONLY with valid JSON. No additional text.`;
 
-    // Use Gemini 2.5 Flash model
+    // Use Gemini 2.5 Flash Lite model
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-    // For audio analysis, extract the base64 data
+    // Extract base64 audio data
     const audioData = audio.split(',')[1] || audio;
 
     // Create the request with audio
@@ -120,6 +128,19 @@ Respond ONLY with valid JSON. No additional text.`;
         .trim();
       
       analysisResult = JSON.parse(cleanedResponse);
+      
+      // Extra safety: Replace any wrong names in feedback with correct name
+      if (analysisResult.feedback) {
+        // Common names Gemini might hallucinate
+        const wrongNames = ['Aisha', 'Ali', 'Ahmed', 'Sara', 'Omar', 'Fatima', 'Mohammed', 'Zara', 'Aryan', 'Priya', 'Rahul', 'Ananya', 'the child', 'The child', 'this child', 'This child'];
+        let feedback = analysisResult.feedback;
+        wrongNames.forEach(wrongName => {
+          const regex = new RegExp(wrongName, 'gi');
+          feedback = feedback.replace(regex, name);
+        });
+        analysisResult.feedback = feedback;
+      }
+      
     } catch (parseError) {
       console.error('Failed to parse Gemini response:', responseText);
       // Provide default values if parsing fails
@@ -130,20 +151,30 @@ Respond ONLY with valid JSON. No additional text.`;
         pronunciation_rating: 'Inconsistent',
         errors: [],
         completeness_percentage: 80,
-        feedback: `${childName} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily with finger-tracking to build smoother word recognition and confidence.`
+        feedback: `${name} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily reading aloud to build confidence and smooth out hesitations. With consistent effort, ${name} will show noticeable improvement in reading skills.`
       };
     }
 
     // Return success response
     return NextResponse.json({
       success: true,
-      score: analysisResult.reading_score,
+      childName: name,
+      childAge: age,
+      parentName,
+      parentEmail,
+      parentPhone,
+      passage,
+      overall_score: analysisResult.reading_score,
+      clarity_score: analysisResult.pronunciation_rating === 'Clear' ? 8 : analysisResult.pronunciation_rating === 'Slurred' ? 4 : 6,
+      fluency_score: analysisResult.fluency_rating === 'Smooth' ? 8 : analysisResult.fluency_rating === 'Choppy' ? 5 : analysisResult.fluency_rating === 'Fast' ? 7 : 4,
+      speed_score: Math.min(10, Math.round(analysisResult.wpm / 15)),
       wpm: analysisResult.wpm,
       fluency: analysisResult.fluency_rating,
       pronunciation: analysisResult.pronunciation_rating,
       errors: analysisResult.errors,
       completeness: analysisResult.completeness_percentage,
       feedback: analysisResult.feedback,
+      encouragement: `Keep reading daily, ${name}! Every page makes you stronger.`,
     });
 
   } catch (error: any) {

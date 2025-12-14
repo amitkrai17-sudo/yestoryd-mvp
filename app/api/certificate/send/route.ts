@@ -10,7 +10,18 @@ if (sendgridApiKey) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, childName, childAge, score, wpm, fluency, pronunciation, feedback } = body;
+    const { 
+      email, 
+      childName, 
+      childAge, 
+      parentName,
+      score, 
+      clarity_score,
+      fluency_score,
+      speed_score,
+      wpm, 
+      feedback 
+    } = body;
 
     if (!email || !childName) {
       return NextResponse.json(
@@ -24,19 +35,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Email skipped (SendGrid not configured)' });
     }
 
-    // Get score color and label
-    const getScoreInfo = (s: number) => {
-      if (s >= 8) return { color: '#22c55e', bg: '#166534', label: 'Reading Wizard', emoji: '🧙‍♂️' };
-      if (s >= 5) return { color: '#eab308', bg: '#854d0e', label: 'Reading Star', emoji: '⭐' };
-      return { color: '#f97316', bg: '#9a3412', label: 'Budding Reader', emoji: '🌱' };
-    };
-
-    const scoreInfo = getScoreInfo(score);
     const assessmentDate = new Date().toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
+
+    // Score-based CTA (same as web)
+    const getCTA = (s: number, name: string) => {
+      if (s <= 4) return { text: `Get ${name} the Help They Need`, headline: `${name} needs expert guidance`, emoji: '🆘' };
+      if (s <= 6) return { text: `Accelerate ${name}'s Progress`, headline: `${name} is ready to improve!`, emoji: '📈' };
+      if (s <= 8) return { text: `Unlock ${name}'s Full Potential`, headline: `${name} shows great potential!`, emoji: '⭐' };
+      return { text: `Challenge ${name} Further`, headline: `${name} is a reading star!`, emoji: '🌟' };
+    };
+
+    const ctaInfo = getCTA(score, childName);
+    const scorePercent = (score / 10) * 100;
 
     // Mobile-optimized HTML email template
     const htmlContent = `
@@ -46,171 +60,153 @@ export async function POST(request: NextRequest) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${childName}'s Reading Assessment Certificate</title>
-  <!--[if mso]>
-  <style type="text/css">
-    table, td {border-collapse: collapse;}
-  </style>
-  <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  
-  <!-- Wrapper Table -->
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #111827;">
-    <tr>
-      <td align="center" style="padding: 20px 15px;">
-        
-        <!-- Main Container -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 420px; background-color: #1f2937; border-radius: 24px; overflow: hidden;">
-          
-          <!-- Header -->
+<body style="margin: 0; padding: 0; background-color: #030712; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 480px; margin: 0 auto; padding: 20px;">
+    
+    <!-- Header with Logo -->
+    <div style="background: #1f2937; border-radius: 24px 24px 0 0; padding: 30px 20px; text-align: center; border-bottom: 3px solid #ff0099;">
+      <!-- Logo - table wrapper to prevent stretching -->
+      <table align="center" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td align="center">
+            <img src="https://yestoryd.com/images/logo.png" 
+                 alt="Yestoryd" 
+                 style="display: block; border: 0; outline: none; text-decoration: none; max-width: 160px; width: 160px;" 
+                 width="160" />
+          </td>
+        </tr>
+      </table>
+      <p style="color: #9ca3af; margin: 15px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 3px;">Reading Assessment Certificate</p>
+    </div>
+
+    <!-- Certificate Body -->
+    <div style="background-color: #111827; padding: 30px 20px;">
+      
+      <!-- Celebration Header -->
+      <div style="text-align: center; margin-bottom: 25px;">
+        <p style="font-size: 48px; margin: 0; line-height: 1;">🎉</p>
+        <h2 style="color: white; font-size: 24px; margin: 15px 0 5px 0; font-weight: 700;">Great job, ${childName}!</h2>
+        <p style="color: #9ca3af; font-size: 14px; margin: 0;">Here's your reading assessment</p>
+      </div>
+      
+      <!-- Score Display -->
+      <div style="text-align: center; margin: 30px 0;">
+        <!-- Score Circle using table -->
+        <table align="center" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="background: linear-gradient(135deg, #374151 0%, #1f2937 100%); padding: 28px 20px; text-align: center; border-bottom: 3px solid #ec4899;">
-              <h1 style="color: white; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">
-                <span style="color: #ec4899;">Yest</span><span style="color: white;">or</span><span style="color: #facc15;">yd</span>
-              </h1>
-              <p style="color: #9ca3af; margin: 12px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 3px; font-weight: 600;">Reading Assessment Certificate</p>
+            <td align="center" valign="middle" width="140" height="140" style="width: 140px; height: 140px; border-radius: 70px; border: 12px solid #ff0099; background-color: #111827; text-align: center; vertical-align: middle;">
+              <span style="color: white; font-size: 56px; font-weight: 800;">${score}</span>
             </td>
           </tr>
-
-          <!-- Certificate Body -->
-          <tr>
-            <td style="padding: 32px 24px; text-align: center;">
-              
-              <!-- Child Name -->
-              <p style="color: #60a5fa; font-size: 18px; margin: 0; font-weight: 700; letter-spacing: 0.5px;">Certificate of Achievement</p>
-              <p style="color: #9ca3af; font-size: 12px; margin: 6px 0 0 0;">Proudly presented to</p>
-              <h2 style="color: white; font-size: 36px; margin: 12px 0 4px 0; font-weight: 700;">${childName}</h2>
-              ${childAge ? `<p style="color: #6b7280; font-size: 14px; margin: 0;">Age ${childAge}</p>` : ''}
-
-              <!-- Score Circle - Centered -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                <tr>
-                  <td align="center" style="padding: 32px 0;">
-                    <div style="width: 130px; height: 130px; border-radius: 50%; border: 8px solid ${scoreInfo.color}; background-color: #111827; display: inline-block; line-height: 114px; text-align: center;">
-                      <span style="color: ${scoreInfo.color}; font-size: 56px; font-weight: 800;">${score}</span>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Score Label -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
-                <tr>
-                  <td style="background-color: ${scoreInfo.color}; color: white; padding: 12px 28px; border-radius: 50px; font-size: 16px; font-weight: 700; text-align: center;">
-                    ${scoreInfo.emoji} ${scoreInfo.label}
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Stats - Equal Height Cards -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 28px;">
-                <tr>
-                  <!-- Speed -->
-                  <td width="32%" style="padding: 0 4px;" valign="top">
-                    <div style="background-color: #111827; border-radius: 16px; padding: 18px 8px; text-align: center; height: 80px;">
-                      <p style="color: #60a5fa; font-size: 11px; margin: 0; font-weight: 600;">Speed</p>
-                      <p style="color: white; font-size: 24px; font-weight: 800; margin: 8px 0 4px 0;">${wpm}</p>
-                      <p style="color: #6b7280; font-size: 10px; margin: 0; text-transform: uppercase;">WPM</p>
-                    </div>
-                  </td>
-                  <!-- Fluency -->
-                  <td width="34%" style="padding: 0 4px;" valign="top">
-                    <div style="background-color: #111827; border-radius: 16px; padding: 18px 8px; text-align: center; height: 80px;">
-                      <p style="color: #22c55e; font-size: 11px; margin: 0; font-weight: 600;">Fluency</p>
-                      <p style="color: white; font-size: 18px; font-weight: 700; margin: 14px 0 0 0;">${fluency}</p>
-                    </div>
-                  </td>
-                  <!-- Clarity -->
-                  <td width="34%" style="padding: 0 4px;" valign="top">
-                    <div style="background-color: #111827; border-radius: 16px; padding: 18px 8px; text-align: center; height: 80px;">
-                      <p style="color: #a855f7; font-size: 11px; margin: 0; font-weight: 600;">Clarity</p>
-                      <p style="color: white; font-size: 16px; font-weight: 700; margin: 14px 0 0 0;">${pronunciation}</p>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Feedback - Expanded Box -->
-              ${feedback ? `
-              <div style="background-color: #111827; border-radius: 16px; padding: 24px; margin-top: 24px; text-align: left; border: 1px solid #374151;">
-                <p style="color: #facc15; font-size: 15px; font-weight: 700; margin: 0 0 14px 0;">✨ Coach's Feedback</p>
-                <p style="color: #d1d5db; font-size: 15px; line-height: 1.8; margin: 0;">${feedback}</p>
-              </div>
-              ` : ''}
-
-              <!-- Date -->
-              <p style="color: #6b7280; font-size: 12px; margin: 28px 0 0 0;">
-                ${assessmentDate} • yestoryd.com
-              </p>
-            </td>
-          </tr>
-
-          <!-- CTA Section - Score Based, Matches Web Exactly -->
-          <tr>
-            <td style="padding: 0 20px 28px 20px;">
-              <div style="background: linear-gradient(135deg, #ec4899 0%, #f97316 100%); border-radius: 20px; padding: 28px 20px; text-align: center;">
-                <h3 style="color: white; font-size: 22px; margin: 0; font-weight: 800; line-height: 1.3;">🎯 ${score >= 8 ? `${childName} is a reading star!` : score >= 6 ? `${childName} shows great potential!` : score >= 4 ? `${childName} is ready to improve!` : `${childName} needs expert guidance`}</h3>
-                <p style="color: rgba(255,255,255,0.9); font-size: 15px; margin: 10px 0 24px 0; line-height: 1.5;">
-                  ${score >= 8 ? 'Take their skills to the advanced level' : score >= 6 ? 'Unlock their full reading abilities' : score >= 4 ? 'Accelerate their reading progress' : 'Get personalized support from our coaches'}
-                </p>
-                
-                <!-- Primary CTA Button - Score Based -->
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom: 16px;">
-                  <tr>
-                    <td>
-                      <a href="https://yestoryd.com/checkout?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(email)}&package=coaching-6" 
-                         style="display: inline-block; background-color: white; color: #ec4899; padding: 18px 32px; border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 17px; box-shadow: 0 4px 14px rgba(0,0,0,0.2);">
-                        ${score >= 8 ? `Take ${childName} to Advanced Level` : score >= 6 ? `Unlock ${childName}'s Full Potential` : score >= 4 ? `Accelerate ${childName}'s Progress` : `Get ${childName} the Help They Need`}
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-                
-                <p style="color: rgba(255,255,255,0.95); font-size: 18px; font-weight: 700; margin: 0 0 8px 0;">
-                  ₹5,999 <span style="font-size: 13px; font-weight: 400;">one-time</span>
-                </p>
-                <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0;">
-                  ✓ 6 personalized sessions &nbsp;&nbsp; ✓ 100% refund guarantee
-                </p>
-              </div>
-              
-              <!-- Secondary CTA - Talk to Coach First (Full Width) -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 20px;">
-                <tr>
-                  <td>
-                    <a href="https://yestoryd.com/book" 
-                       style="display: block; background-color: #1f2937; color: white; padding: 16px 20px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 16px; border: 2px solid #60a5fa; text-align: center; line-height: 1.4;">
-                      📅 Talk to ${childName}'s Coach First
-                    </a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-top: 10px; text-align: center;">
-                    <span style="color: #9ca3af; font-size: 13px;">Free 15-min call • No obligation</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #111827; padding: 20px; text-align: center; border-top: 1px solid #374151;">
-              <p style="color: #6b7280; font-size: 11px; margin: 0; line-height: 1.6;">
-                This certificate was generated by Yestoryd's AI Reading Assessment.<br>
-                Questions? Reply to this email or visit <a href="https://yestoryd.com" style="color: #ec4899; text-decoration: none;">yestoryd.com</a>
-              </p>
-            </td>
-          </tr>
-
         </table>
-        <!-- End Main Container -->
+        
+        <!-- Progress Bar -->
+        <table align="center" cellpadding="0" cellspacing="0" border="0" style="margin-top: 20px; width: 200px;">
+          <tr>
+            <td style="background-color: #374151; border-radius: 10px; height: 8px; padding: 0;">
+              <table cellpadding="0" cellspacing="0" border="0" style="width: ${scorePercent}%;">
+                <tr>
+                  <td style="background: linear-gradient(90deg, #ff0099, #7b008b); height: 8px; border-radius: 10px;"></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        <p style="color: #9ca3af; font-size: 12px; margin: 8px 0 0 0;">${score} out of 10</p>
+      </div>
+      
+      <!-- Metric Cards -->
+      <table width="100%" cellpadding="0" cellspacing="8" border="0" style="margin: 25px 0;">
+        <tr>
+          <td width="33%" style="background-color: #1f2937; border-radius: 16px; padding: 18px 10px; text-align: center;">
+            <div style="font-size: 28px; margin-bottom: 8px;">🔊</div>
+            <div style="color: white; font-size: 24px; font-weight: 700;">${clarity_score || 7}</div>
+            <div style="color: #9ca3af; font-size: 12px; margin-top: 4px;">Clarity</div>
+          </td>
+          <td width="33%" style="background-color: #1f2937; border-radius: 16px; padding: 18px 10px; text-align: center;">
+            <div style="font-size: 28px; margin-bottom: 8px;">🗣️</div>
+            <div style="color: white; font-size: 24px; font-weight: 700;">${fluency_score || 6}</div>
+            <div style="color: #9ca3af; font-size: 12px; margin-top: 4px;">Fluency</div>
+          </td>
+          <td width="33%" style="background-color: #1f2937; border-radius: 16px; padding: 18px 10px; text-align: center;">
+            <div style="font-size: 28px; margin-bottom: 8px;">⚡</div>
+            <div style="color: white; font-size: 24px; font-weight: 700;">${speed_score || 6}</div>
+            <div style="color: #9ca3af; font-size: 12px; margin-top: 4px;">Speed</div>
+          </td>
+        </tr>
+      </table>
+      
+      <!-- WPM -->
+      <div style="background-color: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; border-radius: 16px; padding: 16px; margin: 20px 0; text-align: center;">
+        <span style="color: #60a5fa; font-size: 15px; font-weight: 500;">📈 ${wpm || 60} Words Per Minute</span>
+      </div>
+      
+      <!-- Vedant AI Feedback -->
+      <div style="background-color: rgba(255, 0, 153, 0.1); border: 1px solid #ff0099; border-radius: 16px; padding: 20px; margin: 20px 0;">
+        <p style="color: #ff0099; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">✨ Vedant AI Feedback</p>
+        <p style="color: #d1d5db; font-size: 14px; line-height: 1.7; margin: 0;">${feedback}</p>
+      </div>
+      
+      <!-- Encouragement -->
+      <div style="background-color: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; border-radius: 16px; padding: 16px; margin: 20px 0; text-align: center;">
+        <p style="color: #fcd34d; font-size: 14px; font-weight: 500; margin: 0;">✨ Keep reading daily, ${childName}! Every page makes you stronger.</p>
+      </div>
+      
+      <!-- Personalized CTA Section -->
+      <div style="background-color: rgba(123, 0, 139, 0.2); border: 1px solid #7b008b; border-radius: 20px; padding: 25px 20px; margin: 25px 0; text-align: center;">
+        <p style="font-size: 36px; margin: 0;">${ctaInfo.emoji}</p>
+        <h3 style="color: white; font-size: 18px; margin: 12px 0 6px 0; font-weight: 700;">${ctaInfo.headline}</h3>
+        <p style="color: #9ca3af; font-size: 13px; margin: 0 0 18px 0;">Our coaches specialize in building reading confidence</p>
+        
+        <!-- Social Proof -->
+        <p style="color: #fb923c; font-size: 13px; margin: 0 0 18px 0;">🔥 12 parents enrolled today</p>
+        
+        <!-- Primary CTA Button -->
+        <table align="center" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td align="center" bgcolor="#ff0099" style="background: linear-gradient(135deg, #ff0099, #7b008b); border-radius: 16px;">
+              <a href="https://yestoryd.com/book?childName=${encodeURIComponent(childName)}" 
+                 style="display: inline-block; color: white; padding: 16px 32px; text-decoration: none; font-weight: 700; font-size: 15px;">
+                🚀 ${ctaInfo.text}
+              </a>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Trust Badges -->
+        <p style="color: #6b7280; font-size: 11px; margin: 18px 0 0 0;">🛡️ 100% Refund Guarantee • 500+ Kids Improved</p>
+      </div>
+      
+      <!-- Secondary CTA -->
+      <table align="center" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+        <tr>
+          <td align="center" bgcolor="#1f2937" style="background-color: #1f2937; border: 1px solid #374151; border-radius: 16px;">
+            <a href="https://yestoryd.com/book?childName=${encodeURIComponent(childName)}&type=consultation" 
+               style="display: inline-block; color: white; padding: 14px 28px; text-decoration: none; font-weight: 600; font-size: 14px;">
+              📅 Talk to ${childName}'s Coach First
+            </a>
+          </td>
+        </tr>
+      </table>
+      
+      <!-- Assessment Date -->
+      <p style="color: #6b7280; font-size: 12px; text-align: center; margin: 25px 0 0 0;">
+        Assessment Date: ${assessmentDate}
+      </p>
+    </div>
 
-      </td>
-    </tr>
-  </table>
-  <!-- End Wrapper -->
+    <!-- Footer -->
+    <div style="background-color: #0a0a0a; border-radius: 0 0 24px 24px; padding: 25px 20px; text-align: center; border-top: 1px solid #1f2937;">
+      <p style="color: #9ca3af; font-size: 12px; margin: 0 0 10px 0;">
+        Questions? Reply to this email or WhatsApp us at +91 8976287997
+      </p>
+      <p style="color: #6b7280; font-size: 11px; margin: 0;">
+        © ${new Date().getFullYear()} Yestoryd • AI-Powered Reading Coach for Kids
+      </p>
+    </div>
 
+  </div>
 </body>
 </html>
 `;
@@ -222,7 +218,7 @@ export async function POST(request: NextRequest) {
         email: process.env.SENDGRID_FROM_EMAIL || 'hello@yestoryd.com',
         name: 'Yestoryd',
       },
-      subject: `🎓 ${childName}'s Reading Assessment Certificate`,
+      subject: `🎓 ${childName}'s Reading Certificate - Score: ${score}/10`,
       html: htmlContent,
     };
 
@@ -234,7 +230,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Email send error:', error);
     
-    // Return success anyway so UI doesn't break
     return NextResponse.json({ 
       success: true, 
       message: 'Certificate generated (email may be delayed)',

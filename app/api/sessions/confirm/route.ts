@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       childId,
       preferredDay,
       preferredTime,
-      confirmedBy, // 'coach' or 'admin'
+      confirmedBy, // 'coach' or 'admin' or 'system'
     } = body;
 
     // Validate required fields
@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
       coach_id: enrollment.coach_id,
       session_number: session.sessionNumber,
       session_type: session.type,
+      duration_minutes: session.type === 'coaching' ? 45 : 15, // 45 min coaching, 15 min parent check-in
       title: session.title,
       scheduled_date: session.scheduledDate,
       scheduled_time: session.scheduledTime,
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       .from('enrollments')
       .update({
         schedule_confirmed: true,
-        schedule_confirmed_by: confirmedBy,
+        schedule_confirmed_by: confirmedBy || 'system',
         schedule_confirmed_at: new Date().toISOString(),
         preferred_day: preferredDay,
         preferred_time: preferredTime,

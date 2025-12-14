@@ -1,164 +1,186 @@
 'use client';
 
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState, Suspense } from 'react';
+import Image from 'next/image';
+import {
+  CheckCircle2,
+  Calendar,
+  Mail,
+  MessageCircle,
+  ArrowRight,
+  Sparkles,
+  Loader2,
+  PartyPopper,
+} from 'lucide-react';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const childName = searchParams.get('childName') || 'your child';
-  const childId = searchParams.get('childId') || '';
+  const enrollmentId = searchParams.get('enrollmentId') || '';
+  const childName = searchParams.get('childName') || '';
   
-  const [showConfetti, setShowConfetti] = useState(true);
+  const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowConfetti(false), 5000);
-    return () => clearTimeout(timer);
+    // Show content after short delay
+    setTimeout(() => setShowContent(true), 300);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12 px-4">
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          {[...Array(50)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute animate-bounce"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `-20px`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 3}s`,
-              }}
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-emerald-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-green-100 py-4">
+        <div className="container mx-auto px-4 flex justify-center">
+          <Image src="/images/logo.png" alt="Yestoryd" width={140} height={45} className="h-10 w-auto" />
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-12 max-w-2xl">
+        <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          {/* Success Icon */}
+          <div className="text-center mb-8">
+            <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200 animate-bounce">
+              <CheckCircle2 className="w-14 h-14 text-white" />
+            </div>
+            
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <PartyPopper className="w-8 h-8 text-amber-500" />
+              <h1 className="text-3xl font-bold text-gray-800">Welcome to Yestoryd!</h1>
+              <PartyPopper className="w-8 h-8 text-amber-500 transform scale-x-[-1]" />
+            </div>
+            
+            <p className="text-xl text-gray-600">
+              {childName ? `${childName} is` : 'Your child is'} now enrolled in the Reading Coaching Program!
+            </p>
+          </div>
+
+          {/* Enrollment Details Card */}
+          <div className="bg-white rounded-3xl border border-green-100 shadow-xl overflow-hidden mb-8">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
+              <h2 className="text-white font-semibold text-lg flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                Enrollment Confirmed
+              </h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {enrollmentId && (
+                <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+                  <span className="text-gray-500">Enrollment ID</span>
+                  <span className="font-mono text-sm bg-gray-100 px-3 py-1 rounded-lg">
+                    {enrollmentId.slice(0, 8)}...
+                  </span>
+                </div>
+              )}
+              
+              <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+                <span className="text-gray-500">Student</span>
+                <span className="font-semibold text-gray-800">{childName || 'Your Child'}</span>
+              </div>
+              
+              <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+                <span className="text-gray-500">Program</span>
+                <span className="font-semibold text-gray-800">3-Month Reading Coaching</span>
+              </div>
+              
+              <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+                <span className="text-gray-500">Coach</span>
+                <span className="font-semibold text-gray-800">Coach Rucha</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Sessions</span>
+                <span className="font-semibold text-gray-800">9 Sessions (6 Coaching + 3 Parent)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* What's Next */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
+            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <ArrowRight className="w-5 h-5 text-amber-500" />
+              What Happens Next
+            </h3>
+            
+            <div className="space-y-4">
+              {[
+                {
+                  icon: Mail,
+                  title: 'Check Your Email',
+                  desc: 'Confirmation email with all details sent to your inbox',
+                  time: 'Within 5 minutes',
+                },
+                {
+                  icon: Calendar,
+                  title: 'Sessions Scheduled',
+                  desc: 'Calendar invites for all 9 sessions sent automatically',
+                  time: 'Within 24 hours',
+                },
+                {
+                  icon: MessageCircle,
+                  title: 'Coach Will Reach Out',
+                  desc: 'Coach Rucha will WhatsApp you to introduce herself',
+                  time: 'Within 24 hours',
+                },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <item.icon className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">{item.title}</p>
+                    <p className="text-gray-500 text-sm">{item.desc}</p>
+                    <p className="text-amber-600 text-xs mt-1">{item.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Link
+              href="/parent/dashboard"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg"
             >
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{
-                  backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'][
-                    Math.floor(Math.random() * 5)
-                  ],
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="max-w-2xl mx-auto text-center">
-        <div className="mb-8">
-          <div className="mx-auto w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        </div>
-
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          🎉 Welcome to Yestoryd!
-        </h1>
-        
-        <p className="text-xl text-gray-600 mb-8">
-          {childName}'s reading journey begins now!
-        </p>
-
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-left mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
-            What happens next?
-          </h2>
-
-          <div className="space-y-6">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                1
-              </div>
-              <div className="ml-4">
-                <h3 className="font-semibold text-gray-900">Check your email</h3>
-                <p className="text-gray-600 text-sm">
-                  You'll receive a confirmation email with all the details within 5 minutes.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                2
-              </div>
-              <div className="ml-4">
-                <h3 className="font-semibold text-gray-900">Session scheduling</h3>
-                <p className="text-gray-600 text-sm">
-                  Our team will reach out within 24 hours to schedule {childName}'s first coaching session.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                3
-              </div>
-              <div className="ml-4">
-                <h3 className="font-semibold text-gray-900">Access your dashboard</h3>
-                <p className="text-gray-600 text-sm">
-                  Track {childName}'s progress, view upcoming sessions, and access all resources.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">
-                ✓
-              </div>
-              <div className="ml-4">
-                <h3 className="font-semibold text-gray-900">FREE access unlocked!</h3>
-                <p className="text-gray-600 text-sm">
-                  E-learning modules, storytelling workshops, and physical classes are now FREE for {childName}.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-indigo-50 rounded-xl p-6 mb-8">
-          <p className="text-indigo-900">
-            <span className="font-semibold">Questions?</span> WhatsApp us at{' '}
-            <a href="https://wa.me/919876543210" className="underline font-semibold">
-              +91 98765 43210
+              Go to Parent Dashboard
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            
+            <a
+              href="https://wa.me/918976287997?text=Hi! I just enrolled my child in the reading program. Looking forward to starting!"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-green-600 transition-all"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Say Hi on WhatsApp
             </a>
-          </p>
-        </div>
+          </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            href="/dashboard"
-            className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            Go to Dashboard
-          </Link>
-          <Link
-            href="/"
-            className="px-8 py-3 bg-white text-gray-700 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            Back to Home
-          </Link>
+          {/* Support */}
+          <div className="text-center mt-8">
+            <p className="text-gray-500 text-sm">
+              Questions? Email us at{' '}
+              <a href="mailto:hello@yestoryd.com" className="text-amber-600 hover:underline">
+                hello@yestoryd.com
+              </a>
+            </p>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading...</p>
-      </div>
+      </main>
     </div>
   );
 }
 
 export default function EnrollmentSuccessPage() {
   return (
-    <Suspense fallback={<LoadingFallback />}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-green-50">
+        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+      </div>
+    }>
       <SuccessContent />
     </Suspense>
   );
