@@ -131,14 +131,14 @@ export default function ParentDashboardPage() {
           <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
       {/* AI Chat Widget */}
-      {user && child && (
-        <ChatWidget
-          childId={child.id}
-          childName={child.child_name || child.name}
-          userRole="parent"
-          userEmail={user.email}
-        />
-      )}
+      {child && (
+  <ChatWidget
+    childId={child.id}
+    childName={child.child_name || child.name}
+    userRole="parent"
+    userEmail={child.parent_email}
+  />
+)}
     </ParentLayout>
   );
 }
@@ -317,8 +317,16 @@ export default function ParentDashboardPage() {
               </p>
             </div>
           </div>
-        </div>
-      </div>
+        </div>  {/* closes grid */}
+      </div>  {/* closes max-w-5xl */}
+      
+      {/* AI Chat Widget */}
+      <ChatWidget
+        childId={child.id}
+        childName={child.child_name || child.name}
+        userRole="parent"
+        userEmail={child.parent_email}
+      />
     </ParentLayout>
   );
 }

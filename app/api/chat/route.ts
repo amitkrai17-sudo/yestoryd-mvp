@@ -82,10 +82,7 @@ async function getRecentEvents(childId: string, limit: number = 20): Promise<any
 async function getChildDetails(childId: string) {
   const { data: child, error } = await supabase
     .from('children')
-    .select(`
-      *,
-      coaches:assigned_coach_id (name, email)
-    `)
+    .select('*')
     .eq('id', childId)
     .single();
 
@@ -356,7 +353,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Call Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const chat = model.startChat({
       history: messages.slice(0, -1).map((msg) => ({

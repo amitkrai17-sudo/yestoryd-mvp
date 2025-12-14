@@ -18,7 +18,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 // Generate AI summary
 async function generateAISummary(prompt: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
   } catch (error) {
