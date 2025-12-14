@@ -27,6 +27,7 @@ interface Child {
   child_name: string;
   name: string;
   age: number;
+  parent_email: string;
   sessions_completed: number;
   total_sessions: number;
   latest_assessment_score: number;
@@ -306,7 +307,8 @@ export default function ParentDashboardPage() {
         </div>
 
         <div className="mt-6 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
-          <div className="flex items-start gap-4">
+     
+}     <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-6 h-6" />
             </div>
@@ -329,4 +331,3 @@ export default function ParentDashboardPage() {
       />
     </ParentLayout>
   );
-}
