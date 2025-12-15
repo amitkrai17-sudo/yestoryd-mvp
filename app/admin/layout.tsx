@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@supabase/supabase-js';
 import {
   LayoutDashboard,
@@ -99,6 +100,11 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+
+  // Close sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     checkAuth();
@@ -207,10 +213,7 @@ export default function AdminLayout({
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-violet-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">Y</span>
-          </div>
-          <span className="font-semibold text-slate-900">Admin</span>
+          <Image src="/images/logo.png" alt="Yestoryd" width={100} height={28} className="h-7 w-auto" />
         </div>
         <div className="w-10" />
       </div>
@@ -225,20 +228,14 @@ export default function AdminLayout({
 
       {/* ==================== SIDEBAR ==================== */}
       <aside
-        className={`fixed top-0 left-0 h-full w-72 bg-white border-r border-slate-200 z-50 transform transition-transform lg:translate-x-0 ${
+        className={`fixed top-0 left-0 h-full w-72 bg-white border-r border-slate-200 z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } lg:transform-none`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">Y</span>
-            </div>
-            <div>
-              <p className="font-bold text-slate-900">Yestoryd</p>
-              <p className="text-xs text-slate-500">Admin Portal</p>
-            </div>
+            <Image src="/images/logo.png" alt="Yestoryd" width={120} height={32} className="h-8 w-auto" />
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -248,8 +245,13 @@ export default function AdminLayout({
           </button>
         </div>
 
+        {/* Admin Portal Label */}
+        <div className="px-6 py-3 border-b border-slate-100">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin Portal</p>
+        </div>
+
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
             return (
@@ -287,9 +289,9 @@ export default function AdminLayout({
         </nav>
 
         {/* User Profile */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
-          <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 bg-white">
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
               {user?.email?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -300,7 +302,7 @@ export default function AdminLayout({
             </div>
             <button
               onClick={handleSignOut}
-              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
               title="Sign out"
             >
               <LogOut className="w-4 h-4" />
@@ -310,7 +312,7 @@ export default function AdminLayout({
       </aside>
 
       {/* ==================== MAIN CONTENT ==================== */}
-      <main className="flex-1 lg:pl-72">
+      <main className="flex-1 lg:ml-72 min-h-screen">
         <div className="pt-16 lg:pt-0">
           {children}
         </div>
