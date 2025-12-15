@@ -98,7 +98,7 @@ function getFeatureIcon(text: string) {
 // ==================== MAIN COMPONENT ====================
 function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimonial }: BookPageClientProps) {
   const searchParams = useSearchParams();
-  
+
   // Get child info from URL params (passed from assessment results)
   const childName = searchParams.get('childName') || '';
   const childAge = searchParams.get('childAge') || '';
@@ -107,7 +107,7 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
   const parentPhone = searchParams.get('parentPhone') || '';
   const score = searchParams.get('score') || '';
   const type = searchParams.get('type') || 'enrollment';
-  
+
   const [selectedOption, setSelectedOption] = useState<'free' | 'paid'>(
     type === 'consultation' ? 'free' : 'paid'
   );
@@ -120,13 +120,17 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
   const whatsappUrl = `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi, I have questions about the reading program for my child ${childName || ''}`)}`;
 
   const handleFreeSession = () => {
-    window.open(calBookingUrl, '_blank');
+    setIsLoading(true);
+    // Redirect to /enroll with free trial flag - will collect info then redirect to Cal.com
+    const enrollUrl = `/enroll?source=free-trial&type=free&childName=${encodeURIComponent(childName)}&childAge=${encodeURIComponent(childAge)}&parentName=${encodeURIComponent(parentName)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}`;
+    window.location.href = enrollUrl;
   };
 
   const handlePaidEnrollment = () => {
     setIsLoading(true);
-    const checkoutUrl = `/checkout?childName=${encodeURIComponent(childName)}&childAge=${encodeURIComponent(childAge)}&parentName=${encodeURIComponent(parentName)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}&coachId=${coach.id}&amount=${pricing.discountedPrice}`;
-    window.location.href = checkoutUrl;
+    // Redirect to /enroll with prefilled data
+    const enrollUrl = `/enroll?source=book&childName=${encodeURIComponent(childName)}&childAge=${encodeURIComponent(childAge)}&parentName=${encodeURIComponent(parentName)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}`;
+    window.location.href = enrollUrl;
   };
 
   // Calculate discount percentage
@@ -173,7 +177,7 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
                 <Sparkles className="w-5 h-5 text-amber-500" />
                 Your Reading Coach
               </h2>
-              
+
               <div className="flex items-start gap-4">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-2xl font-bold">
                   {coach.name.charAt(0)}
@@ -182,7 +186,7 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
                   <h3 className="text-xl font-bold text-gray-800">{coach.name}</h3>
                   <p className="text-amber-600 font-medium">{coach.title}</p>
                   <p className="text-gray-600 text-sm mt-1">{coach.bio}</p>
-                  
+
                   <div className="flex items-center gap-4 mt-3 text-sm">
                     <span className="flex items-center gap-1 text-amber-600">
                       <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
@@ -199,9 +203,9 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
             <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-amber-500" />
-                What's Included
+                What&apos;s Included
               </h2>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 {pricing.features.map((feature, idx) => {
                   const IconComponent = getFeatureIcon(feature);
@@ -226,7 +230,7 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
                   ))}
                 </div>
                 <p className="text-gray-700 italic">
-                  "{testimonial.testimonial_text}"
+                  &quot;{testimonial.testimonial_text}&quot;
                 </p>
                 <p className="text-amber-600 font-medium mt-2">
                   — {testimonial.parent_name}, {testimonial.parent_location}
@@ -238,7 +242,7 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
             ) : (
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-6">
                 <p className="text-gray-700 italic">
-                  "My daughter's reading improved dramatically in just 6 weeks. Coach {coach.name} is amazing with kids!"
+                  &quot;My daughter&apos;s reading improved dramatically in just 6 weeks. Coach {coach.name} is amazing with kids!&quot;
                 </p>
                 <p className="text-amber-600 font-medium mt-2">— Priya M., Parent</p>
               </div>
@@ -249,10 +253,10 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
           <div className="space-y-4">
             {/* Free Session Option - CONDITIONAL based on feature flag */}
             {freeSessionEnabled && (
-              <div 
+              <div
                 className={`bg-white rounded-2xl border-2 p-5 cursor-pointer transition-all ${
-                  selectedOption === 'free' 
-                    ? 'border-green-500 shadow-lg shadow-green-100' 
+                  selectedOption === 'free'
+                    ? 'border-green-500 shadow-lg shadow-green-100'
                     : 'border-gray-200 hover:border-green-300'
                 }`}
                 onClick={() => setSelectedOption('free')}
@@ -268,11 +272,11 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
                     {selectedOption === 'free' && <CheckCircle2 className="w-4 h-4 text-white" />}
                   </div>
                 </div>
-                
+
                 <p className="text-gray-600 text-sm mb-3">
                   Try before you commit! Book a free 30-min session with Coach {coach.name}.
                 </p>
-                
+
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold text-green-600">FREE</span>
                   <span className="text-xs text-gray-500 bg-green-100 px-2 py-1 rounded-full">No card required</span>
@@ -281,10 +285,10 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
             )}
 
             {/* Paid Enrollment Option - DYNAMIC PRICING */}
-            <div 
+            <div
               className={`bg-white rounded-2xl border-2 p-5 cursor-pointer transition-all ${
-                selectedOption === 'paid' 
-                  ? 'border-amber-500 shadow-lg shadow-amber-100' 
+                selectedOption === 'paid'
+                  ? 'border-amber-500 shadow-lg shadow-amber-100'
                   : 'border-gray-200 hover:border-amber-300'
               }`}
               onClick={() => setSelectedOption('paid')}
@@ -300,11 +304,11 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
                   {selectedOption === 'paid' && <CheckCircle2 className="w-4 h-4 text-white" />}
                 </div>
               </div>
-              
+
               <p className="text-gray-600 text-sm mb-3">
                 {pricing.sessions} sessions over {pricing.duration}. Everything included.
               </p>
-              
+
               <div className="flex items-center gap-3">
                 <span className="text-gray-400 line-through">₹{pricing.originalPrice.toLocaleString('en-IN')}</span>
                 <span className="text-2xl font-bold text-amber-600">₹{pricing.discountedPrice.toLocaleString('en-IN')}</span>

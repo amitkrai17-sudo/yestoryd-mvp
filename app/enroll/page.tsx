@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle, ArrowRight, Shield, Clock, Users, Sparkles, Loader2 } from 'lucide-react';
+import { CheckCircle, ArrowRight, Shield, Clock, Users, Sparkles, Loader2, Calendar, Gift } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -19,34 +19,42 @@ function EnrollmentForm() {
   const router = useRouter();
   
   const source = searchParams.get('source') || 'direct';
-  const prefillName = searchParams.get('childName') || '';
-  const prefillParentEmail = searchParams.get('email') || '';
+  const flowType = searchParams.get('type') || 'paid'; // 'paid' or 'free'
+  const prefillChildName = searchParams.get('childName') || '';
+  const prefillChildAge = searchParams.get('childAge') || '';
+  const prefillParentName = searchParams.get('parentName') || '';
+  const prefillParentEmail = searchParams.get('email') || searchParams.get('parentEmail') || '';
+  const prefillParentPhone = searchParams.get('parentPhone') || '';
+  
+  const isFreeTrialFlow = flowType === 'free';
   
   const [step, setStep] = useState<'info' | 'payment' | 'success'>('info');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
   const [form, setForm] = useState({
-    parentName: '',
+    parentName: prefillParentName,
     parentEmail: prefillParentEmail,
-    parentPhone: '',
-    childName: prefillName,
-    childAge: '',
+    parentPhone: prefillParentPhone,
+    childName: prefillChildName,
+    childAge: prefillChildAge,
     source: source,
   });
 
-  // Load Razorpay script
+  // Load Razorpay script (only for paid flow)
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
+    if (!isFreeTrialFlow) {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+      return () => {
+        if (document.body.contains(script)) {
+          document.body.removeChild(script);
+        }
+      };
+    }
+  }, [isFreeTrialFlow]);
 
   // Check if user is logged in and prefill
   useEffect(() => {
@@ -79,7 +87,61 @@ function EnrollmentForm() {
     return null;
   };
 
-  const handleProceedToPayment = async () => {
+  // Save lead to database
+  const saveLeadToDatabase = async () => {
+    try {
+      const res = await fetch('/api/admin/crm/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parent_name: form.parentName,
+          parent_email: form.parentEmail,
+          parent_phone: form.parentPhone,
+          child_name: form.childName,
+          child_age: parseInt(form.childAge),
+          lead_source: isFreeTrialFlow ? 'free_trial' : source,
+          lead_status: isFreeTrialFlow ? 'call_scheduled' : 'assessed',
+          lead_notes: isFreeTrialFlow ? 'Booked free trial session' : `Enrollment from ${source}`,
+        }),
+      });
+      
+      const data = await res.json();
+      return data;
+    } catch (e) {
+      console.error('Failed to save lead:', e);
+      return null;
+    }
+  };
+
+  // Handle free trial flow
+  const handleFreeTrialSubmit = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // 1. Save lead to database
+      await saveLeadToDatabase();
+
+      // 2. Build Cal.com URL with prefilled data
+      const calUrl = `https://cal.com/yestoryd/discovery?name=${encodeURIComponent(form.parentName)}&email=${encodeURIComponent(form.parentEmail)}&notes=${encodeURIComponent(`Child: ${form.childName}, Age: ${form.childAge}`)}`;
+
+      // 3. Redirect to Cal.com
+      window.location.href = calUrl;
+      
+    } catch (e: any) {
+      setError(e.message || 'Something went wrong');
+      setLoading(false);
+    }
+  };
+
+  // Handle paid enrollment flow
+  const handlePaidEnrollment = async () => {
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -177,7 +239,16 @@ function EnrollmentForm() {
     }
   };
 
-  // Success Screen
+  // Handle form submission based on flow type
+  const handleSubmit = () => {
+    if (isFreeTrialFlow) {
+      handleFreeTrialSubmit();
+    } else {
+      handlePaidEnrollment();
+    }
+  };
+
+  // Success Screen (Paid enrollment)
   if (step === 'success') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
@@ -227,9 +298,9 @@ function EnrollmentForm() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Image src="/images/logo.png" alt="Yestoryd" width={120} height={40} />
           <div className="text-right">
-            <p className="text-sm text-gray-500">Secure Checkout</p>
+            <p className="text-sm text-gray-500">Secure {isFreeTrialFlow ? 'Booking' : 'Checkout'}</p>
             <p className="text-xs text-gray-400 flex items-center gap-1 justify-end">
-              <Shield className="w-3 h-3" /> 256-bit SSL Encrypted
+              <Shield className="w-3 h-3" /> Your data is safe
             </p>
           </div>
         </div>
@@ -240,12 +311,31 @@ function EnrollmentForm() {
           {/* Form Section */}
           <div className="md:col-span-3">
             <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Enroll Your Child
-              </h1>
-              <p className="text-gray-600 mb-6">
-                Start your child&apos;s 3-month reading transformation journey
-              </p>
+              {/* Header based on flow */}
+              {isFreeTrialFlow ? (
+                <>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <Gift className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      Book Free Trial
+                    </h1>
+                  </div>
+                  <p className="text-gray-600 mb-6">
+                    Complete your details to book a free 30-min session
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                    Enroll Your Child
+                  </h1>
+                  <p className="text-gray-600 mb-6">
+                    Start your child&apos;s 3-month reading transformation journey
+                  </p>
+                </>
+              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -334,16 +424,25 @@ function EnrollmentForm() {
                 </div>
               </div>
 
-              {/* Pay Button */}
+              {/* CTA Button */}
               <button
-                onClick={handleProceedToPayment}
+                onClick={handleSubmit}
                 disabled={loading}
-                className="w-full mt-8 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`w-full mt-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2 ${
+                  isFreeTrialFlow 
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                }`}
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Processing...
+                  </>
+                ) : isFreeTrialFlow ? (
+                  <>
+                    <Calendar className="w-5 h-5" />
+                    Book Free Session
                   </>
                 ) : (
                   <>
@@ -362,52 +461,91 @@ function EnrollmentForm() {
           {/* Summary Section */}
           <div className="md:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-4">
-              <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
+              <h3 className="font-bold text-gray-900 mb-4">
+                {isFreeTrialFlow ? 'Free Trial Details' : 'Order Summary'}
+              </h3>
               
-              <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 mb-4">
-                <p className="font-semibold text-gray-900">3-Month Reading Program</p>
-                <p className="text-sm text-gray-600">Complete transformation package</p>
-              </div>
+              {isFreeTrialFlow ? (
+                <>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
+                    <p className="font-semibold text-gray-900">Free Discovery Session</p>
+                    <p className="text-sm text-gray-600">30-minute consultation call</p>
+                  </div>
 
-              <div className="space-y-3 text-sm mb-4">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-pink-500" />
-                  <span>6 One-on-One Coaching Sessions</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-pink-500" />
-                  <span>3 Parent Progress Check-ins</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-pink-500" />
-                  <span>AI-Powered Reading Analysis</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-pink-500" />
-                  <span>Personalized Learning Plan</span>
-                </div>
-              </div>
+                  <div className="space-y-3 text-sm mb-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>Meet Coach Rucha</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>Discuss your child&apos;s reading</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>Get personalized recommendations</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>No obligation to enroll</span>
+                    </div>
+                  </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">Program Fee</span>
-                  <span className="text-gray-400 line-through">₹9,999</span>
-                </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-green-600 font-medium">Early Bird Discount</span>
-                  <span className="text-green-600">-₹4,000</span>
-                </div>
-                <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-2">
-                  <span>Total</span>
-                  <span className="text-pink-600">₹5,999</span>
-                </div>
-              </div>
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center text-lg font-bold">
+                      <span>Price</span>
+                      <span className="text-green-600">FREE</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 mb-4">
+                    <p className="font-semibold text-gray-900">3-Month Reading Program</p>
+                    <p className="text-sm text-gray-600">Complete transformation package</p>
+                  </div>
 
-              <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                <p className="text-xs text-yellow-800">
-                  🎁 <strong>Bonus:</strong> Free access to e-learning library & storytelling workshops!
-                </p>
-              </div>
+                  <div className="space-y-3 text-sm mb-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-pink-500" />
+                      <span>6 One-on-One Coaching Sessions</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-pink-500" />
+                      <span>3 Parent Progress Check-ins</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-pink-500" />
+                      <span>AI-Powered Reading Analysis</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-pink-500" />
+                      <span>Personalized Learning Plan</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-600">Program Fee</span>
+                      <span className="text-gray-400 line-through">₹9,999</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-green-600 font-medium">Early Bird Discount</span>
+                      <span className="text-green-600">-₹4,000</span>
+                    </div>
+                    <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-2">
+                      <span>Total</span>
+                      <span className="text-pink-600">₹5,999</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-xs text-yellow-800">
+                      🎁 <strong>Bonus:</strong> Free access to e-learning library & storytelling workshops!
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -422,7 +560,7 @@ function LoadingFallback() {
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50 flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="w-8 h-8 animate-spin text-pink-500 mx-auto mb-4" />
-        <p className="text-gray-600">Loading enrollment form...</p>
+        <p className="text-gray-600">Loading...</p>
       </div>
     </div>
   );
