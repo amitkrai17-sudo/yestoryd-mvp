@@ -16,6 +16,7 @@ import {
   X,
   ChevronRight,
   Shield,
+  UserSearch,
 } from 'lucide-react';
 
 // ==================== SUPABASE CLIENT ====================
@@ -47,6 +48,13 @@ const NAV_ITEMS = [
     href: '/admin/settings',
     icon: Settings,
     description: 'Manage dynamic content',
+    ready: true,
+  },
+  {
+    label: 'Lead Management',
+    href: '/admin/crm',
+    icon: UserSearch,
+    description: 'Track & convert leads',
     ready: true,
   },
   {
@@ -95,7 +103,6 @@ export default function AdminLayout({
   useEffect(() => {
     checkAuth();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         validateAdmin(session.user);
@@ -160,43 +167,30 @@ export default function AdminLayout({
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 font-medium">Verifying access...</p>
+          <p className="text-slate-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // Unauthorized state
+  // Unauthorized
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-8 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-6">
-            You don't have permission to access the admin portal. This area is restricted to authorized administrators only.
+          <p className="text-slate-600 mb-6">
+            {user?.email ? `${user.email} is not authorized to access the admin portal.` : 'You need to sign in to access this area.'}
           </p>
-          {user && (
-            <p className="text-sm text-slate-400 mb-6">
-              Signed in as: {user.email}
-            </p>
-          )}
-          <div className="space-y-3">
-            <button
-              onClick={handleSignOut}
-              className="w-full px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
-            >
-              Sign Out
-            </button>
-            <Link
-              href="/"
-              className="block w-full px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-            >
-              Go to Homepage
-            </Link>
-          </div>
+          <button
+            onClick={handleSignOut}
+            className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     );
@@ -204,34 +198,77 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* ==================== SIDEBAR (Desktop) ==================== */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 bg-white border-r border-slate-200">
+      {/* ==================== MOBILE HEADER ==================== */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-40">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-violet-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">Y</span>
+          </div>
+          <span className="font-semibold text-slate-900">Admin</span>
+        </div>
+        <div className="w-10" />
+      </div>
+
+      {/* ==================== SIDEBAR OVERLAY ==================== */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ==================== SIDEBAR ==================== */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-72 bg-white border-r border-slate-200 z-50 transform transition-transform lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         {/* Logo */}
-        <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-100">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-            <Shield className="w-5 h-5 text-white" />
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold">Y</span>
+            </div>
+            <div>
+              <p className="font-bold text-slate-900">Yestoryd</p>
+              <p className="text-xs text-slate-500">Admin Portal</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-slate-900">Yestoryd</h1>
-            <p className="text-xs text-slate-500">Admin Portal</p>
-          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="p-4 space-y-1">
           {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
+                href={item.ready ? item.href : '#'}
+                onClick={(e) => {
+                  if (!item.ready) e.preventDefault();
+                  setSidebarOpen(false);
+                }}
+                className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                   isActive
                     ? 'bg-blue-50 text-blue-700'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    : item.ready
+                    ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    : 'text-slate-400 cursor-not-allowed'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.ready ? 'text-slate-400 group-hover:text-slate-600' : 'text-slate-300'}`} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <p className={`font-medium ${isActive ? 'text-blue-700' : ''}`}>{item.label}</p>
@@ -250,7 +287,7 @@ export default function AdminLayout({
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-slate-100">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
           <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
               {user?.email?.charAt(0).toUpperCase()}
@@ -271,108 +308,6 @@ export default function AdminLayout({
           </div>
         </div>
       </aside>
-
-      {/* ==================== MOBILE HEADER (Hamburger on LEFT) ==================== */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200">
-        <div className="flex items-center justify-between h-16 px-4">
-          {/* Hamburger on LEFT */}
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          
-          {/* Logo Center */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-slate-900">Admin</span>
-          </div>
-          
-          {/* User Avatar on RIGHT */}
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold text-xs">
-            {user?.email?.charAt(0).toUpperCase()}
-          </div>
-        </div>
-      </div>
-
-      {/* ==================== MOBILE SIDEBAR (Opens from LEFT) ==================== */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <div 
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl animate-in slide-in-from-left duration-300">
-            {/* Header */}
-            <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-bold text-slate-900">Admin Portal</span>
-              </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Navigation */}
-            <nav className="px-4 py-6 space-y-1">
-              {NAV_ITEMS.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                    <span className="font-medium flex-1">{item.label}</span>
-                    {!item.ready && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
-                        Soon
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* User Info + Sign Out */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 space-y-3">
-              <div className="flex items-center gap-3 px-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                  {user?.email?.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-900 truncate text-sm">
-                    {user?.user_metadata?.full_name || 'Admin'}
-                  </p>
-                  <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
 
       {/* ==================== MAIN CONTENT ==================== */}
       <main className="flex-1 lg:pl-72">
