@@ -268,15 +268,13 @@ export default function HomePageClient({
                   <span>Take Free Assessment</span>
                   <ArrowRight className="w-5 h-5" />
                 </Link>
-                <a
-                  href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-14 w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-[#25d366] text-white font-bold px-8 rounded-full hover:bg-[#20bd5a] hover:scale-105 hover:shadow-lg transition-all duration-200 text-base"
+                <Link
+                  href="/lets-talk"
+                  className="h-14 w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-[#7b008b] text-white font-bold px-8 rounded-full hover:bg-[#6a0078] hover:scale-105 hover:shadow-lg transition-all duration-200 text-base"
                 >
                   <Phone className="w-5 h-5" />
                   <span>Talk to Expert</span>
-                </a>
+                </Link>
               </div>
 
               {/* Trust Signals */}
@@ -689,6 +687,12 @@ export default function HomePageClient({
                 <p className="text-center text-white/60 text-sm mt-3">
                   Free consultation with our reading expert
                 </p>
+                <Link
+                  href="/lets-talk"
+                  className="block text-center text-white/80 hover:text-white text-sm mt-2 underline underline-offset-2 transition-colors"
+                >
+                  Not sure yet? Let's just talk →
+                </Link>
               </div>
             </div>
           </div>
