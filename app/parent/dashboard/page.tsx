@@ -28,15 +28,18 @@ interface Child {
   name: string;
   age: number;
   parent_email: string;
+  parent_id: string;
   sessions_completed: number;
   total_sessions: number;
   latest_assessment_score: number;
   program_start_date: string;
   program_end_date: string;
+  lead_status: string;
   coaches: {
     name: string;
     email: string;
     bio: string;
+    phone: string;
   };
 }
 
@@ -48,12 +51,31 @@ interface Session {
   scheduled_time: string;
   google_meet_link: string;
   status: string;
+  title: string;
+}
+
+interface Enrollment {
+  id: string;
+  status: string;
+  program_start: string;
+  program_end: string;
+  coach_id: string;
+  coaches: {
+    name: string;
+    email: string;
+    bio: string;
+    phone: string;
+  };
 }
 
 export default function ParentDashboardPage() {
   const [child, setChild] = useState<Child | null>(null);
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+  const [completedSessions, setCompletedSessions] = useState<number>(0);
+  const [totalSessions, setTotalSessions] = useState<number>(9);
   const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -61,37 +83,123 @@ export default function ParentDashboardPage() {
   }, []);
 
   async function fetchData() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/parent/login');
-      return;
-    }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/parent/login');
+        return;
+      }
 
-    const { data: childData } = await supabase
-      .from('children')
-      .select('*')
-      .eq('parent_email', user.email)
-      .eq('enrollment_status', 'active')
-	.order('created_at', { ascending: false })
-	.limit(1)
-	.maybeSingle();
+      setUserEmail(user.email || '');
 
-    if (childData) {
-      setChild(childData);
+      // First, find parent by email
+      const { data: parentData } = await supabase
+        .from('parents')
+        .select('id, email, name')
+        .eq('email', user.email)
+        .maybeSingle();
 
-      const { data: sessions } = await supabase
-        .from('scheduled_sessions')
+      if (!parentData) {
+        console.log('No parent found for email:', user.email);
+        setLoading(false);
+        return;
+      }
+
+      // Find enrolled child for this parent (using parent_id, not parent_email)
+      const { data: childData } = await supabase
+        .from('children')
         .select('*')
-        .eq('child_id', childData.id)
-        .gte('scheduled_date', new Date().toISOString().split('T')[0])
-        .in('status', ['scheduled', 'rescheduled'])
-        .order('scheduled_date', { ascending: true })
-        .limit(3);
+        .eq('parent_id', parentData.id)
+        .eq('lead_status', 'enrolled')
+        .order('enrolled_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      setUpcomingSessions(sessions || []);
+      if (!childData) {
+        // Also try by parent_email as fallback
+        const { data: childByEmail } = await supabase
+          .from('children')
+          .select('*')
+          .eq('parent_email', user.email)
+          .eq('lead_status', 'enrolled')
+          .order('enrolled_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!childByEmail) {
+          console.log('No enrolled child found');
+          setLoading(false);
+          return;
+        }
+        
+        setChild(childByEmail);
+        await fetchEnrollmentAndSessions(childByEmail.id);
+      } else {
+        setChild(childData);
+        await fetchEnrollmentAndSessions(childData.id);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setLoading(false);
+    }
+  }
+
+  async function fetchEnrollmentAndSessions(childId: string) {
+    // Fetch enrollment with coach details
+    const { data: enrollmentData } = await supabase
+      .from('enrollments')
+      .select(`
+        *,
+        coaches (
+          id,
+          name,
+          email,
+          bio,
+          phone
+        )
+      `)
+      .eq('child_id', childId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (enrollmentData) {
+      setEnrollment(enrollmentData);
     }
 
-    setLoading(false);
+    // Fetch upcoming sessions
+    const today = new Date().toISOString().split('T')[0];
+    const { data: sessions } = await supabase
+      .from('scheduled_sessions')
+      .select('*')
+      .eq('child_id', childId)
+      .gte('scheduled_date', today)
+      .in('status', ['scheduled', 'rescheduled'])
+      .order('scheduled_date', { ascending: true })
+      .order('scheduled_time', { ascending: true })
+      .limit(3);
+
+    setUpcomingSessions(sessions || []);
+
+    // Count completed sessions
+    const { count: completed } = await supabase
+      .from('scheduled_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('child_id', childId)
+      .eq('status', 'completed');
+
+    setCompletedSessions(completed || 0);
+
+    // Count total sessions
+    const { count: total } = await supabase
+      .from('scheduled_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('child_id', childId);
+
+    setTotalSessions(total || 9);
   }
 
   function formatDate(dateStr: string): string {
@@ -106,6 +214,7 @@ export default function ParentDashboardPage() {
   }
 
   function formatTime(time: string): string {
+    if (!time) return '';
     const [hours, minutes] = time.split(':').map(Number);
     const period = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours % 12 || 12;
@@ -113,16 +222,25 @@ export default function ParentDashboardPage() {
   }
 
   function getProgressPercentage(): number {
-    if (!child) return 0;
-    return Math.round((child.sessions_completed / child.total_sessions) * 100);
+    if (totalSessions === 0) return 0;
+    return Math.round((completedSessions / totalSessions) * 100);
   }
 
   function getDaysRemaining(): number {
-    if (!child?.program_end_date) return 0;
-    const end = new Date(child.program_end_date);
+    const endDate = enrollment?.program_end || child?.program_end_date;
+    if (!endDate) return 90;
+    const end = new Date(endDate);
     const today = new Date();
     const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return Math.max(0, diff);
+  }
+
+  function getCoachPhone(): string {
+    return enrollment?.coaches?.phone || '918976287997';
+  }
+
+  function getCoachName(): string {
+    return enrollment?.coaches?.name || 'Rucha';
   }
 
   if (loading) {
@@ -131,18 +249,9 @@ export default function ParentDashboardPage() {
         <div className="flex items-center justify-center h-64">
           <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      {/* AI Chat Widget */}
-      {child && (
-  <ChatWidget
-    childId={child.id}
-    childName={child.child_name || child.name}
-    userRole="parent"
-    userEmail={child.parent_email}
-  />
-)}
-    </ParentLayout>
-  );
-}
+      </ParentLayout>
+    );
+  }
 
   if (!child) {
     return (
@@ -150,6 +259,7 @@ export default function ParentDashboardPage() {
         <div className="text-center py-12">
           <BookOpen className="w-16 h-16 text-amber-300 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-800 mb-2">No Active Enrollment</h2>
+          <p className="text-gray-500 mb-2">Logged in as: {userEmail}</p>
           <p className="text-gray-500 mb-6">You don't have an active enrollment yet.</p>
           <a
             href="https://yestoryd.com/assessment"
@@ -163,12 +273,14 @@ export default function ParentDashboardPage() {
     );
   }
 
+  const childName = child.name || child.child_name || 'Your Child';
+
   return (
     <ParentLayout>
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Welcome back! 👋</h1>
-          <p className="text-gray-500 mt-1">Track {child.child_name || child.name}'s reading journey</p>
+          <p className="text-gray-500 mt-1">Track {childName}'s reading journey</p>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -195,7 +307,7 @@ export default function ParentDashboardPage() {
               </div>
               <span className="text-sm text-gray-500">Sessions</span>
             </div>
-            <p className="text-2xl font-bold text-gray-800">{child.sessions_completed}/{child.total_sessions}</p>
+            <p className="text-2xl font-bold text-gray-800">{completedSessions}/{totalSessions}</p>
             <p className="text-sm text-gray-400 mt-1">Completed</p>
           </div>
 
@@ -243,7 +355,7 @@ export default function ParentDashboardPage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-800">
-                          {session.session_type === 'coaching' ? '📚 Coaching Session' : '👨‍👩‍👧 Parent Check-in'}
+                          {session.title || (session.session_type === 'coaching' ? '📚 Coaching Session' : '👨‍👩‍👧 Parent Check-in')}
                         </p>
                         <p className="text-sm text-gray-500">
                           {formatDate(session.scheduled_date)} at {formatTime(session.scheduled_time)}
@@ -266,6 +378,7 @@ export default function ParentDashboardPage() {
                 <div className="p-8 text-center">
                   <Calendar className="w-12 h-12 text-amber-200 mx-auto mb-3" />
                   <p className="text-gray-500">No upcoming sessions</p>
+                  <p className="text-sm text-gray-400 mt-1">Sessions will appear here once scheduled</p>
                 </div>
               )}
             </div>
@@ -282,19 +395,19 @@ export default function ParentDashboardPage() {
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
                   <span className="text-2xl text-white font-bold">
-                    {child.coaches?.name?.charAt(0) || 'C'}
+                    {getCoachName().charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-800">{child.coaches?.name}</p>
+                  <p className="font-semibold text-gray-800">{getCoachName()}</p>
                   <p className="text-sm text-amber-600">Reading Coach</p>
                 </div>
               </div>
-              {child.coaches?.bio && (
-                <p className="text-sm text-gray-500 mb-4 line-clamp-3">{child.coaches.bio}</p>
+              {enrollment?.coaches?.bio && (
+                <p className="text-sm text-gray-500 mb-4 line-clamp-3">{enrollment.coaches.bio}</p>
               )}
               <a
-                href={`https://wa.me/919876543210?text=Hi ${child.coaches?.name}, I'm ${child.child_name || child.name}'s parent.`}
+                href={`https://wa.me/${getCoachPhone()}?text=Hi ${getCoachName()}, I'm ${childName}'s parent.`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
@@ -318,15 +431,15 @@ export default function ParentDashboardPage() {
               </p>
             </div>
           </div>
-        </div>  {/* closes grid */}
-      </div>  {/* closes max-w-5xl */}
+        </div>
+      </div>
       
       {/* AI Chat Widget */}
       <ChatWidget
         childId={child.id}
-        childName={child.child_name || child.name}
+        childName={childName}
         userRole="parent"
-        userEmail={child.parent_email}
+        userEmail={userEmail}
       />
     </ParentLayout>
   );
