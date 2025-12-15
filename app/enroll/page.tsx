@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle, ArrowRight, Shield, Clock, Users, Sparkles } from 'lucide-react';
+import { CheckCircle, ArrowRight, Shield, Clock, Users, Sparkles, Loader2 } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -13,7 +13,8 @@ declare global {
 
 const AGE_OPTIONS = Array.from({ length: 13 }, (_, i) => i + 3); // 3-15 years
 
-export default function EnrollPage() {
+// Main enrollment form component
+function EnrollmentForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -41,7 +42,9 @@ export default function EnrollPage() {
     script.async = true;
     document.body.appendChild(script);
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
@@ -70,7 +73,7 @@ export default function EnrollPage() {
     if (!form.parentEmail.trim()) return 'Email is required';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.parentEmail)) return 'Invalid email format';
     if (!form.parentPhone.trim()) return 'Phone number is required';
-    if (!/^[6-9]\d{9}$/.test(form.parentPhone.replace(/\D/g, ''))) return 'Invalid phone number';
+    if (!/^[6-9]\d{9}$/.test(form.parentPhone.replace(/\D/g, ''))) return 'Invalid phone number (10 digits starting with 6-9)';
     if (!form.childName.trim()) return 'Child name is required';
     if (!form.childAge) return 'Child age is required';
     return null;
@@ -170,7 +173,6 @@ export default function EnrollPage() {
       
     } catch (e: any) {
       setError(e.message || 'Something went wrong');
-    } finally {
       setLoading(false);
     }
   };
@@ -187,7 +189,7 @@ export default function EnrollPage() {
             🎉 Welcome to Yestoryd!
           </h1>
           <p className="text-gray-600 mb-6">
-            {form.childName}'s reading journey begins now! Check your email for confirmation and session schedule.
+            {form.childName}&apos;s reading journey begins now! Check your email for confirmation and session schedule.
           </p>
           <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
             <p className="text-sm text-gray-500 mb-2">What happens next:</p>
@@ -226,7 +228,7 @@ export default function EnrollPage() {
           <Image src="/images/logo.png" alt="Yestoryd" width={120} height={40} />
           <div className="text-right">
             <p className="text-sm text-gray-500">Secure Checkout</p>
-            <p className="text-xs text-gray-400 flex items-center gap-1">
+            <p className="text-xs text-gray-400 flex items-center gap-1 justify-end">
               <Shield className="w-3 h-3" /> 256-bit SSL Encrypted
             </p>
           </div>
@@ -242,7 +244,7 @@ export default function EnrollPage() {
                 Enroll Your Child
               </h1>
               <p className="text-gray-600 mb-6">
-                Start your child's 3-month reading transformation journey
+                Start your child&apos;s 3-month reading transformation journey
               </p>
 
               {error && (
@@ -268,7 +270,7 @@ export default function EnrollPage() {
                         placeholder="Enter your full name"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Email *
@@ -300,10 +302,10 @@ export default function EnrollPage() {
                 {/* Child Section */}
                 <div>
                   <h3 className="font-semibold text-gray-700 mb-3">Child Details</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Child's Name *
+                        Child&apos;s Name *
                       </label>
                       <input
                         type="text"
@@ -339,7 +341,10 @@ export default function EnrollPage() {
                 className="w-full mt-8 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
-                  'Processing...'
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Processing...
+                  </>
                 ) : (
                   <>
                     Pay ₹5,999 & Start Journey
@@ -408,5 +413,26 @@ export default function EnrollPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-pink-500 mx-auto mb-4" />
+        <p className="text-gray-600">Loading enrollment form...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main page with Suspense boundary
+export default function EnrollPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <EnrollmentForm />
+    </Suspense>
   );
 }
