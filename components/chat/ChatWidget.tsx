@@ -123,7 +123,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     inputRef.current?.focus();
   };
 
-  // Floating button when closed - Always shows "Vedant AI"
+  // Floating button when closed - Single sparkle icon
   if (!isOpen) {
     return (
       <button
@@ -132,12 +132,12 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
         aria-label="Open Vedant AI chat"
       >
         <Sparkles className="w-4 h-4" />
-        <span className="font-medium text-sm">Ask Vedant AI</span>
+        <span className="font-medium text-sm">Vedant AI</span>
       </button>
     );
   }
 
-  // Minimized state - Always shows "Vedant AI" (NOT child name)
+  // Minimized state - Single sparkle icon
   if (isMinimized) {
     return (
       <button

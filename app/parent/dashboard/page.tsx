@@ -1,5 +1,5 @@
 'use client';
-import { ChatWidget } from '@/components/chat';
+
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -429,14 +429,6 @@ export default function ParentDashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* AI Chat Widget - Floating button in bottom-right */}
-      <ChatWidget
-        childId={childId}
-        childName={childName}
-        userRole="parent"
-        userEmail={parentEmail}
-      />
     </ParentLayout>
   );
 }
