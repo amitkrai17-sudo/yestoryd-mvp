@@ -13,6 +13,20 @@ declare global {
 
 const AGE_OPTIONS = Array.from({ length: 13 }, (_, i) => i + 3); // 3-15 years
 
+// Default pricing (fallback)
+const DEFAULT_PRICING = {
+  name: '3-Month Reading Program',
+  originalPrice: 9999,
+  discountedPrice: 5999,
+  discountLabel: 'SAVE 40%',
+  features: [
+    '6 One-on-One Coaching Sessions',
+    '3 Parent Progress Check-ins',
+    'AI-Powered Reading Analysis',
+    'Personalized Learning Plan',
+  ],
+};
+
 // Main enrollment form component
 function EnrollmentForm() {
   const searchParams = useSearchParams();
@@ -31,6 +45,8 @@ function EnrollmentForm() {
   const [step, setStep] = useState<'info' | 'payment' | 'success'>('info');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pricing, setPricing] = useState(DEFAULT_PRICING);
+  const [pricingLoaded, setPricingLoaded] = useState(false);
   
   const [form, setForm] = useState({
     parentName: prefillParentName,
@@ -40,6 +56,33 @@ function EnrollmentForm() {
     childAge: prefillChildAge,
     source: source,
   });
+
+  // Fetch pricing from database
+  useEffect(() => {
+    const fetchPricing = async () => {
+      try {
+        const res = await fetch('/api/pricing');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.plans && data.plans.length > 0) {
+            const plan = data.plans[0];
+            setPricing({
+              name: plan.name || DEFAULT_PRICING.name,
+              originalPrice: plan.original_price || DEFAULT_PRICING.originalPrice,
+              discountedPrice: plan.discounted_price || DEFAULT_PRICING.discountedPrice,
+              discountLabel: plan.discount_label || DEFAULT_PRICING.discountLabel,
+              features: plan.features || DEFAULT_PRICING.features,
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch pricing:', e);
+      } finally {
+        setPricingLoaded(true);
+      }
+    };
+    fetchPricing();
+  }, []);
 
   // Load Razorpay script (only for paid flow)
   useEffect(() => {
@@ -152,12 +195,12 @@ function EnrollmentForm() {
     setError('');
 
     try {
-      // 1. Create Razorpay order
+      // 1. Create Razorpay order with dynamic pricing
       const orderRes = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: 5999,
+          amount: pricing.discountedPrice,
           childName: form.childName,
           childAge: form.childAge,
           parentName: form.parentName,
@@ -178,7 +221,7 @@ function EnrollmentForm() {
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Yestoryd',
-        description: '3-Month Reading Coaching Program',
+        description: pricing.name,
         image: '/images/logo.png',
         order_id: orderData.orderId,
         prefill: {
@@ -248,6 +291,9 @@ function EnrollmentForm() {
     }
   };
 
+  // Calculate discount amount
+  const discountAmount = pricing.originalPrice - pricing.discountedPrice;
+
   // Success Screen (Paid enrollment)
   if (step === 'success') {
     return (
@@ -267,15 +313,15 @@ function EnrollmentForm() {
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Confirmation email with schedule</span>
+                <span className="text-gray-700">Confirmation email with schedule</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Google Calendar invites for all 9 sessions</span>
+                <span className="text-gray-700">Google Calendar invites for all 9 sessions</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>WhatsApp message from your coach</span>
+                <span className="text-gray-700">WhatsApp message from your coach</span>
               </li>
             </ul>
           </div>
@@ -345,7 +391,7 @@ function EnrollmentForm() {
 
               <div className="space-y-4">
                 {/* Parent Section */}
-                <div className="pb-4 border-b">
+                <div className="pb-4 border-b border-gray-200">
                   <h3 className="font-semibold text-gray-700 mb-3">Parent Details</h3>
                   <div className="space-y-3">
                     <div>
@@ -356,7 +402,7 @@ function EnrollmentForm() {
                         type="text"
                         value={form.parentName}
                         onChange={(e) => setForm({ ...form, parentName: e.target.value })}
-                        className="w-full border rounded-lg px-4 py-2.5 text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -369,7 +415,7 @@ function EnrollmentForm() {
                           type="email"
                           value={form.parentEmail}
                           onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
-                          className="w-full border rounded-lg px-4 py-2.5 text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                           placeholder="email@example.com"
                         />
                       </div>
@@ -381,7 +427,7 @@ function EnrollmentForm() {
                           type="tel"
                           value={form.parentPhone}
                           onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
-                          className="w-full border rounded-lg px-4 py-2.5 text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                           placeholder="9876543210"
                         />
                       </div>
@@ -401,7 +447,7 @@ function EnrollmentForm() {
                         type="text"
                         value={form.childName}
                         onChange={(e) => setForm({ ...form, childName: e.target.value })}
-                        className="w-full border rounded-lg px-4 py-2.5 text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                         placeholder="Child's first name"
                       />
                     </div>
@@ -412,11 +458,11 @@ function EnrollmentForm() {
                       <select
                         value={form.childAge}
                         onChange={(e) => setForm({ ...form, childAge: e.target.value })}
-                        className="w-full border rounded-lg px-4 py-2.5 text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
                       >
-                        <option value="">Select age</option>
+                        <option value="" className="text-gray-400">Select age</option>
                         {AGE_OPTIONS.map(age => (
-                          <option key={age} value={age}>{age} years</option>
+                          <option key={age} value={age} className="text-gray-900">{age} years</option>
                         ))}
                       </select>
                     </div>
@@ -437,16 +483,16 @@ function EnrollmentForm() {
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
+                    <span>Processing...</span>
                   </>
                 ) : isFreeTrialFlow ? (
                   <>
                     <Calendar className="w-5 h-5" />
-                    Book Free Session
+                    <span>Book Free Session</span>
                   </>
                 ) : (
                   <>
-                    Pay ₹5,999 & Start Journey
+                    <span>Pay ₹{pricing.discountedPrice.toLocaleString('en-IN')} & Start Journey</span>
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -474,26 +520,26 @@ function EnrollmentForm() {
 
                   <div className="space-y-3 text-sm mb-4">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>Meet Coach Rucha</span>
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-gray-700">Meet Coach Rucha</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>Discuss your child&apos;s reading</span>
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-gray-700">Discuss your child&apos;s reading</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>Get personalized recommendations</span>
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-gray-700">Get personalized recommendations</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>No obligation to enroll</span>
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-gray-700">No obligation to enroll</span>
                     </div>
                   </div>
 
-                  <div className="border-t pt-4">
+                  <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between items-center text-lg font-bold">
-                      <span>Price</span>
+                      <span className="text-gray-900">Price</span>
                       <span className="text-green-600">FREE</span>
                     </div>
                   </div>
@@ -501,41 +547,31 @@ function EnrollmentForm() {
               ) : (
                 <>
                   <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 mb-4">
-                    <p className="font-semibold text-gray-900">3-Month Reading Program</p>
+                    <p className="font-semibold text-gray-900">{pricing.name}</p>
                     <p className="text-sm text-gray-600">Complete transformation package</p>
                   </div>
 
                   <div className="space-y-3 text-sm mb-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-pink-500" />
-                      <span>6 One-on-One Coaching Sessions</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-pink-500" />
-                      <span>3 Parent Progress Check-ins</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-pink-500" />
-                      <span>AI-Powered Reading Analysis</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-pink-500" />
-                      <span>Personalized Learning Plan</span>
-                    </div>
+                    {(pricing.features || DEFAULT_PRICING.features).slice(0, 4).map((feature, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                        <span className="text-gray-700">{feature}</span>
+                      </div>
+                    ))}
                   </div>
 
-                  <div className="border-t pt-4">
+                  <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-600">Program Fee</span>
-                      <span className="text-gray-400 line-through">₹9,999</span>
+                      <span className="text-gray-400 line-through">₹{pricing.originalPrice.toLocaleString('en-IN')}</span>
                     </div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-green-600 font-medium">Early Bird Discount</span>
-                      <span className="text-green-600">-₹4,000</span>
+                      <span className="text-green-600 font-medium">Discount</span>
+                      <span className="text-green-600">-₹{discountAmount.toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-2">
-                      <span>Total</span>
-                      <span className="text-pink-600">₹5,999</span>
+                    <div className="flex justify-between items-center text-lg font-bold border-t border-gray-200 pt-2 mt-2">
+                      <span className="text-gray-900">Total</span>
+                      <span className="text-pink-600">₹{pricing.discountedPrice.toLocaleString('en-IN')}</span>
                     </div>
                   </div>
 
