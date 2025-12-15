@@ -123,7 +123,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     inputRef.current?.focus();
   };
 
-  // Floating button when closed - Small pill with sparkle
+  // Floating button when closed - Always shows "Vedant AI"
   if (!isOpen) {
     return (
       <button
@@ -137,17 +137,15 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     );
   }
 
-  // Minimized state - Even smaller
+  // Minimized state - Always shows "Vedant AI" (NOT child name)
   if (isMinimized) {
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg hover:shadow-xl transition-all"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg hover:shadow-xl transition-all"
       >
         <Sparkles className="w-4 h-4" />
-        <span className="text-xs font-medium">
-          {childName ? `${childName}` : 'Vedant AI'}
-        </span>
+        <span className="text-sm font-medium">Vedant AI</span>
       </button>
     );
   }
@@ -164,7 +162,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
           <div>
             <h3 className="text-white font-semibold text-sm">Vedant AI</h3>
             <p className="text-white/80 text-xs">
-              {childName ? `Asking about ${childName}` : 'Reading Assistant'}
+              {childName ? `Helping with ${childName}` : 'Reading Assistant'}
             </p>
           </div>
         </div>
@@ -256,7 +254,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
         )}
       </div>
 
-      {/* Input - FIXED: Dark text on white background */}
+      {/* Input */}
       <div className="p-3 bg-white border-t border-gray-100">
         <div className="flex items-end gap-2">
           <textarea

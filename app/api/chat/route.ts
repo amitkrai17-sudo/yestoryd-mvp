@@ -1,143 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@supabase/supabase-js';
 
-// Initialize clients
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-// Types
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 interface ChatRequest {
-  messages: Message[];
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
   childId?: string;
   userRole: 'parent' | 'coach' | 'admin';
   userEmail: string;
 }
 
-// Generate embedding for semantic search
-async function generateEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  const result = await model.embedContent(text);
-  return result.embedding.values;
-}
-
-// Get relevant learning events using vector similarity
-async function getRelevantEvents(
-  childId: string,
-  query: string,
-  limit: number = 10
-): Promise<any[]> {
-  try {
-    // Generate embedding for the query
-    const queryEmbedding = await generateEmbedding(query);
-
-    // Use Supabase's vector similarity search
-    const { data: events, error } = await supabase.rpc('match_learning_events', {
-      query_embedding: queryEmbedding,
-      match_threshold: 0.5,
-      match_count: limit,
-      filter_child_id: childId,
-    });
-
-    if (error) {
-      console.error('Vector search error:', error);
-      // Fallback to recent events if vector search fails
-      return await getRecentEvents(childId, limit);
-    }
-
-    return events || [];
-  } catch (error) {
-    console.error('Embedding error:', error);
-    return await getRecentEvents(childId, limit);
-  }
-}
-
-// Fallback: Get recent events without vector search
-async function getRecentEvents(childId: string, limit: number = 20): Promise<any[]> {
-  const { data: events, error } = await supabase
-    .from('learning_events')
-    .select('*')
-    .eq('child_id', childId)
-    .order('event_date', { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error('Recent events error:', error);
-    return [];
-  }
-
-  return events || [];
-}
-
-// Get child details
+// Get child details with coach info
 async function getChildDetails(childId: string) {
-  const { data: child, error } = await supabase
+  const { data: child } = await supabase
     .from('children')
-    .select('*')
+    .select(`
+      *,
+      coaches (
+        id,
+        name,
+        email,
+        phone
+      )
+    `)
     .eq('id', childId)
     .single();
-
-  if (error) {
-    console.error('Child fetch error:', error);
-    return null;
-  }
 
   return child;
 }
 
+// Get relevant learning events using vector similarity (RAG)
+async function getRelevantEvents(
+  childId: string,
+  query: string,
+  limit: number = 10
+) {
+  // First try vector search if embedding exists
+  try {
+    const { data: events } = await supabase
+      .from('learning_events')
+      .select('*')
+      .eq('child_id', childId)
+      .order('event_date', { ascending: false })
+      .limit(limit);
+
+    return events || [];
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    return [];
+  }
+}
+
 // Get session history
 async function getSessionHistory(childId: string, limit: number = 10) {
-  const { data: sessions, error } = await supabase
+  const { data: sessions } = await supabase
     .from('scheduled_sessions')
     .select('*')
     .eq('child_id', childId)
     .order('scheduled_date', { ascending: false })
     .limit(limit);
 
-  if (error) {
-    console.error('Sessions fetch error:', error);
-    return [];
-  }
-
   return sessions || [];
 }
 
-// Format events for AI context
+// Format learning events for context
 function formatEventsForContext(events: any[], childName: string): string {
   if (!events || events.length === 0) {
-    return `No learning history available yet for ${childName}.`;
+    return 'No learning events recorded yet.';
   }
 
   const formattedEvents = events.map((event) => {
-    const date = new Date(event.event_date).toLocaleDateString('en-IN', {
+    const date = new Date(event.event_date || event.created_at).toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric',
     });
-
     const data = event.data || {};
 
     switch (event.event_type) {
       case 'assessment':
-        return `[${date}] ASSESSMENT: Score ${data.score || 'N/A'}/10, WPM: ${data.wpm || 'N/A'}, Fluency: ${data.fluency || 'N/A'}. ${event.ai_summary || ''}`;
+        return `[${date}] ASSESSMENT: Score ${data.score || data.reading_score}/10, WPM: ${data.wpm || 'N/A'}, Fluency: ${data.fluency_rating || 'N/A'}. ${event.ai_summary || ''}`;
 
       case 'session':
-        return `[${date}] COACHING SESSION: ${data.duration || 30} mins. Focus: ${data.focus_area || 'General reading'}. ${event.ai_summary || data.notes || ''}`;
+        return `[${date}] SESSION: ${data.session_title || 'Coaching session'}. Coach notes: ${data.coach_notes || event.ai_summary || 'No notes'}`;
 
       case 'quiz':
-        return `[${date}] QUIZ: Score ${data.score || 0}/${data.total || 10} on ${data.topic || 'reading'}. ${event.ai_summary || ''}`;
+        return `[${date}] QUIZ: Score ${data.score}/${data.total_questions}, Topic: ${data.topic || 'General'}`;
 
-      case 'milestone':
-        return `[${date}] MILESTONE: ${data.title || event.ai_summary || 'Achievement unlocked!'}`;
+      case 'home_practice':
+        return `[${date}] HOME PRACTICE: ${data.activity || 'Reading practice'}, Duration: ${data.duration_minutes || 'N/A'} mins`;
+
+      case 'feedback':
+        return `[${date}] FEEDBACK: ${data.feedback_type || 'General'} - ${data.content || event.ai_summary || ''}`;
 
       case 'note':
         return `[${date}] NOTE: ${data.content || event.ai_summary || ''}`;
@@ -210,14 +169,17 @@ Your role:
 6. Reference specific events from the history when relevant
 
 Guidelines:
-- Be warm, supportive, and encouraging
-- Use simple language, avoid educational jargon
-- If asked about something not in the history, say so honestly
-- Suggest booking a coaching session for detailed discussions
-- Keep responses concise but helpful (2-3 paragraphs max)
+- Keep responses to 1-2 short paragraphs maximum
+- Lead with specific data (scores, WPM, dates) first
+- Then give ONE concrete action tip
+- Be warm but concise - no lengthy explanations
 - Use Indian English and relatable examples
+- If data is not available, say so briefly
 
-Remember: You're here to help parents support their child's reading journey!`;
+Example good response:
+"${childName} scored 7/10 in the last assessment with 85 WPM - solid progress! Fluency is improving steadily. Try 10 minutes of paired reading tonight where you read a sentence, then ${childName} repeats it."
+
+Remember: Data first, then one actionable tip!`;
   }
 
   if (userRole === 'coach') {
@@ -233,11 +195,11 @@ Your role:
 5. Track progress against goals
 
 Guidelines:
-- Be professional and data-driven
+- Keep responses to 1-2 paragraphs
+- Lead with specific data points
 - Provide actionable teaching recommendations
 - Reference specific assessment results and session notes
-- Suggest evidence-based reading strategies
-- Help identify patterns across sessions`;
+- Suggest evidence-based reading strategies`;
   }
 
   // Admin role
@@ -252,8 +214,8 @@ Your role:
 4. Support coach assignments and schedule management
 
 Guidelines:
-- Be thorough and data-focused
-- Provide complete context when needed
+- Keep responses concise (1-2 paragraphs)
+- Be data-focused
 - Flag any concerns or anomalies`;
 }
 
@@ -361,7 +323,7 @@ export async function POST(request: NextRequest) {
         parts: [{ text: msg.content }],
       })),
       generationConfig: {
-        maxOutputTokens: 800,
+        maxOutputTokens: 400, // Reduced from 800 for more concise responses
         temperature: 0.7,
       },
     });
