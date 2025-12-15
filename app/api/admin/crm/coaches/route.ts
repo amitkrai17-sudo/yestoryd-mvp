@@ -6,6 +6,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Default coaches (always available even without DB)
+const DEFAULT_COACHES = [
+  { id: 'rucha-default', name: 'Rucha Rai', email: 'rucha@yestoryd.com' },
+];
+
 // GET - Fetch all active coaches for assignment dropdown
 export async function GET() {
   try {
@@ -17,12 +22,20 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json({ coaches: data || [] });
+    // Combine default coaches with DB coaches (avoid duplicates by email)
+    const dbCoaches = data || [];
+    const dbEmails = dbCoaches.map(c => c.email.toLowerCase());
+    
+    const allCoaches = [
+      ...DEFAULT_COACHES.filter(dc => !dbEmails.includes(dc.email.toLowerCase())),
+      ...dbCoaches
+    ];
+
+    return NextResponse.json({ coaches: allCoaches });
   } catch (error: any) {
     console.error('Error fetching coaches:', error);
     
-    // Return empty array if table doesn't exist or other error
-    // This allows CRM to work even without coaches table
-    return NextResponse.json({ coaches: [] });
+    // Return default coaches if table doesn't exist or other error
+    return NextResponse.json({ coaches: DEFAULT_COACHES });
   }
 }
