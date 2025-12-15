@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ParentLayout from '@/components/parent/ParentLayout';
 import {
   Calendar,
@@ -29,10 +30,12 @@ interface Session {
   google_meet_link: string;
   status: string;
   duration_minutes: number;
+  title: string;
 }
 
 export default function ParentSessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [childName, setChildName] = useState('');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
   const router = useRouter();
@@ -42,30 +45,72 @@ export default function ParentSessionsPage() {
   }, []);
 
   async function fetchSessions() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/parent/login');
-      return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/parent/login');
+        return;
+      }
+
+      // Find parent record
+      const { data: parentData } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      let enrolledChild = null;
+
+      // Find enrolled child by parent_id first
+      if (parentData?.id) {
+        const { data: childByParentId } = await supabase
+          .from('children')
+          .select('id, name')
+          .eq('parent_id', parentData.id)
+          .eq('lead_status', 'enrolled')
+          .order('enrolled_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (childByParentId) {
+          enrolledChild = childByParentId;
+        }
+      }
+
+      // Fallback: try by parent_email
+      if (!enrolledChild) {
+        const { data: childByEmail } = await supabase
+          .from('children')
+          .select('id, name')
+          .eq('parent_email', user.email)
+          .eq('lead_status', 'enrolled')
+          .order('enrolled_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (childByEmail) {
+          enrolledChild = childByEmail;
+        }
+      }
+
+      if (enrolledChild) {
+        setChildName(enrolledChild.name || 'Your Child');
+
+        const { data: sessionsData } = await supabase
+          .from('scheduled_sessions')
+          .select('*')
+          .eq('child_id', enrolledChild.id)
+          .order('scheduled_date', { ascending: true })
+          .order('scheduled_time', { ascending: true });
+
+        setSessions(sessionsData || []);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+      setLoading(false);
     }
-
-    const { data: child } = await supabase
-      .from('children')
-      .select('id')
-      .eq('parent_email', user.email)
-      .eq('enrollment_status', 'active')
-      .single();
-
-    if (child) {
-      const { data: sessionsData } = await supabase
-        .from('scheduled_sessions')
-        .select('*')
-        .eq('child_id', child.id)
-        .order('scheduled_date', { ascending: true });
-
-      setSessions(sessionsData || []);
-    }
-
-    setLoading(false);
   }
 
   function formatDate(dateStr: string): string {
@@ -80,6 +125,7 @@ export default function ParentSessionsPage() {
   }
 
   function formatTime(time: string): string {
+    if (!time) return '';
     const [hours, minutes] = time.split(':').map(Number);
     const period = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours % 12 || 12;
@@ -111,7 +157,7 @@ export default function ParentSessionsPage() {
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+          <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#7b008b]/10 text-[#7b008b] rounded-full text-sm font-medium">
             <Clock className="w-4 h-4" />
             Scheduled
           </span>
@@ -149,7 +195,31 @@ export default function ParentSessionsPage() {
     return (
       <ParentLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </ParentLayout>
+    );
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <ParentLayout>
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Sessions</h1>
+            <p className="text-gray-500">View and join your scheduled sessions</p>
+          </div>
+          <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+            <Calendar className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">No Sessions Scheduled</h2>
+            <p className="text-gray-500 mb-6">Sessions will appear here once your enrollment is confirmed.</p>
+            <Link
+              href="/parent/dashboard"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7b008b] text-white rounded-xl font-semibold hover:bg-[#6a0078] transition-all"
+            >
+              Go to Dashboard
+            </Link>
+          </div>
         </div>
       </ParentLayout>
     );
@@ -161,18 +231,18 @@ export default function ParentSessionsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Sessions</h1>
-            <p className="text-gray-500">View and join your scheduled sessions</p>
+            <p className="text-gray-500">{childName}'s scheduled sessions</p>
           </div>
 
           <div className="relative">
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as any)}
-              className="appearance-none px-4 py-2 pr-10 bg-white border border-amber-200 rounded-xl text-gray-700 font-medium focus:ring-2 focus:ring-amber-500 focus:border-transparent cursor-pointer"
+              className="appearance-none px-4 py-2 pr-10 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium focus:ring-2 focus:ring-[#7b008b] focus:border-transparent cursor-pointer"
             >
-              <option value="all">All Sessions</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="completed">Completed</option>
+              <option value="all">All Sessions ({sessions.length})</option>
+              <option value="upcoming">Upcoming ({sessions.filter(isUpcoming).length})</option>
+              <option value="completed">Completed ({sessions.filter(s => s.status === 'completed').length})</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           </div>
@@ -187,7 +257,7 @@ export default function ParentSessionsPage() {
               <div
                 key={session.id}
                 className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
-                  upcoming ? 'border-amber-200' : 'border-gray-100'
+                  upcoming ? 'border-[#7b008b]/30' : 'border-gray-100'
                 }`}
               >
                 <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
@@ -195,13 +265,13 @@ export default function ParentSessionsPage() {
                     session.status === 'completed' 
                       ? 'bg-green-100' 
                       : upcoming 
-                        ? 'bg-gradient-to-br from-amber-100 to-orange-100' 
+                        ? 'bg-gradient-to-br from-[#7b008b]/10 to-[#ff0099]/10' 
                         : 'bg-gray-100'
                   }`}>
                     {session.status === 'completed' ? (
                       <Check className="w-7 h-7 text-green-600" />
                     ) : (
-                      <span className={`text-xl font-bold ${upcoming ? 'text-amber-600' : 'text-gray-400'}`}>
+                      <span className={`text-xl font-bold ${upcoming ? 'text-[#7b008b]' : 'text-gray-400'}`}>
                         {session.session_number}
                       </span>
                     )}
@@ -210,7 +280,7 @@ export default function ParentSessionsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800">
-                        {session.session_type === 'coaching' ? '📚 Coaching Session' : '👨‍👩‍👧 Parent Check-in'}
+                        {session.title || (session.session_type === 'coaching' ? '📚 Coaching Session' : '👨‍👩‍👧 Parent Check-in')}
                       </h3>
                       {getStatusBadge(session.status)}
                     </div>
@@ -234,7 +304,7 @@ export default function ParentSessionsPage() {
                       rel="noopener noreferrer"
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
                         canJoin
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/30'
+                          ? 'bg-[#7b008b] text-white hover:bg-[#6a0078] shadow-lg shadow-[#7b008b]/30'
                           : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                     >
@@ -246,8 +316,8 @@ export default function ParentSessionsPage() {
                 </div>
 
                 {upcoming && index === 0 && session.status === 'scheduled' && (
-                  <div className="px-5 py-3 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-100">
-                    <p className="text-sm text-amber-700">
+                  <div className="px-5 py-3 bg-[#7b008b]/5 border-t border-[#7b008b]/10">
+                    <p className="text-sm text-[#7b008b]">
                       ✨ <strong>Next session!</strong> Join link will activate 10 minutes before the scheduled time.
                     </p>
                   </div>
@@ -257,15 +327,16 @@ export default function ParentSessionsPage() {
           })}
 
           {filteredSessions().length === 0 && (
-            <div className="text-center py-12 bg-white rounded-2xl border border-amber-100">
-              <Calendar className="w-12 h-12 text-amber-200 mx-auto mb-3" />
-              <p className="text-gray-500">No sessions found</p>
+            <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+              <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-500">No {filter === 'all' ? '' : filter} sessions found</p>
             </div>
           )}
         </div>
 
-        <div className="mt-8 p-4 bg-amber-50 rounded-xl">
-          <h3 className="font-medium text-amber-800 mb-3">Session Types</h3>
+        {/* Session Types Info */}
+        <div className="mt-8 p-4 bg-[#7b008b]/5 rounded-xl border border-[#7b008b]/10">
+          <h3 className="font-medium text-[#7b008b] mb-3">Session Types</h3>
           <div className="grid sm:grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <span>📚</span>
@@ -273,7 +344,7 @@ export default function ParentSessionsPage() {
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <span>👨‍👩‍👧</span>
-              <span><strong>Parent Check-in</strong> - 30 min progress review</span>
+              <span><strong>Parent Check-in</strong> - 15 min progress review</span>
             </div>
           </div>
         </div>

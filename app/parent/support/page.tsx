@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
 import ParentLayout from '@/components/parent/ParentLayout';
 import {
   MessageCircle,
@@ -27,6 +29,7 @@ interface Coach {
   name: string;
   email: string;
   bio: string;
+  phone: string;
 }
 
 const faqs = [
@@ -52,7 +55,7 @@ const faqs = [
   },
   {
     question: 'How do I contact Yestoryd support?',
-    answer: 'You can reach us via email at hello@yestoryd.com or WhatsApp. We typically respond within 24 hours on business days.'
+    answer: 'You can reach us via email at hello@yestoryd.com or WhatsApp at +91 8976287997. We typically respond within 24 hours on business days.'
   },
 ];
 
@@ -68,34 +71,102 @@ export default function ParentSupportPage() {
   }, []);
 
   async function fetchData() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/parent/login');
-      return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/parent/login');
+        return;
+      }
+
+      // Find parent record
+      const { data: parentData } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      let enrolledChild = null;
+
+      // Find enrolled child by parent_id first
+      if (parentData?.id) {
+        const { data: childByParentId } = await supabase
+          .from('children')
+          .select('id, name')
+          .eq('parent_id', parentData.id)
+          .eq('lead_status', 'enrolled')
+          .order('enrolled_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (childByParentId) {
+          enrolledChild = childByParentId;
+        }
+      }
+
+      // Fallback: try by parent_email
+      if (!enrolledChild) {
+        const { data: childByEmail } = await supabase
+          .from('children')
+          .select('id, name')
+          .eq('parent_email', user.email)
+          .eq('lead_status', 'enrolled')
+          .order('enrolled_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (childByEmail) {
+          enrolledChild = childByEmail;
+        }
+      }
+
+      if (enrolledChild) {
+        setChildName(enrolledChild.name || 'Your Child');
+
+        // Get coach from enrollment
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select(`
+            coaches (
+              name,
+              email,
+              bio,
+              phone
+            )
+          `)
+          .eq('child_id', enrolledChild.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (enrollment?.coaches) {
+          setCoach(enrollment.coaches);
+        } else {
+          // Default coach info
+          setCoach({
+            name: 'Rucha',
+            email: 'rucha@yestoryd.com',
+            bio: 'Certified reading coach with 5+ years of experience helping children improve their reading skills.',
+            phone: '918976287997'
+          });
+        }
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching support data:', error);
+      setLoading(false);
     }
-
-    const { data: child } = await supabase
-      .from('children')
-      .select('*')
-      .eq('parent_email', user.email)
-      .eq('enrollment_status', 'active')
-	.order('created_at', { ascending: false })
-	.limit(1)
-	.maybeSingle();
-
-    if (child) {
-      setChildName(child.child_name || child.name);
-      setCoach(child.coaches);
-    }
-
-    setLoading(false);
   }
+
+  const coachPhone = coach?.phone || '918976287997';
+  const coachName = coach?.name || 'Rucha';
 
   if (loading) {
     return (
       <ParentLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin" />
         </div>
       </ParentLayout>
     );
@@ -109,41 +180,43 @@ export default function ParentSupportPage() {
           <p className="text-gray-500">Get help and contact us</p>
         </div>
 
+        {/* Contact Cards */}
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          {coach && (
-            <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50">
-                <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <User className="w-5 h-5 text-amber-500" />
-                  Your Coach
-                </h2>
-              </div>
-              <div className="p-5">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-2xl text-white font-bold">
-                      {coach.name?.charAt(0) || 'C'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-gray-800">{coach.name}</p>
-                    <p className="text-amber-600">Reading Coach</p>
-                  </div>
+          {/* Coach Card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 bg-[#7b008b]/5">
+              <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                <User className="w-5 h-5 text-[#7b008b]" />
+                Your Coach
+              </h2>
+            </div>
+            <div className="p-5">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-2xl text-white font-bold">
+                    {coachName.charAt(0)}
+                  </span>
                 </div>
-                {coach.bio && (
-                  <p className="text-sm text-gray-500 mb-4">{coach.bio}</p>
-                )}
-                <div className="space-y-3">
-                  <a
-                    href={`https://wa.me/919876543210?text=Hi ${coach.name}, I'm ${childName}'s parent. I have a question about the coaching sessions.`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    WhatsApp Coach
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
+                <div>
+                  <p className="text-lg font-semibold text-gray-800">{coachName}</p>
+                  <p className="text-[#7b008b]">Reading Coach</p>
+                </div>
+              </div>
+              {coach?.bio && (
+                <p className="text-sm text-gray-500 mb-4">{coach.bio}</p>
+              )}
+              <div className="space-y-3">
+                <a
+                  href={`https://wa.me/${coachPhone}?text=Hi ${coachName}, I'm ${childName}'s parent. I have a question about the coaching sessions.`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  WhatsApp Coach
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                {coach?.email && (
                   <a
                     href={`mailto:${coach.email}?subject=Question about ${childName}'s sessions`}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
@@ -151,26 +224,31 @@ export default function ParentSupportPage() {
                     <Mail className="w-5 h-5" />
                     Email Coach
                   </a>
-                </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
-          <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50">
+          {/* Yestoryd Support Card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 bg-[#7b008b]/5">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-amber-500" />
+                <BookOpen className="w-5 h-5 text-[#7b008b]" />
                 Yestoryd Support
               </h2>
             </div>
             <div className="p-5">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
-                  <BookOpen className="w-8 h-8 text-white" />
-                </div>
+                <Image 
+                  src="/images/logo.png" 
+                  alt="Yestoryd" 
+                  width={64} 
+                  height={64}
+                  className="w-16 h-16 object-contain"
+                />
                 <div>
                   <p className="text-lg font-semibold text-gray-800">Yestoryd Team</p>
-                  <p className="text-amber-600">We're here to help!</p>
+                  <p className="text-[#7b008b]">We're here to help!</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
@@ -179,7 +257,7 @@ export default function ParentSupportPage() {
               </div>
               <div className="space-y-3">
                 <a
-                  href={`https://wa.me/919876543210?text=Hi Yestoryd team, I'm ${childName}'s parent. I need help with...`}
+                  href={`https://wa.me/918976287997?text=Hi Yestoryd team, I'm ${childName}'s parent. I need help with...`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
@@ -200,61 +278,61 @@ export default function ParentSupportPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-5 mb-8">
+        {/* Quick Actions */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
           <h2 className="font-semibold text-gray-800 mb-4">Quick Actions</h2>
           <div className="grid sm:grid-cols-3 gap-4">
-            <a
+            <Link
               href="/parent/sessions"
-              className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
+              className="flex items-center gap-3 p-4 bg-[#7b008b]/5 border border-[#7b008b]/10 rounded-xl hover:bg-[#7b008b]/10 transition-colors"
             >
-              <Calendar className="w-6 h-6 text-amber-600" />
+              <Calendar className="w-6 h-6 text-[#7b008b]" />
               <div>
                 <p className="font-medium text-gray-800">View Sessions</p>
                 <p className="text-sm text-gray-500">Check your schedule</p>
               </div>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/parent/progress"
-              className="flex items-center gap-3 p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors"
+              className="flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-colors"
             >
               <User className="w-6 h-6 text-green-600" />
               <div>
                 <p className="font-medium text-gray-800">View Progress</p>
                 <p className="text-sm text-gray-500">Track improvements</p>
               </div>
-            </a>
-            <a
-              href="https://yestoryd.com/resources"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
+            </Link>
+            <Link
+              href="/parent/dashboard"
+              className="flex items-center gap-3 p-4 bg-[#ff0099]/5 border border-[#ff0099]/10 rounded-xl hover:bg-[#ff0099]/10 transition-colors"
             >
-              <BookOpen className="w-6 h-6 text-blue-600" />
+              <BookOpen className="w-6 h-6 text-[#ff0099]" />
               <div>
-                <p className="font-medium text-gray-800">Resources</p>
-                <p className="text-sm text-gray-500">Reading materials</p>
+                <p className="font-medium text-gray-800">Dashboard</p>
+                <p className="text-sm text-gray-500">Overview & stats</p>
               </div>
-            </a>
+            </Link>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-amber-100">
+        {/* FAQs */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-gray-100">
             <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-              <HelpCircle className="w-5 h-5 text-amber-500" />
+              <HelpCircle className="w-5 h-5 text-[#7b008b]" />
               Frequently Asked Questions
             </h2>
           </div>
-          <div className="divide-y divide-amber-50">
+          <div className="divide-y divide-gray-50">
             {faqs.map((faq, index) => (
               <div key={index}>
                 <button
                   onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                  className="w-full p-5 text-left flex items-center justify-between hover:bg-amber-50/50 transition-colors"
+                  className="w-full p-5 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
                 >
                   <span className="font-medium text-gray-800 pr-4">{faq.question}</span>
                   {expandedFaq === index ? (
-                    <ChevronUp className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                    <ChevronUp className="w-5 h-5 text-[#7b008b] flex-shrink-0" />
                   ) : (
                     <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
                   )}
@@ -269,17 +347,18 @@ export default function ParentSupportPage() {
           </div>
         </div>
 
+        {/* Urgent Help */}
         <div className="mt-6 p-5 bg-red-50 border border-red-200 rounded-2xl">
           <h3 className="font-semibold text-red-800 mb-2">Need Urgent Help?</h3>
           <p className="text-red-700 text-sm mb-3">
             For urgent matters related to scheduled sessions happening today:
           </p>
           <a
-            href="tel:+919876543210"
+            href="tel:+918976287997"
             className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
           >
             <Phone className="w-4 h-4" />
-            Call Now
+            Call +91 8976287997
           </a>
         </div>
       </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Sparkles, User, Bot, Minimize2 } from 'lucide-react';
+import { X, Send, Loader2, Sparkles, User, Minimize2 } from 'lucide-react';
+import Image from 'next/image';
 
 interface Message {
   id: string;
@@ -15,7 +16,6 @@ interface ChatWidgetProps {
   childName?: string;
   userRole: 'parent' | 'coach' | 'admin';
   userEmail: string;
-  primaryColor?: string;
 }
 
 export default function ChatWidget({
@@ -23,7 +23,6 @@ export default function ChatWidget({
   childName,
   userRole,
   userEmail,
-  primaryColor = '#f59e0b', // Amber/Orange for Yestoryd
 }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -51,7 +50,7 @@ export default function ChatWidget({
       'How is my child progressing?',
       'What should we practice at home?',
       'Explain the latest assessment',
-      'When is the next session?',
+      'Tips for better reading',
     ],
     coach: [
       'Summarize recent progress',
@@ -115,7 +114,7 @@ export default function ChatWidget({
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: 'Sorry, I encountered an error. Please try again or contact support on WhatsApp.',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -136,18 +135,25 @@ export default function ChatWidget({
     inputRef.current?.focus();
   };
 
-  // Floating button when closed
+  // Floating button when closed - White background with purple/pink text
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
-        style={{ backgroundColor: primaryColor }}
-        aria-label="Open chat"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-white border-2 border-[#7b008b] rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-[#7b008b]/5 group"
+        aria-label="Open Vedant AI chat"
       >
-        <MessageCircle className="w-6 h-6 text-white" />
-        <span className="text-white font-medium hidden sm:inline">Ask AI</span>
-        <Sparkles className="w-4 h-4 text-white/80" />
+        <Image 
+          src="/images/vedant-mascot.png" 
+          alt="Vedant AI" 
+          width={32} 
+          height={32}
+          className="w-8 h-8 rounded-full"
+        />
+        <span className="font-semibold bg-gradient-to-r from-[#ff0099] to-[#7b008b] bg-clip-text text-transparent hidden sm:inline">
+          Ask Vedant AI
+        </span>
+        <Sparkles className="w-4 h-4 text-[#ff0099] group-hover:animate-pulse" />
       </button>
     );
   }
@@ -156,13 +162,18 @@ export default function ChatWidget({
   if (isMinimized) {
     return (
       <div
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg cursor-pointer"
-        style={{ backgroundColor: primaryColor }}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7b008b] to-[#ff0099] rounded-full shadow-lg cursor-pointer hover:shadow-xl transition-all"
         onClick={() => setIsMinimized(false)}
       >
-        <Bot className="w-5 h-5 text-white" />
+        <Image 
+          src="/images/vedant-mascot.png" 
+          alt="Vedant AI" 
+          width={24} 
+          height={24}
+          className="w-6 h-6 rounded-full"
+        />
         <span className="text-white text-sm font-medium">
-          {childName ? `Chat about ${childName}` : 'AI Assistant'}
+          {childName ? `Chat about ${childName}` : 'Vedant AI'}
         </span>
         <button
           onClick={(e) => {
@@ -180,20 +191,28 @@ export default function ChatWidget({
 
   // Full chat window
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[550px] max-h-[calc(100vh-6rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-      {/* Header */}
-      <div
-        className="px-4 py-3 flex items-center justify-between"
-        style={{ backgroundColor: primaryColor }}
-      >
+    <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-6rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+      {/* Header - Purple gradient */}
+      <div className="px-4 py-3 flex items-center justify-between bg-gradient-to-r from-[#7b008b] to-[#ff0099]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
+          <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center overflow-hidden">
+            <Image 
+              src="/images/vedant-mascot.png" 
+              alt="Vedant AI" 
+              width={36} 
+              height={36}
+              className="w-9 h-9"
+            />
           </div>
           <div>
-            <h3 className="text-white font-semibold text-sm">Yestoryd AI</h3>
+            <h3 className="text-white font-bold text-sm flex items-center gap-1.5">
+              Vedant AI
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-normal">
+                Beta
+              </span>
+            </h3>
             <p className="text-white/80 text-xs">
-              {childName ? `Asking about ${childName}` : 'Reading Assistant'}
+              {childName ? `Helping with ${childName}'s reading` : 'Your Reading Coach'}
             </p>
           </div>
         </div>
@@ -222,28 +241,31 @@ export default function ChatWidget({
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}20` }}
-            >
-              <Sparkles className="w-7 h-7" style={{ color: primaryColor }} />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff0099]/20 to-[#7b008b]/20 flex items-center justify-center mb-4">
+              <Image 
+                src="/images/vedant-mascot.png" 
+                alt="Vedant AI" 
+                width={48} 
+                height={48}
+                className="w-12 h-12"
+              />
             </div>
             <h3 className="text-gray-800 font-semibold mb-2">
-              {childName ? `Ask about ${childName}` : 'How can I help?'}
+              Hi! I'm Vedant AI 👋
             </h3>
             <p className="text-gray-500 text-sm mb-6">
               {childName
-                ? `I have access to ${childName}'s assessments, sessions, and progress data.`
-                : 'Select a child to get personalized insights.'}
+                ? `I can help you understand ${childName}'s reading progress, assessments, and give personalized tips.`
+                : 'I can answer questions about reading progress, assessments, and provide learning tips.'}
             </p>
 
             {/* Quick Prompts */}
             <div className="flex flex-wrap gap-2 justify-center">
-              {quickPrompts[userRole].slice(0, 3).map((prompt) => (
+              {quickPrompts[userRole].map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => handleQuickPrompt(prompt)}
-                  className="text-xs bg-white text-gray-600 px-3 py-2 rounded-full border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                  className="text-xs bg-white text-gray-600 px-3 py-2 rounded-full border border-gray-200 hover:border-[#7b008b]/30 hover:bg-[#7b008b]/5 hover:text-[#7b008b] transition-colors"
                 >
                   {prompt}
                 </button>
@@ -258,18 +280,21 @@ export default function ChatWidget({
                 className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : ''}`}
               >
                 {message.role === 'assistant' && (
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    <Bot className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <Image 
+                      src="/images/vedant-mascot.png" 
+                      alt="Vedant AI" 
+                      width={24} 
+                      height={24}
+                      className="w-6 h-6"
+                    />
                   </div>
                 )}
                 <div
                   className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
                     message.role === 'user'
-                      ? 'bg-gray-800 text-white'
-                      : 'bg-white text-gray-800 border border-gray-200'
+                      ? 'bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white'
+                      : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -285,17 +310,20 @@ export default function ChatWidget({
             ))}
             {isLoading && (
               <div className="flex gap-2">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-                <div className="bg-white rounded-2xl px-4 py-3 border border-gray-200">
-                  <Loader2
-                    className="w-5 h-5 animate-spin"
-                    style={{ color: primaryColor }}
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center overflow-hidden">
+                  <Image 
+                    src="/images/vedant-mascot.png" 
+                    alt="Vedant AI" 
+                    width={24} 
+                    height={24}
+                    className="w-6 h-6"
                   />
+                </div>
+                <div className="bg-white rounded-2xl px-4 py-3 border border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#7b008b]" />
+                    <span className="text-sm text-gray-500">Thinking...</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -314,16 +342,15 @@ export default function ChatWidget({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              childName ? `Ask about ${childName}...` : 'Type your question...'
+              childName ? `Ask about ${childName}...` : 'Ask Vedant AI anything...'
             }
             disabled={isLoading}
-            className="flex-1 bg-gray-100 border-0 rounded-xl py-2.5 px-4 text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-50"
+            className="flex-1 bg-gray-100 border-0 rounded-xl py-2.5 px-4 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7b008b]/30 disabled:opacity-50"
           />
           <button
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            className="px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-            style={{ backgroundColor: primaryColor, color: 'white' }}
+            className="px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white hover:shadow-lg hover:shadow-[#7b008b]/30"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -332,6 +359,9 @@ export default function ChatWidget({
             )}
           </button>
         </div>
+        <p className="text-[10px] text-gray-400 text-center mt-2">
+          Vedant AI uses your child's data to provide personalized insights
+        </p>
       </div>
     </div>
   );
