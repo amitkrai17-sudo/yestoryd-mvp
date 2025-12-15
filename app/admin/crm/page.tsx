@@ -22,7 +22,6 @@ interface Lead {
   parent_phone: string;
   coach_name: string | null;
   lead_notes: string | null;
-  lead_source: string;
   assigned_to: string | null;
   latest_assessment: any;
   interaction_count: number;
