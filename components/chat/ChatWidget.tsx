@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, Sparkles, User, Minimize2 } from 'lucide-react';
-import Image from 'next/image';
+import { Sparkles, X, Minimize2, Send, Loader2 } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -18,53 +17,42 @@ interface ChatWidgetProps {
   userEmail: string;
 }
 
-export default function ChatWidget({
-  childId,
-  childName,
-  userRole,
-  userEmail,
-}: ChatWidgetProps) {
+const quickPrompts: Record<string, string[]> = {
+  parent: [
+    "How is my child doing?",
+    "What should we practice?",
+    "When is the next session?",
+  ],
+  coach: [
+    "Summarize this student's progress",
+    "What areas need focus?",
+    "Generate parent update",
+  ],
+  admin: [
+    "Show enrollment stats",
+    "List pending assessments",
+    "Revenue summary",
+  ],
+};
+
+export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input when chat opens
   useEffect(() => {
     if (isOpen && !isMinimized) {
       inputRef.current?.focus();
     }
   }, [isOpen, isMinimized]);
-
-  // Quick prompts based on user role
-  const quickPrompts = {
-    parent: [
-      'How is my child progressing?',
-      'What should we practice at home?',
-      'Explain the latest assessment',
-      'Tips for better reading',
-    ],
-    coach: [
-      'Summarize recent progress',
-      'Suggest focus areas',
-      'Prepare session agenda',
-      'Any concerns to address?',
-    ],
-    admin: [
-      'Overview of progress',
-      'Session completion rate',
-      'Assessment history',
-      'Coach notes summary',
-    ],
-  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -98,7 +86,7 @@ export default function ChatWidget({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Chat failed');
+        throw new Error(data.error || 'Failed to get response');
       }
 
       const assistantMessage: Message = {
@@ -135,84 +123,48 @@ export default function ChatWidget({
     inputRef.current?.focus();
   };
 
-  // Floating button when closed - White background with purple/pink text
+  // Floating button when closed - Small pill with sparkle
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-white border-2 border-[#7b008b] rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-[#7b008b]/5 group"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
         aria-label="Open Vedant AI chat"
       >
-        <Image 
-          src="/images/vedant-mascot.png" 
-          alt="Vedant AI" 
-          width={32} 
-          height={32}
-          className="w-8 h-8 rounded-full"
-        />
-        <span className="font-semibold bg-gradient-to-r from-[#ff0099] to-[#7b008b] bg-clip-text text-transparent hidden sm:inline">
-          Ask Vedant AI
-        </span>
-        <Sparkles className="w-4 h-4 text-[#ff0099] group-hover:animate-pulse" />
+        <Sparkles className="w-4 h-4" />
+        <span className="font-medium text-sm">Ask Vedant AI</span>
       </button>
     );
   }
 
-  // Minimized state
+  // Minimized state - Even smaller
   if (isMinimized) {
     return (
-      <div
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7b008b] to-[#ff0099] rounded-full shadow-lg cursor-pointer hover:shadow-xl transition-all"
+      <button
         onClick={() => setIsMinimized(false)}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg hover:shadow-xl transition-all"
       >
-        <Image 
-          src="/images/vedant-mascot.png" 
-          alt="Vedant AI" 
-          width={24} 
-          height={24}
-          className="w-6 h-6 rounded-full"
-        />
-        <span className="text-white text-sm font-medium">
-          {childName ? `Chat about ${childName}` : 'Vedant AI'}
+        <Sparkles className="w-4 h-4" />
+        <span className="text-xs font-medium">
+          {childName ? `${childName}` : 'Vedant AI'}
         </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsOpen(false);
-            setIsMinimized(false);
-          }}
-          className="ml-2 text-white/80 hover:text-white"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      </button>
     );
   }
 
   // Full chat window
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-6rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-      {/* Header - Purple gradient */}
-      <div className="px-4 py-3 flex items-center justify-between bg-gradient-to-r from-[#7b008b] to-[#ff0099]">
+    <div className="fixed bottom-6 right-6 z-50 w-[360px] h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#7b008b] to-[#ff0099] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center overflow-hidden">
-            <Image 
-              src="/images/vedant-mascot.png" 
-              alt="Vedant AI" 
-              width={36} 
-              height={36}
-              className="w-9 h-9"
-            />
+          <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-white font-bold text-sm flex items-center gap-1.5">
-              Vedant AI
-              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-normal">
-                Beta
-              </span>
-            </h3>
+            <h3 className="text-white font-semibold text-sm">Vedant AI</h3>
             <p className="text-white/80 text-xs">
-              {childName ? `Helping with ${childName}'s reading` : 'Your Reading Coach'}
+              {childName ? `Asking about ${childName}` : 'Reading Assistant'}
             </p>
           </div>
         </div>
@@ -232,7 +184,7 @@ export default function ChatWidget({
             className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -241,22 +193,16 @@ export default function ChatWidget({
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff0099]/20 to-[#7b008b]/20 flex items-center justify-center mb-4">
-              <Image 
-                src="/images/vedant-mascot.png" 
-                alt="Vedant AI" 
-                width={48} 
-                height={48}
-                className="w-12 h-12"
-              />
+            <div className="w-12 h-12 bg-[#7b008b]/10 rounded-2xl flex items-center justify-center mb-4">
+              <Sparkles className="w-6 h-6 text-[#7b008b]" />
             </div>
-            <h3 className="text-gray-800 font-semibold mb-2">
-              Hi! I'm Vedant AI 👋
+            <h3 className="text-gray-800 font-semibold mb-2 text-sm">
+              {childName ? `Ask about ${childName}` : 'How can I help?'}
             </h3>
-            <p className="text-gray-500 text-sm mb-6">
+            <p className="text-gray-500 text-xs mb-4">
               {childName
-                ? `I can help you understand ${childName}'s reading progress, assessments, and give personalized tips.`
-                : 'I can answer questions about reading progress, assessments, and provide learning tips.'}
+                ? `I have access to ${childName}'s progress data.`
+                : 'Ask me anything about reading progress.'}
             </p>
 
             {/* Quick Prompts */}
@@ -265,7 +211,7 @@ export default function ChatWidget({
                 <button
                   key={prompt}
                   onClick={() => handleQuickPrompt(prompt)}
-                  className="text-xs bg-white text-gray-600 px-3 py-2 rounded-full border border-gray-200 hover:border-[#7b008b]/30 hover:bg-[#7b008b]/5 hover:text-[#7b008b] transition-colors"
+                  className="text-xs bg-white text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 hover:border-[#7b008b] hover:text-[#7b008b] transition-colors"
                 >
                   {prompt}
                 </button>
@@ -277,53 +223,31 @@ export default function ChatWidget({
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : ''}`}
+                className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    <Image 
-                      src="/images/vedant-mascot.png" 
-                      alt="Vedant AI" 
-                      width={24} 
-                      height={24}
-                      className="w-6 h-6"
-                    />
+                  <div className="w-7 h-7 bg-gradient-to-br from-[#7b008b] to-[#ff0099] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
                 <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                  className={`max-w-[75%] rounded-2xl px-3 py-2 ${
                     message.role === 'user'
                       ? 'bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white'
-                      : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
+                      : 'bg-white text-gray-800 border border-gray-100 shadow-sm'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                    {message.content}
-                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 </div>
-                {message.role === 'user' && (
-                  <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-gray-600" />
-                  </div>
-                )}
               </div>
             ))}
             {isLoading && (
-              <div className="flex gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center overflow-hidden">
-                  <Image 
-                    src="/images/vedant-mascot.png" 
-                    alt="Vedant AI" 
-                    width={24} 
-                    height={24}
-                    className="w-6 h-6"
-                  />
+              <div className="flex gap-2 justify-start">
+                <div className="w-7 h-7 bg-gradient-to-br from-[#7b008b] to-[#ff0099] rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className="bg-white rounded-2xl px-4 py-3 border border-gray-200 shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-[#7b008b]" />
-                    <span className="text-sm text-gray-500">Thinking...</span>
-                  </div>
+                <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#7b008b]" />
                 </div>
               </div>
             )}
@@ -332,37 +256,30 @@ export default function ChatWidget({
         )}
       </div>
 
-      {/* Input */}
-      <div className="p-3 border-t border-gray-200 bg-white">
-        <div className="flex gap-2">
-          <input
+      {/* Input - FIXED: Dark text on white background */}
+      <div className="p-3 bg-white border-t border-gray-100">
+        <div className="flex items-end gap-2">
+          <textarea
             ref={inputRef}
-            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              childName ? `Ask about ${childName}...` : 'Ask Vedant AI anything...'
-            }
-            disabled={isLoading}
-            className="flex-1 bg-gray-100 border-0 rounded-xl py-2.5 px-4 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7b008b]/30 disabled:opacity-50"
+            placeholder="Ask about reading progress..."
+            rows={1}
+            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#7b008b]/20 focus:border-[#7b008b] transition-all"
+            style={{ maxHeight: '80px' }}
           />
           <button
             onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white hover:shadow-lg hover:shadow-[#7b008b]/30"
+            disabled={!input.trim() || isLoading}
+            className="p-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
           >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
+            <Send className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-[10px] text-gray-400 text-center mt-2">
-          Vedant AI uses your child's data to provide personalized insights
-        </p>
       </div>
     </div>
   );
 }
+
+export default ChatWidget;

@@ -1,5 +1,5 @@
 'use client';
-
+import { ChatWidget } from '@/components/chat';
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -94,7 +94,7 @@ export default function ParentDashboardPage() {
           .order('enrolled_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        
+
         if (childByParentId) {
           enrolledChild = childByParentId;
         }
@@ -278,7 +278,7 @@ export default function ParentDashboardPage() {
             </div>
             <p className="text-2xl font-bold text-gray-800">{getProgressPercentage()}%</p>
             <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-full transition-all duration-500"
                 style={{ width: `${getProgressPercentage()}%` }}
               />
@@ -410,10 +410,10 @@ export default function ParentDashboardPage() {
         {/* Vedant AI Tip */}
         <div className="mt-6 bg-gradient-to-r from-[#7b008b] to-[#ff0099] rounded-2xl p-6 text-white">
           <div className="flex items-start gap-4">
-            <Image 
-              src="/images/vedant-mascot.png" 
-              alt="Vedant AI" 
-              width={48} 
+            <Image
+              src="/images/vedant-mascot.png"
+              alt="Vedant AI"
+              width={48}
               height={48}
               className="w-12 h-12 rounded-xl bg-white/20 p-1"
             />
@@ -429,6 +429,14 @@ export default function ParentDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Chat Widget - Floating button in bottom-right */}
+      <ChatWidget
+        childId={childId}
+        childName={childName}
+        userRole="parent"
+        userEmail={parentEmail}
+      />
     </ParentLayout>
   );
 }

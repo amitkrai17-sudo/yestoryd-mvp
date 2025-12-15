@@ -140,12 +140,13 @@ async function handlePaymentCaptured(payment: any) {
     }
   }
 
-  // 6. Create child if needed
+  // 6. Create child if needed - ✅ FIX: Always include parent_email
   if (!childId && childName && parentId) {
     const { data: newChild } = await supabase
       .from('children')
       .insert({
         parent_id: parentId,
+        parent_email: parentEmail, // ✅ FIX: Always set parent_email
         name: childName,
         age: parseInt(childAge) || null,
         lead_status: 'enrolled',
@@ -165,10 +166,15 @@ async function handlePaymentCaptured(payment: any) {
     return;
   }
 
-  // 7. Update child status
+  // 7. Update child status - ✅ FIX: Always set parent_email and parent_id
   await supabase
     .from('children')
-    .update({ lead_status: 'enrolled', enrolled_at: new Date().toISOString() })
+    .update({ 
+      lead_status: 'enrolled', 
+      enrolled_at: new Date().toISOString(),
+      parent_email: parentEmail, // ✅ FIX: Always update parent_email
+      parent_id: parentId, // ✅ FIX: Ensure parent_id is set
+    })
     .eq('id', childId);
 
   // 8. Get coach
