@@ -167,8 +167,15 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
         if (enrollment) {
           setEnrollmentId(enrollment.id);
           if (enrollment.coaches) {
-            setCoachName(enrollment.coaches.name || 'Rucha');
-            setCoachPhone(enrollment.coaches.phone || '918976287997');
+            // Handle coaches - it might be an array or single object
+            const coachData = Array.isArray(enrollment.coaches) 
+              ? enrollment.coaches[0] 
+              : enrollment.coaches;
+            
+            if (coachData) {
+              setCoachName(coachData.name || 'Rucha');
+              setCoachPhone(coachData.phone || '918976287997');
+            }
           }
         }
       }
@@ -203,8 +210,15 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
     if (enrollment) {
       setEnrollmentId(enrollment.id);
       if (enrollment.coaches) {
-        setCoachName(enrollment.coaches.name || 'Rucha');
-        setCoachPhone(enrollment.coaches.phone || '918976287997');
+        // Handle coaches - it might be an array or single object
+        const coachData = Array.isArray(enrollment.coaches) 
+          ? enrollment.coaches[0] 
+          : enrollment.coaches;
+        
+        if (coachData) {
+          setCoachName(coachData.name || 'Rucha');
+          setCoachPhone(coachData.phone || '918976287997');
+        }
       }
     }
 
