@@ -41,35 +41,34 @@ function LetsTalkContent() {
   const source = searchParams.get('source') || 'direct';
 
   // Format phone number for Cal.com
-  // - Indian numbers: strip +91/91, keep 10 digits
-  // - International numbers: keep as-is with country code
+  // Cal.com phone field auto-detects country from number
+  // We need to KEEP country code for proper detection
   const formatPhoneForCal = (phone: string) => {
     // Remove spaces, dashes, parentheses
     const cleaned = phone.replace(/[\s\-\(\)]/g, '');
     
-    // Check if it's an Indian number
-    // Patterns: +919876543210, 919876543210, 09876543210, 9876543210
-    const indianPatterns = [
-      /^\+91(\d{10})$/,      // +91 followed by 10 digits
-      /^91(\d{10})$/,        // 91 followed by 10 digits  
-      /^0(\d{10})$/,         // 0 followed by 10 digits
-      /^(\d{10})$/,          // Just 10 digits (assume Indian)
-    ];
-    
-    for (const pattern of indianPatterns) {
-      const match = cleaned.match(pattern);
-      if (match) {
-        return match[1]; // Return just 10 digits for Indian numbers
-      }
-    }
-    
-    // For international numbers, keep the full number with + prefix
-    // If it starts with +, keep as-is
+    // If already has + prefix, return as-is (properly formatted)
     if (cleaned.startsWith('+')) {
       return cleaned;
     }
     
-    // If it looks like an international number (not 10 digits), add + prefix
+    // Check if it's an Indian number without + prefix
+    // 91 followed by 10 digits -> add + prefix
+    if (/^91\d{10}$/.test(cleaned)) {
+      return '+' + cleaned; // +919687606177
+    }
+    
+    // 0 followed by 10 digits (Indian format) -> convert to +91
+    if (/^0\d{10}$/.test(cleaned)) {
+      return '+91' + cleaned.slice(1); // 09687606177 -> +919687606177
+    }
+    
+    // Just 10 digits (assume Indian) -> add +91
+    if (/^\d{10}$/.test(cleaned)) {
+      return '+91' + cleaned; // 9687606177 -> +919687606177
+    }
+    
+    // For other international formats without +, add + prefix
     if (cleaned.length > 10) {
       return '+' + cleaned;
     }
@@ -79,16 +78,29 @@ function LetsTalkContent() {
   };
 
   // Build Cal.com URL with pre-filled params
+  // Cal.com field identifiers (from your Cal.com setup):
+  // - name, email = default fields
+  // - attendeePhoneNumber = Phone Number custom field
+  // - childName = Child Name custom field
+  // - childAge = Child Age custom field
   const getCalUrl = () => {
     const params = new URLSearchParams();
+    
+    // Default Cal.com fields
     if (formData.parentName) params.set('name', formData.parentName);
     if (formData.parentEmail) params.set('email', formData.parentEmail);
+    
+    // Custom fields - use exact identifiers from Cal.com
     if (formData.parentPhone) {
       const cleanPhone = formatPhoneForCal(formData.parentPhone);
-      params.set('phone', cleanPhone);
+      params.set('attendeePhoneNumber', cleanPhone);
     }
-    if (formData.childName) params.set('childName', formData.childName);
-    if (formData.childAge) params.set('childAge', formData.childAge);
+    if (formData.childName) {
+      params.set('childName', formData.childName);
+    }
+    if (formData.childAge) {
+      params.set('childAge', formData.childAge);
+    }
     
     const baseUrl = 'https://cal.com/yestoryd/discovery';
     return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
