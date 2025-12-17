@@ -355,8 +355,8 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
             </div>
           </div>
 
-          {/* Secondary CTA - Talk to Coach */}
-          <Link href="/book">
+          {/* Secondary CTA - Talk to Coach (Discovery Call) */}
+          <Link href={`/enroll?source=assessment&type=free&childName=${encodeURIComponent(childName)}&childAge=${encodeURIComponent(childAge)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}`}>
             <button className="w-full py-3.5 bg-gray-700 text-white font-semibold rounded-xl text-base flex items-center justify-center gap-2 hover:bg-gray-600 transition-all border border-gray-600 mb-4">
               <Calendar className="w-5 h-5" />
               Talk to {childName}&apos;s Coach First
