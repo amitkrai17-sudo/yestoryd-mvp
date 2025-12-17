@@ -3,10 +3,10 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { 
-  Zap, 
-  Volume2, 
-  MessageSquare, 
+import {
+  Zap,
+  Volume2,
+  MessageSquare,
   Calendar,
   BookOpen,
   Share2,
@@ -196,9 +196,9 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
           {/* Header with Mascot */}
           <div className="bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 p-5 text-center border-b border-gray-600">
             <div className="w-24 h-24 mx-auto mb-3">
-              <img 
-                src="/images/vedant-mascot.png" 
-                alt="Vedant - Yestoryd Mascot" 
+              <img
+                src="/images/vedant-mascot.png"
+                alt="Vedant - Yestoryd Mascot"
                 className="w-full h-full object-contain drop-shadow-lg"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -319,7 +319,7 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
                 <ArrowRight className="w-5 h-5" />
               </button>
             </Link>
-            
+
             {/* Features */}
             <div className="mt-4 space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-300">
@@ -356,7 +356,7 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
           </div>
 
           {/* Secondary CTA - Talk to Coach (Discovery Call) */}
-          <Link href={`/enroll?source=assessment&type=free&childName=${encodeURIComponent(childName)}&childAge=${encodeURIComponent(childAge)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}`}>
+          <Link href={`/lets-talk?source=assessment&childName=${encodeURIComponent(childName)}&childAge=${encodeURIComponent(childAge)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}`}>
             <button className="w-full py-3.5 bg-gray-700 text-white font-semibold rounded-xl text-base flex items-center justify-center gap-2 hover:bg-gray-600 transition-all border border-gray-600 mb-4">
               <Calendar className="w-5 h-5" />
               Talk to {childName}&apos;s Coach First
@@ -365,7 +365,7 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
           <p className="text-center text-xs text-gray-500 -mt-2 mb-4">Free 15-min call • No obligation</p>
 
           {/* Tertiary CTA - Share Results */}
-          <button 
+          <button
             onClick={shareOnWhatsApp}
             className="w-full py-3 bg-green-600 text-white font-semibold rounded-xl text-base flex items-center justify-center gap-2 hover:bg-green-500 transition-all mb-6"
           >
@@ -395,8 +395,8 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
             {/* Dots indicator */}
             <div className="flex justify-center gap-1 mt-3">
               {TESTIMONIALS.map((_, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className={`w-2 h-2 rounded-full transition-all ${i === currentTestimonial ? 'bg-pink-500 w-4' : 'bg-gray-600'}`}
                 />
               ))}

@@ -88,17 +88,16 @@ export default function HomePageClient({
   return (
     <div className="min-h-screen bg-[#FFFFFF]">
       {/* Header */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-[#FFFFFF] shadow-lg' : 'bg-transparent'
-      }`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#FFFFFF] shadow-lg' : 'bg-transparent'
+        }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo - New colorful text logo */}
             <Link href="/" className="flex items-center">
-              <Image 
-                src="/images/logo.png" 
-                alt="Yestoryd" 
-                width={140} 
+              <Image
+                src="/images/logo.png"
+                alt="Yestoryd"
+                width={140}
                 height={40}
                 className="h-8 lg:h-10 w-auto"
               />
@@ -106,28 +105,28 @@ export default function HomePageClient({
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-5">
-              <a 
-                href="#programs" 
+              <a
+                href="#programs"
                 className="text-gray-700 hover:text-[#ff0099] transition-colors font-medium"
               >
                 Programs
               </a>
-              <a 
-                href="#how-it-works" 
+              <a
+                href="#how-it-works"
                 className="text-gray-700 hover:text-[#ff0099] transition-colors font-medium"
               >
                 How It Works
               </a>
               {/* Uniform height buttons - all h-10 with consistent padding */}
-              <Link 
-                href="/parent/login" 
+              <Link
+                href="/parent/login"
                 className="h-10 inline-flex items-center justify-center gap-2 bg-[#00abff] text-white px-5 rounded-full font-semibold hover:bg-[#0095e6] hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 <LogIn className="w-4 h-4" />
                 Parent Login
               </Link>
-              <Link 
-                href="/coach/login" 
+              <Link
+                href="/coach/login"
                 className="h-10 inline-flex items-center justify-center gap-2 bg-[#7b008b] text-white px-5 rounded-full font-semibold hover:bg-[#6a0078] hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 <LogIn className="w-4 h-4" />
@@ -156,31 +155,31 @@ export default function HomePageClient({
         {mobileMenuOpen && (
           <div className="lg:hidden bg-[#FFFFFF] border-t border-gray-100 shadow-xl">
             <div className="px-4 py-6 space-y-3">
-              <a 
-                href="#programs" 
+              <a
+                href="#programs"
                 className="block text-gray-800 font-semibold py-2 hover:text-[#ff0099]"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Programs
               </a>
-              <a 
-                href="#how-it-works" 
+              <a
+                href="#how-it-works"
                 className="block text-gray-800 font-semibold py-2 hover:text-[#ff0099]"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 How It Works
               </a>
               {/* Uniform height buttons h-12 */}
-              <Link 
-                href="/parent/login" 
+              <Link
+                href="/parent/login"
                 className="h-12 flex items-center justify-center gap-2 bg-[#00abff] text-white rounded-full font-bold hover:scale-105 transition-all duration-200"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <LogIn className="w-4 h-4" />
                 Parent Login
               </Link>
-              <Link 
-                href="/coach/login" 
+              <Link
+                href="/coach/login"
                 className="h-12 flex items-center justify-center gap-2 bg-[#7b008b] text-white rounded-full font-bold hover:scale-105 transition-all duration-200"
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -214,10 +213,10 @@ export default function HomePageClient({
 
               {/* Vedant AI Introduction */}
               <div className="flex items-center gap-3 justify-center lg:justify-start mb-4">
-                <Image 
-                  src="/images/vedant-mascot.png" 
-                  alt="Vedant AI" 
-                  width={48} 
+                <Image
+                  src="/images/vedant-mascot.png"
+                  alt="Vedant AI"
+                  width={48}
                   height={48}
                   className="w-12 h-12"
                 />
@@ -233,7 +232,7 @@ export default function HomePageClient({
                 <span className="relative inline-block">
                   <span className="text-[#ff0099]">3X Better</span>
                   <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 12" fill="none">
-                    <path d="M2 10C50 4 150 4 198 10" stroke="#ff0099" strokeWidth="4" strokeLinecap="round"/>
+                    <path d="M2 10C50 4 150 4 198 10" stroke="#ff0099" strokeWidth="4" strokeLinecap="round" />
                   </svg>
                 </span>
                 {' '}in 90 Days
@@ -309,10 +308,10 @@ export default function HomePageClient({
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center overflow-hidden">
-                        <Image 
-                          src="/images/vedant-mascot.png" 
-                          alt="Vedant AI" 
-                          width={48} 
+                        <Image
+                          src="/images/vedant-mascot.png"
+                          alt="Vedant AI"
+                          width={48}
                           height={48}
                           className="w-12 h-12 object-cover"
                         />
@@ -326,16 +325,16 @@ export default function HomePageClient({
                       LIVE
                     </div>
                   </div>
-                  
+
                   {/* Score Circle - Without /10 */}
                   <div className="flex justify-center mb-6">
                     <div className="relative w-40 h-40">
                       <svg className="w-full h-full transform -rotate-90">
                         <circle cx="80" cy="80" r="70" stroke="#f3f4f6" strokeWidth="12" fill="none" />
-                        <circle 
-                          cx="80" cy="80" r="70" 
-                          stroke="url(#gradient)" 
-                          strokeWidth="12" 
+                        <circle
+                          cx="80" cy="80" r="70"
+                          stroke="url(#gradient)"
+                          strokeWidth="12"
                           fill="none"
                           strokeLinecap="round"
                           strokeDasharray="440"
@@ -543,14 +542,14 @@ export default function HomePageClient({
             ].map((item, index) => (
               <div key={index} className="relative flex">
                 {/* Card with equal height */}
-                <div 
+                <div
                   className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border-t-4 flex flex-col w-full"
                   style={{ borderTopColor: item.color }}
                 >
                   {/* Centered icon and step number */}
                   <div className="flex flex-col items-center mb-6">
                     <div className="text-5xl mb-3">{item.emoji}</div>
-                    <div 
+                    <div
                       className="inline-flex items-center justify-center w-10 h-10 rounded-full text-white font-bold text-lg"
                       style={{ backgroundColor: item.color }}
                     >
@@ -561,7 +560,7 @@ export default function HomePageClient({
                   <h3 className="font-bold text-gray-900 text-xl mb-3 text-left">{item.title}</h3>
                   <p className="text-gray-600 leading-relaxed text-left flex-grow">{item.description}</p>
                 </div>
-                
+
                 {/* Arrow between cards */}
                 {index < 2 && (
                   <div className="hidden md:flex absolute top-1/2 -right-4 lg:-right-5 transform -translate-y-1/2 z-10 items-center justify-center w-8 h-8 bg-white rounded-full shadow-md">
@@ -610,7 +609,7 @@ export default function HomePageClient({
               <p className="text-gray-600 mb-6">
                 Get Vedant AI's comprehensive analysis of your child's reading abilities instantly.
               </p>
-              
+
               <div className="text-4xl font-black text-gray-900 mb-6">
                 ₹0 <span className="text-lg font-medium text-gray-400 line-through">₹{pricing.freeAssessmentWorth}</span>
               </div>
@@ -623,7 +622,7 @@ export default function HomePageClient({
                   </li>
                 ))}
               </ul>
-              
+
               {/* Button wrapper to match height with right card */}
               <div className="mt-8">
                 <Link
@@ -656,7 +655,7 @@ export default function HomePageClient({
               <p className="text-white/80 mb-6">
                 The complete reading transformation system with expert coaching.
               </p>
-              
+
               <div className="mb-6">
                 <span className="text-5xl font-black">₹{pricing.discountedPrice.toLocaleString('en-IN')}</span>
                 <span className="text-xl font-medium text-white/60 line-through ml-2">₹{pricing.originalPrice.toLocaleString('en-IN')}</span>
@@ -673,11 +672,11 @@ export default function HomePageClient({
                   </li>
                 ))}
               </ul>
-              
+
               {/* Button wrapper to match height with left card */}
               <div className="mt-8">
                 <Link
-                  href="/book"
+                  href="/lets-talk"
                   className="w-full h-14 inline-flex items-center justify-center gap-2 bg-white text-[#ff0099] font-bold rounded-full hover:bg-gray-100 hover:scale-105 hover:shadow-lg transition-all duration-200 text-base"
                 >
                   <Phone className="w-5 h-5" />
@@ -701,35 +700,35 @@ export default function HomePageClient({
 
       {/* Testimonials Section - DYNAMIC */}
       {showTestimonials && testimonials.length > 0 && (
-      <section className="py-16 lg:py-24 bg-[#f5f5f5]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-4">
-              Parents <span className="text-[#ff0099]">Love</span> Yestoryd
-            </h2>
-          </div>
+        <section className="py-16 lg:py-24 bg-[#f5f5f5]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-4">
+                Parents <span className="text-[#ff0099]">Love</span> Yestoryd
+              </h2>
+            </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial) => (
-              <div key={testimonial.id} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all">
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: testimonial.rating }).map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-[#ffde00] text-[#ffde00]" />
-                  ))}
+            <div className="grid md:grid-cols-3 gap-8">
+              {testimonials.map((testimonial) => (
+                <div key={testimonial.id} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all">
+                  <div className="flex gap-1 mb-4">
+                    {Array.from({ length: testimonial.rating }).map((_, i) => (
+                      <Star key={i} className="w-5 h-5 fill-[#ffde00] text-[#ffde00]" />
+                    ))}
+                  </div>
+                  <p className="text-gray-700 mb-6 leading-relaxed">"{testimonial.testimonial_text}"</p>
+                  <div>
+                    <p className="font-bold text-gray-900">{testimonial.parent_name}</p>
+                    <p className="text-gray-500 text-sm">
+                      {testimonial.parent_location ? `${testimonial.parent_location} • ` : ''}
+                      Parent of {testimonial.child_name}, {testimonial.child_age}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-gray-700 mb-6 leading-relaxed">"{testimonial.testimonial_text}"</p>
-                <div>
-                  <p className="font-bold text-gray-900">{testimonial.parent_name}</p>
-                  <p className="text-gray-500 text-sm">
-                    {testimonial.parent_location ? `${testimonial.parent_location} • ` : ''}
-                    Parent of {testimonial.child_name}, {testimonial.child_age}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
       )}
 
       {/* Final CTA Section */}
@@ -737,23 +736,23 @@ export default function HomePageClient({
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Vedant AI CTA */}
           <div className="flex justify-center mb-6">
-            <Image 
-              src="/images/vedant-mascot.png" 
-              alt="Vedant AI" 
-              width={80} 
+            <Image
+              src="/images/vedant-mascot.png"
+              alt="Vedant AI"
+              width={80}
               height={80}
               className="w-20 h-20"
             />
           </div>
           <p className="text-[#ffde00] font-bold text-lg mb-2">Vedant AI says:</p>
-          
+
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-6">
             Don't Let Your Child <span className="text-[#ffde00]">Fall Behind</span>
           </h2>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
             Every day without proper reading support is a day of lost potential. Take the free assessment now and see exactly where your child needs help.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-stretch gap-4 justify-center mb-8 px-4 sm:px-0">
             <Link
               href="/assessment"
@@ -802,16 +801,16 @@ export default function HomePageClient({
             {/* Brand */}
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <Image 
-                  src="/images/logo.png" 
-                  alt="Yestoryd" 
-                  width={120} 
+                <Image
+                  src="/images/logo.png"
+                  alt="Yestoryd"
+                  width={120}
                   height={36}
                   className="h-8 w-auto"
                 />
               </div>
               <p className="text-gray-400 mb-6 max-w-md">
-                AI-powered reading intelligence transforming how children aged 4-12 learn to read. 
+                AI-powered reading intelligence transforming how children aged 4-12 learn to read.
                 Personalized assessment by Vedant AI and expert coaching for lasting results.
               </p>
               <a
@@ -862,7 +861,7 @@ export default function HomePageClient({
                   </Link>
                 </li>
                 <li>
-                  <a 
+                  <a
                     href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -889,10 +888,10 @@ export default function HomePageClient({
         className="fixed bottom-20 lg:bottom-6 right-6 z-50 bg-[#25d366] p-2 rounded-full shadow-2xl hover:scale-110 transition-all duration-300 flex items-center gap-2"
         aria-label="Chat on WhatsApp"
       >
-        <Image 
-          src="/images/vedant-mascot.png" 
-          alt="Chat with Vedant" 
-          width={40} 
+        <Image
+          src="/images/vedant-mascot.png"
+          alt="Chat with Vedant"
+          width={40}
           height={40}
           className="w-10 h-10 rounded-full"
         />

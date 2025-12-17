@@ -1,9 +1,26 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle, ArrowRight, Shield, Clock, Users, Sparkles, Loader2, Calendar, Gift } from 'lucide-react';
+import {
+  CheckCircle,
+  ArrowRight,
+  Loader2,
+  Shield,
+  Star,
+  Calendar,
+  BookOpen,
+  MessageCircle,
+  Video,
+  Sparkles,
+  Award,
+  Phone,
+  Mail,
+  User,
+  Baby,
+} from 'lucide-react';
 
 declare global {
   interface Window {
@@ -11,156 +28,51 @@ declare global {
   }
 }
 
-const AGE_OPTIONS = Array.from({ length: 13 }, (_, i) => i + 3); // 3-15 years
-
-// Default pricing (fallback)
-const DEFAULT_PRICING = {
-  name: '3-Month Reading Program',
-  originalPrice: 9999,
-  discountedPrice: 5999,
-  discountLabel: 'SAVE 40%',
-  features: [
-    '6 One-on-One Coaching Sessions',
-    '3 Parent Progress Check-ins',
-    'AI-Powered Reading Analysis',
-    'Personalized Learning Plan',
-  ],
-};
-
-// Main enrollment form component
-function EnrollmentForm() {
+function EnrollContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  
-  const source = searchParams.get('source') || 'direct';
-  const flowType = searchParams.get('type') || 'paid'; // 'paid' or 'free'
-  const prefillChildName = searchParams.get('childName') || '';
-  const prefillChildAge = searchParams.get('childAge') || '';
-  const prefillParentName = searchParams.get('parentName') || '';
-  const prefillParentEmail = searchParams.get('email') || searchParams.get('parentEmail') || '';
-  const prefillParentPhone = searchParams.get('parentPhone') || '';
-  
-  const isFreeTrialFlow = flowType === 'free';
-  
-  const [step, setStep] = useState<'info' | 'payment' | 'success'>('info');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [pricing, setPricing] = useState(DEFAULT_PRICING);
-  const [pricingLoaded, setPricingLoaded] = useState(false);
-  
-  const [form, setForm] = useState({
-    parentName: prefillParentName,
-    parentEmail: prefillParentEmail,
-    parentPhone: prefillParentPhone,
-    childName: prefillChildName,
-    childAge: prefillChildAge,
-    source: source,
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  // Pre-fill from URL params
+  const [formData, setFormData] = useState({
+    parentName: searchParams.get('parentName') || '',
+    parentEmail: searchParams.get('parentEmail') || '',
+    parentPhone: searchParams.get('parentPhone') || '',
+    childName: searchParams.get('childName') || '',
+    childAge: searchParams.get('childAge') || '',
   });
 
-  // Fetch pricing from database
-  useEffect(() => {
-    const fetchPricing = async () => {
-      try {
-        const res = await fetch('/api/pricing');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.plans && data.plans.length > 0) {
-            const plan = data.plans[0];
-            setPricing({
-              name: plan.name || DEFAULT_PRICING.name,
-              originalPrice: plan.original_price || DEFAULT_PRICING.originalPrice,
-              discountedPrice: plan.discounted_price || DEFAULT_PRICING.discountedPrice,
-              discountLabel: plan.discount_label || DEFAULT_PRICING.discountLabel,
-              features: plan.features || DEFAULT_PRICING.features,
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Failed to fetch pricing:', e);
-      } finally {
-        setPricingLoaded(true);
-      }
-    };
-    fetchPricing();
-  }, []);
+  const source = searchParams.get('source') || 'direct';
 
-  // Load Razorpay script (only for paid flow)
+  // WhatsApp
+  const whatsappNumber = '918976287997';
+  const whatsappMessage = encodeURIComponent(
+    `Hi! I'd like to enroll${formData.childName ? ` ${formData.childName}` : ' my child'} in Yestoryd's reading program.`
+  );
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // Load Razorpay script
   useEffect(() => {
-    if (!isFreeTrialFlow) {
+    if (typeof window !== 'undefined' && !window.Razorpay) {
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
+      script.onload = () => setRazorpayLoaded(true);
       document.body.appendChild(script);
-      return () => {
-        if (document.body.contains(script)) {
-          document.body.removeChild(script);
-        }
-      };
+    } else {
+      setRazorpayLoaded(true);
     }
-  }, [isFreeTrialFlow]);
-
-  // Check if user is logged in and prefill
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/session');
-        const session = await res.json();
-        if (session?.user?.email) {
-          setForm(f => ({
-            ...f,
-            parentEmail: f.parentEmail || session.user.email,
-            parentName: f.parentName || session.user.name || '',
-          }));
-        }
-      } catch (e) {
-        // Not logged in, continue
-      }
-    };
-    checkAuth();
   }, []);
 
-  const validateForm = () => {
-    if (!form.parentName.trim()) return 'Parent name is required';
-    if (!form.parentEmail.trim()) return 'Email is required';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.parentEmail)) return 'Invalid email format';
-    if (!form.parentPhone.trim()) return 'Phone number is required';
-    if (!/^[6-9]\d{9}$/.test(form.parentPhone.replace(/\D/g, ''))) return 'Invalid phone number (10 digits starting with 6-9)';
-    if (!form.childName.trim()) return 'Child name is required';
-    if (!form.childAge) return 'Child age is required';
-    return null;
-  };
-
-  // Save lead to database
-  const saveLeadToDatabase = async () => {
-    try {
-      const res = await fetch('/api/admin/crm/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          parent_name: form.parentName,
-          parent_email: form.parentEmail,
-          parent_phone: form.parentPhone,
-          child_name: form.childName,
-          child_age: parseInt(form.childAge),
-          lead_source: isFreeTrialFlow ? 'free_trial' : source,
-          lead_status: isFreeTrialFlow ? 'call_scheduled' : 'assessed',
-          lead_notes: isFreeTrialFlow ? 'Booked free trial session' : `Enrollment from ${source}`,
-        }),
-      });
-      
-      const data = await res.json();
-      return data;
-    } catch (e) {
-      console.error('Failed to save lead:', e);
-      return null;
-    }
-  };
-
-  // Handle free trial flow
-  const handleFreeTrialSubmit = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!razorpayLoaded) {
+      setError('Payment system is loading. Please try again.');
       return;
     }
 
@@ -168,77 +80,45 @@ function EnrollmentForm() {
     setError('');
 
     try {
-      // 1. Save lead to database
-      await saveLeadToDatabase();
-
-      // 2. Build Cal.com URL with prefilled data
-      const calUrl = `https://cal.com/yestoryd/discovery?name=${encodeURIComponent(form.parentName)}&email=${encodeURIComponent(form.parentEmail)}&notes=${encodeURIComponent(`Child: ${form.childName}, Age: ${form.childAge}`)}`;
-
-      // 3. Redirect to Cal.com
-      window.location.href = calUrl;
-      
-    } catch (e: any) {
-      setError(e.message || 'Something went wrong');
-      setLoading(false);
-    }
-  };
-
-  // Handle paid enrollment flow
-  const handlePaidEnrollment = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      // 1. Create Razorpay order with dynamic pricing
-      const orderRes = await fetch('/api/payment/create', {
+      // Create Razorpay order
+      const response = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: pricing.discountedPrice,
-          childName: form.childName,
-          childAge: form.childAge,
-          parentName: form.parentName,
-          parentEmail: form.parentEmail,
-          parentPhone: form.parentPhone,
+          amount: 5999,
+          parentName: formData.parentName,
+          parentEmail: formData.parentEmail,
+          parentPhone: formData.parentPhone,
+          childName: formData.childName,
+          childAge: formData.childAge,
+          source,
         }),
       });
 
-      const orderData = await orderRes.json();
-      
-      if (!orderRes.ok || !orderData.orderId) {
-        throw new Error(orderData.error || 'Failed to create order');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create order');
       }
 
-      // 2. Open Razorpay checkout
+      // Open Razorpay checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: orderData.currency,
+        amount: data.amount,
+        currency: 'INR',
         name: 'Yestoryd',
-        description: pricing.name,
-        image: '/images/logo.png',
-        order_id: orderData.orderId,
+        description: '3-Month Reading Coaching Program',
+        order_id: data.orderId,
         prefill: {
-          name: form.parentName,
-          email: form.parentEmail,
-          contact: form.parentPhone,
-        },
-        notes: {
-          childName: form.childName,
-          childAge: form.childAge,
-          source: form.source,
+          name: formData.parentName,
+          email: formData.parentEmail,
+          contact: formData.parentPhone,
         },
         theme: {
-          color: '#FF0099',
+          color: '#ff0099',
         },
         handler: async function (response: any) {
-          // 3. Verify payment
+          // Verify payment
           try {
             const verifyRes = await fetch('/api/payment/verify', {
               method: 'POST',
@@ -247,366 +127,333 @@ function EnrollmentForm() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                childName: form.childName,
-                childAge: form.childAge,
-                parentName: form.parentName,
-                parentEmail: form.parentEmail,
-                parentPhone: form.parentPhone,
+                childName: formData.childName,
+                childAge: formData.childAge,
+                parentEmail: formData.parentEmail,
+                parentPhone: formData.parentPhone,
+                parentName: formData.parentName,
               }),
             });
 
-            const verifyData = await verifyRes.json();
-            
-            if (verifyData.success) {
-              setStep('success');
+            if (verifyRes.ok) {
+              window.location.href = '/enrollment-success';
             } else {
-              setError(verifyData.error || 'Payment verification failed');
+              setError('Payment verification failed. Please contact support.');
             }
-          } catch (e) {
+          } catch (err) {
             setError('Payment verification failed. Please contact support.');
           }
         },
         modal: {
-          ondismiss: function () {
+          ondismiss: function() {
             setLoading(false);
-          },
-        },
+          }
+        }
       };
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
-      
-    } catch (e: any) {
-      setError(e.message || 'Something went wrong');
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
       setLoading(false);
     }
   };
 
-  // Handle form submission based on flow type
-  const handleSubmit = () => {
-    if (isFreeTrialFlow) {
-      handleFreeTrialSubmit();
-    } else {
-      handlePaidEnrollment();
+  const features = [
+    { icon: Video, text: '6 One-on-One Sessions' },
+    { icon: Calendar, text: '3 Parent Meetings' },
+    { icon: BookOpen, text: 'FREE E-Learning' },
+    { icon: Sparkles, text: 'AI Progress Tracking' },
+    { icon: MessageCircle, text: 'WhatsApp Support' },
+    { icon: Award, text: 'Certificate' },
+  ];
+
+  // Personalized CTA - returns JSX for styled name
+  const renderCtaText = () => {
+    if (formData.childName) {
+      return (
+        <>
+          Enroll <span className="text-yellow-300 font-black underline underline-offset-2">{formData.childName}</span> — ₹5,999
+        </>
+      );
     }
+    return 'Proceed to Payment — ₹5,999';
   };
 
-  // Calculate discount amount
-  const discountAmount = pricing.originalPrice - pricing.discountedPrice;
-
-  // Success Screen (Paid enrollment)
-  if (step === 'success') {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-12 h-12 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            🎉 Welcome to Yestoryd!
-          </h1>
-          <p className="text-gray-600 mb-6">
-            {form.childName}&apos;s reading journey begins now! Check your email for confirmation and session schedule.
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-            <p className="text-sm text-gray-500 mb-2">What happens next:</p>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700">Confirmation email with schedule</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700">Google Calendar invites for all 9 sessions</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700">WhatsApp message from your coach</span>
-              </li>
-            </ul>
-          </div>
-          <button
-            onClick={() => router.push('/parent/dashboard')}
-            className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition"
-          >
-            Go to Parent Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Enrollment Form
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Image src="/images/logo.png" alt="Yestoryd" width={120} height={40} />
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Secure {isFreeTrialFlow ? 'Booking' : 'Checkout'}</p>
-            <p className="text-xs text-gray-400 flex items-center gap-1 justify-end">
-              <Shield className="w-3 h-3" /> Your data is safe
-            </p>
-          </div>
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center">
+            <Image 
+              src="/images/logo.png" 
+              alt="Yestoryd" 
+              width={120} 
+              height={36}
+              className="h-8 w-auto"
+            />
+          </Link>
+          <Link 
+            href="/lets-talk"
+            className="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1"
+          >
+            <Phone className="w-4 h-4" />
+            <span className="hidden sm:inline">Book Free Call</span>
+            <span className="sm:hidden">Free Call</span>
+          </Link>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-5 gap-8">
-          {/* Form Section */}
-          <div className="md:col-span-3">
-            <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-              {/* Header based on flow */}
-              {isFreeTrialFlow ? (
-                <>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <Gift className="w-5 h-5 text-green-600" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                      Book Free Trial
-                    </h1>
-                  </div>
-                  <p className="text-gray-600 mb-6">
-                    Complete your details to book a free 30-min session
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    Enroll Your Child
-                  </h1>
-                  <p className="text-gray-600 mb-6">
-                    Start your child&apos;s 3-month reading transformation journey
-                  </p>
-                </>
-              )}
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-                  {error}
+      <main className="max-w-5xl mx-auto px-4 py-6 lg:py-10">
+        <div className="grid lg:grid-cols-5 gap-6 lg:gap-10">
+          
+          {/* Left Column - Info (2/5) */}
+          <div className="lg:col-span-2">
+            {/* Coach Card */}
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
+              <div className="flex items-center gap-2 text-yellow-600 mb-3">
+                <Sparkles className="w-4 h-4" />
+                <span className="font-semibold text-xs">YOUR READING COACH</span>
+              </div>
+              
+              <div className="flex items-center gap-3 mb-3">
+                {/* Avatar */}
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xl font-bold">
+                  R
                 </div>
-              )}
-
-              <div className="space-y-4">
-                {/* Parent Section */}
-                <div className="pb-4 border-b border-gray-200">
-                  <h3 className="font-semibold text-gray-700 mb-3">Parent Details</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Your Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={form.parentName}
-                        onChange={(e) => setForm({ ...form, parentName: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
-                        placeholder="Enter your full name"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email *
-                        </label>
-                        <input
-                          type="email"
-                          value={form.parentEmail}
-                          onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
-                          placeholder="email@example.com"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Phone *
-                        </label>
-                        <input
-                          type="tel"
-                          value={form.parentPhone}
-                          onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
-                          placeholder="9876543210"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Child Section */}
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Child Details</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Child&apos;s Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={form.childName}
-                        onChange={(e) => setForm({ ...form, childName: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
-                        placeholder="Child's first name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Age *
-                      </label>
-                      <select
-                        value={form.childAge}
-                        onChange={(e) => setForm({ ...form, childAge: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
-                      >
-                        <option value="" className="text-gray-400">Select age</option>
-                        {AGE_OPTIONS.map(age => (
-                          <option key={age} value={age} className="text-gray-900">{age} years</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Rucha</h3>
+                  <p className="text-green-600 font-medium text-sm">Founder & Lead Coach</p>
                 </div>
               </div>
 
-              {/* CTA Button */}
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className={`w-full mt-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  isFreeTrialFlow 
-                    ? 'bg-green-500 hover:bg-green-600 text-white'
-                    : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                }`}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Processing...</span>
-                  </>
-                ) : isFreeTrialFlow ? (
-                  <>
-                    <Calendar className="w-5 h-5" />
-                    <span>Book Free Session</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Pay ₹{pricing.discountedPrice.toLocaleString('en-IN')} & Start Journey</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-3 text-xs text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                  <span className="font-semibold">4.9</span>
+                </div>
+                <span>10+ years exp.</span>
+                <span>500+ students</span>
+              </div>
+            </div>
 
-              <p className="text-center text-xs text-gray-500 mt-4">
-                By proceeding, you agree to our Terms of Service and Privacy Policy
+            {/* What's Included */}
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3 text-sm">
+                <BookOpen className="w-4 h-4 text-gray-600" />
+                What's Included
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-2">
+                {features.map((feature, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-700 text-xs">{feature.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Testimonial */}
+            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200 hidden lg:block">
+              <div className="flex items-center gap-1 mb-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                ))}
+              </div>
+              <p className="text-gray-700 italic text-sm mb-3">
+                "Amazing transformation! Aarav went from struggling to reading confidently."
               </p>
+              <p className="font-bold text-green-700 text-sm">— Priya S., Mumbai</p>
             </div>
           </div>
 
-          {/* Summary Section */}
-          <div className="md:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-4">
-              <h3 className="font-bold text-gray-900 mb-4">
-                {isFreeTrialFlow ? 'Free Trial Details' : 'Order Summary'}
-              </h3>
-              
-              {isFreeTrialFlow ? (
-                <>
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
-                    <p className="font-semibold text-gray-900">Free Discovery Session</p>
-                    <p className="text-sm text-gray-600">30-minute consultation call</p>
+          {/* Right Column - Form (3/5) */}
+          <div className="lg:col-span-3">
+            {/* Pricing Card */}
+            <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-lg">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold">3-Month Reading Coaching</h2>
+                    <p className="text-white/80 text-xs">9 sessions. Everything included.</p>
                   </div>
+                  <div className="text-right">
+                    <div className="text-xs line-through text-white/60">₹11,999</div>
+                    <div className="text-2xl font-black">₹5,999</div>
+                  </div>
+                </div>
+                <div className="mt-2 inline-block bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold">
+                  SAVE 50%
+                </div>
+              </div>
 
-                  <div className="space-y-3 text-sm mb-4">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">Meet Coach Rucha</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">Discuss your child&apos;s reading</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">Get personalized recommendations</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-gray-700">No obligation to enroll</span>
-                    </div>
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="p-4 space-y-3">
+                {/* Parent Name */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Your Name *</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      name="parentName"
+                      value={formData.parentName}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Enter your full name"
+                      className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
+                    />
                   </div>
+                </div>
 
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex justify-between items-center text-lg font-bold">
-                      <span className="text-gray-900">Price</span>
-                      <span className="text-green-600">FREE</span>
+                {/* Email & Phone Row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="email"
+                        name="parentEmail"
+                        value={formData.parentEmail}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="your@email.com"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
+                      />
                     </div>
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 mb-4">
-                    <p className="font-semibold text-gray-900">{pricing.name}</p>
-                    <p className="text-sm text-gray-600">Complete transformation package</p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Phone *</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="tel"
+                        name="parentPhone"
+                        value={formData.parentPhone}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="+91 98765 43210"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  <div className="space-y-3 text-sm mb-4">
-                    {(pricing.features || DEFAULT_PRICING.features).slice(0, 4).map((feature, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-pink-500 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
-                      </div>
-                    ))}
+                {/* Child Name & Age Row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Child's Name *</label>
+                    <div className="relative">
+                      <Baby className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        name="childName"
+                        value={formData.childName}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Child's name"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
+                      />
+                    </div>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Age *</label>
+                    <select
+                      name="childAge"
+                      value={formData.childAge}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
+                    >
+                      <option value="">Select age</option>
+                      {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((age) => (
+                        <option key={age} value={age}>{age} years</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-600">Program Fee</span>
-                      <span className="text-gray-400 line-through">₹{pricing.originalPrice.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-green-600 font-medium">Discount</span>
-                      <span className="text-green-600">-₹{discountAmount.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-lg font-bold border-t border-gray-200 pt-2 mt-2">
-                      <span className="text-gray-900">Total</span>
-                      <span className="text-pink-600">₹{pricing.discountedPrice.toLocaleString('en-IN')}</span>
-                    </div>
+                {/* Error */}
+                {error && (
+                  <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">
+                    {error}
                   </div>
+                )}
 
-                  <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                    <p className="text-xs text-yellow-800">
-                      🎁 <strong>Bonus:</strong> Free access to e-learning library & storytelling workshops!
-                    </p>
-                  </div>
-                </>
-              )}
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading || !razorpayLoaded}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/30 mt-2"
+                >
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <ArrowRight className="w-5 h-5" />
+                      {renderCtaText()}
+                    </>
+                  )}
+                </button>
+
+                {/* Trust Signals */}
+                <div className="flex items-center justify-center gap-4 text-xs text-gray-500 pt-2">
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-green-500" />
+                    100% Refund Guarantee
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-blue-500" />
+                    Flexible scheduling
+                  </span>
+                </div>
+              </form>
+
+              {/* Alternative */}
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <p className="text-center text-gray-600 text-xs mb-2">
+                  Need help deciding?
+                </p>
+                <div className="flex gap-2">
+                  <Link
+                    href="/lets-talk"
+                    className="flex-1 h-10 flex items-center justify-center gap-1 bg-purple-100 text-purple-700 font-semibold rounded-lg text-sm hover:bg-purple-200 transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    Free Call
+                  </Link>
+                  <a
+                    href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 h-10 flex items-center justify-center gap-1 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg text-sm transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
 
-// Loading fallback
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50 flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500 mx-auto mb-4" />
-        <p className="text-gray-600">Loading...</p>
-      </div>
-    </div>
-  );
-}
-
-// Main page with Suspense boundary
 export default function EnrollPage() {
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <EnrollmentForm />
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-12 h-12 animate-spin text-pink-500" />
+      </div>
+    }>
+      <EnrollContent />
     </Suspense>
   );
 }
