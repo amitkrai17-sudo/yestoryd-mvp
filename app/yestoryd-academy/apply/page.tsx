@@ -399,7 +399,10 @@ export default function CoachApplicationPage() {
           .from('coach-applications')
           .upload(audioFileName, audioBlob);
         
-        if (audioError) throw audioError;
+        if (audioError) {
+          console.error('Audio upload error:', audioError);
+          throw new Error(`Audio upload failed: ${audioError.message}`);
+        }
         audioUrl = audioData.path;
       }
 
@@ -411,8 +414,12 @@ export default function CoachApplicationPage() {
           .from('coach-applications')
           .upload(resumeFileName, resumeFiles[0]);
         
-        if (resumeError) throw resumeError;
-        resumeUrl = resumeData.path;
+        if (resumeError) {
+          console.error('Resume upload error:', resumeError);
+          // Don't fail on resume error, it's optional
+        } else {
+          resumeUrl = resumeData.path;
+        }
       }
 
       // Upload credentials
@@ -423,18 +430,20 @@ export default function CoachApplicationPage() {
           .from('coach-applications')
           .upload(fileName, file);
         
-        if (error) throw error;
-        credentialUrls.push(data.path);
+        if (!error && data) {
+          credentialUrls.push(data.path);
+        }
       }
 
       // Create application record
-      const { data: application, error: appError } = await supabase
-        .from('coach_applications')
+      const { data: application, error: appError } = await (supabase
+        .from('coach_applications') as any)
         .insert({
           google_id: user?.id,
           email: formData.email,
           name: formData.name,
           phone: formData.phone,
+          country: formData.country,
           city: formData.city,
           qualification: formData.qualification,
           current_occupation: formData.currentOccupation,
@@ -444,20 +453,23 @@ export default function CoachApplicationPage() {
           audio_statement_url: audioUrl,
           audio_duration_seconds: audioDuration,
           resume_url: resumeUrl,
-          credential_urls: credentialUrls,
+          credential_urls: credentialUrls.length > 0 ? credentialUrls : null,
           status: 'applied'
         })
         .select()
         .single();
 
-      if (appError) throw appError;
+      if (appError) {
+        console.error('Database insert error:', appError);
+        throw new Error(`Database error: ${appError.message}`);
+      }
 
       // Redirect to AI assessment
       router.push(`/yestoryd-academy/assessment?applicationId=${application.id}`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting application:', error);
-      alert('Error submitting application. Please try again.');
+      alert(`Error: ${error.message || 'Something went wrong. Please try again.'}`);
     } finally {
       setLoading(false);
     }

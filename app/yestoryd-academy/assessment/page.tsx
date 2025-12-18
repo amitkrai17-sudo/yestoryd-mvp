@@ -169,8 +169,8 @@ A 6-year-old has been struggling with the same word for 3 sessions. They're gett
     
     try {
       // Store the entire conversation
-      const { data: applicationData, error } = await supabase
-        .from('coach_applications')
+      const { data: applicationData, error } = await (supabase
+        .from('coach_applications') as any)
         .update({
           ai_responses: messages,
           ai_assessment_completed_at: new Date().toISOString(),
