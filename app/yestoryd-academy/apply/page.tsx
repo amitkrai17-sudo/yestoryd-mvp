@@ -149,7 +149,7 @@ export default function ApplyPage() {
           country: formData.country,
           city: finalCity,
           status: 'started'
-        })
+        } as any)
         .select()
         .single();
 

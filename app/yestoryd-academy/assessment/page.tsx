@@ -183,7 +183,7 @@ function AssessmentPageContent() {
             audio_statement_url: urlData.publicUrl,
             audio_duration_seconds: recordingTime,
             updated_at: new Date().toISOString()
-          })
+          } as any)
           .eq('id', applicationId);
       }
     } catch (err) {
@@ -330,7 +330,7 @@ function AssessmentPageContent() {
           ai_assessment_completed_at: new Date().toISOString(),
           status: 'assessment_complete',
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', applicationId);
 
     } catch (err) {

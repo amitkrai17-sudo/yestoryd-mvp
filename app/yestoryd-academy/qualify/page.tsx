@@ -196,7 +196,7 @@ function QualifyPageContent() {
           resume_url: resumeUrl,
           status: 'qualified',
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', applicationId);
 
       if (updateError) {
