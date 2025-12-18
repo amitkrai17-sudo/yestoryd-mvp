@@ -151,9 +151,10 @@ export default function ApplyPage() {
           status: 'started'
         } as any)
         .select()
-        .single();
+        .single() as { data: { id: string } | null; error: any };
 
       if (insertError) throw insertError;
+      if (!application) throw new Error('Failed to create application');
 
       // Navigate to Step 2
       router.push(`/yestoryd-academy/qualify?applicationId=${application.id}`);
