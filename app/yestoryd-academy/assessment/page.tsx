@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import {
@@ -18,7 +18,8 @@ interface Message {
   content: string;
 }
 
-export default function VedantAIAssessmentPage() {
+// Inner component that uses useSearchParams
+function AssessmentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const applicationId = searchParams.get('applicationId');
@@ -350,5 +351,28 @@ A 6-year-old has been struggling with the same word for 3 sessions. They're gett
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback
+function AssessmentLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+          <Sparkles className="w-6 h-6 text-white animate-pulse" />
+        </div>
+        <p className="text-slate-400">Loading assessment...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function VedantAIAssessmentPage() {
+  return (
+    <Suspense fallback={<AssessmentLoading />}>
+      <AssessmentContent />
+    </Suspense>
   );
 }
