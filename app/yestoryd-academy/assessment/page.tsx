@@ -177,13 +177,13 @@ function AssessmentPageContent() {
           .from('coach-applications')
           .getPublicUrl(filePath);
 
-        await supabase
-          .from('coach_applications')
+        await (supabase
+          .from('coach_applications') as any)
           .update({
             audio_statement_url: urlData.publicUrl,
             audio_duration_seconds: recordingTime,
             updated_at: new Date().toISOString()
-          } as any)
+          })
           .eq('id', applicationId);
       }
     } catch (err) {
@@ -323,14 +323,14 @@ function AssessmentPageContent() {
         .filter(m => m.role === 'user')
         .map((m, i) => ({ question: i + 1, response: m.content }));
 
-      await supabase
-        .from('coach_applications')
+      await (supabase
+        .from('coach_applications') as any)
         .update({
           ai_responses: userResponses,
           ai_assessment_completed_at: new Date().toISOString(),
           status: 'assessment_complete',
           updated_at: new Date().toISOString()
-        } as any)
+        })
         .eq('id', applicationId);
 
     } catch (err) {

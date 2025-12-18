@@ -139,8 +139,8 @@ export default function ApplyPage() {
         : formData.customCity;
 
       // Create application record
-      const { data: application, error: insertError } = await supabase
-        .from('coach_applications')
+      const { data: application, error: insertError } = await (supabase
+        .from('coach_applications') as any)
         .insert({
           google_id: user?.id || null,
           email: formData.email.trim(),
@@ -149,9 +149,9 @@ export default function ApplyPage() {
           country: formData.country,
           city: finalCity,
           status: 'started'
-        } as any)
+        })
         .select()
-        .single() as { data: { id: string } | null; error: any };
+        .single();
 
       if (insertError) throw insertError;
       if (!application) throw new Error('Failed to create application');

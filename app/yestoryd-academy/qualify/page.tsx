@@ -186,8 +186,8 @@ function QualifyPageContent() {
       }
 
       // Update application
-      const { error: updateError } = await supabase
-        .from('coach_applications')
+      const { error: updateError } = await (supabase
+        .from('coach_applications') as any)
         .update({
           qualification_checklist: {
             essential: Array.from(essentialChecked),
@@ -196,7 +196,7 @@ function QualifyPageContent() {
           resume_url: resumeUrl,
           status: 'qualified',
           updated_at: new Date().toISOString()
-        } as any)
+        })
         .eq('id', applicationId);
 
       if (updateError) {
