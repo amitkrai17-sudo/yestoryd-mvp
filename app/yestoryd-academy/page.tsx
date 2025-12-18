@@ -1,301 +1,210 @@
 // app/yestoryd-academy/page.tsx
 // Yestoryd Academy - Coach Recruitment Landing Page
-// Partnership-focused, passion-driven messaging
-
+// Matches the deployed version exactly
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { 
-  Heart, 
-  Brain, 
-  Users, 
-  BookOpen, 
-  CheckCircle2, 
-  ArrowRight,
-  Sparkles,
-  Target,
-  TrendingUp,
+import {
+  Heart,
+  CheckCircle2,
   Clock,
-  Shield,
-  Star,
+  Users,
+  MessageCircle,
+  Sparkles,
   ChevronDown,
-  Play
+  ChevronUp,
+  ArrowRight,
+  Star,
+  Zap,
+  Shield,
+  Target,
+  Award,
+  Crown,
+  Sprout,
+  GraduationCap,
+  Brain,
+  Calendar,
+  Video,
+  FileText,
+  Headphones,
+  CreditCard,
+  BarChart3,
+  Settings,
+  BookOpen,
+  Lightbulb,
+  HandHeart,
+  Scale,
+  TrendingUp,
+  UserCheck
 } from 'lucide-react';
+
+// FAQ Data
+const FAQ_DATA = [
+  {
+    question: "What qualifications do I need?",
+    answer: "No specific teaching degree required. We look for patience, empathy, and genuine care for children. Experience with children (as a parent, tutor, or caregiver) is helpful but not mandatory. We provide all the training you need."
+  },
+  {
+    question: "How much time do I need to commit?",
+    answer: "Minimum 15-20 hours per month. Each child requires about 3-4 hours monthly (9 sessions over 3 months). You can start with just 5 children and grow from there."
+  },
+  {
+    question: "How does the revenue sharing work?",
+    answer: "For every ₹5,999 enrollment: 20% goes to lead cost (whoever brought the student), 50% goes to the coach (you), and 30% is the platform fee. If Yestoryd assigns you a student, you earn ₹3,000. If you bring the student yourself, you earn ₹4,200."
+  },
+  {
+    question: "How does the partnership work?",
+    answer: "You're not an employee — you're a partner. You set your own schedule, choose how many children to coach, and can work from anywhere. We handle all the technology, curriculum, scheduling, and payment collection."
+  },
+  {
+    question: "What about training?",
+    answer: "All new coaches go through our orientation program covering the Yestoryd methodology, platform tools, and child psychology basics. Ongoing support and resources are always available."
+  },
+  {
+    question: "How do I grow as a coach?",
+    answer: "Start as a Rising Coach, progress to Expert Coach (after 30+ children with strong NPS), and eventually Master Coach (75+ children). Higher tiers get priority assignments, featured profiles, and leadership opportunities."
+  },
+  {
+    question: "What if I bring students but can't coach them?",
+    answer: "You can refer students and earn ₹1,200 per enrollment even if another coach teaches them. Great for those at full capacity or building a network."
+  },
+  {
+    question: "What if I bring my own students?",
+    answer: "You keep 70% (₹4,200) for students you bring and coach yourself. The 20% lead cost goes to you since you sourced the student."
+  },
+  {
+    question: "Is there a joining fee?",
+    answer: "No. There's no deposit, no joining fee, and no upfront cost. We believe in removing barriers for talented coaches."
+  },
+  {
+    question: "What tools will I use?",
+    answer: "Google Meet for sessions, our coach dashboard for tracking, WhatsApp for parent communication, and Vedant AI for session preparation. All simple, no complex software."
+  },
+  {
+    question: "What's the commitment period?",
+    answer: "We ask for a 1-month notice before leaving to ensure smooth transitions for children mid-program. Beyond that, you're free to adjust your involvement anytime."
+  }
+];
 
 export default function YestorydAcademyPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [childCount, setChildCount] = useState(10);
+  const [earningsMode, setEarningsMode] = useState<'assigned' | 'bring'>('assigned');
+  const [childrenCount, setChildrenCount] = useState(10);
 
-  const [leadSource, setLeadSource] = useState<'yestoryd' | 'coach'>('yestoryd');
-  
-  const calculateEarnings = (children: number, source: 'yestoryd' | 'coach') => {
-    // 3-Component Model:
-    // Lead Cost (20%): ₹1,200 - goes to whoever brought lead
-    // Coach Cost (50%): ₹3,000 - always to coach
-    // Platform Fee (30%): ₹1,799 - always to Yestoryd
-    
-    if (source === 'coach') {
-      // Coach brought the lead: Coach gets Lead Cost + Coach Cost = 70%
-      return children * 4200; // ₹1,200 + ₹3,000
-    } else {
-      // Yestoryd brought the lead: Coach gets only Coach Cost = 50%
-      return children * 3000; // ₹3,000
-    }
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
   };
 
-  const tiers = [
-    {
-      name: 'Rising Coach',
-      icon: '🌱',
-      criteria: 'New coaches, first 3 months',
-      benefits: 'Full training, mentorship support',
-      color: 'from-green-400 to-emerald-500'
-    },
-    {
-      name: 'Expert Coach',
-      icon: '⭐',
-      criteria: '30+ children coached, strong NPS',
-      benefits: 'Priority assignments, featured profile',
-      color: 'from-amber-400 to-orange-500'
-    },
-    {
-      name: 'Master Coach',
-      icon: '👑',
-      criteria: '75+ children, exceptional results',
-      benefits: 'Train new coaches, leadership role',
-      color: 'from-purple-400 to-pink-500'
-    }
-  ];
-
-  // 3-Component Revenue Model
-  const revenueModel = {
-    leadCost: 20,      // Goes to whoever brought the lead
-    coachCost: 50,     // Always goes to coach
-    platformFee: 30    // Always retained by Yestoryd
+  const calculateEarnings = () => {
+    const perChild = earningsMode === 'assigned' ? 3000 : 4200;
+    return childrenCount * perChild;
   };
-
-  const journeySteps = [
-    {
-      step: 1,
-      title: 'Share Your Story',
-      description: 'Tell us about yourself, your passion for teaching, and upload your credentials.',
-      icon: Heart,
-      time: '10 minutes'
-    },
-    {
-      step: 2,
-      title: 'AI Conversation',
-      description: 'Have a thoughtful conversation with Vedant AI about teaching scenarios and child psychology.',
-      icon: Brain,
-      time: '15 minutes'
-    },
-    {
-      step: 3,
-      title: 'Meet Our Team',
-      description: 'A friendly conversation with our founders to align on values and answer your questions.',
-      icon: Users,
-      time: '30 minutes'
-    },
-    {
-      step: 4,
-      title: 'Begin Your Journey',
-      description: 'Complete orientation, sign the partnership agreement, and receive your first student.',
-      icon: Sparkles,
-      time: 'Welcome aboard!'
-    }
-  ];
-
-  const whatWeLookFor = [
-    {
-      trait: 'Patience That Inspires',
-      description: 'You believe every child learns at their own pace. You explain the same concept five different ways until it clicks.',
-      icon: Clock
-    },
-    {
-      trait: 'Genuine Empathy',
-      description: "A child's emotional wellbeing matters more than completing a lesson plan. You notice when something is off.",
-      icon: Heart
-    },
-    {
-      trait: 'Ownership Mindset',
-      description: "When a child struggles, you look at your methods first. You're committed to their 3-month journey.",
-      icon: Shield
-    },
-    {
-      trait: 'Honest Communication',
-      description: "You'd rather be truthful with parents about challenges than oversell progress. Trust is everything.",
-      icon: Target
-    },
-    {
-      trait: 'Growth Orientation',
-      description: "You're always learning. Feedback makes you better. You celebrate small wins along the way.",
-      icon: TrendingUp
-    },
-    {
-      trait: 'Professional Reliability',
-      description: 'You honor commitments. When you say you\'ll be there at 5 PM, you\'re there at 4:55 PM.',
-      icon: CheckCircle2
-    }
-  ];
-
-  const faqs = [
-    {
-      q: 'What qualifications do I need?',
-      a: 'We value mindset over certificates. However, if you have phonics training (Jolly Phonics, Cambridge, Montessori), you\'ll go through an accelerated path. Others complete our Yestoryd Academy certification with partner institutes.'
-    },
-    {
-      q: 'How much time do I need to commit?',
-      a: 'Minimum 5 children, which translates to about 15-20 hours per month. Each child requires 2 coaching sessions, 1 parent check-in, and occasional remedial support. Most coaches work with 10-15 children.'
-    },
-    {
-      q: 'How does the revenue sharing work?',
-      a: 'We use a transparent 3-component model: Lead Cost (20%) goes to whoever brought the student, Coach Cost (50%) always goes to you, and Platform Fee (30%) covers Yestoryd\'s tech and support. If Yestoryd assigns you a student, you earn ₹3,000 (50%). If you bring your own student, you earn ₹4,200 (70%).'
-    },
-    {
-      q: 'How does the partnership work?',
-      a: 'You focus on nurturing children. We handle everything else - curriculum, scheduling, payments, parent communication tools, progress tracking. You bring the human touch; we bring the science and technology.'
-    },
-    {
-      q: 'What about training?',
-      a: 'Certified coaches complete a 1-2 hour crash course on Yestoryd methodology, child psychology essentials, and conflict management. Non-certified coaches go through our comprehensive academy program with partner institutes.'
-    },
-    {
-      q: 'How do I grow as a coach?',
-      a: 'We track your impact through parent feedback, child progress, and session quality. High performers progress from Rising to Expert to Master coach, unlocking priority assignments and mentorship opportunities.'
-    },
-    {
-      q: 'What if I bring students but can\'t coach them?',
-      a: 'You still earn! If you refer a student but are at capacity, we assign them to another coach. You get the Lead Cost (₹1,200 / 20%) as a referral bonus, the teaching coach gets Coach Cost (₹3,000 / 50%), and Yestoryd gets the Platform Fee (₹1,799 / 30%). Keep referring even when busy!'
-    },
-    {
-      q: 'What if I bring my own students?',
-      a: 'If you bring AND coach the student, you earn 70% (₹4,200 per child) — that\'s Lead Cost + Coach Cost. The extra 20% is your reward for bringing the student to our platform.'
-    },
-    {
-      q: 'Is there a joining fee?',
-      a: 'No joining fee. For non-certified coaches, there\'s a training investment with our partner institutes. This ensures quality and commitment.'
-    },
-    {
-      q: 'What tools will I use?',
-      a: 'Your personalized coach dashboard shows student progress, AI-generated insights, session schedules, earnings tracker, and parent communication templates. Vedant AI assists you before every session with child-specific preparation notes.'
-    },
-    {
-      q: 'What\'s the commitment period?',
-      a: 'Each child is a 3-month program. You commit to completing the full program for each child. If you need to exit, provide 1-month notice via the platform so we can ensure continuity for the child.'
-    }
-  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
+    <div className="min-h-screen bg-white">
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image 
-              src="/images/logo.png" 
-              alt="Yestoryd" 
-              width={140} 
+          <Link href="/">
+            <Image
+              src="/images/logo.png"
+              alt="Yestoryd"
+              width={140}
               height={40}
-              className="h-10 w-auto"
+              className="h-9 w-auto"
             />
           </Link>
-          <Link 
+          <Link
             href="/yestoryd-academy/apply"
-            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:shadow-lg hover:shadow-pink-500/25 transition-all"
+            className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:shadow-lg transition-all"
           >
             Begin Your Journey
           </Link>
         </div>
-      </header>
+      </nav>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-pink-500 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="max-w-6xl mx-auto px-4 py-16 md:py-24 relative">
-          <div className="text-center max-w-3xl mx-auto">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 rounded-full px-4 py-2 mb-6">
-              <span className="text-2xl">🎓</span>
-              <span className="text-sm font-semibold text-purple-700">Yestoryd Academy</span>
-            </div>
-
-            {/* Main Headline */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-              Partner With Us to{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">
-                Transform Young Readers
-              </span>
-            </h1>
-
-            {/* Subheadline */}
-            <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
-              You bring the warmth, patience, and human connection.<br className="hidden md:block" />
-              We bring the science, technology, and support system.<br className="hidden md:block" />
-              Together, we help children fall in love with reading.
-            </p>
-
-            {/* CTA */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                href="/yestoryd-academy/apply"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:shadow-xl hover:shadow-pink-500/25 transition-all hover:-translate-y-1"
-              >
-                Begin Your Journey
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <a
-                href="#how-it-works"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-slate-600 px-6 py-4 font-medium hover:text-pink-600 transition-colors"
-              >
-                Learn More
-                <ChevronDown className="w-5 h-5" />
-              </a>
-            </div>
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-pink-50/30 to-purple-50/30" />
+        
+        <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-20 text-center">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2 mb-8 shadow-sm">
+            <GraduationCap className="w-5 h-5 text-[#ff0099]" />
+            <span className="text-sm font-medium text-slate-700">Yestoryd Academy</span>
           </div>
 
-          {/* Trust Indicators */}
-          <div className="mt-16 flex flex-wrap justify-center gap-8 text-center">
-            <div className="px-6">
-              <div className="text-3xl font-bold text-slate-900">100+</div>
-              <div className="text-sm text-slate-500">Children Transformed</div>
+          {/* Headline */}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+            Partner With Us to{' '}
+            <span className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] bg-clip-text text-transparent">
+              Transform Young Readers
+            </span>
+          </h1>
+
+          {/* Subheadline */}
+          <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+            You bring the warmth, patience, and human connection.
+            We bring the science, technology, and support system.
+            Together, we help children fall in love with reading.
+          </p>
+
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+            <Link
+              href="/yestoryd-academy/apply"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all"
+            >
+              Begin Your Journey
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <button
+              onClick={() => document.getElementById('partnership')?.scrollIntoView({ behavior: 'smooth' })}
+              className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium"
+            >
+              Learn More
+              <ChevronDown className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-slate-900">100+</div>
+              <div className="text-sm text-slate-500 mt-1">Children Transformed</div>
             </div>
-            <div className="px-6 border-l border-slate-200">
-              <div className="text-3xl font-bold text-slate-900">4.9★</div>
-              <div className="text-sm text-slate-500">Parent Satisfaction</div>
+            <div className="text-center border-x border-slate-200">
+              <div className="text-3xl md:text-4xl font-bold text-slate-900">4.9★</div>
+              <div className="text-sm text-slate-500 mt-1">Parent Satisfaction</div>
             </div>
-            <div className="px-6 border-l border-slate-200">
-              <div className="text-3xl font-bold text-slate-900">AI-Powered</div>
-              <div className="text-sm text-slate-500">Progress Tracking</div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-slate-900">AI-Powered</div>
+              <div className="text-sm text-slate-500 mt-1">Progress Tracking</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Partnership Model Section */}
-      <section className="py-16 md:py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-4">
+      {/* Partnership Section */}
+      <section id="partnership" className="py-20 bg-white">
+        <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-              A True <span className="text-pink-500">Partnership</span>
+              A True <span className="text-[#ff0099]">Partnership</span>
             </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-600">
               You focus on what you do best — nurturing children. We handle everything else.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 items-start">
-            {/* You Provide - Keep it SHORT (low effort perception) */}
-            <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl p-8 border border-pink-100">
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* You Provide */}
+            <div className="bg-gradient-to-br from-pink-50 to-white rounded-2xl p-8 border border-pink-100">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-[#ff0099] rounded-xl flex items-center justify-center">
                   <Heart className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -303,95 +212,122 @@ export default function YestorydAcademyPage() {
                   <p className="text-sm text-slate-500">Just 3-4 hours per child/month</p>
                 </div>
               </div>
+
               <ul className="space-y-4">
                 {[
-                  'Your warmth and patience',
-                  'Encouraging presence in sessions',
-                  'Honest feedback to parents',
-                  'Commitment to 3-month child journeys'
+                  "Warmth and genuine care for children",
+                  "Patience to nurture at each child's pace",
+                  "Encouraging presence in every session",
+                  "Honest communication with parents",
+                  "Commitment to 3-month child journeys"
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-[#ff0099] flex-shrink-0 mt-0.5" />
                     <span className="text-slate-700">{item}</span>
                   </li>
                 ))}
               </ul>
-              <div className="mt-6 pt-4 border-t border-pink-200">
-                <p className="text-sm text-pink-700 font-medium">
-                  That's it. Just be present and caring.
-                </p>
-              </div>
+
+              <p className="mt-6 text-sm text-slate-500 italic">
+                That's it. Just be present and caring.
+              </p>
             </div>
 
-            {/* Yestoryd Provides - Make it LONG (high value perception) */}
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-8 border border-blue-100">
+            {/* Yestoryd Handles */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 text-white">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center">
-                  <Brain className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-[#ff0099]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900">Yestoryd Handles</h3>
-                  <p className="text-sm text-slate-500">Everything else — so you don't have to</p>
+                  <h3 className="text-xl font-bold">Yestoryd Handles</h3>
+                  <p className="text-sm text-slate-400">Everything else — so you don't have to</p>
                 </div>
               </div>
+
               <ul className="space-y-3">
                 {[
-                  'AI-powered reading assessments',
-                  'Scientific, age-appropriate curriculum',
-                  'Session-by-session lesson plans',
-                  'Pre-session child insights via Vedant AI',
-                  'Automated scheduling & reminders',
-                  'Video session recording & transcription',
-                  'Real-time progress tracking dashboard',
-                  'Parent communication tools & templates',
-                  'Payment collection & monthly payouts',
-                  'Admin support for any issues',
-                  'Continuous training & resources'
+                  { icon: Brain, text: "AI-powered reading assessments" },
+                  { icon: BookOpen, text: "Scientific, age-appropriate curriculum" },
+                  { icon: FileText, text: "Session-by-session lesson plans" },
+                  { icon: Sparkles, text: "Pre-session child insights via Vedant AI" },
+                  { icon: Calendar, text: "Automated scheduling & reminders" },
+                  { icon: Video, text: "Video session recording & transcription" },
+                  { icon: BarChart3, text: "Real-time progress tracking dashboard" },
+                  { icon: MessageCircle, text: "Parent communication tools & templates" },
+                  { icon: CreditCard, text: "Payment collection & monthly payouts" },
+                  { icon: Headphones, text: "Admin support for any issues" },
+                  { icon: GraduationCap, text: "Continuous training & resources" }
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-slate-700 text-sm">{item}</span>
+                  <li key={i} className="flex items-center gap-3">
+                    <item.icon className="w-4 h-4 text-[#ff0099] flex-shrink-0" />
+                    <span className="text-sm text-slate-300">{item.text}</span>
                   </li>
                 ))}
               </ul>
+
+              <p className="mt-6 text-sm text-[#ff0099] font-medium">
+                You nurture. We handle the rest.
+              </p>
             </div>
           </div>
 
-          {/* Result - Emphasize the imbalance in coach's favor */}
-          <div className="mt-8 text-center">
-            <div className="inline-flex items-center gap-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl px-8 py-4">
-              <Sparkles className="w-8 h-8 text-green-500" />
-              <div className="text-left">
-                <div className="font-bold text-slate-900">You nurture. We handle the rest.</div>
-                <div className="text-green-700 text-sm">Minimum effort, maximum impact.</div>
-              </div>
-            </div>
-          </div>
+          <p className="text-center mt-8 text-slate-500">
+            Minimum effort, maximum impact.
+          </p>
         </div>
       </section>
 
-      {/* What We Look For Section */}
-      <section className="py-16 md:py-24 bg-slate-50">
-        <div className="max-w-6xl mx-auto px-4">
+      {/* What We Look For */}
+      <section className="py-20 bg-slate-50">
+        <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-              What We <span className="text-pink-500">Look For</span>
+              What We Look For
             </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-600">
               Skills can be taught. These qualities cannot. Do you recognize yourself?
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {whatWeLookFor.map((item, i) => (
-              <div 
-                key={i}
-                className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow border border-slate-100"
-              >
-                <div className="w-12 h-12 bg-gradient-to-r from-pink-100 to-purple-100 rounded-xl flex items-center justify-center mb-4">
-                  <item.icon className="w-6 h-6 text-pink-600" />
+            {[
+              {
+                icon: Clock,
+                title: "Patience That Inspires",
+                description: "You believe every child learns at their own pace. You explain the same concept five different ways until it clicks."
+              },
+              {
+                icon: Heart,
+                title: "Genuine Empathy",
+                description: "A child's emotional wellbeing matters more than completing a lesson plan. You notice when something is off."
+              },
+              {
+                icon: Target,
+                title: "Ownership Mindset",
+                description: "When a child struggles, you look at your methods first. You're committed to their 3-month journey."
+              },
+              {
+                icon: Scale,
+                title: "Honest Communication",
+                description: "You'd rather be truthful with parents about challenges than oversell progress. Trust is everything."
+              },
+              {
+                icon: TrendingUp,
+                title: "Growth Orientation",
+                description: "You're always learning. Feedback makes you better. You celebrate small wins along the way."
+              },
+              {
+                icon: UserCheck,
+                title: "Professional Reliability",
+                description: "You honor commitments. When you say you'll be there at 5 PM, you're there at 4:55 PM."
+              }
+            ].map((item, i) => (
+              <div key={i} className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-[#ff0099]/30 hover:shadow-lg transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-100 to-purple-100 rounded-xl flex items-center justify-center mb-4">
+                  <item.icon className="w-6 h-6 text-[#ff0099]" />
                 </div>
-                <h3 className="font-bold text-slate-900 mb-2">{item.trait}</h3>
+                <h3 className="font-bold text-slate-900 mb-2">{item.title}</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
               </div>
             ))}
@@ -399,43 +335,65 @@ export default function YestorydAcademyPage() {
         </div>
       </section>
 
-      {/* Journey Section */}
-      <section id="how-it-works" className="py-16 md:py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-4">
+      {/* Journey Steps */}
+      <section className="py-20 bg-white">
+        <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-              Your Journey to <span className="text-pink-500">Partnership</span>
+              Your Journey to Partnership
             </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-600">
               A thoughtful process to ensure we're the right fit for each other.
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto">
-            {journeySteps.map((step, i) => (
-              <div key={i} className="flex gap-6 mb-8 last:mb-0">
-                {/* Step Number */}
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {step.step}
+          <div className="space-y-6">
+            {[
+              {
+                step: 1,
+                title: "Share Your Story",
+                description: "Tell us about yourself, your passion for teaching, and upload your credentials.",
+                time: "10 minutes"
+              },
+              {
+                step: 2,
+                title: "AI Conversation",
+                description: "Have a thoughtful conversation with Vedant AI about teaching scenarios and child psychology.",
+                time: "15 minutes"
+              },
+              {
+                step: 3,
+                title: "Meet Our Team",
+                description: "A friendly conversation with our founders to align on values and answer your questions.",
+                time: "30 minutes"
+              },
+              {
+                step: 4,
+                title: "Begin Your Journey",
+                description: "Complete orientation, sign the partnership agreement, and receive your first student.",
+                time: "Welcome aboard!"
+              }
+            ].map((item, i) => (
+              <div key={i} className="flex gap-6 items-start">
+                <div className="flex-shrink-0">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
+                    i === 3 ? 'bg-gradient-to-r from-[#ff0099] to-[#7b008b]' : 'bg-gradient-to-r from-[#ff0099] to-[#7b008b]'
+                  }`}>
+                    {item.step}
                   </div>
-                  {i < journeySteps.length - 1 && (
-                    <div className="w-0.5 h-full bg-gradient-to-b from-pink-300 to-purple-300 mt-2"></div>
+                  {i < 3 && (
+                    <div className="w-0.5 h-16 bg-gradient-to-b from-[#ff0099] to-transparent mx-auto mt-2" />
                   )}
                 </div>
-
-                {/* Content */}
-                <div className="flex-1 pb-8">
-                  <div className="bg-slate-50 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <step.icon className="w-5 h-5 text-pink-500" />
-                      <h3 className="font-bold text-slate-900">{step.title}</h3>
-                    </div>
-                    <p className="text-slate-600 mb-3">{step.description}</p>
-                    <span className="inline-block text-xs font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
-                      {step.time}
-                    </span>
+                <div className="flex-grow bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    {i === 3 && <Sparkles className="w-5 h-5 text-[#ff0099]" />}
+                    <h3 className="font-bold text-slate-900">{item.title}</h3>
                   </div>
+                  <p className="text-slate-600 mb-3">{item.description}</p>
+                  <span className={`text-sm ${i === 3 ? 'text-[#ff0099] font-medium' : 'text-slate-400'}`}>
+                    {item.time}
+                  </span>
                 </div>
               </div>
             ))}
@@ -443,228 +401,249 @@ export default function YestorydAcademyPage() {
         </div>
       </section>
 
-      {/* Coach Tiers Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-br from-slate-900 to-slate-800">
-        <div className="max-w-6xl mx-auto px-4">
+      {/* Coach Tiers */}
+      <section className="py-20 bg-slate-900 text-white">
+        <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Grow With <span className="text-pink-400">Yestoryd</span>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Grow With <span className="text-[#ff0099]">Yestoryd</span>
             </h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-400">
               Your journey from new coach to master mentor.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {tiers.map((tier, i) => (
-              <div 
-                key={i}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/15 transition-colors"
-              >
-                <div className="text-4xl mb-4">{tier.icon}</div>
-                <h3 className="text-xl font-bold text-white mb-2">{tier.name}</h3>
-                <p className="text-slate-300 text-sm mb-3">{tier.criteria}</p>
-                <p className="text-pink-300 text-sm">{tier.benefits}</p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Sprout,
+                emoji: "🌱",
+                title: "Rising Coach",
+                description: "New coaches, first 3 months",
+                perk: "Full training, mentorship support",
+                bg: "from-green-900/50 to-green-800/30"
+              },
+              {
+                icon: Star,
+                emoji: "⭐",
+                title: "Expert Coach",
+                description: "30+ children coached, strong NPS",
+                perk: "Priority assignments, featured profile",
+                bg: "from-yellow-900/50 to-yellow-800/30"
+              },
+              {
+                icon: Crown,
+                emoji: "👑",
+                title: "Master Coach",
+                description: "75+ children, exceptional results",
+                perk: "Train new coaches, leadership role",
+                bg: "from-purple-900/50 to-purple-800/30"
+              }
+            ].map((tier, i) => (
+              <div key={i} className={`bg-gradient-to-br ${tier.bg} rounded-2xl p-6 border border-white/10`}>
+                <div className="text-4xl mb-4">{tier.emoji}</div>
+                <h3 className="text-xl font-bold mb-2">{tier.title}</h3>
+                <p className="text-sm text-slate-400 mb-4">{tier.description}</p>
+                <p className="text-sm text-[#ff0099]">{tier.perk}</p>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          {/* Revenue Model - 3 Component Explanation */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <h3 className="text-xl font-bold text-white text-center">
-                How You Earn
-              </h3>
-              <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-slate-900 text-xs font-bold px-2 py-1 rounded-full">
-                INTRODUCTORY OFFER
-              </span>
+      {/* Earnings Section */}
+      <section className="py-20 bg-slate-900 text-white border-t border-white/10">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-[#ff0099]/20 text-[#ff0099] rounded-full px-4 py-2 mb-4">
+              <Sparkles className="w-4 h-4" />
+              <span className="text-sm font-medium">INTRODUCTORY OFFER</span>
             </div>
-            <p className="text-center text-slate-400 text-sm mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              How You Earn
+            </h2>
+            <p className="text-slate-400">
               Lock in these rates by joining now — percentages may change for future coaches.
-            </p>
-            
-            {/* 3 Component Visual */}
-            <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-pink-500/20 border border-pink-500/30 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-pink-400">20%</div>
-                <div className="text-sm text-white font-medium">Lead Cost</div>
-                <div className="text-xs text-slate-400 mt-1">₹1,200</div>
-                <div className="text-xs text-slate-300 mt-2">Goes to whoever<br/>brought the student</div>
-              </div>
-              <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-green-400">50%</div>
-                <div className="text-sm text-white font-medium">Coach Cost</div>
-                <div className="text-xs text-slate-400 mt-1">₹3,000</div>
-                <div className="text-xs text-slate-300 mt-2">Goes to coach<br/>who teaches</div>
-              </div>
-              <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-blue-400">30%</div>
-                <div className="text-sm text-white font-medium">Platform Fee</div>
-                <div className="text-xs text-slate-400 mt-1">₹1,799</div>
-                <div className="text-xs text-slate-300 mt-2">Yestoryd<br/>(tech, content, support)</div>
-              </div>
-            </div>
-
-            {/* Three Scenarios */}
-            <div className="grid md:grid-cols-3 gap-4">
-              {/* Scenario 1: Yestoryd assigns */}
-              <div className="bg-slate-800/50 rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-                  <span className="font-medium text-white text-sm">Yestoryd Assigns</span>
-                </div>
-                <p className="text-xs text-slate-400 mb-3">We bring the student, you coach them.</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-slate-300">
-                    <span>You earn:</span>
-                    <span className="font-semibold text-white">₹3,000</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Yestoryd:</span>
-                    <span>₹2,999</span>
-                  </div>
-                </div>
-                <div className="mt-3 text-center">
-                  <span className="text-lg font-bold text-white">50%</span>
-                </div>
-              </div>
-              
-              {/* Scenario 2: You bring & coach */}
-              <div className="bg-gradient-to-br from-pink-900/30 to-purple-900/30 rounded-xl p-5 border border-pink-500/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 bg-pink-400 rounded-full"></div>
-                  <span className="font-medium text-white text-sm">You Bring & Coach</span>
-                </div>
-                <p className="text-xs text-slate-400 mb-3">Your student, you coach them.</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-slate-300">
-                    <span>You earn:</span>
-                    <span className="font-semibold text-pink-400">₹4,200</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Yestoryd:</span>
-                    <span>₹1,799</span>
-                  </div>
-                </div>
-                <div className="mt-3 text-center">
-                  <span className="text-lg font-bold text-pink-400">70%</span>
-                </div>
-              </div>
-              
-              {/* Scenario 3: You refer, another coaches */}
-              <div className="bg-gradient-to-br from-amber-900/30 to-orange-900/30 rounded-xl p-5 border border-amber-500/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 bg-amber-400 rounded-full"></div>
-                  <span className="font-medium text-white text-sm">You Refer Only</span>
-                </div>
-                <p className="text-xs text-slate-400 mb-3">Your lead, another coach teaches.</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-slate-300">
-                    <span>Referral bonus:</span>
-                    <span className="font-semibold text-amber-400">₹1,200</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Teaching coach:</span>
-                    <span>₹3,000</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Yestoryd:</span>
-                    <span>₹1,799</span>
-                  </div>
-                </div>
-                <div className="mt-3 text-center">
-                  <span className="text-lg font-bold text-amber-400">20%</span>
-                </div>
-              </div>
-            </div>
-            
-            <p className="text-center text-xs text-slate-500 mt-6">
-              Even at full capacity, keep referring — you earn ₹1,200 for every student you bring!
             </p>
           </div>
 
+          {/* 3-Component Split */}
+          <div className="grid md:grid-cols-3 gap-4 mb-10">
+            <div className="bg-gradient-to-br from-purple-600/30 to-purple-500/20 rounded-2xl p-6 text-center border border-purple-500/30">
+              <div className="text-3xl font-bold text-purple-400 mb-2">20%</div>
+              <div className="font-semibold mb-1">Lead Cost</div>
+              <div className="text-sm text-slate-400 mb-2">₹1,200</div>
+              <div className="text-xs text-slate-500">Goes to whoever<br />brought the student</div>
+            </div>
+            <div className="bg-gradient-to-br from-green-600/30 to-green-500/20 rounded-2xl p-6 text-center border border-green-500/30">
+              <div className="text-3xl font-bold text-green-400 mb-2">50%</div>
+              <div className="font-semibold mb-1">Coach Cost</div>
+              <div className="text-sm text-slate-400 mb-2">₹3,000</div>
+              <div className="text-xs text-slate-500">Goes to coach<br />who teaches</div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-600/30 to-blue-500/20 rounded-2xl p-6 text-center border border-blue-500/30">
+              <div className="text-3xl font-bold text-blue-400 mb-2">30%</div>
+              <div className="font-semibold mb-1">Platform Fee</div>
+              <div className="text-sm text-slate-400 mb-2">₹1,799</div>
+              <div className="text-xs text-slate-500">Yestoryd<br />(tech, content, support)</div>
+            </div>
+          </div>
+
+          {/* Scenarios */}
+          <div className="space-y-4 mb-10">
+            {/* Yestoryd Assigns */}
+            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                <h3 className="font-semibold">Yestoryd Assigns</h3>
+              </div>
+              <p className="text-sm text-slate-400 mb-4">We bring the student, you coach them.</p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-slate-400">You earn:</span>
+                  <span className="text-2xl font-bold text-white ml-2">₹3,000</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500">Yestoryd:</span>
+                  <span className="text-slate-400 ml-2">₹2,999</span>
+                </div>
+              </div>
+              <div className="text-center mt-4 text-2xl font-bold text-blue-400">50%</div>
+            </div>
+
+            {/* You Bring & Coach */}
+            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-3 h-3 rounded-full bg-orange-500" />
+                <h3 className="font-semibold">You Bring & Coach</h3>
+              </div>
+              <p className="text-sm text-slate-400 mb-4">Your student, you coach them.</p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-slate-400">You earn:</span>
+                  <span className="text-2xl font-bold text-white ml-2">₹4,200</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500">Yestoryd:</span>
+                  <span className="text-slate-400 ml-2">₹1,799</span>
+                </div>
+              </div>
+              <div className="text-center mt-4 text-2xl font-bold text-orange-400">70%</div>
+            </div>
+
+            {/* You Refer Only */}
+            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                <h3 className="font-semibold">You Refer Only</h3>
+              </div>
+              <p className="text-sm text-slate-400 mb-4">Your lead, another coach teaches.</p>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-500">Referral bonus:</span>
+                  <div className="font-bold text-yellow-400">₹1,200</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">Teaching coach:</span>
+                  <div className="text-slate-400">₹3,000</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">Yestoryd:</span>
+                  <div className="text-slate-400">₹1,799</div>
+                </div>
+              </div>
+              <div className="text-center mt-4 text-2xl font-bold text-yellow-400">20%</div>
+            </div>
+          </div>
+
+          <p className="text-center text-sm text-[#ff0099]">
+            Even at full capacity, keep referring — you earn ₹1,200 for every student you bring!
+          </p>
+
           {/* Earnings Calculator */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-            <h4 className="text-lg font-semibold text-white text-center mb-6">Earnings Calculator</h4>
+          <div className="mt-12 bg-white/5 rounded-2xl p-8 border border-white/10">
+            <h3 className="text-xl font-bold text-center mb-6">Earnings Calculator</h3>
             
-            {/* Lead Source Toggle */}
             <div className="flex justify-center gap-4 mb-6">
               <button
-                onClick={() => setLeadSource('yestoryd')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  leadSource === 'yestoryd' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                onClick={() => setEarningsMode('assigned')}
+                className={`px-6 py-2 rounded-full font-medium transition-all ${
+                  earningsMode === 'assigned' 
+                    ? 'bg-[#ff0099] text-white' 
+                    : 'bg-white/10 text-slate-400 hover:bg-white/20'
                 }`}
               >
                 Yestoryd assigns (50%)
               </button>
               <button
-                onClick={() => setLeadSource('coach')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  leadSource === 'coach' 
-                    ? 'bg-pink-500 text-white' 
-                    : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                onClick={() => setEarningsMode('bring')}
+                className={`px-6 py-2 rounded-full font-medium transition-all ${
+                  earningsMode === 'bring' 
+                    ? 'bg-[#ff0099] text-white' 
+                    : 'bg-white/10 text-slate-400 hover:bg-white/20'
                 }`}
               >
                 You bring students (70%)
               </button>
             </div>
-            
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <label className="text-slate-300 text-sm">
-                Children you coach:
-              </label>
-              <input
-                type="range"
-                min="5"
-                max="25"
-                value={childCount}
-                onChange={(e) => setChildCount(parseInt(e.target.value))}
-                className="w-32 accent-pink-500"
-              />
-              <span className="text-white font-bold w-8">{childCount}</span>
-            </div>
-            <div className="text-center">
-              <div className="text-slate-400 text-sm mb-1">
-                Monthly earnings potential
+
+            <div className="text-center mb-6">
+              <label className="text-slate-400 block mb-2">Children you coach:</label>
+              <div className="flex items-center justify-center gap-4">
+                <input
+                  type="range"
+                  min="1"
+                  max="30"
+                  value={childrenCount}
+                  onChange={(e) => setChildrenCount(parseInt(e.target.value))}
+                  className="w-48 accent-[#ff0099]"
+                />
+                <span className="text-2xl font-bold w-12">{childrenCount}</span>
               </div>
-              <span className={`text-3xl font-bold ${leadSource === 'coach' ? 'text-pink-400' : 'text-white'}`}>
-                ₹{calculateEarnings(childCount, leadSource).toLocaleString('en-IN')}
-              </span>
-              <span className="text-slate-500 text-sm ml-2">
-                ({leadSource === 'coach' ? '70%' : '50%'} share)
-              </span>
+            </div>
+
+            <div className="text-center">
+              <p className="text-slate-400 mb-2">Monthly earnings potential</p>
+              <div className="text-4xl md:text-5xl font-bold">
+                ₹{calculateEarnings().toLocaleString()}
+              </div>
+              <p className="text-slate-500 text-sm mt-2">
+                ({earningsMode === 'assigned' ? '50%' : '70%'} share)
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-16 md:py-24 bg-white">
+      <section className="py-20 bg-white">
         <div className="max-w-3xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-              Common <span className="text-pink-500">Questions</span>
+              Common <span className="text-[#ff0099]">Questions</span>
             </h2>
           </div>
 
           <div className="space-y-4">
-            {faqs.map((faq, i) => (
-              <div 
+            {FAQ_DATA.map((faq, i) => (
+              <div
                 key={i}
-                className="bg-slate-50 rounded-2xl overflow-hidden"
+                className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden"
               >
                 <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-slate-100 transition-colors"
+                  onClick={() => toggleFaq(i)}
+                  className="w-full flex items-center justify-between p-6 text-left hover:bg-slate-100 transition-colors"
                 >
-                  <span className="font-semibold text-slate-900">{faq.q}</span>
-                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
+                  <span className="font-semibold text-slate-900 pr-8">{faq.question}</span>
+                  {openFaq === i ? (
+                    <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                  )}
                 </button>
                 {openFaq === i && (
-                  <div className="px-6 pb-5">
-                    <p className="text-slate-600 leading-relaxed">{faq.a}</p>
+                  <div className="px-6 pb-6">
+                    <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
                   </div>
                 )}
               </div>
@@ -673,39 +652,40 @@ export default function YestorydAcademyPage() {
         </div>
       </section>
 
-      {/* Final CTA Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-r from-pink-500 to-purple-600">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      {/* Final CTA */}
+      <section className="py-20 bg-gradient-to-r from-[#ff0099] via-[#7b008b] to-purple-700 text-white">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Ready to Make a Difference?
           </h2>
-          <p className="text-lg text-pink-100 mb-8 max-w-2xl mx-auto">
-            If you believe every child deserves patient, personalized guidance on their reading journey, we'd love to hear from you.
+          <p className="text-xl text-white/80 mb-10 leading-relaxed">
+            If you believe every child deserves patient, personalized guidance on their
+            reading journey, we'd love to hear from you.
           </p>
           <Link
             href="/yestoryd-academy/apply"
-            className="inline-flex items-center gap-2 bg-white text-pink-600 px-8 py-4 rounded-2xl font-bold text-lg hover:shadow-xl transition-all hover:-translate-y-1"
+            className="inline-flex items-center gap-2 bg-white text-[#ff0099] px-10 py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all"
           >
             Begin Your Journey
             <ArrowRight className="w-5 h-5" />
           </Link>
-          <p className="mt-6 text-pink-200 text-sm">
+          <p className="mt-6 text-white/60 text-sm">
             Application takes about 10 minutes. We review within 48 hours.
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 py-8">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <Image 
-            src="/images/logo.png" 
-            alt="Yestoryd" 
-            width={120} 
+      <footer className="py-12 bg-slate-900 text-white">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <Image
+            src="/images/logo.png"
+            alt="Yestoryd"
+            width={120}
             height={35}
-            className="h-8 w-auto mx-auto mb-4 opacity-80"
+            className="h-8 w-auto mx-auto mb-6 brightness-0 invert opacity-80"
           />
-          <p className="text-slate-500 text-sm">
+          <p className="text-slate-500">
             © 2025 Yestoryd. Transforming young readers, one child at a time.
           </p>
         </div>

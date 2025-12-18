@@ -25,6 +25,7 @@ import {
   Shield,
   Phone,
   LogIn,
+  GraduationCap,
 } from 'lucide-react';
 
 // ==================== TYPES ====================
@@ -117,6 +118,13 @@ export default function HomePageClient({
               >
                 How It Works
               </a>
+              <Link
+                href="/yestoryd-academy"
+                className="h-10 inline-flex items-center justify-center gap-2 border-2 border-[#ff0099] text-[#ff0099] px-5 rounded-full font-semibold hover:bg-[#ff0099] hover:text-white hover:scale-105 transition-all duration-200"
+              >
+                <GraduationCap className="w-4 h-4" />
+                Become a Coach
+              </Link>
               {/* Uniform height buttons - all h-10 with consistent padding */}
               <Link
                 href="/parent/login"
@@ -169,6 +177,14 @@ export default function HomePageClient({
               >
                 How It Works
               </a>
+              <Link
+                href="/yestoryd-academy"
+                className="h-12 flex items-center justify-center gap-2 border-2 border-[#ff0099] text-[#ff0099] rounded-full font-bold hover:bg-[#ff0099] hover:text-white transition-all duration-200"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <GraduationCap className="w-4 h-4" />
+                Become a Coach
+              </Link>
               {/* Uniform height buttons h-12 */}
               <Link
                 href="/parent/login"
@@ -794,6 +810,122 @@ export default function HomePageClient({
         </div>
       </section>
 
+      {/* ==================== BECOME A COACH SECTION ==================== */}
+      <section className="py-16 lg:py-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute top-0 left-0 w-72 h-72 bg-[#ff0099]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#7b008b]/10 rounded-full blur-3xl" />
+        
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            
+            {/* Left: Content */}
+            <div className="text-center lg:text-left">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-6">
+                <GraduationCap className="w-4 h-4 text-[#ff0099]" />
+                <span className="text-sm font-medium text-white/90">Yestoryd Academy</span>
+              </div>
+
+              {/* Headline */}
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
+                Are You Passionate About{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#00abff]">
+                  Helping Children Read?
+                </span>
+              </h2>
+
+              {/* Subheadline */}
+              <p className="text-lg text-slate-300 mb-8 leading-relaxed">
+                Partner with us to transform young readers. You bring the warmth and patience — 
+                we bring the technology, curriculum, and families ready to learn.
+              </p>
+
+              {/* Benefits */}
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="flex items-center gap-3 justify-center lg:justify-start">
+                  <div className="w-10 h-10 bg-[#ff0099]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-[#ff0099]" />
+                  </div>
+                  <span className="text-white/80 text-sm">Flexible hours</span>
+                </div>
+                <div className="flex items-center gap-3 justify-center lg:justify-start">
+                  <div className="w-10 h-10 bg-[#00abff]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-[#00abff]" />
+                  </div>
+                  <span className="text-white/80 text-sm">AI-powered support</span>
+                </div>
+                <div className="flex items-center gap-3 justify-center lg:justify-start">
+                  <div className="w-10 h-10 bg-[#7b008b]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Heart className="w-5 h-5 text-[#ff0099]" />
+                  </div>
+                  <span className="text-white/80 text-sm">Meaningful work</span>
+                </div>
+                <div className="flex items-center gap-3 justify-center lg:justify-start">
+                  <div className="w-10 h-10 bg-[#25d366]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg">💰</span>
+                  </div>
+                  <span className="text-white/80 text-sm">Earn ₹30K+/month</span>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <Link
+                href="/yestoryd-academy"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white font-bold px-8 py-4 rounded-full hover:shadow-xl hover:shadow-[#ff0099]/30 hover:scale-105 transition-all duration-200"
+              >
+                Learn More
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
+
+            {/* Right: Visual/Stats Card */}
+            <div className="relative">
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-6 lg:p-8">
+                {/* Quote */}
+                <div className="mb-8">
+                  <div className="text-5xl text-[#ff0099] mb-4">"</div>
+                  <p className="text-white/90 text-lg italic leading-relaxed">
+                    After 8 years of school teaching, I wanted flexibility without giving up my passion. 
+                    Yestoryd gave me both — I now coach 10 children from home and earn more than my previous salary.
+                  </p>
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-bold">
+                      P
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">Priya Sharma</p>
+                      <p className="text-slate-400 text-sm">Reading Coach, Mumbai</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/10">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-white">50-70%</div>
+                    <div className="text-xs text-slate-400">Revenue Share</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-white">15-20</div>
+                    <div className="text-xs text-slate-400">Hrs/Month</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-white">100%</div>
+                    <div className="text-xs text-slate-400">Remote</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating badge */}
+              <div className="absolute -top-3 -right-3 lg:-top-4 lg:-right-4 bg-[#25d366] text-white text-xs lg:text-sm font-bold px-3 lg:px-4 py-1.5 lg:py-2 rounded-full shadow-lg">
+                No Joining Fee
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-gray-950 text-white py-12 lg:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -842,6 +974,11 @@ export default function HomePageClient({
                   <a href="#how-it-works" className="text-gray-400 hover:text-[#ff0099] transition-colors">
                     How It Works
                   </a>
+                </li>
+                <li>
+                  <Link href="/yestoryd-academy" className="text-gray-400 hover:text-[#ff0099] transition-colors">
+                    Become a Coach
+                  </Link>
                 </li>
               </ul>
             </div>
