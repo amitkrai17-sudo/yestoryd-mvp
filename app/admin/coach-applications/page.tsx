@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
+import {
   Users, Search, X, CheckCircle, Clock, MessageCircle, Phone,
   Mail, Play, Pause, Calendar, AlertCircle, Video,
   Award, ThumbsUp, ThumbsDown, Loader2, ExternalLink,
@@ -34,6 +34,8 @@ interface CoachApplication {
   interview_scheduled_at: string | null;
   interview_completed_at: string | null;
   google_meet_link: string | null;
+  interview_outcome?: string | null;
+  interview_notes?: string | null;
   created_at: string;
   reviewed_at: string | null;
 }
@@ -107,14 +109,14 @@ function ScheduleModal({ app, onClose, onDone }: { app: CoachApplication; onClos
       const res = await fetch(`/api/admin/coach-applications/${app.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: 'interview_scheduled',
-          interview_scheduled_at: scheduledAt 
+          interview_scheduled_at: scheduledAt
         })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        onDone({ 
+        onDone({
           status: data.application.status,
           interview_scheduled_at: data.application.interview_scheduled_at,
           google_meet_link: data.application.google_meet_link
@@ -211,13 +213,13 @@ function FeedbackModal({ app, onClose, onDone }: { app: CoachApplication; onClos
 }
 
 // ==================== DETAIL MODAL ====================
-function DetailModal({ 
-  app, 
-  onClose, 
+function DetailModal({
+  app,
+  onClose,
   onUpdate
-}: { 
-  app: CoachApplication; 
-  onClose: () => void; 
+}: {
+  app: CoachApplication;
+  onClose: () => void;
   onUpdate: (id: string, updates: Partial<CoachApplication>) => void;
 }) {
   const [calculating, setCalculating] = useState(false);
@@ -234,12 +236,12 @@ function DetailModal({
     setCalculating(true);
     try {
       const res = await fetch('/api/coach-assessment/calculate-score', {
-        method: 'POST', 
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicationId: app.id })
       });
       const data = await res.json();
-      
+
       if (res.ok && data.success) {
         onUpdate(app.id, {
           ai_total_score: data.scores.combined,
@@ -265,24 +267,24 @@ function DetailModal({
     setActionLoading(newStatus);
     try {
       console.log('🔄 Quick action:', newStatus, 'for app:', app.id);
-      
+
       const res = await fetch(`/api/admin/coach-applications/${app.id}`, {
-        method: 'PATCH', 
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status: newStatus, 
-          reviewed_by: 'admin', 
-          reviewed_at: new Date().toISOString() 
+        body: JSON.stringify({
+          status: newStatus,
+          reviewed_by: 'admin',
+          reviewed_at: new Date().toISOString()
         })
       });
-      
+
       const data = await res.json();
       console.log('📥 API response:', data);
-      
+
       if (res.ok && data.success && data.application) {
         console.log('✅ Status updated to:', data.application.status);
         // CRITICAL: Use the ACTUAL status from database response
-        onUpdate(app.id, { 
+        onUpdate(app.id, {
           status: data.application.status,
           reviewed_by: data.application.reviewed_by,
           reviewed_at: data.application.reviewed_at
@@ -291,9 +293,9 @@ function DetailModal({
         console.error('❌ Failed:', data.error);
         alert('Failed to update status: ' + (data.error || 'Unknown error'));
       }
-    } catch (err) { 
+    } catch (err) {
       console.error('💥 Error:', err);
-      alert('Failed to update'); 
+      alert('Failed to update');
     }
     setActionLoading(null);
   };
@@ -355,7 +357,7 @@ function DetailModal({
                   <a href={`https://wa.me/91${app.phone.replace(/\D/g, '')}`} target="_blank" className="flex-1 text-center py-1 bg-green-500 text-white text-xs rounded">WhatsApp</a>
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 rounded-lg p-3">
                 <h4 className="text-xs font-semibold text-gray-500 mb-2">AI SCORE</h4>
                 {app.ai_total_score !== null ? (
@@ -483,7 +485,7 @@ export default function AdminCoachApplicationsPage() {
   const [applications, setApplications] = useState<CoachApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  
+
   // Search & Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -493,8 +495,8 @@ export default function AdminCoachApplicationsPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Fetch applications on mount
-  useEffect(() => { 
-    fetchApplications(); 
+  useEffect(() => {
+    fetchApplications();
   }, []);
 
   const fetchApplications = async () => {
@@ -509,15 +511,15 @@ export default function AdminCoachApplicationsPage() {
         }
       });
       const data = await res.json();
-      
+
       console.log('📥 Fetched applications:', data.applications?.length);
       console.log('📊 Sample statuses:', data.applications?.slice(0, 3).map((a: any) => ({ name: a.name, status: a.status })));
-      
+
       if (res.ok && data.applications) {
         setApplications(data.applications);
       }
-    } catch (e) { 
-      console.error('❌ Fetch error:', e); 
+    } catch (e) {
+      console.error('❌ Fetch error:', e);
     }
     setLoading(false);
   };
@@ -526,7 +528,7 @@ export default function AdminCoachApplicationsPage() {
   const handleUpdateApplication = useCallback((id: string, updates: Partial<CoachApplication>) => {
     console.log('🔄 Updating app in state:', id, updates);
     setApplications(prev => {
-      const newApps = prev.map(app => 
+      const newApps = prev.map(app =>
         app.id === id ? { ...app, ...updates } : app
       );
       console.log('✅ Updated state. New status for', id, ':', newApps.find(a => a.id === id)?.status);
@@ -542,24 +544,24 @@ export default function AdminCoachApplicationsPage() {
     .filter(app => {
       // Status filter
       if (statusFilter !== 'all' && app.status !== statusFilter) return false;
-      
+
       // Score filter
       if (scoreFilter === 'qualified' && (app.ai_total_score === null || app.ai_total_score < 6)) return false;
       if (scoreFilter === 'not_qualified' && (app.ai_total_score === null || app.ai_total_score >= 6)) return false;
       if (scoreFilter === 'no_score' && app.ai_total_score !== null) return false;
-      
+
       // Date filter
       if (dateFrom) {
-        const appDate = new Date(app.created_at).setHours(0,0,0,0);
-        const fromDate = new Date(dateFrom).setHours(0,0,0,0);
+        const appDate = new Date(app.created_at).setHours(0, 0, 0, 0);
+        const fromDate = new Date(dateFrom).setHours(0, 0, 0, 0);
         if (appDate < fromDate) return false;
       }
       if (dateTo) {
-        const appDate = new Date(app.created_at).setHours(23,59,59,999);
-        const toDate = new Date(dateTo).setHours(23,59,59,999);
+        const appDate = new Date(app.created_at).setHours(23, 59, 59, 999);
+        const toDate = new Date(dateTo).setHours(23, 59, 59, 999);
         if (appDate > toDate) return false;
       }
-      
+
       // Combined search - searches across ALL fields
       if (search) {
         const s = search.toLowerCase().trim();
@@ -573,10 +575,10 @@ export default function AdminCoachApplicationsPage() {
           app.ai_total_score?.toString(),
           new Date(app.created_at).toLocaleDateString(),
         ].filter(Boolean).join(' ').toLowerCase();
-        
+
         return searchableText.includes(s);
       }
-      
+
       return true;
     })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -635,15 +637,15 @@ export default function AdminCoachApplicationsPage() {
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Search name, email, phone, city, score, date..." 
-                value={search} 
+              <input
+                type="text"
+                placeholder="Search name, email, phone, city, score, date..."
+                value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500" 
+                className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-2 border rounded-lg text-sm flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-pink-50 border-pink-300 text-pink-700' : 'text-gray-700 hover:bg-gray-50'}`}
             >
@@ -659,9 +661,9 @@ export default function AdminCoachApplicationsPage() {
               {/* Status */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
-                <select 
-                  value={statusFilter} 
-                  onChange={(e) => setStatusFilter(e.target.value)} 
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
                 >
                   <option value="all">All Status</option>
@@ -674,9 +676,9 @@ export default function AdminCoachApplicationsPage() {
               {/* Score */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">Score</label>
-                <select 
-                  value={scoreFilter} 
-                  onChange={(e) => setScoreFilter(e.target.value)} 
+                <select
+                  value={scoreFilter}
+                  onChange={(e) => setScoreFilter(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
                 >
                   <option value="all">All Scores</option>
@@ -689,9 +691,9 @@ export default function AdminCoachApplicationsPage() {
               {/* Date From */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">From Date</label>
-                <input 
-                  type="date" 
-                  value={dateFrom} 
+                <input
+                  type="date"
+                  value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
                 />
@@ -700,9 +702,9 @@ export default function AdminCoachApplicationsPage() {
               {/* Date To */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">To Date</label>
-                <input 
-                  type="date" 
-                  value={dateTo} 
+                <input
+                  type="date"
+                  value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
                 />
@@ -711,7 +713,7 @@ export default function AdminCoachApplicationsPage() {
               {/* Clear Filters */}
               {hasActiveFilters && (
                 <div className="col-span-2 md:col-span-4">
-                  <button 
+                  <button
                     onClick={clearFilters}
                     className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
                   >
@@ -744,9 +746,9 @@ export default function AdminCoachApplicationsPage() {
                 const sc = STATUS_CONFIG[app.status] || STATUS_CONFIG.applied;
                 const isQ = (app.ai_total_score || 0) >= 6;
                 return (
-                  <div 
-                    key={app.id} 
-                    onClick={() => setSelectedAppId(app.id)} 
+                  <div
+                    key={app.id}
+                    onClick={() => setSelectedAppId(app.id)}
                     className="p-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3"
                   >
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold">
@@ -784,9 +786,9 @@ export default function AdminCoachApplicationsPage() {
 
       {/* Detail Modal */}
       {selectedApp && (
-        <DetailModal 
-          app={selectedApp} 
-          onClose={() => setSelectedAppId(null)} 
+        <DetailModal
+          app={selectedApp}
+          onClose={() => setSelectedAppId(null)}
           onUpdate={handleUpdateApplication}
         />
       )}
