@@ -23,7 +23,7 @@ interface RevenueRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: RevenueRequest = await request.json();
-    
+
     const {
       enrollment_id,
       total_amount,
@@ -77,14 +77,14 @@ export async function POST(request: NextRequest) {
 
     const coachYTD = (coach?.tds_cumulative_fy || 0) + coachCostAmount;
     const tdsApplicable = coachYTD > activeConfig.tds_threshold_annual;
-    const tdsAmount = tdsApplicable 
+    const tdsAmount = tdsApplicable
       ? Math.round(coachCostAmount * activeConfig.tds_rate_percent / 100)
       : 0;
 
     // 4. Calculate net amounts
     const netToCoach = coachCostAmount - tdsAmount;
     const netToLeadSource = lead_source === 'coach' ? leadCostAmount : 0;
-    const netRetainedByPlatform = platformFeeAmount + tdsAmount + 
+    const netRetainedByPlatform = platformFeeAmount + tdsAmount +
       (lead_source === 'yestoryd' ? leadCostAmount : 0);
 
     // 5. Check if enrollment revenue already exists
@@ -142,13 +142,13 @@ export async function POST(request: NextRequest) {
     const monthlyCoachCost = Math.round(coachCostAmount / 3);
     const monthlyTds = Math.round(tdsAmount / 3);
 
-    const coachPayouts = [];
+    const coachPayouts: any[] = [];
     for (let month = 1; month <= 3; month++) {
       // Adjust last month to handle rounding
-      const thisMonthCoachCost = month === 3 
+      const thisMonthCoachCost = month === 3
         ? coachCostAmount - (monthlyCoachCost * 2)
         : monthlyCoachCost;
-      const thisMonthTds = month === 3 
+      const thisMonthTds = month === 3
         ? tdsAmount - (monthlyTds * 2)
         : monthlyTds;
 
@@ -170,12 +170,12 @@ export async function POST(request: NextRequest) {
     // 9. If coach-sourced, also schedule lead bonus payouts
     if (lead_source === 'coach' && lead_source_coach_id) {
       const monthlyLeadBonus = Math.round(leadCostAmount / 3);
-      const leadBonusTds = tdsApplicable 
+      const leadBonusTds = tdsApplicable
         ? Math.round(monthlyLeadBonus * activeConfig.tds_rate_percent / 100)
         : 0;
 
       for (let month = 1; month <= 3; month++) {
-        const thisMonthBonus = month === 3 
+        const thisMonthBonus = month === 3
           ? leadCostAmount - (monthlyLeadBonus * 2)
           : monthlyLeadBonus;
         const thisMonthTds = month === 3 && tdsApplicable
