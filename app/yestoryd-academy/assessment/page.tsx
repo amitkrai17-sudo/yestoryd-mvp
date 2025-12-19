@@ -191,7 +191,7 @@ function AssessmentPageContent() {
             audio_statement_url: urlData.publicUrl,
             audio_duration_seconds: recordingTime,
             updated_at: new Date().toISOString()
-          })
+          } as any)
           .eq('id', applicationId);
       }
     } catch (err) {
