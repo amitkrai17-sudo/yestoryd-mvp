@@ -290,6 +290,33 @@ function DetailModal({
           reviewed_by: data.application.reviewed_by,
           reviewed_at: data.application.reviewed_at
         });
+
+        // 🔔 SEND NOTIFICATIONS for approved, rejected, on_hold, qualified
+        if (['approved', 'rejected', 'on_hold', 'qualified'].includes(newStatus)) {
+          try {
+            console.log('📧 Sending notification for status:', newStatus);
+            const notifyRes = await fetch('/api/coach/send-status-notification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                coachId: app.id,
+                coachEmail: app.email,
+                coachName: app.name,
+                coachPhone: app.phone,
+                status: newStatus === 'on_hold' ? 'hold' : newStatus
+              })
+            });
+            const notifyData = await notifyRes.json();
+            if (notifyData.success) {
+              console.log('✅ Notification sent:', notifyData);
+              alert(`✅ ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} - Email ${notifyData.emailSent ? '✓' : '✗'} | WhatsApp ${notifyData.whatsappSent ? '✓' : '✗'}`);
+            } else {
+              console.error('❌ Notification failed:', notifyData.error);
+            }
+          } catch (notifyErr) {
+            console.error('❌ Notification error:', notifyErr);
+          }
+        }
       } else {
         console.error('❌ Failed:', data.error);
         alert('Failed to update status: ' + (data.error || 'Unknown error'));
