@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
     // (which can timeout on Vercel's 10s limit), we queue a background job.
     // QStash will handle retries if it fails.
     
-    let queueResult = { success: false, messageId: null };
+    let queueResult: { success: boolean; messageId: string | null } = { success: false, messageId: null };
     
     try {
       queueResult = await queueEnrollmentComplete({
