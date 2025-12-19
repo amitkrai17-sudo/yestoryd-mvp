@@ -185,13 +185,13 @@ function AssessmentPageContent() {
           .from('coach-applications')
           .getPublicUrl(filePath);
 
-        await supabase
-          .from('coach_applications')
+        await (supabase
+          .from('coach_applications') as any)
           .update({
             audio_statement_url: urlData.publicUrl,
             audio_duration_seconds: recordingTime,
             updated_at: new Date().toISOString()
-          } as any)
+          })
           .eq('id', applicationId);
       }
     } catch (err) {
