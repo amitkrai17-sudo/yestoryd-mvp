@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Get due payouts
     const today = new Date().toISOString().split('T')[0];
-    
+
     let query = supabase
       .from('coach_payouts')
       .select(`
@@ -92,9 +92,9 @@ export async function POST(request: NextRequest) {
     const errors: any[] = [];
 
     // Process each coach's payouts
-    for (const [coachId, coachPayouts] of payoutsByCoach) {
+    for (const [coachId, coachPayouts] of Array.from(payoutsByCoach.entries())) {
       const coach = coachPayouts[0].coaches;
-      
+
       if (!coach) {
         errors.push({ coachId, error: 'Coach not found' });
         continue;
@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
 
       // Check if payout is enabled
       if (!coach.payout_enabled) {
-        errors.push({ 
-          coachId, 
+        errors.push({
+          coachId,
           coachName: coach.name,
           error: 'Payout not enabled - coach needs to complete onboarding',
         });
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest) {
 
       // Check bank details
       if (!coach.bank_account_number || !coach.bank_ifsc) {
-        errors.push({ 
-          coachId, 
+        errors.push({
+          coachId,
           coachName: coach.name,
           error: 'Missing bank details',
         });
@@ -122,8 +122,8 @@ export async function POST(request: NextRequest) {
 
       // Check PAN (required for TDS)
       if (!coach.pan_number) {
-        errors.push({ 
-          coachId, 
+        errors.push({
+          coachId,
           coachName: coach.name,
           error: 'Missing PAN number - required for TDS compliance',
         });
@@ -158,11 +158,11 @@ export async function POST(request: NextRequest) {
 
         // Ensure fund account exists
         let fundAccountId = coach.razorpay_fund_account_id;
-        
+
         if (!fundAccountId) {
           // Create contact first if needed
           let contactId = coach.razorpay_contact_id;
-          
+
           if (!contactId) {
             const contactRes = await fetch('https://api.razorpay.com/v1/contacts', {
               method: 'POST',
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
             if (contactRes.ok) {
               const contactData = await contactRes.json();
               contactId = contactData.id;
-              
+
               await supabase
                 .from('coaches')
                 .update({ razorpay_contact_id: contactId })
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
           if (fundRes.ok) {
             const fundData = await fundRes.json();
             fundAccountId = fundData.id;
-            
+
             await supabase
               .from('coaches')
               .update({ razorpay_fund_account_id: fundAccountId })
@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
 
       } catch (payoutError: any) {
         console.error(`❌ Payout failed for ${coach.name}:`, payoutError);
-        
+
         // Mark payouts as failed
         for (const payout of coachPayouts) {
           await supabase
@@ -348,7 +348,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
     const { data: payouts, error } = await supabase
       .from('coach_payouts')
       .select(`
@@ -363,11 +363,11 @@ export async function GET() {
 
     // Group by coach
     const summary = new Map<string, { name: string; count: number; amount: number; enabled: boolean }>();
-    
+
     for (const payout of payouts || []) {
       const coach = payout.coaches;
       const coachId = payout.coach_id;
-      
+
       if (!summary.has(coachId)) {
         summary.set(coachId, {
           name: coach?.name || 'Unknown',
@@ -376,7 +376,7 @@ export async function GET() {
           enabled: coach?.payout_enabled && !!coach?.bank_account_number,
         });
       }
-      
+
       const s = summary.get(coachId)!;
       s.count++;
       s.amount += payout.net_amount;
