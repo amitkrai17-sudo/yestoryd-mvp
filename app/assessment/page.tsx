@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
@@ -221,7 +221,7 @@ function getScoreBasedCTA(score: number, childName: string) {
 
 // ==================== MAIN COMPONENT ====================
 
-export default function AssessmentPage() {
+function AssessmentPageContent() {
   // Referral tracking
   const searchParams = useSearchParams();
   const [referralData, setReferralData] = useState<{ code: string | null; coachId: string | null }>({ code: null, coachId: null });
@@ -1239,5 +1239,18 @@ Check spam folder if not in inbox!
         </div>
       </main>
     </div>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function AssessmentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      </div>
+    }>
+      <AssessmentPageContent />
+    </Suspense>
   );
 }

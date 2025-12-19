@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max
 
 export async function GET(request: NextRequest) {
@@ -29,66 +30,52 @@ export async function GET(request: NextRequest) {
 
     const result = await response.json();
 
-    console.log('✅ Monthly payout cron completed:', result.summary);
+    if (!response.ok) {
+      console.error('❌ Payout processing failed:', result);
+      return NextResponse.json({
+        success: false,
+        error: 'Payout processing failed',
+        details: result,
+      }, { status: 500 });
+    }
+
+    console.log('✅ Monthly payout cron completed:', result);
 
     // Send summary email to admin
-    if (result.summary?.total_payouts > 0) {
-      try {
-        await fetch(`${baseUrl}/api/email/admin-notification`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subject: `💰 Monthly Payouts Processed - ${new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}`,
-            content: `
-              <h2>Payout Summary</h2>
-              <ul>
-                <li>Total Payouts: ${result.summary.total_payouts}</li>
-                <li>Coaches Processed: ${result.summary.coaches_processed}</li>
-                <li>Successful: ${result.summary.successful}</li>
-                <li>Failed: ${result.summary.failed}</li>
-                <li>Total Amount: ₹${result.summary.total_amount?.toLocaleString()}</li>
-              </ul>
-              ${result.errors?.length > 0 ? `
-                <h3>⚠️ Errors</h3>
-                <ul>
-                  ${result.errors.map((e: any) => `<li>${e.coach_name}: ${e.error}</li>`).join('')}
-                </ul>
-              ` : ''}
-            `,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Failed to send admin notification:', emailError);
-      }
+    try {
+      await fetch(`${baseUrl}/api/email/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: 'amit@yestoryd.com',
+          subject: `Monthly Payouts Processed - ${new Date().toLocaleDateString('en-IN')}`,
+          html: `
+            <h2>Monthly Payout Summary</h2>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}</p>
+            <p><strong>Total Processed:</strong> ${result.summary?.total_payouts || 0} payouts</p>
+            <p><strong>Total Amount:</strong> ₹${result.summary?.total_amount?.toLocaleString() || 0}</p>
+            <p><strong>Successful:</strong> ${result.summary?.successful || 0}</p>
+            <p><strong>Failed:</strong> ${result.summary?.failed || 0}</p>
+            ${result.summary?.failed > 0 ? '<p style="color: red;">⚠️ Some payouts failed - please check dashboard</p>' : ''}
+          `,
+        }),
+      });
+    } catch (emailError) {
+      console.error('Email notification failed:', emailError);
     }
 
     return NextResponse.json({
       success: true,
       message: 'Monthly payouts processed',
-      ...result,
+      summary: result.summary,
+      timestamp: new Date().toISOString(),
     });
 
   } catch (error: any) {
     console.error('❌ Monthly payout cron error:', error);
-    
-    // Try to notify admin of failure
-    try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yestoryd.com';
-      await fetch(`${baseUrl}/api/email/admin-notification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: '🚨 Monthly Payout Cron FAILED',
-          content: `<p>Error: ${error.message}</p><p>Time: ${new Date().toISOString()}</p>`,
-        }),
-      });
-    } catch (e) {
-      console.error('Failed to send error notification');
-    }
-
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: error.message || 'Cron job failed',
+    }, { status: 500 });
   }
 }
