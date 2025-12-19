@@ -1,5 +1,6 @@
 // app/yestoryd-academy/apply/page.tsx
 // Step 1 of 3: Basic Information + Google Sign-in
+// Updated: Added sign out option when logged in
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,7 +17,8 @@ import {
   MapPin,
   Globe,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  LogOut
 } from 'lucide-react';
 
 // Country list
@@ -89,7 +91,7 @@ export default function ApplyPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   const handleGoogleSignIn = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -102,6 +104,17 @@ export default function ApplyPage() {
       console.error('Google sign in error:', error);
       setError('Failed to sign in with Google. Please try again.');
     }
+  };
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setFormData(prev => ({
+      ...prev,
+      email: '',
+      name: ''
+    }));
   };
 
   const validateForm = () => {
@@ -233,11 +246,25 @@ export default function ApplyPage() {
             </>
           )}
 
-          {/* Signed in indicator */}
+          {/* Signed in indicator - UPDATED with sign out option */}
           {user && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl mb-6">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              <span className="text-sm text-green-700">Signed in as {user.email}</span>
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <span className="text-sm text-green-700">Signed in as {user.email}</span>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-1 text-sm text-green-600 hover:text-red-600 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sign out</span>
+                </button>
+              </div>
+              <p className="text-xs text-green-600 mt-1 ml-7">
+                From your Google account
+              </p>
             </div>
           )}
 
@@ -272,15 +299,12 @@ export default function ApplyPage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-slate-900 focus:border-[#ff0099] focus:ring-1 focus:ring-[#ff0099] outline-none transition-all"
+                  className={`w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-slate-900 focus:border-[#ff0099] focus:ring-1 focus:ring-[#ff0099] outline-none transition-all ${user ? 'bg-slate-50' : ''}`}
                   placeholder="your@email.com"
                   required
                   disabled={!!user}
                 />
               </div>
-              {user && (
-                <p className="text-xs text-slate-500 mt-1">From your Google account</p>
-              )}
             </div>
 
             {/* WhatsApp Number */}

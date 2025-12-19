@@ -1,5 +1,7 @@
 // app/yestoryd-academy/assessment/page.tsx
 // Step 3 of 3: Voice Recording (required) + Gemini-powered Vedant AI Chat (4 questions)
+// UPDATED: Includes email sending, score calculation, full conversation storage
+
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
@@ -14,6 +16,7 @@ import {
   MicOff,
   Square,
   Play,
+  Pause,
   RotateCcw,
   CheckCircle2,
   Loader2,
@@ -145,8 +148,13 @@ function AssessmentPageContent() {
 
   const playAudio = () => {
     if (audioUrl && audioRef.current) {
-      audioRef.current.play();
-      setIsPlaying(true);
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
     }
   };
 
@@ -177,8 +185,8 @@ function AssessmentPageContent() {
           .from('coach-applications')
           .getPublicUrl(filePath);
 
-        await (supabase
-          .from('coach_applications') as any)
+        await supabase
+          .from('coach_applications')
           .update({
             audio_statement_url: urlData.publicUrl,
             audio_duration_seconds: recordingTime,
@@ -221,25 +229,20 @@ function AssessmentPageContent() {
 
       if (response.ok) {
         const data = await response.json();
-        setMessages([{
-          role: 'assistant',
-          content: data.message
-        }]);
+        setMessages([{ role: 'assistant', content: data.message }]);
         setQuestionNumber(data.questionNumber || 1);
-        if (data.isComplete) setChatComplete(true);
       } else {
         // Fallback greeting
         setMessages([{
           role: 'assistant',
-          content: `Namaste${applicationData?.name ? `, ${applicationData.name.split(' ')[0]}` : ''}! 🙏\n\nI'm Vedant, Yestoryd's AI guide. Thank you for your voice introduction!\n\nNow I'd like to understand how you approach teaching through a few scenarios. There are no right or wrong answers — I'm curious about your natural instincts.\n\nLet's start: A 6-year-old has been struggling with the same word for 3 sessions. They're frustrated and saying "I can't do this." How would you handle it?`
+          content: "Namaste! 🙏 I'm Vedant, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
         }]);
       }
     } catch (err) {
       console.error('Error starting conversation:', err);
-      // Fallback
       setMessages([{
         role: 'assistant',
-        content: `Namaste! 🙏\n\nI'm Vedant, Yestoryd's AI guide.\n\nLet's start with a scenario: A 6-year-old has been struggling with the same word for 3 sessions. They're frustrated and saying "I can't do this." How would you handle it?`
+        content: "Namaste! 🙏 I'm Vedant, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
       }]);
     }
 
@@ -248,40 +251,35 @@ function AssessmentPageContent() {
   };
 
   const handleSendResponse = async () => {
-    const userInput = currentInput.trim();
-    if (!userInput || isTyping || chatComplete) return;
-    setError(null);
+    if (!currentInput.trim() || isTyping) return;
 
-    // Add user message
-    const newMessages: Message[] = [...messages, { role: 'user', content: userInput }];
-    setMessages(newMessages);
+    const userMessage = currentInput.trim();
     setCurrentInput('');
+    
+    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
+    setMessages(newMessages);
     setIsTyping(true);
 
     try {
       const response = await fetch('/api/coach-assessment/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           messages: newMessages,
-          questionNumber: questionNumber
+          questionNumber
         })
       });
 
       if (response.ok) {
         const data = await response.json();
         
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: data.message
-        }]);
-        
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
         setQuestionNumber(data.questionNumber || questionNumber + 1);
         
         if (data.isComplete) {
           setChatComplete(true);
-          // Save assessment data
-          await saveAssessment(newMessages, data);
+          // Save assessment data with FULL conversation
+          await saveAssessment([...newMessages, { role: 'assistant', content: data.message }], data);
         }
       } else {
         throw new Error('API request failed');
@@ -297,14 +295,13 @@ function AssessmentPageContent() {
       ];
       
       const nextQ = Math.min(questionNumber, 4);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: fallbackResponses[nextQ - 1] || fallbackResponses[3]
-      }]);
+      const fallbackMessage = fallbackResponses[nextQ - 1] || fallbackResponses[3];
+      
+      setMessages(prev => [...prev, { role: 'assistant', content: fallbackMessage }]);
       
       if (questionNumber >= 4) {
         setChatComplete(true);
-        await saveAssessment(newMessages, { questionNumber: 4, isComplete: true });
+        await saveAssessment([...newMessages, { role: 'assistant', content: fallbackMessage }], { questionNumber: 4, isComplete: true });
       } else {
         setQuestionNumber(nextQ + 1);
       }
@@ -314,25 +311,24 @@ function AssessmentPageContent() {
     inputRef.current?.focus();
   };
 
+  // UPDATED: Save FULL conversation (not just user responses)
   const saveAssessment = async (allMessages: Message[], data: any) => {
     if (!applicationId) return;
 
     try {
-      // Extract user responses
-      const userResponses = allMessages
-        .filter(m => m.role === 'user')
-        .map((m, i) => ({ question: i + 1, response: m.content }));
-
-      await (supabase
-        .from('coach_applications') as any)
+      const { error: updateError } = await supabase
+        .from('coach_applications')
         .update({
-          ai_responses: userResponses,
+          ai_responses: allMessages, // Store FULL conversation
           ai_assessment_completed_at: new Date().toISOString(),
-          status: 'assessment_complete',
+          status: 'ai_assessment_complete',
           updated_at: new Date().toISOString()
         })
         .eq('id', applicationId);
 
+      if (updateError) {
+        console.error('Error saving assessment:', updateError);
+      }
     } catch (err) {
       console.error('Error saving assessment:', err);
     }
@@ -345,8 +341,51 @@ function AssessmentPageContent() {
     }
   };
 
-  const handleComplete = () => {
-    router.push(`/yestoryd-academy/confirmation?applicationId=${applicationId}`);
+  // UPDATED: Complete handler with email + score calculation
+  const handleComplete = async () => {
+    setIsSubmitting(true);
+
+    try {
+      // 1. Get application data for email
+      const { data: appData } = await supabase
+        .from('coach_applications')
+        .select('name, email, phone, city')
+        .eq('id', applicationId)
+        .single();
+
+      // 2. Calculate score (don't wait, fire and forget)
+      fetch('/api/coach-assessment/calculate-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId })
+      }).catch(err => console.error('Score calculation error:', err));
+
+      // 3. Send confirmation email
+      try {
+        await fetch('/api/coach-application/send-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            applicantEmail: appData?.email,
+            applicantName: appData?.name,
+            applicantPhone: appData?.phone,
+            city: appData?.city,
+            applicationId: applicationId
+          })
+        });
+      } catch (emailErr) {
+        console.error('Email error:', emailErr);
+        // Don't block if email fails
+      }
+
+      // 4. Navigate to confirmation
+      router.push(`/yestoryd-academy/confirmation?applicationId=${applicationId}`);
+
+    } catch (err) {
+      console.error('Error completing:', err);
+      // Navigate anyway
+      router.push(`/yestoryd-academy/confirmation?applicationId=${applicationId}`);
+    }
   };
 
   // Loading state
@@ -402,43 +441,40 @@ function AssessmentPageContent() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow max-w-2xl mx-auto w-full px-4 py-6 md:py-10">
+      <main className="flex-grow max-w-2xl mx-auto w-full px-4 py-8">
         {/* Part 1: Voice Recording */}
         {!showVedantChat && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-              Your Statement of Purpose
-            </h1>
-            <p className="text-slate-600 mb-8">
-              In 2 minutes, tell us: Why do you want to help children learn to read?
-            </p>
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                <Mic className="w-4 h-4" />
+                Part 1: Voice Introduction
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+                Tell Us Your Story
+              </h1>
+              <p className="text-slate-600">
+                Record a 1-2 minute voice statement about why you want to become a reading coach
+              </p>
+            </div>
 
-            {/* Recording UI */}
-            <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-8 text-center">
+            {/* Recording Interface */}
+            <div className="text-center py-8">
               {!audioBlob ? (
                 <>
-                  {/* Not recording yet or recording */}
-                  <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 transition-all ${
-                    isRecording
-                      ? 'bg-red-500 animate-pulse'
-                      : 'bg-gradient-to-r from-[#ff0099] to-[#7b008b]'
-                  }`}>
-                    {isRecording ? (
-                      <MicOff className="w-10 h-10 text-white" />
-                    ) : (
-                      <Mic className="w-10 h-10 text-white" />
-                    )}
-                  </div>
-
+                  {/* Recording in progress */}
                   {isRecording ? (
                     <>
+                      <div className="w-24 h-24 mx-auto bg-red-500 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                        <Mic className="w-10 h-10 text-white" />
+                      </div>
                       <p className="text-2xl font-bold text-slate-900 mb-2">
                         {formatTime(recordingTime)}
                       </p>
-                      <p className="text-slate-600 mb-6">Recording... (max 2:00)</p>
+                      <p className="text-slate-600 mb-6">Recording...</p>
                       <button
                         onClick={stopRecording}
-                        className="inline-flex items-center gap-2 bg-red-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-red-600 transition-colors"
+                        className="inline-flex items-center gap-2 bg-red-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-red-700 transition-colors"
                       >
                         <Square className="w-5 h-5" />
                         Stop Recording
@@ -480,11 +516,10 @@ function AssessmentPageContent() {
                   <div className="flex items-center justify-center gap-4 mb-6">
                     <button
                       onClick={playAudio}
-                      disabled={isPlaying}
-                      className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-6 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-6 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors"
                     >
-                      <Play className="w-5 h-5" />
-                      {isPlaying ? 'Playing...' : 'Play'}
+                      {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                      {isPlaying ? 'Pause' : 'Play'}
                     </button>
                     <button
                       onClick={resetRecording}
@@ -538,9 +573,16 @@ function AssessmentPageContent() {
               <div>
                 <h2 className="font-semibold text-slate-900">Vedant AI</h2>
                 <p className="text-xs text-slate-500">
-                  {chatComplete ? 'Assessment Complete' : `Question ${Math.min(questionNumber, 4)} of 4`}
+                  {chatComplete ? 'Assessment Complete ✓' : `Question ${Math.min(questionNumber, 4)} of 4`}
                 </p>
               </div>
+              {/* Voice recording badge */}
+              {voiceComplete && (
+                <div className="ml-auto flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Voice ✓
+                </div>
+              )}
             </div>
 
             {/* Messages */}
@@ -609,7 +651,7 @@ function AssessmentPageContent() {
                     onChange={(e) => setCurrentInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your response..."
-                    className="flex-grow resize-none rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ff0099] focus:border-transparent min-h-[50px] max-h-[120px] text-slate-900"
+                    className="flex-grow resize-none rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ff0099] focus:border-transparent min-h-[50px] max-h-[120px] text-slate-900 bg-white"
                     rows={2}
                     disabled={isTyping}
                   />
@@ -629,10 +671,13 @@ function AssessmentPageContent() {
                 <button
                   onClick={handleComplete}
                   disabled={isSubmitting}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-6 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-6 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all disabled:opacity-70"
                 >
                   {isSubmitting ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Submitting...
+                    </>
                   ) : (
                     <>
                       Complete Application

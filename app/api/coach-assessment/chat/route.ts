@@ -1,5 +1,5 @@
 // app/api/coach-assessment/chat/route.ts
-// Gemini handles the ENTIRE coach assessment conversation
+// Gemini handles the ENTIRE coach assessment conversation WITH SCORING
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
@@ -32,12 +32,24 @@ Set isComplete: true
 ## THE 4 QUESTIONS
 
 Q1: "A 6-year-old is frustrated, saying 'I can't do this.' How would you handle it?"
+SCORING: Look for empathy, patience, encouragement, not dismissing feelings
 
 Q2: "A parent says their child hasn't improved after a month. They're disappointed. What would you say?"
+SCORING: Look for accountability, communication skills, realistic expectations, professionalism
 
 Q3: "A usually cheerful child seems quiet and withdrawn today. How would you approach this?"
+SCORING: Look for observation skills, sensitivity, creating safe space, not forcing
 
 Q4: "A parent asks if you can guarantee 2 grade levels improvement in 3 months. How do you respond?"
+SCORING: Look for honesty, managing expectations, not over-promising, professionalism
+
+## SCORING CRITERIA (Score each answer 1-5)
+
+5 = EXCELLENT: Shows deep empathy, specific actions, child-centric approach, professional
+4 = GOOD: Shows understanding, reasonable approach, mostly child-focused
+3 = AVERAGE: Generic response, textbook answer, lacks personal touch
+2 = BELOW AVERAGE: Misses the point, adult-centric, dismissive undertones
+1 = POOR: Harsh, dismissive, inappropriate, red flags
 
 ## RESPONSE EXAMPLES
 
@@ -64,6 +76,7 @@ EXIT REQUEST received:
 - Keep acknowledgments short (under 15 words)
 - Sound natural, not robotic
 - If user wants to quit/exit, let them - don't force remaining questions
+- ALWAYS include score for the answer in your JSON response
 
 ## ENDING (after Q4 OR exit request)
 "Thanks for sharing your thoughts! We'll review within 48 hours. If it's a match, Rucha will reach out. Best wishes! 🙏"
@@ -74,12 +87,20 @@ JSON only (no markdown):
   "message": "Your response",
   "questionNumber": 1-4 or 0 if complete,
   "isComplete": false or true,
-  "probedThisQuestion": true or false
+  "probedThisQuestion": true or false,
+  "lastAnswerScore": null or 1-5,
+  "lastAnswerCategory": null or "empathy" or "communication" or "sensitivity" or "honesty",
+  "scores": {
+    "q1_empathy": null or 1-5,
+    "q2_communication": null or 1-5,
+    "q3_sensitivity": null or 1-5,
+    "q4_honesty": null or 1-5
+  }
 }`;
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, questionNumber } = await request.json();
+    const { messages, questionNumber, currentScores } = await request.json();
 
     // Build conversation history for Gemini
     const conversationHistory = messages.map((msg: { role: string; content: string }) => ({
@@ -90,22 +111,25 @@ export async function POST(request: NextRequest) {
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.5-flash-lite',
       generationConfig: {
-        temperature: 0.8,
-        maxOutputTokens: 400,
+        temperature: 0.7,
+        maxOutputTokens: 500,
         topP: 0.9,
       }
     });
+
+    // Include current scores in context
+    const scoresContext = currentScores ? `\nCurrent scores so far: ${JSON.stringify(currentScores)}` : '';
 
     // Start chat with system context
     const chat = model.startChat({
       history: [
         {
           role: 'user',
-          parts: [{ text: `SYSTEM INSTRUCTIONS:\n${VEDANT_SYSTEM_PROMPT}\n\nCurrent question number: ${questionNumber || 1}\n\nNow respond to the conversation. Remember to output ONLY valid JSON.` }]
+          parts: [{ text: `SYSTEM INSTRUCTIONS:\n${VEDANT_SYSTEM_PROMPT}\n\nCurrent question number: ${questionNumber || 1}${scoresContext}\n\nNow respond to the conversation. Remember to output ONLY valid JSON. ALWAYS score the user's last answer if they answered a question.` }]
         },
         {
           role: 'model', 
-          parts: [{ text: '{"message": "Understood. I will conduct the assessment as Vedant.", "questionNumber": 0, "isComplete": false, "sentiment": "neutral"}' }]
+          parts: [{ text: '{"message": "Understood. I will conduct the assessment as Vedant and score each answer.", "questionNumber": 0, "isComplete": false, "probedThisQuestion": false, "lastAnswerScore": null, "lastAnswerCategory": null, "scores": {"q1_empathy": null, "q2_communication": null, "q3_sensitivity": null, "q4_honesty": null}}' }]
         },
         ...conversationHistory
       ]
@@ -115,7 +139,7 @@ export async function POST(request: NextRequest) {
     const result = await chat.sendMessage(
       messages.length === 0 
         ? "Start the assessment conversation. Greet warmly and ask the first question immediately."
-        : "Continue the conversation based on the user's last message. Respond naturally and ask the next question if appropriate."
+        : "Continue the conversation based on the user's last message. Score their answer (1-5) based on the criteria. Respond naturally and ask the next question if appropriate."
     );
 
     const responseText = result.response.text();
@@ -136,8 +160,44 @@ export async function POST(request: NextRequest) {
         message: responseText,
         questionNumber: questionNumber || 1,
         isComplete: false,
-        sentiment: 'neutral'
+        probedThisQuestion: false,
+        lastAnswerScore: null,
+        lastAnswerCategory: null,
+        scores: currentScores || {
+          q1_empathy: null,
+          q2_communication: null,
+          q3_sensitivity: null,
+          q4_honesty: null
+        }
       };
+    }
+
+    // Ensure scores object exists
+    if (!parsed.scores) {
+      parsed.scores = currentScores || {
+        q1_empathy: null,
+        q2_communication: null,
+        q3_sensitivity: null,
+        q4_honesty: null
+      };
+    }
+
+    // Calculate total Vedant AI score if assessment is complete
+    if (parsed.isComplete) {
+      const scores = parsed.scores;
+      const validScores = [
+        scores.q1_empathy,
+        scores.q2_communication,
+        scores.q3_sensitivity,
+        scores.q4_honesty
+      ].filter(s => s !== null && s !== undefined);
+      
+      if (validScores.length > 0) {
+        // Average of answered questions, scaled to 5
+        const avgScore = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+        parsed.vedantScore = Math.round(avgScore * 10) / 10; // e.g., 3.5 out of 5
+        parsed.vedantScoreOutOf5 = Math.round(avgScore * 10) / 10;
+      }
     }
 
     return NextResponse.json(parsed);
@@ -150,7 +210,15 @@ export async function POST(request: NextRequest) {
       message: "I apologize, I'm having a brief technical moment. Could you please repeat your last response?",
       questionNumber: 1,
       isComplete: false,
-      sentiment: 'neutral',
+      probedThisQuestion: false,
+      lastAnswerScore: null,
+      lastAnswerCategory: null,
+      scores: {
+        q1_empathy: null,
+        q2_communication: null,
+        q3_sensitivity: null,
+        q4_honesty: null
+      },
       error: error.message
     });
   }

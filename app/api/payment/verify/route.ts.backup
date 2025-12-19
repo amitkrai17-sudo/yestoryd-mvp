@@ -1,6 +1,6 @@
 // file: app/api/payment/verify/route.ts
-// Payment verification with automatic lead source detection
-// Reads lead_source from children table (set during assessment)
+// Payment verification with revenue split calculation
+// Updated: Integrates with revenue split system
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -11,7 +11,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-function verifyPaymentSignature(orderId: string, paymentId: string, signature: string): boolean {
+// Verify Razorpay signature
+function verifyPaymentSignature(
+  orderId: string,
+  paymentId: string,
+  signature: string
+): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET!;
   const generatedSignature = crypto
     .createHmac('sha256', secret)
@@ -28,27 +33,35 @@ export async function POST(request: NextRequest) {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
+      // Child & Parent data
       childId,
       childName,
       childAge,
       parentName,
       parentEmail,
       parentPhone,
+      // Coach & Package data
       coachId,
       packageType,
       amount,
+      // Source tracking for revenue split
+      leadSource,           // 'yestoryd' | 'coach'
+      leadSourceCoachId,    // If coach sourced the lead
+      // Preferences
       preferredDay,
       preferredTime,
       source,
-      // Referral data (from frontend if available)
-      referral_code_used,
     } = body;
 
     // ==================== STEP 1: VERIFY SIGNATURE ====================
     if (!verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)) {
       console.error('❌ Invalid payment signature');
-      return NextResponse.json({ success: false, error: 'Invalid payment signature' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'Invalid payment signature' },
+        { status: 400 }
+      );
     }
+
     console.log('✅ Payment signature verified:', razorpay_payment_id);
 
     // ==================== STEP 2: GET OR CREATE PARENT ====================
@@ -62,67 +75,34 @@ export async function POST(request: NextRequest) {
 
     if (existingParent) {
       parentId = existingParent.id;
+      console.log('✅ Existing parent found:', parentId);
     } else {
       const { data: newParent, error: parentError } = await supabase
         .from('parents')
-        .insert({ name: parentName, email: parentEmail, phone: parentPhone })
+        .insert({
+          name: parentName,
+          email: parentEmail,
+          phone: parentPhone,
+        })
         .select('id')
         .single();
-      if (parentError) throw new Error('Failed to create parent');
+
+      if (parentError) {
+        console.error('❌ Parent creation error:', parentError);
+        throw new Error('Failed to create parent record');
+      }
       parentId = newParent.id;
+      console.log('✅ New parent created:', parentId);
     }
-    console.log('✅ Parent:', parentId);
 
     // ==================== STEP 3: GET OR CREATE CHILD ====================
     let finalChildId = childId;
-    let leadSource = 'yestoryd';
-    let leadSourceCoachId: string | null = null;
     
+    // Check if childId is a valid UUID
     const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(childId);
     
-    if (isValidUUID && childId) {
-      // Existing child - get their lead source info
-      const { data: existingChild } = await supabase
-        .from('children')
-        .select('id, lead_source, lead_source_coach_id, referral_code_used')
-        .eq('id', childId)
-        .single();
-
-      if (existingChild) {
-        leadSource = existingChild.lead_source || 'yestoryd';
-        leadSourceCoachId = existingChild.lead_source_coach_id;
-        
-        // Update child status
-        await supabase
-          .from('children')
-          .update({ 
-            lead_status: 'enrolled', 
-            parent_id: parentId,
-          })
-          .eq('id', childId);
-        
-        console.log('✅ Existing child, lead_source:', leadSource);
-      }
-    } else {
-      // New child - check if referral code was used
-      let newLeadSource = 'yestoryd';
-      let newLeadSourceCoachId: string | null = null;
-      let refCodeUsed: string | null = referral_code_used || null;
-
-      // If referral code provided, look up the coach
-      if (refCodeUsed) {
-        const { data: referringCoach } = await supabase
-          .from('coaches')
-          .select('id')
-          .eq('referral_code', refCodeUsed.toUpperCase())
-          .single();
-
-        if (referringCoach) {
-          newLeadSource = 'coach';
-          newLeadSourceCoachId = referringCoach.id;
-        }
-      }
-
+    if (!isValidUUID || !childId) {
+      // Create new child record
       const { data: newChild, error: childError } = await supabase
         .from('children')
         .insert({
@@ -133,24 +113,31 @@ export async function POST(request: NextRequest) {
           parent_phone: parentPhone,
           parent_name: parentName,
           lead_status: 'enrolled',
-          lead_source: newLeadSource,
-          lead_source_coach_id: newLeadSourceCoachId,
-          referral_code_used: refCodeUsed,
         })
         .select('id')
         .single();
 
-      if (childError) throw new Error('Failed to create child');
+      if (childError) {
+        console.error('❌ Child creation error:', childError);
+        throw new Error('Failed to create child record');
+      }
       finalChildId = newChild.id;
-      leadSource = newLeadSource;
-      leadSourceCoachId = newLeadSourceCoachId;
-      
-      console.log('✅ New child created, lead_source:', leadSource);
+      console.log('✅ New child created:', finalChildId);
+    } else {
+      // Update existing child
+      await supabase
+        .from('children')
+        .update({
+          lead_status: 'enrolled',
+          parent_id: parentId,
+        })
+        .eq('id', childId);
+      console.log('✅ Existing child updated:', childId);
     }
 
     // ==================== STEP 4: GET COACH ====================
     let finalCoachId = coachId;
-    let coachData: any = null;
+    let coachData = null;
 
     if (coachId) {
       const { data: coach } = await supabase
@@ -158,43 +145,48 @@ export async function POST(request: NextRequest) {
         .select('id, name, email, calendar_id')
         .eq('id', coachId)
         .maybeSingle();
+
       if (coach) {
         finalCoachId = coach.id;
         coachData = coach;
       }
     }
 
-    // Default to Rucha if no coach
+    // If no coach assigned, get default (Rucha)
     if (!finalCoachId) {
       const { data: defaultCoach } = await supabase
         .from('coaches')
         .select('id, name, email, calendar_id')
         .eq('email', 'rucha@yestoryd.com')
         .maybeSingle();
+
       if (defaultCoach) {
         finalCoachId = defaultCoach.id;
         coachData = defaultCoach;
       }
     }
 
+    console.log('✅ Coach:', coachData?.name || 'Default');
+
     // Assign coach to child
     await supabase
       .from('children')
-      .update({ coach_id: finalCoachId, assigned_to: coachData?.email })
+      .update({ 
+        coach_id: finalCoachId,
+        assigned_to: coachData?.email || 'rucha@yestoryd.com',
+      })
       .eq('id', finalChildId);
-
-    console.log('✅ Coach assigned:', coachData?.name);
 
     // ==================== STEP 5: CREATE PAYMENT RECORD ====================
     const paymentAmount = amount || 5999;
 
-    const { data: payment } = await supabase
+    const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
         child_id: finalChildId,
-        coach_id: coachData?.name || 'rucha',
-        razorpay_order_id,
-        razorpay_payment_id,
+        coach_id: coachData?.name || 'rucha', // text field for coach name
+        razorpay_order_id: razorpay_order_id,
+        razorpay_payment_id: razorpay_payment_id,
         amount: paymentAmount,
         package_type: packageType || 'coaching-3month',
         source: source || 'website',
@@ -204,7 +196,11 @@ export async function POST(request: NextRequest) {
       .select('id')
       .single();
 
-    console.log('✅ Payment recorded:', payment?.id);
+    if (paymentError) {
+      console.error('⚠️ Payment record error:', paymentError);
+    } else {
+      console.log('✅ Payment recorded:', payment?.id);
+    }
 
     // ==================== STEP 6: CREATE ENROLLMENT ====================
     const programStart = new Date();
@@ -238,7 +234,8 @@ export async function POST(request: NextRequest) {
     // ==================== STEP 7: CALCULATE REVENUE SPLIT ====================
     if (enrollment?.id && finalCoachId) {
       try {
-        console.log('📊 Calculating revenue split...', { leadSource, leadSourceCoachId, finalCoachId });
+        // Determine lead source (default to 'yestoryd' if not specified)
+        const finalLeadSource = leadSource || 'yestoryd';
         
         const revenueResponse = await fetch(
           `${process.env.NEXT_PUBLIC_APP_URL || 'https://yestoryd.com'}/api/enrollment/calculate-revenue`,
@@ -248,8 +245,8 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify({
               enrollment_id: enrollment.id,
               total_amount: paymentAmount,
-              lead_source: leadSource,
-              lead_source_coach_id: leadSource === 'coach' ? leadSourceCoachId : null,
+              lead_source: finalLeadSource,
+              lead_source_coach_id: finalLeadSource === 'coach' ? leadSourceCoachId : null,
               coaching_coach_id: finalCoachId,
               child_id: finalChildId,
               child_name: childName,
@@ -261,28 +258,17 @@ export async function POST(request: NextRequest) {
         
         if (revenueData.success) {
           console.log('✅ Revenue split calculated:', {
-            lead_source: leadSource,
             lead_cost: revenueData.breakdown?.lead_cost?.amount,
             coach_cost: revenueData.breakdown?.coach_cost?.amount,
             platform_fee: revenueData.breakdown?.platform_fee?.amount,
-            net_to_coach: revenueData.breakdown?.net_to_coach,
+            payouts_scheduled: revenueData.payouts_scheduled?.length,
           });
-
-          // Mark referral as converted
-          if (leadSource === 'coach' && leadSourceCoachId) {
-            await supabase
-              .from('referral_visits')
-              .update({ converted: true, converted_child_id: finalChildId })
-              .eq('coach_id', leadSourceCoachId)
-              .eq('converted', false)
-              .order('created_at', { ascending: false })
-              .limit(1);
-          }
         } else {
           console.error('⚠️ Revenue calculation failed:', revenueData.error);
         }
       } catch (revenueError) {
         console.error('⚠️ Revenue calculation error:', revenueError);
+        // Don't fail the payment - revenue can be calculated later
       }
     }
 
@@ -297,21 +283,25 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify({
               enrollmentId: enrollment.id,
               childId: finalChildId,
-              childName,
-              parentEmail,
+              childName: childName,
+              parentEmail: parentEmail,
               coachId: finalCoachId,
-              preferredDay,
-              preferredTime,
+              preferredDay: preferredDay,
+              preferredTime: preferredTime,
             }),
           }
         );
 
         const scheduleData = await scheduleResponse.json();
+        
         if (scheduleData.success) {
-          console.log('✅ Sessions scheduled');
+          console.log('✅ Sessions scheduled:', scheduleData.sessionsCreated || 9);
+        } else {
+          console.error('⚠️ Session scheduling failed:', scheduleData.error);
         }
       } catch (scheduleError) {
         console.error('⚠️ Session scheduling error:', scheduleError);
+        // Don't fail - sessions can be scheduled later
       }
     }
 
@@ -332,12 +322,12 @@ export async function POST(request: NextRequest) {
           }),
         }
       );
-      console.log('✅ Confirmation email sent');
+      console.log('✅ Confirmation email triggered');
     } catch (emailError) {
       console.error('⚠️ Email error:', emailError);
     }
 
-    // ==================== RETURN SUCCESS ====================
+    // ==================== STEP 10: RETURN SUCCESS ====================
     return NextResponse.json({
       success: true,
       message: 'Payment verified and enrollment completed',
@@ -348,7 +338,6 @@ export async function POST(request: NextRequest) {
         coachId: finalCoachId,
         paymentId: razorpay_payment_id,
         amount: paymentAmount,
-        leadSource,
       },
     });
 

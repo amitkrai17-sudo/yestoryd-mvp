@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -221,6 +222,10 @@ function getScoreBasedCTA(score: number, childName: string) {
 // ==================== MAIN COMPONENT ====================
 
 export default function AssessmentPage() {
+  // Referral tracking
+  const searchParams = useSearchParams();
+  const [referralData, setReferralData] = useState<{ code: string | null; coachId: string | null }>({ code: null, coachId: null });
+  
   // Auth state
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -295,6 +300,61 @@ export default function AssessmentPage() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Track referral code from URL or cookie
+  useEffect(() => {
+    const trackReferral = async () => {
+      // 1. Check URL for ref param
+      const urlRef = searchParams.get('ref');
+      
+      // 2. Check cookie for existing referral
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+        return null;
+      };
+      const cookieRef = getCookie('yestoryd_ref');
+      
+      // 3. Use URL ref (priority) or cookie ref
+      const refCode = urlRef || cookieRef;
+      
+      if (!refCode) return;
+      
+      try {
+        // 4. Validate with API
+        const res = await fetch(`/api/referral/track?ref=${refCode}`);
+        const data = await res.json();
+        
+        if (data.valid && data.coach_id) {
+          setReferralData({ code: data.referral_code, coachId: data.coach_id });
+          
+          // Save to cookie (30 days) if from URL
+          if (urlRef) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + 30 * 24 * 60 * 60 * 1000);
+            document.cookie = `yestoryd_ref=${data.referral_code};expires=${expires.toUTCString()};path=/`;
+            
+            // Track visit
+            fetch('/api/referral/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                referral_code: refCode,
+                landing_page: window.location.pathname,
+              }),
+            }).catch(console.error);
+          }
+          
+          console.log('✅ Referral tracked:', data.referral_code);
+        }
+      } catch (error) {
+        console.error('Referral tracking error:', error);
+      }
+    };
+    
+    trackReferral();
+  }, [searchParams]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -447,6 +507,10 @@ export default function AssessmentPage() {
           parentName: formData.parentName,
           parentEmail: formData.parentEmail,
           parentPhone: fullPhone,
+          // Referral tracking
+          lead_source: referralData.coachId ? 'coach' : 'yestoryd',
+          lead_source_coach_id: referralData.coachId,
+          referral_code_used: referralData.code,
         }),
       });
 

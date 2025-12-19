@@ -1,7 +1,17 @@
+// file: app/api/assessment/analyze/route.ts
+// UPDATED: Now saves child to database with lead_source tracking
+
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+// Supabase client with service role for database writes
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // 4-tier age strictness function
 function getStrictnessForAge(age: number) {
@@ -44,6 +54,10 @@ export async function POST(request: NextRequest) {
       parentName,
       parentEmail,
       parentPhone,
+      // NEW: Referral tracking fields
+      lead_source,
+      lead_source_coach_id,
+      referral_code_used,
     } = body;
 
     if (!audio || !passage) {
@@ -155,19 +169,92 @@ Respond ONLY with valid JSON. No additional text.`;
       };
     }
 
+    // Calculate scores
+    const overallScore = analysisResult.reading_score;
+    const clarityScore = analysisResult.pronunciation_rating === 'Clear' ? 8 : analysisResult.pronunciation_rating === 'Slurred' ? 4 : 6;
+    const fluencyScore = analysisResult.fluency_rating === 'Smooth' ? 8 : analysisResult.fluency_rating === 'Choppy' ? 5 : analysisResult.fluency_rating === 'Fast' ? 7 : 4;
+    const speedScore = Math.min(10, Math.round(analysisResult.wpm / 15));
+
+    // ==================== SAVE CHILD TO DATABASE ====================
+    let childId: string | null = null;
+    
+    try {
+      // Check if child already exists (same name + parent email)
+      const { data: existingChild } = await supabase
+        .from('children')
+        .select('id')
+        .eq('name', name)
+        .eq('parent_email', parentEmail)
+        .maybeSingle();
+
+      if (existingChild) {
+        // Update existing child with new assessment
+        childId = existingChild.id;
+        await supabase
+          .from('children')
+          .update({
+            age,
+            parent_name: parentName,
+            parent_phone: parentPhone,
+            last_assessment_score: overallScore,
+            last_assessment_date: new Date().toISOString(),
+            // Update lead source only if it was previously 'yestoryd' and now has coach referral
+            ...(lead_source === 'coach' && lead_source_coach_id ? {
+              lead_source: 'coach',
+              lead_source_coach_id,
+              referral_code_used,
+            } : {}),
+          })
+          .eq('id', childId);
+        
+        console.log('✅ Updated existing child:', childId);
+      } else {
+        // Create new child record
+        const { data: newChild, error: childError } = await supabase
+          .from('children')
+          .insert({
+            name,
+            age,
+            parent_name: parentName,
+            parent_email: parentEmail,
+            parent_phone: parentPhone,
+            lead_status: 'assessed',
+            last_assessment_score: overallScore,
+            last_assessment_date: new Date().toISOString(),
+            // Referral tracking
+            lead_source: lead_source || 'yestoryd',
+            lead_source_coach_id: lead_source_coach_id || null,
+            referral_code_used: referral_code_used || null,
+          })
+          .select('id')
+          .single();
+
+        if (childError) {
+          console.error('⚠️ Failed to save child:', childError);
+        } else {
+          childId = newChild.id;
+          console.log('✅ Created new child:', childId, 'Lead source:', lead_source || 'yestoryd');
+        }
+      }
+    } catch (dbError) {
+      console.error('⚠️ Database error (non-blocking):', dbError);
+      // Don't fail the assessment if DB save fails
+    }
+
     // Return success response
     return NextResponse.json({
       success: true,
+      childId, // Include childId in response
       childName: name,
       childAge: age,
       parentName,
       parentEmail,
       parentPhone,
       passage,
-      overall_score: analysisResult.reading_score,
-      clarity_score: analysisResult.pronunciation_rating === 'Clear' ? 8 : analysisResult.pronunciation_rating === 'Slurred' ? 4 : 6,
-      fluency_score: analysisResult.fluency_rating === 'Smooth' ? 8 : analysisResult.fluency_rating === 'Choppy' ? 5 : analysisResult.fluency_rating === 'Fast' ? 7 : 4,
-      speed_score: Math.min(10, Math.round(analysisResult.wpm / 15)),
+      overall_score: overallScore,
+      clarity_score: clarityScore,
+      fluency_score: fluencyScore,
+      speed_score: speedScore,
       wpm: analysisResult.wpm,
       fluency: analysisResult.fluency_rating,
       pronunciation: analysisResult.pronunciation_rating,
@@ -175,6 +262,8 @@ Respond ONLY with valid JSON. No additional text.`;
       completeness: analysisResult.completeness_percentage,
       feedback: analysisResult.feedback,
       encouragement: `Keep reading daily, ${name}! Every page makes you stronger.`,
+      // Include lead source in response for debugging
+      lead_source: lead_source || 'yestoryd',
     });
 
   } catch (error: any) {

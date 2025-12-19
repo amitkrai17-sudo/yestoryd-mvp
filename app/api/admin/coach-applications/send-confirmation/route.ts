@@ -6,8 +6,8 @@ import sgMail from '@sendgrid/mail';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
-const ADMIN_EMAILS = ['rucha@yestoryd.com', 'amitkrai17@gmail.com'];
-const FROM_EMAIL = 'engage@yestoryd.com';
+const ADMIN_EMAILS = ['rucha.rai@yestoryd.com', 'amitkrai17@gmail.com']; // Notification recipients
+const FROM_EMAIL = 'engage@yestoryd.com';  // All Yestoryd communication
 const FROM_NAME = 'Yestoryd Academy';
 const WHATSAPP_NUMBER = '+91 89762 87997';
 
@@ -70,10 +70,27 @@ export async function POST(request: NextRequest) {
             </p>
           </div>
         </div>
+      `,
+      text: `
+Namaste ${applicantName}!
+
+Thank you for applying to become a Yestoryd Reading Coach. We're excited to learn more about you!
+
+What happens next?
+- Within 48 hours: Our team reviews your application and voice statement
+- If shortlisted: You'll receive an email to schedule a video call with Rucha, our founder
+- After the call: We'll share next steps for onboarding
+
+In the meantime, feel free to explore our website to learn more about how Yestoryd helps children become confident readers.
+
+Questions? WhatsApp us at ${WHATSAPP_NUMBER}
+
+Warm regards,
+Team Yestoryd
       `
     };
 
-    // 2. Send notification email to admins
+    // 2. Send notification email to admins (Rucha + Amit)
     const adminEmailContent = {
       to: ADMIN_EMAILS,
       from: { email: FROM_EMAIL, name: FROM_NAME },
@@ -118,9 +135,21 @@ export async function POST(request: NextRequest) {
           </div>
           
           <p style="color: #64748b; font-size: 14px; margin-top: 30px;">
-            This application includes a voice statement and AI assessment. Review in the admin dashboard.
+            This application includes an AI assessment conversation. Review the full responses in the admin dashboard.
           </p>
         </div>
+      `,
+      text: `
+New Coach Application Received
+
+Applicant Details:
+- Name: ${applicantName}
+- Email: ${applicantEmail}
+- Phone: ${applicantPhone || 'Not provided'}
+- City: ${city || 'Not provided'}
+- Application ID: ${applicationId || 'N/A'}
+
+Review at: https://yestoryd.com/admin/coach-applications
       `
     };
 

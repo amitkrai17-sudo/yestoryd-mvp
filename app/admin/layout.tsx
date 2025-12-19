@@ -1,3 +1,7 @@
+// file: app/admin/layout.tsx
+// Admin layout with sidebar navigation - Updated with Revenue Split menu items
+// Replace your existing app/admin/layout.tsx with this file
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -18,6 +22,10 @@ import {
   ChevronRight,
   Shield,
   UserSearch,
+  UserPlus,
+  Wallet,
+  FileText,
+  PieChart,
 } from 'lucide-react';
 
 // ==================== SUPABASE CLIENT ====================
@@ -58,6 +66,36 @@ const NAV_ITEMS = [
     description: 'Track & convert leads',
     ready: true,
   },
+  {
+    label: 'Coach Applications',
+    href: '/admin/coach-applications',
+    icon: UserPlus,
+    description: 'Review coach applications',
+    ready: true,
+  },
+  // ===== REVENUE SPLIT ITEMS =====
+  {
+    label: 'Revenue Settings',
+    href: '/admin/settings/revenue',
+    icon: PieChart,
+    description: 'Configure revenue splits',
+    ready: true,
+  },
+  {
+    label: 'Coach Payouts',
+    href: '/admin/payouts',
+    icon: Wallet,
+    description: 'Process coach payments',
+    ready: true,
+  },
+  {
+    label: 'TDS Compliance',
+    href: '/admin/tds',
+    icon: FileText,
+    description: 'Track TDS deductions',
+    ready: true,
+  },
+  // ===== END REVENUE SPLIT ITEMS =====
   {
     label: 'Enrollments',
     href: '/admin/enrollments',
@@ -162,34 +200,36 @@ export default function AdminLayout({
     router.push('/admin/login');
   };
 
-  // Skip layout for login page
-  if (pathname === '/admin/login') {
-    return <>{children}</>;
-  }
-
-  // Loading state
+  // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading...</p>
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Shield className="w-8 h-8 text-white" />
+          </div>
+          <p className="text-slate-500">Verifying access...</p>
         </div>
       </div>
     );
   }
 
+  // Login page - no layout
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
   // Unauthorized
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
-          <p className="text-slate-600 mb-6">
-            {user?.email ? `${user.email} is not authorized to access the admin portal.` : 'You need to sign in to access this area.'}
+          <p className="text-slate-500 mb-6">
+            {user?.email || 'Your account'} is not authorized to access the admin portal.
           </p>
           <button
             onClick={handleSignOut}
@@ -203,64 +243,63 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* ==================== MOBILE HEADER ==================== */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-40">
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
-        <div className="flex items-center gap-2">
-          <Image src="/images/logo.png" alt="Yestoryd" width={100} height={28} className="h-7 w-auto" />
-        </div>
-        <div className="w-10" />
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex">
+      {/* ==================== MOBILE MENU BUTTON ==================== */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-xl shadow-lg border border-slate-200"
+      >
+        <Menu className="w-6 h-6 text-slate-700" />
+      </button>
 
-      {/* ==================== SIDEBAR OVERLAY ==================== */}
+      {/* ==================== MOBILE OVERLAY ==================== */}
       {sidebarOpen && (
-        <div
+        <div 
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* ==================== SIDEBAR ==================== */}
-      <aside
-        className={`fixed top-0 left-0 h-full w-72 bg-white border-r border-slate-200 z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:transform-none`}
-      >
-        {/* Logo */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 
+        transform transition-transform duration-300 ease-in-out
+        lg:translate-x-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Header */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <Image src="/images/logo.png" alt="Yestoryd" width={120} height={32} className="h-8 w-auto" />
-          </div>
+          <Link href="/admin" className="flex items-center gap-3">
+            <Image
+              src="/yestoryd-logo.png"
+              alt="Yestoryd"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
+            <span className="font-bold text-slate-900">Admin Portal</span>
+          </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 text-slate-400 hover:text-slate-600"
+            className="lg:hidden p-1 hover:bg-slate-100 rounded-lg"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
-        {/* Admin Portal Label */}
-        <div className="px-6 py-3 border-b border-slate-100">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin Portal</p>
-        </div>
-
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
           {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+            const isActive = pathname === item.href || 
+              (item.href !== '/admin' && pathname.startsWith(item.href));
+            
             return (
               <Link
                 key={item.href}
                 href={item.ready ? item.href : '#'}
                 onClick={(e) => {
                   if (!item.ready) e.preventDefault();
-                  setSidebarOpen(false);
+                  if (item.ready) setSidebarOpen(false);
                 }}
                 className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                   isActive
