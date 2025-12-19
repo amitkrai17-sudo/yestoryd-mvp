@@ -316,8 +316,8 @@ function AssessmentPageContent() {
     if (!applicationId) return;
 
     try {
-      const { error: updateError } = await supabase
-        .from('coach_applications')
+      const { error: updateError } = await (supabase
+        .from('coach_applications') as any)
         .update({
           ai_responses: allMessages, // Store FULL conversation
           ai_assessment_completed_at: new Date().toISOString(),
