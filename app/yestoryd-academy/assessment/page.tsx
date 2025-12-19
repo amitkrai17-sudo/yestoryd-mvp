@@ -74,8 +74,8 @@ function AssessmentPageContent() {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('coach_applications')
+      const { data, error: fetchError } = await (supabase
+        .from('coach_applications') as any)
         .select('*')
         .eq('id', applicationId!)
         .single();
@@ -347,8 +347,8 @@ function AssessmentPageContent() {
 
     try {
       // 1. Get application data for email
-      const { data: appData } = await supabase
-        .from('coach_applications')
+      const { data: appData } = await (supabase
+        .from('coach_applications') as any)
         .select('name, email, phone, city')
         .eq('id', applicationId!)
         .single();
