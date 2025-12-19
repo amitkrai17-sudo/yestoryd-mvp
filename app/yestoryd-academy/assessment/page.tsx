@@ -77,7 +77,7 @@ function AssessmentPageContent() {
       const { data, error: fetchError } = await supabase
         .from('coach_applications')
         .select('*')
-        .eq('id', applicationId)
+        .eq('id', applicationId!)
         .single();
 
       if (fetchError || !data) {
@@ -192,7 +192,7 @@ function AssessmentPageContent() {
             audio_duration_seconds: recordingTime,
             updated_at: new Date().toISOString()
           })
-          .eq('id', applicationId);
+          .eq('id', applicationId!);
       }
     } catch (err) {
       console.error('Error saving audio:', err);
@@ -324,7 +324,7 @@ function AssessmentPageContent() {
           status: 'ai_assessment_complete',
           updated_at: new Date().toISOString()
         })
-        .eq('id', applicationId);
+        .eq('id', applicationId!);
 
       if (updateError) {
         console.error('Error saving assessment:', updateError);
@@ -350,7 +350,7 @@ function AssessmentPageContent() {
       const { data: appData } = await supabase
         .from('coach_applications')
         .select('name, email, phone, city')
-        .eq('id', applicationId)
+        .eq('id', applicationId!)
         .single();
 
       // 2. Calculate score (don't wait, fire and forget)
