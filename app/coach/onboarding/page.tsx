@@ -28,7 +28,7 @@ import {
   Gift,
   Users,
 } from 'lucide-react';
-import AgreementStep from '@/components/agreement/AgreementStep';
+import AgreementStep from '../../components/agreement/AgreementStep';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
