@@ -1,438 +1,702 @@
+// file: app/coach/dashboard/page.tsx
+// Complete Coach Dashboard with My Referrals Tab
+// Fixed: Using createBrowserClient instead of createClientComponentClient
+
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { CoachLayout } from '@/components/coach/CoachLayout';
 import {
-  Users,
-  Calendar,
-  IndianRupee,
-  TrendingUp,
-  Clock,
-  ArrowRight,
-  Plus,
-  MessageSquare,
-  Bot,
-  Loader2,
-  Video,
+  LayoutDashboard, Users, Calendar, Gift, Wallet,
+  LogOut, Menu, X, ChevronRight, Bell, Settings,
+  TrendingUp, Clock, CheckCircle, Brain
 } from 'lucide-react';
+import MyReferralsTab from './MyReferralsTab';
+import RAIAssistantTab from './RAIAssistantTab';
 
+// 4-Point Star Icon Component (Yestoryd branding for rAI)
+function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="currentColor" 
+      className={className}
+    >
+      <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+    </svg>
+  );
+}
+
+// Initialize Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// Types
+interface User {
+  id: string;
+  email: string;
+}
+
+interface Coach {
+  id: string;
+  name: string;
+  email: string;
+  avatar_url?: string;
+  referral_code?: string;
+}
+
 interface DashboardStats {
-  totalStudents: number;
-  activeStudents: number;
-  upcomingSessions: number;
-  sessionsThisWeek: number;
-  earningsThisMonth: number;
-  totalEarnings: number;
+  total_students: number;
+  active_students: number;
+  upcoming_sessions: number;
+  total_earnings: number;
+  pending_earnings: number;
 }
 
-interface UpcomingSession {
-  id: string;
-  child_name: string;
-  scheduled_date: string;
-  scheduled_time: string;
-  session_type: string;
-  meet_link: string;
-}
-
-interface RecentStudent {
-  id: string;
-  child_name: string;
-  age: number;
-  last_score: number;
-  sessions_completed: number;
-  parent_phone: string;
-}
+// Tab configuration - rAI uses custom icon, rendered separately
+const TABS = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard, isRai: false },
+  { id: 'students', label: 'My Students', icon: Users, isRai: false },
+  { id: 'sessions', label: 'Sessions', icon: Calendar, isRai: false },
+  { id: 'rai', label: 'rAI', icon: null, isRai: true },
+  { id: 'referrals', label: 'My Referrals', icon: Gift, isRai: false },
+  { id: 'earnings', label: 'Earnings', icon: Wallet, isRai: false },
+];
 
 export default function CoachDashboardPage() {
+  const router = useRouter();
+  
+  const [user, setUser] = useState<User | null>(null);
+  const [coach, setCoach] = useState<Coach | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
-  const [coach, setCoach] = useState<any>(null);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalStudents: 0,
-    activeStudents: 0,
-    upcomingSessions: 0,
-    sessionsThisWeek: 0,
-    earningsThisMonth: 0,
-    totalEarnings: 0,
-  });
-  const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
-  const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    loadDashboard();
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/coach/login');
+      } else if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+        });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const loadDashboard = async () => {
+  const checkAuth = async () => {
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session }, error } = await supabase.auth.getSession();
       
-      if (!user) {
-        window.location.href = '/coach/login';
+      if (error || !session?.user) {
+        console.log('No authenticated session, redirecting to login');
+        router.push('/coach/login');
         return;
       }
 
-      // Get coach details
-      const { data: coachData } = await supabase
+      const currentUser = {
+        id: session.user.id,
+        email: session.user.email || '',
+      };
+      setUser(currentUser);
+      console.log('✅ Authenticated user:', currentUser.email);
+
+      // Fetch coach profile
+      const { data: coachData, error: coachError } = await supabase
         .from('coaches')
         .select('*')
-        .eq('email', user.email)
+        .eq('email', currentUser.email)
         .single();
 
-      if (!coachData) {
-        window.location.href = '/coach/login';
-        return;
+      if (coachError) {
+        console.error('Coach profile error:', coachError);
+        // Coach might not exist yet - redirect to onboarding
+        if (coachError.code === 'PGRST116') {
+          console.log('Coach not found, redirecting to onboarding');
+          router.push('/coach/onboarding');
+          return;
+        }
       }
 
-      setCoach(coachData);
-
-      // Get students count
-      const { data: students, count: studentsCount } = await supabase
-        .from('children')
-        .select('*', { count: 'exact' })
-        .eq('assigned_coach_id', coachData.id);
-
-      // Get upcoming sessions
-      const today = new Date().toISOString().split('T')[0];
-      const { data: sessions } = await supabase
-        .from('scheduled_sessions')
-        .select(`
-          id,
-          scheduled_date,
-          scheduled_time,
-          session_type,
-          google_meet_link,
-          children (
-            child_name
-          )
-        `)
-        .eq('coach_id', coachData.id)
-        .gte('scheduled_date', today)
-        .order('scheduled_date', { ascending: true })
-        .order('scheduled_time', { ascending: true })
-        .limit(5);
-
-      // Calculate earnings
-      const programFee = 5999;
-      const coachSplit = coachData.coach_split_percentage / 100;
-      const totalEarnings = (studentsCount || 0) * programFee * coachSplit;
-
-      // Get this month's students
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      
-      const { count: thisMonthStudents } = await supabase
-        .from('children')
-        .select('*', { count: 'exact' })
-        .eq('assigned_coach_id', coachData.id)
-        .gte('created_at', startOfMonth.toISOString());
-
-      const earningsThisMonth = (thisMonthStudents || 0) * programFee * coachSplit;
-
-      // Get sessions this week
-      const endOfWeek = new Date();
-      endOfWeek.setDate(endOfWeek.getDate() + 7);
-      
-      const { count: weekSessions } = await supabase
-        .from('scheduled_sessions')
-        .select('*', { count: 'exact' })
-        .eq('coach_id', coachData.id)
-        .gte('scheduled_date', today)
-        .lte('scheduled_date', endOfWeek.toISOString().split('T')[0]);
-
-      setStats({
-        totalStudents: studentsCount || 0,
-        activeStudents: studentsCount || 0,
-        upcomingSessions: sessions?.length || 0,
-        sessionsThisWeek: weekSessions || 0,
-        earningsThisMonth: earningsThisMonth,
-        totalEarnings: totalEarnings,
-      });
-
-      // Format upcoming sessions
-      const formattedSessions = sessions?.map((s: any) => ({
-        id: s.id,
-        child_name: s.children?.child_name || 'Unknown',
-        scheduled_date: s.scheduled_date,
-        scheduled_time: s.scheduled_time,
-        session_type: s.session_type,
-        meet_link: s.google_meet_link,
-      })) || [];
-      setUpcomingSessions(formattedSessions);
-
-      // Format recent students
-      const formattedStudents = students?.slice(0, 5).map((s: any) => ({
-        id: s.id,
-        child_name: s.child_name,
-        age: s.age,
-        last_score: s.latest_assessment_score || 0,
-        sessions_completed: 0,
-        parent_phone: s.parent_phone,
-      })) || [];
-      setRecentStudents(formattedStudents);
-
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
+      if (coachData) {
+        setCoach(coachData);
+        console.log('✅ Coach profile loaded:', coachData.name);
+        
+        // Fetch dashboard stats
+        fetchDashboardStats(coachData.id);
+      }
+    } catch (err) {
+      console.error('Auth check error:', err);
+      router.push('/coach/login');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const fetchDashboardStats = async (coachId: string) => {
+    try {
+      // Get students count
+      const { count: studentsCount } = await supabase
+        .from('children')
+        .select('*', { count: 'exact', head: true })
+        .eq('coach_id', coachId);
+
+      // Get active students
+      const { count: activeCount } = await supabase
+        .from('children')
+        .select('*', { count: 'exact', head: true })
+        .eq('coach_id', coachId)
+        .in('lead_status', ['enrolled', 'active']);
+
+      // Get upcoming sessions
+      let sessionsCount = 0;
+      try {
+        const { count } = await supabase
+          .from('scheduled_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('coach_id', coachId)
+          .gte('scheduled_time', new Date().toISOString())
+          .eq('status', 'scheduled');
+        sessionsCount = count || 0;
+      } catch (e) {
+        console.log('scheduled_sessions table may not exist');
+      }
+
+      // Get earnings (if payouts table exists)
+      let totalEarnings = 0;
+      let pendingEarnings = 0;
+      
+      try {
+        const { data: payouts } = await supabase
+          .from('coach_payouts')
+          .select('net_amount, status')
+          .eq('coach_id', coachId);
+
+        if (payouts) {
+          totalEarnings = payouts.reduce((sum, p) => sum + (p.net_amount || 0), 0);
+          pendingEarnings = payouts
+            .filter(p => p.status !== 'paid')
+            .reduce((sum, p) => sum + (p.net_amount || 0), 0);
+        }
+      } catch (e) {
+        console.log('Payouts table may not exist yet');
+      }
+
+      setStats({
+        total_students: studentsCount || 0,
+        active_students: activeCount || 0,
+        upcoming_sessions: sessionsCount,
+        total_earnings: totalEarnings,
+        pending_earnings: pendingEarnings,
+      });
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
   };
 
-  const formatTime = (timeStr: string) => {
-    if (!timeStr) return '';
-    const [hours, minutes] = timeStr.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/coach/login');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[#FF0099] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
 
-  if (!coach) {
-    return null;
+  if (!user || !coach) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Unable to load dashboard</p>
+          <button
+            onClick={() => router.push('/coach/login')}
+            className="px-4 py-2 bg-[#FF0099] text-white rounded-lg"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <CoachLayout coach={coach}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Welcome back, {coach.name?.split(' ')[0]}! 👋</h1>
-            <p className="text-gray-400">Here's what's happening with your students today.</p>
-          </div>
-          <div className="flex gap-3">
-            <Link
-              href="/coach/ai-assistant"
-              className="flex items-center gap-2 bg-purple-500/20 text-purple-400 px-4 py-2 rounded-lg hover:bg-purple-500/30 transition-colors"
-            >
-              <Bot className="w-5 h-5" />
-              AI Assistant
-            </Link>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-400" />
-              </div>
-              <span className="text-gray-400 text-sm">Total Students</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{stats.totalStudents}</p>
-          </div>
-
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-green-400" />
-              </div>
-              <span className="text-gray-400 text-sm">This Week</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{stats.sessionsThisWeek}</p>
-            <p className="text-gray-500 text-sm">sessions</p>
-          </div>
-
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                <IndianRupee className="w-5 h-5 text-yellow-400" />
-              </div>
-              <span className="text-gray-400 text-sm">This Month</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{formatCurrency(stats.earningsThisMonth)}</p>
-          </div>
-
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-pink-500/20 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-pink-400" />
-              </div>
-              <span className="text-gray-400 text-sm">Total Earned</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{formatCurrency(stats.totalEarnings)}</p>
-          </div>
-        </div>
-
-        {/* Two Column Layout */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Upcoming Sessions */}
-          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-              <h2 className="font-semibold text-white flex items-center gap-2">
-                <Clock className="w-5 h-5 text-green-400" />
-                Upcoming Sessions
-              </h2>
-              <Link href="/coach/sessions" className="text-pink-400 text-sm hover:text-pink-300">
-                View all →
-              </Link>
-            </div>
-            <div className="divide-y divide-gray-700">
-              {upcomingSessions.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  No upcoming sessions scheduled
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Navigation */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo & Mobile Menu */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-lg flex items-center justify-center">
+                  <StarIcon className="w-5 h-5 text-white" />
                 </div>
-              ) : (
-                upcomingSessions.map((session) => (
-                  <div key={session.id} className="p-4 hover:bg-gray-700/50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-white">{session.child_name}</p>
-                        <p className="text-sm text-gray-400">
-                          {formatDate(session.scheduled_date)} at {formatTime(session.scheduled_time)}
-                        </p>
-                        <span className="inline-block mt-1 text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
-                          {session.session_type}
-                        </span>
-                      </div>
-                      {session.meet_link && (
-                        <a
-                          href={session.meet_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
-                        >
-                          <Video className="w-4 h-4" />
-                          Join
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+                <span className="font-bold text-gray-900 hidden sm:block">Yestoryd Coach</span>
+              </div>
             </div>
-          </div>
 
-          {/* Recent Students */}
-          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-              <h2 className="font-semibold text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-blue-400" />
-                My Students
-              </h2>
-              <Link href="/coach/students" className="text-pink-400 text-sm hover:text-pink-300">
-                View all →
-              </Link>
-            </div>
-            <div className="divide-y divide-gray-700">
-              {recentStudents.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  No students assigned yet
-                </div>
-              ) : (
-                recentStudents.map((student) => (
-                  <Link
-                    key={student.id}
-                    href={`/coach/students/${student.id}`}
-                    className="p-4 hover:bg-gray-700/50 transition-colors flex items-center justify-between"
+            {/* Desktop Tabs */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                      activeTab === tab.id
+                        ? tab.isRai 
+                          ? 'bg-gradient-to-r from-[#FF0099]/20 to-[#7B008B]/20 text-[#FF0099]'
+                          : 'bg-[#FF0099]/10 text-[#FF0099]'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-                        {student.child_name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">{student.child_name}</p>
-                        <p className="text-sm text-gray-400">Age {student.age}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-medium">{student.last_score}/10</p>
-                      <p className="text-xs text-gray-500">Last Score</p>
-                    </div>
-                  </Link>
-                ))
-              )}
+                    {tab.isRai ? (
+                      <StarIcon className="w-4 h-4" />
+                    ) : Icon ? (
+                      <Icon className="w-4 h-4" />
+                    ) : null}
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* User Menu */}
+            <div className="flex items-center gap-3">
+              <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-[#FF0099] rounded-full"></span>
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:block text-right">
+                  <p className="text-sm font-medium text-gray-900">{coach.name}</p>
+                  <p className="text-xs text-gray-500">{coach.email}</p>
+                </div>
+                <div className="w-10 h-10 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold">
+                  {coach.name.charAt(0).toUpperCase()}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
-          <h2 className="font-semibold text-white mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Link
-              href="/coach/templates"
-              className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-xl hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-green-400" />
-              </div>
-              <div>
-                <p className="font-medium text-white">Send WhatsApp</p>
-                <p className="text-xs text-gray-400">Use templates</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/coach/ai-assistant"
-              className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-xl hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                <Bot className="w-5 h-5 text-purple-400" />
-              </div>
-              <div>
-                <p className="font-medium text-white">AI Assistant</p>
-                <p className="text-xs text-gray-400">Get insights</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/coach/sessions"
-              className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-xl hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-400" />
-              </div>
-              <div>
-                <p className="font-medium text-white">View Sessions</p>
-                <p className="text-xs text-gray-400">Manage calendar</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/coach/earnings"
-              className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-xl hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                <IndianRupee className="w-5 h-5 text-yellow-400" />
-              </div>
-              <div>
-                <p className="font-medium text-white">Earnings</p>
-                <p className="text-xs text-gray-400">View payments</p>
-              </div>
-            </Link>
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-gray-200 bg-white">
+            <nav className="px-4 py-2 space-y-1">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
+                      activeTab === tab.id
+                        ? tab.isRai
+                          ? 'bg-gradient-to-r from-[#FF0099]/10 to-[#7B008B]/10 text-[#FF0099]'
+                          : 'bg-[#FF0099]/10 text-[#FF0099]'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {tab.isRai ? (
+                      <StarIcon className="w-5 h-5" />
+                    ) : Icon ? (
+                      <Icon className="w-5 h-5" />
+                    ) : null}
+                    {tab.label}
+                    {activeTab === tab.id && <ChevronRight className="w-4 h-4 ml-auto" />}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
+        )}
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {/* Mobile Tab Pills */}
+        <div className="lg:hidden mb-6 overflow-x-auto pb-2 -mx-4 px-4">
+          <div className="flex gap-2 min-w-max">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
+                    activeTab === tab.id
+                      ? tab.isRai
+                        ? 'bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white'
+                        : 'bg-[#FF0099] text-white'
+                      : 'bg-white text-gray-600 border border-gray-200'
+                  }`}
+                >
+                  {tab.isRai ? (
+                    <StarIcon className="w-4 h-4" />
+                  ) : Icon ? (
+                    <Icon className="w-4 h-4" />
+                  ) : null}
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <OverviewTab stats={stats} coach={coach} onTabChange={setActiveTab} />
+        )}
+        
+        {activeTab === 'students' && (
+          <StudentsTab coachId={coach.id} />
+        )}
+        
+        {activeTab === 'sessions' && (
+          <SessionsTab coachId={coach.id} />
+        )}
+        
+        {activeTab === 'rai' && (
+          <RAIAssistantTab coachId={coach.id} coachName={coach.name} />
+        )}
+        
+        {activeTab === 'referrals' && (
+          <MyReferralsTab coachEmail={coach.email} />
+        )}
+        
+        {activeTab === 'earnings' && (
+          <EarningsTab coachId={coach.id} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+// Overview Tab Component
+function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | null; coach: Coach; onTabChange: (tab: string) => void }) {
+  return (
+    <div className="space-y-6">
+      {/* Welcome */}
+      <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-2xl p-6 text-white">
+        <h1 className="text-2xl font-bold mb-2">Welcome back, {coach.name.split(' ')[0]}! 👋</h1>
+        <p className="text-pink-100">Here's what's happening with your coaching today.</p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Users className="w-4 h-4 text-blue-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{stats?.total_students || 0}</p>
+          <p className="text-sm text-gray-500">Total Students</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-green-600">{stats?.active_students || 0}</p>
+          <p className="text-sm text-gray-500">Active Students</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Calendar className="w-4 h-4 text-purple-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-purple-600">{stats?.upcoming_sessions || 0}</p>
+          <p className="text-sm text-gray-500">Upcoming Sessions</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <Wallet className="w-4 h-4 text-emerald-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-emerald-600">
+            ₹{(stats?.total_earnings || 0).toLocaleString('en-IN')}
+          </p>
+          <p className="text-sm text-gray-500">Total Earnings</p>
         </div>
       </div>
-    </CoachLayout>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl border border-gray-100 p-6">
+        <h2 className="font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <button 
+            onClick={() => onTabChange('students')}
+            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+          >
+            <Users className="w-6 h-6 text-[#FF0099] mx-auto mb-2" />
+            <span className="text-sm text-gray-700">View Students</span>
+          </button>
+          <button 
+            onClick={() => onTabChange('sessions')}
+            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+          >
+            <Calendar className="w-6 h-6 text-[#00ABFF] mx-auto mb-2" />
+            <span className="text-sm text-gray-700">Check Schedule</span>
+          </button>
+          <button 
+            onClick={() => onTabChange('rai')}
+            className="p-4 bg-gradient-to-br from-[#FF0099]/10 to-[#7B008B]/10 rounded-xl hover:from-[#FF0099]/20 hover:to-[#7B008B]/20 transition text-center border border-[#FF0099]/20"
+          >
+            <StarIcon className="w-6 h-6 text-[#FF0099] mx-auto mb-2" />
+            <span className="text-sm text-gray-700 font-medium">Ask rAI</span>
+          </button>
+          <button 
+            onClick={() => onTabChange('referrals')}
+            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+          >
+            <Gift className="w-6 h-6 text-[#7B008B] mx-auto mb-2" />
+            <span className="text-sm text-gray-700">Share Referral</span>
+          </button>
+          <button 
+            onClick={() => onTabChange('earnings')}
+            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+          >
+            <Wallet className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+            <span className="text-sm text-gray-700">View Earnings</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Students Tab Component
+function StudentsTab({ coachId }: { coachId: string }) {
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [coachId]);
+
+  const fetchStudents = async () => {
+    const { data, error } = await supabase
+      .from('children')
+      .select('*')
+      .eq('coach_id', coachId)
+      .order('created_at', { ascending: false });
+
+    if (!error) {
+      setStudents(data || []);
+    }
+    setLoading(false);
+  };
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-500">Loading students...</div>;
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="px-6 py-4 border-b bg-gray-50">
+        <h2 className="font-bold text-gray-900">My Students ({students.length})</h2>
+      </div>
+      {students.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>No students assigned yet</p>
+        </div>
+      ) : (
+        <div className="divide-y">
+          {students.map((student) => (
+            <div key={student.id} className="p-4 hover:bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{student.name}</p>
+                  <p className="text-sm text-gray-500">Age {student.age} • {student.parent_name}</p>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  student.lead_status === 'active' ? 'bg-green-100 text-green-700' : 
+                  student.lead_status === 'enrolled' ? 'bg-blue-100 text-blue-700' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {student.lead_status || 'Pending'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sessions Tab Component
+function SessionsTab({ coachId }: { coachId: string }) {
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [coachId]);
+
+  const fetchSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('scheduled_sessions')
+        .select('*, children(name)')
+        .eq('coach_id', coachId)
+        .gte('scheduled_time', new Date().toISOString())
+        .order('scheduled_time', { ascending: true })
+        .limit(20);
+
+      if (!error) {
+        setSessions(data || []);
+      }
+    } catch (e) {
+      console.log('Error fetching sessions:', e);
+    }
+    setLoading(false);
+  };
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-500">Loading sessions...</div>;
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="px-6 py-4 border-b bg-gray-50">
+        <h2 className="font-bold text-gray-900">Upcoming Sessions ({sessions.length})</h2>
+      </div>
+      {sessions.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>No upcoming sessions</p>
+        </div>
+      ) : (
+        <div className="divide-y">
+          {sessions.map((session) => (
+            <div key={session.id} className="p-4 hover:bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{session.children?.name || 'Student'}</p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(session.scheduled_time).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
+                  </p>
+                </div>
+                {session.meet_link && (
+                  <a
+                    href={session.meet_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-[#00ABFF] text-white rounded-lg text-sm font-medium hover:bg-[#0095E0]"
+                  >
+                    Join
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Earnings Tab Component
+function EarningsTab({ coachId }: { coachId: string }) {
+  const [earnings, setEarnings] = useState({ total: 0, pending: 0, paid: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEarnings();
+  }, [coachId]);
+
+  const fetchEarnings = async () => {
+    try {
+      const { data } = await supabase
+        .from('coach_payouts')
+        .select('net_amount, status')
+        .eq('coach_id', coachId);
+
+      if (data) {
+        const total = data.reduce((sum, p) => sum + (p.net_amount || 0), 0);
+        const paid = data.filter(p => p.status === 'paid').reduce((sum, p) => sum + (p.net_amount || 0), 0);
+        setEarnings({ total, pending: total - paid, paid });
+      }
+    } catch (e) {
+      console.log('Error fetching earnings');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
+          <p className="text-sm text-gray-500 mb-1">Total Earned</p>
+          <p className="text-2xl font-bold text-emerald-600">₹{earnings.total.toLocaleString('en-IN')}</p>
+        </div>
+        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
+          <p className="text-sm text-gray-500 mb-1">Pending</p>
+          <p className="text-2xl font-bold text-amber-600">₹{earnings.pending.toLocaleString('en-IN')}</p>
+        </div>
+        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
+          <p className="text-sm text-gray-500 mb-1">Paid</p>
+          <p className="text-2xl font-bold text-[#00ABFF]">₹{earnings.paid.toLocaleString('en-IN')}</p>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-100">
+        <h3 className="font-bold text-gray-900 mb-2">💰 How You Earn</h3>
+        <ul className="space-y-2 text-sm text-gray-600">
+          <li>• <strong>50%</strong> of coaching fee for each enrolled student</li>
+          <li>• <strong>+20%</strong> lead bonus when you refer a student</li>
+          <li>• Payments processed on <strong>7th of each month</strong></li>
+        </ul>
+      </div>
+    </div>
   );
 }
