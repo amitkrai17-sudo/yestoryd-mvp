@@ -188,8 +188,8 @@ Return ONLY valid JSON (no markdown, no explanation):
     console.log(`   Passion: ${voiceAnalysis.passion}, Professional: ${voiceAnalysis.professionalism}`);
 
     // ========== CHAT ANALYSIS WITH GEMINI ==========
-    let vedantScore = 0;
-    let vedantAnalysis: any = {
+    let raiScore = 0;
+    let raiAnalysis: any = {
       q1_empathy: 0,
       q2_communication: 0,
       q3_sensitivity: 0,
@@ -211,8 +211,8 @@ Return ONLY valid JSON (no markdown, no explanation):
       console.log('💬 User responses:', userResponses.length);
       
       if (userResponses.length === 0) {
-        vedantScore = 0;
-        vedantAnalysis.overallAssessment = 'No user responses found';
+        raiScore = 0;
+        raiAnalysis.overallAssessment = 'No user responses found';
       } else {
         try {
           // Format conversation clearly
@@ -228,7 +228,7 @@ Return ONLY valid JSON (no markdown, no explanation):
           
           const chatPrompt = `You are evaluating a coaching applicant's responses. They want to become a children's reading coach at Yestoryd.
 
-Here is the COMPLETE conversation between Vedant AI (interviewer) and the Applicant:
+Here is the COMPLETE conversation between rAI (interviewer) and the Applicant:
 
 ===== CONVERSATION START =====
 ${conversationText}
@@ -282,7 +282,7 @@ Return ONLY this JSON structure (no other text):
             }
             
             const parsed = JSON.parse(cleanJson);
-            vedantAnalysis = {
+            raiAnalysis = {
               q1_empathy: parsed.q1_empathy || 1,
               q2_communication: parsed.q2_communication || 1,
               q3_sensitivity: parsed.q3_sensitivity || 1,
@@ -293,10 +293,10 @@ Return ONLY this JSON structure (no other text):
               recommendation: parsed.recommendation || 'MAYBE'
             };
             
-            vedantScore = parsed.averageScore || 
-              ((vedantAnalysis.q1_empathy + vedantAnalysis.q2_communication + 
-                vedantAnalysis.q3_sensitivity + vedantAnalysis.q4_honesty) / 4);
-            vedantScore = Math.round(vedantScore * 10) / 10;
+            raiScore = parsed.averageScore || 
+              ((raiAnalysis.q1_empathy + raiAnalysis.q2_communication + 
+                raiAnalysis.q3_sensitivity + raiAnalysis.q4_honesty) / 4);
+            raiScore = Math.round(raiScore * 10) / 10;
             
           } catch (parseErr) {
             console.error('Failed to parse chat analysis:', parseErr);
@@ -306,41 +306,41 @@ Return ONLY this JSON structure (no other text):
             const avgWords = userResponses.reduce((sum: number, r: any) => 
               sum + (r.content?.split(/\s+/).length || 0), 0) / userResponses.length;
             
-            vedantScore = avgWords >= 30 ? 3 : avgWords >= 15 ? 2.5 : 2;
-            vedantAnalysis.overallAssessment = `AI parsing failed. Fallback score based on ${Math.round(avgWords)} avg words/response.`;
-            vedantAnalysis.q1_empathy = vedantScore;
-            vedantAnalysis.q2_communication = vedantScore;
-            vedantAnalysis.q3_sensitivity = vedantScore;
-            vedantAnalysis.q4_honesty = vedantScore;
+            raiScore = avgWords >= 30 ? 3 : avgWords >= 15 ? 2.5 : 2;
+            raiAnalysis.overallAssessment = `AI parsing failed. Fallback score based on ${Math.round(avgWords)} avg words/response.`;
+            raiAnalysis.q1_empathy = raiScore;
+            raiAnalysis.q2_communication = raiScore;
+            raiAnalysis.q3_sensitivity = raiScore;
+            raiAnalysis.q4_honesty = raiScore;
           }
         } catch (chatErr) {
           console.error('Chat analysis error:', chatErr);
-          vedantScore = 2;
-          vedantAnalysis.overallAssessment = 'Chat analysis error';
+          raiScore = 2;
+          raiAnalysis.overallAssessment = 'Chat analysis error';
         }
       }
     } else {
-      vedantScore = 0;
-      vedantAnalysis.overallAssessment = 'No chat responses to analyze';
+      raiScore = 0;
+      raiAnalysis.overallAssessment = 'No chat responses to analyze';
       console.log('❌ No AI responses found in application');
     }
 
-    console.log(`💬 Vedant Score: ${vedantScore}/5`);
-    console.log(`   Q1 Empathy: ${vedantAnalysis.q1_empathy}`);
-    console.log(`   Q2 Communication: ${vedantAnalysis.q2_communication}`);
-    console.log(`   Q3 Sensitivity: ${vedantAnalysis.q3_sensitivity}`);
-    console.log(`   Q4 Honesty: ${vedantAnalysis.q4_honesty}`);
-    console.log(`   Recommendation: ${vedantAnalysis.recommendation}`);
-    console.log(`   Assessment: ${vedantAnalysis.overallAssessment}`);
+    console.log(`💬 Vedant Score: ${raiScore}/5`);
+    console.log(`   Q1 Empathy: ${raiAnalysis.q1_empathy}`);
+    console.log(`   Q2 Communication: ${raiAnalysis.q2_communication}`);
+    console.log(`   Q3 Sensitivity: ${raiAnalysis.q3_sensitivity}`);
+    console.log(`   Q4 Honesty: ${raiAnalysis.q4_honesty}`);
+    console.log(`   Recommendation: ${raiAnalysis.recommendation}`);
+    console.log(`   Assessment: ${raiAnalysis.overallAssessment}`);
 
     // ========== COMBINED SCORE ==========
-    const combinedScore = Math.round((voiceScore + vedantScore) * 10) / 10;
+    const combinedScore = Math.round((voiceScore + raiScore) * 10) / 10;
     
     // Qualification: Score >= 6 AND no STRONG_NO AND both components scored
     const isQualified = combinedScore >= 6 && 
-      vedantAnalysis.recommendation !== 'STRONG_NO' &&
+      raiAnalysis.recommendation !== 'STRONG_NO' &&
       voiceScore >= 2 && 
-      vedantScore >= 2;
+      raiScore >= 2;
 
     console.log(`📊 Combined: ${combinedScore}/10 - ${isQualified ? '✅ Qualified' : '❌ Not Qualified'}`);
 
@@ -350,8 +350,8 @@ Return ONLY this JSON structure (no other text):
       ai_score_breakdown: {
         voiceScore,
         voiceAnalysis,
-        vedantScore,
-        vedantAnalysis,
+        raiScore,
+        raiAnalysis,
         combinedScore,
         isQualified,
         calculatedAt: new Date().toISOString(),
@@ -387,8 +387,8 @@ Return ONLY this JSON structure (no other text):
       scores: {
         voice: voiceScore,
         voiceAnalysis,
-        vedant: vedantScore,
-        vedantAnalysis,
+        rai: raiScore,
+        raiAnalysis,
         combined: combinedScore,
         isQualified,
         threshold: 6

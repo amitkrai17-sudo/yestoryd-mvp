@@ -142,9 +142,9 @@ export async function POST(request: NextRequest) {
         <span style="color: #60a5fa; font-size: 15px; font-weight: 500;">📈 ${wpm || 60} Words Per Minute</span>
       </div>
       
-      <!-- Vedant AI Feedback -->
+      <!-- rAI Analysis -->
       <div style="background-color: rgba(255, 0, 153, 0.1); border: 1px solid #ff0099; border-radius: 16px; padding: 20px; margin: 20px 0;">
-        <p style="color: #ff0099; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">✨ Vedant AI Feedback</p>
+        <p style="color: #ff0099; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">✨ rAI Analysis</p>
         <p style="color: #d1d5db; font-size: 14px; line-height: 1.7; margin: 0;">${feedback}</p>
       </div>
       

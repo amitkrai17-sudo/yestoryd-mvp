@@ -44,7 +44,7 @@ const faqs = [
   },
   {
     question: 'What is included in the 3-month program?',
-    answer: 'The program includes 6 one-on-one coaching sessions, 3 parent check-in calls, access to e-learning materials, and personalized reading recommendations from Vedant AI.',
+    answer: 'The program includes 6 one-on-one coaching sessions, 3 parent check-in calls, access to e-learning materials, and personalized reading recommendations from rAI.',
   },
   {
     question: 'How do I contact support?',

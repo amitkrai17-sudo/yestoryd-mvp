@@ -249,7 +249,7 @@ function DetailModal({
           status: data.scores.isQualified ? 'qualified' : 'not_qualified',
           ai_score_breakdown: {
             voiceScore: data.scores.voice,
-            vedantScore: data.scores.vedant,
+            raiScore: data.scores.rai,
             combinedScore: data.scores.combined,
             isQualified: data.scores.isQualified
           }
@@ -396,7 +396,7 @@ function DetailModal({
                     </div>
                     {app.ai_score_breakdown && (
                       <div className="text-xs text-gray-500 mt-1">
-                        Voice: {app.ai_score_breakdown.voiceScore}/5 | Chat: {app.ai_score_breakdown.vedantScore}/5
+                        Voice: {app.ai_score_breakdown.voiceScore}/5 | Chat: {app.ai_score_breakdown.raiScore}/5
                       </div>
                     )}
                   </div>
@@ -419,7 +419,7 @@ function DetailModal({
                 <div className="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                   {aiConversation.map((msg: any, i: number) => (
                     <div key={i} className={`text-sm ${msg.role === 'assistant' ? 'text-purple-700' : 'text-gray-700'}`}>
-                      <span className="font-semibold">{msg.role === 'assistant' ? 'Vedant: ' : 'Applicant: '}</span>
+                      <span className="font-semibold">{msg.role === 'assistant' ? 'rAI: ' : 'Applicant: '}</span>
                       {msg.content}
                     </div>
                   ))}

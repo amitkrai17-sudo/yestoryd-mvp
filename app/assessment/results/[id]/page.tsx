@@ -197,8 +197,8 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
           <div className="bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 p-5 text-center border-b border-gray-600">
             <div className="w-24 h-24 mx-auto mb-3">
               <img
-                src="/images/vedant-mascot.png"
-                alt="Vedant - Yestoryd Mascot"
+                src="/images/rai-mascot.png"
+                alt="rAI - Yestoryd Mascot"
                 className="w-full h-full object-contain drop-shadow-lg"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;

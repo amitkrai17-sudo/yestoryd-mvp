@@ -47,7 +47,7 @@ const DEFAULTS = {
     },
     {
       id: '2',
-      testimonial_text: "Vedant AI pinpointed exactly where my son was struggling. The personalized coaching fixed issues his school couldn't identify.",
+      testimonial_text: "rAI pinpointed exactly where my son was struggling. The personalized coaching fixed issues his school couldn't identify.",
       parent_name: "Rahul Sharma",
       parent_location: "Delhi",
       child_name: "Arjun",

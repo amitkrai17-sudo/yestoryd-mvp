@@ -1,5 +1,5 @@
 // FILE: app/api/chat/route.ts
-// PURPOSE: RAG-powered chat API for Vedant AI
+// PURPOSE: RAG-powered chat API for rAI
 // VERSION: v5 - Expanded to handle coach, payment, enrollment, and program queries
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -212,7 +212,7 @@ SUPPORT_INFO:
 - Email: engage@yestoryd.com
 - Website: www.yestoryd.com
 - Reschedule: Contact coach on WhatsApp or use Sessions page
-- Dashboard: Track progress, view sessions, chat with Vedant AI
+- Dashboard: Track progress, view sessions, chat with rAI
 `;
 
 // Build system prompt
@@ -230,7 +230,7 @@ function buildSystemPrompt(
   const coachPhone = child?.coaches?.phone || '918976287997';
 
   if (userRole === 'parent') {
-    return `You are Vedant AI, the friendly assistant for Yestoryd reading platform. Speaking with parent of ${childName}.
+    return `You are rAI AI, the friendly assistant for Yestoryd reading platform. Speaking with parent of ${childName}.
 
 === DATABASE RECORDS ===
 ${eventsContext}
@@ -280,12 +280,12 @@ A: "You can reschedule by contacting Coach ${coachName} on WhatsApp at ${coachPh
   }
 
   if (userRole === 'coach') {
-    return `Vedant AI for coach. Student: ${childName}
+    return `rAI for coach. Student: ${childName}
 DATA: ${eventsContext} | ${sessionsContext} | ${enrollmentInfo}
 Rules: No markdown, max 4 sentences, only use data shown.`;
   }
 
-  return `Vedant AI for admin. Child: ${childName}
+  return `rAI for admin. Child: ${childName}
 DATA: ${eventsContext} | ${sessionsContext} | ${enrollmentInfo}
 Brief, factual responses only.`;
 }

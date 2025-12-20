@@ -407,19 +407,19 @@ export default function ParentDashboardPage() {
           </div>
         </div>
 
-        {/* Vedant AI Tip */}
+        {/* rAI Tip */}
         <div className="mt-6 bg-gradient-to-r from-[#7b008b] to-[#ff0099] rounded-2xl p-6 text-white">
           <div className="flex items-start gap-4">
             <Image
-              src="/images/vedant-mascot.png"
-              alt="Vedant AI"
+              src="/images/rai-mascot.png"
+              alt="rAI AI"
               width={48}
               height={48}
               className="w-12 h-12 rounded-xl bg-white/20 p-1"
             />
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-lg">Vedant AI says</h3>
+                <h3 className="font-semibold text-lg">rAI says</h3>
                 <Sparkles className="w-4 h-4" />
               </div>
               <p className="text-white/90">

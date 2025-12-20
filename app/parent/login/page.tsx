@@ -103,7 +103,7 @@ export default function ParentLoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex">
-      {/* Left Side - Branding & Vedant AI */}
+      {/* Left Side - Branding & rAI */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
@@ -125,28 +125,28 @@ export default function ParentLoginPage() {
           </Link>
         </div>
 
-        {/* Vedant AI Introduction */}
+        {/* rAI Introduction */}
         <div className="relative z-10 flex-1 flex flex-col justify-center">
           <div className="max-w-md">
-            {/* Vedant AI Card */}
+            {/* rAI Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center shadow-lg shadow-[#ff0099]/30 overflow-hidden">
                   <Image 
-                    src="/images/vedant-mascot.png" 
-                    alt="Vedant AI" 
+                    src="/images/rai-mascot.png" 
+                    alt="rAI AI" 
                     width={48} 
                     height={48}
                     className="w-12 h-12"
                   />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Meet Vedant AI</h2>
+                  <h2 className="text-2xl font-bold text-white">Meet rAI</h2>
                   <p className="text-[#00abff]">Your Child's Reading Coach</p>
                 </div>
               </div>
               <p className="text-gray-300 leading-relaxed mb-6">
-                Vedant AI analyzes your child's reading in real-time, identifies areas for improvement, 
+                rAI analyzes your child's reading in real-time, identifies areas for improvement, 
                 and provides personalized coaching recommendations.
               </p>
               <div className="space-y-3">
@@ -381,13 +381,13 @@ export default function ParentLoginPage() {
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
-            {/* Vedant AI CTA (Mobile) */}
+            {/* rAI CTA (Mobile) */}
             <div className="lg:hidden mb-4">
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center flex-shrink-0 overflow-hidden">
                   <Image 
-                    src="/images/vedant-mascot.png" 
-                    alt="Vedant AI" 
+                    src="/images/rai-mascot.png" 
+                    alt="rAI AI" 
                     width={32} 
                     height={32}
                     className="w-8 h-8"
@@ -405,10 +405,10 @@ export default function ParentLoginPage() {
               href="/assessment"
               className="w-full py-3.5 bg-white border-2 border-[#7b008b] text-[#7b008b] rounded-xl font-semibold hover:bg-[#7b008b]/5 transition-all flex items-center justify-center gap-2"
             >
-              Take Free Assessment with Vedant AI
+              Take Free Assessment with rAI
               <Image 
-                src="/images/vedant-mascot.png" 
-                alt="Vedant AI" 
+                src="/images/rai-mascot.png" 
+                alt="rAI AI" 
                 width={24} 
                 height={24}
                 className="w-6 h-6"

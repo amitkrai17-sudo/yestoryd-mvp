@@ -1,5 +1,5 @@
 // app/yestoryd-academy/assessment/page.tsx
-// Step 3 of 3: Voice Recording (required) + Gemini-powered Vedant AI Chat (4 questions)
+// Step 3 of 3: Voice Recording (required) + Gemini-powered rAI AI Chat (4 questions)
 // UPDATED: Includes email sending, score calculation, full conversation storage
 
 'use client';
@@ -49,8 +49,8 @@ function AssessmentPageContent() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceComplete, setVoiceComplete] = useState(false);
 
-  // Vedant AI States
-  const [showVedantChat, setShowVedantChat] = useState(false);
+  // rAI States
+  const [showRaiChat, setShowVedantChat] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [questionNumber, setQuestionNumber] = useState(1);
@@ -201,9 +201,9 @@ function AssessmentPageContent() {
     setVoiceComplete(true);
     setShowVedantChat(true);
 
-    // Start Vedant AI conversation
+    // Start rAI conversation
     setTimeout(() => {
-      startVedantConversation();
+      startRaiConversation();
     }, 500);
   };
 
@@ -213,8 +213,8 @@ function AssessmentPageContent() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Vedant AI - Gemini powered conversation
-  const startVedantConversation = async () => {
+  // rAI - Gemini powered conversation
+  const startRaiConversation = async () => {
     setIsTyping(true);
 
     try {
@@ -235,14 +235,14 @@ function AssessmentPageContent() {
         // Fallback greeting
         setMessages([{
           role: 'assistant',
-          content: "Namaste! 🙏 I'm Vedant, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
+          content: "Namaste! 🙏 I'm rAI, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
         }]);
       }
     } catch (err) {
       console.error('Error starting conversation:', err);
       setMessages([{
         role: 'assistant',
-        content: "Namaste! 🙏 I'm Vedant, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
+        content: "Namaste! 🙏 I'm rAI, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
       }]);
     }
 
@@ -443,7 +443,7 @@ function AssessmentPageContent() {
       {/* Main Content */}
       <main className="flex-grow max-w-2xl mx-auto w-full px-4 py-8">
         {/* Part 1: Voice Recording */}
-        {!showVedantChat && (
+        {!showRaiChat && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
             <div className="text-center mb-6">
               <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
@@ -534,7 +534,7 @@ function AssessmentPageContent() {
                     onClick={confirmVoice}
                     className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-10 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all"
                   >
-                    Continue to Vedant AI
+                    Continue to rAI
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </>
@@ -562,8 +562,8 @@ function AssessmentPageContent() {
           </div>
         )}
 
-        {/* Part 2: Vedant AI Chat - Gemini Powered */}
-        {showVedantChat && (
+        {/* Part 2: rAI Chat - Gemini Powered */}
+        {showRaiChat && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[calc(100vh-180px)] md:h-[600px]">
             {/* Chat Header */}
             <div className="p-4 border-b border-slate-200 flex items-center gap-3">
@@ -571,7 +571,7 @@ function AssessmentPageContent() {
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="font-semibold text-slate-900">Vedant AI</h2>
+                <h2 className="font-semibold text-slate-900">rAI</h2>
                 <p className="text-xs text-slate-500">
                   {chatComplete ? 'Assessment Complete ✓' : `Question ${Math.min(questionNumber, 4)} of 4`}
                 </p>

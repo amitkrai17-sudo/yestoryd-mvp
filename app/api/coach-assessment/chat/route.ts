@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-const VEDANT_SYSTEM_PROMPT = `You are Vedant, conducting a behavioral assessment for Yestoryd reading coaches. Be conversational but efficient.
+const RAI_SYSTEM_PROMPT = `You are rAI, conducting a behavioral assessment for Yestoryd reading coaches. Be conversational but efficient.
 
 ## YOUR STYLE
 - Warm and human, like a friendly interviewer
@@ -125,11 +125,11 @@ export async function POST(request: NextRequest) {
       history: [
         {
           role: 'user',
-          parts: [{ text: `SYSTEM INSTRUCTIONS:\n${VEDANT_SYSTEM_PROMPT}\n\nCurrent question number: ${questionNumber || 1}${scoresContext}\n\nNow respond to the conversation. Remember to output ONLY valid JSON. ALWAYS score the user's last answer if they answered a question.` }]
+          parts: [{ text: `SYSTEM INSTRUCTIONS:\n${RAI_SYSTEM_PROMPT}\n\nCurrent question number: ${questionNumber || 1}${scoresContext}\n\nNow respond to the conversation. Remember to output ONLY valid JSON. ALWAYS score the user's last answer if they answered a question.` }]
         },
         {
           role: 'model', 
-          parts: [{ text: '{"message": "Understood. I will conduct the assessment as Vedant and score each answer.", "questionNumber": 0, "isComplete": false, "probedThisQuestion": false, "lastAnswerScore": null, "lastAnswerCategory": null, "scores": {"q1_empathy": null, "q2_communication": null, "q3_sensitivity": null, "q4_honesty": null}}' }]
+          parts: [{ text: '{"message": "Understood. I will conduct the assessment as rAI and score each answer.", "questionNumber": 0, "isComplete": false, "probedThisQuestion": false, "lastAnswerScore": null, "lastAnswerCategory": null, "scores": {"q1_empathy": null, "q2_communication": null, "q3_sensitivity": null, "q4_honesty": null}}' }]
         },
         ...conversationHistory
       ]
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Calculate total Vedant AI score if assessment is complete
+    // Calculate total rAI score if assessment is complete
     if (parsed.isComplete) {
       const scores = parsed.scores;
       const validScores = [
@@ -195,8 +195,8 @@ export async function POST(request: NextRequest) {
       if (validScores.length > 0) {
         // Average of answered questions, scaled to 5
         const avgScore = validScores.reduce((a, b) => a + b, 0) / validScores.length;
-        parsed.vedantScore = Math.round(avgScore * 10) / 10; // e.g., 3.5 out of 5
-        parsed.vedantScoreOutOf5 = Math.round(avgScore * 10) / 10;
+        parsed.raiScore = Math.round(avgScore * 10) / 10; // e.g., 3.5 out of 5
+        parsed.raiScoreOutOf5 = Math.round(avgScore * 10) / 10;
       }
     }
 

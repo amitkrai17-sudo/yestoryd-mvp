@@ -80,7 +80,7 @@ const FAQ_DATA = [
   },
   {
     question: "What tools will I use?",
-    answer: "Google Meet for sessions, our coach dashboard for tracking, WhatsApp for parent communication, and Vedant AI for session preparation. All simple, no complex software."
+    answer: "Google Meet for sessions, our coach dashboard for tracking, WhatsApp for parent communication, and rAI for session preparation. All simple, no complex software."
   },
   {
     question: "What's the commitment period?",
@@ -250,7 +250,7 @@ export default function YestorydAcademyPage() {
                   { icon: Brain, text: "AI-powered reading assessments" },
                   { icon: BookOpen, text: "Scientific, age-appropriate curriculum" },
                   { icon: FileText, text: "Session-by-session lesson plans" },
-                  { icon: Sparkles, text: "Pre-session child insights via Vedant AI" },
+                  { icon: Sparkles, text: "Pre-session child insights via rAI" },
                   { icon: Calendar, text: "Automated scheduling & reminders" },
                   { icon: Video, text: "Video session recording & transcription" },
                   { icon: BarChart3, text: "Real-time progress tracking dashboard" },
@@ -358,7 +358,7 @@ export default function YestorydAcademyPage() {
               {
                 step: 2,
                 title: "AI Conversation",
-                description: "Have a thoughtful conversation with Vedant AI about teaching scenarios and child psychology.",
+                description: "Have a thoughtful conversation with rAI about teaching scenarios and child psychology.",
                 time: "15 minutes"
               },
               {

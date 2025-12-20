@@ -576,7 +576,7 @@ ${ctaInfo.emoji} *Overall Score: ${results.overall_score}/10*
 ⚡ Speed: ${results.speed_score}/10
 📈 WPM: ${results.wpm}
 
-💬 *Vedant AI Feedback:*
+💬 *rAI Analysis:*
 ${results.feedback}
 
 ✨ ${results.encouragement}
@@ -715,13 +715,13 @@ Check spam folder if not in inbox!
             {/* STEP 1: DETAILS */}
             {currentStep === 1 && (
               <div className="space-y-6">
-                {/* Vedant AI Introduction */}
+                {/* rAI Introduction */}
                 <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-2xl border border-pink-500/20">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white">Vedant AI</h3>
+                    <h3 className="font-bold text-white">rAI</h3>
                     <p className="text-gray-400 text-sm">Your AI Reading Coach is ready to help!</p>
                   </div>
                 </div>
@@ -1019,7 +1019,7 @@ Check spam folder if not in inbox!
                     {isAnalyzing ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Vedant AI is analyzing...
+                        rAI is analyzing...
                       </>
                     ) : (
                       <>
@@ -1108,7 +1108,7 @@ Check spam folder if not in inbox!
                 <div className="bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 rounded-xl p-4 text-left">
                   <h4 className="text-pink-400 font-semibold mb-2 flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
-                    Vedant AI Feedback
+                    rAI Analysis
                   </h4>
                   <p className="text-gray-300 text-sm leading-relaxed">
                     {results.feedback}
@@ -1214,11 +1214,11 @@ Check spam folder if not in inbox!
             )}
           </div>
 
-          {/* Powered by Vedant AI */}
+          {/* Powered by rAI */}
           <div className="text-center mt-6">
             <p className="text-gray-500 text-sm flex items-center justify-center gap-2">
               <Sparkles className="w-4 h-4 text-pink-400" />
-              Powered by <span className="text-white font-medium">Vedant AI</span> - Your Reading Coach
+              Powered by <span className="text-white font-medium">rAI</span> - Your AI Reading Coach
             </p>
           </div>
         </div>

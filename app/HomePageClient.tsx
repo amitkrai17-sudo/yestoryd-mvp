@@ -227,18 +227,18 @@ export default function HomePageClient({
                 <span className="text-center">Limited Time:<br className="sm:hidden" /> FREE AI Assessment Worth ₹{pricing.freeAssessmentWorth}</span>
               </div>
 
-              {/* Vedant AI Introduction */}
+              {/* rAI Introduction */}
               <div className="flex items-center gap-3 justify-center lg:justify-start mb-4">
                 <Image
-                  src="/images/vedant-mascot.png"
-                  alt="Vedant AI"
+                  src="/images/rai-mascot.png"
+                  alt="rAI AI"
                   width={48}
                   height={48}
                   className="w-12 h-12"
                 />
                 <div className="text-left">
                   <p className="text-sm text-gray-500">Meet</p>
-                  <p className="font-bold text-[#7b008b]">Vedant AI <span className="text-xs bg-[#7b008b]/10 px-2 py-0.5 rounded-full">Your Reading Coach</span></p>
+                  <p className="font-bold text-[#7b008b]">rAI <span className="text-xs bg-[#7b008b]/10 px-2 py-0.5 rounded-full">Your AI Reading Coach</span></p>
                 </div>
               </div>
 
@@ -309,7 +309,7 @@ export default function HomePageClient({
               </div>
             </div>
 
-            {/* Right - Vedant AI Assessment Card */}
+            {/* Right - rAI Assessment Card */}
             <div className="relative">
               {/* Testimonial - Positioned above the card */}
               <div className="hidden lg:block absolute -top-16 -left-4 bg-white rounded-2xl shadow-xl p-4 max-w-[220px] border-l-4 border-[#ff0099] z-20">
@@ -320,21 +320,21 @@ export default function HomePageClient({
               <div className="relative z-10">
                 {/* Main Assessment Card */}
                 <div className="bg-white rounded-3xl shadow-2xl p-6 lg:p-8 border-4 border-[#00abff]/20">
-                  {/* Vedant AI Header */}
+                  {/* rAI Header */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center overflow-hidden">
                         <Image
-                          src="/images/vedant-mascot.png"
-                          alt="Vedant AI"
+                          src="/images/rai-mascot.png"
+                          alt="rAI AI"
                           width={48}
                           height={48}
                           className="w-12 h-12 object-cover"
                         />
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900 text-lg">Vedant AI</h3>
-                        <p className="text-gray-500 text-sm">Your Reading Coach</p>
+                        <h3 className="font-bold text-gray-900 text-lg">rAI</h3>
+                        <p className="text-gray-500 text-sm">Your AI Reading Coach</p>
                       </div>
                     </div>
                     <div className="bg-[#ffde00] text-gray-900 px-3 py-1 rounded-full text-xs font-bold">
@@ -478,7 +478,7 @@ export default function HomePageClient({
               {
                 icon: Brain,
                 title: 'AI-Powered Analysis',
-                description: 'Vedant AI listens to your child read and identifies exactly where they struggle',
+                description: 'rAI listens to your child read and identifies exactly where they struggle',
                 color: '#ff0099',
                 bgColor: 'bg-[#ff0099]/10',
               },
@@ -537,7 +537,7 @@ export default function HomePageClient({
               {
                 step: '1',
                 title: 'Take Free Assessment',
-                description: 'Your child reads for 2-3 minutes while Vedant AI analyzes their reading abilities',
+                description: 'Your child reads for 2-3 minutes while rAI analyzes their reading abilities',
                 color: '#ff0099',
                 emoji: '📊',
               },
@@ -623,7 +623,7 @@ export default function HomePageClient({
               </div>
               <h3 className="text-2xl font-black text-gray-900 mb-2">AI Reading Assessment</h3>
               <p className="text-gray-600 mb-6">
-                Get Vedant AI's comprehensive analysis of your child's reading abilities instantly.
+                Get rAI's comprehensive analysis of your child's reading abilities instantly.
               </p>
 
               <div className="text-4xl font-black text-gray-900 mb-6">
@@ -750,17 +750,17 @@ export default function HomePageClient({
       {/* Final CTA Section */}
       <section className="py-16 lg:py-24 bg-gray-900">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          {/* Vedant AI CTA */}
+          {/* rAI CTA */}
           <div className="flex justify-center mb-6">
             <Image
-              src="/images/vedant-mascot.png"
-              alt="Vedant AI"
+              src="/images/rai-mascot.png"
+              alt="rAI AI"
               width={80}
               height={80}
               className="w-20 h-20"
             />
           </div>
-          <p className="text-[#ffde00] font-bold text-lg mb-2">Vedant AI says:</p>
+          <p className="text-[#ffde00] font-bold text-lg mb-2">rAI says:</p>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-6">
             Don't Let Your Child <span className="text-[#ffde00]">Fall Behind</span>
@@ -943,7 +943,7 @@ export default function HomePageClient({
               </div>
               <p className="text-gray-400 mb-6 max-w-md">
                 AI-powered reading intelligence transforming how children aged 4-12 learn to read.
-                Personalized assessment by Vedant AI and expert coaching for lasting results.
+                Personalized assessment by rAI and expert coaching for lasting results.
               </p>
               <a
                 href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
@@ -1017,7 +1017,7 @@ export default function HomePageClient({
         </div>
       </footer>
 
-      {/* Floating Vedant AI WhatsApp Button */}
+      {/* Floating rAI WhatsApp Button */}
       <a
         href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
         target="_blank"
@@ -1026,8 +1026,8 @@ export default function HomePageClient({
         aria-label="Chat on WhatsApp"
       >
         <Image
-          src="/images/vedant-mascot.png"
-          alt="Chat with Vedant"
+          src="/images/rai-mascot.png"
+          alt="Chat with rAI"
           width={40}
           height={40}
           className="w-10 h-10 rounded-full"
