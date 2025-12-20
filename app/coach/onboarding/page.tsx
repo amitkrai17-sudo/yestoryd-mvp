@@ -1,6 +1,6 @@
 // file: app/coach/onboarding/page.tsx
-// Coach onboarding page - Collect bank details, PAN for payouts
-// UPDATED: Shows clear next steps after onboarding completion
+// Coach onboarding page with Agreement Signing + Bank Details
+// Flow: Step 1 (Agreement) → Step 2 (Bank Details) → Complete
 // Access: /coach/onboarding (after approval)
 
 'use client';
@@ -9,10 +9,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Building2,
   CreditCard,
-  User,
   CheckCircle,
   AlertCircle,
   Copy,
@@ -20,17 +20,15 @@ import {
   RefreshCw,
   Shield,
   Wallet,
-  Share2,
-  ArrowRight,
-  BookOpen,
-  Users,
   IndianRupee,
   Sparkles,
   MessageCircle,
   LayoutDashboard,
   GraduationCap,
   Gift,
+  Users,
 } from 'lucide-react';
+import AgreementStep from '@/components/agreement/AgreementStep';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,582 +37,469 @@ const supabase = createClient(
 
 interface CoachData {
   id: string;
-  name: string;
   email: string;
-  referral_code: string;
-  referral_link: string;
+  name: string;
+  phone: string | null;
   bank_account_number: string | null;
   bank_ifsc: string | null;
   bank_name: string | null;
-  bank_account_holder: string | null;
   pan_number: string | null;
-  upi_id: string | null;
-  onboarding_complete: boolean;
+  referral_code: string | null;
+  agreement_signed_at: string | null;
+  agreement_version: string | null;
 }
+
+type OnboardingStep = 'agreement' | 'bank_details' | 'complete';
 
 export default function CoachOnboardingPage() {
   const router = useRouter();
-  const [coach, setCoach] = useState<CoachData | null>(null);
+  
+  // State
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [showForm, setShowForm] = useState(true);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    bank_account_number: '',
-    bank_account_number_confirm: '',
-    bank_ifsc: '',
-    bank_name: '',
-    bank_account_holder: '',
-    pan_number: '',
-    upi_id: '',
+  const [coach, setCoach] = useState<CoachData | null>(null);
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('agreement');
+  const [error, setError] = useState<string | null>(null);
+  
+  // Bank details form
+  const [bankForm, setBankForm] = useState({
+    accountNumber: '',
+    confirmAccountNumber: '',
+    ifsc: '',
+    bankName: '',
+    panNumber: '',
   });
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  // Fetch coach data
+  // Fetch coach data on mount
   useEffect(() => {
-    const fetchCoach = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          router.push('/coach/login');
-          return;
-        }
+    fetchCoachData();
+  }, []);
 
-        const { data: coachData, error } = await supabase
-          .from('coaches')
-          .select('*')
-          .eq('email', session.user.email)
-          .single();
-
-        if (error || !coachData) {
-          router.push('/coach/login');
-          return;
-        }
-
-        setCoach(coachData);
-        
-        // If onboarding already complete, show success view
-        if (coachData.onboarding_complete) {
-          setShowForm(false);
-        }
-        
-        setFormData({
-          bank_account_number: coachData.bank_account_number || '',
-          bank_account_number_confirm: coachData.bank_account_number || '',
-          bank_ifsc: coachData.bank_ifsc || '',
-          bank_name: coachData.bank_name || '',
-          bank_account_holder: coachData.bank_account_holder || '',
-          pan_number: coachData.pan_number || '',
-          upi_id: coachData.upi_id || '',
-        });
-      } catch (error) {
-        console.error('Error fetching coach:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCoach();
-  }, [router]);
-
-  // Auto-fetch bank name from IFSC
-  const fetchBankName = async (ifsc: string) => {
-    if (ifsc.length !== 11) return;
-    
+  const fetchCoachData = async () => {
     try {
-      const res = await fetch(`https://ifsc.razorpay.com/${ifsc}`);
-      if (res.ok) {
-        const data = await res.json();
-        setFormData(prev => ({ ...prev, bank_name: data.BANK }));
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push('/coach/login');
+        return;
       }
-    } catch (error) {
-      console.error('IFSC lookup failed:', error);
+
+      const { data: coachData, error: fetchError } = await supabase
+        .from('coaches')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+
+      if (fetchError || !coachData) {
+        setError('Coach profile not found. Please contact support.');
+        setLoading(false);
+        return;
+      }
+
+      setCoach(coachData);
+
+      // Determine current step based on existing data
+      if (coachData.bank_account_number && coachData.bank_ifsc) {
+        setCurrentStep('complete');
+      } else if (coachData.agreement_signed_at) {
+        setCurrentStep('bank_details');
+      } else {
+        setCurrentStep('agreement');
+      }
+
+      // Pre-fill bank form if data exists
+      if (coachData.bank_account_number) {
+        setBankForm({
+          accountNumber: coachData.bank_account_number || '',
+          confirmAccountNumber: coachData.bank_account_number || '',
+          ifsc: coachData.bank_ifsc || '',
+          bankName: coachData.bank_name || '',
+          panNumber: coachData.pan_number || '',
+        });
+      }
+
+    } catch (err) {
+      console.error('Error fetching coach data:', err);
+      setError('Failed to load your profile. Please refresh the page.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Handle IFSC change
-  const handleIfscChange = (value: string) => {
-    const ifsc = value.toUpperCase();
-    setFormData(prev => ({ ...prev, bank_ifsc: ifsc }));
-    if (ifsc.length === 11) {
-      fetchBankName(ifsc);
-    }
+  const handleAgreementComplete = () => {
+    fetchCoachData();
+    setCurrentStep('bank_details');
   };
 
-  // Validate PAN format
-  const isValidPan = (pan: string) => {
-    return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan.toUpperCase());
-  };
-
-  // Handle form submit
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleBankSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
-
-    // Validations
-    if (formData.bank_account_number !== formData.bank_account_number_confirm) {
-      setMessage({ type: 'error', text: 'Account numbers do not match' });
+    if (!coach) return;
+    
+    if (bankForm.accountNumber !== bankForm.confirmAccountNumber) {
+      setError('Account numbers do not match');
       return;
     }
 
-    if (formData.bank_ifsc.length !== 11) {
-      setMessage({ type: 'error', text: 'Invalid IFSC code (must be 11 characters)' });
-      return;
-    }
-
-    if (!isValidPan(formData.pan_number)) {
-      setMessage({ type: 'error', text: 'Invalid PAN format (e.g., ABCDE1234F)' });
+    if (bankForm.ifsc.length !== 11) {
+      setError('IFSC code must be 11 characters');
       return;
     }
 
     setSaving(true);
+    setError(null);
 
     try {
-      const res = await fetch('/api/coach/onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          coach_id: coach?.id,
-          bank_account_number: formData.bank_account_number,
-          bank_ifsc: formData.bank_ifsc,
-          bank_name: formData.bank_name,
-          bank_account_holder: formData.bank_account_holder,
-          pan_number: formData.pan_number.toUpperCase(),
-          upi_id: formData.upi_id || null,
-        }),
-      });
+      const { error: updateError } = await supabase
+        .from('coaches')
+        .update({
+          bank_account_number: bankForm.accountNumber,
+          bank_ifsc: bankForm.ifsc.toUpperCase(),
+          bank_name: bankForm.bankName,
+          pan_number: bankForm.panNumber?.toUpperCase() || null,
+        })
+        .eq('id', coach.id);
 
-      const data = await res.json();
+      if (updateError) throw updateError;
 
-      if (data.success) {
-        setCoach(prev => prev ? { ...prev, onboarding_complete: true } : null);
-        setShowForm(false); // Switch to success view
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to save details' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' });
+      await fetchCoachData();
+      setCurrentStep('complete');
+
+    } catch (err: any) {
+      console.error('Error saving bank details:', err);
+      setError(err.message || 'Failed to save bank details');
     } finally {
       setSaving(false);
     }
   };
 
-  // Copy referral link
   const copyReferralLink = () => {
-    if (coach?.referral_link) {
-      navigator.clipboard.writeText(coach.referral_link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (!coach?.referral_code) return;
+    const link = `https://yestoryd.com/assessment?ref=${coach.referral_code}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-pink-500" />
+        <div className="text-center">
+          <RefreshCw className="w-10 h-10 text-pink-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-300">Loading your onboarding...</p>
+        </div>
       </div>
     );
   }
 
-  // ==================== SUCCESS VIEW (After Onboarding Complete) ====================
-  if (!showForm && coach?.onboarding_complete) {
+  // Error state
+  if (!coach) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8 px-4">
-        <div className="max-w-2xl mx-auto">
-          
-          {/* Success Header */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/30">
-              <CheckCircle className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-2">
-              🎉 You&apos;re All Set, {coach.name?.split(' ')[0]}!
-            </h1>
-            <p className="text-gray-400">
-              Your onboarding is complete. Welcome to the Yestoryd coaching family!
-            </p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 max-w-md text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
+          <p className="text-gray-600 mb-6">{error || 'Unable to load your coach profile.'}</p>
+          <Link href="/coach/login" className="inline-flex items-center gap-2 px-6 py-3 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition-colors">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Referral Link Card */}
-          <div className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 rounded-2xl p-6 mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Gift className="w-6 h-6 text-pink-400" />
-              <h2 className="text-lg font-semibold text-white">Your Referral Link</h2>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Header */}
+      <header className="bg-black/20 backdrop-blur-sm border-b border-white/10">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/images/logo.png" alt="Yestoryd" width={120} height={40} className="h-8 w-auto" />
+          </Link>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-300">Welcome, {coach.name?.split(' ')[0]}</span>
+            <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+              {coach.name?.charAt(0) || 'C'}
             </div>
-            <p className="text-sm text-gray-300 mb-4">
-              Share this link with parents. When they enroll, you earn <span className="text-pink-400 font-bold">70%</span> of the fee!
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                readOnly
-                value={coach.referral_link || ''}
-                className="flex-1 px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white text-sm font-mono"
-              />
-              <button
-                onClick={copyReferralLink}
-                className={`px-5 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                  copied 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-pink-500 text-white hover:bg-pink-600'
-                }`}
-              >
-                {copied ? <CheckCircle className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-3">
-              Your Code: <span className="font-mono text-pink-400 font-bold">{coach.referral_code}</span>
-            </p>
           </div>
+        </div>
+      </header>
 
-          {/* What's Next Section */}
-          <div className="bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden mb-6">
-            <div className="p-5 border-b border-slate-700 bg-slate-800/80">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-yellow-400" />
-                What&apos;s Next?
-              </h2>
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-4">
+            <div className={`flex items-center gap-2 ${currentStep === 'agreement' ? 'text-pink-400' : 'text-green-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                currentStep === 'agreement' ? 'bg-pink-500 text-white' : 'bg-green-500 text-white'
+              }`}>
+                {currentStep !== 'agreement' ? <CheckCircle className="w-5 h-5" /> : '1'}
+              </div>
+              <span className="text-sm font-medium hidden sm:inline">Agreement</span>
             </div>
             
-            <div className="p-5 space-y-4">
-              {/* Step 1: Dashboard */}
-              <Link href="/coach/dashboard" className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700 hover:border-pink-500/50 hover:bg-slate-900 transition-all group">
-                <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center group-hover:bg-pink-500/30 transition-all">
-                  <LayoutDashboard className="w-6 h-6 text-pink-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-white font-semibold">Go to Coach Dashboard</h3>
-                  <p className="text-sm text-gray-400">View students, sessions & earnings</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-gray-500 group-hover:text-pink-400 transition-all" />
-              </Link>
-
-              {/* Step 2: Share Referral */}
-              <div className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
-                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                  <Share2 className="w-6 h-6 text-purple-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-white font-semibold">Share Your Referral Link</h3>
-                  <p className="text-sm text-gray-400">Post on WhatsApp, Instagram, or share with parents you know</p>
-                </div>
+            <div className="w-12 h-0.5 bg-gray-700" />
+            
+            <div className={`flex items-center gap-2 ${currentStep === 'bank_details' ? 'text-pink-400' : currentStep === 'complete' ? 'text-green-400' : 'text-gray-500'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                currentStep === 'bank_details' ? 'bg-pink-500 text-white' : 
+                currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'
+              }`}>
+                {currentStep === 'complete' ? <CheckCircle className="w-5 h-5" /> : '2'}
               </div>
-
-              {/* Step 3: Wait for Assignment */}
-              <div className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
-                <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-white font-semibold">Get Student Assignments</h3>
-                  <p className="text-sm text-gray-400">We&apos;ll notify you when students are assigned to you</p>
-                </div>
-              </div>
-
-              {/* Step 4: Training (Optional) */}
-              <a 
-                href="https://wa.me/918976287997?text=Hi! I just completed onboarding and would like access to coach training materials."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700 hover:border-emerald-500/50 hover:bg-slate-900 transition-all group"
-              >
-                <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center group-hover:bg-emerald-500/30 transition-all">
-                  <GraduationCap className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-white font-semibold">Access Training Materials</h3>
-                  <p className="text-sm text-gray-400">Request coach training resources via WhatsApp</p>
-                </div>
-                <ExternalLink className="w-5 h-5 text-gray-500 group-hover:text-emerald-400 transition-all" />
-              </a>
+              <span className="text-sm font-medium hidden sm:inline">Bank Details</span>
             </div>
-          </div>
-
-          {/* Earnings Reminder */}
-          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-2xl p-5 mb-6">
-            <div className="flex items-center gap-3 mb-3">
-              <IndianRupee className="w-6 h-6 text-yellow-400" />
-              <h2 className="text-lg font-semibold text-white">Your Earning Potential</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="bg-slate-900/50 rounded-xl p-4">
-                <p className="text-3xl font-bold text-yellow-400">50%</p>
-                <p className="text-sm text-gray-400">Per student you coach</p>
-                <p className="text-xs text-gray-500 mt-1">≈ ₹3,000/student</p>
+            
+            <div className="w-12 h-0.5 bg-gray-700" />
+            
+            <div className={`flex items-center gap-2 ${currentStep === 'complete' ? 'text-green-400' : 'text-gray-500'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'
+              }`}>
+                {currentStep === 'complete' ? <CheckCircle className="w-5 h-5" /> : '3'}
               </div>
-              <div className="bg-slate-900/50 rounded-xl p-4">
-                <p className="text-3xl font-bold text-pink-400">70%</p>
-                <p className="text-sm text-gray-400">When YOU bring students</p>
-                <p className="text-xs text-gray-500 mt-1">≈ ₹4,200/student</p>
-              </div>
+              <span className="text-sm font-medium hidden sm:inline">Complete</span>
             </div>
-            <p className="text-xs text-gray-500 text-center mt-4">
-              Payouts processed on 7th of every month via bank transfer
-            </p>
-          </div>
-
-          {/* Edit Bank Details */}
-          <div className="text-center">
-            <button
-              onClick={() => setShowForm(true)}
-              className="text-gray-400 hover:text-pink-400 text-sm inline-flex items-center gap-2"
-            >
-              <CreditCard className="w-4 h-4" />
-              Edit Bank Details
-            </button>
-          </div>
-
-          {/* WhatsApp Support */}
-          <div className="text-center mt-6">
-            <a 
-              href="https://wa.me/918976287997?text=Hi! I have a question about coaching at Yestoryd."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-full font-medium transition-all"
-            >
-              <MessageCircle className="w-5 h-5" />
-              Chat with Us on WhatsApp
-            </a>
           </div>
         </div>
-      </div>
-    );
-  }
 
-  // ==================== FORM VIEW (Initial Onboarding) ====================
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Wallet className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
-            Complete Your Onboarding
-          </h1>
-          <p className="text-gray-400">
-            Welcome {coach?.name}! Set up your payout details to start earning.
-          </p>
-        </div>
-
-        {/* Referral Link Preview */}
-        {coach?.referral_link && (
-          <div className="bg-slate-800/50 rounded-xl p-4 mb-6 border border-slate-700">
-            <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-              <Share2 className="w-4 h-4 text-pink-400" />
-              <span>Your Referral Link (share after completing onboarding)</span>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                readOnly
-                value={coach.referral_link}
-                className="flex-1 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white text-sm font-mono"
-              />
-              <button
-                onClick={copyReferralLink}
-                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                  copied 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-pink-500 text-white hover:bg-pink-600'
-                }`}
-              >
-                {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Code: <span className="font-mono text-pink-400">{coach.referral_code}</span>
-            </p>
-          </div>
-        )}
-
-        {/* Message */}
-        {message && (
-          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
-            message.type === 'success'
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : 'bg-red-500/20 text-red-400 border border-red-500/30'
-          }`}>
-            {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-            {message.text}
-          </div>
-        )}
-
-        {/* Bank Details Form */}
-        <form onSubmit={handleSubmit} className="bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden">
-          <div className="p-6 border-b border-slate-700">
-            <div className="flex items-center gap-3">
-              <Building2 className="w-5 h-5 text-pink-400" />
-              <h2 className="text-lg font-semibold text-white">Bank Account Details</h2>
-            </div>
-            <p className="text-sm text-gray-400 mt-1">Required for receiving payouts via NEFT/IMPS</p>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {/* Account Holder Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Account Holder Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.bank_account_holder}
-                onChange={(e) => setFormData({ ...formData, bank_account_holder: e.target.value })}
-                placeholder="As per bank records"
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+        {/* Step Content */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* STEP 1: Agreement */}
+          {currentStep === 'agreement' && (
+            <div className="p-6 sm:p-8">
+              <AgreementStep
+                coachId={coach.id}
+                coachName={coach.name || 'Coach'}
+                coachEmail={coach.email}
+                onComplete={handleAgreementComplete}
               />
             </div>
+          )}
 
-            {/* Account Number */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Account Number *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.bank_account_number}
-                  onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value.replace(/\D/g, '') })}
-                  placeholder="Enter account number"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirm Account Number *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.bank_account_number_confirm}
-                  onChange={(e) => setFormData({ ...formData, bank_account_number_confirm: e.target.value.replace(/\D/g, '') })}
-                  placeholder="Re-enter account number"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent font-mono"
-                />
-              </div>
-            </div>
-
-            {/* IFSC & Bank Name */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  IFSC Code *
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={11}
-                  value={formData.bank_ifsc}
-                  onChange={(e) => handleIfscChange(e.target.value)}
-                  placeholder="e.g., HDFC0001234"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent font-mono uppercase"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Bank Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.bank_name}
-                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                  placeholder="Auto-detected from IFSC"
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  readOnly={!!formData.bank_name}
-                />
-              </div>
-            </div>
-
-            {/* PAN Number */}
-            <div className="pt-4 border-t border-slate-700">
-              <div className="flex items-center gap-3 mb-4">
-                <CreditCard className="w-5 h-5 text-pink-400" />
-                <h3 className="text-lg font-semibold text-white">Tax Information</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    PAN Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={10}
-                    value={formData.pan_number}
-                    onChange={(e) => setFormData({ ...formData, pan_number: e.target.value.toUpperCase() })}
-                    placeholder="e.g., ABCDE1234F"
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent font-mono uppercase"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Required for TDS compliance</p>
+          {/* STEP 2: Bank Details */}
+          {currentStep === 'bank_details' && (
+            <div className="p-6 sm:p-8">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                  <Building2 className="w-8 h-8 text-green-600" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    UPI ID (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.upi_id}
-                    onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
-                    placeholder="e.g., yourname@upi"
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder:text-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">For faster payouts</p>
+                <h2 className="text-2xl font-bold text-gray-900">Bank Account Details</h2>
+                <p className="text-gray-500 mt-1">For receiving your coaching payouts</p>
+              </div>
+
+              {coach.agreement_signed_at && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-green-800 font-medium">Agreement Signed ✓</p>
+                    <p className="text-green-600 text-sm">
+                      Version {coach.agreement_version} • {new Date(coach.agreement_signed_at).toLocaleDateString('en-IN')}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Security Note */}
-            <div className="flex items-start gap-3 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
-              <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm text-gray-300">Your bank details are encrypted and securely stored.</p>
-                <p className="text-xs text-gray-500 mt-1">We use industry-standard security to protect your information.</p>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg shadow-pink-500/25 hover:shadow-xl hover:shadow-pink-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  Complete Onboarding
-                </>
               )}
-            </button>
-          </div>
-        </form>
 
-        {/* Help Link */}
+              <form onSubmit={handleBankSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                  <input
+                    type="text"
+                    value={bankForm.bankName}
+                    onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                    placeholder="e.g., HDFC Bank"
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                  <input
+                    type="text"
+                    value={bankForm.accountNumber}
+                    onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value.replace(/\D/g, '') })}
+                    placeholder="Enter account number"
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Account Number</label>
+                  <input
+                    type="text"
+                    value={bankForm.confirmAccountNumber}
+                    onChange={(e) => setBankForm({ ...bankForm, confirmAccountNumber: e.target.value.replace(/\D/g, '') })}
+                    placeholder="Re-enter account number"
+                    required
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 ${
+                      bankForm.confirmAccountNumber && bankForm.accountNumber !== bankForm.confirmAccountNumber
+                        ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {bankForm.confirmAccountNumber && bankForm.accountNumber !== bankForm.confirmAccountNumber && (
+                    <p className="text-red-500 text-xs mt-1">Account numbers do not match</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
+                  <input
+                    type="text"
+                    value={bankForm.ifsc}
+                    onChange={(e) => setBankForm({ ...bankForm, ifsc: e.target.value.toUpperCase().slice(0, 11) })}
+                    placeholder="e.g., HDFC0001234"
+                    required
+                    maxLength={11}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    PAN Number <span className="text-gray-400">(Optional if Aadhaar provided)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={bankForm.panNumber}
+                    onChange={(e) => setBankForm({ ...bankForm, panNumber: e.target.value.toUpperCase().slice(0, 10) })}
+                    placeholder="e.g., ABCDE1234F"
+                    maxLength={10}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-slate-100 rounded-xl">
+                  <Shield className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-700">Your bank details are encrypted and securely stored.</p>
+                    <p className="text-xs text-gray-500 mt-1">Payouts are processed on the 7th of every month.</p>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={saving || bankForm.accountNumber !== bankForm.confirmAccountNumber}
+                  className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <><RefreshCw className="w-5 h-5 animate-spin" /> Saving...</>
+                  ) : (
+                    <><CheckCircle className="w-5 h-5" /> Save & Complete Onboarding</>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* STEP 3: Complete */}
+          {currentStep === 'complete' && (
+            <div className="p-6 sm:p-8">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mb-4">
+                  <Sparkles className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900">You're All Set, {coach.name?.split(' ')[0]}! 🎉</h2>
+                <p className="text-gray-500 mt-2">Your onboarding is complete. Here's what's next.</p>
+              </div>
+
+              {coach.referral_code && (
+                <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl p-6 mb-6 text-white">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Gift className="w-5 h-5" />
+                        <span className="font-semibold">Your Referral Link</span>
+                      </div>
+                      <p className="text-sm text-pink-100">Share this link to earn 70% on every enrollment!</p>
+                    </div>
+                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">70% Earnings</span>
+                  </div>
+                  
+                  <div className="bg-white/10 rounded-xl p-3 flex items-center gap-3">
+                    <code className="flex-1 text-sm truncate">yestoryd.com/assessment?ref={coach.referral_code}</code>
+                    <button
+                      onClick={copyReferralLink}
+                      className="px-4 py-2 bg-white text-pink-600 rounded-lg font-medium text-sm hover:bg-pink-50 transition-colors flex items-center gap-1"
+                    >
+                      {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                <Link href="/coach/dashboard" className="p-5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                  <LayoutDashboard className="w-8 h-8 text-purple-600 mb-3" />
+                  <h3 className="font-semibold text-gray-900 group-hover:text-purple-600">Go to Dashboard</h3>
+                  <p className="text-sm text-gray-500 mt-1">View your students, sessions & earnings</p>
+                </Link>
+
+                <a href={`https://wa.me/918976287997?text=Hi, I completed onboarding. Code: ${coach.referral_code}`} target="_blank" rel="noopener noreferrer" className="p-5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group">
+                  <MessageCircle className="w-8 h-8 text-green-600 mb-3" />
+                  <h3 className="font-semibold text-gray-900 group-hover:text-green-600">Join WhatsApp Group</h3>
+                  <p className="text-sm text-gray-500 mt-1">Connect with other coaches</p>
+                </a>
+
+                <div className="p-5 bg-blue-50 rounded-xl">
+                  <Users className="w-8 h-8 text-blue-600 mb-3" />
+                  <h3 className="font-semibold text-gray-900">Student Assignments</h3>
+                  <p className="text-sm text-gray-500 mt-1">We'll notify you when students are assigned</p>
+                </div>
+
+                <div className="p-5 bg-amber-50 rounded-xl">
+                  <GraduationCap className="w-8 h-8 text-amber-600 mb-3" />
+                  <h3 className="font-semibold text-gray-900">Training Materials</h3>
+                  <p className="text-sm text-gray-500 mt-1">Access curriculum & teaching resources</p>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 rounded-xl p-5 mb-6">
+                <h3 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                  <IndianRupee className="w-5 h-5" /> Your Earnings Structure
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="text-sm text-gray-500">Platform-sourced Students</p>
+                    <p className="text-2xl font-bold text-purple-600">50%</p>
+                    <p className="text-xs text-gray-400">≈ ₹2,500 per student</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 ring-2 ring-pink-400">
+                    <p className="text-sm text-gray-500">Your Referral Students</p>
+                    <p className="text-2xl font-bold text-pink-600">70%</p>
+                    <p className="text-xs text-gray-400">≈ ₹3,500 per student</p>
+                  </div>
+                </div>
+                <p className="text-xs text-purple-700 mt-3 flex items-center gap-1">
+                  <Wallet className="w-3 h-3" /> Payouts on 7th of every month via bank transfer
+                </p>
+              </div>
+
+              <div className="text-center">
+                <button onClick={() => setCurrentStep('bank_details')} className="text-sm text-gray-500 hover:text-pink-600 transition-colors inline-flex items-center gap-1">
+                  <CreditCard className="w-4 h-4" /> Edit Bank Details
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="text-center mt-6">
-          <a 
-            href="https://wa.me/918976287997?text=I need help with coach onboarding"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-400 hover:text-pink-400 text-sm inline-flex items-center gap-2"
-          >
-            Need help? Contact support
-            <ExternalLink className="w-4 h-4" />
+          <a href="https://wa.me/918976287997?text=I need help with coach onboarding" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-400 text-sm inline-flex items-center gap-2">
+            Need help? Contact support <ExternalLink className="w-4 h-4" />
           </a>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
