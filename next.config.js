@@ -3,6 +3,9 @@ const nextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
   
+  // Fix trailing slash redirect for webhooks
+  skipTrailingSlashRedirect: true,
+  
   // Image optimization settings
   images: {
     domains: [
