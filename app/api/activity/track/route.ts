@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
     // Calculate stats
     const loginCount = logs?.filter(l => l.action === 'login').length || 0;
     const pageViews = logs?.filter(l => l.action === 'page_view').length || 0;
-    const uniquePages = [...new Set(logs?.map(l => l.page_path).filter(Boolean))].length;
+    const uniquePages = Array.from(new Set(logs?.map(l => l.page_path).filter(Boolean))).length;
 
     return NextResponse.json({
       profile,
