@@ -50,7 +50,7 @@ function AssessmentPageContent() {
   const [voiceComplete, setVoiceComplete] = useState(false);
 
   // rAI States
-  const [showRaiChat, setShowVedantChat] = useState(false);
+  const [showRaiChat, setshowRaiChat] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [questionNumber, setQuestionNumber] = useState(1);
@@ -199,7 +199,7 @@ function AssessmentPageContent() {
     }
 
     setVoiceComplete(true);
-    setShowVedantChat(true);
+    setshowRaiChat(true);
 
     // Start rAI conversation
     setTimeout(() => {

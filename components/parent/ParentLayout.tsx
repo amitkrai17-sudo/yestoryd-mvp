@@ -413,7 +413,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
           <main className="p-4 lg:p-8 bg-gray-50/50 min-h-screen">{children}</main>
         </div>
 
-        {/* Vedant AI Chat Widget - Shows on all pages */}
+        {/* rAI Chat Widget - Shows on all pages */}
         {childId && (
           <ChatWidget
             childId={childId}

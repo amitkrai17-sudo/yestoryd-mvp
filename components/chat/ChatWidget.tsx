@@ -73,7 +73,8 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map((m) => ({
+          message: userMessage.content,  // Current message
+          chatHistory: messages.map((m) => ({  // Previous messages for context
             role: m.role,
             content: m.content,
           })),
@@ -97,7 +98,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Chat error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -123,21 +124,21 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     inputRef.current?.focus();
   };
 
-  // Floating button when closed - Single sparkle icon
+  // Floating button when closed
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
-        aria-label="Open Vedant AI chat"
+        aria-label="Open rAI chat"
       >
         <Sparkles className="w-4 h-4" />
-        <span className="font-medium text-sm">Vedant AI</span>
+        <span className="font-medium text-sm">rAI</span>
       </button>
     );
   }
 
-  // Minimized state - Single sparkle icon
+  // Minimized state
   if (isMinimized) {
     return (
       <button
@@ -145,7 +146,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg hover:shadow-xl transition-all"
       >
         <Sparkles className="w-4 h-4" />
-        <span className="text-sm font-medium">Vedant AI</span>
+        <span className="text-sm font-medium">rAI</span>
       </button>
     );
   }
@@ -160,7 +161,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-white font-semibold text-sm">Vedant AI</h3>
+            <h3 className="text-white font-semibold text-sm">rAI</h3>
             <p className="text-white/80 text-xs">
               {childName ? `Helping with ${childName}` : 'Reading Assistant'}
             </p>
