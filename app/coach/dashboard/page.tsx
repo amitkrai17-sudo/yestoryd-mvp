@@ -1,5 +1,5 @@
 // file: app/coach/dashboard/page.tsx
-// Complete Coach Dashboard with My Referrals Tab and Floating rAI Widget
+// Complete Coach Dashboard with My Referrals Tab, Floating rAI Widget, Activity Tracking & Support
 
 'use client';
 
@@ -9,11 +9,13 @@ import { createClient } from '@supabase/supabase-js';
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet,
   LogOut, Menu, X, ChevronRight, Bell, Settings,
-  TrendingUp, Clock, CheckCircle, Brain
+  TrendingUp, Clock, CheckCircle, Brain, HelpCircle
 } from 'lucide-react';
 import MyReferralsTab from './MyReferralsTab';
 import RAIAssistantTab from './RAIAssistantTab';
 import ChatWidget from '@/components/chat/ChatWidget';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
+import SupportWidget from '@/components/support/SupportWidget';
 
 // 4-Point Star Icon Component (Yestoryd branding for rAI)
 function StarIcon({ className }: { className?: string }) {
@@ -56,7 +58,7 @@ interface DashboardStats {
   pending_earnings: number;
 }
 
-// Tab configuration - removed rAI tab since we now have floating widget
+// Tab configuration
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'students', label: 'My Students', icon: Users },
@@ -74,6 +76,13 @@ export default function CoachDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Activity tracking - tracks login and page views automatically
+  useActivityTracker({
+    userType: 'coach',
+    userEmail: coach?.email || null,
+    enabled: !!coach,
+  });
 
   useEffect(() => {
     checkAuth();
@@ -481,6 +490,14 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
           </button>
         </div>
       </div>
+
+      {/* Support Widget */}
+      <SupportWidget
+        userType="coach"
+        userEmail={coach.email}
+        userName={coach.name}
+        variant="card"
+      />
     </div>
   );
 }
@@ -495,6 +512,11 @@ function StudentsTab({ coachId }: { coachId: string }) {
   }, [coachId]);
 
   const fetchStudents = async () => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
     const { data, error } = await supabase
       .from('children')
       .select('*')
@@ -556,6 +578,11 @@ function SessionsTab({ coachId }: { coachId: string }) {
   }, [coachId]);
 
   const fetchSessions = async () => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
     try {
       const { data, error } = await supabase
         .from('scheduled_sessions')
@@ -631,6 +658,11 @@ function EarningsTab({ coachId }: { coachId: string }) {
   }, [coachId]);
 
   const fetchEarnings = async () => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
     try {
       const { data } = await supabase
         .from('coach_payouts')

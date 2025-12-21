@@ -17,6 +17,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,6 +29,7 @@ interface ParentContextType {
   childId: string | null;
   childName: string;
   parentEmail: string;
+  parentName: string;
   enrollmentId: string | null;
   coachPhone: string;
   coachName: string;
@@ -38,6 +40,7 @@ const ParentContext = createContext<ParentContextType>({
   childId: null,
   childName: '',
   parentEmail: '',
+  parentName: '',
   enrollmentId: null,
   coachPhone: '',
   coachName: '',
@@ -80,6 +83,13 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Activity tracking - tracks login and page views automatically
+  useActivityTracker({
+    userType: 'parent',
+    userEmail: parentEmail || null,
+    enabled: !!parentEmail,
+  });
 
   useEffect(() => {
     fetchParentInfo();
@@ -234,6 +244,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
     childId,
     childName,
     parentEmail,
+    parentName,
     enrollmentId,
     coachPhone,
     coachName,

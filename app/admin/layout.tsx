@@ -1,5 +1,5 @@
 // file: app/admin/layout.tsx
-// Admin layout with sidebar navigation and rAI integration
+// Admin layout with sidebar navigation, rAI ChatWidget, and activity tracking
 
 'use client';
 
@@ -25,8 +25,10 @@ import {
   Wallet,
   FileText,
   PieChart,
+  MessageSquare,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 // ==================== SUPABASE CLIENT ====================
 const supabase = createClient(
@@ -42,14 +44,6 @@ const ADMIN_EMAILS = [
   'amitkrai17@yestoryd.com',
   'engage@yestoryd.com',
 ];
-
-// ==================== THEME COLORS (Admin = Dark/Professional) ====================
-const THEME = {
-  primary: '#1a1a2e',
-  accent: '#ff0099',
-  gradientFrom: '#1a1a2e',
-  gradientTo: '#4a4a6a',
-};
 
 // ==================== NAVIGATION ITEMS ====================
 const NAV_ITEMS = [
@@ -81,6 +75,7 @@ const NAV_ITEMS = [
     description: 'Review coach applications',
     ready: true,
   },
+  // ===== REVENUE SPLIT ITEMS =====
   {
     label: 'Revenue Settings',
     href: '/admin/settings/revenue',
@@ -102,6 +97,7 @@ const NAV_ITEMS = [
     description: 'Track TDS deductions',
     ready: true,
   },
+  // ===== END REVENUE SPLIT ITEMS =====
   {
     label: 'Enrollments',
     href: '/admin/enrollments',
@@ -145,6 +141,14 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
+  // Activity tracking - tracks login and page views automatically
+  useActivityTracker({
+    userType: 'admin',
+    userEmail: user?.email || null,
+    enabled: !!user && isAuthorized,
+  });
+
+  // Close sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
@@ -208,12 +212,12 @@ export default function AdminLayout({
   // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <p className="text-slate-400">Verifying access...</p>
+          <p className="text-slate-500">Verifying access...</p>
         </div>
       </div>
     );
@@ -227,7 +231,7 @@ export default function AdminLayout({
   // Unauthorized
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-500" />
@@ -248,7 +252,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex">
       {/* ==================== MOBILE MENU BUTTON ==================== */}
       <button
         onClick={() => setSidebarOpen(true)}
@@ -267,37 +271,33 @@ export default function AdminLayout({
 
       {/* ==================== SIDEBAR ==================== */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-72 bg-[#1a1a2e] 
+        fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 
         transform transition-transform duration-300 ease-in-out
         lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-white/10">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <Link href="/admin" className="flex items-center gap-3">
             <Image
-              src="/images/logo.png"
+              src="/yestoryd-logo.png"
               alt="Yestoryd"
-              width={120}
+              width={32}
               height={32}
-              className="h-8 w-auto brightness-0 invert"
+              className="rounded-lg"
             />
+            <span className="font-bold text-slate-900">Admin Portal</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 hover:bg-white/10 rounded-lg"
+            className="lg:hidden p-1 hover:bg-slate-100 rounded-lg"
           >
-            <X className="w-5 h-5 text-white/70" />
+            <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
-        {/* Portal Label */}
-        <div className="px-6 py-3 border-b border-white/10">
-          <p className="text-xs text-[#ff0099] font-semibold uppercase tracking-wider">Admin Portal</p>
-        </div>
-
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || 
               (item.href !== '/admin' && pathname.startsWith(item.href));
@@ -312,45 +312,45 @@ export default function AdminLayout({
                 }}
                 className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#ff0099]/20 to-[#7b008b]/20 text-white'
+                    ? 'bg-blue-50 text-blue-700'
                     : item.ready
-                    ? 'text-white/70 hover:bg-white/5 hover:text-white'
-                    : 'text-white/30 cursor-not-allowed'
+                    ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    : 'text-slate-400 cursor-not-allowed'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-[#ff0099]' : item.ready ? 'text-white/50 group-hover:text-white/70' : 'text-white/20'}`} />
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.ready ? 'text-slate-400 group-hover:text-slate-600' : 'text-slate-300'}`} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className={`font-medium text-sm ${isActive ? 'text-white' : ''}`}>{item.label}</p>
+                    <p className={`font-medium ${isActive ? 'text-blue-700' : ''}`}>{item.label}</p>
                     {!item.ready && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded font-medium">
+                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
                         Soon
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-white/40">{item.description}</p>
+                  <p className="text-xs text-slate-400">{item.description}</p>
                 </div>
-                {isActive && <ChevronRight className="w-4 h-4 text-[#ff0099]" />}
+                {isActive && <ChevronRight className="w-4 h-4 text-blue-400" />}
               </Link>
             );
           })}
         </nav>
 
         {/* User Profile */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-[#1a1a2e]">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 bg-white">
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
               {user?.email?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-white truncate text-sm">
+              <p className="font-medium text-slate-900 truncate text-sm">
                 {user?.user_metadata?.full_name || 'Admin'}
               </p>
-              <p className="text-xs text-white/50 truncate">{user?.email}</p>
+              <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>
             <button
               onClick={handleSignOut}
-              className="p-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0"
+              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
               title="Sign out"
             >
               <LogOut className="w-4 h-4" />
@@ -367,7 +367,7 @@ export default function AdminLayout({
       </main>
 
       {/* ==================== rAI CHAT WIDGET ==================== */}
-      {user && (
+      {user && isAuthorized && (
         <ChatWidget
           userRole="admin"
           userEmail={user.email}

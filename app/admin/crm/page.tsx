@@ -1,5 +1,5 @@
 // file: app/admin/crm/page.tsx
-// Admin CRM with Lead Source Visibility
+// Admin CRM with Lead Source Visibility + Support Tickets Tab
 // Shows source column: 🟢 Yestoryd or 👤 Coach (Name)
 // Filter by source, coaches can see their referrals
 
@@ -9,8 +9,9 @@ import { useState, useEffect } from 'react';
 import { 
   Search, Filter, Phone, Mail, MessageCircle, Calendar,
   ChevronDown, X, Users, TrendingUp, Clock, CheckCircle,
-  UserPlus, Eye, ExternalLink, RefreshCw
+  UserPlus, Eye, ExternalLink, RefreshCw, HelpCircle
 } from 'lucide-react';
+import SupportTicketsTab from '@/components/admin/SupportTicketsTab';
 
 // Types
 interface Coach {
@@ -476,7 +477,7 @@ function DiscoveryCallModal({
 
 // Main Page Component
 export default function AdminCRMPage() {
-  const [activeTab, setActiveTab] = useState<'leads' | 'discovery'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'discovery' | 'support'>('leads');
   
   // Leads state
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -491,6 +492,10 @@ export default function AdminCRMPage() {
   const [selectedCall, setSelectedCall] = useState<DiscoveryCall | null>(null);
   const [discoveryFilter, setDiscoveryFilter] = useState('all');
   
+  // Support tickets state
+  const [supportTicketCount, setSupportTicketCount] = useState(0);
+  const [adminEmail, setAdminEmail] = useState('');
+  
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -500,7 +505,38 @@ export default function AdminCRMPage() {
   useEffect(() => {
     fetchData();
     fetchDiscoveryCalls();
+    fetchSupportTicketCount();
+    fetchAdminEmail();
   }, [sourceFilter, statusFilter]);
+
+  const fetchAdminEmail = async () => {
+    try {
+      // Get from Supabase auth
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setAdminEmail(user.email);
+      }
+    } catch (e) {
+      console.error('Error getting admin email:', e);
+    }
+  };
+
+  const fetchSupportTicketCount = async () => {
+    try {
+      const res = await fetch('/api/support/tickets?email=admin&admin=true&status=open');
+      if (res.ok) {
+        const data = await res.json();
+        setSupportTicketCount(data.count || 0);
+      }
+    } catch (e) {
+      console.error('Error fetching support tickets count:', e);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -564,7 +600,7 @@ export default function AdminCRMPage() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">Lead Management</h1>
             <button 
-              onClick={() => { fetchData(); fetchDiscoveryCalls(); }}
+              onClick={() => { fetchData(); fetchDiscoveryCalls(); fetchSupportTicketCount(); }}
               className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             >
               <RefreshCw className="w-4 h-4" />
@@ -593,6 +629,22 @@ export default function AdminCRMPage() {
               }`}
             >
               Discovery Calls ({discoveryCalls.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('support')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${
+                activeTab === 'support' 
+                  ? 'bg-pink-100 text-pink-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <HelpCircle className="w-4 h-4" />
+              Support
+              {supportTicketCount > 0 && (
+                <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                  {supportTicketCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -782,7 +834,7 @@ export default function AdminCRMPage() {
               )}
             </div>
           </>
-        ) : (
+        ) : activeTab === 'discovery' ? (
           /* Discovery Calls Tab */
           <>
             {/* Filter Tabs */}
@@ -842,6 +894,9 @@ export default function AdminCRMPage() {
               )}
             </div>
           </>
+        ) : (
+          /* Support Tickets Tab */
+          <SupportTicketsTab adminEmail={adminEmail} />
         )}
       </div>
 

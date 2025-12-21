@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import ParentLayout from '@/components/parent/ParentLayout';
+import SupportWidget from '@/components/support/SupportWidget';
 import {
   Calendar,
   Clock,
@@ -53,6 +54,7 @@ export default function ParentDashboardPage() {
   const [childId, setChildId] = useState<string | null>(null);
   const [childName, setChildName] = useState('');
   const [parentEmail, setParentEmail] = useState('');
+  const [parentName, setParentName] = useState('');
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [completedSessions, setCompletedSessions] = useState<number>(0);
@@ -81,6 +83,10 @@ export default function ParentDashboardPage() {
         .select('id, email, name')
         .eq('email', user.email)
         .maybeSingle();
+
+      if (parentData?.name) {
+        setParentName(parentData.name);
+      }
 
       let enrolledChild = null;
 
@@ -405,6 +411,17 @@ export default function ParentDashboardPage() {
               </a>
             </div>
           </div>
+        </div>
+
+        {/* Support Widget */}
+        <div className="mt-6">
+          <SupportWidget
+            userType="parent"
+            userEmail={parentEmail}
+            userName={parentName}
+            childName={childName}
+            variant="card"
+          />
         </div>
 
         {/* rAI Tip */}
