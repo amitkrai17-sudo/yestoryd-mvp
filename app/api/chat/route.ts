@@ -1,10 +1,33 @@
-// FILE: app/api/chat/route.ts
-// PURPOSE: RAG-powered chat API for rAI
-// VERSION: v5 - Expanded to handle coach, payment, enrollment, and program queries
+// file: app/api/chat/route.ts
+// rAI v2.0 - Intelligent Chat API with Tier 0/1 Classification, Hybrid Search, and Caching
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
+import {
+  ChatRequest,
+  ChatResponse,
+  Intent,
+  UserRole,
+  ChildWithCache,
+  Coach,
+  ScheduledSession,
+} from '@/lib/rai/types';
+import {
+  classifyIntent,
+  isRecentSessionQuery,
+} from '@/lib/rai/intent-classifier';
+import {
+  hybridSearch,
+  getSessionCache,
+  formatCachedSummary,
+  formatEventsForContext,
+} from '@/lib/rai/hybrid-search';
+import {
+  getSystemPrompt,
+  OPERATIONAL_RESPONSES,
+  OFF_LIMITS_RESPONSES,
+} from '@/lib/rai/prompts';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -13,400 +36,626 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-interface ChatRequest {
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
-  childId?: string;
-  userRole: 'parent' | 'coach' | 'admin';
-  userEmail: string;
-}
-
-// Get child details with coach info
-async function getChildDetails(childId: string) {
-  const { data: child } = await supabase
-    .from('children')
-    .select('*')
-    .eq('id', childId)
-    .single();
-
-  return child;
-}
-
-// Get coach details separately
-async function getCoachDetails(coachId: string | null) {
-  if (!coachId) return null;
-  
-  const { data: coach } = await supabase
-    .from('coaches')
-    .select('id, name, email, phone')
-    .eq('id', coachId)
-    .single();
-
-  return coach;
-}
-
-// Get enrollment details
-async function getEnrollmentDetails(childId: string) {
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('*')
-    .eq('child_id', childId)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return enrollment;
-}
-
-// Get payment details
-async function getPaymentDetails(childId: string) {
-  const { data: payment } = await supabase
-    .from('payments')
-    .select('*')
-    .eq('child_id', childId)
-    .eq('status', 'captured')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return payment;
-}
-
-// Get relevant learning events
-async function getRelevantEvents(childId: string, limit: number = 10) {
-  try {
-    const { data: events } = await supabase
-      .from('learning_events')
-      .select('*')
-      .eq('child_id', childId)
-      .order('event_date', { ascending: false })
-      .limit(limit);
-
-    return events || [];
-  } catch (error) {
-    console.error('Error fetching events:', error);
-    return [];
-  }
-}
-
-// Get session history
-async function getSessionHistory(childId: string, limit: number = 10) {
-  const { data: sessions } = await supabase
-    .from('scheduled_sessions')
-    .select('*')
-    .eq('child_id', childId)
-    .order('scheduled_date', { ascending: true })
-    .limit(limit);
-
-  return sessions || [];
-}
-
-// Format learning events for context
-function formatEventsForContext(events: any[]): string {
-  if (!events || events.length === 0) {
-    return 'LEARNING_EVENTS: None recorded yet';
-  }
-
-  const formattedEvents = events.map((event) => {
-    const date = new Date(event.event_date || event.created_at).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-    const data = event.data || {};
-
-    switch (event.event_type) {
-      case 'assessment':
-        return `ASSESSMENT (${date}): Score=${data.score || data.reading_score}/10, WPM=${data.wpm || 'N/A'}, Fluency=${data.fluency_rating || 'N/A'}`;
-
-      case 'session':
-        return `SESSION (${date}): ${data.session_title || 'Coaching'}, Focus=${data.focus_area || 'General'}, Engagement=${data.engagement_level || 'N/A'}`;
-
-      default:
-        return `${event.event_type?.toUpperCase()} (${date}): ${event.ai_summary || 'No details'}`;
-    }
-  });
-
-  return 'LEARNING_EVENTS:\n' + formattedEvents.join('\n');
-}
-
-// Format sessions for context
-function formatSessionsForContext(sessions: any[]): string {
-  if (!sessions || sessions.length === 0) {
-    return 'SCHEDULED_SESSIONS: EMPTY (No sessions scheduled)';
-  }
-
-  const now = new Date();
-  const upcoming = sessions.filter(s => new Date(s.scheduled_date) >= now);
-  const completed = sessions.filter(s => new Date(s.scheduled_date) < now).length;
-
-  if (upcoming.length === 0) {
-    return `SCHEDULED_SESSIONS: ${completed} completed, 0 upcoming (No future sessions scheduled)`;
-  }
-
-  const upcomingList = upcoming.slice(0, 3).map((s) => {
-    const date = new Date(s.scheduled_date).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-    const time = new Date(s.scheduled_date).toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    return `- ${date} at ${time}: ${s.title || s.session_type || 'Session'}`;
-  }).join('\n');
-
-  return `SCHEDULED_SESSIONS: ${completed} completed, ${upcoming.length} upcoming\n${upcomingList}`;
-}
-
-// Format coach info
-function formatCoachInfo(coach: any): string {
-  if (!coach) {
-    return 'COACH: Not assigned';
-  }
-
-  return `COACH_INFO:
-- Name: ${coach.name || 'Rucha'}
-- Email: ${coach.email || 'rucha@yestoryd.com'}
-- WhatsApp: ${coach.phone || '918976287997'}`;
-}
-
-// Format enrollment info
-function formatEnrollmentInfo(enrollment: any, payment: any): string {
-  if (!enrollment) {
-    return 'ENROLLMENT: Not found';
-  }
-
-  const startDate = enrollment.program_start 
-    ? new Date(enrollment.program_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    : 'N/A';
-  const endDate = enrollment.program_end
-    ? new Date(enrollment.program_end).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    : 'N/A';
-  
-  const amount = payment?.amount || enrollment?.amount || 'N/A';
-  const amountDisplay = amount !== 'N/A' ? `₹${amount}` : 'Not available';
-
-  return `ENROLLMENT_INFO:
-- Status: ${enrollment.status || 'active'}
-- Program: 3-Month Reading Coaching
-- Amount Paid: ${amountDisplay}
-- Start Date: ${startDate}
-- End Date: ${endDate}
-- Sessions Included: 9 (6 coaching + 3 parent check-ins)`;
-}
-
-// Static Yestoryd program knowledge (no pricing - comes from database)
-const YESTORYD_KNOWLEDGE = `
-YESTORYD_PROGRAM_INFO:
-- Program: 3-Month 1:1 Reading Coaching for children aged 0-12
-- Sessions: 9 total (6 coaching sessions + 3 parent check-ins)
-- Session Duration: 30-45 minutes each
-- Master Key: Enrolled families get FREE access to e-learning, storytelling workshops, and group classes
-- AI Assessment: FREE 5-minute reading assessment available at yestoryd.com
-- Platform: Sessions via Google Meet, progress tracked in Parent Dashboard
-
-SUPPORT_INFO:
-- WhatsApp Support: 918976287997
-- Email: engage@yestoryd.com
-- Website: www.yestoryd.com
-- Reschedule: Contact coach on WhatsApp or use Sessions page
-- Dashboard: Track progress, view sessions, chat with rAI
-`;
-
-// Build system prompt
-function buildSystemPrompt(
-  userRole: 'parent' | 'coach' | 'admin',
-  child: any,
-  eventsContext: string,
-  sessionsContext: string,
-  coachInfo: string,
-  enrollmentInfo: string,
-  hasUpcomingSessions: boolean
-): string {
-  const childName = child?.child_name || child?.name || 'your child';
-  const coachName = child?.coaches?.name || 'Rucha';
-  const coachPhone = child?.coaches?.phone || '918976287997';
-
-  if (userRole === 'parent') {
-    return `You are rAI AI, the friendly assistant for Yestoryd reading platform. Speaking with parent of ${childName}.
-
-=== DATABASE RECORDS ===
-${eventsContext}
-
-${sessionsContext}
-
-${coachInfo}
-
-${enrollmentInfo}
-
-${YESTORYD_KNOWLEDGE}
-=== END DATA ===
-
-RULES (MUST FOLLOW):
-
-1. NO MARKDOWN. No ** no * no - lists. Plain text sentences only.
-
-2. MAX 3 sentences for simple questions. MAX 5 for complex.
-
-3. ${hasUpcomingSessions ? 'Use session dates from SCHEDULED_SESSIONS only.' : 'No sessions scheduled. Say: "No sessions scheduled yet. Contact Coach ' + coachName + ' on WhatsApp (' + coachPhone + ') to schedule."'}
-
-4. For coach questions: Give name, WhatsApp number, and email from COACH_INFO.
-
-5. For payment/enrollment questions: Use data from ENROLLMENT_INFO only.
-
-6. For program questions (Master Key, what's included, etc.): Use YESTORYD_PROGRAM_INFO.
-
-7. For support/contact questions: Use SUPPORT_INFO.
-
-8. NEVER invent dates, amounts, or contact details not shown above.
-
-9. Be warm, helpful, and brief.
-
-EXAMPLE RESPONSES:
-
-Q: "Who is my coach?"
-A: "Your coach is ${coachName}. You can reach her on WhatsApp at ${coachPhone} or email at ${child?.coaches?.email || 'rucha@yestoryd.com'}."
-
-Q: "How much did I pay?"
-A: "You paid [amount from ENROLLMENT_INFO] for the 3-month reading coaching program which includes 9 sessions and Master Key access to all other services."
-
-Q: "What is Master Key?"
-A: "Master Key means enrolled families get FREE access to all Yestoryd services including e-learning modules, storytelling workshops, and group classes."
-
-Q: "How do I reschedule?"
-A: "You can reschedule by contacting Coach ${coachName} on WhatsApp at ${coachPhone} or through the Sessions page in your dashboard."`;
-  }
-
-  if (userRole === 'coach') {
-    return `rAI for coach. Student: ${childName}
-DATA: ${eventsContext} | ${sessionsContext} | ${enrollmentInfo}
-Rules: No markdown, max 4 sentences, only use data shown.`;
-  }
-
-  return `rAI for admin. Child: ${childName}
-DATA: ${eventsContext} | ${sessionsContext} | ${enrollmentInfo}
-Brief, factual responses only.`;
-}
-
-// Validate user access
-async function validateAccess(
-  userEmail: string,
-  userRole: string,
-  childId: string
-): Promise<boolean> {
-  if (userRole === 'admin') return true;
-
-  if (userRole === 'parent') {
-    const { data: child } = await supabase
-      .from('children')
-      .select('parent_email')
-      .eq('id', childId)
-      .single();
-    return child?.parent_email === userEmail;
-  }
-
-  if (userRole === 'coach') {
-    const { data: coach } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('email', userEmail)
-      .single();
-    if (!coach) return false;
-
-    const { data: child } = await supabase
-      .from('children')
-      .select('assigned_coach_id')
-      .eq('id', childId)
-      .single();
-    return child?.assigned_coach_id === coach.id;
-  }
-
-  return false;
-}
+// ============================================================
+// MAIN API HANDLER
+// ============================================================
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     const body: ChatRequest = await request.json();
-    const { messages, childId, userRole, userEmail } = body;
+    const { message, userRole, userId, userEmail, childId, chatHistory } = body;
 
-    if (!messages || messages.length === 0) {
-      return NextResponse.json({ error: 'Messages required' }, { status: 400 });
+    // Validate required fields
+    if (!message || message.trim().length === 0) {
+      return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
-
     if (!userEmail || !userRole) {
       return NextResponse.json({ error: 'User context required' }, { status: 400 });
     }
 
-    let eventsContext = 'LEARNING_EVENTS: None';
-    let sessionsContext = 'SCHEDULED_SESSIONS: EMPTY';
-    let coachInfo = 'COACH: Not assigned';
-    let enrollmentInfo = 'ENROLLMENT: Not found';
-    let child = null;
-    let hasUpcomingSessions = false;
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 1: INTENT CLASSIFICATION (Tier 0 → Tier 1)
+    // ═══════════════════════════════════════════════════════════════
+    const { intent, entities, tier0Match } = await classifyIntent(message, userRole);
+    
+    console.log(`🎯 Intent: ${intent} (Tier ${tier0Match ? '0' : '1'})`);
 
-    if (childId) {
-      const hasAccess = await validateAccess(userEmail, userRole, childId);
-      if (!hasAccess) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-      }
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 2: ROUTE TO APPROPRIATE HANDLER
+    // ═══════════════════════════════════════════════════════════════
+    let response: ChatResponse;
 
-      // Fetch all data in parallel
-      child = await getChildDetails(childId);
-      const [events, sessions, enrollment, payment, coach] = await Promise.all([
-        getRelevantEvents(childId, 10),
-        getSessionHistory(childId, 10),
-        getEnrollmentDetails(childId),
-        getPaymentDetails(childId),
-        getCoachDetails(child?.coach_id),
-      ]);
-
-      eventsContext = formatEventsForContext(events);
-      
-      const now = new Date();
-      hasUpcomingSessions = sessions.some(s => new Date(s.scheduled_date) >= now);
-      sessionsContext = formatSessionsForContext(sessions);
-      
-      coachInfo = formatCoachInfo(coach);
-      enrollmentInfo = formatEnrollmentInfo(enrollment, payment);
+    switch (intent) {
+      case 'LEARNING':
+        response = await handleLearning(message, userRole, userEmail, childId, chatHistory);
+        break;
+        
+      case 'OPERATIONAL':
+        response = await handleOperational(message, userRole, userEmail, childId);
+        break;
+        
+      case 'SCHEDULE':
+        response = await handleSchedule(message, userRole, userEmail, childId);
+        break;
+        
+      case 'OFF_LIMITS':
+        response = handleOffLimits(userRole, childId);
+        break;
+        
+      default:
+        response = await handleLearning(message, userRole, userEmail, childId, chatHistory);
     }
 
-    const systemPrompt = buildSystemPrompt(
-      userRole, 
-      child, 
-      eventsContext, 
-      sessionsContext, 
-      coachInfo, 
-      enrollmentInfo,
-      hasUpcomingSessions
-    );
+    // Add debug info
+    response.intent = intent;
+    response.debug = {
+      ...response.debug,
+      tier0Match,
+      latencyMs: Date.now() - startTime,
+    };
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    return NextResponse.json(response);
 
-    const lastMessage = messages[messages.length - 1].content;
-
-    const result = await model.generateContent({
-      contents: [
-        { 
-          role: 'user', 
-          parts: [{ text: `${systemPrompt}\n\nParent asks: ${lastMessage}` }] 
-        },
-      ],
-      generationConfig: {
-        maxOutputTokens: 120,
-        temperature: 0.2,
-      },
-    });
-
-    const response = result.response.text();
-
-    return NextResponse.json({ response });
   } catch (error: any) {
-    console.error('Chat API error:', error);
+    console.error('rAI Chat API error:', error);
     return NextResponse.json(
       { error: error.message || 'Chat failed' },
       { status: 500 }
     );
   }
+}
+
+// ============================================================
+// LEARNING HANDLER (Cache → Hybrid RAG)
+// ============================================================
+
+async function handleLearning(
+  message: string,
+  userRole: UserRole,
+  userEmail: string,
+  childId?: string,
+  chatHistory?: any[]
+): Promise<ChatResponse> {
+  
+  // ─────────────────────────────────────────────────────────────────
+  // STEP 1: Get child context (with access validation)
+  // ─────────────────────────────────────────────────────────────────
+  let child: ChildWithCache | null = null;
+  let coach: Coach | null = null;
+  let children: { id: string; name: string }[] = [];
+
+  if (userRole === 'parent') {
+    // Get parent's children
+    const { data: parentChildren } = await supabase
+      .from('children')
+      .select('id, name, child_name, age, parent_email, assigned_coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
+      .eq('parent_email', userEmail)
+      .in('status', ['enrolled', 'assessment_complete']);
+
+    if (!parentChildren || parentChildren.length === 0) {
+      return {
+        response: "I don't see any enrolled children for your account. If you've recently enrolled, it may take a few minutes to update. For help, contact support at 918976287997.",
+        intent: 'LEARNING',
+        source: 'sql',
+      };
+    }
+
+    children = parentChildren.map(c => ({ id: c.id, name: c.child_name || c.name }));
+
+    // If childId provided, validate access
+    if (childId) {
+      child = parentChildren.find(c => c.id === childId) as ChildWithCache || null;
+      if (!child) {
+        return {
+          response: "I don't have access to that child's information.",
+          intent: 'LEARNING',
+          source: 'redirect',
+        };
+      }
+    } else if (parentChildren.length === 1) {
+      // Auto-select if only one child
+      child = parentChildren[0] as ChildWithCache;
+    } else {
+      // Multiple children - ask for clarification
+      return {
+        response: `I see you have ${parentChildren.length} children enrolled: ${children.map(c => c.name).join(' and ')}. Which child are you asking about?`,
+        intent: 'LEARNING',
+        source: 'sql',
+        needsChildSelection: true,
+        children,
+      };
+    }
+
+    // Get coach info
+    if (child?.assigned_coach_id) {
+      const { data: coachData } = await supabase
+        .from('coaches')
+        .select('id, name, email, phone')
+        .eq('id', child.assigned_coach_id)
+        .single();
+      coach = coachData;
+    }
+  } else if (userRole === 'coach') {
+    // Coach viewing their student
+    if (childId) {
+      const { data: childData } = await supabase
+        .from('children')
+        .select('id, name, child_name, age, parent_email, assigned_coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
+        .eq('id', childId)
+        .single();
+      
+      // Validate coach has access
+      const { data: coachData } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('email', userEmail)
+        .single();
+
+      if (childData?.assigned_coach_id !== coachData?.id) {
+        return {
+          response: "I can only provide information about students assigned to you.",
+          intent: 'LEARNING',
+          source: 'redirect',
+        };
+      }
+
+      child = childData as ChildWithCache;
+    }
+  }
+
+  const childName = child?.child_name || child?.name || 'your child';
+
+  // ─────────────────────────────────────────────────────────────────
+  // STEP 2: CHECK CACHE (Parent only, for recent session queries)
+  // ─────────────────────────────────────────────────────────────────
+  if (userRole === 'parent' && child && isRecentSessionQuery(message)) {
+    const cache = await getSessionCache(child.id);
+    
+    if (cache.isFresh && cache.summary) {
+      console.log('📦 Cache hit! Returning cached summary');
+      return {
+        response: formatCachedSummary(cache.summary, cache.date!, childName),
+        intent: 'LEARNING',
+        source: 'cache',
+        debug: { cacheHit: true, eventsRetrieved: 0, tier0Match: false, latencyMs: 0 },
+      };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // STEP 3: HYBRID SEARCH (Vector + SQL filters)
+  // ─────────────────────────────────────────────────────────────────
+  const searchResult = await hybridSearch({
+    query: message,
+    childId: child?.id,
+    coachId: userRole === 'coach' ? await getCoachId(userEmail) : null,
+    userRole,
+    limit: 15,
+  });
+
+  const eventsContext = formatEventsForContext(searchResult.events);
+
+  // ─────────────────────────────────────────────────────────────────
+  // STEP 4: GENERATE RESPONSE
+  // ─────────────────────────────────────────────────────────────────
+  const systemPrompt = getSystemPrompt(
+    userRole,
+    childName,
+    eventsContext,
+    coach ? { name: coach.name, phone: coach.phone || '918976287997', email: coach.email } : null
+  );
+
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+
+  // Build conversation context
+  const conversationContext = chatHistory?.slice(-6).map(msg => 
+    `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
+  ).join('\n') || '';
+
+  const prompt = conversationContext 
+    ? `${systemPrompt}\n\nConversation so far:\n${conversationContext}\n\nUser: ${message}`
+    : `${systemPrompt}\n\nUser: ${message}`;
+
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: userRole === 'coach' ? 400 : 200,
+      temperature: 0.3,
+    },
+  });
+
+  const response = result.response.text();
+
+  return {
+    response,
+    intent: 'LEARNING',
+    source: 'rag',
+    debug: {
+      cacheHit: false,
+      eventsRetrieved: searchResult.events.length,
+      tier0Match: false,
+      latencyMs: 0,
+    },
+  };
+}
+
+// ============================================================
+// OPERATIONAL HANDLER (Direct SQL)
+// ============================================================
+
+async function handleOperational(
+  message: string,
+  userRole: UserRole,
+  userEmail: string,
+  childId?: string
+): Promise<ChatResponse> {
+  const lowerMessage = message.toLowerCase();
+
+  // ─────────────────────────────────────────────────────────────────
+  // PROGRAM INFO
+  // ─────────────────────────────────────────────────────────────────
+  if (/what is master key|master key/i.test(lowerMessage)) {
+    return {
+      response: OPERATIONAL_RESPONSES.master_key,
+      intent: 'OPERATIONAL',
+      source: 'sql',
+    };
+  }
+
+  if (/program|what('?s| is) included|how many sessions/i.test(lowerMessage)) {
+    return {
+      response: OPERATIONAL_RESPONSES.program_info,
+      intent: 'OPERATIONAL',
+      source: 'sql',
+    };
+  }
+
+  if (/reschedule|change.*session|move.*session/i.test(lowerMessage)) {
+    // Get coach info
+    const coach = await getCoachForParent(userEmail);
+    return {
+      response: OPERATIONAL_RESPONSES.reschedule(coach?.name || 'your coach', coach?.phone || '918976287997'),
+      intent: 'OPERATIONAL',
+      source: 'sql',
+    };
+  }
+
+  if (/support|contact|help.*number|whatsapp/i.test(lowerMessage)) {
+    return {
+      response: OPERATIONAL_RESPONSES.support,
+      intent: 'OPERATIONAL',
+      source: 'sql',
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // COACH INFO (for parents)
+  // ─────────────────────────────────────────────────────────────────
+  if (/who is my coach|coach('?s)? (name|email|phone|contact)/i.test(lowerMessage)) {
+    const coach = await getCoachForParent(userEmail);
+    if (coach) {
+      return {
+        response: `Your coach is ${coach.name}. You can reach ${coach.name.split(' ')[0]} on WhatsApp at ${coach.phone || '918976287997'} or email at ${coach.email}.`,
+        intent: 'OPERATIONAL',
+        source: 'sql',
+      };
+    } else {
+      return {
+        response: "I couldn't find your assigned coach. Please contact support at 918976287997 for assistance.",
+        intent: 'OPERATIONAL',
+        source: 'sql',
+      };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // STUDENT COUNT (for coaches)
+  // ─────────────────────────────────────────────────────────────────
+  if (userRole === 'coach' && /how many (children|students|kids)/i.test(lowerMessage)) {
+    const coachId = await getCoachId(userEmail);
+    const { count } = await supabase
+      .from('children')
+      .select('*', { count: 'exact', head: true })
+      .eq('assigned_coach_id', coachId)
+      .eq('status', 'enrolled');
+    
+    return {
+      response: `You currently have ${count || 0} active student${count !== 1 ? 's' : ''} enrolled.`,
+      intent: 'OPERATIONAL',
+      source: 'sql',
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // SESSION COUNT (for coaches)
+  // ─────────────────────────────────────────────────────────────────
+  if (userRole === 'coach' && /how many sessions|sessions? (completed|this month)/i.test(lowerMessage)) {
+    const coachId = await getCoachId(userEmail);
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { data: sessions } = await supabase
+      .from('scheduled_sessions')
+      .select('status')
+      .eq('coach_id', coachId)
+      .gte('scheduled_date', startOfMonth.toISOString().split('T')[0]);
+
+    const completed = sessions?.filter(s => s.status === 'completed').length || 0;
+    const total = sessions?.length || 0;
+
+    return {
+      response: `This month you've completed ${completed} session${completed !== 1 ? 's' : ''} out of ${total} scheduled.`,
+      intent: 'OPERATIONAL',
+      source: 'sql',
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // PAYMENT STATUS (for parents)
+  // ─────────────────────────────────────────────────────────────────
+  if (/payment|enrollment|subscription/i.test(lowerMessage)) {
+    const { data: children } = await supabase
+      .from('children')
+      .select('child_name, status, enrolled_at, sessions_completed, total_sessions')
+      .eq('parent_email', userEmail)
+      .eq('status', 'enrolled');
+
+    if (children && children.length > 0) {
+      const child = children[0];
+      const enrolledDate = child.enrolled_at 
+        ? new Date(child.enrolled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'recently';
+      
+      return {
+        response: `${child.child_name}'s enrollment is active. Enrolled on ${enrolledDate}. Progress: ${child.sessions_completed || 0}/${child.total_sessions || 9} sessions completed. You have Master Key access to all Yestoryd services.`,
+        intent: 'OPERATIONAL',
+        source: 'sql',
+      };
+    } else {
+      return {
+        response: "I couldn't find an active enrollment for your account. If you've recently paid, it may take a few minutes to update. Contact support at 918976287997 if you need help.",
+        intent: 'OPERATIONAL',
+        source: 'sql',
+      };
+    }
+  }
+
+  // Default operational response
+  return {
+    response: "I'm not sure about that. For program information, pricing, or support, please contact us on WhatsApp at 918976287997.",
+    intent: 'OPERATIONAL',
+    source: 'sql',
+  };
+}
+
+// ============================================================
+// SCHEDULE HANDLER (Direct SQL)
+// ============================================================
+
+async function handleSchedule(
+  message: string,
+  userRole: UserRole,
+  userEmail: string,
+  childId?: string
+): Promise<ChatResponse> {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  if (userRole === 'parent') {
+    // Get parent's children with sessions
+    const { data: children } = await supabase
+      .from('children')
+      .select('id, child_name')
+      .eq('parent_email', userEmail)
+      .eq('status', 'enrolled');
+
+    if (!children || children.length === 0) {
+      return {
+        response: "I don't see any enrolled children for your account.",
+        intent: 'SCHEDULE',
+        source: 'sql',
+      };
+    }
+
+    const childIds = children.map(c => c.id);
+
+    // Get upcoming sessions
+    const { data: sessions } = await supabase
+      .from('scheduled_sessions')
+      .select(`
+        scheduled_date,
+        scheduled_time,
+        session_type,
+        google_meet_link,
+        child_id,
+        coach:coaches(name)
+      `)
+      .in('child_id', childIds)
+      .gte('scheduled_date', today)
+      .eq('status', 'scheduled')
+      .order('scheduled_date', { ascending: true })
+      .order('scheduled_time', { ascending: true })
+      .limit(5);
+
+    if (!sessions || sessions.length === 0) {
+      const coach = await getCoachForParent(userEmail);
+      return {
+        response: `No upcoming sessions scheduled yet. To book a session, contact Coach ${coach?.name || 'your coach'} on WhatsApp at ${coach?.phone || '918976287997'}.`,
+        intent: 'SCHEDULE',
+        source: 'sql',
+      };
+    }
+
+    // Format response
+    const nextSession = sessions[0];
+    const child = children.find(c => c.id === nextSession.child_id);
+    const sessionDate = new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+    });
+    
+    let response = `${child?.child_name}'s next session is on ${sessionDate} at ${formatTime(nextSession.scheduled_time)} with Coach ${(nextSession as any).coach?.name || 'your coach'}.`;
+    
+    if (nextSession.google_meet_link) {
+      response += ` Meeting link: ${nextSession.google_meet_link}`;
+    }
+
+    if (sessions.length > 1) {
+      response += ` You have ${sessions.length - 1} more session${sessions.length > 2 ? 's' : ''} scheduled after that.`;
+    }
+
+    return {
+      response,
+      intent: 'SCHEDULE',
+      source: 'sql',
+    };
+
+  } else if (userRole === 'coach') {
+    const coachId = await getCoachId(userEmail);
+
+    // Today's schedule
+    if (/today/i.test(message)) {
+      const { data: sessions } = await supabase
+        .from('scheduled_sessions')
+        .select(`
+          scheduled_time,
+          session_type,
+          google_meet_link,
+          child:children(child_name)
+        `)
+        .eq('coach_id', coachId)
+        .eq('scheduled_date', today)
+        .eq('status', 'scheduled')
+        .order('scheduled_time', { ascending: true });
+
+      if (!sessions || sessions.length === 0) {
+        return {
+          response: "You don't have any sessions scheduled for today.",
+          intent: 'SCHEDULE',
+          source: 'sql',
+        };
+      }
+
+      const sessionList = sessions.map(s => 
+        `${formatTime(s.scheduled_time)} - ${(s as any).child?.child_name} (${s.session_type})`
+      ).join(', ');
+
+      return {
+        response: `Today you have ${sessions.length} session${sessions.length > 1 ? 's' : ''}: ${sessionList}`,
+        intent: 'SCHEDULE',
+        source: 'sql',
+      };
+    }
+
+    // General next session query
+    const { data: sessions } = await supabase
+      .from('scheduled_sessions')
+      .select(`
+        scheduled_date,
+        scheduled_time,
+        session_type,
+        google_meet_link,
+        child:children(child_name)
+      `)
+      .eq('coach_id', coachId)
+      .gte('scheduled_date', today)
+      .eq('status', 'scheduled')
+      .order('scheduled_date', { ascending: true })
+      .order('scheduled_time', { ascending: true })
+      .limit(5);
+
+    if (!sessions || sessions.length === 0) {
+      return {
+        response: "You don't have any upcoming sessions scheduled.",
+        intent: 'SCHEDULE',
+        source: 'sql',
+      };
+    }
+
+    const next = sessions[0];
+    const sessionDate = new Date(next.scheduled_date).toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+    });
+
+    return {
+      response: `Your next session is with ${(next as any).child?.child_name} on ${sessionDate} at ${formatTime(next.scheduled_time)}. You have ${sessions.length} total upcoming session${sessions.length > 1 ? 's' : ''}.`,
+      intent: 'SCHEDULE',
+      source: 'sql',
+    };
+  }
+
+  return {
+    response: "I couldn't find schedule information. Please try again.",
+    intent: 'SCHEDULE',
+    source: 'sql',
+  };
+}
+
+// ============================================================
+// OFF_LIMITS HANDLER
+// ============================================================
+
+function handleOffLimits(userRole: UserRole, childId?: string): ChatResponse {
+  let response: string;
+
+  if (userRole === 'coach') {
+    response = OFF_LIMITS_RESPONSES.earnings_coach;
+  } else if (userRole === 'admin') {
+    response = OFF_LIMITS_RESPONSES.earnings_admin;
+  } else {
+    response = OFF_LIMITS_RESPONSES.unknown;
+  }
+
+  return {
+    response,
+    intent: 'OFF_LIMITS',
+    source: 'redirect',
+  };
+}
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+async function getCoachId(email: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('coaches')
+    .select('id')
+    .eq('email', email)
+    .single();
+  return data?.id || null;
+}
+
+async function getCoachForParent(parentEmail: string): Promise<Coach | null> {
+  const { data: child } = await supabase
+    .from('children')
+    .select('assigned_coach_id')
+    .eq('parent_email', parentEmail)
+    .eq('status', 'enrolled')
+    .limit(1)
+    .single();
+
+  if (!child?.assigned_coach_id) return null;
+
+  const { data: coach } = await supabase
+    .from('coaches')
+    .select('id, name, email, phone')
+    .eq('id', child.assigned_coach_id)
+    .single();
+
+  return coach;
+}
+
+function formatTime(time: string): string {
+  // Convert "14:30:00" to "2:30 PM"
+  const [hours, minutes] = time.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
 }

@@ -1,13 +1,13 @@
 // file: app/api/assessment/analyze/route.ts
-// UPDATED: Now saves child to database with lead_source tracking
+// rAI v2.0 - Assessment analysis with learning_events integration
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
+import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Supabase client with service role for database writes
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
       parentName,
       parentEmail,
       parentPhone,
-      // NEW: Referral tracking fields
       lead_source,
       lead_source_coach_id,
       referral_code_used,
@@ -67,13 +66,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate childName
     const name = childName?.trim() || 'the child';
     const age = parseInt(childAge) || 6;
     const strictness = getStrictnessForAge(age);
     const wordCount = passage.split(' ').length;
 
-    // Build the analysis prompt with STRICT name enforcement
+    // Build the analysis prompt
     const analysisPrompt = `
 Role: Expert Phonics & Reading Specialist.
 Task: Analyze audio of a ${age}-year-old child named "${name}" reading the passage below.
@@ -99,7 +97,9 @@ Generate a JSON response with this EXACT structure:
     "pronunciation_rating": (string: "Clear", "Slurred", "Inconsistent"),
     "completeness_percentage": (integer 0-100),
     "feedback": (string, 80-100 words, 4 sentences - MUST use the name "${name}"),
-    "errors": (list of specific words missed or misread)
+    "errors": (list of specific words missed or misread),
+    "strengths": (list of 2-3 things the child did well),
+    "areas_to_improve": (list of 2-3 specific areas for improvement)
 }
 
 Requirements for 'feedback' (4 sentences, 80-100 words total):
@@ -112,13 +112,10 @@ CRITICAL: Use ONLY the name "${name}" in your response. Do not use any other nam
 
 Respond ONLY with valid JSON. No additional text.`;
 
-    // Use Gemini 2.5 Flash Lite model
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-    // Extract base64 audio data
     const audioData = audio.split(',')[1] || audio;
 
-    // Create the request with audio
     const result = await model.generateContent([
       {
         inlineData: {
@@ -132,10 +129,8 @@ Respond ONLY with valid JSON. No additional text.`;
     const response = await result.response;
     const responseText = response.text();
 
-    // Parse the JSON response
     let analysisResult;
     try {
-      // Clean up the response - remove markdown code blocks if present
       let cleanedResponse = responseText
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
@@ -143,9 +138,8 @@ Respond ONLY with valid JSON. No additional text.`;
       
       analysisResult = JSON.parse(cleanedResponse);
       
-      // Extra safety: Replace any wrong names in feedback with correct name
+      // Fix any wrong names
       if (analysisResult.feedback) {
-        // Common names Gemini might hallucinate
         const wrongNames = ['Aisha', 'Ali', 'Ahmed', 'Sara', 'Omar', 'Fatima', 'Mohammed', 'Zara', 'Aryan', 'Priya', 'Rahul', 'Ananya', 'the child', 'The child', 'this child', 'This child'];
         let feedback = analysisResult.feedback;
         wrongNames.forEach(wrongName => {
@@ -157,13 +151,14 @@ Respond ONLY with valid JSON. No additional text.`;
       
     } catch (parseError) {
       console.error('Failed to parse Gemini response:', responseText);
-      // Provide default values if parsing fails
       analysisResult = {
         reading_score: 5,
         wpm: 60,
         fluency_rating: 'Choppy',
         pronunciation_rating: 'Inconsistent',
         errors: [],
+        strengths: ['Completed the reading', 'Showed effort'],
+        areas_to_improve: ['Practice reading aloud daily', 'Work on fluency'],
         completeness_percentage: 80,
         feedback: `${name} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily reading aloud to build confidence and smooth out hesitations. With consistent effort, ${name} will show noticeable improvement in reading skills.`
       };
@@ -179,7 +174,6 @@ Respond ONLY with valid JSON. No additional text.`;
     let childId: string | null = null;
     
     try {
-      // Check if child already exists (same name + parent email)
       const { data: existingChild } = await supabase
         .from('children')
         .select('id')
@@ -188,7 +182,6 @@ Respond ONLY with valid JSON. No additional text.`;
         .maybeSingle();
 
       if (existingChild) {
-        // Update existing child with new assessment
         childId = existingChild.id;
         await supabase
           .from('children')
@@ -196,9 +189,7 @@ Respond ONLY with valid JSON. No additional text.`;
             age,
             parent_name: parentName,
             parent_phone: parentPhone,
-            last_assessment_score: overallScore,
-            last_assessment_date: new Date().toISOString(),
-            // Update lead source only if it was previously 'yestoryd' and now has coach referral
+            latest_assessment_score: overallScore,
             ...(lead_source === 'coach' && lead_source_coach_id ? {
               lead_source: 'coach',
               lead_source_coach_id,
@@ -209,19 +200,17 @@ Respond ONLY with valid JSON. No additional text.`;
         
         console.log('✅ Updated existing child:', childId);
       } else {
-        // Create new child record
         const { data: newChild, error: childError } = await supabase
           .from('children')
           .insert({
             name,
+            child_name: name, // Also set child_name
             age,
             parent_name: parentName,
             parent_email: parentEmail,
             parent_phone: parentPhone,
             lead_status: 'assessed',
-            last_assessment_score: overallScore,
-            last_assessment_date: new Date().toISOString(),
-            // Referral tracking
+            latest_assessment_score: overallScore,
             lead_source: lead_source || 'yestoryd',
             lead_source_coach_id: lead_source_coach_id || null,
             referral_code_used: referral_code_used || null,
@@ -238,13 +227,75 @@ Respond ONLY with valid JSON. No additional text.`;
       }
     } catch (dbError) {
       console.error('⚠️ Database error (non-blocking):', dbError);
-      // Don't fail the assessment if DB save fails
+    }
+
+    // ==================== SAVE TO LEARNING_EVENTS WITH EMBEDDING ====================
+    if (childId) {
+      try {
+        // Build searchable content for RAG
+        const eventData = {
+          score: overallScore,
+          wpm: analysisResult.wpm,
+          fluency: analysisResult.fluency_rating,
+          pronunciation: analysisResult.pronunciation_rating,
+          completeness: analysisResult.completeness_percentage,
+          feedback: analysisResult.feedback,
+          errors: analysisResult.errors,
+          strengths: analysisResult.strengths,
+          areas_to_improve: analysisResult.areas_to_improve,
+          clarity_score: clarityScore,
+          fluency_score: fluencyScore,
+          speed_score: speedScore,
+          passage_word_count: wordCount,
+        };
+
+        const searchableContent = buildSearchableContent(
+          'assessment',
+          name,
+          eventData,
+          analysisResult.feedback
+        );
+
+        // Generate embedding for RAG search
+        let embedding: number[] | null = null;
+        try {
+          embedding = await generateEmbedding(searchableContent);
+          console.log('🔢 Embedding generated for assessment');
+        } catch (embError) {
+          console.error('⚠️ Embedding generation failed (non-blocking):', embError);
+        }
+
+        // Generate AI summary
+        const aiSummary = `${name} completed a reading assessment scoring ${overallScore}/10. Reading speed was ${analysisResult.wpm} WPM with ${analysisResult.fluency_rating.toLowerCase()} fluency. ${analysisResult.strengths?.[0] || 'Showed good effort'}. Areas to work on: ${analysisResult.areas_to_improve?.[0] || 'daily practice'}.`;
+
+        // Save learning event
+        const { error: eventError } = await supabase
+          .from('learning_events')
+          .insert({
+            child_id: childId,
+            event_type: 'assessment',
+            event_date: new Date().toISOString(),
+            event_data: eventData,
+            ai_summary: aiSummary,
+            content_for_embedding: searchableContent,
+            embedding: embedding,
+          });
+
+        if (eventError) {
+          console.error('⚠️ Failed to save learning event:', eventError);
+        } else {
+          console.log('✅ Learning event saved with embedding');
+        }
+
+      } catch (eventError) {
+        console.error('⚠️ Learning event error (non-blocking):', eventError);
+      }
     }
 
     // Return success response
     return NextResponse.json({
       success: true,
-      childId, // Include childId in response
+      childId,
       childName: name,
       childAge: age,
       parentName,
@@ -261,8 +312,9 @@ Respond ONLY with valid JSON. No additional text.`;
       errors: analysisResult.errors,
       completeness: analysisResult.completeness_percentage,
       feedback: analysisResult.feedback,
+      strengths: analysisResult.strengths,
+      areas_to_improve: analysisResult.areas_to_improve,
       encouragement: `Keep reading daily, ${name}! Every page makes you stronger.`,
-      // Include lead source in response for debugging
       lead_source: lead_source || 'yestoryd',
     });
 
