@@ -416,8 +416,9 @@ async function handleSchedule(
       month: 'short',
     });
     
-    const coachObj = nextSession.coach as { name: string } | null;
-    let responseText = `${child?.child_name}'s next session is on ${sessionDate} at ${formatTime(nextSession.scheduled_time)} with Coach ${coachObj?.name || 'your coach'}.`;
+    const coachData = nextSession.coach as { name: string } | { name: string }[] | null;
+    const coachName = Array.isArray(coachData) ? coachData[0]?.name : coachData?.name;
+    let responseText = `${child?.child_name}'s next session is on ${sessionDate} at ${formatTime(nextSession.scheduled_time)} with Coach ${coachName || 'your coach'}.`;
     
     if (nextSession.google_meet_link) {
       responseText += ` Meeting link: ${nextSession.google_meet_link}`;
@@ -459,8 +460,9 @@ async function handleSchedule(
       }
 
       const sessionList = sessions.map(s => {
-        const childObj = s.child as { child_name: string } | null;
-        return `${formatTime(s.scheduled_time)} - ${childObj?.child_name} (${s.session_type})`;
+        const childData = s.child as { child_name: string } | { child_name: string }[] | null;
+        const childName = Array.isArray(childData) ? childData[0]?.child_name : childData?.child_name;
+        return `${formatTime(s.scheduled_time)} - ${childName || 'Student'} (${s.session_type})`;
       }).join(', ');
 
       return {
@@ -501,10 +503,11 @@ async function handleSchedule(
       month: 'short',
     });
 
-    const childObj = next.child as { child_name: string } | null;
+    const childData = next.child as { child_name: string } | { child_name: string }[] | null;
+    const childName = Array.isArray(childData) ? childData[0]?.child_name : childData?.child_name;
 
     return {
-      response: `Your next session is with ${childObj?.child_name} on ${sessionDate} at ${formatTime(next.scheduled_time)}. You have ${sessions.length} total upcoming session${sessions.length > 1 ? 's' : ''}.`,
+      response: `Your next session is with ${childName || 'a student'} on ${sessionDate} at ${formatTime(next.scheduled_time)}. You have ${sessions.length} total upcoming session${sessions.length > 1 ? 's' : ''}.`,
       intent: 'SCHEDULE',
       source: 'sql',
     };
