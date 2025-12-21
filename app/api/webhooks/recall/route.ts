@@ -1,4 +1,4 @@
-// file: app/api/webhooks/recall/route.ts
+﻿// file: app/api/webhooks/recall/route.ts
 // rAI v2.0 - Recall.ai Webhook with Speaker Diarization & Parent Summary Caching
 
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
@@ -78,6 +78,11 @@ interface SessionAnalysis {
   child_name?: string | null;
   summary?: string;
   parent_summary?: string;
+  // Enhanced triggers v2.1
+  concerns_array?: string[] | null;
+  safety_flag?: boolean;
+  safety_reason?: string | null;
+  sentiment_score?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -90,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload: RecallWebhookPayload = await request.json();
-    console.log('📹 Recall webhook received:', payload.event, payload.data.bot_id);
+    console.log('ðŸ“¹ Recall webhook received:', payload.event, payload.data.bot_id);
 
     switch (payload.event) {
       case 'bot.status_change':
@@ -160,7 +165,7 @@ async function handleRecordingReady(payload: RecallWebhookPayload) {
 async function handleBotDone(payload: RecallWebhookPayload) {
   const { bot_id, transcript, meeting_metadata, meeting_participants, recording } = payload.data;
   
-  console.log('🎬 Bot done, processing transcript for:', bot_id);
+  console.log('ðŸŽ¬ Bot done, processing transcript for:', bot_id);
 
   const { data: botSession } = await supabase
     .from('recall_bot_sessions')
@@ -224,13 +229,13 @@ async function handleBotDone(payload: RecallWebhookPayload) {
       });
       
       if (triggerResult.sent) {
-        console.log('🚨 Proactive notifications sent:', triggerResult.notifications);
+        console.log('ðŸš¨ Proactive notifications sent:', triggerResult.notifications);
       }
     } catch (triggerError) {
       console.error('Proactive trigger error (non-fatal):', triggerError);
     }
   }
-  console.log('✅ Session processed successfully');
+  console.log('âœ… Session processed successfully');
   
   return NextResponse.json({ 
     status: 'processed',
@@ -310,7 +315,7 @@ function buildTranscriptWithSpeakers(
 }
 
 async function findSessionByMeeting(title: string, startTime: string, participantNames: string[]) {
-  const nameMatch = title.match(/Yestoryd\s*[-–]\s*(\w+\s*\w*)/i);
+  const nameMatch = title.match(/Yestoryd\s*[-â€“]\s*(\w+\s*\w*)/i);
   const childNameFromTitle = nameMatch ? nameMatch[1].trim() : null;
 
   const meetingDate = new Date(startTime);
@@ -533,7 +538,7 @@ async function saveSessionData(data: {
       })
       .eq('id', childId);
     
-    console.log('📦 Parent summary cached for child:', childId);
+    console.log('ðŸ“¦ Parent summary cached for child:', childId);
   }
 
   if (sessionId) {
@@ -583,7 +588,7 @@ async function saveSessionData(data: {
     let embedding: number[] | null = null;
     try {
       embedding = await generateEmbedding(searchableContent);
-      console.log('🔢 Embedding generated for learning event');
+      console.log('ðŸ”¢ Embedding generated for learning event');
     } catch (error) {
       console.error('Failed to generate embedding:', error);
     }
@@ -620,7 +625,7 @@ async function saveSessionData(data: {
     await supabase.rpc('increment_sessions_completed', { child_id_param: childId });
   }
 
-  console.log('📚 Session data saved to database');
+  console.log('ðŸ“š Session data saved to database');
 }
 
 export async function GET() {
@@ -631,5 +636,6 @@ export async function GET() {
     timestamp: new Date().toISOString(),
   });
 }
+
 
 
