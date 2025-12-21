@@ -1,1 +1,1 @@
-export {}
+export function isGoogleConfigured() { return false; }
