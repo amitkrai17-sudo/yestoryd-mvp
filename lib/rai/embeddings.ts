@@ -27,18 +27,14 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 export function buildSearchableContent(
   eventType: string,
   childName: string,
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   aiSummary?: string
 ): string {
   const parts: string[] = [];
   
-  // Add child name for personalization
   parts.push(`${childName}`);
-  
-  // Add event type context
   parts.push(`${eventType} event`);
   
-  // Add structured data based on event type
   switch (eventType) {
     case 'assessment':
       parts.push(`reading assessment`);
@@ -46,14 +42,14 @@ export function buildSearchableContent(
       if (data.wpm) parts.push(`reading speed: ${data.wpm} words per minute`);
       if (data.fluency) parts.push(`fluency: ${data.fluency}`);
       if (data.pronunciation) parts.push(`pronunciation: ${data.pronunciation}`);
-      if (data.feedback) parts.push(data.feedback);
-      if (data.errors?.length) parts.push(`errors: ${data.errors.join(', ')}`);
+      if (data.feedback) parts.push(String(data.feedback));
+      if (Array.isArray(data.errors) && data.errors.length) parts.push(`errors: ${data.errors.join(', ')}`);
       break;
       
     case 'session':
       parts.push(`coaching session`);
       if (data.focus_area) parts.push(`focus: ${data.focus_area}`);
-      if (data.skills_worked_on?.length) {
+      if (Array.isArray(data.skills_worked_on) && data.skills_worked_on.length) {
         parts.push(`skills: ${data.skills_worked_on.join(', ')}`);
       }
       if (data.progress_rating) parts.push(`progress: ${data.progress_rating}`);
@@ -63,13 +59,13 @@ export function buildSearchableContent(
       if (data.homework_assigned && data.homework_description) {
         parts.push(`homework: ${data.homework_description}`);
       }
-      if (data.key_observations?.length) {
+      if (Array.isArray(data.key_observations) && data.key_observations.length) {
         parts.push(`observations: ${data.key_observations.join(', ')}`);
       }
       if (data.coach_talk_ratio) {
         parts.push(`coach talk ratio: ${data.coach_talk_ratio}%`);
       }
-      if (data.child_reading_samples?.length) {
+      if (Array.isArray(data.child_reading_samples) && data.child_reading_samples.length) {
         parts.push(`reading samples: ${data.child_reading_samples.join(', ')}`);
       }
       break;
@@ -84,18 +80,17 @@ export function buildSearchableContent(
       
     case 'milestone':
       parts.push(`milestone achievement`);
-      if (data.title) parts.push(data.title);
-      if (data.description) parts.push(data.description);
+      if (data.title) parts.push(String(data.title));
+      if (data.description) parts.push(String(data.description));
       break;
       
     case 'note':
       if (data.content || data.note) {
-        parts.push(data.content || data.note);
+        parts.push(String(data.content || data.note));
       }
       break;
       
     default:
-      // Add any string values from data
       Object.values(data).forEach(value => {
         if (typeof value === 'string' && value.length > 0) {
           parts.push(value);
@@ -103,7 +98,6 @@ export function buildSearchableContent(
       });
   }
   
-  // Add AI summary if available
   if (aiSummary) {
     parts.push(aiSummary);
   }
@@ -113,7 +107,6 @@ export function buildSearchableContent(
 
 /**
  * Build searchable content specifically for session events
- * Enhanced version with all analysis fields
  */
 export function buildSessionSearchableContent(
   childName: string,

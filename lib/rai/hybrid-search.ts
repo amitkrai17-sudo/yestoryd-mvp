@@ -34,12 +34,6 @@ interface HybridSearchResult {
   };
 }
 
-/**
- * Perform hybrid search combining:
- * 1. Structured filters (date, event type)
- * 2. Keyword boosting
- * 3. Semantic vector similarity (HNSW)
- */
 export async function hybridSearch(
   options: HybridSearchOptions
 ): Promise<HybridSearchResult> {
@@ -58,9 +52,6 @@ export async function hybridSearch(
     filtersApplied: [] as string[],
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 1: EXTRACT STRUCTURED FILTERS
-  // ═══════════════════════════════════════════════════════════════
   const filters = extractQueryFilters(query);
   
   if (filters.dateRange) {
@@ -73,22 +64,15 @@ export async function hybridSearch(
     debug.filtersApplied.push(`keywords: ${filters.keywords.join(', ')}`);
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 2: GENERATE QUERY EMBEDDING
-  // ═══════════════════════════════════════════════════════════════
   let queryEmbedding: number[];
   try {
     queryEmbedding = await generateEmbedding(query);
     debug.queryEmbeddingGenerated = true;
   } catch (error) {
     console.error('Failed to generate query embedding:', error);
-    // Fallback to simple SQL search without vector
     return fallbackSearch(options, filters, debug);
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 3: EXECUTE HYBRID SEARCH VIA RPC
-  // ═══════════════════════════════════════════════════════════════
   try {
     const { data: events, error } = await supabase.rpc('hybrid_match_learning_events', {
       query_embedding: queryEmbedding,
@@ -110,7 +94,7 @@ export async function hybridSearch(
     debug.eventsFound = events?.length || 0;
 
     return {
-      events: events || [],
+      events: (events || []) as LearningEvent[],
       filters,
       debug,
     };
@@ -121,9 +105,6 @@ export async function hybridSearch(
   }
 }
 
-/**
- * Fallback to simple SQL search when vector search fails
- */
 async function fallbackSearch(
   options: HybridSearchOptions,
   filters: ReturnType<typeof extractQueryFilters>,
@@ -137,7 +118,6 @@ async function fallbackSearch(
     .order('event_date', { ascending: false })
     .limit(limit);
 
-  // Apply filters
   if (childId) {
     query = query.eq('child_id', childId);
   }
@@ -163,15 +143,12 @@ async function fallbackSearch(
   debug.filtersApplied.push('fallback: SQL only');
 
   return {
-    events: events || [],
+    events: (events || []) as LearningEvent[],
     filters,
     debug,
   };
 }
 
-/**
- * Get cached session summary for a child (from children table)
- */
 export async function getSessionCache(childId: string): Promise<{
   summary: string | null;
   date: Date | null;
@@ -188,11 +165,10 @@ export async function getSessionCache(childId: string): Promise<{
     return { summary: null, date: null, focus: null, isFresh: false };
   }
 
-  const summary = child.last_session_summary;
-  const date = child.last_session_date ? new Date(child.last_session_date) : null;
-  const focus = child.last_session_focus;
+  const summary = child.last_session_summary as string | null;
+  const date = child.last_session_date ? new Date(child.last_session_date as string) : null;
+  const focus = child.last_session_focus as string | null;
 
-  // Check if cache is fresh (less than 24 hours old)
   let isFresh = false;
   if (date) {
     const hoursSince = (Date.now() - date.getTime()) / (1000 * 60 * 60);
@@ -202,9 +178,6 @@ export async function getSessionCache(childId: string): Promise<{
   return { summary, date, focus, isFresh };
 }
 
-/**
- * Format cached summary for parent response
- */
 export function formatCachedSummary(
   summary: string,
   date: Date,
@@ -214,9 +187,6 @@ export function formatCachedSummary(
   return `Here's what happened in ${childName}'s session ${timeAgo}:\n\n${summary}`;
 }
 
-/**
- * Format date as relative time (e.g., "2 hours ago", "yesterday")
- */
 function formatTimeAgo(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -239,9 +209,6 @@ function formatTimeAgo(date: Date): string {
   }
 }
 
-/**
- * Format learning events for LLM context
- */
 export function formatEventsForContext(events: LearningEvent[]): string {
   if (!events || events.length === 0) {
     return 'No learning events found.';

@@ -1,17 +1,14 @@
 // file: app/api/chat/route.ts
-// rAI v2.0 - Intelligent Chat API with Tier 0/1 Classification, Hybrid Search, and Caching
+// rAI v2.0 - Intelligent Chat API
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import {
-  ChatRequest,
   ChatResponse,
-  Intent,
   UserRole,
   ChildWithCache,
   Coach,
-  ScheduledSession,
 } from '@/lib/rai/types';
 import {
   classifyIntent,
@@ -36,18 +33,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ============================================================
-// MAIN API HANDLER
-// ============================================================
+interface ChatRequestBody {
+  message: string;
+  userRole: UserRole;
+  userId?: string;
+  userEmail: string;
+  childId?: string;
+  chatHistory?: Array<{ role: string; content: string }>;
+}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const body: ChatRequest = await request.json();
-    const { message, userRole, userId, userEmail, childId, chatHistory } = body;
+    const body: ChatRequestBody = await request.json();
+    const { message, userRole, userEmail, childId, chatHistory } = body;
 
-    // Validate required fields
     if (!message || message.trim().length === 0) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
@@ -55,16 +56,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User context required' }, { status: 400 });
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 1: INTENT CLASSIFICATION (Tier 0 → Tier 1)
-    // ═══════════════════════════════════════════════════════════════
-    const { intent, entities, tier0Match } = await classifyIntent(message, userRole);
+    const { intent, tier0Match } = await classifyIntent(message, userRole);
     
     console.log(`🎯 Intent: ${intent} (Tier ${tier0Match ? '0' : '1'})`);
 
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 2: ROUTE TO APPROPRIATE HANDLER
-    // ═══════════════════════════════════════════════════════════════
     let response: ChatResponse;
 
     switch (intent) {
@@ -73,22 +68,21 @@ export async function POST(request: NextRequest) {
         break;
         
       case 'OPERATIONAL':
-        response = await handleOperational(message, userRole, userEmail, childId);
+        response = await handleOperational(message, userRole, userEmail);
         break;
         
       case 'SCHEDULE':
-        response = await handleSchedule(message, userRole, userEmail, childId);
+        response = await handleSchedule(message, userRole, userEmail);
         break;
         
       case 'OFF_LIMITS':
-        response = handleOffLimits(userRole, childId);
+        response = handleOffLimits(userRole);
         break;
         
       default:
         response = await handleLearning(message, userRole, userEmail, childId, chatHistory);
     }
 
-    // Add debug info
     response.intent = intent;
     response.debug = {
       ...response.debug,
@@ -98,36 +92,29 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('rAI Chat API error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Chat failed';
     return NextResponse.json(
-      { error: error.message || 'Chat failed' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
 }
-
-// ============================================================
-// LEARNING HANDLER (Cache → Hybrid RAG)
-// ============================================================
 
 async function handleLearning(
   message: string,
   userRole: UserRole,
   userEmail: string,
   childId?: string,
-  chatHistory?: any[]
+  chatHistory?: Array<{ role: string; content: string }>
 ): Promise<ChatResponse> {
   
-  // ─────────────────────────────────────────────────────────────────
-  // STEP 1: Get child context (with access validation)
-  // ─────────────────────────────────────────────────────────────────
   let child: ChildWithCache | null = null;
   let coach: Coach | null = null;
   let children: { id: string; name: string }[] = [];
 
   if (userRole === 'parent') {
-    // Get parent's children
     const { data: parentChildren } = await supabase
       .from('children')
       .select('id, name, child_name, age, parent_email, assigned_coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
@@ -144,9 +131,9 @@ async function handleLearning(
 
     children = parentChildren.map(c => ({ id: c.id, name: c.child_name || c.name }));
 
-    // If childId provided, validate access
     if (childId) {
-      child = parentChildren.find(c => c.id === childId) as ChildWithCache || null;
+      const found = parentChildren.find(c => c.id === childId);
+      child = found ? (found as ChildWithCache) : null;
       if (!child) {
         return {
           response: "I don't have access to that child's information.",
@@ -155,10 +142,8 @@ async function handleLearning(
         };
       }
     } else if (parentChildren.length === 1) {
-      // Auto-select if only one child
       child = parentChildren[0] as ChildWithCache;
     } else {
-      // Multiple children - ask for clarification
       return {
         response: `I see you have ${parentChildren.length} children enrolled: ${children.map(c => c.name).join(' and ')}. Which child are you asking about?`,
         intent: 'LEARNING',
@@ -168,17 +153,15 @@ async function handleLearning(
       };
     }
 
-    // Get coach info
     if (child?.assigned_coach_id) {
       const { data: coachData } = await supabase
         .from('coaches')
         .select('id, name, email, phone')
         .eq('id', child.assigned_coach_id)
         .single();
-      coach = coachData;
+      coach = coachData as Coach | null;
     }
   } else if (userRole === 'coach') {
-    // Coach viewing their student
     if (childId) {
       const { data: childData } = await supabase
         .from('children')
@@ -186,7 +169,6 @@ async function handleLearning(
         .eq('id', childId)
         .single();
       
-      // Validate coach has access
       const { data: coachData } = await supabase
         .from('coaches')
         .select('id')
@@ -207,26 +189,20 @@ async function handleLearning(
 
   const childName = child?.child_name || child?.name || 'your child';
 
-  // ─────────────────────────────────────────────────────────────────
-  // STEP 2: CHECK CACHE (Parent only, for recent session queries)
-  // ─────────────────────────────────────────────────────────────────
   if (userRole === 'parent' && child && isRecentSessionQuery(message)) {
     const cache = await getSessionCache(child.id);
     
-    if (cache.isFresh && cache.summary) {
+    if (cache.isFresh && cache.summary && cache.date) {
       console.log('📦 Cache hit! Returning cached summary');
       return {
-        response: formatCachedSummary(cache.summary, cache.date!, childName),
+        response: formatCachedSummary(cache.summary, cache.date, childName),
         intent: 'LEARNING',
         source: 'cache',
-        debug: { cacheHit: true, eventsRetrieved: 0, tier0Match: false, latencyMs: 0 },
+        debug: { cacheHit: true, eventsRetrieved: 0 },
       };
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // STEP 3: HYBRID SEARCH (Vector + SQL filters)
-  // ─────────────────────────────────────────────────────────────────
   const searchResult = await hybridSearch({
     query: message,
     childId: child?.id,
@@ -237,9 +213,6 @@ async function handleLearning(
 
   const eventsContext = formatEventsForContext(searchResult.events);
 
-  // ─────────────────────────────────────────────────────────────────
-  // STEP 4: GENERATE RESPONSE
-  // ─────────────────────────────────────────────────────────────────
   const systemPrompt = getSystemPrompt(
     userRole,
     childName,
@@ -249,7 +222,6 @@ async function handleLearning(
 
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
-  // Build conversation context
   const conversationContext = chatHistory?.slice(-6).map(msg => 
     `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
   ).join('\n') || '';
@@ -266,36 +238,26 @@ async function handleLearning(
     },
   });
 
-  const response = result.response.text();
+  const responseText = result.response.text();
 
   return {
-    response,
+    response: responseText,
     intent: 'LEARNING',
     source: 'rag',
     debug: {
       cacheHit: false,
       eventsRetrieved: searchResult.events.length,
-      tier0Match: false,
-      latencyMs: 0,
     },
   };
 }
 
-// ============================================================
-// OPERATIONAL HANDLER (Direct SQL)
-// ============================================================
-
 async function handleOperational(
   message: string,
   userRole: UserRole,
-  userEmail: string,
-  childId?: string
+  userEmail: string
 ): Promise<ChatResponse> {
   const lowerMessage = message.toLowerCase();
 
-  // ─────────────────────────────────────────────────────────────────
-  // PROGRAM INFO
-  // ─────────────────────────────────────────────────────────────────
   if (/what is master key|master key/i.test(lowerMessage)) {
     return {
       response: OPERATIONAL_RESPONSES.master_key,
@@ -313,7 +275,6 @@ async function handleOperational(
   }
 
   if (/reschedule|change.*session|move.*session/i.test(lowerMessage)) {
-    // Get coach info
     const coach = await getCoachForParent(userEmail);
     return {
       response: OPERATIONAL_RESPONSES.reschedule(coach?.name || 'your coach', coach?.phone || '918976287997'),
@@ -330,9 +291,6 @@ async function handleOperational(
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // COACH INFO (for parents)
-  // ─────────────────────────────────────────────────────────────────
   if (/who is my coach|coach('?s)? (name|email|phone|contact)/i.test(lowerMessage)) {
     const coach = await getCoachForParent(userEmail);
     if (coach) {
@@ -350,9 +308,6 @@ async function handleOperational(
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // STUDENT COUNT (for coaches)
-  // ─────────────────────────────────────────────────────────────────
   if (userRole === 'coach' && /how many (children|students|kids)/i.test(lowerMessage)) {
     const coachId = await getCoachId(userEmail);
     const { count } = await supabase
@@ -368,34 +323,6 @@ async function handleOperational(
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // SESSION COUNT (for coaches)
-  // ─────────────────────────────────────────────────────────────────
-  if (userRole === 'coach' && /how many sessions|sessions? (completed|this month)/i.test(lowerMessage)) {
-    const coachId = await getCoachId(userEmail);
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const { data: sessions } = await supabase
-      .from('scheduled_sessions')
-      .select('status')
-      .eq('coach_id', coachId)
-      .gte('scheduled_date', startOfMonth.toISOString().split('T')[0]);
-
-    const completed = sessions?.filter(s => s.status === 'completed').length || 0;
-    const total = sessions?.length || 0;
-
-    return {
-      response: `This month you've completed ${completed} session${completed !== 1 ? 's' : ''} out of ${total} scheduled.`,
-      intent: 'OPERATIONAL',
-      source: 'sql',
-    };
-  }
-
-  // ─────────────────────────────────────────────────────────────────
-  // PAYMENT STATUS (for parents)
-  // ─────────────────────────────────────────────────────────────────
   if (/payment|enrollment|subscription/i.test(lowerMessage)) {
     const { data: children } = await supabase
       .from('children')
@@ -423,7 +350,6 @@ async function handleOperational(
     }
   }
 
-  // Default operational response
   return {
     response: "I'm not sure about that. For program information, pricing, or support, please contact us on WhatsApp at 918976287997.",
     intent: 'OPERATIONAL',
@@ -431,21 +357,15 @@ async function handleOperational(
   };
 }
 
-// ============================================================
-// SCHEDULE HANDLER (Direct SQL)
-// ============================================================
-
 async function handleSchedule(
   message: string,
   userRole: UserRole,
-  userEmail: string,
-  childId?: string
+  userEmail: string
 ): Promise<ChatResponse> {
   const now = new Date();
   const today = now.toISOString().split('T')[0];
 
   if (userRole === 'parent') {
-    // Get parent's children with sessions
     const { data: children } = await supabase
       .from('children')
       .select('id, child_name')
@@ -462,7 +382,6 @@ async function handleSchedule(
 
     const childIds = children.map(c => c.id);
 
-    // Get upcoming sessions
     const { data: sessions } = await supabase
       .from('scheduled_sessions')
       .select(`
@@ -489,7 +408,6 @@ async function handleSchedule(
       };
     }
 
-    // Format response
     const nextSession = sessions[0];
     const child = children.find(c => c.id === nextSession.child_id);
     const sessionDate = new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', {
@@ -498,18 +416,19 @@ async function handleSchedule(
       month: 'short',
     });
     
-    let response = `${child?.child_name}'s next session is on ${sessionDate} at ${formatTime(nextSession.scheduled_time)} with Coach ${(nextSession as any).coach?.name || 'your coach'}.`;
+    const coachObj = nextSession.coach as { name: string } | null;
+    let responseText = `${child?.child_name}'s next session is on ${sessionDate} at ${formatTime(nextSession.scheduled_time)} with Coach ${coachObj?.name || 'your coach'}.`;
     
     if (nextSession.google_meet_link) {
-      response += ` Meeting link: ${nextSession.google_meet_link}`;
+      responseText += ` Meeting link: ${nextSession.google_meet_link}`;
     }
 
     if (sessions.length > 1) {
-      response += ` You have ${sessions.length - 1} more session${sessions.length > 2 ? 's' : ''} scheduled after that.`;
+      responseText += ` You have ${sessions.length - 1} more session${sessions.length > 2 ? 's' : ''} scheduled after that.`;
     }
 
     return {
-      response,
+      response: responseText,
       intent: 'SCHEDULE',
       source: 'sql',
     };
@@ -517,7 +436,6 @@ async function handleSchedule(
   } else if (userRole === 'coach') {
     const coachId = await getCoachId(userEmail);
 
-    // Today's schedule
     if (/today/i.test(message)) {
       const { data: sessions } = await supabase
         .from('scheduled_sessions')
@@ -540,9 +458,10 @@ async function handleSchedule(
         };
       }
 
-      const sessionList = sessions.map(s => 
-        `${formatTime(s.scheduled_time)} - ${(s as any).child?.child_name} (${s.session_type})`
-      ).join(', ');
+      const sessionList = sessions.map(s => {
+        const childObj = s.child as { child_name: string } | null;
+        return `${formatTime(s.scheduled_time)} - ${childObj?.child_name} (${s.session_type})`;
+      }).join(', ');
 
       return {
         response: `Today you have ${sessions.length} session${sessions.length > 1 ? 's' : ''}: ${sessionList}`,
@@ -551,7 +470,6 @@ async function handleSchedule(
       };
     }
 
-    // General next session query
     const { data: sessions } = await supabase
       .from('scheduled_sessions')
       .select(`
@@ -583,8 +501,10 @@ async function handleSchedule(
       month: 'short',
     });
 
+    const childObj = next.child as { child_name: string } | null;
+
     return {
-      response: `Your next session is with ${(next as any).child?.child_name} on ${sessionDate} at ${formatTime(next.scheduled_time)}. You have ${sessions.length} total upcoming session${sessions.length > 1 ? 's' : ''}.`,
+      response: `Your next session is with ${childObj?.child_name} on ${sessionDate} at ${formatTime(next.scheduled_time)}. You have ${sessions.length} total upcoming session${sessions.length > 1 ? 's' : ''}.`,
       intent: 'SCHEDULE',
       source: 'sql',
     };
@@ -597,31 +517,23 @@ async function handleSchedule(
   };
 }
 
-// ============================================================
-// OFF_LIMITS HANDLER
-// ============================================================
-
-function handleOffLimits(userRole: UserRole, childId?: string): ChatResponse {
-  let response: string;
+function handleOffLimits(userRole: UserRole): ChatResponse {
+  let responseText: string;
 
   if (userRole === 'coach') {
-    response = OFF_LIMITS_RESPONSES.earnings_coach;
+    responseText = OFF_LIMITS_RESPONSES.earnings_coach;
   } else if (userRole === 'admin') {
-    response = OFF_LIMITS_RESPONSES.earnings_admin;
+    responseText = OFF_LIMITS_RESPONSES.earnings_admin;
   } else {
-    response = OFF_LIMITS_RESPONSES.unknown;
+    responseText = OFF_LIMITS_RESPONSES.unknown;
   }
 
   return {
-    response,
+    response: responseText,
     intent: 'OFF_LIMITS',
     source: 'redirect',
   };
 }
-
-// ============================================================
-// HELPER FUNCTIONS
-// ============================================================
 
 async function getCoachId(email: string): Promise<string | null> {
   const { data } = await supabase
@@ -649,11 +561,10 @@ async function getCoachForParent(parentEmail: string): Promise<Coach | null> {
     .eq('id', child.assigned_coach_id)
     .single();
 
-  return coach;
+  return coach as Coach | null;
 }
 
 function formatTime(time: string): string {
-  // Convert "14:30:00" to "2:30 PM"
   const [hours, minutes] = time.split(':').map(Number);
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 || 12;

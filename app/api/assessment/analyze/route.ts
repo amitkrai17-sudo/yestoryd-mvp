@@ -13,7 +13,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// 4-tier age strictness function
 function getStrictnessForAge(age: number) {
   if (age <= 5) {
     return {
@@ -71,7 +70,6 @@ export async function POST(request: NextRequest) {
     const strictness = getStrictnessForAge(age);
     const wordCount = passage.split(' ').length;
 
-    // Build the analysis prompt
     const analysisPrompt = `
 Role: Expert Phonics & Reading Specialist.
 Task: Analyze audio of a ${age}-year-old child named "${name}" reading the passage below.
@@ -84,31 +82,23 @@ PASSAGE CONTEXT:
 
 CRITICAL SCORING RULES:
 1. COMPLETENESS CHECK: If the child reads less than 80% of the text, the 'reading_score' MUST be 4 or lower.
-2. EVIDENCE REQUIRED: Do not be generic. You must quote specific misread words (e.g., "Read 'Hop' as 'hobbed'").
+2. EVIDENCE REQUIRED: Do not be generic. You must quote specific misread words.
 3. STRICTNESS LEVEL: ${strictness.level}
    ${strictness.guidance}
 4. NAME REQUIREMENT: Always refer to the child as "${name}" - never use any other name.
 
 Generate a JSON response with this EXACT structure:
 {
-    "reading_score": (integer 1-10 based on accuracy & completeness),
-    "wpm": (integer estimated words per minute),
-    "fluency_rating": (string: "Smooth", "Choppy", "Monotone", or "Fast"),
-    "pronunciation_rating": (string: "Clear", "Slurred", "Inconsistent"),
+    "reading_score": (integer 1-10),
+    "wpm": (integer),
+    "fluency_rating": "Smooth|Choppy|Monotone|Fast",
+    "pronunciation_rating": "Clear|Slurred|Inconsistent",
     "completeness_percentage": (integer 0-100),
     "feedback": (string, 80-100 words, 4 sentences - MUST use the name "${name}"),
-    "errors": (list of specific words missed or misread),
-    "strengths": (list of 2-3 things the child did well),
-    "areas_to_improve": (list of 2-3 specific areas for improvement)
+    "errors": (list of specific words missed),
+    "strengths": (list of 2-3 things done well),
+    "areas_to_improve": (list of 2-3 specific areas)
 }
-
-Requirements for 'feedback' (4 sentences, 80-100 words total):
-- Sentence 1: Comment on completeness and fluency. Start with "${name} read..." 
-- Sentence 2: Cite specific evidence of errors OR praise accuracy if minimal errors.
-- Sentence 3: Give one actionable technical tip for improvement.
-- Sentence 4: Encouraging closing about progress. Must include "${name}".
-
-CRITICAL: Use ONLY the name "${name}" in your response. Do not use any other name.
 
 Respond ONLY with valid JSON. No additional text.`;
 
@@ -129,7 +119,18 @@ Respond ONLY with valid JSON. No additional text.`;
     const response = await result.response;
     const responseText = response.text();
 
-    let analysisResult;
+    let analysisResult: {
+      reading_score: number;
+      wpm: number;
+      fluency_rating: string;
+      pronunciation_rating: string;
+      errors: string[];
+      strengths: string[];
+      areas_to_improve: string[];
+      completeness_percentage: number;
+      feedback: string;
+    };
+    
     try {
       let cleanedResponse = responseText
         .replace(/```json\n?/g, '')
@@ -138,7 +139,6 @@ Respond ONLY with valid JSON. No additional text.`;
       
       analysisResult = JSON.parse(cleanedResponse);
       
-      // Fix any wrong names
       if (analysisResult.feedback) {
         const wrongNames = ['Aisha', 'Ali', 'Ahmed', 'Sara', 'Omar', 'Fatima', 'Mohammed', 'Zara', 'Aryan', 'Priya', 'Rahul', 'Ananya', 'the child', 'The child', 'this child', 'This child'];
         let feedback = analysisResult.feedback;
@@ -149,7 +149,7 @@ Respond ONLY with valid JSON. No additional text.`;
         analysisResult.feedback = feedback;
       }
       
-    } catch (parseError) {
+    } catch {
       console.error('Failed to parse Gemini response:', responseText);
       analysisResult = {
         reading_score: 5,
@@ -164,13 +164,11 @@ Respond ONLY with valid JSON. No additional text.`;
       };
     }
 
-    // Calculate scores
     const overallScore = analysisResult.reading_score;
     const clarityScore = analysisResult.pronunciation_rating === 'Clear' ? 8 : analysisResult.pronunciation_rating === 'Slurred' ? 4 : 6;
     const fluencyScore = analysisResult.fluency_rating === 'Smooth' ? 8 : analysisResult.fluency_rating === 'Choppy' ? 5 : analysisResult.fluency_rating === 'Fast' ? 7 : 4;
     const speedScore = Math.min(10, Math.round(analysisResult.wpm / 15));
 
-    // ==================== SAVE CHILD TO DATABASE ====================
     let childId: string | null = null;
     
     try {
@@ -204,7 +202,7 @@ Respond ONLY with valid JSON. No additional text.`;
           .from('children')
           .insert({
             name,
-            child_name: name, // Also set child_name
+            child_name: name,
             age,
             parent_name: parentName,
             parent_email: parentEmail,
@@ -229,10 +227,8 @@ Respond ONLY with valid JSON. No additional text.`;
       console.error('⚠️ Database error (non-blocking):', dbError);
     }
 
-    // ==================== SAVE TO LEARNING_EVENTS WITH EMBEDDING ====================
     if (childId) {
       try {
-        // Build searchable content for RAG
         const eventData = {
           score: overallScore,
           wpm: analysisResult.wpm,
@@ -256,7 +252,6 @@ Respond ONLY with valid JSON. No additional text.`;
           analysisResult.feedback
         );
 
-        // Generate embedding for RAG search
         let embedding: number[] | null = null;
         try {
           embedding = await generateEmbedding(searchableContent);
@@ -265,10 +260,8 @@ Respond ONLY with valid JSON. No additional text.`;
           console.error('⚠️ Embedding generation failed (non-blocking):', embError);
         }
 
-        // Generate AI summary
         const aiSummary = `${name} completed a reading assessment scoring ${overallScore}/10. Reading speed was ${analysisResult.wpm} WPM with ${analysisResult.fluency_rating.toLowerCase()} fluency. ${analysisResult.strengths?.[0] || 'Showed good effort'}. Areas to work on: ${analysisResult.areas_to_improve?.[0] || 'daily practice'}.`;
 
-        // Save learning event
         const { error: eventError } = await supabase
           .from('learning_events')
           .insert({
@@ -292,7 +285,6 @@ Respond ONLY with valid JSON. No additional text.`;
       }
     }
 
-    // Return success response
     return NextResponse.json({
       success: true,
       childId,
@@ -318,10 +310,11 @@ Respond ONLY with valid JSON. No additional text.`;
       lead_source: lead_source || 'yestoryd',
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Assessment analysis error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
     return NextResponse.json(
-      { success: false, error: error.message || 'Analysis failed' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

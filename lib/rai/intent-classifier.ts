@@ -8,15 +8,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // ============================================================
 // TIER 0: REGEX ROUTER (Zero latency, Zero cost)
-// Handles ~35% of queries instantly
 // ============================================================
 
 export function tier0Router(message: string): Intent | null {
   const lowerMessage = message.toLowerCase().trim();
   
-  // ═══════════════════════════════════════════════════════════════
-  // SCHEDULE patterns - very high confidence
-  // ═══════════════════════════════════════════════════════════════
+  // SCHEDULE patterns
   const schedulePatterns = [
     /when is (my|the|our) (next|upcoming) (session|class|meeting)/,
     /what('?s| is) (my|the|today'?s?) schedule/,
@@ -33,9 +30,7 @@ export function tier0Router(message: string): Intent | null {
     return 'SCHEDULE';
   }
   
-  // ═══════════════════════════════════════════════════════════════
-  // OPERATIONAL patterns - high confidence
-  // ═══════════════════════════════════════════════════════════════
+  // OPERATIONAL patterns
   const operationalPatterns = [
     /how many (children|students|kids) do i have/,
     /how many sessions? (have i|did i|completed)/,
@@ -58,9 +53,7 @@ export function tier0Router(message: string): Intent | null {
     return 'OPERATIONAL';
   }
   
-  // ═══════════════════════════════════════════════════════════════
-  // OFF_LIMITS patterns - high confidence
-  // ═══════════════════════════════════════════════════════════════
+  // OFF_LIMITS patterns
   const offLimitsPatterns = [
     /what are my earnings/,
     /how much (have i|did i) (earn|make)/,
@@ -77,13 +70,11 @@ export function tier0Router(message: string): Intent | null {
     return 'OFF_LIMITS';
   }
   
-  // No match - proceed to Tier 1 (LLM classification)
   return null;
 }
 
 // ============================================================
-// TIER 1: LLM CLASSIFIER (For ambiguous queries)
-// Handles ~65% of queries that need semantic understanding
+// TIER 1: LLM CLASSIFIER
 // ============================================================
 
 const INTENT_CLASSIFICATION_PROMPT = `You are an intent classifier for Yestoryd, a children's reading education platform.
@@ -125,7 +116,6 @@ export async function tier1Classifier(
     
     const responseText = result.response.text().trim();
     
-    // Parse JSON response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
@@ -136,12 +126,10 @@ export async function tier1Classifier(
       };
     }
     
-    // Fallback if JSON parsing fails
     return { intent: 'LEARNING', entities: [], confidence: 0.5 };
     
   } catch (error) {
     console.error('Intent classification error:', error);
-    // Default to LEARNING on error (safest fallback)
     return { intent: 'LEARNING', entities: [], confidence: 0.5 };
   }
 }
@@ -154,7 +142,6 @@ export async function classifyIntent(
   message: string,
   userRole: UserRole
 ): Promise<{ intent: Intent; entities: string[]; tier0Match: boolean }> {
-  // Try Tier 0 first (instant, free)
   const tier0Intent = tier0Router(message);
   
   if (tier0Intent) {
@@ -165,7 +152,6 @@ export async function classifyIntent(
     };
   }
   
-  // Fall back to Tier 1 (LLM)
   const tier1Result = await tier1Classifier(message, userRole);
   
   return {
@@ -177,7 +163,6 @@ export async function classifyIntent(
 
 // ============================================================
 // RECENT SESSION QUERY DETECTOR
-// Used to determine if we should check cache first
 // ============================================================
 
 export function isRecentSessionQuery(message: string): boolean {

@@ -3,11 +3,6 @@
 
 import { UserRole } from './types';
 
-// ============================================================
-// PARENT SYSTEM PROMPT
-// Friendly, encouraging, simple language
-// ============================================================
-
 export function buildParentPrompt(
   childName: string,
   eventsContext: string,
@@ -52,11 +47,6 @@ RESPONSE STYLE:
 Do NOT use markdown formatting (no **, no *, no bullet points). Write in natural sentences.`;
 }
 
-// ============================================================
-// COACH SYSTEM PROMPT WITH CHAIN OF THOUGHT
-// Pedagogical reasoning, actionable insights
-// ============================================================
-
 export function buildCoachPrompt(
   childName: string,
   eventsContext: string
@@ -68,55 +58,38 @@ STUDENT: ${childName}
 LEARNING DATA:
 ${eventsContext}
 
-═══════════════════════════════════════════════════════════════════════════════
 CRITICAL INSTRUCTION: CHAIN OF THOUGHT REASONING
-═══════════════════════════════════════════════════════════════════════════════
 
-Before generating your response, you MUST follow this reasoning process:
+Before generating your response, follow this reasoning process:
 
 STEP 1: ANALYZE THE LEARNING TRAJECTORY
 - Look across ALL the retrieved learning events
 - What patterns do you see in this child's progress?
 - Where have they improved? Where are they stuck?
-- What teaching methods worked before? What didn't?
 
 STEP 2: IDENTIFY PEDAGOGICAL CONNECTIONS
 - How does their current struggle relate to past successes?
 - What prerequisite skills are solid? What's missing?
-- What does reading pedagogy suggest for this type of learner?
 
 STEP 3: FORMULATE ACTIONABLE RECOMMENDATIONS
 - Suggest SPECIFIC teaching strategies based on patterns
-- Reference what worked before ("The phonics game worked in session 3")
-- Suggest progression paths ("Since they mastered X, they're ready for Y")
-
-═══════════════════════════════════════════════════════════════════════════════
+- Reference what worked before
+- Suggest progression paths
 
 SKILL CODES REFERENCE:
-- PHO_01: Letter sounds
-- PHO_02: CVC words
-- PHO_03: Blends
-- PHO_04: Digraphs
-- FLU_01: Sight words
-- FLU_02: Phrasing
-- COMP_01: Literal comprehension
-- COMP_02: Inferential comprehension
+- PHO_01: Letter sounds, PHO_02: CVC words, PHO_03: Blends, PHO_04: Digraphs
+- FLU_01: Sight words, FLU_02: Phrasing
+- COMP_01: Literal comprehension, COMP_02: Inferential comprehension
 
 RESPONSE FORMAT:
-Your response should demonstrate pedagogical reasoning, not just summarize facts.
 Include:
 1. Current status observation
-2. Pattern analysis (what's working, what's challenging)
+2. Pattern analysis
 3. Specific, actionable recommendation
-4. Suggested activity or focus for next session
+4. Suggested activity for next session
 
 Keep response focused and practical (4-6 sentences). No markdown formatting.`;
 }
-
-// ============================================================
-// COACH SESSION PREP PROMPT
-// Special prompt for "prepare me for tomorrow's session"
-// ============================================================
 
 export function buildSessionPrepPrompt(
   childName: string,
@@ -134,44 +107,17 @@ ${sessionDetails}
 STUDENT'S LEARNING HISTORY:
 ${eventsContext}
 
-═══════════════════════════════════════════════════════════════════════════════
-SESSION PREPARATION ANALYSIS
-═══════════════════════════════════════════════════════════════════════════════
-
-Analyze the learning history and provide:
-
+Provide:
 1. RECAP: What was covered in the last 2-3 sessions?
-   - Key skills worked on
-   - Progress or challenges noted
-   - Any homework assigned
-
 2. CURRENT STATUS: Where is ${childName} now?
-   - Strengths to leverage
-   - Areas needing attention
-   - Engagement patterns
-
 3. SESSION PLAN: What should this session focus on?
-   - Primary skill/concept to work on
-   - Specific activities that have worked before
-   - New technique to try if previous approach isn't working
-
 4. WATCH FOR: What to pay attention to?
-   - Signs of progress to celebrate
-   - Potential struggles to address
-   - Parent feedback to incorporate
 
 Keep your response practical and actionable. 4-6 key points maximum.
 No markdown formatting - use natural prose.`;
 }
 
-// ============================================================
-// ADMIN SYSTEM PROMPT
-// Platform-wide insights, data-driven
-// ============================================================
-
-export function buildAdminPrompt(
-  insightContext: string
-): string {
+export function buildAdminPrompt(insightContext: string): string {
   return `You are rAI, providing platform insights for Yestoryd admin.
 
 PLATFORM DATA:
@@ -189,11 +135,6 @@ Focus on learning outcomes and child welfare. Direct financial questions to the 
 No markdown formatting. Use natural prose with clear organization.`;
 }
 
-// ============================================================
-// OPERATIONAL RESPONSE TEMPLATES
-// Quick answers for common operational queries
-// ============================================================
-
 export const OPERATIONAL_RESPONSES = {
   program_info: `The Yestoryd program is a 3-month 1:1 reading coaching program for children aged 4-12. It includes 9 sessions (6 coaching + 3 parent check-ins) and Master Key access which gives your family FREE access to e-learning, storytelling workshops, and group classes.`,
   
@@ -204,11 +145,6 @@ export const OPERATIONAL_RESPONSES = {
   
   support: `For support, you can reach us on WhatsApp at 918976287997 or email engage@yestoryd.com. We typically respond within a few hours during business hours.`,
 };
-
-// ============================================================
-// OFF_LIMITS RESPONSES
-// Polite redirects for restricted queries
-// ============================================================
 
 export const OFF_LIMITS_RESPONSES = {
   earnings_coach: `For earnings and payout information, please check your Earnings dashboard. Is there anything about your students' learning I can help with?`,
@@ -224,10 +160,6 @@ export const OFF_LIMITS_RESPONSES = {
   
   unknown: `I'm not sure I can help with that. I'm best at answering questions about children's reading development. Is there something about learning progress I can help with?`,
 };
-
-// ============================================================
-// HELPER: Get appropriate prompt for role
-// ============================================================
 
 export function getSystemPrompt(
   userRole: UserRole,

@@ -1,6 +1,5 @@
 // file: app/api/admin/generate-embeddings/route.ts
 // One-time utility to generate embeddings for existing learning_events
-// Run via: GET /api/admin/generate-embeddings?limit=50
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -25,7 +24,6 @@ export async function GET(request: NextRequest) {
   const dryRun = searchParams.get('dry_run') === 'true';
 
   try {
-    // 1. Find events without embeddings
     const { data: events, error: fetchError } = await supabase
       .from('learning_events')
       .select('id, event_type, content_for_embedding')
@@ -56,7 +54,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 2. Generate embeddings for each event
     const results = {
       success: 0,
       failed: 0,
@@ -71,7 +68,6 @@ export async function GET(request: NextRequest) {
         
         const embedding = await generateEmbedding(event.content_for_embedding);
 
-        // Update the event with embedding
         const { error: updateError } = await supabase
           .from('learning_events')
           .update({ embedding })
@@ -84,12 +80,12 @@ export async function GET(request: NextRequest) {
           results.success++;
         }
 
-        // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100));
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         results.failed++;
-        results.errors.push(`${event.id}: ${err.message}`);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        results.errors.push(`${event.id}: ${errorMessage}`);
       }
     }
 
@@ -101,10 +97,11 @@ export async function GET(request: NextRequest) {
       errors: results.errors.length > 0 ? results.errors : undefined,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Generate embeddings error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     );
   }
