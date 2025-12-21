@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // app/api/admin/coach-applications/route.ts
 // API to list all coach applications for admin review
 // FIXED: Added no-cache headers and detailed logging

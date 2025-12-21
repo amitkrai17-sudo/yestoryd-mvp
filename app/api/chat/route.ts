@@ -26,6 +26,7 @@ import {
   OFF_LIMITS_RESPONSES,
 } from '@/lib/rai/prompts';
 
+import { handleAdminInsightQuery } from '@/lib/rai/admin-insights';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const supabase = createClient(
@@ -57,11 +58,26 @@ export async function POST(request: NextRequest) {
     }
 
     const { intent, tier0Match } = await classifyIntent(message, userRole);
-    
     console.log(`🎯 Intent: ${intent} (Tier ${tier0Match ? '0' : '1'})`);
-
+    
+    // Admin Insight Check (fast path for pre-computed insights)
+    if (userRole === 'admin') {
+      const insightResponse = await handleAdminInsightQuery(message);
+      if (insightResponse) {
+        console.log('📊 Admin insight query matched');
+        return NextResponse.json({
+          response: insightResponse,
+          intent: 'ADMIN_INSIGHT',
+          source: 'cached_insight',
+          debug: {
+            tier0Match: false,
+            latencyMs: Date.now() - startTime,
+          }
+        });
+      }
+    }
+    
     let response: ChatResponse;
-
     switch (intent) {
       case 'LEARNING':
         response = await handleLearning(message, userRole, userEmail, childId, chatHistory);
