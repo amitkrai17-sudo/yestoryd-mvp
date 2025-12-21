@@ -1,1 +1,1 @@
-export const sheetsDB = { getCoachBySubdomain: async () => null };
+export const sheetsDB = { getCoachBySubdomain: async (subdomain: string) => null };
