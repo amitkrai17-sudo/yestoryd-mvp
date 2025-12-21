@@ -131,19 +131,25 @@ async function handleLearning(
 
     children = parentChildren.map(c => ({ id: c.id, name: c.child_name || c.name }));
 
-    if (childId) {
+    // If only one child, auto-select regardless of childId passed
+    if (parentChildren.length === 1) {
+      child = parentChildren[0] as ChildWithCache;
+    } else if (childId) {
+      // Multiple children - try to match childId
       const found = parentChildren.find(c => c.id === childId);
       child = found ? (found as ChildWithCache) : null;
       if (!child) {
+        // childId didn't match - ask for clarification
         return {
-          response: "I don't have access to that child's information.",
+          response: `I see you have ${parentChildren.length} children enrolled: ${children.map(c => c.name).join(' and ')}. Which child are you asking about?`,
           intent: 'LEARNING',
-          source: 'redirect',
+          source: 'sql',
+          needsChildSelection: true,
+          children,
         };
       }
-    } else if (parentChildren.length === 1) {
-      child = parentChildren[0] as ChildWithCache;
     } else {
+      // No childId and multiple children - ask for clarification
       return {
         response: `I see you have ${parentChildren.length} children enrolled: ${children.map(c => c.name).join(' and ')}. Which child are you asking about?`,
         intent: 'LEARNING',
