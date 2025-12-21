@@ -144,6 +144,19 @@ export const OPERATIONAL_RESPONSES = {
     `To reschedule a session, please contact Coach ${coachName} on WhatsApp at ${coachPhone}. You can also use the Sessions page in your dashboard to see available slots.`,
   
   support: `For support, you can reach us on WhatsApp at 918976287997 or email engage@yestoryd.com. We typically respond within a few hours during business hours.`,
+  
+  what_can_help: `I'm rAI, your reading assistant! I can help you with:
+
+• Your child's reading progress and development
+• Session summaries and what was covered
+• Homework and practice recommendations
+• Upcoming session schedules
+• Coach contact information
+• Program details like Master Key benefits
+
+Just ask me anything about your child's reading journey!`,
+
+  out_of_scope: `I'm here specifically to help with your child's reading education and development. For other questions, please contact our team on WhatsApp at 918976287997 or email engage@yestoryd.com - they'll be happy to help!`,
 };
 
 export const OFF_LIMITS_RESPONSES = {
@@ -158,7 +171,7 @@ export const OFF_LIMITS_RESPONSES = {
   
   platform_stats: `I focus on learning outcomes rather than platform statistics. Is there something about your students' progress I can help with?`,
   
-  unknown: `I'm not sure I can help with that. I'm best at answering questions about children's reading development. Is there something about learning progress I can help with?`,
+  unknown: `I'm rAI, and I'm here to help with your child's reading education and development! I can tell you about reading progress, session summaries, homework, schedules, and more. For anything else, please reach out on WhatsApp at 918976287997 or email engage@yestoryd.com.`,
 };
 
 export function getSystemPrompt(

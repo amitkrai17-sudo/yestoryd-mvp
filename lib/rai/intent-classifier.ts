@@ -13,6 +13,20 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 export function tier0Router(message: string): Intent | null {
   const lowerMessage = message.toLowerCase().trim();
   
+  // CAPABILITIES patterns (what can you do)
+  const capabilitiesPatterns = [
+    /what can you (do|help|answer|assist)/,
+    /what (do you|can you) (know|help with)/,
+    /how can you help/,
+    /what are you (for|able to)/,
+    /what.*your (purpose|capabilities)/,
+    /^help$/,
+  ];
+  
+  if (capabilitiesPatterns.some(p => p.test(lowerMessage))) {
+    return 'OPERATIONAL'; // Will be handled by handleOperational with 'what_can_help' response
+  }
+  
   // SCHEDULE patterns
   const schedulePatterns = [
     /when is (my|the|our) (next|upcoming) (session|class|meeting)/,

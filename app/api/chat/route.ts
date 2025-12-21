@@ -264,6 +264,15 @@ async function handleOperational(
 ): Promise<ChatResponse> {
   const lowerMessage = message.toLowerCase();
 
+  // What can you help with / What can you do
+  if (/what can you (do|help|answer|assist)|how can you help|what are you (for|able)|what.*your (purpose|capabilities)|^help$/i.test(lowerMessage)) {
+    return {
+      response: OPERATIONAL_RESPONSES.what_can_help,
+      intent: 'OPERATIONAL',
+      source: 'sql',
+    };
+  }
+
   if (/what is master key|master key/i.test(lowerMessage)) {
     return {
       response: OPERATIONAL_RESPONSES.master_key,
@@ -357,7 +366,7 @@ async function handleOperational(
   }
 
   return {
-    response: "I'm not sure about that. For program information, pricing, or support, please contact us on WhatsApp at 918976287997.",
+    response: OPERATIONAL_RESPONSES.out_of_scope,
     intent: 'OPERATIONAL',
     source: 'sql',
   };
