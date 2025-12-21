@@ -111,8 +111,8 @@ export default function ParentSupportPage() {
               userEmail={parentEmail}
               userName={parentName}
               childName={childName}
-              onSuccess={handleTicketCreated}
-              onCancel={() => setShowForm(false)}
+              onClose={handleTicketCreated}
+              isModal={false}
             />
           </div>
         )}

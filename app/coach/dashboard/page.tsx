@@ -797,8 +797,8 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
             userType="coach"
             userEmail={coachEmail}
             userName={coachName}
-            onSuccess={handleTicketCreated}
-            onCancel={() => setShowForm(false)}
+            onClose={handleTicketCreated}
+            isModal={false}
           />
         </div>
       )}
