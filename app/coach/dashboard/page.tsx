@@ -16,6 +16,7 @@ import RAIAssistantTab from './RAIAssistantTab';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 import SupportWidget from '@/components/support/SupportWidget';
+import SupportForm from '@/components/support/SupportForm';
 
 // 4-Point Star Icon Component (Yestoryd branding for rAI)
 function StarIcon({ className }: { className?: string }) {
@@ -65,6 +66,7 @@ const TABS = [
   { id: 'sessions', label: 'Sessions', icon: Calendar },
   { id: 'referrals', label: 'My Referrals', icon: Gift },
   { id: 'earnings', label: 'Earnings', icon: Wallet },
+  { id: 'support', label: 'Support', icon: HelpCircle },
 ];
 
 export default function CoachDashboardPage() {
@@ -390,6 +392,10 @@ export default function CoachDashboardPage() {
         {activeTab === 'earnings' && (
           <EarningsTab coachId={coach.id} />
         )}
+        
+        {activeTab === 'support' && (
+          <SupportTab coachEmail={coach.email} coachName={coach.name} />
+        )}
       </main>
 
       {/* Floating rAI Chat Widget */}
@@ -705,6 +711,195 @@ function EarningsTab({ coachId }: { coachId: string }) {
           <li>• Payments processed on <strong>7th of each month</strong></li>
         </ul>
       </div>
+    </div>
+  );
+}
+
+// Support Tab Component
+function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: string }) {
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [coachEmail]);
+
+  async function fetchTickets() {
+    try {
+      const res = await fetch(`/api/support/tickets?email=${encodeURIComponent(coachEmail)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTickets(data.tickets || []);
+      }
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+    }
+    setLoading(false);
+  }
+
+  function handleTicketCreated() {
+    setShowForm(false);
+    fetchTickets();
+  }
+
+  const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    open: { label: 'Open', color: 'bg-yellow-100 text-yellow-700' },
+    in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
+    resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700' },
+    closed: { label: 'Closed', color: 'bg-gray-100 text-gray-700' },
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    session_issue: '📅 Session Issue',
+    technical_problem: '🔧 Technical Problem',
+    payment_billing: '💳 Payment & Billing',
+    coach_feedback: '👨‍🏫 Feedback',
+    general_question: '❓ General Question',
+    other: '📝 Other',
+  };
+
+  const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress');
+  const resolvedTickets = tickets.filter(t => t.status === 'resolved' || t.status === 'closed');
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Support Center</h2>
+          <p className="text-gray-500 text-sm">Get help with your questions and concerns</p>
+        </div>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2 bg-[#00abff] text-white rounded-lg font-medium hover:bg-[#0099ee] transition-all flex items-center gap-2"
+          >
+            <HelpCircle className="w-4 h-4" />
+            Submit Request
+          </button>
+        )}
+      </div>
+
+      {/* Support Form */}
+      {showForm && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-800">New Support Request</h3>
+            <button
+              onClick={() => setShowForm(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+          <SupportForm
+            userType="coach"
+            userEmail={coachEmail}
+            userName={coachName}
+            onSuccess={handleTicketCreated}
+            onCancel={() => setShowForm(false)}
+          />
+        </div>
+      )}
+
+      {/* Tickets List */}
+      {!showForm && (
+        <>
+          {/* Active Tickets */}
+          {openTickets.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-yellow-600" />
+                Active Requests ({openTickets.length})
+              </h3>
+              <div className="space-y-3">
+                {openTickets.map((ticket) => {
+                  const statusConfig = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.open;
+                  return (
+                    <div key={ticket.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-mono text-gray-400">{ticket.ticket_number}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}>
+                              {statusConfig.label}
+                            </span>
+                          </div>
+                          <p className="font-medium text-gray-800">
+                            {CATEGORY_LABELS[ticket.category] || ticket.category}
+                          </p>
+                          {ticket.subject && (
+                            <p className="text-sm text-gray-600 mt-1">{ticket.subject}</p>
+                          )}
+                          <p className="text-xs text-gray-400 mt-2">
+                            {new Date(ticket.created_at).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Resolved Tickets */}
+          {resolvedTickets.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                Resolved ({resolvedTickets.length})
+              </h3>
+              <div className="space-y-3">
+                {resolvedTickets.slice(0, 5).map((ticket) => {
+                  const statusConfig = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.resolved;
+                  return (
+                    <div key={ticket.id} className="bg-white rounded-xl border border-gray-200 p-4 opacity-75">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-mono text-gray-400">{ticket.ticket_number}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}>
+                          {statusConfig.label}
+                        </span>
+                      </div>
+                      <p className="font-medium text-gray-800">
+                        {CATEGORY_LABELS[ticket.category] || ticket.category}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && tickets.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+              <HelpCircle className="w-16 h-16 text-[#00abff]/30 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">No Support Requests</h3>
+              <p className="text-gray-500 mb-6">You haven't submitted any requests yet.</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#00abff] text-white rounded-xl font-semibold hover:bg-[#0099ee] transition-all"
+              >
+                Submit Your First Request
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {loading && (
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-4 border-[#00abff] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-gray-500">Loading your requests...</p>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

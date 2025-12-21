@@ -9,7 +9,7 @@ import {
   Home,
   Calendar,
   TrendingUp,
-  MessageCircle,
+  HelpCircle,
   LogOut,
   Menu,
   X,
@@ -65,7 +65,7 @@ const navigation = [
   { name: 'Dashboard', href: '/parent/dashboard', icon: Home },
   { name: 'Sessions', href: '/parent/sessions', icon: Calendar },
   { name: 'Progress', href: '/parent/progress', icon: TrendingUp },
-  { name: 'Support', href: '/parent/support', icon: MessageCircle },
+  { name: 'Submit Request', href: '/parent/support', icon: HelpCircle },
 ];
 
 export default function ParentLayout({ children }: ParentLayoutProps) {
