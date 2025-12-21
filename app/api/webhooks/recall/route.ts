@@ -434,9 +434,19 @@ Generate a JSON response with this structure:
   "key_observations": ["observation 1", "observation 2"],
   "flagged_for_attention": false,
   "flag_reason": null,
+  "concerns_array": ["specific concern 1", "specific concern 2"],
+  "safety_flag": false,
+  "safety_reason": null,
+  "sentiment_score": 0.7,
   "summary": "2-3 sentence technical summary for coach records",
   "parent_summary": "2-3 sentence warm, encouraging summary for parents"
 }
+
+SAFETY ASSESSMENT:
+- Set "safety_flag": true if the child shows signs of distress, anxiety, fear, or mentions anything concerning about home/school.
+- Set "safety_reason" to explain the concern if flagged.
+- Set "sentiment_score" from 0.0 (very distressed/upset) to 1.0 (happy/engaged). Most sessions should be 0.5-0.8.
+- Be vigilant but don't over-flag - only flag genuine concerns.
 
 Respond ONLY with valid JSON. No markdown, no backticks.`;
 
@@ -492,6 +502,10 @@ function getDefaultAnalysis(childName: string): SessionAnalysis {
     home_practice_frequency: null,
     concerns_raised: null,
     action_items: null,
+    concerns_array: [],
+    safety_flag: false,
+    safety_reason: null,
+    sentiment_score: 0.5,
     summary: 'Session completed. Manual review recommended.',
     parent_summary: `${childName} completed today's reading session. The coach worked on building reading skills. Continue practicing reading at home for 10-15 minutes daily.`,
   };
@@ -617,3 +631,5 @@ export async function GET() {
     timestamp: new Date().toISOString(),
   });
 }
+
+
