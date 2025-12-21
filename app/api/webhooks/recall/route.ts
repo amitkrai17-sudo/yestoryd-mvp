@@ -1,6 +1,7 @@
 // file: app/api/webhooks/recall/route.ts
 // rAI v2.0 - Recall.ai Webhook with Speaker Diarization & Parent Summary Caching
 
+import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -211,6 +212,24 @@ async function handleBotDone(payload: RecallWebhookPayload) {
     durationSeconds: recording?.duration_seconds,
   });
 
+// Proactive Triggers
+  if (childId && analysis) {
+    try {
+      const triggerResult = await checkAndSendProactiveNotifications({
+        childId,
+        childName,
+        sessionId,
+        coachId,
+        analysis,
+      });
+      
+      if (triggerResult.sent) {
+        console.log('🚨 Proactive notifications sent:', triggerResult.notifications);
+      }
+    } catch (triggerError) {
+      console.error('Proactive trigger error (non-fatal):', triggerError);
+    }
+  }
   console.log('✅ Session processed successfully');
   
   return NextResponse.json({ 
