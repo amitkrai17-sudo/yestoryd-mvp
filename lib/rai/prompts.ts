@@ -143,7 +143,12 @@ export const OPERATIONAL_RESPONSES = {
   reschedule: (coachName: string, coachPhone: string) => 
     `To reschedule a session, please contact Coach ${coachName} on WhatsApp at ${coachPhone}. You can also use the Sessions page in your dashboard to see available slots.`,
   
-  support: `For support, you can reach us on WhatsApp at 918976287997 or email engage@yestoryd.com. We typically respond within a few hours during business hours.`,
+  support: `For support, you can:
+• Submit a support request using the "Need Help?" button on your dashboard
+• Reach us on WhatsApp at 918976287997
+• Email engage@yestoryd.com
+
+We typically respond within 24 hours.`,
   
   what_can_help: `I'm rAI, your reading assistant! I can help you with:
 
@@ -154,13 +159,15 @@ export const OPERATIONAL_RESPONSES = {
 • Coach contact information
 • Program details like Master Key benefits
 
-Just ask me anything about your child's reading journey!`,
+For other questions, use the "Need Help?" button on your dashboard to submit a support request. Our team responds within 24 hours!`,
 
-  out_of_scope: `I'm here specifically to help with your child's reading education and development. For other questions, please contact our team on WhatsApp at 918976287997 or email engage@yestoryd.com - they'll be happy to help!`,
+  out_of_scope: `I'm here specifically to help with your child's reading education and development. 
+
+For other questions, please use the "Need Help?" button on your dashboard to submit a support request, or contact our team on WhatsApp at 918976287997. They'll be happy to help!`,
 };
 
 export const OFF_LIMITS_RESPONSES = {
-  earnings_coach: `For earnings and payout information, please check your Earnings dashboard. Is there anything about your students' learning I can help with?`,
+  earnings_coach: `For earnings and payout information, please check your Earnings tab. If you have questions, use the "Need Help?" button to submit a support request.`,
   
   earnings_admin: `For revenue and financial data, please check the Revenue dashboard. Would you like to know about learning metrics instead?`,
   
@@ -171,7 +178,9 @@ export const OFF_LIMITS_RESPONSES = {
   
   platform_stats: `I focus on learning outcomes rather than platform statistics. Is there something about your students' progress I can help with?`,
   
-  unknown: `I'm rAI, and I'm here to help with your child's reading education and development! I can tell you about reading progress, session summaries, homework, schedules, and more. For anything else, please reach out on WhatsApp at 918976287997 or email engage@yestoryd.com.`,
+  unknown: `I'm rAI, and I'm here to help with your child's reading education and development! I can tell you about reading progress, session summaries, homework, schedules, and more.
+
+For other questions, please use the "Need Help?" button on your dashboard to submit a support request - our team responds within 24 hours!`,
 };
 
 export function getSystemPrompt(
