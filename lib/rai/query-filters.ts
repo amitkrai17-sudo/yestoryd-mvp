@@ -116,7 +116,7 @@ export function extractQueryFilters(query: string): QueryFilters {
     .filter(({ pattern }) => pattern.test(query))
     .map(({ keyword }) => keyword);
   
-  filters.keywords = [...new Set(filters.keywords)];
+  filters.keywords = Array.from(new Set(filters.keywords));
   
   return filters;
 }
