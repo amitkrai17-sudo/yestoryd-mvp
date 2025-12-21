@@ -1,6 +1,5 @@
 // file: app/coach/dashboard/page.tsx
-// Complete Coach Dashboard with My Referrals Tab
-// Fixed: Using createBrowserClient instead of createClientComponentClient
+// Complete Coach Dashboard with My Referrals Tab and Floating rAI Widget
 
 'use client';
 
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import MyReferralsTab from './MyReferralsTab';
 import RAIAssistantTab from './RAIAssistantTab';
+import ChatWidget from '@/components/chat/ChatWidget';
 
 // 4-Point Star Icon Component (Yestoryd branding for rAI)
 function StarIcon({ className }: { className?: string }) {
@@ -56,14 +56,13 @@ interface DashboardStats {
   pending_earnings: number;
 }
 
-// Tab configuration - rAI uses custom icon, rendered separately
+// Tab configuration - removed rAI tab since we now have floating widget
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard, isRai: false },
-  { id: 'students', label: 'My Students', icon: Users, isRai: false },
-  { id: 'sessions', label: 'Sessions', icon: Calendar, isRai: false },
-  { id: 'rai', label: 'rAI', icon: null, isRai: true },
-  { id: 'referrals', label: 'My Referrals', icon: Gift, isRai: false },
-  { id: 'earnings', label: 'Earnings', icon: Wallet, isRai: false },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'students', label: 'My Students', icon: Users },
+  { id: 'sessions', label: 'Sessions', icon: Calendar },
+  { id: 'referrals', label: 'My Referrals', icon: Gift },
+  { id: 'earnings', label: 'Earnings', icon: Wallet },
 ];
 
 export default function CoachDashboardPage() {
@@ -215,7 +214,7 @@ export default function CoachDashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#FF0099] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-[#00abff] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
@@ -229,7 +228,7 @@ export default function CoachDashboardPage() {
           <p className="text-gray-600 mb-4">Unable to load dashboard</p>
           <button
             onClick={() => router.push('/coach/login')}
-            className="px-4 py-2 bg-[#FF0099] text-white rounded-lg"
+            className="px-4 py-2 bg-[#00abff] text-white rounded-lg"
           >
             Go to Login
           </button>
@@ -253,7 +252,7 @@ export default function CoachDashboardPage() {
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#00abff] to-[#0066cc] rounded-lg flex items-center justify-center">
                   <StarIcon className="w-5 h-5 text-white" />
                 </div>
                 <span className="font-bold text-gray-900 hidden sm:block">Yestoryd Coach</span>
@@ -270,17 +269,11 @@ export default function CoachDashboardPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                       activeTab === tab.id
-                        ? tab.isRai 
-                          ? 'bg-gradient-to-r from-[#FF0099]/20 to-[#7B008B]/20 text-[#FF0099]'
-                          : 'bg-[#FF0099]/10 text-[#FF0099]'
+                        ? 'bg-[#00abff]/10 text-[#00abff]'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    {tab.isRai ? (
-                      <StarIcon className="w-4 h-4" />
-                    ) : Icon ? (
-                      <Icon className="w-4 h-4" />
-                    ) : null}
+                    <Icon className="w-4 h-4" />
                     {tab.label}
                   </button>
                 );
@@ -291,14 +284,14 @@ export default function CoachDashboardPage() {
             <div className="flex items-center gap-3">
               <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg relative">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-[#FF0099] rounded-full"></span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-[#00abff] rounded-full"></span>
               </button>
               <div className="flex items-center gap-3">
                 <div className="hidden sm:block text-right">
                   <p className="text-sm font-medium text-gray-900">{coach.name}</p>
                   <p className="text-xs text-gray-500">{coach.email}</p>
                 </div>
-                <div className="w-10 h-10 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#00abff] to-[#0066cc] rounded-full flex items-center justify-center text-white font-bold">
                   {coach.name.charAt(0).toUpperCase()}
                 </div>
                 <button
@@ -328,17 +321,11 @@ export default function CoachDashboardPage() {
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                       activeTab === tab.id
-                        ? tab.isRai
-                          ? 'bg-gradient-to-r from-[#FF0099]/10 to-[#7B008B]/10 text-[#FF0099]'
-                          : 'bg-[#FF0099]/10 text-[#FF0099]'
+                        ? 'bg-[#00abff]/10 text-[#00abff]'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    {tab.isRai ? (
-                      <StarIcon className="w-5 h-5" />
-                    ) : Icon ? (
-                      <Icon className="w-5 h-5" />
-                    ) : null}
+                    <Icon className="w-5 h-5" />
                     {tab.label}
                     {activeTab === tab.id && <ChevronRight className="w-4 h-4 ml-auto" />}
                   </button>
@@ -362,17 +349,11 @@ export default function CoachDashboardPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
                     activeTab === tab.id
-                      ? tab.isRai
-                        ? 'bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white'
-                        : 'bg-[#FF0099] text-white'
+                      ? 'bg-[#00abff] text-white'
                       : 'bg-white text-gray-600 border border-gray-200'
                   }`}
                 >
-                  {tab.isRai ? (
-                    <StarIcon className="w-4 h-4" />
-                  ) : Icon ? (
-                    <Icon className="w-4 h-4" />
-                  ) : null}
+                  <Icon className="w-4 h-4" />
                   {tab.label}
                 </button>
               );
@@ -393,10 +374,6 @@ export default function CoachDashboardPage() {
           <SessionsTab coachId={coach.id} />
         )}
         
-        {activeTab === 'rai' && (
-          <RAIAssistantTab coachId={coach.id} coachName={coach.name} />
-        )}
-        
         {activeTab === 'referrals' && (
           <MyReferralsTab coachEmail={coach.email} />
         )}
@@ -405,6 +382,12 @@ export default function CoachDashboardPage() {
           <EarningsTab coachId={coach.id} />
         )}
       </main>
+
+      {/* Floating rAI Chat Widget */}
+      <ChatWidget
+        userRole="coach"
+        userEmail={coach.email}
+      />
     </div>
   );
 }
@@ -414,9 +397,9 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
   return (
     <div className="space-y-6">
       {/* Welcome */}
-      <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-[#00abff] to-[#0066cc] rounded-2xl p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">Welcome back, {coach.name.split(' ')[0]}! 👋</h1>
-        <p className="text-pink-100">Here's what's happening with your coaching today.</p>
+        <p className="text-blue-100">Here's what's happening with your coaching today.</p>
       </div>
 
       {/* Stats Grid */}
@@ -467,27 +450,20 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
       {/* Quick Actions */}
       <div className="bg-white rounded-xl border border-gray-100 p-6">
         <h2 className="font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button 
             onClick={() => onTabChange('students')}
             className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
           >
-            <Users className="w-6 h-6 text-[#FF0099] mx-auto mb-2" />
+            <Users className="w-6 h-6 text-[#00abff] mx-auto mb-2" />
             <span className="text-sm text-gray-700">View Students</span>
           </button>
           <button 
             onClick={() => onTabChange('sessions')}
             className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
           >
-            <Calendar className="w-6 h-6 text-[#00ABFF] mx-auto mb-2" />
+            <Calendar className="w-6 h-6 text-[#0066cc] mx-auto mb-2" />
             <span className="text-sm text-gray-700">Check Schedule</span>
-          </button>
-          <button 
-            onClick={() => onTabChange('rai')}
-            className="p-4 bg-gradient-to-br from-[#FF0099]/10 to-[#7B008B]/10 rounded-xl hover:from-[#FF0099]/20 hover:to-[#7B008B]/20 transition text-center border border-[#FF0099]/20"
-          >
-            <StarIcon className="w-6 h-6 text-[#FF0099] mx-auto mb-2" />
-            <span className="text-sm text-gray-700 font-medium">Ask rAI</span>
           </button>
           <button 
             onClick={() => onTabChange('referrals')}
@@ -631,7 +607,7 @@ function SessionsTab({ coachId }: { coachId: string }) {
                     href={session.meet_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-[#00ABFF] text-white rounded-lg text-sm font-medium hover:bg-[#0095E0]"
+                    className="px-3 py-1.5 bg-[#00abff] text-white rounded-lg text-sm font-medium hover:bg-[#0095E0]"
                   >
                     Join
                   </a>
@@ -685,11 +661,11 @@ function EarningsTab({ coachId }: { coachId: string }) {
         </div>
         <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
           <p className="text-sm text-gray-500 mb-1">Paid</p>
-          <p className="text-2xl font-bold text-[#00ABFF]">₹{earnings.paid.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-bold text-[#00abff]">₹{earnings.paid.toLocaleString('en-IN')}</p>
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-100">
+      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
         <h3 className="font-bold text-gray-900 mb-2">💰 How You Earn</h3>
         <ul className="space-y-2 text-sm text-gray-600">
           <li>• <strong>50%</strong> of coaching fee for each enrolled student</li>

@@ -24,15 +24,46 @@ const quickPrompts: Record<string, string[]> = {
     "When is the next session?",
   ],
   coach: [
-    "Summarize this student's progress",
-    "What areas need focus?",
-    "Generate parent update",
+    "Prepare me for next session",
+    "Which student needs attention?",
+    "Summarize today's progress",
   ],
   admin: [
     "Show enrollment stats",
-    "List pending assessments",
-    "Revenue summary",
+    "Top performing coaches",
+    "Revenue this month",
   ],
+};
+
+// Theme colors per role
+const themes: Record<string, {
+  gradient: string;
+  gradientHover: string;
+  accent: string;
+  accentBg: string;
+  label: string;
+}> = {
+  parent: {
+    gradient: 'from-[#7b008b] to-[#ff0099]',
+    gradientHover: 'hover:shadow-[#7b008b]/30',
+    accent: '#7b008b',
+    accentBg: 'bg-[#7b008b]/10',
+    label: 'rAI',
+  },
+  coach: {
+    gradient: 'from-[#00abff] to-[#0066cc]',
+    gradientHover: 'hover:shadow-[#00abff]/30',
+    accent: '#00abff',
+    accentBg: 'bg-[#00abff]/10',
+    label: 'rAI Coach',
+  },
+  admin: {
+    gradient: 'from-[#1a1a2e] to-[#4a4a6a]',
+    gradientHover: 'hover:shadow-slate-500/30',
+    accent: '#1a1a2e',
+    accentBg: 'bg-slate-100',
+    label: 'rAI Admin',
+  },
 };
 
 export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidgetProps) {
@@ -43,6 +74,8 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const theme = themes[userRole] || themes.parent;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,8 +106,8 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage.content,  // Current message
-          chatHistory: messages.map((m) => ({  // Previous messages for context
+          message: userMessage.content,
+          chatHistory: messages.map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -124,16 +157,23 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     inputRef.current?.focus();
   };
 
+  const getContextLabel = () => {
+    if (userRole === 'parent' && childName) return `Helping with ${childName}`;
+    if (userRole === 'coach') return 'Coaching Assistant';
+    if (userRole === 'admin') return 'Platform Insights';
+    return 'Reading Assistant';
+  };
+
   // Floating button when closed
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
-        aria-label="Open rAI chat"
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl ${theme.gradientHover}`}
+        aria-label={`Open ${theme.label} chat`}
       >
         <Sparkles className="w-4 h-4" />
-        <span className="font-medium text-sm">rAI</span>
+        <span className="font-medium text-sm">{theme.label}</span>
       </button>
     );
   }
@@ -143,10 +183,10 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-full shadow-lg hover:shadow-xl transition-all"
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg hover:shadow-xl transition-all`}
       >
         <Sparkles className="w-4 h-4" />
-        <span className="text-sm font-medium">rAI</span>
+        <span className="text-sm font-medium">{theme.label}</span>
       </button>
     );
   }
@@ -155,16 +195,14 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
   return (
     <div className="fixed bottom-6 right-6 z-50 w-[360px] h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#7b008b] to-[#ff0099] px-4 py-3 flex items-center justify-between">
+      <div className={`bg-gradient-to-r ${theme.gradient} px-4 py-3 flex items-center justify-between`}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-white font-semibold text-sm">rAI</h3>
-            <p className="text-white/80 text-xs">
-              {childName ? `Helping with ${childName}` : 'Reading Assistant'}
-            </p>
+            <h3 className="text-white font-semibold text-sm">{theme.label}</h3>
+            <p className="text-white/80 text-xs">{getContextLabel()}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -192,15 +230,19 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className="w-12 h-12 bg-[#7b008b]/10 rounded-2xl flex items-center justify-center mb-4">
-              <Sparkles className="w-6 h-6 text-[#7b008b]" />
+            <div className={`w-12 h-12 ${theme.accentBg} rounded-2xl flex items-center justify-center mb-4`}>
+              <Sparkles className="w-6 h-6" style={{ color: theme.accent }} />
             </div>
             <h3 className="text-gray-800 font-semibold mb-2 text-sm">
-              {childName ? `Ask about ${childName}` : 'How can I help?'}
+              {userRole === 'parent' && childName ? `Ask about ${childName}` : 'How can I help?'}
             </h3>
             <p className="text-gray-500 text-xs mb-4">
-              {childName
+              {userRole === 'parent' && childName
                 ? `I have access to ${childName}'s progress data.`
+                : userRole === 'coach'
+                ? 'I can help with session prep, student insights, and more.'
+                : userRole === 'admin'
+                ? 'Ask me about platform metrics and insights.'
                 : 'Ask me anything about reading progress.'}
             </p>
 
@@ -210,7 +252,7 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
                 <button
                   key={prompt}
                   onClick={() => handleQuickPrompt(prompt)}
-                  className="text-xs bg-white text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 hover:border-[#7b008b] hover:text-[#7b008b] transition-colors"
+                  className="text-xs bg-white text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors"
                 >
                   {prompt}
                 </button>
@@ -225,14 +267,14 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
                 className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
-                  <div className="w-7 h-7 bg-gradient-to-br from-[#7b008b] to-[#ff0099] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center flex-shrink-0`}>
                     <Sparkles className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
                 <div
                   className={`max-w-[75%] rounded-2xl px-3 py-2 ${
                     message.role === 'user'
-                      ? 'bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white'
+                      ? `bg-gradient-to-r ${theme.gradient} text-white`
                       : 'bg-white text-gray-800 border border-gray-100 shadow-sm'
                   }`}
                 >
@@ -242,11 +284,11 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
             ))}
             {isLoading && (
               <div className="flex gap-2 justify-start">
-                <div className="w-7 h-7 bg-gradient-to-br from-[#7b008b] to-[#ff0099] rounded-lg flex items-center justify-center">
+                <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center`}>
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#7b008b]" />
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.accent }} />
                 </div>
               </div>
             )}
@@ -265,13 +307,13 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
             onKeyDown={handleKeyDown}
             placeholder="Ask about reading progress..."
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#7b008b]/20 focus:border-[#7b008b] transition-all"
+            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300 transition-all"
             style={{ maxHeight: '80px' }}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="p-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+            className={`p-2.5 bg-gradient-to-r ${theme.gradient} text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all`}
           >
             <Send className="w-4 h-4" />
           </button>
