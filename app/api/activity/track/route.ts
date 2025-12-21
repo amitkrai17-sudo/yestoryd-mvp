@@ -42,44 +42,55 @@ export async function POST(request: NextRequest) {
     // Update last_seen and login_count based on user type
     if (body.userType === 'coach') {
       if (body.action === 'login') {
-        // Increment login count on login
-        await supabase.rpc('increment_coach_login', { 
-          coach_email: body.userEmail 
-        }).catch(() => {
-          // Fallback if RPC doesn't exist
-          supabase
-            .from('coaches')
-            .update({ 
-              last_seen_at: now,
-              total_login_count: supabase.rpc('increment', { x: 1 })
-            })
-            .eq('email', body.userEmail);
-        });
+        // Get current login count and increment
+        const { data: coach } = await supabase
+          .from('coaches')
+          .select('total_login_count')
+          .eq('email', body.userEmail)
+          .single();
+        
+        const currentCount = coach?.total_login_count || 0;
+        
+        await supabase
+          .from('coaches')
+          .update({ 
+            last_seen_at: now,
+            total_login_count: currentCount + 1
+          })
+          .eq('email', body.userEmail);
+      } else {
+        // Just update last_seen for other actions
+        await supabase
+          .from('coaches')
+          .update({ last_seen_at: now })
+          .eq('email', body.userEmail);
       }
-      
-      // Always update last_seen
-      await supabase
-        .from('coaches')
-        .update({ last_seen_at: now })
-        .eq('email', body.userEmail);
 
     } else if (body.userType === 'parent') {
       if (body.action === 'login') {
-        await supabase.rpc('increment_parent_login', { 
-          parent_email: body.userEmail 
-        }).catch(() => {
-          // Fallback
-          supabase
-            .from('parents')
-            .update({ last_seen_at: now })
-            .eq('email', body.userEmail);
-        });
+        // Get current login count and increment
+        const { data: parent } = await supabase
+          .from('parents')
+          .select('total_login_count')
+          .eq('email', body.userEmail)
+          .single();
+        
+        const currentCount = parent?.total_login_count || 0;
+        
+        await supabase
+          .from('parents')
+          .update({ 
+            last_seen_at: now,
+            total_login_count: currentCount + 1
+          })
+          .eq('email', body.userEmail);
+      } else {
+        // Just update last_seen for other actions
+        await supabase
+          .from('parents')
+          .update({ last_seen_at: now })
+          .eq('email', body.userEmail);
       }
-      
-      await supabase
-        .from('parents')
-        .update({ last_seen_at: now })
-        .eq('email', body.userEmail);
     }
 
     return NextResponse.json({ 
