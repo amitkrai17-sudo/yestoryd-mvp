@@ -1,11 +1,12 @@
 // app/yestoryd-academy/page.tsx
 // Yestoryd Academy - Coach Recruitment Landing Page
-// Matches the deployed version exactly
+// Updated with video support from site_settings
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js';
 import {
   Heart,
   CheckCircle2,
@@ -37,8 +38,14 @@ import {
   HandHeart,
   Scale,
   TrendingUp,
-  UserCheck
+  UserCheck,
+  Play
 } from 'lucide-react';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // FAQ Data
 const FAQ_DATA = [
@@ -92,6 +99,30 @@ export default function YestorydAcademyPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [earningsMode, setEarningsMode] = useState<'assigned' | 'bring'>('assigned');
   const [childrenCount, setChildrenCount] = useState(10);
+  const [videoUrl, setVideoUrl] = useState('');
+
+  // Fetch video URL from site_settings
+  useEffect(() => {
+    async function fetchVideoUrl() {
+      try {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'yestoryd_academy_video_url')
+          .single();
+        
+        if (data?.value) {
+          const parsed = JSON.parse(data.value);
+          if (parsed && parsed.startsWith('http')) {
+            setVideoUrl(parsed);
+          }
+        }
+      } catch (err) {
+        console.log('No video configured for yestoryd academy');
+      }
+    }
+    fetchVideoUrl();
+  }, []);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -118,9 +149,9 @@ export default function YestorydAcademyPage() {
           </Link>
           <Link
             href="/yestoryd-academy/apply"
-            className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:shadow-lg transition-all"
+            className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-5 py-2.5 rounded-full font-semibold text-sm hover:shadow-lg transition-all"
           >
-            Begin Your Journey
+            Apply Now
           </Link>
         </div>
       </nav>
@@ -129,7 +160,7 @@ export default function YestorydAcademyPage() {
       <section className="relative overflow-hidden">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-pink-50/30 to-purple-50/30" />
-        
+
         <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-20 text-center">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2 mb-8 shadow-sm">
@@ -158,7 +189,7 @@ export default function YestorydAcademyPage() {
               href="/yestoryd-academy/apply"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all"
             >
-              Begin Your Journey
+              Apply Now
               <ArrowRight className="w-5 h-5" />
             </Link>
             <button
@@ -171,7 +202,7 @@ export default function YestorydAcademyPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto">
+          <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto mb-12">
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-slate-900">100+</div>
               <div className="text-sm text-slate-500 mt-1">Children Transformed</div>
@@ -185,6 +216,24 @@ export default function YestorydAcademyPage() {
               <div className="text-sm text-slate-500 mt-1">Progress Tracking</div>
             </div>
           </div>
+
+          {/* Video Section - Shows if video URL is configured */}
+          {videoUrl && (
+            <div className="max-w-2xl mx-auto">
+              <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+                <iframe
+                  src={`${videoUrl}${videoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
+                  title="Join Yestoryd Academy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+              <p className="text-sm text-slate-500 mt-4">
+                Watch: Why coaches love working with Yestoryd
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -563,13 +612,13 @@ export default function YestorydAcademyPage() {
           {/* Earnings Calculator */}
           <div className="mt-12 bg-white/5 rounded-2xl p-8 border border-white/10">
             <h3 className="text-xl font-bold text-center mb-6">Earnings Calculator</h3>
-            
+
             <div className="flex justify-center gap-4 mb-6">
               <button
                 onClick={() => setEarningsMode('assigned')}
                 className={`px-6 py-2 rounded-full font-medium transition-all ${
-                  earningsMode === 'assigned' 
-                    ? 'bg-[#ff0099] text-white' 
+                  earningsMode === 'assigned'
+                    ? 'bg-[#ff0099] text-white'
                     : 'bg-white/10 text-slate-400 hover:bg-white/20'
                 }`}
               >
@@ -578,8 +627,8 @@ export default function YestorydAcademyPage() {
               <button
                 onClick={() => setEarningsMode('bring')}
                 className={`px-6 py-2 rounded-full font-medium transition-all ${
-                  earningsMode === 'bring' 
-                    ? 'bg-[#ff0099] text-white' 
+                  earningsMode === 'bring'
+                    ? 'bg-[#ff0099] text-white'
                     : 'bg-white/10 text-slate-400 hover:bg-white/20'
                 }`}
               >
@@ -666,7 +715,7 @@ export default function YestorydAcademyPage() {
             href="/yestoryd-academy/apply"
             className="inline-flex items-center gap-2 bg-white text-[#ff0099] px-10 py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all"
           >
-            Begin Your Journey
+            Apply Now
             <ArrowRight className="w-5 h-5" />
           </Link>
           <p className="mt-6 text-white/60 text-sm">

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Users, CheckCircle, Wand2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Users, CheckCircle, Wand2, Play } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +22,31 @@ export default function CoachLoginPage() {
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'login' | 'forgot' | 'magic'>('login');
   const [message, setMessage] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const router = useRouter();
+
+  // Fetch video URL from site_settings
+  useEffect(() => {
+    async function fetchVideoUrl() {
+      try {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'coach_login_video_url')
+          .single();
+        
+        if (data?.value) {
+          const parsed = JSON.parse(data.value);
+          if (parsed && parsed.startsWith('http')) {
+            setVideoUrl(parsed);
+          }
+        }
+      } catch (err) {
+        console.log('No video configured for coach login');
+      }
+    }
+    fetchVideoUrl();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -121,6 +145,21 @@ export default function CoachLoginPage() {
         {/* rAI Introduction for Coaches */}
         <div className="relative z-10 flex-1 flex flex-col justify-center">
           <div className="max-w-md">
+            {/* Video Section - Shows if video URL is configured */}
+            {videoUrl && (
+              <div className="mb-6">
+                <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+                  <iframe
+                    src={`${videoUrl}${videoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
+                    title="Welcome Coaches"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* rAI Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mb-8">
               <div className="flex items-center gap-4 mb-6">
@@ -186,7 +225,7 @@ export default function CoachLoginPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-6">
             <Link href="/">
               <Image 
                 src="/images/logo.png" 
@@ -198,6 +237,21 @@ export default function CoachLoginPage() {
             </Link>
           </div>
 
+          {/* Mobile Video Section */}
+          {videoUrl && (
+            <div className="lg:hidden mb-6">
+              <div className="relative aspect-video rounded-2xl overflow-hidden shadow-xl border border-white/10">
+                <iframe
+                  src={`${videoUrl}${videoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
+                  title="Welcome Coaches"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Form Card */}
           <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
             {/* Header */}
@@ -206,14 +260,12 @@ export default function CoachLoginPage() {
                 <Users className="w-7 h-7 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {mode === 'login' ? 'Coach Portal' : mode === 'magic' ? 'Magic Link' : 'Reset Password'}
+                {mode === 'login' ? 'Coach Portal' : 'Reset Password'}
               </h1>
               <p className="text-gray-500 mt-2">
-                {mode === 'login' 
-                  ? 'Sign in to manage your students' 
-                  : mode === 'magic'
-                    ? 'Sign in without a password'
-                    : 'Enter your email to reset password'}
+                {mode === 'login'
+                  ? 'Sign in to manage your students'
+                  : 'Enter your email to reset password'}
               </p>
             </div>
 
@@ -378,12 +430,12 @@ export default function CoachLoginPage() {
               </div>
             </div>
 
-            {/* Apply as Coach CTA */}
+            {/* Apply as Coach CTA - Filled button */}
             <Link
-              href="/coach/apply"
-              className="w-full py-3.5 bg-white border-2 border-[#00abff] text-[#00abff] rounded-xl font-semibold hover:bg-[#00abff]/5 transition-all flex items-center justify-center gap-2"
+              href="/yestoryd-academy/apply"
+              className="w-full py-3.5 bg-gradient-to-r from-[#00abff] to-[#0066cc] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              Apply to Yestoryd Academy
+              Become a Coach
               <Image 
                 src="/images/rai-mascot.png" 
                 alt="rAI AI" 

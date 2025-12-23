@@ -59,6 +59,10 @@ interface ContactData {
   whatsappNumber: string;
 }
 
+interface VideoData {
+  homepageStoryVideoUrl: string;
+}
+
 interface TestimonialData {
   id: string;
   testimonial_text: string;
@@ -73,6 +77,7 @@ interface HomePageClientProps {
   stats: StatsData;
   pricing: PricingData;
   contact: ContactData;
+  videos: VideoData;
   testimonials: TestimonialData[];
   showTestimonials: boolean;
 }
@@ -319,6 +324,7 @@ export default function HomePageClient({
   stats,
   pricing,
   contact,
+  videos,
   testimonials,
   showTestimonials,
 }: HomePageClientProps) {
@@ -329,6 +335,9 @@ export default function HomePageClient({
 
   const whatsappNumber = contact.whatsappNumber;
   const whatsappMessage = encodeURIComponent("Hi! I watched Rucha's video and I'm interested in the reading program for my child.");
+  
+  // Video URL from database with fallback
+  const storyVideoUrl = videos?.homepageStoryVideoUrl || 'https://www.youtube.com/embed/Dz94bVuWH_A';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -873,9 +882,9 @@ export default function HomePageClient({
             {/* Video Side */}
             <div className="order-2 lg:order-1">
               <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl">
-                {/* Rucha's YouTube Video */}
+                {/* Rucha's YouTube Video - Dynamic from database */}
                 <iframe
-                  src="https://www.youtube.com/embed/Dz94bVuWH_A?rel=0&modestbranding=1"
+                  src={`${storyVideoUrl}${storyVideoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
                   title="Rucha's Story - Yestoryd"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen

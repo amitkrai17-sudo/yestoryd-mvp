@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, CheckCircle, Wand2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, CheckCircle, Wand2, Play } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +22,31 @@ export default function ParentLoginPage() {
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'magic'>('login');
   const [message, setMessage] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const router = useRouter();
+
+  // Fetch video URL from site_settings
+  useEffect(() => {
+    async function fetchVideoUrl() {
+      try {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'parent_login_video_url')
+          .single();
+        
+        if (data?.value) {
+          const parsed = JSON.parse(data.value);
+          if (parsed && parsed.startsWith('http')) {
+            setVideoUrl(parsed);
+          }
+        }
+      } catch (err) {
+        console.log('No video configured for parent login');
+      }
+    }
+    fetchVideoUrl();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -115,10 +139,10 @@ export default function ParentLoginPage() {
         {/* Yestoryd Logo - displayed as-is */}
         <div className="relative z-10">
           <Link href="/">
-            <Image 
-              src="/images/logo.png" 
-              alt="Yestoryd" 
-              width={180} 
+            <Image
+              src="/images/logo.png"
+              alt="Yestoryd"
+              width={180}
               height={50}
               className="h-12 w-auto"
             />
@@ -128,14 +152,29 @@ export default function ParentLoginPage() {
         {/* rAI Introduction */}
         <div className="relative z-10 flex-1 flex flex-col justify-center">
           <div className="max-w-md">
+            {/* Video Section - Shows if video URL is configured */}
+            {videoUrl && (
+              <div className="mb-6">
+                <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+                  <iframe
+                    src={`${videoUrl}${videoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
+                    title="Welcome to Yestoryd"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* rAI Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center shadow-lg shadow-[#ff0099]/30 overflow-hidden">
-                  <Image 
-                    src="/images/rai-mascot.png" 
-                    alt="rAI AI" 
-                    width={48} 
+                  <Image
+                    src="/images/rai-mascot.png"
+                    alt="rAI AI"
+                    width={48}
                     height={48}
                     className="w-12 h-12"
                   />
@@ -146,7 +185,7 @@ export default function ParentLoginPage() {
                 </div>
               </div>
               <p className="text-gray-300 leading-relaxed mb-6">
-                rAI analyzes your child's reading in real-time, identifies areas for improvement, 
+                rAI analyzes your child's reading in real-time, identifies areas for improvement,
                 and provides personalized coaching recommendations.
               </p>
               <div className="space-y-3">
@@ -193,17 +232,32 @@ export default function ParentLoginPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-6">
             <Link href="/">
-              <Image 
-                src="/images/logo.png" 
-                alt="Yestoryd" 
-                width={150} 
+              <Image
+                src="/images/logo.png"
+                alt="Yestoryd"
+                width={150}
                 height={40}
                 className="h-10 w-auto mx-auto"
               />
             </Link>
           </div>
+
+          {/* Mobile Video Section */}
+          {videoUrl && (
+            <div className="lg:hidden mb-6">
+              <div className="relative aspect-video rounded-2xl overflow-hidden shadow-xl border border-white/10">
+                <iframe
+                  src={`${videoUrl}${videoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
+                  title="Welcome to Yestoryd"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Form Card */}
           <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
@@ -216,9 +270,9 @@ export default function ParentLoginPage() {
                 {mode === 'login' ? 'Welcome Back!' : mode === 'signup' ? 'Create Account' : mode === 'magic' ? 'Magic Link' : 'Reset Password'}
               </h1>
               <p className="text-gray-500 mt-2">
-                {mode === 'login' 
-                  ? 'Sign in to access your parent dashboard' 
-                  : mode === 'signup' 
+                {mode === 'login'
+                  ? 'Sign in to access your parent dashboard'
+                  : mode === 'signup'
                     ? 'Start your child\'s reading journey'
                     : mode === 'magic'
                       ? 'Sign in without a password'
@@ -385,10 +439,10 @@ export default function ParentLoginPage() {
             <div className="lg:hidden mb-4">
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  <Image 
-                    src="/images/rai-mascot.png" 
-                    alt="rAI AI" 
-                    width={32} 
+                  <Image
+                    src="/images/rai-mascot.png"
+                    alt="rAI AI"
+                    width={32}
                     height={32}
                     className="w-8 h-8"
                   />
@@ -400,16 +454,16 @@ export default function ParentLoginPage() {
               </div>
             </div>
 
-            {/* Take Assessment CTA - Icon on RIGHT */}
+            {/* Take Assessment CTA - Filled button */}
             <Link
               href="/assessment"
-              className="w-full py-3.5 bg-white border-2 border-[#7b008b] text-[#7b008b] rounded-xl font-semibold hover:bg-[#7b008b]/5 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              Take Free Assessment with rAI
-              <Image 
-                src="/images/rai-mascot.png" 
-                alt="rAI AI" 
-                width={24} 
+              Free Assessment
+              <Image
+                src="/images/rai-mascot.png"
+                alt="rAI AI"
+                width={24}
                 height={24}
                 className="w-6 h-6"
               />

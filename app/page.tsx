@@ -35,6 +35,9 @@ const DEFAULTS = {
   contact: {
     whatsappNumber: '918976287997',
   },
+  videos: {
+    homepageStoryVideoUrl: 'https://www.youtube.com/embed/Dz94bVuWH_A',
+  },
   testimonials: [
     {
       id: '1',
@@ -118,6 +121,11 @@ async function getHomePageData() {
       whatsappNumber: (settings.whatsapp_number || DEFAULTS.contact.whatsappNumber).replace(/[^0-9]/g, ''),
     };
 
+    // Build videos object
+    const videos = {
+      homepageStoryVideoUrl: settings.homepage_story_video_url || settings.homepage_video_url || DEFAULTS.videos.homepageStoryVideoUrl,
+    };
+
     // Testimonials - use from DB or defaults
     const testimonials = testimonialsResult.data && testimonialsResult.data.length > 0
       ? testimonialsResult.data.slice(0, 3) // Show max 3 on homepage
@@ -130,6 +138,7 @@ async function getHomePageData() {
       stats,
       pricing,
       contact,
+      videos,
       testimonials,
       showTestimonials,
     };
@@ -139,6 +148,7 @@ async function getHomePageData() {
       stats: DEFAULTS.stats,
       pricing: DEFAULTS.pricing,
       contact: DEFAULTS.contact,
+      videos: DEFAULTS.videos,
       testimonials: DEFAULTS.testimonials,
       showTestimonials: DEFAULTS.showTestimonials,
     };
@@ -154,6 +164,7 @@ export default async function HomePage() {
       stats={data.stats}
       pricing={data.pricing}
       contact={data.contact}
+      videos={data.videos}
       testimonials={data.testimonials}
       showTestimonials={data.showTestimonials}
     />

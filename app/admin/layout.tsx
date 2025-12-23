@@ -288,7 +288,7 @@ export default function AdminLayout({
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <Link href="/admin" className="flex items-center gap-3">
             <Image
-              src="/yestoryd-logo.png"
+              src="/images/logo.png"
               alt="Yestoryd"
               width={32}
               height={32}
