@@ -440,10 +440,12 @@ export default function AdminSettingsPage() {
     setSaving(true);
     setSaveStatus('idle');
     try {
+      // Wrap value in quotes for JSONB storage
+      const jsonValue = JSON.stringify(value);
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value }),
+        body: JSON.stringify({ key, value: jsonValue }),
       });
       if (res.ok) {
         setSaveStatus('success');
@@ -932,7 +934,7 @@ function SettingsGrid({
               {meta.type === 'textarea' ? (
                 <textarea
                   value={value}
-                  onChange={(e) => onUpdate(setting.key, JSON.stringify(e.target.value))}
+                  onChange={(e) => onUpdate(setting.key, e.target.value)}
                   rows={2}
                   placeholder={meta.defaultValue || ''}
                   className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none resize-none"
@@ -941,13 +943,13 @@ function SettingsGrid({
                 <input
                   type={meta.type || 'text'}
                   value={value}
-                  onChange={(e) => onUpdate(setting.key, JSON.stringify(e.target.value))}
+                  onChange={(e) => onUpdate(setting.key, e.target.value)}
                   placeholder={meta.defaultValue || ''}
                   className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
                 />
               )}
               <button
-                onClick={() => onSave(setting.key, setting.value)}
+                onClick={() => onSave(setting.key, value)}
                 disabled={saving}
                 className="px-3 py-2 bg-slate-100 text-slate-500 rounded-lg hover:bg-blue-600 hover:text-white disabled:opacity-50 transition-all"
                 title="Save"
