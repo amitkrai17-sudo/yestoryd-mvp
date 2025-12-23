@@ -38,6 +38,7 @@ import {
   Headphones,
   ClipboardCheck,
   XCircle,
+  Gift,
 } from 'lucide-react';
 
 // ==================== TYPES ====================
@@ -82,7 +83,7 @@ interface HomePageClientProps {
   showTestimonials: boolean;
 }
 
-// ==================== TRIANGLE NODE DATA ====================
+// ==================== STATIC TRIANGLE DATA ====================
 const triangleNodes = {
   rai: {
     id: 'rai',
@@ -90,14 +91,12 @@ const triangleNodes = {
     subtitle: 'The Brain',
     icon: Brain,
     color: '#00ABFF',
-    bgColor: 'bg-[#00ABFF]',
     description: 'Our AI engine that powers personalized learning',
     features: [
-      { icon: Mic, text: 'Analyzes reading in real-time' },
-      { icon: Target, text: 'Identifies exact gaps & struggles' },
-      { icon: FileText, text: 'Builds personalized curriculum' },
-      { icon: LineChart, text: 'Tracks progress every session' },
-      { icon: Cpu, text: 'Never misses a detail' },
+      'Analyzes reading in real-time',
+      'Identifies exact gaps & struggles',
+      'Builds personalized curriculum',
+      'Tracks progress every session',
     ],
   },
   coach: {
@@ -106,14 +105,12 @@ const triangleNodes = {
     subtitle: 'The Heart',
     icon: Heart,
     color: '#FF0099',
-    bgColor: 'bg-[#FF0099]',
     description: 'Certified experts who deliver with warmth',
     features: [
-      { icon: UserCheck, text: '1-on-1 personalized sessions' },
-      { icon: GraduationCap, text: 'Jolly Phonics certified' },
-      { icon: Smile, text: 'Patient, encouraging, warm' },
-      { icon: Headphones, text: 'Adapts to your child in real-time' },
-      { icon: Award, text: 'Celebrates every small win' },
+      '1-on-1 personalized sessions',
+      'Jolly Phonics certified',
+      'Patient, encouraging, warm',
+      'Celebrates every small win',
     ],
   },
   parent: {
@@ -122,199 +119,72 @@ const triangleNodes = {
     subtitle: 'The Eyes',
     icon: Eye,
     color: '#7B008B',
-    bgColor: 'bg-[#7B008B]',
     description: 'Full transparency — you see everything',
     features: [
-      { icon: ClipboardCheck, text: 'Progress reports after every session' },
-      { icon: Bell, text: 'Real-time updates on WhatsApp' },
-      { icon: BarChart3, text: 'Visual dashboard of improvement' },
-      { icon: MessageCircle, text: 'Direct chat with coach' },
-      { icon: Eye, text: 'Never left in the dark' },
+      'Progress reports after every session',
+      'Real-time updates on WhatsApp',
+      'Visual dashboard of improvement',
+      'Direct chat with coach',
     ],
   },
 };
 
-// ==================== POPUP COMPONENT ====================
-const TrianglePopup = ({ 
-  node, 
-  onClose 
-}: { 
-  node: typeof triangleNodes.rai | null; 
-  onClose: () => void;
-}) => {
-  if (!node) return null;
-
-  const IconComponent = node.icon;
-
+// ==================== SYNERGY VISUAL (Clean Orbital Model) ====================
+const SynergyVisual = () => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* Popup */}
-      <div className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div 
-          className="p-6 text-white"
-          style={{ backgroundColor: node.color }}
-        >
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-              <IconComponent className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold">{node.title}</h3>
-              <p className="text-white/80">{node.subtitle}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          <p className="text-gray-600 mb-6">{node.description}</p>
-          
-          <ul className="space-y-4">
-            {node.features.map((feature, index) => {
-              const FeatureIcon = feature.icon;
-              return (
-                <li key={index} className="flex items-center gap-3">
-                  <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: `${node.color}15` }}
-                  >
-                    <FeatureIcon 
-                      className="w-5 h-5" 
-                      style={{ color: node.color }}
-                    />
-                  </div>
-                  <span className="text-gray-700 font-medium">{feature.text}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 pb-6">
-          <Link
-            href="/assessment"
-            className="block w-full text-center py-3 rounded-xl font-bold text-white transition-all hover:opacity-90"
-            style={{ backgroundColor: node.color }}
-            onClick={onClose}
-          >
-            Experience It Free →
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ==================== INTERACTIVE VENN DIAGRAM ====================
-const InteractiveTriangle = ({ onNodeClick }: { onNodeClick: (nodeId: string) => void }) => {
-  return (
-    <div className="relative w-full max-w-[380px] mx-auto h-[320px] sm:h-[360px]">
-      
-      {/* SVG Venn Circles */}
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 380 360">
-        {/* rAI circle - Top */}
-        <circle 
-          cx="190" cy="120" r="85" 
-          fill="#00ABFF" 
-          fillOpacity="0.15"
-          stroke="#00ABFF"
-          strokeWidth="3"
-          className="cursor-pointer hover:fill-opacity-25 transition-all duration-300"
-          onClick={() => onNodeClick('rai')}
-        />
+    <div className="relative w-full max-w-[400px] mx-auto">
+      {/* Container with fixed responsive height */}
+      <div className="relative w-full h-[340px] sm:h-[380px]">
         
-        {/* Coach circle - Bottom Left */}
-        <circle 
-          cx="130" cy="225" r="85" 
-          fill="#FF0099" 
-          fillOpacity="0.15"
-          stroke="#FF0099"
-          strokeWidth="3"
-          className="cursor-pointer hover:fill-opacity-25 transition-all duration-300"
-          onClick={() => onNodeClick('coach')}
-        />
-        
-        {/* Parent circle - Bottom Right */}
-        <circle 
-          cx="250" cy="225" r="85" 
-          fill="#7B008B" 
-          fillOpacity="0.15"
-          stroke="#7B008B"
-          strokeWidth="3"
-          className="cursor-pointer hover:fill-opacity-25 transition-all duration-300"
-          onClick={() => onNodeClick('parent')}
-        />
-      </svg>
+        {/* Decorative orbit ring */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] rounded-full border-2 border-dashed border-gray-200"></div>
 
-      {/* rAI label - Top */}
-      <button
-        onClick={() => onNodeClick('rai')}
-        className="absolute top-2 left-1/2 -translate-x-1/2 group"
-      >
-        <div className="flex flex-col items-center">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-[#00ABFF] group-hover:scale-110 transition-transform">
-            <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-[#00ABFF]" />
+        {/* ==================== CENTER: Confident Reader ==================== */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 text-center">
+          {/* Pulsing glow */}
+          <div className="absolute inset-0 -m-3 bg-[#ff0099] rounded-full blur-2xl opacity-20 animate-pulse"></div>
+          
+          {/* Center circle */}
+          <div className="w-[88px] h-[88px] sm:w-[100px] sm:h-[100px] bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex flex-col items-center justify-center shadow-2xl relative z-10">
+            <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-white mb-1" />
+            <p className="text-white font-bold text-[10px] sm:text-xs leading-tight">Confident<br/>Reader</p>
           </div>
-          <p className="text-[#00ABFF] font-bold text-sm mt-1">rAI</p>
-          <p className="text-gray-400 text-[10px]">The Brain</p>
         </div>
-      </button>
 
-      {/* Coach label - Bottom Left */}
-      <button
-        onClick={() => onNodeClick('coach')}
-        className="absolute bottom-6 left-2 sm:left-4 group"
-      >
-        <div className="flex flex-col items-center">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-[#FF0099] group-hover:scale-110 transition-transform">
-            <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-[#FF0099]" />
+        {/* ==================== TOP: rAI ==================== */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
+          <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-lg border-2 border-[#00ABFF]/30 text-center hover:-translate-y-1 hover:shadow-xl hover:border-[#00ABFF] transition-all duration-300 w-[110px] sm:w-[130px]">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#00ABFF]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-[#00ABFF]" />
+            </div>
+            <h4 className="font-bold text-[#00ABFF] text-sm">rAI</h4>
+            <p className="text-[10px] text-gray-500 mt-0.5">Finds the gaps</p>
           </div>
-          <p className="text-[#FF0099] font-bold text-sm mt-1">Coach</p>
-          <p className="text-gray-400 text-[10px]">The Heart</p>
         </div>
-      </button>
 
-      {/* Parent label - Bottom Right */}
-      <button
-        onClick={() => onNodeClick('parent')}
-        className="absolute bottom-6 right-2 sm:right-4 group"
-      >
-        <div className="flex flex-col items-center">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-[#7B008B] group-hover:scale-110 transition-transform">
-            <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-[#7B008B]" />
+        {/* ==================== BOTTOM LEFT: Coach ==================== */}
+        <div className="absolute bottom-0 left-0 z-10">
+          <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-lg border-2 border-[#FF0099]/30 text-center hover:-translate-y-1 hover:shadow-xl hover:border-[#FF0099] transition-all duration-300 w-[110px] sm:w-[130px]">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#FF0099]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-[#FF0099]" />
+            </div>
+            <h4 className="font-bold text-[#FF0099] text-sm">Coach</h4>
+            <p className="text-[10px] text-gray-500 mt-0.5">Fills the gaps</p>
           </div>
-          <p className="text-[#7B008B] font-bold text-sm mt-1">Parent</p>
-          <p className="text-gray-400 text-[10px]">The Eyes</p>
         </div>
-      </button>
 
-      {/* Center - Smiley (intersection) */}
-      <div className="absolute top-[46%] left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white rounded-full flex items-center justify-center shadow-xl border-4 border-[#00ABFF]">
-          <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-[#ff0099]" />
+        {/* ==================== BOTTOM RIGHT: Parent ==================== */}
+        <div className="absolute bottom-0 right-0 z-10">
+          <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-lg border-2 border-[#7B008B]/30 text-center hover:-translate-y-1 hover:shadow-xl hover:border-[#7B008B] transition-all duration-300 w-[110px] sm:w-[130px]">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#7B008B]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-[#7B008B]" />
+            </div>
+            <h4 className="font-bold text-[#7B008B] text-sm">Parent</h4>
+            <p className="text-[10px] text-gray-500 mt-0.5">Sees progress</p>
+          </div>
         </div>
-        <p className="text-center text-[10px] font-semibold text-gray-600 mt-1">Confident<br/>Reader</p>
+
       </div>
-
-      {/* Tap hint */}
-      <p className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-xs text-gray-400">
-        👆 Tap any circle for details
-      </p>
     </div>
   );
 };
@@ -331,10 +201,10 @@ export default function HomePageClient({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [activePopup, setActivePopup] = useState<string | null>(null);
 
   const whatsappNumber = contact.whatsappNumber;
-  const whatsappMessage = encodeURIComponent("Hi! I watched Rucha's video and I'm interested in the reading program for my child.");
+  // FIXED: Better WhatsApp message (doesn't assume they watched video)
+  const whatsappMessage = encodeURIComponent("Hi! I'd like to know more about the reading program for my child.");
   
   // Video URL from database with fallback
   const storyVideoUrl = videos?.homepageStoryVideoUrl || 'https://www.youtube.com/embed/Dz94bVuWH_A';
@@ -353,31 +223,6 @@ export default function HomePageClient({
     return () => clearInterval(timer);
   }, []);
 
-  // Close popup on escape
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setActivePopup(null);
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  // Prevent body scroll when popup is open
-  useEffect(() => {
-    if (activePopup) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [activePopup]);
-
-  const handleNodeClick = (nodeId: string) => {
-    setActivePopup(nodeId);
-  };
-
   // Default testimonials if none provided
   const displayTestimonials = testimonials.length > 0 ? testimonials : [
     { id: '1', testimonial_text: 'Aarav went from struggling with basic words to reading full sentences in 2 months. The phonics approach made all the difference.', parent_name: 'Priya S.', parent_location: 'Mumbai', child_name: 'Aarav', child_age: 6, rating: 5 },
@@ -388,26 +233,17 @@ export default function HomePageClient({
 
   return (
     <div className="min-h-screen bg-white font-sans">
-      
-      {/* ==================== POPUP ====================  */}
-      <TrianglePopup 
-        node={activePopup ? triangleNodes[activePopup as keyof typeof triangleNodes] : null}
-        onClose={() => setActivePopup(null)}
-      />
 
       {/* ==================== HEADER ==================== */}
       <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
-        {/* Top Bar */}
+        {/* Top Bar - REMOVED "Become a Coach" link */}
         <div className="bg-[#1a1a2e] text-white py-2 px-4 text-xs sm:text-sm">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="max-w-7xl mx-auto flex justify-center items-center">
             <p className="opacity-90 flex items-center gap-2">
               <GraduationCap className="w-3 h-3 text-[#00abff]" />
               <span className="hidden sm:inline">Jolly Phonics Certified • 7 Years Experience</span>
               <span className="sm:hidden">Certified Phonics Expert</span>
             </p>
-            <Link href="/yestoryd-academy" className="flex items-center gap-1 font-bold text-[#ff0099] hover:text-[#ff0099]/80 transition-colors">
-              Become a Coach <ArrowRight className="w-3 h-3" />
-            </Link>
           </div>
         </div>
 
@@ -430,7 +266,7 @@ export default function HomePageClient({
               </Link>
               <Link
                 href="/assessment"
-                className="h-11 inline-flex items-center justify-center gap-2 bg-[#ff0099] text-white px-6 rounded-full font-bold hover:bg-[#e6008a] hover:shadow-lg hover:shadow-[#ff0099]/20 hover:-translate-y-0.5 transition-all duration-200 text-sm"
+                className="h-11 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white px-6 rounded-full font-bold hover:bg-[#d10080] hover:shadow-lg hover:shadow-[#ff0099]/20 hover:-translate-y-0.5 transition-all duration-200 text-sm"
               >
                 Free Assessment
               </Link>
@@ -451,7 +287,7 @@ export default function HomePageClient({
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-800 font-semibold py-2">Pricing</a>
               <hr className="border-gray-100" />
               <Link href="/parent/login" onClick={() => setMobileMenuOpen(false)} className="block text-gray-600 py-2">Parent Login</Link>
-              <Link href="/assessment" onClick={() => setMobileMenuOpen(false)} className="h-12 flex items-center justify-center gap-2 bg-[#ff0099] text-white rounded-full font-bold w-full mt-4">
+              <Link href="/assessment" onClick={() => setMobileMenuOpen(false)} className="h-12 flex items-center justify-center gap-2 bg-[#e6008a] text-white rounded-full font-bold w-full mt-4">
                 Take Free Assessment
               </Link>
             </div>
@@ -459,8 +295,8 @@ export default function HomePageClient({
         )}
       </header>
 
-      {/* ==================== HERO WITH INTERACTIVE TRIANGLE ==================== */}
-      <section className="pt-32 lg:pt-44 pb-16 lg:pb-24 bg-gradient-to-b from-[#FFF5F9] to-white relative overflow-hidden">
+      {/* ==================== HERO WITH STATIC TRIANGLE ==================== */}
+      <section className="pt-28 lg:pt-40 pb-16 lg:pb-24 bg-gradient-to-b from-[#FFF5F9] to-white relative overflow-hidden">
         {/* Background Blobs */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00abff]/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/4"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#ff0099]/5 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/4"></div>
@@ -482,16 +318,16 @@ export default function HomePageClient({
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">We Make it Natural.</span>
               </h1>
 
-              {/* Subheadline */}
+              {/* SHORTENED Subheadline - Punchy & Scannable */}
               <p className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Most tuition centers just practice "reading more." We use <strong className="text-gray-900">AI Diagnostics</strong> to find the gaps, and <strong className="text-gray-900">Expert Coaches</strong> to fix them with the <strong className="text-[#ff0099]">Science of Reading</strong>.
+                We use <strong className="text-gray-900">AI to find reading gaps</strong>. Expert coaches fix them.
               </p>
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-8">
                 <Link
                   href="/assessment"
-                  className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#ff0099] text-white font-bold px-8 rounded-full hover:bg-[#e6008a] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
+                  className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold px-8 rounded-full hover:bg-[#d10080] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
                 >
                   <Zap className="w-5 h-5" />
                   Free Assessment
@@ -522,51 +358,13 @@ export default function HomePageClient({
               </div>
             </div>
 
-            {/* Right - Interactive Venn Diagram */}
+            {/* Right - Orbital Synergy Visual */}
             <div className="relative">
-              <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-lg min-h-[340px] sm:min-h-[400px] flex items-center justify-center">
-                <InteractiveTriangle onNodeClick={handleNodeClick} />
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-4 sm:p-6 border border-gray-100 shadow-lg">
+                <SynergyVisual />
               </div>
             </div>
 
-          </div>
-        </div>
-      </section>
-
-      {/* ==================== VALUE PROP STRIP ==================== */}
-      <section className="py-6 bg-[#1a1a2e]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div 
-              className="cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleNodeClick('rai')}
-            >
-              <div className="flex items-center justify-center gap-2 text-[#00ABFF]">
-                <Brain className="w-5 h-5" />
-                <span className="font-bold text-sm sm:text-base">rAI</span>
-              </div>
-              <p className="text-white/60 text-xs sm:text-sm mt-1">Diagnoses & Personalizes</p>
-            </div>
-            <div 
-              className="cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleNodeClick('coach')}
-            >
-              <div className="flex items-center justify-center gap-2 text-[#FF0099]">
-                <Heart className="w-5 h-5" />
-                <span className="font-bold text-sm sm:text-base">Coach</span>
-              </div>
-              <p className="text-white/60 text-xs sm:text-sm mt-1">Delivers with Warmth</p>
-            </div>
-            <div 
-              className="cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleNodeClick('parent')}
-            >
-              <div className="flex items-center justify-center gap-2 text-[#7B008B]">
-                <Eye className="w-5 h-5" />
-                <span className="font-bold text-sm sm:text-base">Parent</span>
-              </div>
-              <p className="text-white/60 text-xs sm:text-sm mt-1">Sees Everything</p>
-            </div>
           </div>
         </div>
       </section>
@@ -664,15 +462,12 @@ export default function HomePageClient({
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Step 1 - rAI */}
-            <div 
-              className="relative cursor-pointer group"
-              onClick={() => handleNodeClick('rai')}
-            >
+            <div className="relative">
               <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#00ABFF]/20 hover:border-[#00ABFF] hover:shadow-xl transition-all h-full">
                 <div className="absolute -top-4 left-8 w-10 h-10 bg-[#00ABFF] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
                   1
                 </div>
-                <div className="w-16 h-16 bg-[#00ABFF]/10 rounded-2xl flex items-center justify-center mb-6 mt-4 group-hover:scale-110 transition-transform">
+                <div className="w-16 h-16 bg-[#00ABFF]/10 rounded-2xl flex items-center justify-center mb-6 mt-4">
                   <Brain className="w-8 h-8 text-[#00ABFF]" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -682,22 +477,24 @@ export default function HomePageClient({
                 <p className="text-gray-600 mb-4">
                   Our AI listens to your child read, analyzes 50+ parameters, and identifies exact gaps — fluency, pronunciation, speed.
                 </p>
-                <p className="text-sm text-[#00ABFF] font-medium group-hover:underline">
-                  Tap to see features →
-                </p>
+                <ul className="space-y-2 text-sm text-gray-500">
+                  {triangleNodes.rai.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-[#00ABFF]" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
             {/* Step 2 - Coach */}
-            <div 
-              className="relative cursor-pointer group"
-              onClick={() => handleNodeClick('coach')}
-            >
+            <div className="relative">
               <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#FF0099]/20 hover:border-[#FF0099] hover:shadow-xl transition-all h-full">
                 <div className="absolute -top-4 left-8 w-10 h-10 bg-[#FF0099] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
                   2
                 </div>
-                <div className="w-16 h-16 bg-[#FF0099]/10 rounded-2xl flex items-center justify-center mb-6 mt-4 group-hover:scale-110 transition-transform">
+                <div className="w-16 h-16 bg-[#FF0099]/10 rounded-2xl flex items-center justify-center mb-6 mt-4">
                   <Heart className="w-8 h-8 text-[#FF0099]" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -707,22 +504,24 @@ export default function HomePageClient({
                 <p className="text-gray-600 mb-4">
                   Certified phonics experts take rAI's diagnosis and deliver personalized 1-on-1 sessions with patience and warmth.
                 </p>
-                <p className="text-sm text-[#FF0099] font-medium group-hover:underline">
-                  Tap to see features →
-                </p>
+                <ul className="space-y-2 text-sm text-gray-500">
+                  {triangleNodes.coach.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-[#FF0099]" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
             {/* Step 3 - Parent */}
-            <div 
-              className="relative cursor-pointer group"
-              onClick={() => handleNodeClick('parent')}
-            >
+            <div className="relative">
               <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#7B008B]/20 hover:border-[#7B008B] hover:shadow-xl transition-all h-full">
                 <div className="absolute -top-4 left-8 w-10 h-10 bg-[#7B008B] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
                   3
                 </div>
-                <div className="w-16 h-16 bg-[#7B008B]/10 rounded-2xl flex items-center justify-center mb-6 mt-4 group-hover:scale-110 transition-transform">
+                <div className="w-16 h-16 bg-[#7B008B]/10 rounded-2xl flex items-center justify-center mb-6 mt-4">
                   <Eye className="w-8 h-8 text-[#7B008B]" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -732,9 +531,14 @@ export default function HomePageClient({
                 <p className="text-gray-600 mb-4">
                   Full transparency — progress reports after every session, WhatsApp updates, visual dashboard. Never in the dark.
                 </p>
-                <p className="text-sm text-[#7B008B] font-medium group-hover:underline">
-                  Tap to see features →
-                </p>
+                <ul className="space-y-2 text-sm text-gray-500">
+                  {triangleNodes.parent.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-[#7B008B]" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
@@ -743,7 +547,7 @@ export default function HomePageClient({
           <div className="text-center mt-12">
             <Link
               href="/assessment"
-              className="inline-flex items-center gap-2 bg-[#ff0099] hover:bg-[#e6008a] text-white px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 shadow-xl shadow-[#ff0099]/30 whitespace-nowrap"
+              className="inline-flex items-center gap-2 bg-[#e6008a] hover:bg-[#d10080] text-white px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 shadow-xl shadow-[#ff0099]/30 whitespace-nowrap"
             >
               Free Assessment
               <ArrowRight className="w-5 h-5" />
@@ -755,122 +559,7 @@ export default function HomePageClient({
         </div>
       </section>
 
-      {/* ==================== THE TECH - RAG SECTION ==================== */}
-      <section className="py-16 lg:py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="inline-block text-sm font-semibold text-[#00abff] uppercase tracking-wider mb-4">
-              The Tech
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Why <span className="text-[#ff0099]">Expert Data</span> Matters
-            </h2>
-          </div>
-
-          {/* Comparison Cards */}
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
-            {/* Generic AI Card */}
-            <div className="bg-white rounded-2xl p-6 border-2 border-gray-200 relative">
-              <div className="absolute -top-3 left-6 bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">
-                ❌ Generic AI
-              </div>
-              <div className="mt-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <MessageCircle className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">ChatGPT, etc.</p>
-                    <p className="text-sm text-gray-500">General Purpose AI</p>
-                  </div>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    <span className="font-semibold text-gray-700">Guesses</span> based on the internet. 
-                    No reading expertise. No understanding of phonics rules. 
-                    May give incorrect or generic advice.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Yestoryd RAG Card */}
-            <div className="bg-gradient-to-br from-[#00abff]/5 to-[#ff0099]/5 rounded-2xl p-6 border-2 border-[#00abff] relative">
-              <div className="absolute -top-3 left-6 bg-[#00abff] text-white px-3 py-1 rounded-full text-xs font-bold">
-                ✓ Yestoryd RAG Engine
-              </div>
-              <div className="mt-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-[#00abff]/10 rounded-xl flex items-center justify-center">
-                    <Brain className="w-6 h-6 text-[#00abff]" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">rAI Engine</p>
-                    <p className="text-sm text-[#00abff]">Expert Knowledge AI</p>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-4 border border-[#00abff]/20">
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    <span className="font-semibold text-[#00abff]">Consults our Expert Knowledge Base first.</span> 
-                    Built on 7+ years of Rucha's phonics expertise. 
-                    Never guesses — always references proven methods.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Process Flow */}
-          <div className="max-w-3xl mx-auto">
-            <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6">
-              The Process
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-8">
-              <div className="bg-[#ff0099]/10 text-[#ff0099] px-4 py-2 rounded-full text-sm font-medium">
-                Child Error
-              </div>
-              <ArrowRight className="w-5 h-5 text-gray-300 hidden sm:block" />
-              <div className="text-gray-300 sm:hidden">→</div>
-              <div className="bg-[#00abff]/10 text-[#00abff] px-4 py-2 rounded-full text-sm font-medium">
-                Check Expert DB
-              </div>
-              <ArrowRight className="w-5 h-5 text-gray-300 hidden sm:block" />
-              <div className="text-gray-300 sm:hidden">→</div>
-              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
-                Perfect Fix ✓
-              </div>
-            </div>
-
-            {/* Explanation */}
-            <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-gray-100">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-[#ff0099]/10 rounded-xl flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-[#ff0099]" />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-gray-700 leading-relaxed mb-4">
-                    <strong className="text-gray-900">Most AI makes things up.</strong> We couldn't risk that with your child's education.
-                  </p>
-                  <p className="text-gray-600 leading-relaxed mb-4">
-                    That's why we built our system on <strong className="text-[#00abff]">RAG (Retrieval-Augmented Generation)</strong>. 
-                    Imagine Yestoryd's AI as a librarian with a manual written by 
-                    <strong className="text-[#ff0099]"> Rucha Rai (7+ years exp)</strong>.
-                  </p>
-                  <p className="text-gray-600 leading-relaxed">
-                    When your child makes a mistake, the AI doesn't guess. It looks up the 
-                    <strong className="text-gray-900"> exact page in our "Expert Manual"</strong> and tells the coach 
-                    precisely which Phonics rule to practice.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ==================== RUCHA'S STORY ==================== */}
+      {/* ==================== RUCHA'S STORY (MOVED UP - Before Tech Section) ==================== */}
       <section id="rucha-story" className="py-16 lg:py-24 bg-[#1a1a2e] text-white relative overflow-hidden">
         {/* Decorative Blurs */}
         <div className="absolute top-0 left-0 w-64 h-64 bg-[#ff0099] blur-[100px] opacity-20"></div>
@@ -936,8 +625,127 @@ export default function HomePageClient({
         </div>
       </section>
 
-      {/* ==================== TESTIMONIALS ==================== */}
+      {/* ==================== THE TECH - RENAMED: "Why Our AI is Different (and Safer)" ==================== */}
       <section className="py-16 lg:py-24 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className="inline-block text-sm font-semibold text-[#00abff] uppercase tracking-wider mb-4">
+              Safe AI
+            </span>
+            {/* RENAMED: Removed RAG jargon */}
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              Why Our AI is <span className="text-[#ff0099]">Different</span> (and Safer)
+            </h2>
+          </div>
+
+          {/* Comparison Cards - INCREASED FONT SIZE for mobile */}
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
+            {/* Generic AI Card */}
+            <div className="bg-white rounded-2xl p-6 border-2 border-gray-200 relative">
+              <div className="absolute -top-3 left-6 bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">
+                ❌ Generic AI
+              </div>
+              <div className="mt-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <MessageCircle className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">ChatGPT, etc.</p>
+                    <p className="text-sm text-gray-500">General Purpose AI</p>
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  {/* INCREASED font size */}
+                  <p className="text-gray-600 text-base leading-relaxed">
+                    <span className="font-semibold text-gray-700">Guesses</span> based on the internet. 
+                    No reading expertise. No understanding of phonics rules. 
+                    May give incorrect or generic advice.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Yestoryd Safe AI Card - RENAMED */}
+            <div className="bg-gradient-to-br from-[#00abff]/5 to-[#ff0099]/5 rounded-2xl p-6 border-2 border-[#00abff] relative">
+              <div className="absolute -top-3 left-6 bg-[#00abff] text-white px-3 py-1 rounded-full text-xs font-bold">
+                ✓ Safe, Expert-Verified AI
+              </div>
+              <div className="mt-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-[#00abff]/10 rounded-xl flex items-center justify-center">
+                    <Brain className="w-6 h-6 text-[#00abff]" />
+                  </div>
+                  <div>
+                    {/* RENAMED from "rAI Engine" */}
+                    <p className="font-bold text-gray-900">Rucha's Knowledge Engine</p>
+                    <p className="text-sm text-[#00abff]">Expert-Verified AI</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-4 border border-[#00abff]/20">
+                  {/* INCREASED font size */}
+                  <p className="text-gray-600 text-base leading-relaxed">
+                    <span className="font-semibold text-[#00abff]">Consults our Expert Knowledge Base first.</span>{' '}
+                    Built on 7+ years of Rucha's phonics expertise. 
+                    Never guesses — always references proven methods.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Process Flow */}
+          <div className="max-w-3xl mx-auto">
+            <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6">
+              The Process
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-8">
+              <div className="bg-[#ff0099]/10 text-[#ff0099] px-4 py-2 rounded-full text-sm font-medium">
+                Child Error
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-300 hidden sm:block" />
+              <div className="text-gray-300 sm:hidden">→</div>
+              <div className="bg-[#00abff]/10 text-[#00abff] px-4 py-2 rounded-full text-sm font-medium">
+                Check Expert DB
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-300 hidden sm:block" />
+              <div className="text-gray-300 sm:hidden">→</div>
+              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+                Perfect Fix ✓
+              </div>
+            </div>
+
+            {/* Explanation - REMOVED RAG jargon */}
+            <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-gray-100">
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-[#ff0099]/10 rounded-xl flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-[#ff0099]" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-gray-700 leading-relaxed mb-4">
+                    <strong className="text-gray-900">Most AI makes things up.</strong> We couldn't risk that with your child's education.
+                  </p>
+                  <p className="text-gray-600 leading-relaxed mb-4">
+                    {/* SIMPLIFIED - removed RAG jargon */}
+                    Imagine our AI as a <strong className="text-[#00abff]">librarian with a manual written by Rucha</strong>. 
+                    Built on <strong className="text-[#ff0099]">7+ years of phonics expertise</strong>.
+                  </p>
+                  <p className="text-gray-600 leading-relaxed">
+                    When your child makes a mistake, the AI doesn't guess. It looks up the 
+                    <strong className="text-gray-900"> exact page in our "Expert Manual"</strong> and tells the coach 
+                    precisely which Phonics rule to practice.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==================== TESTIMONIALS ==================== */}
+      <section className="py-16 lg:py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="inline-block text-sm font-semibold text-[#ff0099] uppercase tracking-wider mb-4">
@@ -956,7 +764,7 @@ export default function HomePageClient({
                 className={`bg-white rounded-2xl p-6 shadow-lg border-2 transition-all ${
                   activeTestimonial === index
                     ? 'border-[#ff0099] shadow-[#ff0099]/10'
-                    : 'border-transparent hover:border-gray-200'
+                    : 'border-gray-100 hover:border-gray-200'
                 }`}
               >
                 {/* Rating */}
@@ -971,7 +779,7 @@ export default function HomePageClient({
                   "{testimonial.testimonial_text}"
                 </p>
 
-                {/* Author */}
+                {/* Author - Using gradient circle instead of single letter */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-bold">
                     {testimonial.parent_name.charAt(0)}
@@ -1007,7 +815,7 @@ export default function HomePageClient({
       </section>
 
       {/* ==================== PRICING ==================== */}
-      <section id="pricing" className="py-16 lg:py-24 bg-white">
+      <section id="pricing" className="py-16 lg:py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="inline-block text-sm font-semibold text-[#ff0099] uppercase tracking-wider mb-4">
@@ -1022,8 +830,8 @@ export default function HomePageClient({
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Free Assessment */}
-            <div className="bg-gray-50 rounded-3xl p-6 sm:p-8 border-2 border-gray-200">
+            {/* Free Assessment - ADDED "Worth ₹999" */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-gray-200">
               <div className="mb-6">
                 <span className="inline-block bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
                   Start Here
@@ -1042,12 +850,18 @@ export default function HomePageClient({
                   'rAI analyzes reading in real-time',
                   'Clarity, Fluency & Speed scores',
                   'Personalized improvement tips',
-                  'Instant digital certificate',
+                  // ADDED: Worth ₹999 value perception
+                  { text: 'Detailed Diagnosis Report', highlight: '(Worth ₹999)' },
+                  'Instant shareable certificate',
                   'No credit card required',
                 ].map((item, index) => (
                   <li key={index} className="flex items-center gap-3 text-gray-600">
                     <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    {item}
+                    {typeof item === 'string' ? item : (
+                      <span>
+                        {item.text} <span className="text-[#ff0099] font-semibold">{item.highlight}</span>
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -1060,8 +874,8 @@ export default function HomePageClient({
               </Link>
             </div>
 
-            {/* Coaching Program */}
-            <div className="bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
+            {/* Coaching Program - UPDATED CTA */}
+            <div className="bg-gradient-to-br from-[#e6008a] to-[#7b008b] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
               {/* Popular Badge */}
               <div className="sm:absolute sm:top-4 sm:right-4 bg-[#ffde00] text-gray-900 px-3 py-1 rounded-full text-sm font-bold inline-block mb-3 sm:mb-0">
                 Most Popular
@@ -1096,14 +910,16 @@ export default function HomePageClient({
                 ))}
               </ul>
 
+              {/* UPDATED CTA - Personal but outcome-oriented */}
               <Link
                 href="/lets-talk"
-                className="block w-full text-center bg-white text-[#ff0099] py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors"
+                className="block w-full text-center bg-white text-[#e6008a] py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors"
               >
-                Talk to Rucha First
+                Consult with Rucha
               </Link>
-              <p className="text-center text-white/60 text-sm mt-3">
-                Free consultation • No pressure
+              {/* UPDATED subtext - outcome-oriented, not "no pressure" */}
+              <p className="text-center text-white/70 text-sm mt-3">
+                Plan your child's reading roadmap
               </p>
             </div>
           </div>
@@ -1111,7 +927,7 @@ export default function HomePageClient({
       </section>
 
       {/* ==================== FINAL CTA ==================== */}
-      <section className="py-16 lg:py-24 bg-gradient-to-br from-[#ff0099] to-[#7b008b] text-white">
+      <section className="py-16 lg:py-24 bg-gradient-to-br from-[#e6008a] to-[#7b008b] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-4 mb-8">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -1138,7 +954,7 @@ export default function HomePageClient({
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/assessment"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-[#ff0099] px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors shadow-xl"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-[#e6008a] px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors shadow-xl"
             >
               Free Assessment
               <ArrowRight className="w-5 h-5" />
@@ -1201,6 +1017,7 @@ export default function HomePageClient({
               <ul className="space-y-2 text-sm text-gray-500">
                 <li><Link href="/parent/login" className="hover:text-[#ff0099] transition-colors">Parent Login</Link></li>
                 <li><Link href="/coach/login" className="hover:text-[#ff0099] transition-colors">Coach Login</Link></li>
+                {/* "Become a Coach" link kept ONLY in footer */}
                 <li><Link href="/yestoryd-academy" className="hover:text-[#ff0099] transition-colors">Become a Coach</Link></li>
               </ul>
             </div>
@@ -1233,7 +1050,7 @@ export default function HomePageClient({
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 sm:hidden z-30">
         <Link
           href="/assessment"
-          className="block w-full text-center bg-[#ff0099] text-white py-3.5 rounded-xl font-bold shadow-lg"
+          className="block w-full text-center bg-[#e6008a] text-white py-3.5 rounded-xl font-bold shadow-lg"
         >
           Free Assessment
         </Link>
