@@ -28,7 +28,7 @@ import {
   Gift,
   Users,
 } from 'lucide-react';
-import AgreementStep from '../../components/agreement/AgreementStep';
+import DynamicAgreementStep from '../../components/agreement/DynamicAgreementStep';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -269,7 +269,7 @@ export default function CoachOnboardingPage() {
           {/* STEP 1: Agreement */}
           {currentStep === 'agreement' && (
             <div className="p-6 sm:p-8">
-              <AgreementStep
+              <DynamicAgreementStep
                 coachId={coach.id}
                 coachName={coach.name || 'Coach'}
                 coachEmail={coach.email}

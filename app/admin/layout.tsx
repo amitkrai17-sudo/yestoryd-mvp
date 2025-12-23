@@ -26,6 +26,7 @@ import {
   FileText,
   PieChart,
   MessageSquare,
+  FileSignature,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -73,6 +74,13 @@ const NAV_ITEMS = [
     href: '/admin/coach-applications',
     icon: UserPlus,
     description: 'Review coach applications',
+    ready: true,
+  },
+  {
+    label: 'Agreement Management',
+    href: '/admin/agreements',
+    icon: FileSignature,
+    description: 'Upload & manage coach agreements',
     ready: true,
   },
   // ===== REVENUE SPLIT ITEMS =====

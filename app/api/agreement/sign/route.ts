@@ -1,413 +1,106 @@
 // file: app/api/agreement/sign/route.ts
-// Save coach agreement signature + Send branded email with PDF attachment
+// Sign agreement and store signature
 // POST /api/agreement/sign
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import sgMail from '@sendgrid/mail';
-
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+import { headers } from 'next/headers';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Generate PDF content as base64
-async function generateAgreementPDF(data: {
-  coachName: string;
-  coachEmail: string;
-  agreementVersion: string;
-  signedAt: string;
-  ipAddress: string;
-  taxIdType: string;
-  signatureDataUrl: string;
-  configSnapshot: any;
-}): Promise<string> {
-  // Create HTML content for PDF
-  const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-    .header { text-align: center; border-bottom: 3px solid #7B008B; padding-bottom: 20px; margin-bottom: 30px; }
-    .logo { font-size: 28px; font-weight: bold; color: #7B008B; }
-    .logo span { color: #FF0099; }
-    .title { font-size: 22px; color: #333; margin-top: 10px; }
-    .section { margin: 25px 0; }
-    .section-title { font-size: 16px; font-weight: bold; color: #7B008B; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 15px; }
-    .info-row { display: flex; margin: 8px 0; }
-    .info-label { font-weight: 600; width: 180px; color: #555; }
-    .info-value { color: #333; }
-    .highlight-box { background: linear-gradient(135deg, #fdf4ff, #fce7f3); border: 1px solid #f0abfc; border-radius: 8px; padding: 20px; margin: 20px 0; }
-    .signature-section { margin-top: 40px; padding-top: 20px; border-top: 2px solid #7B008B; }
-    .signature-img { max-width: 250px; max-height: 80px; border: 1px solid #ddd; padding: 10px; background: #fafafa; }
-    .terms-summary { font-size: 12px; color: #666; margin-top: 30px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
-    .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="logo">Yester<span>yd</span></div>
-    <div class="title">COACH SERVICE AGREEMENT</div>
-    <div style="font-size: 12px; color: #666;">Executed Copy - Legally Binding Document</div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">PARTIES TO THE AGREEMENT</div>
-    <div class="info-row"><span class="info-label">Company:</span><span class="info-value">Yestoryd LLP</span></div>
-    <div class="info-row"><span class="info-label">Coach Name:</span><span class="info-value">${data.coachName}</span></div>
-    <div class="info-row"><span class="info-label">Coach Email:</span><span class="info-value">${data.coachEmail}</span></div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">AGREEMENT DETAILS</div>
-    <div class="info-row"><span class="info-label">Agreement Version:</span><span class="info-value">${data.agreementVersion}</span></div>
-    <div class="info-row"><span class="info-label">Signed On:</span><span class="info-value">${data.signedAt}</span></div>
-    <div class="info-row"><span class="info-label">IP Address:</span><span class="info-value">${data.ipAddress}</span></div>
-    <div class="info-row"><span class="info-label">Tax ID Type:</span><span class="info-value">${data.taxIdType === 'pan' ? 'PAN Card' : 'Aadhaar Card'}</span></div>
-  </div>
-
-  <div class="highlight-box">
-    <div class="section-title" style="border: none; margin: 0 0 15px 0;">💰 REVENUE SHARING TERMS</div>
-    <div class="info-row"><span class="info-label">Platform Lead:</span><span class="info-value">${data.configSnapshot?.coach_cost_percent || 50}% of enrollment fee</span></div>
-    <div class="info-row"><span class="info-label">Coach-Sourced Lead:</span><span class="info-value">${(data.configSnapshot?.coach_cost_percent || 50) + (data.configSnapshot?.lead_cost_percent || 20)}% of enrollment fee</span></div>
-    <div class="info-row"><span class="info-label">TDS Rate:</span><span class="info-value">${data.configSnapshot?.tds_rate_standard || 10}% (Section 194J)</span></div>
-    <div class="info-row"><span class="info-label">TDS Threshold:</span><span class="info-value">₹${(data.configSnapshot?.tds_threshold || 30000).toLocaleString()}/year</span></div>
-    <div class="info-row"><span class="info-label">Payout Schedule:</span><span class="info-value">Monthly (7th of each month)</span></div>
-  </div>
-
-  <div class="terms-summary">
-    <strong>Key Terms Summary:</strong><br/>
-    • Independent Contractor relationship (not employment)<br/>
-    • ${data.configSnapshot?.cancellation_notice_hours || 24}-hour cancellation notice required<br/>
-    • ${data.configSnapshot?.termination_notice_days || 30}-day termination notice period<br/>
-    • ${data.configSnapshot?.non_solicitation_months || 12}-month non-solicitation period<br/>
-    • Confidentiality and IP protection clauses apply<br/>
-    • DPDP Act 2023 compliance required
-  </div>
-
-  <div class="signature-section">
-    <div class="section-title">DIGITAL SIGNATURE</div>
-    <p style="font-size: 13px; color: #555;">This agreement was digitally signed by the Coach. The signature below constitutes acceptance of all terms and conditions.</p>
-    <div style="margin: 20px 0;">
-      <img src="${data.signatureDataUrl}" class="signature-img" alt="Coach Signature" />
-    </div>
-    <div class="info-row"><span class="info-label">Signed By:</span><span class="info-value">${data.coachName}</span></div>
-    <div class="info-row"><span class="info-label">Date & Time:</span><span class="info-value">${data.signedAt}</span></div>
-  </div>
-
-  <div class="footer">
-    <p><strong>Yestoryd LLP</strong> | AI-Powered Reading Intelligence for Children</p>
-    <p>This is a system-generated document. For queries, contact engage@yestoryd.com</p>
-    <p>Document ID: AGR-${Date.now()}</p>
-  </div>
-</body>
-</html>
-  `;
-
-  // Convert HTML to base64 (for email attachment, we'll send as HTML)
-  // In production, you might use a service like Puppeteer or html-pdf-node
-  // For now, we'll attach the HTML as a styled document
-  const base64Content = Buffer.from(htmlContent).toString('base64');
-  return base64Content;
-}
-
-// Send branded email with PDF attachment
-async function sendAgreementEmail(data: {
-  coachEmail: string;
-  coachName: string;
-  coachId: string;
-  agreementVersion: string;
-  signedAt: string;
-  ipAddress: string;
-  taxIdType: string;
-  signatureDataUrl: string;
-  configSnapshot: any;
-  referralCode?: string;
-}): Promise<boolean> {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.error('❌ SENDGRID_API_KEY not configured');
-    return false;
-  }
-
-  try {
-    // Generate PDF content
-    const pdfBase64 = await generateAgreementPDF({
-      coachName: data.coachName,
-      coachEmail: data.coachEmail,
-      agreementVersion: data.agreementVersion,
-      signedAt: data.signedAt,
-      ipAddress: data.ipAddress,
-      taxIdType: data.taxIdType,
-      signatureDataUrl: data.signatureDataUrl,
-      configSnapshot: data.configSnapshot,
-    });
-
-    const referralLink = `https://yestoryd.com/assessment?ref=${data.referralCode || data.coachId}`;
-    const dashboardLink = 'https://yestoryd.com/coach/dashboard';
-    const whatsappGroup = 'https://chat.whatsapp.com/yestoryd-coaches'; // Update with actual link
-
-    const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    
-    <!-- Header with Gradient -->
-    <div style="background: linear-gradient(135deg, #7B008B 0%, #FF0099 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
-      <h1 style="color: white; font-size: 28px; margin: 0;">🎉 Welcome to the Team!</h1>
-      <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 8px;">Your Coach Agreement is Now Active</p>
-    </div>
-    
-    <!-- Main Content -->
-    <div style="background: white; padding: 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-      
-      <p style="font-size: 18px; color: #334155; margin-bottom: 20px;">
-        Hi <strong style="color: #7B008B;">${data.coachName}</strong> 👋
-      </p>
-      
-      <p style="font-size: 16px; color: #475569; line-height: 1.6; margin-bottom: 20px;">
-        Congratulations! You've officially joined the <strong>Yestoryd coaching family</strong>. We're thrilled to have you on board and can't wait to see the amazing impact you'll make on children's reading journeys! 📚✨
-      </p>
-
-      <!-- Agreement Summary Box -->
-      <div style="background: linear-gradient(135deg, #fdf4ff, #fce7f3); border-radius: 12px; padding: 20px; margin: 24px 0; border-left: 4px solid #FF0099;">
-        <h3 style="color: #7B008B; font-size: 16px; margin: 0 0 12px 0;">📋 Agreement Summary</h3>
-        <table style="width: 100%; font-size: 14px; color: #475569;">
-          <tr><td style="padding: 4px 0;"><strong>Version:</strong></td><td>${data.agreementVersion}</td></tr>
-          <tr><td style="padding: 4px 0;"><strong>Signed On:</strong></td><td>${data.signedAt}</td></tr>
-          <tr><td style="padding: 4px 0;"><strong>Status:</strong></td><td style="color: #059669;">✅ Active</td></tr>
-        </table>
-      </div>
-
-      <!-- Earnings Highlight -->
-      <div style="background: #f0fdf4; border-radius: 12px; padding: 20px; margin: 24px 0; border: 1px solid #86efac;">
-        <h3 style="color: #166534; font-size: 16px; margin: 0 0 12px 0;">💰 Your Earning Potential</h3>
-        <table style="width: 100%; font-size: 14px; color: #166534;">
-          <tr>
-            <td style="padding: 8px 0; border-bottom: 1px solid #dcfce7;"><strong>Platform Students:</strong></td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #dcfce7; text-align: right;"><strong>₹3,000</strong> per enrollment (50%)</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0;"><strong>Your Referrals:</strong></td>
-            <td style="padding: 8px 0; text-align: right;"><strong style="color: #FF0099;">₹4,200</strong> per enrollment (70%)</td>
-          </tr>
-        </table>
-        <p style="font-size: 12px; color: #166534; margin: 12px 0 0 0;">
-          💡 <em>Bring your own students and earn 20% more!</em>
-        </p>
-      </div>
-
-      <!-- Referral Link Box -->
-      <div style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
-        <h3 style="color: white; font-size: 18px; margin: 0 0 8px 0;">🔗 Your Personal Referral Link</h3>
-        <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin: 0 0 16px 0;">Share this link to earn 70% on every enrollment!</p>
-        <div style="background: white; border-radius: 8px; padding: 12px; word-break: break-all;">
-          <a href="${referralLink}" style="color: #7B008B; font-size: 14px; text-decoration: none; font-weight: 600;">${referralLink}</a>
-        </div>
-        <p style="color: rgba(255,255,255,0.8); font-size: 11px; margin: 12px 0 0 0;">
-          Parents who use your link get a FREE reading assessment!
-        </p>
-      </div>
-
-      <!-- Next Steps -->
-      <div style="margin: 24px 0;">
-        <h3 style="color: #334155; font-size: 16px; margin: 0 0 16px 0;">🚀 What's Next?</h3>
-        
-        <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
-          <span style="background: #FF0099; color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">1</span>
-          <div>
-            <strong style="color: #334155;">Complete Bank Details</strong>
-            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Add your bank account to receive monthly payouts</p>
-          </div>
-        </div>
-        
-        <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
-          <span style="background: #7B008B; color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">2</span>
-          <div>
-            <strong style="color: #334155;">Join Coach Community</strong>
-            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Connect with fellow coaches on WhatsApp</p>
-          </div>
-        </div>
-        
-        <div style="display: flex; align-items: flex-start;">
-          <span style="background: #00ABFF; color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">3</span>
-          <div>
-            <strong style="color: #334155;">Start Referring</strong>
-            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Share your link and start earning!</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- CTA Buttons -->
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${dashboardLink}" style="display: inline-block; background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 8px;">
-          Open Dashboard →
-        </a>
-      </div>
-
-      <!-- Attachment Note -->
-      <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center;">
-        <p style="color: #475569; font-size: 14px; margin: 0;">
-          📎 <strong>Your signed agreement is attached to this email.</strong><br/>
-          <span style="font-size: 12px; color: #64748b;">Please save it for your records.</span>
-        </p>
-      </div>
-      
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align: center; margin-top: 24px;">
-      <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">
-        Questions? Reply to this email or WhatsApp us at +91 8976287997
-      </p>
-      <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-        © 2025 Yestoryd LLP | AI-Powered Reading Intelligence for Children
-      </p>
-      <p style="color: #94a3b8; font-size: 11px; margin-top: 8px;">
-        <a href="https://yestoryd.com" style="color: #FF0099; text-decoration: none;">yestoryd.com</a>
-      </p>
-    </div>
-    
-  </div>
-</body>
-</html>
-    `;
-
-    const msg = {
-      to: data.coachEmail,
-      from: {
-        email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
-        name: 'Yestoryd',
-      },
-      replyTo: 'engage@yestoryd.com',
-      subject: `🎉 Welcome to Yestoryd! Your Coach Agreement is Active`,
-      html: emailHtml,
-      attachments: [
-        {
-          content: pdfBase64,
-          filename: `Yestoryd-Coach-Agreement-${data.coachName.replace(/\s+/g, '-')}.html`,
-          type: 'text/html',
-          disposition: 'attachment',
-        },
-      ],
-    };
-
-    await sgMail.send(msg);
-    console.log(`✅ Agreement confirmation email sent to ${data.coachEmail}`);
-    return true;
-
-  } catch (error: any) {
-    console.error('❌ Email send error:', error.response?.body || error.message);
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      coachId, 
-      signatureDataUrl, 
-      agreementVersion,
-      taxIdType,        // 'pan' or 'aadhaar'
-      taxIdValue,       // Last 4 digits only for display
-      configSnapshot    // Full config at time of signing
+    const {
+      coachId,
+      agreementVersionId,
+      signature,
+      taxIdType,
+      taxIdValue,
+      agreementVersion
     } = body;
 
-    if (!coachId || !signatureDataUrl || !agreementVersion) {
+    // Validation
+    if (!coachId || !signature || !taxIdValue) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: coachId, signatureDataUrl, agreementVersion' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Get IP address and user agent from request
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown';
-    const userAgent = request.headers.get('user-agent') || 'unknown';
-    const signedAt = new Date().toLocaleString('en-IN', { 
-      timeZone: 'Asia/Kolkata',
-      dateStyle: 'full',
-      timeStyle: 'medium'
-    });
+    // Get request metadata
+    const headersList = headers();
+    const ipAddress = headersList.get('x-forwarded-for') || 
+                      headersList.get('x-real-ip') || 
+                      'unknown';
+    const userAgent = headersList.get('user-agent') || 'unknown';
 
-    // Get coach details first (we need email and name for the email)
-    const { data: coachData, error: coachFetchError } = await supabase
-      .from('coaches')
-      .select('email, name, referral_code')
-      .eq('id', coachId)
-      .single();
+    // Upload signature to Supabase Storage
+    const timestamp = Date.now();
+    const signaturePath = `signatures/${coachId}-${timestamp}.png`;
+    
+    // Convert base64 to buffer
+    const base64Data = signature.replace(/^data:image\/png;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
 
-    if (coachFetchError || !coachData) {
-      console.error('Error fetching coach:', coachFetchError);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('coach-documents')
+      .upload(signaturePath, buffer, {
+        contentType: 'image/png',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Signature upload error:', uploadError);
       return NextResponse.json(
-        { success: false, error: 'Coach not found' },
-        { status: 404 }
+        { error: 'Failed to save signature' },
+        { status: 500 }
       );
     }
 
-    // Convert base64 signature to file and upload to Supabase Storage
-    let signatureUrl = null;
-    try {
-      // Remove data URL prefix
-      const base64Data = signatureDataUrl.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      
-      const fileName = `signatures/${coachId}_${Date.now()}.png`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('coach-documents')
-        .upload(fileName, buffer, {
-          contentType: 'image/png',
-          upsert: true
-        });
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('coach-documents')
+      .getPublicUrl(signaturePath);
 
-      if (uploadError) {
-        console.error('Signature upload error:', uploadError);
-        // Continue without storing URL - will store base64 in DB as fallback
-      } else {
-        const { data: urlData } = supabase.storage
-          .from('coach-documents')
-          .getPublicUrl(fileName);
-        signatureUrl = urlData.publicUrl;
-      }
-    } catch (uploadErr) {
-      console.error('Error processing signature:', uploadErr);
-      // Will use base64 data URL as fallback
+    const signatureUrl = urlData.publicUrl;
+
+    // Update coach record
+    const updateData: any = {
+      agreement_signed_at: new Date().toISOString(),
+      agreement_signature_url: signatureUrl,
+      agreement_ip_address: ipAddress,
+      agreement_user_agent: userAgent,
+      agreement_version: agreementVersion || '2.1',
+      payout_active: true // Activate payout after signing
+    };
+
+    // Add tax ID based on type
+    if (taxIdType === 'pan') {
+      updateData.pan_number = taxIdValue;
+    } else {
+      updateData.aadhaar_number = taxIdValue;
     }
 
-    // Use uploaded URL or fallback to base64 data URL
-    const finalSignatureUrl = signatureUrl || signatureDataUrl;
+    // Add agreement version reference if provided
+    if (agreementVersionId) {
+      updateData.agreement_version_id = agreementVersionId;
+    }
 
-    // Update coach record with signature details
-    const { error: updateError } = await supabase
+    const { data: coach, error: updateError } = await supabase
       .from('coaches')
-      .update({
-        agreement_signed_at: new Date().toISOString(),
-        agreement_signature_url: finalSignatureUrl,
-        agreement_ip_address: ipAddress,
-        agreement_user_agent: userAgent,
-        agreement_version: agreementVersion,
-        tax_id_type: taxIdType || null,
-        aadhaar_last_four: taxIdType === 'aadhaar' ? taxIdValue : null,
-      })
-      .eq('id', coachId);
+      .update(updateData)
+      .eq('id', coachId)
+      .select('id, name, email, agreement_version')
+      .single();
 
     if (updateError) {
-      console.error('Error updating coach:', updateError);
+      console.error('Coach update error:', updateError);
       return NextResponse.json(
-        { success: false, error: 'Failed to save signature to coach record' },
+        { error: 'Failed to update coach record' },
         { status: 500 }
       );
     }
@@ -417,49 +110,178 @@ export async function POST(request: NextRequest) {
       .from('agreement_signing_log')
       .insert({
         coach_id: coachId,
-        agreement_version: agreementVersion,
+        agreement_version_id: agreementVersionId,
+        agreement_version: agreementVersion || '2.1',
+        signature_url: signatureUrl,
+        tax_id_type: taxIdType,
+        tax_id_masked: taxIdType === 'pan' 
+          ? taxIdValue.substring(0, 5) + '****' + taxIdValue.substring(9)
+          : '****' + taxIdValue.substring(8),
         ip_address: ipAddress,
         user_agent: userAgent,
-        signature_url: finalSignatureUrl,
-        config_snapshot: configSnapshot || {},
+        signed_at: new Date().toISOString()
       });
 
     if (logError) {
-      console.error('Error creating signing log:', logError);
-      // Non-critical error - continue
+      console.error('Audit log error:', logError);
+      // Don't fail the request for audit log errors
     }
 
-    // Send branded email with PDF attachment
-    const emailSent = await sendAgreementEmail({
-      coachEmail: coachData.email,
-      coachName: coachData.name || 'Coach',
-      coachId,
-      agreementVersion,
-      signedAt,
-      ipAddress,
-      taxIdType: taxIdType || 'pan',
-      signatureDataUrl,
-      configSnapshot,
-      referralCode: coachData.referral_code,
-    });
-
-    if (!emailSent) {
-      console.warn('⚠️ Agreement saved but email failed to send');
+    // Send confirmation email
+    try {
+      await sendConfirmationEmail(coach, agreementVersion || '2.1', signatureUrl);
+    } catch (emailError) {
+      console.error('Email error:', emailError);
+      // Don't fail the request for email errors
     }
 
     return NextResponse.json({
       success: true,
       message: 'Agreement signed successfully',
-      signedAt: new Date().toISOString(),
-      signatureUrl: finalSignatureUrl,
-      emailSent,
+      signatureUrl,
+      emailSent: true
     });
 
-  } catch (error: any) {
-    console.error('Error signing agreement:', error);
+  } catch (error) {
+    console.error('Sign error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to sign agreement' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
+}
+
+// Send confirmation email
+async function sendConfirmationEmail(
+  coach: { id: string; name: string; email: string },
+  version: string,
+  signatureUrl: string
+) {
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+  if (!SENDGRID_API_KEY) return;
+
+  const referralCode = coach.id.substring(0, 8).toUpperCase();
+  const referralLink = `https://yestoryd.com/coach-apply?ref=${referralCode}`;
+  const dashboardLink = 'https://yestoryd.com/coach/dashboard';
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <!-- Header -->
+        <tr>
+          <td style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🎉 Welcome to Yestoryd!</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your Coach Agreement is Active</p>
+          </td>
+        </tr>
+        
+        <!-- Content -->
+        <tr>
+          <td style="padding: 30px;">
+            <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+              Hi <strong>${coach.name}</strong>,
+            </p>
+            
+            <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+              Congratulations! You have successfully signed the Coach Service Agreement. 
+              You're now officially part of the Yestoryd coaching team! 🚀
+            </p>
+            
+            <!-- Agreement Details Box -->
+            <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="margin: 0 0 15px 0; color: #333;">📋 Agreement Details</h3>
+              <table style="width: 100%;">
+                <tr>
+                  <td style="padding: 5px 0; color: #666;">Version:</td>
+                  <td style="padding: 5px 0; color: #333; font-weight: bold;">v${version}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #666;">Signed On:</td>
+                  <td style="padding: 5px 0; color: #333; font-weight: bold;">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #666;">Status:</td>
+                  <td style="padding: 5px 0; color: #22c55e; font-weight: bold;">✅ Active</td>
+                </tr>
+              </table>
+            </div>
+            
+            <!-- Earnings Box -->
+            <div style="background: linear-gradient(135deg, #FFF0F5 0%, #F0E6FF 100%); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="margin: 0 0 15px 0; color: #7B008B;">💰 Your Earnings Potential</h3>
+              <table style="width: 100%;">
+                <tr>
+                  <td style="padding: 8px 0; color: #666;">Yestoryd-sourced student:</td>
+                  <td style="padding: 8px 0; color: #333; font-weight: bold; text-align: right;">₹3,000 (50%)</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666;">Your referral student:</td>
+                  <td style="padding: 8px 0; color: #FF0099; font-weight: bold; text-align: right;">₹4,200 (70%)</td>
+                </tr>
+              </table>
+            </div>
+            
+            <!-- Referral Link -->
+            <div style="background-color: #FF0099; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+              <p style="color: #ffffff; margin: 0 0 10px 0; font-weight: bold;">🔗 Your Referral Link</p>
+              <p style="color: #ffffff; margin: 0; font-size: 14px; word-break: break-all;">
+                ${referralLink}
+              </p>
+              <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0; font-size: 12px;">
+                Share this link to earn 70% on every enrollment!
+              </p>
+            </div>
+            
+            <!-- Next Steps -->
+            <h3 style="color: #333; margin-bottom: 15px;">📌 Next Steps</h3>
+            <ol style="color: #666; padding-left: 20px; margin-bottom: 20px;">
+              <li style="margin-bottom: 10px;">Complete your bank details in the dashboard (if not done)</li>
+              <li style="margin-bottom: 10px;">Share your referral link with parents you know</li>
+              <li style="margin-bottom: 10px;">Wait for student assignment - we'll notify you!</li>
+            </ol>
+            
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${dashboardLink}" style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                Go to Dashboard →
+              </a>
+            </div>
+          </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+          <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 14px; margin: 0 0 10px 0;">
+              <strong>Yestoryd</strong> | AI-Powered Reading Intelligence Platform
+            </p>
+            <p style="color: #999; font-size: 12px; margin: 0;">
+              Questions? Reply to this email or WhatsApp us at +91 8976287997
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SENDGRID_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: coach.email }] }],
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+      subject: '🎉 Welcome to Yestoryd! Your Coach Agreement is Active',
+      content: [{ type: 'text/html', value: emailHtml }]
+    })
+  });
 }
