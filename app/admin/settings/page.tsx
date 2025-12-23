@@ -642,6 +642,17 @@ export default function AdminSettingsPage() {
               onToggle={() => toggleSection('videos')}
               count={filterSettings(settingsByCategory['videos'] || []).length}
             >
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  <strong>⚠️ Important:</strong> Use YouTube <strong>embed</strong> URL format:
+                </p>
+                <p className="text-xs text-amber-700 mt-1 font-mono">
+                  ✅ https://www.youtube.com/embed/VIDEO_ID
+                </p>
+                <p className="text-xs text-amber-600 mt-1 font-mono">
+                  ❌ https://www.youtube.com/watch?v=VIDEO_ID
+                </p>
+              </div>
               <SettingsGrid
                 settings={filterSettings(settingsByCategory['videos'] || [])}
                 onUpdate={updateSetting}
