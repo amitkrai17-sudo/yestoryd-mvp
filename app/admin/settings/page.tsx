@@ -440,12 +440,11 @@ export default function AdminSettingsPage() {
     setSaving(true);
     setSaveStatus('idle');
     try {
-      // Wrap value in quotes for JSONB storage
-      const jsonValue = JSON.stringify(value);
+      // Send raw value - API will handle JSONB encoding
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value: jsonValue }),
+        body: JSON.stringify({ key, value }),
       });
       if (res.ok) {
         setSaveStatus('success');

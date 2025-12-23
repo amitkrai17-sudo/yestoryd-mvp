@@ -39,10 +39,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Always wrap the raw value as a JSON string for JSONB storage
+    const jsonValue = JSON.stringify(value);
+
     const { data, error } = await supabase
       .from('site_settings')
-      .update({ 
-        value: value,
+      .update({
+        value: jsonValue,
         updated_at: new Date().toISOString(),
       })
       .eq('key', key)
@@ -73,12 +76,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Always wrap value as JSON string for JSONB storage
+    const jsonValue = value ? JSON.stringify(value) : '""';
+
     const { data, error } = await supabase
       .from('site_settings')
       .insert({
         category,
         key,
-        value: value || '""',
+        value: jsonValue,
         description,
       })
       .select()
