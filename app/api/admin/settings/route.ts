@@ -27,6 +27,34 @@ export async function GET() {
   }
 }
 
+// Helper: Ensure value is a clean JSON string (no double encoding)
+function toCleanJsonString(value: any): string {
+  if (value === null || value === undefined) {
+    return '""';
+  }
+  
+  // Convert to string first
+  let str = String(value);
+  
+  // Remove any existing JSON encoding (escaped quotes at start/end)
+  // Handle cases like: "\"https://...\""
+  while (str.startsWith('"') && str.endsWith('"') && str.length > 2) {
+    try {
+      const parsed = JSON.parse(str);
+      if (typeof parsed === 'string') {
+        str = parsed;
+      } else {
+        break;
+      }
+    } catch {
+      break;
+    }
+  }
+  
+  // Now str is the raw value, wrap it once for JSONB
+  return JSON.stringify(str);
+}
+
 // PUT - Update a setting
 export async function PUT(request: NextRequest) {
   try {
@@ -39,8 +67,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Always wrap the raw value as a JSON string for JSONB storage
-    const jsonValue = JSON.stringify(value);
+    // Clean and encode the value properly
+    const jsonValue = toCleanJsonString(value);
 
     const { data, error } = await supabase
       .from('site_settings')
@@ -76,8 +104,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Always wrap value as JSON string for JSONB storage
-    const jsonValue = value ? JSON.stringify(value) : '""';
+    // Clean and encode the value properly
+    const jsonValue = toCleanJsonString(value);
 
     const { data, error } = await supabase
       .from('site_settings')
