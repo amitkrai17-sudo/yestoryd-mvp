@@ -874,19 +874,21 @@ export default function HomePageClient({
               </Link>
             </div>
 
-            {/* Coaching Program - UPDATED CTA */}
-            <div className="bg-gradient-to-br from-[#e6008a] to-[#7b008b] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
-              {/* Popular Badge */}
-              <div className="sm:absolute sm:top-4 sm:right-4 bg-[#ffde00] text-gray-900 px-3 py-1 rounded-full text-sm font-bold inline-block mb-3 sm:mb-0">
-                Most Popular
+            {/* Coaching Program - COMING SOON (Not Available Yet) */}
+            <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
+              {/* Coming Soon Overlay Badge */}
+              <div className="absolute top-0 right-0 bg-[#00ABFF] text-white px-4 py-2 rounded-bl-2xl text-sm font-bold">
+                🚀 Launching March 2026
               </div>
 
-              <div className="mb-6">
-                <span className="inline-block bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
-                  Complete Transformation
-                </span>
-                <h3 className="text-2xl font-bold mb-2">3-Month Coaching</h3>
-                <p className="text-white/80">rAI + Coach + Parent — the complete triangle</p>
+              <div className="mb-6 mt-4">
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className="inline-block bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    Complete Transformation
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">3-Month Coaching + E-Learning</h3>
+                <p className="text-white/80">rAI + Coach + Parent + 200+ Video Lessons</p>
               </div>
 
               <div className="mb-6">
@@ -899,27 +901,29 @@ export default function HomePageClient({
                   'Everything in Free Assessment',
                   '6 expert coaching sessions (1-on-1)',
                   '3 parent progress check-ins',
-                  'rAI-powered progress tracking',
-                  'WhatsApp updates after each session',
-                  'Visual progress dashboard',
+                  '600+ structured video lessons',
+                  'Gamified learning with badges & streaks',
+                  'Progress dashboard for parents',
                 ].map((item, index) => (
-                  <li key={index} className="flex items-center gap-3 text-white/90">
-                    <CheckCircle className="w-5 h-5 text-[#ffde00] flex-shrink-0" />
+                  <li key={index} className="flex items-center gap-3 text-white/80">
+                    <CheckCircle className="w-5 h-5 text-white/60 flex-shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
 
-              {/* UPDATED CTA - Personal but outcome-oriented */}
-              <Link
-                href="/lets-talk"
-                className="block w-full text-center bg-white text-[#e6008a] py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors"
+              {/* Waitlist CTA - Not Payment */}
+              <a
+                href={`https://wa.me/${contact.whatsappNumber || '919082296651'}?text=Hi! I'm interested in the Complete Transformation program. Please notify me when it launches in March 2026.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center bg-white/90 text-gray-600 py-4 rounded-xl font-bold hover:bg-white transition-colors"
               >
-                Consult with Rucha
-              </Link>
-              {/* UPDATED subtext - outcome-oriented, not "no pressure" */}
-              <p className="text-center text-white/70 text-sm mt-3">
-                Plan your child's reading roadmap
+                <Bell className="w-5 h-5 inline mr-2" />
+                Notify Me When Available
+              </a>
+              <p className="text-center text-white/60 text-sm mt-3">
+                We're adding 600+ video lessons. Get notified at launch!
               </p>
             </div>
           </div>
