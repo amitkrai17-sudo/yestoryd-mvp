@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const { data: coach, error: coachError } = await supabase
       .from('coaches')
-      .select('id, name, email, referral_code, referral_link')
+      .select('*')
       .eq('email', email.toLowerCase())
       .single();
 
