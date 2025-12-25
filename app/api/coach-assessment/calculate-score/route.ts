@@ -1,7 +1,5 @@
 // app/api/coach-assessment/calculate-score/route.ts
-// FIXED: Gemini analyzes voice CONTENT (not just quality) and chat conversation properly
-// Voice: Content relevance + quality + duration penalty for too short
-// Chat: Full conversation included in prompt
+// FIXED: temperature=0 for consistent scores + caching to prevent recalculation
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
@@ -13,7 +11,7 @@ export async function POST(request: NextRequest) {
   console.log('🎯 Calculate score API called');
   
   try {
-    const { applicationId } = await request.json();
+    const { applicationId, forceRecalculate = false } = await request.json();
     
     if (!applicationId) {
       return NextResponse.json({ error: 'Application ID required' }, { status: 400 });
@@ -36,6 +34,29 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📝 Application:', application.name);
+
+    // ========== CHECK FOR CACHED SCORE ==========
+    // If score already exists and not forcing recalculate, return cached
+    if (!forceRecalculate && application.ai_total_score && application.ai_score_breakdown) {
+      console.log('📦 Returning CACHED score:', application.ai_total_score);
+      const breakdown = application.ai_score_breakdown;
+      return NextResponse.json({
+        success: true,
+        cached: true,
+        applicationId,
+        scores: {
+          voice: breakdown.voiceScore || 0,
+          voiceAnalysis: breakdown.voiceAnalysis || {},
+          rai: breakdown.raiScore || 0,
+          raiAnalysis: breakdown.raiAnalysis || {},
+          combined: application.ai_total_score,
+          isQualified: breakdown.isQualified || application.ai_total_score >= 6,
+          threshold: 6
+        }
+      });
+    }
+
+    console.log('🔄 Calculating NEW score...');
     console.log('📝 Audio duration:', application.audio_duration_seconds, 'seconds');
 
     // ========== VOICE ANALYSIS WITH GEMINI ==========
@@ -53,12 +74,10 @@ export async function POST(request: NextRequest) {
 
     const duration = application.audio_duration_seconds || 0;
 
-    // Duration check - minimum 20 seconds required
     if (!application.audio_statement_url) {
       voiceScore = 0;
       voiceAnalysis.notes = 'No voice recording submitted';
     } else if (duration < 20) {
-      // Too short - automatic low score
       voiceScore = 1;
       voiceAnalysis.notes = `Recording too short (${duration}s). Minimum 20 seconds required.`;
       voiceAnalysis.durationPenalty = -3;
@@ -68,7 +87,6 @@ export async function POST(request: NextRequest) {
       console.log('🎤 Analyzing voice with Gemini...');
       
       try {
-        // Fetch audio file and convert to base64
         const audioResponse = await fetch(application.audio_statement_url);
         
         if (audioResponse.ok) {
@@ -78,7 +96,6 @@ export async function POST(request: NextRequest) {
           
           const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
           
-          // THE KEY FIX: Include the actual question they were asked
           const voicePrompt = `You are evaluating a voice statement from someone applying to be a children's reading coach at Yestoryd.
 
 THE QUESTION THEY WERE ASKED:
@@ -124,15 +141,22 @@ If they just said "hello" or gave a one-liner, score 1 for content.
 Return ONLY valid JSON (no markdown, no explanation):
 {"contentRelevance": X, "clarity": X, "passion": X, "professionalism": X, "averageScore": X.X, "strengths": ["str1"], "concerns": ["con1"], "summary": "1-2 sentence assessment"}`;
 
-          const result = await model.generateContent([
-            { text: voicePrompt },
-            {
-              inlineData: {
-                mimeType: contentType,
-                data: audioBase64
+          // KEY FIX: Add temperature: 0 for consistent output
+          const result = await model.generateContent({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: voicePrompt },
+                  { inlineData: { mimeType: contentType, data: audioBase64 } }
+                ]
               }
+            ],
+            generationConfig: {
+              temperature: 0,  // CRITICAL: Zero temperature for deterministic output
+              maxOutputTokens: 500
             }
-          ]);
+          });
 
           const responseText = result.response.text().trim();
           console.log('🎤 Gemini voice response:', responseText);
@@ -154,12 +178,10 @@ Return ONLY valid JSON (no markdown, no explanation):
               notes: parsed.summary || 'Voice analyzed'
             };
             
-            // Calculate score with duration penalty
             let rawScore = parsed.averageScore || 
               ((voiceAnalysis.contentRelevance + voiceAnalysis.clarity + 
                 voiceAnalysis.passion + voiceAnalysis.professionalism) / 4);
             
-            // Apply duration penalty
             let durationPenalty = 0;
             if (duration < 30) durationPenalty = -1;
             else if (duration < 45) durationPenalty = -0.5;
@@ -187,7 +209,7 @@ Return ONLY valid JSON (no markdown, no explanation):
     console.log(`   Content: ${voiceAnalysis.contentRelevance}, Clarity: ${voiceAnalysis.clarity}`);
     console.log(`   Passion: ${voiceAnalysis.passion}, Professional: ${voiceAnalysis.professionalism}`);
 
-    // ========== CHAT ANALYSIS WITH GEMINI ==========
+    // ========== rAI CHAT ANALYSIS WITH GEMINI ==========
     let raiScore = 0;
     let raiAnalysis: any = {
       q1_empathy: 0,
@@ -206,7 +228,6 @@ Return ONLY valid JSON (no markdown, no explanation):
       console.log('💬 Analyzing chat responses with Gemini...');
       console.log('💬 Total messages:', responses.length);
       
-      // Get user responses only
       const userResponses = responses.filter((r: any) => r.role === 'user');
       console.log('💬 User responses:', userResponses.length);
       
@@ -215,10 +236,9 @@ Return ONLY valid JSON (no markdown, no explanation):
         raiAnalysis.overallAssessment = 'No user responses found';
       } else {
         try {
-          // Format conversation clearly
           let conversationText = '';
-          responses.forEach((msg: any, idx: number) => {
-            const role = msg.role === 'assistant' ? 'VEDANT AI (Interviewer)' : 'APPLICANT';
+          responses.forEach((msg: any) => {
+            const role = msg.role === 'assistant' ? 'rAI (Interviewer)' : 'APPLICANT';
             conversationText += `\n[${role}]:\n${msg.content}\n`;
           });
 
@@ -266,7 +286,15 @@ IMPORTANT SCORING RULES:
 Return ONLY this JSON structure (no other text):
 {"q1_empathy": X, "q2_communication": X, "q3_sensitivity": X, "q4_honesty": X, "averageScore": X.X, "overallAssessment": "2-3 sentence summary", "strengths": ["str1", "str2"], "concerns": ["con1"], "recommendation": "STRONG_YES|YES|MAYBE|NO|STRONG_NO"}`;
 
-          const result = await model.generateContent(chatPrompt);
+          // KEY FIX: Add temperature: 0 for consistent output
+          const result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
+            generationConfig: {
+              temperature: 0,  // CRITICAL: Zero temperature for deterministic output
+              maxOutputTokens: 800
+            }
+          });
+
           const responseText = result.response.text().trim();
           console.log('💬 Gemini chat response:', responseText.substring(0, 200) + '...');
           
@@ -275,7 +303,6 @@ Return ONLY this JSON structure (no other text):
             if (cleanJson.startsWith('```')) {
               cleanJson = cleanJson.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
             }
-            // Also handle case where Gemini adds explanation before JSON
             const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               cleanJson = jsonMatch[0];
@@ -302,7 +329,6 @@ Return ONLY this JSON structure (no other text):
             console.error('Failed to parse chat analysis:', parseErr);
             console.error('Response was:', responseText.substring(0, 500));
             
-            // Fallback: simple word-count based score
             const avgWords = userResponses.reduce((sum: number, r: any) => 
               sum + (r.content?.split(/\s+/).length || 0), 0) / userResponses.length;
             
@@ -325,18 +351,16 @@ Return ONLY this JSON structure (no other text):
       console.log('❌ No AI responses found in application');
     }
 
-    console.log(`💬 Vedant Score: ${raiScore}/5`);
+    console.log(`💬 rAI Score: ${raiScore}/5`);
     console.log(`   Q1 Empathy: ${raiAnalysis.q1_empathy}`);
     console.log(`   Q2 Communication: ${raiAnalysis.q2_communication}`);
     console.log(`   Q3 Sensitivity: ${raiAnalysis.q3_sensitivity}`);
     console.log(`   Q4 Honesty: ${raiAnalysis.q4_honesty}`);
     console.log(`   Recommendation: ${raiAnalysis.recommendation}`);
-    console.log(`   Assessment: ${raiAnalysis.overallAssessment}`);
 
     // ========== COMBINED SCORE ==========
     const combinedScore = Math.round((voiceScore + raiScore) * 10) / 10;
     
-    // Qualification: Score >= 6 AND no STRONG_NO AND both components scored
     const isQualified = combinedScore >= 6 && 
       raiAnalysis.recommendation !== 'STRONG_NO' &&
       voiceScore >= 2 && 
@@ -344,7 +368,7 @@ Return ONLY this JSON structure (no other text):
 
     console.log(`📊 Combined: ${combinedScore}/10 - ${isQualified ? '✅ Qualified' : '❌ Not Qualified'}`);
 
-    // ========== UPDATE DATABASE ==========
+    // ========== UPDATE DATABASE (Cache the score) ==========
     const updatePayload: any = {
       ai_total_score: combinedScore,
       ai_score_breakdown: {
@@ -379,10 +403,13 @@ Return ONLY this JSON structure (no other text):
           updated_at: new Date().toISOString()
         })
         .eq('id', applicationId);
+    } else {
+      console.log('✅ Score cached to database');
     }
 
     return NextResponse.json({
       success: true,
+      cached: false,
       applicationId,
       scores: {
         voice: voiceScore,
