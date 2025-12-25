@@ -25,8 +25,8 @@ import {
   Wallet,
   FileText,
   PieChart,
-  MessageSquare,
   FileSignature,
+  UsersRound,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -48,12 +48,14 @@ const ADMIN_EMAILS = [
 
 // ==================== NAVIGATION ITEMS ====================
 const NAV_ITEMS = [
+  // ===== CORE =====
   {
     label: 'Dashboard',
     href: '/admin',
     icon: LayoutDashboard,
     description: 'Overview & metrics',
     ready: true,
+    section: 'core',
   },
   {
     label: 'Site Settings',
@@ -61,57 +63,74 @@ const NAV_ITEMS = [
     icon: Settings,
     description: 'Manage dynamic content',
     ready: true,
+    section: 'core',
   },
+  // ===== LEADS & COACHES =====
   {
     label: 'Lead Management',
     href: '/admin/crm',
     icon: UserSearch,
     description: 'Track & convert leads',
     ready: true,
+    section: 'leads',
   },
   {
     label: 'Coach Applications',
     href: '/admin/coach-applications',
     icon: UserPlus,
-    description: 'Review coach applications',
+    description: 'Review applications',
     ready: true,
+    section: 'leads',
   },
   {
     label: 'Agreement Management',
     href: '/admin/agreements',
     icon: FileSignature,
-    description: 'Upload & manage coach agreements',
+    description: 'Coach agreements',
     ready: true,
+    section: 'leads',
   },
-  // ===== REVENUE SPLIT ITEMS =====
+  // ===== REVENUE & PAYOUTS =====
+  {
+    label: 'Coach Groups',
+    href: '/admin/coach-groups',
+    icon: UsersRound,
+    description: 'Manage tiers & splits',
+    ready: true,
+    section: 'revenue',
+  },
   {
     label: 'Revenue Settings',
     href: '/admin/settings/revenue',
     icon: PieChart,
-    description: 'Configure revenue splits',
+    description: 'Configure splits',
     ready: true,
+    section: 'revenue',
   },
   {
     label: 'Coach Payouts',
     href: '/admin/payouts',
     icon: Wallet,
-    description: 'Process coach payments',
+    description: 'Process payments',
     ready: true,
+    section: 'revenue',
   },
   {
     label: 'TDS Compliance',
     href: '/admin/tds',
     icon: FileText,
-    description: 'Track TDS deductions',
+    description: 'Track deductions',
     ready: true,
+    section: 'revenue',
   },
-  // ===== END REVENUE SPLIT ITEMS =====
+  // ===== OPERATIONS =====
   {
     label: 'Enrollments',
     href: '/admin/enrollments',
     icon: GraduationCap,
-    description: 'View all enrollments',
+    description: 'View enrollments',
     ready: false,
+    section: 'ops',
   },
   {
     label: 'Coaches',
@@ -119,6 +138,7 @@ const NAV_ITEMS = [
     icon: Users,
     description: 'Manage coaches',
     ready: false,
+    section: 'ops',
   },
   {
     label: 'Payments',
@@ -126,6 +146,7 @@ const NAV_ITEMS = [
     icon: IndianRupee,
     description: 'Payment history',
     ready: false,
+    section: 'ops',
   },
   {
     label: 'Analytics',
@@ -133,8 +154,17 @@ const NAV_ITEMS = [
     icon: BarChart3,
     description: 'Platform insights',
     ready: false,
+    section: 'ops',
   },
 ];
+
+// Section labels for visual grouping
+const SECTION_LABELS: Record<string, string> = {
+  core: '',
+  leads: 'Leads & Coaches',
+  revenue: 'Revenue',
+  ops: 'Operations',
+};
 
 export default function AdminLayout({
   children,
@@ -216,6 +246,13 @@ export default function AdminLayout({
     await supabase.auth.signOut();
     router.push('/admin/login');
   };
+
+  // Group nav items by section
+  const groupedNavItems = NAV_ITEMS.reduce((acc, item) => {
+    if (!acc[item.section]) acc[item.section] = [];
+    acc[item.section].push(item);
+    return acc;
+  }, {} as Record<string, typeof NAV_ITEMS>);
 
   // Loading State
   if (loading) {
@@ -305,43 +342,61 @@ export default function AdminLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || 
-              (item.href !== '/admin' && pathname.startsWith(item.href));
-            
-            return (
-              <Link
-                key={item.href}
-                href={item.ready ? item.href : '#'}
-                onClick={(e) => {
-                  if (!item.ready) e.preventDefault();
-                  if (item.ready) setSidebarOpen(false);
-                }}
-                className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : item.ready
-                    ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    : 'text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.ready ? 'text-slate-400 group-hover:text-slate-600' : 'text-slate-300'}`} />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className={`font-medium ${isActive ? 'text-blue-700' : ''}`}>{item.label}</p>
-                    {!item.ready && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
-                        Soon
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400">{item.description}</p>
-                </div>
-                {isActive && <ChevronRight className="w-4 h-4 text-blue-400" />}
-              </Link>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+          {Object.entries(groupedNavItems).map(([section, items]) => (
+            <div key={section} className="mb-4">
+              {/* Section Label */}
+              {SECTION_LABELS[section] && (
+                <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  {SECTION_LABELS[section]}
+                </p>
+              )}
+              
+              {/* Nav Items */}
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const isActive = pathname === item.href || 
+                    (item.href !== '/admin' && pathname.startsWith(item.href));
+                  
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.ready ? item.href : '#'}
+                      onClick={(e) => {
+                        if (!item.ready) e.preventDefault();
+                        if (item.ready) setSidebarOpen(false);
+                      }}
+                      className={`group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700'
+                          : item.ready
+                          ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          : 'text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <item.icon className={`w-5 h-5 flex-shrink-0 ${
+                        isActive ? 'text-blue-600' : item.ready ? 'text-slate-400 group-hover:text-slate-600' : 'text-slate-300'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium truncate ${isActive ? 'text-blue-700' : ''}`}>
+                            {item.label}
+                          </p>
+                          {!item.ready && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium flex-shrink-0">
+                              Soon
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 truncate">{item.description}</p>
+                      </div>
+                      {isActive && <ChevronRight className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* User Profile */}
