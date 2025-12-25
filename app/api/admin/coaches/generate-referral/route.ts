@@ -25,11 +25,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get coach
-    const { data: coach, error: coachError } = await supabase
+    const { data, error: coachError } = await supabase
       .from('coaches')
       .select('id, name, referral_code')
       .eq('id', coachId)
       .single();
+
+    const coach = data as { id: string; name: string; referral_code: string | null } | null;
 
     if (coachError || !coach) {
       return NextResponse.json(
@@ -66,8 +68,8 @@ export async function POST(request: NextRequest) {
 
     const referralLink = generateReferralLink(referralCode);
 
-    // Update coach
-    const { error: updateError } = await supabase
+    // Update coach - cast to any to bypass strict typing
+    const { error: updateError } = await (supabase as any)
       .from('coaches')
       .update({
         referral_code: referralCode,
@@ -98,14 +100,16 @@ export async function POST(request: NextRequest) {
 }
 
 // GET: Generate referral codes for ALL coaches who don't have one
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get coaches without referral codes
-    const { data: coaches, error } = await supabase
+    const { data, error } = await supabase
       .from('coaches')
       .select('id, name, referral_code')
       .is('referral_code', null)
       .eq('is_active', true);
+
+    const coaches = data as { id: string; name: string; referral_code: string | null }[] | null;
 
     if (error) {
       return NextResponse.json(
@@ -118,11 +122,12 @@ export async function GET(request: NextRequest) {
     const existingCodes = new Set<string>();
 
     // Get all existing codes
-    const { data: allCodes } = await supabase
+    const { data: allCodesData } = await supabase
       .from('coaches')
       .select('referral_code')
       .not('referral_code', 'is', null);
 
+    const allCodes = allCodesData as { referral_code: string }[] | null;
     allCodes?.forEach((c) => existingCodes.add(c.referral_code));
 
     // Generate codes for each coach
@@ -139,8 +144,8 @@ export async function GET(request: NextRequest) {
       existingCodes.add(referralCode);
       const referralLink = generateReferralLink(referralCode);
 
-      // Update coach
-      await supabase
+      // Update coach - cast to any to bypass strict typing
+      await (supabase as any)
         .from('coaches')
         .update({
           referral_code: referralCode,

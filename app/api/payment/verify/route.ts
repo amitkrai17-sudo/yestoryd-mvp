@@ -73,8 +73,11 @@ async function calculateRevenueSplit(
     }
 
     // Default to Rising Coach if no group assigned
-    const group: CoachGroup = coach.coach_groups || {
-      id: null,
+    // Supabase returns array for joined tables, take first element
+    const coachGroupArray = coach.coach_groups as unknown as CoachGroup[] | null;
+    const coachGroup = Array.isArray(coachGroupArray) ? coachGroupArray[0] : coachGroupArray;
+    const group: CoachGroup = coachGroup || {
+      id: null as any,
       name: 'rising',
       display_name: 'Rising Coach',
       lead_cost_percent: 20,

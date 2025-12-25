@@ -4,7 +4,7 @@
 // Referral code generation and tracking utilities
 // Format: REF-{FIRSTNAME}-{4_RANDOM_CHARS}
 
-import { createClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // Generate 4 random alphanumeric characters
 function generateRandomChars(length: number = 4): string {
@@ -44,16 +44,18 @@ export function generateReferralLink(referralCode: string, baseUrl: string = 'ht
  * Ensure coach has a referral code, generate if missing
  */
 export async function ensureCoachReferralCode(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, any, any>,
   coachId: string,
   coachName: string
 ): Promise<{ referralCode: string; referralLink: string }> {
   // Check if coach already has a referral code
-  const { data: coach } = await supabase
+  const { data } = await supabase
     .from('coaches')
     .select('referral_code, referral_link')
     .eq('id', coachId)
     .single();
+
+  const coach = data as { referral_code: string | null; referral_link: string | null } | null;
 
   if (coach?.referral_code) {
     return {
@@ -84,8 +86,8 @@ export async function ensureCoachReferralCode(
 
   const referralLink = generateReferralLink(referralCode);
 
-  // Update coach with referral code
-  await supabase
+  // Update coach with referral code - use any to bypass strict typing
+  await (supabase as any)
     .from('coaches')
     .update({
       referral_code: referralCode,
@@ -101,24 +103,24 @@ export async function ensureCoachReferralCode(
  * Look up coach by referral code
  */
 export async function getCoachByReferralCode(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, any, any>,
   referralCode: string
 ): Promise<{ id: string; name: string; email: string } | null> {
-  const { data: coach } = await supabase
+  const { data } = await supabase
     .from('coaches')
     .select('id, name, email')
     .eq('referral_code', referralCode.toUpperCase())
     .eq('is_active', true)
     .maybeSingle();
 
-  return coach;
+  return data as { id: string; name: string; email: string } | null;
 }
 
 /**
  * Track a referral visit
  */
 export async function trackReferralVisit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, any, any>,
   referralCode: string,
   visitorData?: {
     ip_address?: string;
@@ -131,7 +133,7 @@ export async function trackReferralVisit(
     
     if (!coach) return;
 
-    await supabase.from('referral_visits').insert({
+    await (supabase as any).from('referral_visits').insert({
       coach_id: coach.id,
       referral_code: referralCode,
       ip_address: visitorData?.ip_address,
