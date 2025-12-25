@@ -2,6 +2,7 @@ import './globals.css';
 import { Poppins } from 'next/font/google';
 import type { Metadata } from 'next';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
+import TrackingPixels from '@/components/TrackingPixels';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -34,6 +35,7 @@ export default function RootLayout({
       </head>
       <body className={poppins.variable}>
         <GoogleAnalytics />
+        <TrackingPixels />
         {children}
       </body>
     </html>
