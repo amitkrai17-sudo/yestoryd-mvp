@@ -11,7 +11,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const RECALL_API_URL = 'https://api.recall.ai/api/v1';
+const RECALL_API_URL = 'https://us-west-2.recall.ai/api/v1';
 const RECALL_API_KEY = process.env.RECALL_API_KEY;
 
 // GET - Check bot status
