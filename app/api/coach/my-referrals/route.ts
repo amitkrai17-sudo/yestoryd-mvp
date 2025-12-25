@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      _version: "v3-fixed",
       coach: {
         id: coach.id,
         name: coach.name,
