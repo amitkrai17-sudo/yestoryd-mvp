@@ -39,6 +39,8 @@ import {
   ClipboardCheck,
   XCircle,
   Gift,
+  AlertTriangle,
+  CreditCard,
 } from 'lucide-react';
 
 // ==================== TYPES ====================
@@ -189,6 +191,36 @@ const SynergyVisual = () => {
   );
 };
 
+// ==================== NEW: MINI 3-STEP PLAN (For Hero) ====================
+const MiniPlan = () => {
+  const steps = [
+    { num: '1', text: 'Free AI Test', color: '#00ABFF' },
+    { num: '2', text: 'Talk to Coach', color: '#FF0099' },
+    { num: '3', text: 'Start Journey', color: '#7B008B' },
+  ];
+
+  return (
+    <div className="flex items-center justify-center lg:justify-start gap-2 sm:gap-3 flex-wrap">
+      {steps.map((step, index) => (
+        <div key={step.num} className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
+            <span 
+              className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ backgroundColor: step.color }}
+            >
+              {step.num}
+            </span>
+            <span className="text-xs font-medium text-gray-700">{step.text}</span>
+          </div>
+          {index < steps.length - 1 && (
+            <ArrowRight className="w-3 h-3 text-gray-300 hidden sm:block" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 export default function HomePageClient({
   stats,
@@ -203,7 +235,6 @@ export default function HomePageClient({
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
   const whatsappNumber = contact.whatsappNumber;
-  // FIXED: Better WhatsApp message (doesn't assume they watched video)
   const whatsappMessage = encodeURIComponent("Hi! I'd like to know more about the reading program for my child.");
   
   // Video URL from database with fallback
@@ -236,7 +267,7 @@ export default function HomePageClient({
 
       {/* ==================== HEADER ==================== */}
       <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent'}`}>
-        {/* Top Bar - REMOVED "Become a Coach" link */}
+        {/* Top Bar */}
         <div className="bg-[#1a1a2e] text-white py-2 px-4 text-xs sm:text-sm">
           <div className="max-w-7xl mx-auto flex justify-center items-center">
             <p className="opacity-90 flex items-center gap-2">
@@ -295,7 +326,7 @@ export default function HomePageClient({
         )}
       </header>
 
-      {/* ==================== HERO WITH STATIC TRIANGLE ==================== */}
+      {/* ==================== HERO WITH FRAMEWORK IMPROVEMENTS ==================== */}
       <section className="pt-28 lg:pt-40 pb-16 lg:pb-24 bg-gradient-to-b from-[#FFF5F9] to-white relative overflow-hidden">
         {/* Background Blobs */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00abff]/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/4"></div>
@@ -306,10 +337,12 @@ export default function HomePageClient({
             
             {/* Left Content */}
             <div className="text-center lg:text-left">
-              {/* Badge */}
+              {/* Badge - UPDATED: Added age group for instant relevance */}
               <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-1.5 mb-6 shadow-sm">
                 <Heart className="w-3 h-3 text-[#ff0099] fill-[#ff0099]" />
-                <span className="text-xs font-bold text-gray-600 tracking-wide uppercase">AI Brain + Human Heart</span>
+                <span className="text-xs font-bold text-gray-600 tracking-wide uppercase">
+                  For Ages 4-12 • AI + Expert Coaches
+                </span>
               </div>
 
               {/* Main Headline */}
@@ -318,13 +351,13 @@ export default function HomePageClient({
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">We Make it Natural.</span>
               </h1>
 
-              {/* SHORTENED Subheadline - Punchy & Scannable */}
+              {/* Subheadline */}
               <p className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
                 We use <strong className="text-gray-900">AI to find reading gaps</strong>. Expert coaches fix them.
               </p>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-8">
+              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-6">
                 <Link
                   href="/assessment"
                   className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold px-8 rounded-full hover:bg-[#d10080] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
@@ -341,21 +374,32 @@ export default function HomePageClient({
                 </a>
               </div>
 
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-gray-500">
-                <span className="flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-green-500" />
+              {/* NEW: 3-Step Mini Plan - StoryBrand "The Plan" */}
+              <div className="mb-8">
+                <MiniPlan />
+              </div>
+
+              {/* NEW: Trust Badges Row - LIFT Anxiety Reducers */}
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-gray-500 mb-6">
+                <span className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-200">
+                  <Shield className="w-4 h-4" />
                   100% Free
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-[#00abff]" />
+                <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200">
+                  <CreditCard className="w-4 h-4" />
+                  No Card Required
+                </span>
+                <span className="flex items-center gap-1.5 bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-200">
+                  <Clock className="w-4 h-4" />
                   5 Minutes
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-[#ffde00] fill-[#ffde00]" />
-                  100+ Kids
-                </span>
               </div>
+
+              {/* NEW: Subtle Urgency - StoryBrand "Failure" state */}
+              <p className="text-sm text-gray-500 flex items-center justify-center lg:justify-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <span>Reading gaps widen with age. Early action matters.</span>
+              </p>
             </div>
 
             {/* Right - Orbital Synergy Visual */}
@@ -559,7 +603,7 @@ export default function HomePageClient({
         </div>
       </section>
 
-      {/* ==================== RUCHA'S STORY (MOVED UP - Before Tech Section) ==================== */}
+      {/* ==================== RUCHA'S STORY ==================== */}
       <section id="rucha-story" className="py-16 lg:py-24 bg-[#1a1a2e] text-white relative overflow-hidden">
         {/* Decorative Blurs */}
         <div className="absolute top-0 left-0 w-64 h-64 bg-[#ff0099] blur-[100px] opacity-20"></div>
@@ -571,7 +615,6 @@ export default function HomePageClient({
             {/* Video Side */}
             <div className="order-2 lg:order-1">
               <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl">
-                {/* Rucha's YouTube Video - Dynamic from database */}
                 <iframe
                   src={`${storyVideoUrl}${storyVideoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
                   title="Rucha's Story - Yestoryd"
@@ -609,7 +652,7 @@ export default function HomePageClient({
                 </p>
               </div>
 
-              {/* Credentials */}
+              {/* Credentials - FIXED: 7 years (consistent) */}
               <div className="mt-8 flex flex-wrap gap-3">
                 <span className="inline-flex items-center gap-2 bg-white/10 text-white/90 px-4 py-2 rounded-full text-sm font-medium border border-white/10">
                   <GraduationCap className="w-4 h-4 text-[#00abff]" />
@@ -625,20 +668,19 @@ export default function HomePageClient({
         </div>
       </section>
 
-      {/* ==================== THE TECH - RENAMED: "Why Our AI is Different (and Safer)" ==================== */}
+      {/* ==================== THE TECH SECTION ==================== */}
       <section className="py-16 lg:py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="inline-block text-sm font-semibold text-[#00abff] uppercase tracking-wider mb-4">
               Safe AI
             </span>
-            {/* RENAMED: Removed RAG jargon */}
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
               Why Our AI is <span className="text-[#ff0099]">Different</span> (and Safer)
             </h2>
           </div>
 
-          {/* Comparison Cards - INCREASED FONT SIZE for mobile */}
+          {/* Comparison Cards */}
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
             {/* Generic AI Card */}
             <div className="bg-white rounded-2xl p-6 border-2 border-gray-200 relative">
@@ -656,7 +698,6 @@ export default function HomePageClient({
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
-                  {/* INCREASED font size */}
                   <p className="text-gray-600 text-base leading-relaxed">
                     <span className="font-semibold text-gray-700">Guesses</span> based on the internet. 
                     No reading expertise. No understanding of phonics rules. 
@@ -666,7 +707,7 @@ export default function HomePageClient({
               </div>
             </div>
 
-            {/* Yestoryd Safe AI Card - RENAMED */}
+            {/* Yestoryd Safe AI Card */}
             <div className="bg-gradient-to-br from-[#00abff]/5 to-[#ff0099]/5 rounded-2xl p-6 border-2 border-[#00abff] relative">
               <div className="absolute -top-3 left-6 bg-[#00abff] text-white px-3 py-1 rounded-full text-xs font-bold">
                 ✓ Safe, Expert-Verified AI
@@ -677,13 +718,11 @@ export default function HomePageClient({
                     <Brain className="w-6 h-6 text-[#00abff]" />
                   </div>
                   <div>
-                    {/* RENAMED from "rAI Engine" */}
                     <p className="font-bold text-gray-900">Rucha's Knowledge Engine</p>
                     <p className="text-sm text-[#00abff]">Expert-Verified AI</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl p-4 border border-[#00abff]/20">
-                  {/* INCREASED font size */}
                   <p className="text-gray-600 text-base leading-relaxed">
                     <span className="font-semibold text-[#00abff]">Consults our Expert Knowledge Base first.</span>{' '}
                     Built on 7+ years of Rucha's phonics expertise. 
@@ -715,7 +754,7 @@ export default function HomePageClient({
               </div>
             </div>
 
-            {/* Explanation - REMOVED RAG jargon */}
+            {/* Explanation */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-gray-100">
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
@@ -728,7 +767,6 @@ export default function HomePageClient({
                     <strong className="text-gray-900">Most AI makes things up.</strong> We couldn't risk that with your child's education.
                   </p>
                   <p className="text-gray-600 leading-relaxed mb-4">
-                    {/* SIMPLIFIED - removed RAG jargon */}
                     Imagine our AI as a <strong className="text-[#00abff]">librarian with a manual written by Rucha</strong>. 
                     Built on <strong className="text-[#ff0099]">7+ years of phonics expertise</strong>.
                   </p>
@@ -779,7 +817,7 @@ export default function HomePageClient({
                   "{testimonial.testimonial_text}"
                 </p>
 
-                {/* Author - Using gradient circle instead of single letter */}
+                {/* Author */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-bold">
                     {testimonial.parent_name.charAt(0)}
@@ -830,7 +868,7 @@ export default function HomePageClient({
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Free Assessment - ADDED "Worth ₹999" */}
+            {/* Free Assessment */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-gray-200">
               <div className="mb-6">
                 <span className="inline-block bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
@@ -850,7 +888,6 @@ export default function HomePageClient({
                   'rAI analyzes reading in real-time',
                   'Clarity, Fluency & Speed scores',
                   'Personalized improvement tips',
-                  // ADDED: Worth ₹999 value perception
                   { text: 'Detailed Diagnosis Report', highlight: '(Worth ₹999)' },
                   'Instant shareable certificate',
                   'No credit card required',
@@ -874,9 +911,9 @@ export default function HomePageClient({
               </Link>
             </div>
 
-            {/* Coaching Program - COMING SOON (Not Available Yet) */}
+            {/* Coaching Program - COMING SOON */}
             <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
-              {/* Coming Soon Overlay Badge */}
+              {/* Coming Soon Badge */}
               <div className="absolute top-0 right-0 bg-[#00ABFF] text-white px-4 py-2 rounded-bl-2xl text-sm font-bold">
                 🚀 Launching March 2026
               </div>
@@ -912,7 +949,7 @@ export default function HomePageClient({
                 ))}
               </ul>
 
-              {/* Waitlist CTA - Not Payment */}
+              {/* Waitlist CTA */}
               <a
                 href={`https://wa.me/${contact.whatsappNumber || '919082296651'}?text=Hi! I'm interested in the Complete Transformation program. Please notify me when it launches in March 2026.`}
                 target="_blank"
@@ -1021,7 +1058,6 @@ export default function HomePageClient({
               <ul className="space-y-2 text-sm text-gray-500">
                 <li><Link href="/parent/login" className="hover:text-[#ff0099] transition-colors">Parent Login</Link></li>
                 <li><Link href="/coach/login" className="hover:text-[#ff0099] transition-colors">Coach Login</Link></li>
-                {/* "Become a Coach" link kept ONLY in footer */}
                 <li><Link href="/yestoryd-academy" className="hover:text-[#ff0099] transition-colors">Become a Coach</Link></li>
               </ul>
             </div>
