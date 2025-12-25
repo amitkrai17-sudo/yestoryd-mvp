@@ -1,6 +1,7 @@
-// file: lib/recall-auto-bot.ts
-// Utility to automatically create Recall.ai bots when sessions are scheduled
-// Called after Google Calendar event creation
+// ============================================================
+// lib/recall-auto-bot.ts
+// Auto-schedule Recall.ai bots for coaching sessions
+// ============================================================
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -9,36 +10,51 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const RECALL_API_URL = 'https://api.recall.ai/api/v1';
 const RECALL_API_KEY = process.env.RECALL_API_KEY;
-const RECALL_API_URL = 'https://us-west-2.recall.ai/api/v1';
 
-interface SessionInfo {
+interface ScheduleBotParams {
   sessionId: string;
   childId: string;
   coachId: string;
   childName: string;
-  sessionType: 'coaching' | 'parent_checkin' | 'remedial';
-  meetLink: string;
-  scheduledTime: Date;
+  meetingUrl: string;        // Google Meet link
+  scheduledTime: Date;       // When the session starts
+  sessionType: 'coaching' | 'parent_checkin';
+}
+
+interface BotResponse {
+  success: boolean;
+  botId?: string;
+  error?: string;
 }
 
 /**
- * Create a Recall.ai bot for a scheduled session
- * Call this after creating Google Calendar event
+ * Create a Recall.ai bot for a single session
  */
-export async function createRecallBot(session: SessionInfo): Promise<{ 
-  success: boolean; 
-  botId?: string; 
-  error?: string;
-}> {
-  try {
-    // Skip if no API key configured
-    if (!RECALL_API_KEY) {
-      console.log('Recall.ai not configured, skipping bot creation');
-      return { success: false, error: 'RECALL_API_KEY not configured' };
-    }
+export async function createRecallBot(params: ScheduleBotParams): Promise<BotResponse> {
+  const {
+    sessionId,
+    childId,
+    coachId,
+    childName,
+    meetingUrl,
+    scheduledTime,
+    sessionType,
+  } = params;
 
-    // Create bot
+  if (!RECALL_API_KEY) {
+    console.error('RECALL_API_KEY not configured');
+    return { success: false, error: 'RECALL_API_KEY not configured' };
+  }
+
+  if (!meetingUrl) {
+    console.error('No meeting URL provided for session:', sessionId);
+    return { success: false, error: 'No meeting URL provided' };
+  }
+
+  try {
+    // Create bot via Recall.ai API
     const response = await fetch(`${RECALL_API_URL}/bot`, {
       method: 'POST',
       headers: {
@@ -46,29 +62,26 @@ export async function createRecallBot(session: SessionInfo): Promise<{
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        meeting_url: session.meetLink,
-        bot_name: `rAI by Yestoryd - ${session.childName} Recording`,
+        meeting_url: meetingUrl,
+        bot_name: `rAI by Yestoryd - ${childName} - ${sessionType === 'coaching' ? 'Coaching' : 'Check-in'}`,
         
         // Join 1 minute before scheduled time
-        join_at: new Date(session.scheduledTime.getTime() - 60000).toISOString(),
+        join_at: new Date(scheduledTime.getTime() - 60000).toISOString(),
         
-        transcription_options: {
-          provider: 'default',
-        },
-        
-        recording_mode: 'speaker_view',
-        
+        // Automatic leave settings
         automatic_leave: {
-          waiting_room_timeout: 600,
-          noone_joined_timeout: 300,
-          everyone_left_timeout: 60,
+          waiting_room_timeout: 600,     // 10 min in waiting room
+          noone_joined_timeout: 300,     // 5 min if no one joins
+          everyone_left_timeout: 60,     // 1 min after everyone leaves
         },
         
+        // Custom metadata for webhook processing
         metadata: {
-          session_id: session.sessionId,
-          child_id: session.childId,
-          coach_id: session.coachId,
-          session_type: session.sessionType,
+          session_id: sessionId,
+          child_id: childId,
+          coach_id: coachId,
+          child_name: childName,
+          session_type: sessionType,
           platform: 'yestoryd',
         },
       }),
@@ -77,112 +90,137 @@ export async function createRecallBot(session: SessionInfo): Promise<{
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Recall.ai bot creation failed:', errorData);
-      return { success: false, error: JSON.stringify(errorData) };
+      return { success: false, error: errorData.detail || 'Bot creation failed' };
     }
 
     const botData = await response.json();
-    console.log('🤖 Recall bot created:', botData.id);
+    console.log(`🤖 Recall bot created: ${botData.id} for session ${sessionId}`);
 
-    // Store in database
+    // Store bot info in recall_bot_sessions table
     await supabase.from('recall_bot_sessions').insert({
       bot_id: botData.id,
-      session_id: session.sessionId,
-      child_id: session.childId,
-      coach_id: session.coachId,
-      meeting_url: session.meetLink,
-      status: 'created',
-      scheduled_join_time: session.scheduledTime.toISOString(),
+      session_id: sessionId,
+      child_id: childId,
+      coach_id: coachId,
+      meeting_url: meetingUrl,
+      status: 'scheduled',
+      scheduled_join_time: scheduledTime.toISOString(),
       metadata: {
-        session_type: session.sessionType,
-        child_name: session.childName,
+        session_type: sessionType,
+        child_name: childName,
       },
     });
 
-    // Update session with bot ID
+    // Update scheduled_session with bot info
     await supabase
       .from('scheduled_sessions')
-      .update({ recall_bot_id: botData.id })
-      .eq('id', session.sessionId);
+      .update({
+        recall_bot_id: botData.id,
+        recall_status: 'scheduled',
+      })
+      .eq('id', sessionId);
 
     return { success: true, botId: botData.id };
 
-  } catch (error) {
-    console.error('Recall bot creation error:', error);
-    return { success: false, error: String(error) };
+  } catch (error: any) {
+    console.error('Error creating Recall bot:', error);
+    return { success: false, error: error.message };
   }
 }
 
 /**
- * Create bots for all sessions in a batch (e.g., after enrollment)
+ * Schedule Recall.ai bots for all sessions after payment
+ * Called from /api/sessions/confirm or /api/payment/verify
  */
-export async function createBotsForEnrollment(enrollmentId: string): Promise<{
-  created: number;
-  failed: number;
+export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
+  success: boolean;
+  botsCreated: number;
   errors: string[];
 }> {
-  const results = { created: 0, failed: 0, errors: [] as string[] };
+  const errors: string[] = [];
+  let botsCreated = 0;
 
-  // Get all sessions for this enrollment
-  const { data: sessions, error } = await supabase
-    .from('scheduled_sessions')
-    .select(`
-      id,
-      child_id,
-      coach_id,
-      session_type,
-      scheduled_date,
-      scheduled_time,
-      meet_link,
-      child:children(name)
-    `)
-    .eq('enrollment_id', enrollmentId)
-    .eq('status', 'scheduled')
-    .is('recall_bot_id', null);
+  try {
+    // Get all sessions for this enrollment that have Google Meet links
+    const { data: sessions, error } = await supabase
+      .from('scheduled_sessions')
+      .select(`
+        id,
+        child_id,
+        coach_id,
+        session_type,
+        scheduled_date,
+        scheduled_time,
+        google_meet_link,
+        children (name)
+      `)
+      .eq('enrollment_id', enrollmentId)
+      .not('google_meet_link', 'is', null);
 
-  if (error || !sessions) {
-    return { created: 0, failed: 0, errors: [error?.message || 'No sessions found'] };
-  }
-
-  // Create bot for each session
-  for (const session of sessions) {
-    const child = session.child as any;
-    
-    // Parse scheduled datetime
-    const scheduledTime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
-    
-    // Skip if session is in the past
-    if (scheduledTime < new Date()) {
-      continue;
+    if (error) {
+      console.error('Error fetching sessions:', error);
+      return { success: false, botsCreated: 0, errors: [error.message] };
     }
 
-    const result = await createRecallBot({
-      sessionId: session.id,
-      childId: session.child_id,
-      coachId: session.coach_id,
-      childName: child?.name || 'Unknown',
-      sessionType: session.session_type as any,
-      meetLink: session.meet_link,
-      scheduledTime,
-    });
-
-    if (result.success) {
-      results.created++;
-    } else {
-      results.failed++;
-      results.errors.push(`Session ${session.id}: ${result.error}`);
+    if (!sessions || sessions.length === 0) {
+      console.log('No sessions with Meet links found for enrollment:', enrollmentId);
+      return { success: true, botsCreated: 0, errors: [] };
     }
 
-    // Rate limit - wait 500ms between bot creations
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
+    console.log(`📅 Scheduling ${sessions.length} Recall bots for enrollment ${enrollmentId}`);
 
-  return results;
+    // Create bot for each session
+    for (const session of sessions) {
+      // Combine date and time to get scheduled datetime
+      const scheduledDateTime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+      
+      // Skip sessions in the past
+      if (scheduledDateTime < new Date()) {
+        console.log(`Skipping past session: ${session.id}`);
+        continue;
+      }
+
+      const childName = (session.children as any)?.name || 'Child';
+
+      const result = await createRecallBot({
+        sessionId: session.id,
+        childId: session.child_id,
+        coachId: session.coach_id,
+        childName: childName,
+        meetingUrl: session.google_meet_link,
+        scheduledTime: scheduledDateTime,
+        sessionType: session.session_type as 'coaching' | 'parent_checkin',
+      });
+
+      if (result.success) {
+        botsCreated++;
+      } else {
+        errors.push(`Session ${session.id}: ${result.error}`);
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    console.log(`✅ Created ${botsCreated}/${sessions.length} Recall bots`);
+
+    return { success: true, botsCreated, errors };
+
+  } catch (error: any) {
+    console.error('Error scheduling bots:', error);
+    return { success: false, botsCreated, errors: [error.message] };
+  }
 }
 
 /**
- * Cancel a bot (e.g., when session is rescheduled)
+ * Cancel a Recall.ai bot (e.g., if session is rescheduled)
  */
 export async function cancelRecallBot(botId: string): Promise<boolean> {
+  if (!RECALL_API_KEY) {
+    console.error('RECALL_API_KEY not configured');
+    return false;
+  }
+
   try {
     const response = await fetch(`${RECALL_API_URL}/bot/${botId}`, {
       method: 'DELETE',
@@ -191,37 +229,26 @@ export async function cancelRecallBot(botId: string): Promise<boolean> {
       },
     });
 
-    await supabase
-      .from('recall_bot_sessions')
-      .update({ status: 'cancelled' })
-      .eq('bot_id', botId);
+    if (response.ok) {
+      console.log(`🗑️ Recall bot cancelled: ${botId}`);
+      
+      // Update database
+      await supabase
+        .from('recall_bot_sessions')
+        .update({ status: 'cancelled' })
+        .eq('bot_id', botId);
 
-    return response.ok;
+      await supabase
+        .from('scheduled_sessions')
+        .update({ recall_status: 'cancelled' })
+        .eq('recall_bot_id', botId);
+
+      return true;
+    }
+
+    return false;
   } catch (error) {
-    console.error('Cancel bot error:', error);
+    console.error('Error cancelling bot:', error);
     return false;
   }
-}
-
-/**
- * Get bot status for a session
- */
-export async function getBotStatus(sessionId: string): Promise<{
-  status: string;
-  recordingUrl?: string;
-  error?: string;
-} | null> {
-  const { data } = await supabase
-    .from('recall_bot_sessions')
-    .select('status, recording_url, error_message')
-    .eq('session_id', sessionId)
-    .single();
-
-  if (!data) return null;
-
-  return {
-    status: data.status,
-    recordingUrl: data.recording_url,
-    error: data.error_message,
-  };
 }
