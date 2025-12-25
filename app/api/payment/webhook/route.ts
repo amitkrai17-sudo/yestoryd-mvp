@@ -1,6 +1,8 @@
-// file: app/api/payment/webhook/route.ts
+// ============================================================
+// FILE: app/api/payment/webhook/route.ts
+// ============================================================
 // Razorpay Webhook - Backup handler for payment completion
-// Integrates with revenue split system
+// Updated: Correct Rucha email
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -18,12 +20,12 @@ function verifyWebhookSignature(body: string, signature: string): boolean {
     console.error('RAZORPAY_WEBHOOK_SECRET not configured');
     return false;
   }
-  
+
   const expectedSignature = crypto
     .createHmac('sha256', secret)
     .update(body)
     .digest('hex');
-    
+
   return expectedSignature === signature;
 }
 
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.parse(body);
     const event = payload.event;
-    
+
     console.log('📥 Webhook received:', event);
 
     // Handle payment.captured event
@@ -48,11 +50,11 @@ export async function POST(request: NextRequest) {
       const payment = payload.payload.payment.entity;
       const orderId = payment.order_id;
       const paymentId = payment.id;
-      const amount = payment.amount / 100; // Convert paise to rupees
+      const amount = payment.amount / 100;
 
       console.log('💰 Payment captured:', { orderId, paymentId, amount });
 
-      // Check if already processed (enrollment exists)
+      // Check if already processed
       const { data: existingEnrollment } = await supabase
         .from('enrollments')
         .select('id')
@@ -73,7 +75,6 @@ export async function POST(request: NextRequest) {
 
       if (!booking) {
         console.log('⚠️ No booking found for order:', orderId);
-        // Try to find by checking payments table
         const { data: existingPayment } = await supabase
           .from('payments')
           .select('id')
@@ -88,7 +89,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: 'booking_not_found' });
       }
 
-      // Process the enrollment
       const {
         child_id,
         child_name,
@@ -100,13 +100,13 @@ export async function POST(request: NextRequest) {
         lead_source_coach_id,
       } = booking;
 
-      // Get or use default coach
+      // Get or use default coach (UPDATED EMAIL)
       let finalCoachId = coach_id;
       if (!finalCoachId) {
         const { data: defaultCoach } = await supabase
           .from('coaches')
           .select('id')
-          .eq('email', 'rucha@yestoryd.com')
+          .eq('email', 'rucha.rai@yestoryd.com')
           .maybeSingle();
         finalCoachId = defaultCoach?.id;
       }
@@ -122,23 +122,17 @@ export async function POST(request: NextRequest) {
         .eq('id', booking.id);
 
       // Create payment record
-      const { error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-          child_id: child_id,
-          coach_id: 'webhook',
-          razorpay_order_id: orderId,
-          razorpay_payment_id: paymentId,
-          amount: amount,
-          package_type: 'coaching-3month',
-          source: 'webhook',
-          status: 'captured',
-          captured_at: new Date().toISOString(),
-        });
-
-      if (paymentError) {
-        console.error('⚠️ Payment record error:', paymentError);
-      }
+      await supabase.from('payments').insert({
+        child_id: child_id,
+        coach_id: 'webhook',
+        razorpay_order_id: orderId,
+        razorpay_payment_id: paymentId,
+        amount: amount,
+        package_type: 'coaching-3month',
+        source: 'webhook',
+        status: 'captured',
+        captured_at: new Date().toISOString(),
+      });
 
       // Create enrollment
       const programStart = new Date();
@@ -157,6 +151,8 @@ export async function POST(request: NextRequest) {
           program_start: programStart.toISOString(),
           program_end: programEnd.toISOString(),
           schedule_confirmed: false,
+          lead_source: lead_source || 'yestoryd',
+          lead_source_coach_id: lead_source === 'coach' ? lead_source_coach_id : null,
         })
         .select('id')
         .single();
@@ -221,27 +217,26 @@ export async function POST(request: NextRequest) {
       if (child_id) {
         await supabase
           .from('children')
-          .update({ 
+          .update({
             lead_status: 'enrolled',
             coach_id: finalCoachId,
           })
           .eq('id', child_id);
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         status: 'processed',
         enrollmentId: enrollment?.id,
       });
     }
 
-    // Handle payment.failed event
+    // Handle payment.failed
     if (event === 'payment.failed') {
       const payment = payload.payload.payment.entity;
       const orderId = payment.order_id;
-      
+
       console.log('❌ Payment failed:', orderId);
 
-      // Update booking status
       await supabase
         .from('bookings')
         .update({
@@ -253,9 +248,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'failure_recorded' });
     }
 
-    // Acknowledge other events
     return NextResponse.json({ status: 'event_received', event });
-
   } catch (error: any) {
     console.error('❌ Webhook error:', error);
     return NextResponse.json(
