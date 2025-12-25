@@ -17,6 +17,7 @@ import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 import SupportWidget from '@/components/support/SupportWidget';
 import SupportForm from '@/components/support/SupportForm';
+import CoachTierCard from '@/components/coach/CoachTierCard';
 
 // 4-Point Star Icon Component (Yestoryd branding for rAI)
 function StarIcon({ className }: { className?: string }) {
@@ -407,7 +408,9 @@ export default function CoachDashboardPage() {
   );
 }
 
-// Overview Tab Component
+// ============================================================
+// OVERVIEW TAB - WITH COACH TIER CARD
+// ============================================================
 function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | null; coach: Coach; onTabChange: (tab: string) => void }) {
   return (
     <div className="space-y-6">
@@ -416,6 +419,9 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
         <h1 className="text-2xl font-bold mb-2">Welcome back, {coach.name.split(' ')[0]}! 👋</h1>
         <p className="text-blue-100">Here's what's happening with your coaching today.</p>
       </div>
+
+      {/* ========== COACH TIER CARD - SHOWS TIER, EARNINGS & PROGRESS ========== */}
+      <CoachTierCard coachId={coach.id} coachEmail={coach.email} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -508,7 +514,9 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
   );
 }
 
-// Students Tab Component
+// ============================================================
+// STUDENTS TAB
+// ============================================================
 function StudentsTab({ coachId }: { coachId: string }) {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -518,11 +526,6 @@ function StudentsTab({ coachId }: { coachId: string }) {
   }, [coachId]);
 
   const fetchStudents = async () => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
     const { data, error } = await supabase
       .from('children')
       .select('*')
@@ -574,7 +577,9 @@ function StudentsTab({ coachId }: { coachId: string }) {
   );
 }
 
-// Sessions Tab Component
+// ============================================================
+// SESSIONS TAB
+// ============================================================
 function SessionsTab({ coachId }: { coachId: string }) {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -584,11 +589,6 @@ function SessionsTab({ coachId }: { coachId: string }) {
   }, [coachId]);
 
   const fetchSessions = async () => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
     try {
       const { data, error } = await supabase
         .from('scheduled_sessions')
@@ -654,7 +654,9 @@ function SessionsTab({ coachId }: { coachId: string }) {
   );
 }
 
-// Earnings Tab Component
+// ============================================================
+// EARNINGS TAB
+// ============================================================
 function EarningsTab({ coachId }: { coachId: string }) {
   const [earnings, setEarnings] = useState({ total: 0, pending: 0, paid: 0 });
   const [loading, setLoading] = useState(true);
@@ -664,11 +666,6 @@ function EarningsTab({ coachId }: { coachId: string }) {
   }, [coachId]);
 
   const fetchEarnings = async () => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
     try {
       const { data } = await supabase
         .from('coach_payouts')
@@ -706,8 +703,9 @@ function EarningsTab({ coachId }: { coachId: string }) {
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
         <h3 className="font-bold text-gray-900 mb-2">💰 How You Earn</h3>
         <ul className="space-y-2 text-sm text-gray-600">
-          <li>• <strong>50%</strong> of coaching fee for each enrolled student</li>
+          <li>• <strong>50%</strong> of coaching fee for each enrolled student (Rising Coach)</li>
           <li>• <strong>+20%</strong> lead bonus when you refer a student</li>
+          <li>• Earn more as you progress: Expert (55%) → Master (60%)</li>
           <li>• Payments processed on <strong>7th of each month</strong></li>
         </ul>
       </div>
@@ -715,7 +713,9 @@ function EarningsTab({ coachId }: { coachId: string }) {
   );
 }
 
-// Support Tab Component
+// ============================================================
+// SUPPORT TAB
+// ============================================================
 function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: string }) {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

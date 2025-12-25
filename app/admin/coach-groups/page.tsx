@@ -180,6 +180,11 @@ export default function AdminCoachGroupsPage() {
     setSaving(true);
     setMessage(null);
 
+    // Get current coach data for comparison
+    const coach = coaches.find((c) => c.id === coachId);
+    const oldGroup = groups.find((g) => g.id === coach?.group_id);
+    const newGroup = groups.find((g) => g.id === groupId);
+
     const { error } = await (supabase as any)
       .from('coaches')
       .update({
@@ -190,12 +195,43 @@ export default function AdminCoachGroupsPage() {
 
     if (error) {
       setMessage({ type: 'error', text: error.message });
-    } else {
-      setMessage({ type: 'success', text: 'Coach group updated!' });
-      setAssigningCoach(null);
-      fetchData();
+      setSaving(false);
+      return;
     }
 
+    // Send notification if tier actually changed
+    if (oldGroup?.id !== groupId && newGroup && !newGroup.is_internal) {
+      try {
+        const isPromotion = (newGroup.coach_cost_percent || 0) > (oldGroup?.coach_cost_percent || 0);
+        
+        await fetch('/api/coach/tier-change', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            coachId,
+            oldTierName: oldGroup?.name || 'none',
+            newTierName: newGroup.name,
+            newTierDisplayName: newGroup.display_name,
+            newCoachPercent: newGroup.coach_cost_percent,
+            newLeadPercent: newGroup.lead_cost_percent,
+            isPromotion,
+          }),
+        });
+        
+        setMessage({
+          type: 'success',
+          text: `Coach ${isPromotion ? 'promoted' : 'moved'} to ${newGroup.display_name}. Notification sent!`,
+        });
+      } catch (notifyError) {
+        console.error('Notification error:', notifyError);
+        setMessage({ type: 'success', text: 'Coach group updated! (Notification failed)' });
+      }
+    } else {
+      setMessage({ type: 'success', text: 'Coach group updated!' });
+    }
+
+    setAssigningCoach(null);
+    fetchData();
     setSaving(false);
   }
 
