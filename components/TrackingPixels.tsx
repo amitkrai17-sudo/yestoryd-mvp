@@ -5,13 +5,11 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, Suspense } from 'react';
 
 // ============================================================
-// TRACKING PIXELS SETUP FOR YESTORYD
+// TRACKING PIXELS FOR YESTORYD
 // ============================================================
 // 
-// INSTRUCTIONS:
-// 1. Replace 'YOUR_META_PIXEL_ID' with your actual Meta Pixel ID
-// 2. Replace 'YOUR_GOOGLE_ADS_ID' with your actual Google Ads ID (AW-XXXXXXXXXX)
-// 3. Add this component to your root layout.tsx
+// Meta Pixel ID: 650578416315366
+// Google Ads ID: AW-7985613870
 //
 // ============================================================
 
@@ -39,11 +37,6 @@ export function MetaPixel() {
       window.fbq('track', 'PageView');
     }
   }, [pathname, searchParams]);
-
-  if (META_PIXEL_ID === 'YOUR_META_PIXEL_ID') {
-    console.warn('⚠️ Meta Pixel ID not configured');
-    return null;
-  }
 
   return (
     <>
@@ -76,11 +69,6 @@ export function MetaPixel() {
 
 // ==================== GOOGLE ADS TAG ====================
 export function GoogleAdsTag() {
-  if (GOOGLE_ADS_ID === 'YOUR_GOOGLE_ADS_ID') {
-    console.warn('⚠️ Google Ads ID not configured');
-    return null;
-  }
-
   return (
     <>
       <Script
