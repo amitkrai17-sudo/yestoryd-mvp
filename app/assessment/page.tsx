@@ -658,6 +658,19 @@ https://yestoryd.com/lets-talk
     return `/lets-talk?${params.toString()}`;
   };
 
+  // CRO FIX: Build enroll URL with params for high scorers
+  const getEnrollUrl = () => {
+    const params = new URLSearchParams({
+      childName: formData.childName,
+      childAge: formData.childAge,
+      parentName: formData.parentName,
+      parentEmail: formData.parentEmail,
+      parentPhone: formData.countryCode + formData.parentPhone,
+      source: 'assessment',
+    });
+    return `/enroll?${params.toString()}`;
+  };
+
   // ==================== RENDER ====================
 
   return (
@@ -1115,7 +1128,7 @@ https://yestoryd.com/lets-talk
               </div>
             )}
 
-            {/* STEP 3: RESULTS - CRO OPTIMIZED */}
+            {/* STEP 3: RESULTS - CRO OPTIMIZED WITH SCORE-BASED ROUTING */}
             {currentStep === 3 && results && (
               <div className="space-y-6 text-center">
                 {(() => {
@@ -1191,7 +1204,7 @@ https://yestoryd.com/lets-talk
                         </p>
                       </div>
 
-                      {/* CTA SECTION - Score-based order */}
+                      {/* CTA SECTION - CRO FIX: Score-based routing */}
                       <div className="space-y-3 pt-2">
                         {/* Real social proof */}
                         <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
@@ -1200,7 +1213,7 @@ https://yestoryd.com/lets-talk
                         </div>
 
                         {ctaInfo.prioritizeConsultation ? (
-                          // LOW/MID SCORE: Consultation first (reassurance)
+                          // LOW/MID SCORE (≤6): Consultation first (reassurance needed)
                           <>
                             <Link
                               href={getLetsTalkUrl()}
@@ -1214,26 +1227,27 @@ https://yestoryd.com/lets-talk
                             <p className="text-gray-400 text-xs">Free 15-min call • No obligation • Get personalized advice</p>
                             
                             <Link
-                              href={getLetsTalkUrl()}
+                              href={getEnrollUrl()}
                               onClick={() => trackEvent('cta_clicked', { cta: 'secondary_enroll', score: results.overall_score })}
                               className="w-full bg-transparent border border-gray-300 hover:border-gray-400 font-semibold py-3 px-6 rounded-2xl text-gray-600 flex items-center justify-center gap-3 transition-all"
                             >
                               <Rocket className="w-5 h-5" />
-                              View Coaching Options
+                              Ready to Enroll? Skip the Call →
                             </Link>
                           </>
                         ) : (
-                          // HIGH SCORE: Enroll first (confident)
+                          // HIGH SCORE (≥7): Enroll first (confident parents)
                           <>
                             <Link
-                              href={getLetsTalkUrl()}
+                              href={getEnrollUrl()}
                               onClick={() => trackEvent('cta_clicked', { cta: 'primary_enroll', score: results.overall_score })}
                               className="w-full font-bold py-4 px-6 rounded-2xl text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-lg"
                               style={{ background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` }}
                             >
                               <Rocket className="w-5 h-5" />
-                              {ctaInfo.primaryCTA}
+                              {ctaInfo.primaryCTA} — ₹5,999
                             </Link>
+                            <p className="text-gray-400 text-xs">100% Refund Guarantee • Start within 3-5 days</p>
                             
                             <Link
                               href={getLetsTalkUrl()}
@@ -1241,7 +1255,7 @@ https://yestoryd.com/lets-talk
                               className="w-full bg-transparent border border-gray-300 hover:border-gray-400 font-medium py-3 px-6 rounded-2xl text-gray-500 flex items-center justify-center gap-3 transition-all"
                             >
                               <Calendar className="w-5 h-5" />
-                              {ctaInfo.secondaryCTA}
+                              Have Questions? Talk to Coach First
                             </Link>
                           </>
                         )}

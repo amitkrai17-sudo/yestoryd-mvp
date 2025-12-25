@@ -1,5 +1,5 @@
 // file: app/api/cron/monthly-payouts/route.ts
-// Vercel Cron Job - Runs on 7th of every month at 10:00 AM IST
+// Vercel Cron Job - Runs on 7th of every month at 4:00 AM UTC (9:30 AM IST)
 // Processes all due coach payouts automatically
 
 import { NextRequest, NextResponse } from 'next/server';
