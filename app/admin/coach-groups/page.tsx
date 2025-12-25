@@ -439,7 +439,7 @@ export default function AdminCoachGroupsPage() {
                               onChange={(e) =>
                                 setEditValues({ ...editValues, lead_cost_percent: Number(e.target.value) })
                               }
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white"
                             />
                           </div>
                           <div>
@@ -454,7 +454,7 @@ export default function AdminCoachGroupsPage() {
                               onChange={(e) =>
                                 setEditValues({ ...editValues, coach_cost_percent: Number(e.target.value) })
                               }
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white"
                             />
                           </div>
                           <div>
@@ -475,7 +475,7 @@ export default function AdminCoachGroupsPage() {
                             type="text"
                             value={editValues.description || ''}
                             onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white"
                           />
                         </div>
 
@@ -620,7 +620,7 @@ export default function AdminCoachGroupsPage() {
                           <select
                             value={coach.group_id || ''}
                             onChange={(e) => assignCoachToGroup(coach.id, e.target.value || null)}
-                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
                           >
                             <option value="">Unassigned</option>
                             {groups.map((group) => (
