@@ -1,6 +1,6 @@
 // file: app/api/coach/my-referrals/route.ts
-// Fixed API for coaches to see their referrals
-// Properly fetches coach data and generates referral link if missing
+// API to get coach referral info - FIXED to use database values
+// Returns referral_code and referral_link directly from coaches table
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -10,122 +10,57 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const coachEmail = searchParams.get('email');
+    const email = searchParams.get('email');
 
-    console.log('📧 Fetching referrals for coach:', coachEmail);
-
-    if (!coachEmail) {
+    if (!email) {
       return NextResponse.json(
-        { success: false, error: 'Coach email required' },
+        { success: false, error: 'Email is required' },
         { status: 400 }
       );
     }
 
-    // Get the coach's details
+    // Get coach info with referral_code and referral_link FROM DATABASE
     const { data: coach, error: coachError } = await supabase
       .from('coaches')
       .select('id, name, email, referral_code, referral_link')
-      .eq('email', coachEmail)
+      .eq('email', email.toLowerCase())
       .single();
 
-    if (coachError) {
-      console.error('❌ Coach fetch error:', coachError);
+    if (coachError || !coach) {
       return NextResponse.json(
-        { success: false, error: 'Coach not found. Please complete your profile.' },
+        { success: false, error: 'Coach not found' },
         { status: 404 }
       );
     }
 
-    if (!coach) {
-      return NextResponse.json(
-        { success: false, error: 'Coach profile not found' },
-        { status: 404 }
-      );
-    }
-
-    console.log('✅ Coach found:', coach.name, 'Code:', coach.referral_code);
-
-    // If coach doesn't have a referral code, generate one
-    let referralCode = coach.referral_code;
-    let referralLink = coach.referral_link;
-
-    if (!referralCode) {
-      // Generate referral code from name
-      const namePart = coach.name
-        .split(' ')[0]
-        .toUpperCase()
-        .replace(/[^A-Z]/g, '')
-        .slice(0, 5);
-      const year = new Date().getFullYear();
-      referralCode = `REF-${namePart}-${year}`;
-      referralLink = `https://yestoryd.com/assess?ref=${referralCode}`;
-
-      // Update coach with new referral code
-      const { error: updateError } = await supabase
-        .from('coaches')
-        .update({
-          referral_code: referralCode,
-          referral_link: referralLink,
-        })
-        .eq('id', coach.id);
-
-      if (updateError) {
-        console.error('⚠️ Could not update referral code:', updateError);
-      } else {
-        console.log('✅ Generated new referral code:', referralCode);
-      }
-    }
-
-    // Ensure referral link exists
-    if (!referralLink && referralCode) {
-      referralLink = `https://yestoryd.com/assess?ref=${referralCode}`;
-      
-      // Update coach with referral link
-      await supabase
-        .from('coaches')
-        .update({ referral_link: referralLink })
-        .eq('id', coach.id);
-    }
-
-    // Get all leads referred by this coach
+    // Get referrals (children referred by this coach)
     const { data: referrals, error: referralsError } = await supabase
       .from('children')
-      .select(`
-        id,
-        name,
-        age,
-        parent_name,
-        parent_email,
-        lead_status,
-        lead_source,
-        created_at,
-        enrolled_at,
-        latest_assessment_score
-      `)
+      .select('id, name, parent_name, parent_phone, lead_status, created_at')
+      .eq('lead_source', 'coach')
       .eq('lead_source_coach_id', coach.id)
       .order('created_at', { ascending: false });
 
-    if (referralsError) {
-      console.error('⚠️ Error fetching referrals:', referralsError);
-      // Don't fail, just return empty referrals
-    }
+    // Calculate stats
+    const totalReferrals = referrals?.length || 0;
+    const enrolled = referrals?.filter(r => 
+      r.lead_status === 'enrolled' || r.lead_status === 'active'
+    ).length || 0;
+    const inProgress = referrals?.filter(r => 
+      r.lead_status && !['enrolled', 'active', 'lost'].includes(r.lead_status)
+    ).length || 0;
+    const conversionRate = totalReferrals > 0 
+      ? Math.round((enrolled / totalReferrals) * 100) 
+      : 0;
 
-    const referralsList = referrals || [];
-    console.log(`📊 Found ${referralsList.length} referrals for ${coach.name}`);
+    // Get earnings from coach_payouts (lead bonus type)
+    let totalEarned = 0;
+    let pending = 0;
+    let paid = 0;
 
-    // Get earnings data for enrolled referrals
-    let earnings = {
-      total_earned: 0,
-      pending: 0,
-      paid: 0,
-    };
-
-    // Try to get payout data
     try {
       const { data: payouts } = await supabase
         .from('coach_payouts')
@@ -133,47 +68,25 @@ export async function GET(request: NextRequest) {
         .eq('coach_id', coach.id)
         .eq('payout_type', 'lead_bonus');
 
-      if (payouts && payouts.length > 0) {
-        earnings.total_earned = payouts.reduce((sum, p) => sum + (p.net_amount || 0), 0);
-        earnings.paid = payouts
-          .filter(p => p.status === 'paid')
-          .reduce((sum, p) => sum + (p.net_amount || 0), 0);
-        earnings.pending = earnings.total_earned - earnings.paid;
+      if (payouts) {
+        payouts.forEach(p => {
+          totalEarned += p.net_amount || 0;
+          if (p.status === 'paid') {
+            paid += p.net_amount || 0;
+          } else {
+            pending += p.net_amount || 0;
+          }
+        });
       }
-    } catch (err) {
-      console.log('ℹ️ No payout data yet (table may not exist)');
+    } catch (e) {
+      // Payouts table might not exist yet
+      console.log('Payouts fetch error:', e);
     }
 
-    // Calculate stats
-    const enrolledStatuses = ['enrolled', 'active', 'completed'];
-    const inProgressStatuses = ['contacted', 'call_scheduled', 'call_done'];
-    
-    const stats = {
-      total_referrals: referralsList.length,
-      assessed: referralsList.filter(r => r.lead_status === 'assessed').length,
-      in_progress: referralsList.filter(r => inProgressStatuses.includes(r.lead_status || '')).length,
-      enrolled: referralsList.filter(r => enrolledStatuses.includes(r.lead_status || '')).length,
-      lost: referralsList.filter(r => r.lead_status === 'lost').length,
-      conversion_rate: referralsList.length > 0
-        ? Math.round((referralsList.filter(r => enrolledStatuses.includes(r.lead_status || '')).length / referralsList.length) * 100)
-        : 0,
-    };
-
-    // Calculate expected earnings based on enrolled leads (not from payouts table)
-    const enrolledCount = stats.enrolled;
-    const expectedEarningPerLead = 1200; // 20% of ₹5,999
-    
-    // If no payout data, calculate from enrolled count
-    if (earnings.total_earned === 0 && enrolledCount > 0) {
-      earnings.total_earned = enrolledCount * expectedEarningPerLead;
-      earnings.pending = earnings.total_earned; // All pending if no payouts processed
-    }
-
-    // Transform referrals with earnings info
-    const transformedReferrals = referralsList.map(ref => ({
-      ...ref,
-      expected_earning: enrolledStatuses.includes(ref.lead_status || '') ? expectedEarningPerLead : 0,
-      status_display: getStatusDisplay(ref.lead_status),
+    // Map referrals with expected earning
+    const mappedReferrals = (referrals || []).map(r => ({
+      ...r,
+      expected_earning: (r.lead_status === 'enrolled' || r.lead_status === 'active') ? 1200 : 0,
     }));
 
     return NextResponse.json({
@@ -181,34 +94,29 @@ export async function GET(request: NextRequest) {
       coach: {
         id: coach.id,
         name: coach.name,
-        referral_code: referralCode,
-        referral_link: referralLink,
+        // IMPORTANT: Use database values directly, not constructed URLs
+        referral_code: coach.referral_code,
+        referral_link: coach.referral_link,
       },
-      referrals: transformedReferrals,
-      stats,
-      earnings,
+      referrals: mappedReferrals,
+      stats: {
+        total_referrals: totalReferrals,
+        enrolled,
+        in_progress: inProgress,
+        conversion_rate: conversionRate,
+      },
+      earnings: {
+        total_earned: totalEarned,
+        pending,
+        paid,
+      },
     });
 
-  } catch (error) {
-    console.error('❌ My Referrals API Error:', error);
+  } catch (error: any) {
+    console.error('Error fetching referrals:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch referrals. Please try again.' },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }
-}
-
-function getStatusDisplay(status: string | null): { label: string; color: string } {
-  const statusMap: Record<string, { label: string; color: string }> = {
-    assessed: { label: 'Assessed', color: 'blue' },
-    contacted: { label: 'Contacted', color: 'yellow' },
-    call_scheduled: { label: 'Call Scheduled', color: 'purple' },
-    call_done: { label: 'Call Done', color: 'indigo' },
-    enrolled: { label: 'Enrolled', color: 'green' },
-    active: { label: 'Active', color: 'emerald' },
-    completed: { label: 'Completed', color: 'teal' },
-    lost: { label: 'Lost', color: 'red' },
-  };
-  
-  return statusMap[status || ''] || { label: status || 'Unknown', color: 'gray' };
 }
