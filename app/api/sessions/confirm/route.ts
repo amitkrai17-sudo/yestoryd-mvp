@@ -145,9 +145,9 @@ export async function POST(request: NextRequest) {
     let recallBotsCreated = 0;
     try {
       console.log('📹 Scheduling Recall.ai bots...');
-      const botResult = await createBotsForEnrollment(enrollmentId);
-      recallBotsCreated = botResult.created;
-      console.log(`✅ Recall bots: ${botResult.created} created, ${botResult.failed} failed`);
+      const botResult = await scheduleBotsForEnrollment(enrollmentId);
+      recallBotsCreated = botResult.botsCreated;
+      console.log(`✅ Recall bots: ${botResult.botsCreated} created`);
       if (botResult.errors.length > 0) {
         console.error('Bot scheduling errors:', botResult.errors);
       }
