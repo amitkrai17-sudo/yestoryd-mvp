@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, CheckCircle, Wand2, Play } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, CheckCircle, Wand2 } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +34,7 @@ export default function ParentLoginPage() {
           .select('value')
           .eq('key', 'parent_login_video_url')
           .single();
-        
+
         if (data?.value) {
           const parsed = JSON.parse(data.value);
           if (parsed && parsed.startsWith('http')) {
@@ -136,7 +136,7 @@ export default function ParentLoginPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00abff] rounded-full blur-3xl" />
         </div>
 
-        {/* Yestoryd Logo - displayed as-is */}
+        {/* Yestoryd Logo */}
         <div className="relative z-10">
           <Link href="/">
             <Image
@@ -167,13 +167,13 @@ export default function ParentLoginPage() {
               </div>
             )}
 
-            {/* rAI Card */}
+            {/* rAI Card - FIXED: "Reading Analyst" not "Coach" */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center shadow-lg shadow-[#ff0099]/30 overflow-hidden">
                   <Image
                     src="/images/rai-mascot.png"
-                    alt="rAI AI"
+                    alt="rAI"
                     width={48}
                     height={48}
                     className="w-12 h-12"
@@ -181,12 +181,12 @@ export default function ParentLoginPage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-white">Meet rAI</h2>
-                  <p className="text-[#00abff]">Your Child's Reading Coach</p>
+                  <p className="text-[#00abff]">Your Reading Intelligence Analyst</p>
                 </div>
               </div>
               <p className="text-gray-300 leading-relaxed mb-6">
-                rAI analyzes your child's reading in real-time, identifies areas for improvement,
-                and provides personalized coaching recommendations.
+                rAI analyzes your child&apos;s reading in real-time, identifies areas for improvement,
+                and provides personalized recommendations for your certified coach.
               </p>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-gray-300">
@@ -204,11 +204,11 @@ export default function ParentLoginPage() {
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats - FIXED: "100+ Families" for consistency */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">500+</p>
-                <p className="text-sm text-gray-400">Children Assessed</p>
+                <p className="text-3xl font-bold text-white">100+</p>
+                <p className="text-sm text-gray-400">Families Helped</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">4.9★</p>
@@ -222,7 +222,7 @@ export default function ParentLoginPage() {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer - FIXED: Encoding */}
         <div className="relative z-10 text-gray-500 text-sm">
           © 2025 Yestoryd. All rights reserved.
         </div>
@@ -273,7 +273,7 @@ export default function ParentLoginPage() {
                 {mode === 'login'
                   ? 'Sign in to access your parent dashboard'
                   : mode === 'signup'
-                    ? 'Start your child\'s reading journey'
+                    ? "Start your child's reading journey"
                     : mode === 'magic'
                       ? 'Sign in without a password'
                       : 'Enter your email to reset password'}
@@ -407,7 +407,7 @@ export default function ParentLoginPage() {
             <div className="mt-6 text-center">
               {mode === 'login' ? (
                 <p className="text-gray-600">
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <button
                     onClick={() => { setMode('signup'); setError(''); setMessage(''); }}
                     className="text-[#00abff] hover:text-[#0066cc] font-semibold"
@@ -441,7 +441,7 @@ export default function ParentLoginPage() {
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center flex-shrink-0 overflow-hidden">
                   <Image
                     src="/images/rai-mascot.png"
-                    alt="rAI AI"
+                    alt="rAI"
                     width={32}
                     height={32}
                     className="w-8 h-8"
@@ -454,7 +454,7 @@ export default function ParentLoginPage() {
               </div>
             </div>
 
-            {/* Take Assessment CTA - Filled button */}
+            {/* Take Assessment CTA */}
             <Link
               href="/assessment"
               className="w-full py-3.5 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
@@ -462,7 +462,7 @@ export default function ParentLoginPage() {
               Free Assessment
               <Image
                 src="/images/rai-mascot.png"
-                alt="rAI AI"
+                alt="rAI"
                 width={24}
                 height={24}
                 className="w-6 h-6"

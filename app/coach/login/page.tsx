@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Users, CheckCircle, Wand2, Play } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Users, CheckCircle, Wand2 } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +34,7 @@ export default function CoachLoginPage() {
           .select('value')
           .eq('key', 'coach_login_video_url')
           .single();
-        
+
         if (data?.value) {
           const parsed = JSON.parse(data.value);
           if (parsed && parsed.startsWith('http')) {
@@ -129,13 +129,13 @@ export default function CoachLoginPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00abff] rounded-full blur-3xl" />
         </div>
 
-        {/* Yestoryd Logo - displayed as-is */}
+        {/* Yestoryd Logo */}
         <div className="relative z-10">
           <Link href="/">
-            <Image 
-              src="/images/logo.png" 
-              alt="Yestoryd" 
-              width={180} 
+            <Image
+              src="/images/logo.png"
+              alt="Yestoryd"
+              width={180}
               height={50}
               className="h-12 w-auto"
             />
@@ -160,14 +160,14 @@ export default function CoachLoginPage() {
               </div>
             )}
 
-            {/* rAI Card */}
+            {/* rAI Card - FIXED: "Teaching Assistant" description */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00abff] to-[#0066cc] flex items-center justify-center shadow-lg shadow-[#00abff]/30 overflow-hidden">
-                  <Image 
-                    src="/images/rai-mascot.png" 
-                    alt="rAI AI" 
-                    width={48} 
+                  <Image
+                    src="/images/rai-mascot.png"
+                    alt="rAI"
+                    width={48}
                     height={48}
                     className="w-12 h-12"
                   />
@@ -178,8 +178,8 @@ export default function CoachLoginPage() {
                 </div>
               </div>
               <p className="text-gray-300 leading-relaxed mb-6">
-                rAI helps you deliver personalized coaching by providing real-time insights 
-                about each child's reading progress, strengths, and areas for improvement.
+                rAI helps you deliver personalized coaching by providing real-time insights
+                about each child&apos;s reading progress, strengths, and areas for improvement.
               </p>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-gray-300">
@@ -197,15 +197,15 @@ export default function CoachLoginPage() {
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats - FIXED: More realistic numbers */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">50+</p>
+                <p className="text-3xl font-bold text-white">10+</p>
                 <p className="text-sm text-gray-400">Active Coaches</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">₹50K+</p>
-                <p className="text-sm text-gray-400">Monthly Earnings</p>
+                <p className="text-3xl font-bold text-white">₹15K+</p>
+                <p className="text-sm text-gray-400">Avg. Earnings</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">4.9★</p>
@@ -215,7 +215,7 @@ export default function CoachLoginPage() {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer - FIXED: Encoding */}
         <div className="relative z-10 text-gray-500 text-sm">
           © 2025 Yestoryd. All rights reserved.
         </div>
@@ -227,10 +227,10 @@ export default function CoachLoginPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-6">
             <Link href="/">
-              <Image 
-                src="/images/logo.png" 
-                alt="Yestoryd" 
-                width={150} 
+              <Image
+                src="/images/logo.png"
+                alt="Yestoryd"
+                width={150}
                 height={40}
                 className="h-10 w-auto mx-auto"
               />
@@ -392,7 +392,7 @@ export default function CoachLoginPage() {
               </button>
             </form>
 
-            {/* Back to Login */}
+            {/* Back to Login - FIXED: Encoding */}
             {mode !== 'login' && (
               <div className="mt-6 text-center">
                 <button
@@ -415,10 +415,10 @@ export default function CoachLoginPage() {
             <div className="lg:hidden mb-4">
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00abff] to-[#0066cc] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  <Image 
-                    src="/images/rai-mascot.png" 
-                    alt="rAI AI" 
-                    width={32} 
+                  <Image
+                    src="/images/rai-mascot.png"
+                    alt="rAI"
+                    width={32}
                     height={32}
                     className="w-8 h-8"
                   />
@@ -430,16 +430,16 @@ export default function CoachLoginPage() {
               </div>
             </div>
 
-            {/* Apply as Coach CTA - Filled button */}
+            {/* Apply as Coach CTA */}
             <Link
-              href="/yestoryd-academy/apply"
+              href="/yestoryd-academy"
               className="w-full py-3.5 bg-gradient-to-r from-[#00abff] to-[#0066cc] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
               Become a Coach
-              <Image 
-                src="/images/rai-mascot.png" 
-                alt="rAI AI" 
-                width={24} 
+              <Image
+                src="/images/rai-mascot.png"
+                alt="rAI"
+                width={24}
                 height={24}
                 className="w-6 h-6"
               />
