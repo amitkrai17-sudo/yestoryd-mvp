@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createAllSessions, DAY_NAMES, formatTime } from '@/lib/googleCalendar';
-import { createBotsForEnrollment } from '@/lib/recall-auto-bot';
+import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
