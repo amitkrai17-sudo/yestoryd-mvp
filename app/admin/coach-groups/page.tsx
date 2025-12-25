@@ -625,11 +625,11 @@ export default function AdminCoachGroupsPage() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Coach</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Email</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Current Tier</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Referral Code</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-slate-600">Action</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Coach</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Email</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Current Tier</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Referral Code</th>
+                  <th className="text-right px-4 py-3 text-sm font-medium text-slate-700">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -650,7 +650,7 @@ export default function AdminCoachGroupsPage() {
                           <span className="font-medium text-slate-900">{coach.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{coach.email}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{coach.email}</td>
                       <td className="px-4 py-3">
                         {isAssigning ? (
                           <select
@@ -683,7 +683,7 @@ export default function AdminCoachGroupsPage() {
                       </td>
                       <td className="px-4 py-3">
                         {coach.referral_code ? (
-                          <code className="text-xs bg-slate-100 px-2 py-1 rounded">{coach.referral_code}</code>
+                          <code className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded font-mono">{coach.referral_code}</code>
                         ) : (
                           <span className="text-xs text-slate-400">None</span>
                         )}
