@@ -91,7 +91,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      _debug: new Date().toISOString(),  // ADD THIS LINE	
+      _debug: new Date().toISOString(),  // ADD THIS LINE
+      _supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(-20),  // ADD THIS	
       coach: {
         id: coach.id,
         name: coach.name,
