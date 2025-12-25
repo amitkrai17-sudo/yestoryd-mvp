@@ -1,4 +1,7 @@
 // file: components/TrackingPixels.tsx
+// Meta Pixel ID: 650578416315366
+// Google Ads ID: AW-7985613870
+
 'use client';
 
 import Script from 'next/script';
@@ -15,10 +18,6 @@ declare global {
 }
 
 function MetaPixel() {
-  if (!META_PIXEL_ID || META_PIXEL_ID === 'YOUR_META_PIXEL_ID') {
-    return null;
-  }
-
   return (
     <>
       <Script id="meta-pixel" strategy="afterInteractive">
@@ -49,10 +48,6 @@ function MetaPixel() {
 }
 
 function GoogleAdsTag() {
-  if (!GOOGLE_ADS_ID || GOOGLE_ADS_ID === 'YOUR_GOOGLE_ADS_ID') {
-    return null;
-  }
-
   return (
     <>
       <Script
@@ -88,6 +83,7 @@ export default function TrackingPixels() {
   );
 }
 
+// Tracking helper functions
 export function trackMetaEvent(
   eventName: 'Lead' | 'CompleteRegistration' | 'Purchase' | 'InitiateCheckout' | 'Contact' | 'Schedule' | 'ViewContent',
   params?: Record<string, any>
