@@ -1,7 +1,6 @@
 // app/yestoryd-academy/page.tsx
 // Yestoryd Academy - Coach Recruitment Landing Page
-// Fixes: Consistency ("100+ families"), urgency element, minor polish
-
+// Updated with video support from site_settings
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -40,8 +39,7 @@ import {
   Scale,
   TrendingUp,
   UserCheck,
-  Play,
-  AlertCircle
+  Play
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -185,12 +183,6 @@ export default function YestorydAcademyPage() {
             Together, we help children fall in love with reading.
           </p>
 
-          {/* URGENCY BADGE - NEW */}
-          <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-4 py-2 mb-8">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            <span className="text-sm font-medium text-amber-700">January 2026 Batch • Limited Spots</span>
-          </div>
-
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link
@@ -209,11 +201,11 @@ export default function YestorydAcademyPage() {
             </button>
           </div>
 
-          {/* Stats - FIXED: "100+ Families" for consistency */}
+          {/* Stats */}
           <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto mb-12">
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-slate-900">100+</div>
-              <div className="text-sm text-slate-500 mt-1">Families Helped</div>
+              <div className="text-sm text-slate-500 mt-1">Children Transformed</div>
             </div>
             <div className="text-center border-x border-slate-200">
               <div className="text-3xl md:text-4xl font-bold text-slate-900">4.9★</div>
@@ -715,16 +707,10 @@ export default function YestorydAcademyPage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Ready to Make a Difference?
           </h2>
-          <p className="text-xl text-white/80 mb-6 leading-relaxed">
+          <p className="text-xl text-white/80 mb-10 leading-relaxed">
             If you believe every child deserves patient, personalized guidance on their
             reading journey, we'd love to hear from you.
           </p>
-          
-          {/* Urgency reminder */}
-          <p className="text-white/60 text-sm mb-8">
-            ⏰ January 2026 batch applications closing soon
-          </p>
-          
           <Link
             href="/yestoryd-academy/apply"
             className="inline-flex items-center gap-2 bg-white text-[#ff0099] px-10 py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all"

@@ -1,7 +1,3 @@
-// app/enroll/page.tsx
-// Payment/Enrollment Page - CRO Optimized
-// Fixes: Consistency, mobile testimonial, "what happens" section, urgency, redirect URL
-
 'use client';
 
 import { useSearchParams } from 'next/navigation';
@@ -24,9 +20,6 @@ import {
   Mail,
   User,
   Baby,
-  Clock,
-  CreditCard,
-  Gift,
 } from 'lucide-react';
 
 declare global {
@@ -142,11 +135,8 @@ function EnrollContent() {
               }),
             });
 
-            const verifyData = await verifyRes.json();
-
             if (verifyRes.ok) {
-              // FIXED: Correct redirect URL with params
-              window.location.href = `/enrollment/success?childName=${encodeURIComponent(formData.childName)}&enrollmentId=${verifyData.enrollmentId || ''}`;
+              window.location.href = '/enrollment-success';
             } else {
               setError('Payment verification failed. Please contact support.');
             }
@@ -173,13 +163,13 @@ function EnrollContent() {
   const features = [
     { icon: Video, text: '6 One-on-One Sessions' },
     { icon: Calendar, text: '3 Parent Meetings' },
-    { icon: BookOpen, text: 'FREE E-Learning Access' },
+    { icon: BookOpen, text: 'FREE E-Learning' },
     { icon: Sparkles, text: 'AI Progress Tracking' },
     { icon: MessageCircle, text: 'WhatsApp Support' },
-    { icon: Award, text: 'Completion Certificate' },
+    { icon: Award, text: 'Certificate' },
   ];
 
-  // Personalized CTA
+  // Personalized CTA - returns JSX for styled name
   const renderCtaText = () => {
     if (formData.childName) {
       return (
@@ -220,51 +210,39 @@ function EnrollContent() {
         <div className="grid lg:grid-cols-5 gap-6 lg:gap-10">
           
           {/* Left Column - Info (2/5) */}
-          <div className="lg:col-span-2 space-y-4">
-            
-            {/* URGENCY BADGE - NEW */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-amber-800 font-semibold text-sm">Limited Slots Available</p>
-                <p className="text-amber-600 text-xs">Only 3 spots left for January batch</p>
-              </div>
-            </div>
-
-            {/* Coach Card - FIXED consistency */}
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <div className="lg:col-span-2">
+            {/* Coach Card */}
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
               <div className="flex items-center gap-2 text-yellow-600 mb-3">
                 <Sparkles className="w-4 h-4" />
                 <span className="font-semibold text-xs">YOUR READING COACH</span>
               </div>
               
               <div className="flex items-center gap-3 mb-3">
+                {/* Avatar */}
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xl font-bold">
                   R
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Coach Rucha</h3>
+                  <h3 className="text-lg font-bold text-gray-900">Rucha</h3>
                   <p className="text-green-600 font-medium text-sm">Founder & Lead Coach</p>
                 </div>
               </div>
 
-              {/* FIXED: 7 years, 100+ families */}
               <div className="flex items-center gap-3 text-xs text-gray-600">
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                   <span className="font-semibold">4.9</span>
                 </div>
-                <span>7 years exp.</span>
-                <span>100+ families</span>
+                <span>10+ years exp.</span>
+                <span>500+ students</span>
               </div>
             </div>
 
             {/* What's Included */}
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
               <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3 text-sm">
-                <Gift className="w-4 h-4 text-pink-500" />
+                <BookOpen className="w-4 h-4 text-gray-600" />
                 What's Included
               </h3>
               
@@ -278,41 +256,15 @@ function EnrollContent() {
               </div>
             </div>
 
-            {/* WHAT HAPPENS AFTER PAYMENT - NEW (StoryBrand Plan) */}
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3 text-sm">
-                <ArrowRight className="w-4 h-4 text-blue-500" />
-                After You Enroll
-              </h3>
-              <ol className="space-y-2 text-xs text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">1</span>
-                  <span>Confirmation email with receipt (instant)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">2</span>
-                  <span>Coach Rucha WhatsApps to introduce herself (within 24hrs)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">3</span>
-                  <span>Calendar invites for all 9 sessions (within 24hrs)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">4</span>
-                  <span>First session scheduled within 3-5 days</span>
-                </li>
-              </ol>
-            </div>
-
-            {/* Testimonial - FIXED: Now visible on mobile too */}
-            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+            {/* Testimonial */}
+            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200 hidden lg:block">
               <div className="flex items-center gap-1 mb-2">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                 ))}
               </div>
               <p className="text-gray-700 italic text-sm mb-3">
-                "Amazing transformation! Aarav went from struggling to reading confidently in just 2 months."
+                "Amazing transformation! Aarav went from struggling to reading confidently."
               </p>
               <p className="font-bold text-green-700 text-sm">— Priya S., Mumbai</p>
             </div>
@@ -327,7 +279,7 @@ function EnrollContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-bold">3-Month Reading Coaching</h2>
-                    <p className="text-white/80 text-xs">9 sessions • Everything included</p>
+                    <p className="text-white/80 text-xs">9 sessions. Everything included.</p>
                   </div>
                   <div className="text-right">
                     <div className="text-xs line-through text-white/60">₹11,999</div>
@@ -335,7 +287,7 @@ function EnrollContent() {
                   </div>
                 </div>
                 <div className="mt-2 inline-block bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold">
-                  SAVE 50% — Launch Offer
+                  SAVE 50%
                 </div>
               </div>
 
@@ -410,7 +362,7 @@ function EnrollContent() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Age (4-12 years) *</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Age *</label>
                     <select
                       name="childAge"
                       value={formData.childAge}
@@ -443,14 +395,14 @@ function EnrollContent() {
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      <CreditCard className="w-5 h-5" />
+                      <ArrowRight className="w-5 h-5" />
                       {renderCtaText()}
                     </>
                   )}
                 </button>
 
-                {/* Trust Signals - ENHANCED */}
-                <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500 pt-2">
+                {/* Trust Signals */}
+                <div className="flex items-center justify-center gap-4 text-xs text-gray-500 pt-2">
                   <span className="flex items-center gap-1">
                     <Shield className="w-3 h-3 text-green-500" />
                     100% Refund Guarantee
@@ -459,16 +411,6 @@ function EnrollContent() {
                     <Calendar className="w-3 h-3 text-blue-500" />
                     Flexible scheduling
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Award className="w-3 h-3 text-purple-500" />
-                    Certified coach
-                  </span>
-                </div>
-
-                {/* Secure Payment Badge */}
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  <Shield className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs text-gray-400">Secure payment via Razorpay</span>
                 </div>
               </form>
 

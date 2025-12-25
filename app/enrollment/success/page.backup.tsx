@@ -1,7 +1,3 @@
-// app/enrollment/success/page.tsx
-// Post-Payment Success Page - With Referral CTA
-// Fixes: Dynamic coach name, referral sharing, improved engagement
-
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
@@ -17,39 +13,19 @@ import {
   Sparkles,
   Loader2,
   PartyPopper,
-  Gift,
-  Share2,
-  Copy,
-  Check,
 } from 'lucide-react';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const enrollmentId = searchParams.get('enrollmentId') || '';
   const childName = searchParams.get('childName') || '';
-  const coachName = searchParams.get('coachName') || 'Your assigned coach'; // Dynamic coach name
   
   const [showContent, setShowContent] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    // Show content after short delay for animation
+    // Show content after short delay
     setTimeout(() => setShowContent(true), 300);
   }, []);
-
-  // Referral message
-  const referralMessage = `🎉 I just enrolled ${childName || 'my child'} in Yestoryd's AI-powered reading program! They help kids aged 4-12 become confident readers with personalized coaching.\n\n✨ Take their FREE 5-minute reading assessment: https://yestoryd.com/assessment`;
-  
-  const handleCopyReferral = () => {
-    navigator.clipboard.writeText(referralMessage);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleWhatsAppShare = () => {
-    const url = `https://wa.me/?text=${encodeURIComponent(referralMessage)}`;
-    window.open(url, '_blank');
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-emerald-50 flex flex-col">
@@ -75,7 +51,7 @@ function SuccessContent() {
             </div>
             
             <p className="text-xl text-gray-600">
-              {childName ? `${childName}'s` : "Your child's"} reading journey begins now!
+              {childName ? `${childName} is` : 'Your child is'} now enrolled in the Reading Coaching Program!
             </p>
           </div>
 
@@ -110,8 +86,7 @@ function SuccessContent() {
               
               <div className="flex justify-between items-center pb-4 border-b border-gray-100">
                 <span className="text-gray-500">Coach</span>
-                {/* FIXED: Dynamic coach name */}
-                <span className="font-semibold text-gray-800">{coachName}</span>
+                <span className="font-semibold text-gray-800">Coach Rucha</span>
               </div>
               
               <div className="flex justify-between items-center">
@@ -133,19 +108,19 @@ function SuccessContent() {
                 {
                   icon: Mail,
                   title: 'Check Your Email',
-                  desc: 'Confirmation email with receipt sent to your inbox',
+                  desc: 'Confirmation email with all details sent to your inbox',
                   time: 'Within 5 minutes',
-                },
-                {
-                  icon: MessageCircle,
-                  title: 'Coach Introduction',
-                  desc: `${coachName} will WhatsApp you to say hello`,
-                  time: 'Within 24 hours',
                 },
                 {
                   icon: Calendar,
                   title: 'Sessions Scheduled',
                   desc: 'Calendar invites for all 9 sessions sent automatically',
+                  time: 'Within 24 hours',
+                },
+                {
+                  icon: MessageCircle,
+                  title: 'Coach Will Reach Out',
+                  desc: 'Coach Rucha will WhatsApp you to introduce herself',
                   time: 'Within 24 hours',
                 },
               ].map((item, idx) => (
@@ -163,49 +138,6 @@ function SuccessContent() {
             </div>
           </div>
 
-          {/* REFERRAL CTA - NEW */}
-          <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl border border-pink-100 p-6 mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl flex items-center justify-center">
-                <Gift className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-800">Know Another Parent?</h3>
-                <p className="text-gray-500 text-sm">Share Yestoryd with them!</p>
-              </div>
-            </div>
-            
-            <p className="text-gray-600 text-sm mb-4">
-              Help another child discover the joy of reading. Share our free assessment with friends!
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleWhatsAppShare}
-                className="flex-1 h-11 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors"
-              >
-                <Share2 className="w-4 h-4" />
-                Share on WhatsApp
-              </button>
-              <button
-                onClick={handleCopyReferral}
-                className="h-11 px-4 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4 text-green-500" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
           {/* Action Buttons */}
           <div className="space-y-3">
             <Link
@@ -217,7 +149,7 @@ function SuccessContent() {
             </Link>
             
             <a
-              href={`https://wa.me/918976287997?text=${encodeURIComponent(`Hi! I just enrolled ${childName || 'my child'} in the reading program (ID: ${enrollmentId?.slice(0,8) || 'N/A'}). Looking forward to starting!`)}`}
+              href="https://wa.me/918976287997?text=Hi! I just enrolled my child in the reading program. Looking forward to starting!"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-green-600 transition-all"
@@ -233,10 +165,6 @@ function SuccessContent() {
               Questions? Email us at{' '}
               <a href="mailto:hello@yestoryd.com" className="text-amber-600 hover:underline">
                 hello@yestoryd.com
-              </a>{' '}
-              or WhatsApp{' '}
-              <a href="https://wa.me/918976287997" className="text-green-600 hover:underline">
-                +91 89762 87997
               </a>
             </p>
           </div>
