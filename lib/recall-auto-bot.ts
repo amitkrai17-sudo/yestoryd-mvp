@@ -47,7 +47,7 @@ export async function createRecallBot(session: SessionInfo): Promise<{
       },
       body: JSON.stringify({
         meeting_url: session.meetLink,
-        bot_name: `Yestoryd - ${session.childName} Recording`,
+        bot_name: `rAI by Yestoryd - ${session.childName} Recording`,
         
         // Join 1 minute before scheduled time
         join_at: new Date(session.scheduledTime.getTime() - 60000).toISOString(),
