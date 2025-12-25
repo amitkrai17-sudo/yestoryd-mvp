@@ -91,6 +91,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      _debug: new Date().toISOString(),  // ADD THIS LINE	
       coach: {
         id: coach.id,
         name: coach.name,
