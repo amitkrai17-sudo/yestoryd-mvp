@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { downloadAndStoreAudio } from '@/lib/audio-storage';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,21 +96,21 @@ export async function POST(request: NextRequest) {
     }
 
     const payload: RecallWebhookPayload = await request.json();
-    console.log('ðŸ“¹ Recall webhook received:', payload.event, payload.data.bot_id);
+    console.log('📹 Recall webhook received:', payload.event, payload.data.bot_id);
 
     switch (payload.event) {
       case 'bot.status_change':
         return handleStatusChange(payload);
-      
+
       case 'bot.transcription':
         return handleTranscription(payload);
-      
+
       case 'bot.recording_ready':
         return handleRecordingReady(payload);
-      
+
       case 'bot.done':
         return handleBotDone(payload);
-      
+
       default:
         console.log('Unhandled event type:', payload.event);
         return NextResponse.json({ status: 'ignored' });
@@ -126,9 +127,9 @@ export async function POST(request: NextRequest) {
 
 async function handleStatusChange(payload: RecallWebhookPayload) {
   const { bot_id, status, status_changes } = payload.data;
-  
+
   console.log(`Bot ${bot_id} status: ${status}`);
-  
+
   await supabase
     .from('recall_bot_sessions')
     .upsert({
@@ -148,7 +149,7 @@ async function handleTranscription(payload: RecallWebhookPayload) {
 
 async function handleRecordingReady(payload: RecallWebhookPayload) {
   const { bot_id, recording } = payload.data;
-  
+
   if (recording?.url) {
     await supabase
       .from('recall_bot_sessions')
@@ -164,8 +165,8 @@ async function handleRecordingReady(payload: RecallWebhookPayload) {
 
 async function handleBotDone(payload: RecallWebhookPayload) {
   const { bot_id, transcript, meeting_metadata, meeting_participants, recording } = payload.data;
-  
-  console.log('ðŸŽ¬ Bot done, processing transcript for:', bot_id);
+
+  console.log('🎬 Bot done, processing transcript for:', bot_id);
 
   const { data: botSession } = await supabase
     .from('recall_bot_sessions')
@@ -177,7 +178,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
     transcript?.words || [],
     meeting_participants || []
   );
-  
+
   if (!transcriptText || transcriptText.length < 100) {
     console.log('Transcript too short, skipping analysis');
     return NextResponse.json({ status: 'skipped', reason: 'transcript_too_short' });
@@ -193,7 +194,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
       meeting_metadata?.start_time || new Date().toISOString(),
       meeting_participants?.map(p => p.name) || []
     );
-    
+
     if (session) {
       sessionId = session.id;
       childId = session.child_id;
@@ -206,6 +207,46 @@ async function handleBotDone(payload: RecallWebhookPayload) {
 
   const analysis = await analyzeTranscript(transcriptText, childContext, childName);
 
+  // ============================================================
+  // AUDIO STORAGE - Download and store audio permanently
+  // ============================================================
+  let audioResult = { success: false, storagePath: undefined as string | undefined, publicUrl: undefined as string | undefined };
+  if (sessionId && childId) {
+    const { data: sessionData } = await supabase
+      .from('scheduled_sessions')
+      .select('scheduled_date')
+      .eq('id', sessionId)
+      .single();
+    
+    const sessionDate = sessionData?.scheduled_date || new Date().toISOString().split('T')[0];
+    
+    console.log('📥 Downloading audio for permanent storage...');
+    audioResult = await downloadAndStoreAudio(bot_id, sessionId, childId, sessionDate);
+    
+    if (audioResult.success) {
+      console.log('✅ Audio stored:', audioResult.storagePath);
+      
+      // Calculate video expiry (7 days)
+      const videoExpiresAt = new Date();
+      videoExpiresAt.setDate(videoExpiresAt.getDate() + 7);
+      
+      // Update session with audio and video info
+      await supabase
+        .from('scheduled_sessions')
+        .update({
+          audio_url: audioResult.publicUrl,
+          audio_storage_path: audioResult.storagePath,
+          video_url: recording?.url,
+          video_expires_at: videoExpiresAt.toISOString(),
+          recording_processed_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+    } else {
+      console.error('⚠️ Audio storage failed:', audioResult.error);
+    }
+  }
+  // ============================================================
+
   await saveSessionData({
     sessionId,
     childId,
@@ -217,7 +258,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
     durationSeconds: recording?.duration_seconds,
   });
 
-// Proactive Triggers
+  // Proactive Triggers
   if (childId && analysis) {
     try {
       const triggerResult = await checkAndSendProactiveNotifications({
@@ -227,21 +268,23 @@ async function handleBotDone(payload: RecallWebhookPayload) {
         coachId,
         analysis,
       });
-      
+
       if (triggerResult.sent) {
-        console.log('ðŸš¨ Proactive notifications sent:', triggerResult.notifications);
+        console.log('🚨 Proactive notifications sent:', triggerResult.notifications);
       }
     } catch (triggerError) {
       console.error('Proactive trigger error (non-fatal):', triggerError);
     }
   }
-  console.log('âœ… Session processed successfully');
-  
-  return NextResponse.json({ 
+  console.log('✅ Session processed successfully');
+
+  return NextResponse.json({
     status: 'processed',
     session_id: sessionId,
     child_detected: analysis.child_name,
     parent_summary_cached: !!analysis.parent_summary,
+    audio_stored: audioResult.success,
+    audio_path: audioResult.storagePath,
   });
 }
 
@@ -252,10 +295,10 @@ function buildTranscriptWithSpeakers(
   if (!words.length) return '';
 
   const speakerMap = new Map(participants.map(p => [p.id, p.name]));
-  
+
   const speakerCounts: Record<number, number> = {};
   const speakerFirstWords: Record<number, string[]> = {};
-  
+
   for (const word of words) {
     const speakerId = word.speaker_id || 0;
     speakerCounts[speakerId] = (speakerCounts[speakerId] || 0) + 1;
@@ -275,10 +318,10 @@ function buildTranscriptWithSpeakers(
     const sorted = speakerIds.sort((a, b) => speakerCounts[b] - speakerCounts[a]);
     coachSpeakerId = sorted[0];
     childSpeakerId = sorted[1];
-    
+
     const coachWords = (speakerFirstWords[coachSpeakerId] || []).join(' ').toLowerCase();
     const childWords = (speakerFirstWords[childSpeakerId] || []).join(' ').toLowerCase();
-    
+
     const instructionalPatterns = /\b(hello|hi|let's|today|read|start|open|good|great|try)\b/;
     if (instructionalPatterns.test(childWords) && !instructionalPatterns.test(coachWords)) {
       [coachSpeakerId, childSpeakerId] = [childSpeakerId, coachSpeakerId];
@@ -294,7 +337,7 @@ function buildTranscriptWithSpeakers(
 
   for (const word of words) {
     const speakerId = word.speaker_id || 0;
-    
+
     if (speakerId !== currentSpeaker) {
       if (currentLine.trim()) {
         const prevSpeakerLabel = currentSpeaker === coachSpeakerId ? 'COACH' : currentSpeaker === childSpeakerId ? 'CHILD' : `SPEAKER_${currentSpeaker}`;
@@ -315,7 +358,7 @@ function buildTranscriptWithSpeakers(
 }
 
 async function findSessionByMeeting(title: string, startTime: string, participantNames: string[]) {
-  const nameMatch = title.match(/Yestoryd\s*[-â€“]\s*(\w+\s*\w*)/i);
+  const nameMatch = title.match(/Yestoryd\s*[-–]\s*(\w+\s*\w*)/i);
   const childNameFromTitle = nameMatch ? nameMatch[1].trim() : null;
 
   const meetingDate = new Date(startTime);
@@ -347,7 +390,7 @@ async function findSessionByMeeting(title: string, startTime: string, participan
   for (const session of sessions) {
     const child = session.child as { child_name?: string; name?: string } | null;
     const childName = child?.child_name || child?.name;
-    if (childName && participantNames.some(p => 
+    if (childName && participantNames.some(p =>
       p.toLowerCase().includes(childName.toLowerCase()) ||
       childName.toLowerCase().includes(p.toLowerCase())
     )) {
@@ -383,7 +426,7 @@ async function getChildContext(childId: string): Promise<{
 
   let recentSessions = '';
   if (sessions?.length) {
-    recentSessions = sessions.map((s, i) => 
+    recentSessions = sessions.map((s, i) =>
       `Session ${i + 1}: Focus=${s.focus_area || 'N/A'}, Progress=${s.progress_rating || 'N/A'}`
     ).join('\n');
   }
@@ -402,7 +445,7 @@ async function analyzeTranscript(
   childContext: { name: string; age: number; score: number | null; sessionsCompleted: number; recentSessions: string } | null,
   childName: string
 ): Promise<SessionAnalysis> {
-  
+
   const prompt = `You are an AI assistant for Yestoryd, a reading coaching platform for children aged 4-12 in India.
 
 TASK: Analyze this coaching session transcript and generate TWO outputs:
@@ -457,7 +500,7 @@ Respond ONLY with valid JSON. No markdown, no backticks.`;
 
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
-    
+
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -467,7 +510,7 @@ Respond ONLY with valid JSON. No markdown, no backticks.`;
     });
 
     const text = result.response.text();
-    
+
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const analysis = JSON.parse(jsonMatch[0]) as SessionAnalysis;
@@ -475,7 +518,7 @@ Respond ONLY with valid JSON. No markdown, no backticks.`;
     }
 
     return getDefaultAnalysis(childName);
-    
+
   } catch (error) {
     console.error('Gemini analysis error:', error);
     return getDefaultAnalysis(childName);
@@ -537,8 +580,8 @@ async function saveSessionData(data: {
         last_session_focus: analysis.focus_area,
       })
       .eq('id', childId);
-    
-    console.log('ðŸ“¦ Parent summary cached for child:', childId);
+
+    console.log('📦 Parent summary cached for child:', childId);
   }
 
   if (sessionId) {
@@ -588,7 +631,7 @@ async function saveSessionData(data: {
     let embedding: number[] | null = null;
     try {
       embedding = await generateEmbedding(searchableContent);
-      console.log('ðŸ”¢ Embedding generated for learning event');
+      console.log('🔢 Embedding generated for learning event');
     } catch (error) {
       console.error('Failed to generate embedding:', error);
     }
@@ -625,17 +668,14 @@ async function saveSessionData(data: {
     await supabase.rpc('increment_sessions_completed', { child_id_param: childId });
   }
 
-  console.log('ðŸ“š Session data saved to database');
+  console.log('📚 Session data saved to database');
 }
 
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    service: 'Recall.ai Webhook v2.0',
-    features: ['speaker_diarization', 'parent_summary_cache', 'embeddings'],
+    service: 'Recall.ai Webhook v2.1',
+    features: ['speaker_diarization', 'parent_summary_cache', 'embeddings', 'audio_storage'],
     timestamp: new Date().toISOString(),
   });
 }
-
-
-

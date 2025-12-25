@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createAllSessions, DAY_NAMES, formatTime } from '@/lib/googleCalendar';
+import { createBotsForEnrollment } from '@/lib/recall-auto-bot';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -138,10 +139,29 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', childId);
 
+    // ============================================================
+    // RECALL.AI - Schedule bots for all sessions
+    // ============================================================
+    let recallBotsCreated = 0;
+    try {
+      console.log('📹 Scheduling Recall.ai bots...');
+      const botResult = await createBotsForEnrollment(enrollmentId);
+      recallBotsCreated = botResult.created;
+      console.log(`✅ Recall bots: ${botResult.created} created, ${botResult.failed} failed`);
+      if (botResult.errors.length > 0) {
+        console.error('Bot scheduling errors:', botResult.errors);
+      }
+    } catch (recallError) {
+      console.error('⚠️ Recall.ai bot scheduling error:', recallError);
+      // Don't fail - calendar events are already created
+    }
+    // ============================================================
+
     return NextResponse.json({
       success: true,
       message: `9 sessions scheduled for ${DAY_NAMES[preferredDay]}s at ${formatTime(preferredTime)}`,
       sessions: result.sessions,
+      recallBotsCreated,
       firstSession: {
         date: firstSession.scheduledDate,
         time: preferredTime,
