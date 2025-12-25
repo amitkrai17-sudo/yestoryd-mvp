@@ -210,7 +210,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // ============================================================
   // AUDIO STORAGE - Download and store audio permanently
   // ============================================================
-  let audioResult = { success: false, storagePath: undefined as string | undefined, publicUrl: undefined as string | undefined };
+  let audioResult: { success: boolean; storagePath?: string; publicUrl?: string; error?: string } = { success: false };
   if (sessionId && childId) {
     const { data: sessionData } = await supabase
       .from('scheduled_sessions')
