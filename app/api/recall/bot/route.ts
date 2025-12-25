@@ -1,6 +1,7 @@
-// file: app/api/recall/bot/route.ts
-// Recall.ai Bot Management - Create and manage meeting bots
-// Docs: https://docs.recall.ai
+// ============================================================
+// app/api/recall/bot/route.ts
+// Create, get, and delete Recall.ai bots
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -10,24 +11,61 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const RECALL_API_URL = 'https://api.recall.ai/api/v1';
 const RECALL_API_KEY = process.env.RECALL_API_KEY;
-const RECALL_API_URL = 'https://us-west-2.recall.ai/api/v1'; // or eu-west-1
 
-// ============================================================
-// CREATE BOT - Call this when session is scheduled
-// ============================================================
+// GET - Check bot status
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const sessionId = searchParams.get('session_id');
+  const botId = searchParams.get('bot_id');
 
+  if (botId) {
+    // Get bot status from Recall.ai
+    const response = await fetch(`${RECALL_API_URL}/bot/${botId}`, {
+      headers: {
+        'Authorization': `Token ${RECALL_API_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      return NextResponse.json({ error: 'Bot not found' }, { status: 404 });
+    }
+
+    const botData = await response.json();
+    return NextResponse.json(botData);
+  }
+
+  if (sessionId) {
+    // Get bot info from our database
+    const { data, error } = await supabase
+      .from('recall_bot_sessions')
+      .select('*')
+      .eq('session_id', sessionId)
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: 'No bot found for session' }, { status: 404 });
+    }
+
+    return NextResponse.json(data);
+  }
+
+  return NextResponse.json({ error: 'session_id or bot_id required' }, { status: 400 });
+}
+
+// POST - Create a new bot
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      meetingUrl,      // Google Meet URL
-      sessionId,       // scheduled_sessions.id
-      childId,         // For context
-      coachId,         // For context
-      childName,       // For bot display name
-      sessionType,     // 'coaching', 'parent_checkin', etc.
-      scheduledTime,   // ISO string
+    const {
+      meetingUrl,
+      sessionId,
+      childId,
+      coachId,
+      childName,
+      sessionType,
+      scheduledTime,
     } = body;
 
     if (!meetingUrl) {
@@ -46,31 +84,17 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         meeting_url: meetingUrl,
-        bot_name: `Yestoryd - ${childName || 'Session'} Recording`,
+        bot_name: `rAI by Yestoryd - ${childName || 'Session'} - ${sessionType === 'coaching' ? 'Coaching' : 'Check-in'}`,
         
         // Join configuration
-        join_at: scheduledTime || new Date().toISOString(), // Join at scheduled time
-        
-        // Transcription settings
-        transcription_options: {
-          provider: 'default', // or 'assembly_ai', 'deepgram'
-        },
-        
-        // Recording settings
-        recording_mode: 'speaker_view', // or 'gallery_view', 'audio_only'
-        recording_mode_options: {
-          participant_video_when_screenshare: 'hide',
-        },
+        join_at: scheduledTime || new Date().toISOString(),
         
         // Automatic leave settings
         automatic_leave: {
           waiting_room_timeout: 600,     // 10 min in waiting room
-          noone_joined_timeout: 300,      // 5 min if no one joins
-          everyone_left_timeout: 60,      // 1 min after everyone leaves
+          noone_joined_timeout: 300,     // 5 min if no one joins
+          everyone_left_timeout: 60,     // 1 min after everyone leaves
         },
-        
-        // Webhook configuration (Recall will POST to our webhook)
-        // This is set at account level, but can override here
         
         // Custom metadata
         metadata: {
@@ -116,7 +140,7 @@ export async function POST(request: NextRequest) {
         .from('scheduled_sessions')
         .update({ 
           recall_bot_id: botData.id,
-          status: 'scheduled', // Ensure status is set
+          recall_status: 'scheduled',
         })
         .eq('id', sessionId);
     }
@@ -125,95 +149,28 @@ export async function POST(request: NextRequest) {
       success: true,
       bot_id: botData.id,
       status: botData.status_changes?.[0]?.code || 'created',
+      join_at: scheduledTime,
     });
 
-  } catch (error) {
-    console.error('Bot creation error:', error);
+  } catch (error: any) {
+    console.error('Error creating bot:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }
 }
 
-// ============================================================
-// GET BOT STATUS
-// ============================================================
-
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const botId = searchParams.get('bot_id');
-  const sessionId = searchParams.get('session_id');
-
-  try {
-    if (botId) {
-      // Get specific bot status from Recall.ai
-      const response = await fetch(`${RECALL_API_URL}/bot/${botId}`, {
-        headers: {
-          'Authorization': `Token ${RECALL_API_KEY}`,
-        },
-      });
-
-      if (!response.ok) {
-        return NextResponse.json(
-          { error: 'Bot not found' },
-          { status: 404 }
-        );
-      }
-
-      const botData = await response.json();
-      return NextResponse.json(botData);
-    }
-
-    if (sessionId) {
-      // Get bot by session ID from our database
-      const { data, error } = await supabase
-        .from('recall_bot_sessions')
-        .select('*')
-        .eq('session_id', sessionId)
-        .single();
-
-      if (error || !data) {
-        return NextResponse.json(
-          { error: 'No bot found for session' },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(data);
-    }
-
-    return NextResponse.json(
-      { error: 'bot_id or session_id required' },
-      { status: 400 }
-    );
-
-  } catch (error) {
-    console.error('Get bot error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-// ============================================================
-// DELETE BOT - Cancel a scheduled bot
-// ============================================================
-
+// DELETE - Cancel a bot
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const botId = searchParams.get('bot_id');
 
   if (!botId) {
-    return NextResponse.json(
-      { error: 'bot_id required' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'bot_id required' }, { status: 400 });
   }
 
   try {
-    // Delete from Recall.ai
     const response = await fetch(`${RECALL_API_URL}/bot/${botId}`, {
       method: 'DELETE',
       headers: {
@@ -221,16 +178,25 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
-    // Update our database
-    await supabase
-      .from('recall_bot_sessions')
-      .update({ status: 'cancelled' })
-      .eq('bot_id', botId);
+    if (response.ok) {
+      // Update our database
+      await supabase
+        .from('recall_bot_sessions')
+        .update({ status: 'cancelled' })
+        .eq('bot_id', botId);
 
-    return NextResponse.json({ success: true });
+      await supabase
+        .from('scheduled_sessions')
+        .update({ recall_status: 'cancelled' })
+        .eq('recall_bot_id', botId);
 
-  } catch (error) {
-    console.error('Delete bot error:', error);
+      return NextResponse.json({ success: true, message: 'Bot cancelled' });
+    }
+
+    return NextResponse.json({ error: 'Failed to cancel bot' }, { status: response.status });
+
+  } catch (error: any) {
+    console.error('Error cancelling bot:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
