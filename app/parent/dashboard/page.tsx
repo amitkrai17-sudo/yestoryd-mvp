@@ -14,7 +14,7 @@ import {
   LayoutDashboard, Calendar, TrendingUp, HelpCircle,
   LogOut, Menu, X, ChevronRight, Bell, Video,
   Clock, CheckCircle, Target, User, MessageCircle,
-  BookOpen, Sparkles, Users
+  BookOpen, Sparkles, Users, Play
 } from 'lucide-react';
 import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
 import SupportWidget from '@/components/support/SupportWidget';
@@ -64,6 +64,7 @@ interface Enrollment {
 // Tab configuration
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'elearning', label: 'E-Learning', icon: BookOpen },
   { id: 'sessions', label: 'Sessions', icon: Calendar },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
   { id: 'support', label: 'Support', icon: HelpCircle },
@@ -412,6 +413,21 @@ export default function ParentDashboardPage() {
             parentEmail={parentEmail}
             parentName={parentName}
           />
+        )}
+
+        {activeTab === 'elearning' && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <BookOpen className="w-16 h-16 text-[#7b008b]/30 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Learning Library</h2>
+            <p className="text-gray-500 mb-6">Watch educational videos and complete quizzes</p>
+            <a
+              href="/parent/elearning"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              <Play className="w-5 h-5" />
+              Start Learning
+            </a>
+          </div>
         )}
 
         {activeTab === 'sessions' && (

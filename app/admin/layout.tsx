@@ -28,6 +28,7 @@ import {
   FileSignature,
   UsersRound,
   Users2,
+  BookOpen,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -63,6 +64,14 @@ const NAV_ITEMS = [
     href: '/admin/settings',
     icon: Settings,
     description: 'Manage dynamic content',
+    ready: true,
+    section: 'core',
+  },
+  {
+    label: 'E-Learning',
+    href: '/admin/elearning',
+    icon: BookOpen,
+    description: 'Manage video content',
     ready: true,
     section: 'core',
   },
