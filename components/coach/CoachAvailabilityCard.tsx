@@ -1,7 +1,7 @@
 // =============================================================================
 // FILE: components/coach/CoachAvailabilityCard.tsx
 // PURPOSE: Coach self-service availability management + Exit workflow
-// UPDATED: Added "Leaving Yestoryd" toggle with impact preview
+// UPDATED: Fixed exit API URL + More prominent exit section styling
 // =============================================================================
 
 'use client';
@@ -30,7 +30,6 @@ interface AvailabilityData {
       current: number;
       available: number;
     };
-    // Exit status fields
     exit_status?: string | null;
     exit_date?: string | null;
     exit_reason?: string | null;
@@ -108,7 +107,6 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
 
   // Exit state
   const [showExitSection, setShowExitSection] = useState(false);
-  const [exitToggle, setExitToggle] = useState(false);
   const [exitDate, setExitDate] = useState('');
   const [exitReason, setExitReason] = useState('');
   const [showExitPreview, setShowExitPreview] = useState(false);
@@ -122,7 +120,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
   // Set exit toggle state based on existing data
   useEffect(() => {
     if (availabilityData?.coach?.exit_status === 'pending') {
-      setExitToggle(true);
+      setShowExitSection(true);
       setExitDate(availabilityData.coach.exit_date || '');
       setExitReason(availabilityData.coach.exit_reason || '');
     }
@@ -239,15 +237,22 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
     if (!exitDate) return;
 
     setExitLoading(true);
+    setError(null);
+    
     try {
-      const res = await fetch(`/api/coach/exit/preview?coachId=${coachId}&exitDate=${exitDate}`);
-      if (res.ok) {
-        const data = await res.json();
+      // FIXED: Use correct API endpoint (GET /api/coach/exit)
+      const res = await fetch(`/api/coach/exit?coachId=${coachId}&exitDate=${exitDate}`);
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
         setExitPreview(data.preview);
         setShowExitPreview(true);
+      } else {
+        setError(data.error || 'Failed to fetch exit preview');
       }
     } catch (err) {
       console.error('Error fetching exit preview:', err);
+      setError('Something went wrong. Please try again.');
     } finally {
       setExitLoading(false);
     }
@@ -306,7 +311,6 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
 
       if (res.ok && data.success) {
         setSuccess('Exit request cancelled. Welcome back!');
-        setExitToggle(false);
         setExitDate('');
         setExitReason('');
         setShowExitPreview(false);
@@ -562,27 +566,31 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
               </button>
 
               {/* ============================================ */}
-              {/* EXIT SECTION - Collapsed by default */}
+              {/* EXIT SECTION - MORE PROMINENT STYLING */}
               {/* ============================================ */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <button
                   onClick={() => setShowExitSection(!showExitSection)}
-                  className="w-full flex items-center justify-between text-left"
+                  className={`w-full flex items-center justify-between text-left p-4 rounded-xl border-2 transition-all ${
+                    isExiting 
+                      ? 'border-red-300 bg-red-50' 
+                      : 'border-dashed border-gray-300 hover:border-red-300 hover:bg-red-50/50'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      isExiting ? 'bg-red-100' : 'bg-gray-100'
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      isExiting ? 'bg-red-100' : 'bg-red-50'
                     }`}>
-                      <LogOut className={`w-5 h-5 ${isExiting ? 'text-red-600' : 'text-gray-500'}`} />
+                      <LogOut className={`w-6 h-6 ${isExiting ? 'text-red-600' : 'text-red-400'}`} />
                     </div>
                     <div>
-                      <p className={`font-medium ${isExiting ? 'text-red-700' : 'text-gray-700'}`}>
-                        {isExiting ? 'Exit Scheduled' : 'Leaving Yestoryd?'}
+                      <p className={`font-semibold text-base ${isExiting ? 'text-red-700' : 'text-red-600'}`}>
+                        {isExiting ? '🚪 Exit Scheduled' : '🚪 Leaving Yestoryd?'}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm text-gray-500">
                         {isExiting 
-                          ? `Last day: ${new Date(coach.exit_date!).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`
-                          : 'Plan your departure'
+                          ? `Last day: ${new Date(coach.exit_date!).toLocaleDateString('en-IN', { dateStyle: 'long' })}`
+                          : 'Plan your departure from the platform'
                         }
                       </p>
                     </div>
@@ -801,11 +809,13 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
           {/* ============================================ */}
           {showExitSection && !showForm && (
             <div className="px-5 pb-5">
-              <div className="bg-red-50 rounded-xl p-5 border border-red-200">
+              <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-5 border-2 border-red-200">
                 <div className="flex items-start gap-3 mb-4">
-                  <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                  <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
                   <div>
-                    <h4 className="font-semibold text-red-800">Leaving Yestoryd?</h4>
+                    <h4 className="font-semibold text-red-800 text-lg">Leaving Yestoryd?</h4>
                     <p className="text-sm text-red-700 mt-1">
                       We're sad to see you go. Your students will be reassigned to another qualified coach.
                     </p>
@@ -867,7 +877,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                       </div>
                     </div>
 
-                    {exitPreview.students.length > 0 && (
+                    {exitPreview.students && exitPreview.students.length > 0 && (
                       <div>
                         <p className="text-sm font-medium text-gray-700 mb-2">Your Students:</p>
                         <div className="flex flex-wrap gap-2">
@@ -881,9 +891,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                     )}
 
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                      <p className="text-sm text-blue-800">
-                        📋 What happens next:
-                      </p>
+                      <p className="text-sm font-medium text-blue-800">📋 What happens next:</p>
                       <ul className="text-sm text-blue-700 mt-2 space-y-1">
                         <li>• Admin will reassign your students</li>
                         <li>• Parents will be notified of coach change</li>
