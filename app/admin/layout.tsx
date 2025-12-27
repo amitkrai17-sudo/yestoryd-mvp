@@ -27,6 +27,7 @@ import {
   PieChart,
   FileSignature,
   UsersRound,
+  Users2,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -138,6 +139,14 @@ const NAV_ITEMS = [
     icon: Users,
     description: 'Manage coaches',
     ready: false,
+    section: 'ops',
+  },
+  {
+    label: 'Group Classes',
+    href: '/admin/group-classes',
+    icon: Users2,
+    description: 'Manage sessions',
+    ready: true,
     section: 'ops',
   },
   {

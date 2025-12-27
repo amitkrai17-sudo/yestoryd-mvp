@@ -1,0 +1,1065 @@
+// =============================================================================
+// FILE: app/admin/group-classes/AdminGroupClassesClient.tsx
+// PURPOSE: Admin UI for managing group class sessions
+// RESTRUCTURED: Card layout with proper action menu
+// =============================================================================
+
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import {
+  Plus, Calendar, Clock, Users, Search, MoreVertical,
+  Edit, CheckCircle, XCircle, Copy, ExternalLink,
+  BookOpen, User, Loader2, AlertCircle, X, Video,
+  UserPlus, Mail, Phone, Mic
+} from 'lucide-react';
+
+// =============================================================================
+// TYPES
+// =============================================================================
+interface ClassType {
+  id: string;
+  slug: string;
+  name: string;
+  icon_emoji: string;
+  color_hex: string;
+  price_inr: number;
+  duration_minutes: number;
+  age_min: number;
+  age_max: number;
+  max_participants: number;
+  requires_book: boolean;
+}
+
+interface Coach {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  photo_url: string | null;
+}
+
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  cover_image_url: string | null;
+}
+
+interface Session {
+  id: string;
+  title: string;
+  description: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  duration_minutes: number;
+  max_participants: number;
+  current_participants: number;
+  price_inr: number;
+  age_min: number;
+  age_max: number;
+  status: string;
+  google_meet_link: string | null;
+  google_event_id: string | null;
+  recall_bot_id: string | null;
+  class_type: ClassType | null;
+  instructor: Coach | null;
+  book: Book | null;
+  participants: any[];
+}
+
+interface FormData {
+  classTypeId: string;
+  title: string;
+  description: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  durationMinutes: number;
+  maxParticipants: number;
+  priceInr: number;
+  ageMin: number;
+  ageMax: number;
+  instructorId: string;
+  bookId: string;
+  notes: string;
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatTime(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+function getStatusBadge(status: string): string {
+  switch (status) {
+    case 'scheduled': return 'bg-blue-100 text-blue-700';
+    case 'live': return 'bg-green-100 text-green-700';
+    case 'completed': return 'bg-gray-100 text-gray-700';
+    case 'cancelled': return 'bg-red-100 text-red-700';
+    default: return 'bg-gray-100 text-gray-700';
+  }
+}
+
+// =============================================================================
+// ACTION MENU COMPONENT (Fixed position overlay)
+// =============================================================================
+function ActionMenu({ 
+  session, 
+  isOpen, 
+  onClose, 
+  onEdit, 
+  onStatusChange,
+  buttonRef 
+}: {
+  session: Session;
+  isOpen: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onStatusChange: (status: string) => void;
+  buttonRef: React.RefObject<HTMLButtonElement>;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + 8,
+        left: rect.right - 220, // Menu width ~220px
+      });
+    }
+  }, [isOpen, buttonRef]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose, buttonRef]);
+
+  if (!isOpen) return null;
+
+  const copyMeetLink = () => {
+    if (session.google_meet_link) {
+      navigator.clipboard.writeText(session.google_meet_link);
+      alert('Meet link copied!');
+    }
+    onClose();
+  };
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-[100] min-w-[220px]"
+      style={{ top: position.top, left: position.left }}
+    >
+      <button
+        onClick={() => { onEdit(); onClose(); }}
+        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+      >
+        <Edit className="w-4 h-4" />
+        Edit Session
+      </button>
+      
+      {session.google_meet_link && (
+        <>
+          <button
+            onClick={copyMeetLink}
+            className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+          >
+            <Copy className="w-4 h-4" />
+            Copy Meet Link
+          </button>
+          <a
+            href={session.google_meet_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Open Meet
+          </a>
+        </>
+      )}
+      
+      <hr className="my-2" />
+      
+      {session.status !== 'cancelled' && (
+        <>
+          {session.status === 'scheduled' && (
+            <button
+              onClick={() => { onStatusChange('completed'); onClose(); }}
+              className="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center gap-3 text-green-600"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Mark Complete
+            </button>
+          )}
+          <button
+            onClick={() => { onStatusChange('cancelled'); onClose(); }}
+            className="w-full px-4 py-3 text-left hover:bg-red-50 flex items-center gap-3 text-red-600 font-medium"
+          >
+            <XCircle className="w-4 h-4" />
+            Cancel Session
+          </button>
+        </>
+      )}
+      
+      {session.status === 'cancelled' && (
+        <div className="px-4 py-3 text-gray-400 text-sm italic">
+          Session already cancelled
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// SESSION CARD COMPONENT
+// =============================================================================
+function SessionCard({
+  session,
+  onEdit,
+  onStatusChange,
+}: {
+  session: Session;
+  onEdit: (session: Session) => void;
+  onStatusChange: (sessionId: string, status: string) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-xl flex items-center justify-center text-2xl">
+            {session.class_type?.icon_emoji || '📚'}
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-lg">{session.title}</h3>
+            <p className="text-sm text-gray-500">
+              {session.class_type?.name || 'Group Class'}
+              {session.instructor && ` • ${session.instructor.name}`}
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(session.status)}`}>
+            {session.status}
+          </span>
+          <button
+            ref={buttonRef}
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <MoreVertical className="w-5 h-5 text-gray-500" />
+          </button>
+          
+          <ActionMenu
+            session={session}
+            isOpen={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            onEdit={() => onEdit(session)}
+            onStatusChange={(status) => onStatusChange(session.id, status)}
+            buttonRef={buttonRef}
+          />
+        </div>
+      </div>
+
+      {/* Details Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="flex items-center gap-2 text-gray-600">
+          <Calendar className="w-4 h-4 text-gray-400" />
+          <span className="text-sm">{formatDate(session.scheduled_date)}</span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-600">
+          <Clock className="w-4 h-4 text-gray-400" />
+          <span className="text-sm">{formatTime(session.scheduled_time)}</span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-600">
+          <Users className="w-4 h-4 text-gray-400" />
+          <span className="text-sm">{session.current_participants}/{session.max_participants} kids</span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-600">
+          <span className="text-sm font-semibold text-[#ff0099]">₹{session.price_inr}</span>
+        </div>
+      </div>
+
+      {/* Integration Badges */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {session.google_meet_link ? (
+          <a
+            href={session.google_meet_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200 transition-colors"
+          >
+            <Video className="w-3.5 h-3.5" />
+            Join Meet
+          </a>
+        ) : (
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">
+            <Video className="w-3.5 h-3.5" />
+            No Meet
+          </span>
+        )}
+        
+        {session.recall_bot_id && (
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            <Mic className="w-3.5 h-3.5" />
+            Recording
+          </span>
+        )}
+        
+        {session.book && (
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+            <BookOpen className="w-3.5 h-3.5" />
+            {session.book.title}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// SESSION MODAL
+// =============================================================================
+function SessionModal({
+  isOpen,
+  onClose,
+  session,
+  options,
+  onSave,
+  onAddInstructor,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  session: Session | null;
+  options: { classTypes: ClassType[]; coaches: Coach[]; books: Book[] };
+  onSave: () => void;
+  onAddInstructor: () => void;
+}) {
+  const [formData, setFormData] = useState<FormData>({
+    classTypeId: '',
+    title: '',
+    description: '',
+    scheduledDate: new Date().toISOString().split('T')[0],
+    scheduledTime: '10:00',
+    durationMinutes: 45,
+    maxParticipants: 10,
+    priceInr: 199,
+    ageMin: 4,
+    ageMax: 12,
+    instructorId: '',
+    bookId: '',
+    notes: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sessionId = session?.id;
+
+  useEffect(() => {
+    if (session) {
+      setFormData({
+        classTypeId: session.class_type?.id || '',
+        title: session.title,
+        description: session.description || '',
+        scheduledDate: session.scheduled_date,
+        scheduledTime: session.scheduled_time,
+        durationMinutes: session.duration_minutes,
+        maxParticipants: session.max_participants,
+        priceInr: session.price_inr,
+        ageMin: session.age_min,
+        ageMax: session.age_max,
+        instructorId: session.instructor?.id || '',
+        bookId: session.book?.id || '',
+        notes: '',
+      });
+    } else {
+      setFormData({
+        classTypeId: options.classTypes[0]?.id || '',
+        title: '',
+        description: '',
+        scheduledDate: new Date().toISOString().split('T')[0],
+        scheduledTime: '10:00',
+        durationMinutes: 45,
+        maxParticipants: 10,
+        priceInr: 199,
+        ageMin: 4,
+        ageMax: 12,
+        instructorId: '',
+        bookId: '',
+        notes: '',
+      });
+    }
+  }, [session, options.classTypes]);
+
+  const handleClassTypeChange = (classTypeId: string) => {
+    const ct = options.classTypes.find(c => c.id === classTypeId);
+    if (ct) {
+      setFormData(prev => ({
+        ...prev,
+        classTypeId,
+        durationMinutes: ct.duration_minutes,
+        maxParticipants: ct.max_participants,
+        priceInr: ct.price_inr,
+        ageMin: ct.age_min,
+        ageMax: ct.age_max,
+        title: prev.title || `${ct.name} Session`,
+      }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const isEditMode = !!sessionId;
+      
+      const url = isEditMode
+        ? `/api/admin/group-classes/${sessionId}`
+        : '/api/admin/group-classes';
+
+      const payload: Record<string, any> = {
+        title: formData.title,
+        scheduledDate: formData.scheduledDate,
+        scheduledTime: formData.scheduledTime,
+        durationMinutes: formData.durationMinutes,
+        maxParticipants: formData.maxParticipants,
+        priceInr: formData.priceInr,
+        ageMin: formData.ageMin,
+        ageMax: formData.ageMax,
+      };
+
+      if (formData.classTypeId && formData.classTypeId.trim() !== '') {
+        payload.classTypeId = formData.classTypeId;
+      }
+      if (formData.description && formData.description.trim() !== '') {
+        payload.description = formData.description;
+      }
+      if (formData.instructorId && formData.instructorId.trim() !== '') {
+        payload.instructorId = formData.instructorId;
+      }
+      if (formData.bookId && formData.bookId.trim() !== '') {
+        payload.bookId = formData.bookId;
+      }
+      if (formData.notes && formData.notes.trim() !== '') {
+        payload.notes = formData.notes;
+      }
+
+      const res = await fetch(url, {
+        method: isEditMode ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save session');
+      }
+
+      onSave();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const selectedClassType = options.classTypes.find(c => c.id === formData.classTypeId);
+  const isEditMode = !!sessionId;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isEditMode ? 'Edit Session' : 'Create New Session'}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {isEditMode ? 'Update session details' : 'Fill in the details for the new group class'}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Class Type Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">Class Type *</label>
+            <div className="grid grid-cols-2 gap-3">
+              {options.classTypes.map((ct) => (
+                <button
+                  key={ct.id}
+                  type="button"
+                  onClick={() => handleClassTypeChange(ct.id)}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    formData.classTypeId === ct.id
+                      ? 'border-[#ff0099] bg-pink-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{ct.icon_emoji}</span>
+                    <div>
+                      <p className="font-semibold text-gray-900">{ct.name}</p>
+                      <p className="text-xs text-gray-500">₹{ct.price_inr} • {ct.duration_minutes}min</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Session Title *</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900"
+              placeholder="e.g., Dinosaur Discovery Reading"
+              required
+            />
+          </div>
+
+          {/* Date & Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Date *</label>
+              <input
+                type="date"
+                value={formData.scheduledDate}
+                onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Time *</label>
+              <input
+                type="time"
+                value={formData.scheduledTime}
+                onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Duration, Max Kids, Price */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (min)</label>
+              <input
+                type="number"
+                value={formData.durationMinutes}
+                onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 45 })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Max Kids</label>
+              <input
+                type="number"
+                value={formData.maxParticipants}
+                onChange={(e) => setFormData({ ...formData, maxParticipants: parseInt(e.target.value) || 10 })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Price (₹)</label>
+              <input
+                type="number"
+                value={formData.priceInr}
+                onChange={(e) => setFormData({ ...formData, priceInr: parseInt(e.target.value) || 199 })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900"
+              />
+            </div>
+          </div>
+
+          {/* Instructor */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">Instructor</label>
+              <button
+                type="button"
+                onClick={onAddInstructor}
+                className="text-sm text-[#ff0099] hover:underline flex items-center gap-1"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add New
+              </button>
+            </div>
+            <select
+              value={formData.instructorId}
+              onChange={(e) => setFormData({ ...formData, instructorId: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900 bg-white"
+            >
+              <option value="">Select instructor...</option>
+              {options.coaches.map((coach) => (
+                <option key={coach.id} value={coach.id}>
+                  {coach.name} ({coach.email})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Calendar invite & Meet link will be sent to this instructor</p>
+          </div>
+
+          {/* Book */}
+          {selectedClassType?.requires_book !== false && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Featured Book</label>
+              <select
+                value={formData.bookId}
+                onChange={(e) => setFormData({ ...formData, bookId: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900 bg-white"
+              >
+                <option value="">Select book (optional)...</option>
+                {options.books.map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {book.title} by {book.author}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              {error}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {isEditMode ? 'Saving...' : 'Creating...'}
+                </>
+              ) : isEditMode ? (
+                'Update Session'
+              ) : (
+                <>
+                  <Plus className="w-5 h-5" />
+                  Create Session
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// ADD INSTRUCTOR MODAL
+// =============================================================================
+function AddInstructorModal({
+  isOpen,
+  onClose,
+  onAdd,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (coach: Coach) => void;
+}) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/admin/group-classes/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone: phone || null }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add instructor');
+      }
+
+      onAdd(data.coach);
+      setName('');
+      setEmail('');
+      setPhone('');
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-gray-900">Add New Instructor</h3>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900"
+                placeholder="Instructor name"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900"
+                placeholder="instructor@email.com"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900"
+                placeholder="+91 98765 43210"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 text-red-700 rounded-xl text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3 bg-[#ff0099] text-white rounded-xl font-semibold disabled:opacity-50"
+            >
+              {loading ? 'Adding...' : 'Add Instructor'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
+export default function AdminGroupClassesClient() {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [options, setOptions] = useState<{ classTypes: ClassType[]; coaches: Coach[]; books: Book[] }>({
+    classTypes: [],
+    coaches: [],
+    books: [],
+  });
+  const [filter, setFilter] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
+  const [addInstructorOpen, setAddInstructorOpen] = useState(false);
+
+  useEffect(() => {
+    fetchSessions();
+    fetchOptions();
+  }, [filter]);
+
+  const fetchSessions = async () => {
+    setLoading(true);
+    try {
+      let url = '/api/admin/group-classes';
+      if (filter === 'cancelled') {
+        url += '?status=cancelled';
+      } else if (filter === 'past') {
+        url += '?status=completed';
+      } else {
+        url += '?status=scheduled';
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      setSessions(data.sessions || []);
+    } catch (err) {
+      console.error('Error fetching sessions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOptions = async () => {
+    try {
+      const res = await fetch('/api/admin/group-classes/options');
+      const data = await res.json();
+      setOptions({
+        classTypes: data.classTypes || [],
+        coaches: data.coaches || [],
+        books: data.books || [],
+      });
+    } catch (err) {
+      console.error('Error fetching options:', err);
+    }
+  };
+
+  const handleStatusChange = async (sessionId: string, newStatus: string) => {
+    if (newStatus === 'cancelled') {
+      const confirmed = window.confirm(
+        'Are you sure you want to cancel this session?\n\n' +
+        '• Google Calendar event will be deleted\n' +
+        '• Attendees will be notified\n' +
+        '• Recall.ai recording will be cancelled'
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/group-classes/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (res.ok) {
+        alert(newStatus === 'cancelled' ? 'Session cancelled successfully!' : 'Status updated!');
+      }
+      fetchSessions();
+    } catch (err) {
+      console.error('Error updating status:', err);
+      alert('Failed to update status');
+    }
+  };
+
+  const handleAddInstructor = (coach: Coach) => {
+    setOptions(prev => ({
+      ...prev,
+      coaches: [...prev.coaches, coach].sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  };
+
+  const filteredSessions = sessions.filter(session =>
+    session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    session.instructor?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    session.class_type?.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Group Classes</h1>
+              <p className="text-gray-500 mt-1">Create sessions with auto Meet links & recording</p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingSession(null);
+                setModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-shadow"
+            >
+              <Plus className="w-5 h-5" />
+              Create Session
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          {/* Tab filters */}
+          <div className="flex bg-gray-100 rounded-xl p-1">
+            {(['upcoming', 'past', 'cancelled'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === tab
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search sessions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-gray-900"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sessions Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+          </div>
+        ) : filteredSessions.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">No sessions found</h3>
+            <p className="text-gray-500 mb-4">
+              {filter === 'upcoming' ? 'Create your first group class session!' : `No ${filter} sessions.`}
+            </p>
+            {filter === 'upcoming' && (
+              <button
+                onClick={() => {
+                  setEditingSession(null);
+                  setModalOpen(true);
+                }}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff0099] text-white rounded-xl font-semibold"
+              >
+                <Plus className="w-5 h-5" />
+                Create Session
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredSessions.map((session) => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                onEdit={(s) => {
+                  setEditingSession(s);
+                  setModalOpen(true);
+                }}
+                onStatusChange={handleStatusChange}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      <SessionModal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setEditingSession(null);
+        }}
+        session={editingSession}
+        options={options}
+        onSave={fetchSessions}
+        onAddInstructor={() => setAddInstructorOpen(true)}
+      />
+
+      <AddInstructorModal
+        isOpen={addInstructorOpen}
+        onClose={() => setAddInstructorOpen(false)}
+        onAdd={handleAddInstructor}
+      />
+    </div>
+  );
+}
