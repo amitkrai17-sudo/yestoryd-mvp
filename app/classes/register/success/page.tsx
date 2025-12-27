@@ -5,37 +5,34 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  CheckCircle, Calendar, Clock, Users, Mail, MessageCircle,
+import {
+  CheckCircle, Calendar, Mail, MessageCircle,
   ArrowRight, Home, Gift, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export default function RegistrationSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
-  const registrationId = searchParams.get('registrationId');
   const isFree = searchParams.get('free') === 'true';
-  
+
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Fire confetti on mount
   useEffect(() => {
     if (!showConfetti) {
       setShowConfetti(true);
-      
-      // Fire confetti
+
       const duration = 3 * 1000;
       const animationEnd = Date.now() + duration;
       const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
 
-      const randomInRange = (min: number, max: number) => {
+      const randomInRange = (min: number, max: number): number => {
         return Math.random() * (max - min) + min;
-        };
+      };
 
-      const interval: any = setInterval(function() {
+      const interval = setInterval(() => {
         const timeLeft = animationEnd - Date.now();
 
         if (timeLeft <= 0) {
@@ -43,7 +40,7 @@ export default function RegistrationSuccessPage() {
         }
 
         const particleCount = 50 * (timeLeft / duration);
-        
+
         confetti({
           ...defaults,
           particleCount,
@@ -57,21 +54,21 @@ export default function RegistrationSuccessPage() {
           colors: ['#ff0099', '#00abff', '#ffde00', '#7b008b'],
         });
       }, 250);
+
+      return () => clearInterval(interval);
     }
   }, [showConfetti]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-pink-50 flex items-center justify-center p-4">
       <div className="max-w-lg w-full">
-        {/* Success Card */}
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-          {/* Header */}
           <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-8 text-center">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
               <CheckCircle className="w-12 h-12 text-green-500" />
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              🎉 You&apos;re Registered!
+              You are Registered!
             </h1>
             <p className="text-green-100">
               {isFree ? (
@@ -85,15 +82,13 @@ export default function RegistrationSuccessPage() {
             </p>
           </div>
 
-          {/* Content */}
           <div className="p-6 sm:p-8">
-            {/* What's Next */}
             <div className="mb-8">
               <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#ffde00]" />
                 What Happens Next?
               </h2>
-              
+
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="w-8 h-8 bg-[#ff0099]/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -114,7 +109,7 @@ export default function RegistrationSuccessPage() {
                   <div>
                     <p className="font-semibold text-gray-900">WhatsApp Reminders</p>
                     <p className="text-gray-600 text-sm">
-                      We&apos;ll send reminders 1 day and 1 hour before class
+                      We will send reminders 1 day and 1 hour before class
                     </p>
                   </div>
                 </div>
@@ -133,18 +128,16 @@ export default function RegistrationSuccessPage() {
               </div>
             </div>
 
-            {/* Tips Box */}
             <div className="bg-amber-50 rounded-xl p-4 mb-8 border border-amber-100">
-              <p className="font-semibold text-amber-800 mb-2">💡 Tips for a Great Class</p>
+              <p className="font-semibold text-amber-800 mb-2">Tips for a Great Class</p>
               <ul className="text-sm text-amber-700 space-y-1">
-                <li>• Find a quiet spot with good internet</li>
-                <li>• Have your child ready 5 minutes early</li>
-                <li>• Keep camera on for best engagement</li>
-                <li>• Younger children (4-6) may need parent nearby</li>
+                <li>Find a quiet spot with good internet</li>
+                <li>Have your child ready 5 minutes early</li>
+                <li>Keep camera on for best engagement</li>
+                <li>Younger children (4-6) may need parent nearby</li>
               </ul>
             </div>
 
-            {/* Action Buttons */}
             <div className="space-y-3">
               <Link
                 href="/classes"
@@ -153,7 +146,7 @@ export default function RegistrationSuccessPage() {
                 Browse More Classes
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              
+
               <Link
                 href="/"
                 className="w-full py-4 border-2 border-gray-200 text-gray-700 rounded-xl font-bold text-center flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
@@ -163,11 +156,10 @@ export default function RegistrationSuccessPage() {
               </Link>
             </div>
 
-            {/* Upsell for non-enrolled */}
             {!isFree && (
               <div className="mt-8 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl border border-pink-100">
                 <p className="font-bold text-gray-900 mb-2">
-                  🎁 Want FREE Unlimited Classes?
+                  Want FREE Unlimited Classes?
                 </p>
                 <p className="text-sm text-gray-600 mb-3">
                   Enroll in our 1:1 coaching program and get all group classes FREE forever!
@@ -184,7 +176,6 @@ export default function RegistrationSuccessPage() {
           </div>
         </div>
 
-        {/* Support Link */}
         <div className="text-center mt-6">
           <p className="text-gray-500 text-sm">
             Questions?{' '}
@@ -200,5 +191,24 @@ export default function RegistrationSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-pink-50 flex items-center justify-center p-4">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function RegistrationSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SuccessContent />
+    </Suspense>
   );
 }
