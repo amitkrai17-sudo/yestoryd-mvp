@@ -1,5 +1,6 @@
 // app/api/webhooks/cal/route.ts
 // Handles Cal.com booking webhooks - creates discovery_calls record
+// Updated: Auto-assigns coach using round-robin (excludes unavailable/exiting coaches)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -18,13 +19,69 @@ export async function GET() {
   });
 }
 
+// ============================================
+// Helper: Get eligible coach for auto-assignment
+// ============================================
+async function getEligibleCoach(scheduledDate: string): Promise<{ id: string; name: string } | null> {
+  try {
+    // 1. Get coaches who are on leave during the scheduled date
+    const { data: unavailableCoachIds } = await supabase
+      .from('coach_availability')
+      .select('coach_id')
+      .in('status', ['upcoming', 'active'])
+      .lte('start_date', scheduledDate)
+      .gte('end_date', scheduledDate);
+
+    const excludeIds = (unavailableCoachIds || []).map(u => u.coach_id);
+
+    // 2. Get eligible coaches:
+    //    - is_active = true
+    //    - is_available = true (not manually marked unavailable)
+    //    - Not exiting (exit_status is null or not 'pending')
+    //    - Not in unavailable list
+    //    - Order by last_assigned_at ASC (round-robin: least recently assigned first)
+    let query = supabase
+      .from('coaches')
+      .select('id, name, last_assigned_at')
+      .eq('is_active', true)
+      .eq('is_available', true)
+      .or('exit_status.is.null,exit_status.neq.pending')
+      .order('last_assigned_at', { ascending: true, nullsFirst: true })
+      .limit(1);
+
+    // Exclude coaches on leave (if any)
+    if (excludeIds.length > 0) {
+      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+    }
+
+    const { data: coaches, error } = await query;
+
+    if (error) {
+      console.error('Error finding eligible coach:', error);
+      return null;
+    }
+
+    if (!coaches || coaches.length === 0) {
+      console.log('No eligible coaches found for auto-assignment');
+      return null;
+    }
+
+    return { id: coaches[0].id, name: coaches[0].name };
+  } catch (error) {
+    console.error('Error in getEligibleCoach:', error);
+    return null;
+  }
+}
+
+// ============================================
 // POST handler - receives Cal.com webhook
+// ============================================
 export async function POST(request: NextRequest) {
   console.log('=== CAL.COM WEBHOOK RECEIVED ===');
-  
+
   try {
     const payload = await request.json();
-    
+
     console.log('Event:', payload.triggerEvent);
     console.log('Full payload:', JSON.stringify(payload, null, 2));
 
@@ -35,13 +92,13 @@ export async function POST(request: NextRequest) {
     }
 
     const booking = payload.payload;
-    
+
     // Check if this is a discovery call
     const eventType = booking?.eventType?.slug || booking?.type || '';
-    const isDiscoveryCall = eventType.toLowerCase().includes('discovery') || 
+    const isDiscoveryCall = eventType.toLowerCase().includes('discovery') ||
                            booking?.length === 30 ||
                            booking?.length === 20;
-    
+
     if (!isDiscoveryCall) {
       console.log('Not a discovery call, event type:', eventType);
       return NextResponse.json({ received: true, ignored: true, reason: 'not_discovery' });
@@ -50,23 +107,23 @@ export async function POST(request: NextRequest) {
     // Extract attendee info
     const attendee = booking.attendees?.[0] || {};
     const responses = booking.responses || {};
-    
+
     // Cal.com field names - try multiple variations
     const parentName = responses.name || attendee.name || responses['Your name'] || '';
     const parentEmail = responses.email || attendee.email || responses['Email address'] || '';
     const parentPhone = responses.phone || responses['Phone Number'] || responses.phoneNumber || '';
-    
+
     // Child info - try multiple field name variations
-    const childName = responses.childName || 
-                     responses['Child Name'] || 
-                     responses['child-name'] || 
+    const childName = responses.childName ||
+                     responses['Child Name'] ||
+                     responses['child-name'] ||
                      responses['childname'] ||
                      responses['child_name'] ||
                      '';
-    
-    const childAgeRaw = responses.childAge || 
-                       responses['Child Age'] || 
-                       responses['child-age'] || 
+
+    const childAgeRaw = responses.childAge ||
+                       responses['Child Age'] ||
+                       responses['child-age'] ||
                        responses['childage'] ||
                        responses['child_age'] ||
                        '';
@@ -84,12 +141,27 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!parentName) {
       console.error('Missing parent name');
-      return NextResponse.json({ 
-        success: false, 
+      return NextResponse.json({
+        success: false,
         error: 'Missing parent name',
-        responses: responses 
+        responses: responses
       }, { status: 400 });
     }
+
+    // Get scheduled date for availability check
+    const scheduledDate = booking.startTime ? 
+      new Date(booking.startTime).toISOString().split('T')[0] : 
+      new Date().toISOString().split('T')[0];
+
+    // ============================================
+    // AUTO-ASSIGNMENT: Find eligible coach
+    // ============================================
+    const eligibleCoach = await getEligibleCoach(scheduledDate);
+    
+    console.log('Auto-assignment result:', eligibleCoach 
+      ? `Assigned to ${eligibleCoach.name} (${eligibleCoach.id})`
+      : 'No eligible coach - will need manual assignment'
+    );
 
     // Create discovery call record
     const { data: discoveryCall, error } = await supabase
@@ -106,6 +178,11 @@ export async function POST(request: NextRequest) {
         cal_booking_id: booking.bookingId || booking.id,
         cal_booking_uid: booking.uid,
         source: 'cal.com',
+        // Auto-assignment fields
+        assigned_coach_id: eligibleCoach?.id || null,
+        assignment_type: eligibleCoach ? 'auto' : 'pending',
+        assigned_at: eligibleCoach ? new Date().toISOString() : null,
+        assigned_by: eligibleCoach ? 'system' : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -114,26 +191,48 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Supabase error:', error);
-      return NextResponse.json({ 
-        success: false, 
+      return NextResponse.json({
+        success: false,
         error: error.message,
-        details: error 
+        details: error
       }, { status: 500 });
     }
 
     console.log('Discovery call created:', discoveryCall.id);
 
+    // ============================================
+    // Update coach's last_assigned_at for round-robin
+    // ============================================
+    if (eligibleCoach) {
+      const { error: updateError } = await supabase
+        .from('coaches')
+        .update({ 
+          last_assigned_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', eligibleCoach.id);
+
+      if (updateError) {
+        console.error('Error updating coach last_assigned_at:', updateError);
+        // Non-fatal - discovery call was created successfully
+      } else {
+        console.log(`Updated last_assigned_at for coach ${eligibleCoach.name}`);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       discoveryCallId: discoveryCall.id,
-      message: 'Discovery call created successfully'
+      message: 'Discovery call created successfully',
+      autoAssigned: !!eligibleCoach,
+      assignedCoach: eligibleCoach?.name || null
     });
 
   } catch (error: any) {
     console.error('Webhook error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message 
+    return NextResponse.json({
+      success: false,
+      error: error.message
     }, { status: 500 });
   }
 }

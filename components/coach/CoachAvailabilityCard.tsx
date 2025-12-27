@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: components/coach/CoachAvailabilityCard.tsx
-// PURPOSE: Coach self-service availability management with AIDA-optimized CRO
+// PURPOSE: Coach self-service availability management + Exit workflow
+// UPDATED: Added "Leaving Yestoryd" toggle with impact preview
 // =============================================================================
 
 'use client';
@@ -9,7 +10,7 @@ import { useState, useEffect } from 'react';
 import {
   CalendarOff, Calendar, AlertTriangle, CheckCircle, ChevronDown,
   ChevronUp, Loader2, Info, X, Users, Clock, Plane, Heart,
-  GraduationCap, Briefcase, AlertCircle, Eye
+  GraduationCap, Briefcase, AlertCircle, Eye, LogOut, DoorOpen
 } from 'lucide-react';
 
 interface CoachAvailabilityCardProps {
@@ -29,6 +30,10 @@ interface AvailabilityData {
       current: number;
       available: number;
     };
+    // Exit status fields
+    exit_status?: string | null;
+    exit_date?: string | null;
+    exit_reason?: string | null;
   };
   unavailabilities: Array<{
     id: string;
@@ -60,12 +65,28 @@ interface ImpactPreview {
   recommendation: string;
 }
 
+interface ExitPreview {
+  activeStudents: number;
+  scheduledSessions: number;
+  pendingPayouts: number;
+  students: Array<{ name: string; remainingSessions: number }>;
+}
+
 const ABSENCE_REASONS = [
   { id: 'vacation', label: 'Vacation', icon: Plane, color: 'text-blue-600 bg-blue-50', description: 'Planned time off' },
   { id: 'medical', label: 'Medical', icon: Heart, color: 'text-red-600 bg-red-50', description: 'Health-related absence' },
   { id: 'training', label: 'Training', icon: GraduationCap, color: 'text-purple-600 bg-purple-50', description: 'Professional development' },
   { id: 'personal', label: 'Personal', icon: Briefcase, color: 'text-gray-600 bg-gray-50', description: 'Personal matters' },
   { id: 'emergency', label: 'Emergency', icon: AlertTriangle, color: 'text-amber-600 bg-amber-50', description: 'Urgent situation' },
+];
+
+const EXIT_REASONS = [
+  { id: 'personal', label: 'Personal reasons' },
+  { id: 'career_change', label: 'Career change' },
+  { id: 'health', label: 'Health reasons' },
+  { id: 'relocation', label: 'Relocation' },
+  { id: 'time_constraints', label: 'Time constraints' },
+  { id: 'other', label: 'Other' },
 ];
 
 export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusChange }: CoachAvailabilityCardProps) {
@@ -85,9 +106,27 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
   const [reason, setReason] = useState('');
   const [notifyParents, setNotifyParents] = useState(true);
 
+  // Exit state
+  const [showExitSection, setShowExitSection] = useState(false);
+  const [exitToggle, setExitToggle] = useState(false);
+  const [exitDate, setExitDate] = useState('');
+  const [exitReason, setExitReason] = useState('');
+  const [showExitPreview, setShowExitPreview] = useState(false);
+  const [exitPreview, setExitPreview] = useState<ExitPreview | null>(null);
+  const [exitLoading, setExitLoading] = useState(false);
+
   useEffect(() => {
     fetchAvailability();
   }, [coachId]);
+
+  // Set exit toggle state based on existing data
+  useEffect(() => {
+    if (availabilityData?.coach?.exit_status === 'pending') {
+      setExitToggle(true);
+      setExitDate(availabilityData.coach.exit_date || '');
+      setExitReason(availabilityData.coach.exit_reason || '');
+    }
+  }, [availabilityData]);
 
   async function fetchAvailability() {
     try {
@@ -193,6 +232,96 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
     }
   }
 
+  // ============================================
+  // EXIT FUNCTIONS
+  // ============================================
+  async function fetchExitPreview() {
+    if (!exitDate) return;
+
+    setExitLoading(true);
+    try {
+      const res = await fetch(`/api/coach/exit/preview?coachId=${coachId}&exitDate=${exitDate}`);
+      if (res.ok) {
+        const data = await res.json();
+        setExitPreview(data.preview);
+        setShowExitPreview(true);
+      }
+    } catch (err) {
+      console.error('Error fetching exit preview:', err);
+    } finally {
+      setExitLoading(false);
+    }
+  }
+
+  async function handleConfirmExit() {
+    if (!exitDate || !exitReason) {
+      setError('Please select a last working date and reason');
+      return;
+    }
+
+    setExitLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/coach/exit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coachId,
+          exitDate,
+          exitReason,
+          initiatedBy: 'coach',
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setSuccess('Exit request submitted. Admin will handle student reassignment.');
+        setShowExitPreview(false);
+        fetchAvailability();
+        onStatusChange?.();
+      } else {
+        setError(data.error || 'Failed to submit exit request');
+      }
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setExitLoading(false);
+    }
+  }
+
+  async function handleCancelExit() {
+    setExitLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/coach/exit', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachId }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setSuccess('Exit request cancelled. Welcome back!');
+        setExitToggle(false);
+        setExitDate('');
+        setExitReason('');
+        setShowExitPreview(false);
+        fetchAvailability();
+        onStatusChange?.();
+      } else {
+        setError(data.error || 'Failed to cancel exit');
+      }
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setExitLoading(false);
+    }
+  }
+
   function resetForm() {
     setStartDate('');
     setEndDate('');
@@ -210,6 +339,11 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
   maxEndDate.setDate(maxEndDate.getDate() + 90);
   const maxEndDateStr = maxEndDate.toISOString().split('T')[0];
 
+  // Exit date constraints (min 14 days notice)
+  const minExitDate = new Date();
+  minExitDate.setDate(minExitDate.getDate() + 14);
+  const minExitDateStr = minExitDate.toISOString().split('T')[0];
+
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
@@ -226,6 +360,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
   const upcomingUnavailabilities = unavailabilities.filter(u => u.status === 'upcoming');
   const activeUnavailabilities = unavailabilities.filter(u => u.status === 'active');
   const hasUnavailability = upcomingUnavailabilities.length > 0 || activeUnavailabilities.length > 0;
+  const isExiting = coach.exit_status === 'pending';
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -236,11 +371,15 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
       >
         <div className="flex items-center gap-4">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-            hasUnavailability
-              ? 'bg-amber-100'
-              : 'bg-gradient-to-br from-[#00abff]/10 to-[#0066cc]/10'
+            isExiting
+              ? 'bg-red-100'
+              : hasUnavailability
+                ? 'bg-amber-100'
+                : 'bg-gradient-to-br from-[#00abff]/10 to-[#0066cc]/10'
           }`}>
-            {hasUnavailability ? (
+            {isExiting ? (
+              <DoorOpen className="w-6 h-6 text-red-600" />
+            ) : hasUnavailability ? (
               <CalendarOff className="w-6 h-6 text-amber-600" />
             ) : (
               <Calendar className="w-6 h-6 text-[#00abff]" />
@@ -248,18 +387,30 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
           </div>
           <div className="text-left">
             <h3 className="font-semibold text-gray-800">
-              {hasUnavailability ? '📅 Upcoming Time Off' : '✅ Fully Available'}
+              {isExiting 
+                ? '🚪 Leaving Yestoryd'
+                : hasUnavailability 
+                  ? '📅 Upcoming Time Off' 
+                  : '✅ Fully Available'
+              }
             </h3>
             <p className="text-sm text-gray-500">
-              {hasUnavailability
-                ? `${upcomingUnavailabilities.length + activeUnavailabilities.length} scheduled absence(s)`
-                : `${activeStudents.length} active students • ${upcomingSessions.length} upcoming sessions`
+              {isExiting
+                ? `Last day: ${new Date(coach.exit_date!).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`
+                : hasUnavailability
+                  ? `${upcomingUnavailabilities.length + activeUnavailabilities.length} scheduled absence(s)`
+                  : `${activeStudents.length} active students • ${upcomingSessions.length} upcoming sessions`
               }
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {activeUnavailabilities.length > 0 && (
+          {isExiting && (
+            <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+              Exit Pending
+            </span>
+          )}
+          {activeUnavailabilities.length > 0 && !isExiting && (
             <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
               Currently Away
             </span>
@@ -364,7 +515,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
           )}
 
           {/* Stats Overview */}
-          {!showForm && (
+          {!showForm && !showExitSection && (
             <div className="px-5 pb-5">
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="bg-gray-50 rounded-xl p-3 text-center">
@@ -409,6 +560,40 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                 <CalendarOff className="w-5 h-5" />
                 Mark Time Off
               </button>
+
+              {/* ============================================ */}
+              {/* EXIT SECTION - Collapsed by default */}
+              {/* ============================================ */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowExitSection(!showExitSection)}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      isExiting ? 'bg-red-100' : 'bg-gray-100'
+                    }`}>
+                      <LogOut className={`w-5 h-5 ${isExiting ? 'text-red-600' : 'text-gray-500'}`} />
+                    </div>
+                    <div>
+                      <p className={`font-medium ${isExiting ? 'text-red-700' : 'text-gray-700'}`}>
+                        {isExiting ? 'Exit Scheduled' : 'Leaving Yestoryd?'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {isExiting 
+                          ? `Last day: ${new Date(coach.exit_date!).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`
+                          : 'Plan your departure'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  {showExitSection ? (
+                    <ChevronUp className="w-5 h-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
@@ -610,9 +795,187 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
               </div>
             </div>
           )}
+
+          {/* ============================================ */}
+          {/* EXIT SECTION EXPANDED */}
+          {/* ============================================ */}
+          {showExitSection && !showForm && (
+            <div className="px-5 pb-5">
+              <div className="bg-red-50 rounded-xl p-5 border border-red-200">
+                <div className="flex items-start gap-3 mb-4">
+                  <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-red-800">Leaving Yestoryd?</h4>
+                    <p className="text-sm text-red-700 mt-1">
+                      We're sad to see you go. Your students will be reassigned to another qualified coach.
+                    </p>
+                  </div>
+                </div>
+
+                {isExiting ? (
+                  // Already exiting - show status
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-lg p-4 border border-red-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Last Working Date</span>
+                        <span className="font-semibold text-red-700">
+                          {new Date(coach.exit_date!).toLocaleDateString('en-IN', { dateStyle: 'long' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Reason</span>
+                        <span className="text-gray-600 capitalize">
+                          {EXIT_REASONS.find(r => r.id === coach.exit_reason)?.label || coach.exit_reason}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                      <p className="text-sm text-amber-800">
+                        ⏳ Admin is handling student reassignment. You'll receive your final payout within 30 days of your last session.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleCancelExit}
+                      disabled={exitLoading}
+                      className="w-full py-3 border-2 border-green-500 text-green-700 rounded-xl font-semibold hover:bg-green-50 transition-all flex items-center justify-center gap-2"
+                    >
+                      {exitLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="w-5 h-5" />
+                          Cancel Exit & Stay
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : showExitPreview && exitPreview ? (
+                  // Show exit preview
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-lg p-4 border border-red-200">
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                          <p className="text-2xl font-bold text-red-700">{exitPreview.activeStudents}</p>
+                          <p className="text-xs text-gray-600">Students to Reassign</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-red-700">{exitPreview.scheduledSessions}</p>
+                          <p className="text-xs text-gray-600">Sessions to Transfer</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {exitPreview.students.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2">Your Students:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {exitPreview.students.map((student, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-white rounded-full text-sm text-gray-700 border">
+                              {student.name} ({student.remainingSessions} sessions left)
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <p className="text-sm text-blue-800">
+                        📋 What happens next:
+                      </p>
+                      <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                        <li>• Admin will reassign your students</li>
+                        <li>• Parents will be notified of coach change</li>
+                        <li>• You'll complete sessions until {new Date(exitDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</li>
+                        <li>• Final payout within 30 days after last session</li>
+                      </ul>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setShowExitPreview(false)}
+                        className="py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
+                      >
+                        Go Back
+                      </button>
+                      <button
+                        onClick={handleConfirmExit}
+                        disabled={exitLoading}
+                        className="py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-red-700 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {exitLoading ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <DoorOpen className="w-5 h-5" />
+                            Confirm Exit
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // Exit form
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Last Working Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={exitDate}
+                        onChange={(e) => setExitDate(e.target.value)}
+                        min={minExitDateStr}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm text-gray-900 bg-white"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Minimum 14 days notice required</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Reason for leaving <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={exitReason}
+                        onChange={(e) => setExitReason(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm text-gray-900 bg-white"
+                      >
+                        <option value="">Select a reason</option>
+                        {EXIT_REASONS.map((r) => (
+                          <option key={r.id} value={r.id}>{r.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={fetchExitPreview}
+                      disabled={exitLoading || !exitDate || !exitReason}
+                      className="w-full py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-red-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {exitLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Eye className="w-5 h-5" />
+                          Preview & Continue
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setShowExitSection(false)}
+                      className="w-full py-2 text-gray-600 text-sm hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
-
