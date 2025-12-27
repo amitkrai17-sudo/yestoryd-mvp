@@ -392,7 +392,7 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
                     value={pauseStartDate}
                     onChange={(e) => setPauseStartDate(e.target.value)}
                     min={minStartDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm text-gray-900 bg-white"
                   />
                 </div>
                 <div>
@@ -405,7 +405,7 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
                     onChange={(e) => setPauseEndDate(e.target.value)}
                     min={pauseStartDate || minStartDateStr}
                     max={maxEndDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm text-gray-900 bg-white"
                   />
                 </div>
               </div>

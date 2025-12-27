@@ -1,10 +1,11 @@
-// app/api/enrollment/pause/route.ts
-// Parent self-service: Pause and resume program
-// Yestoryd - AI-Powered Reading Intelligence Platform
+// =============================================================================
+// FILE: app/api/enrollment/pause/route.ts
+// PURPOSE: Parent self-service pause/resume API
+// FIXES: Correct pause day calculations, pause_count on start, max 3 pauses
+// =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { rescheduleEvent } from '@/lib/googleCalendar';
+import { NextRequest, NextResponse } from 'next/server';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,26 +13,49 @@ const supabase = createClient(
 );
 
 // Configuration
-const MAX_PAUSE_DAYS_SINGLE = 30;  // Max days for a single pause
-const MAX_PAUSE_DAYS_TOTAL = 45;   // Max total pause days across program
-const MIN_NOTICE_HOURS = 48;       // Minimum notice before pause starts
+const MAX_PAUSE_DAYS_TOTAL = 30;    // Maximum total pause days per enrollment
+const MAX_PAUSE_DAYS_SINGLE = 10;   // Maximum days for a single pause
+const MAX_PAUSE_COUNT = 3;          // Maximum number of pauses allowed
+const MIN_NOTICE_HOURS = 48;        // Minimum notice before pause starts
 
-// ============================================
-// GET - Get pause status and limits
-// ============================================
+// =============================================================================
+// Helper: Log enrollment event
+// =============================================================================
+async function logEnrollmentEvent(
+  enrollmentId: string,
+  eventType: string,
+  eventData: Record<string, any>,
+  triggeredBy: string
+) {
+  try {
+    await supabase.from('enrollment_events').insert({
+      enrollment_id: enrollmentId,
+      event_type: eventType,
+      event_data: eventData,
+      triggered_by: triggeredBy,
+      created_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Failed to log enrollment event:', error);
+  }
+}
+
+// =============================================================================
+// GET: Get pause status for an enrollment
+// =============================================================================
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const enrollmentId = searchParams.get('enrollmentId');
 
     if (!enrollmentId) {
-      return NextResponse.json({ error: 'Enrollment ID required' }, { status: 400 });
+      return NextResponse.json({ error: 'enrollmentId required' }, { status: 400 });
     }
 
     const { data: enrollment, error } = await supabase
       .from('enrollments')
       .select(`
-        id, status, is_paused, pause_start_date, pause_end_date, 
+        id, status, is_paused, pause_start_date, pause_end_date,
         pause_reason, total_pause_days, pause_count, program_end,
         children (name)
       `)
@@ -42,45 +66,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
     }
 
-    const remainingPauseDays = MAX_PAUSE_DAYS_TOTAL - (enrollment.total_pause_days || 0);
+    const totalPauseDaysUsed = enrollment.total_pause_days || 0;
+    const remainingPauseDays = Math.max(0, MAX_PAUSE_DAYS_TOTAL - totalPauseDaysUsed);
+    const pauseCount = enrollment.pause_count || 0;
 
     return NextResponse.json({
       success: true,
       data: {
         enrollmentId: enrollment.id,
-        childName: (enrollment.children as any)?.name,
+        childName: (enrollment.children as any)?.[0]?.name || 'Child',
         status: enrollment.status,
-        isPaused: enrollment.is_paused,
+        isPaused: enrollment.is_paused || false,
         currentPause: enrollment.is_paused ? {
           startDate: enrollment.pause_start_date,
           endDate: enrollment.pause_end_date,
           reason: enrollment.pause_reason,
         } : null,
         pauseStats: {
-          totalPauseDaysUsed: enrollment.total_pause_days || 0,
+          totalPauseDaysUsed,
           remainingPauseDays,
           maxSinglePause: Math.min(MAX_PAUSE_DAYS_SINGLE, remainingPauseDays),
-          pauseCount: enrollment.pause_count || 0,
+          pauseCount,
+          maxPauseCount: MAX_PAUSE_COUNT,
         },
-        canPause: !enrollment.is_paused && remainingPauseDays > 0 && enrollment.status === 'active',
+        canPause: !enrollment.is_paused && 
+                  remainingPauseDays > 0 && 
+                  pauseCount < MAX_PAUSE_COUNT &&
+                  enrollment.status === 'active',
         programEndDate: enrollment.program_end,
       },
     });
-
-  } catch (error: any) {
-    console.error('Error getting pause status:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Error fetching pause status:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// ============================================
-// POST - Request pause or resume
-// ============================================
+// =============================================================================
+// POST: Pause or Resume enrollment
+// =============================================================================
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      enrollmentId, 
+    const {
+      enrollmentId,
       action,           // 'pause' | 'resume' | 'early_resume'
       pauseStartDate,   // For pause
       pauseEndDate,     // For pause
@@ -89,133 +118,26 @@ export async function POST(request: NextRequest) {
 
     if (!enrollmentId || !action) {
       return NextResponse.json(
-        { error: 'Enrollment ID and action required' }, 
+        { error: 'enrollmentId and action required' },
         { status: 400 }
       );
     }
 
-    // Get current enrollment
+    // Fetch enrollment
     const { data: enrollment, error: fetchError } = await supabase
       .from('enrollments')
       .select(`
-        id, status, is_paused, total_pause_days, pause_count, 
+        id, status, is_paused, total_pause_days, pause_count,
         program_end, original_end_date, coach_id,
         pause_start_date, pause_end_date,
         children (id, name),
-        parents (id, name, email, phone)
+        coaches!coach_id (id, name, email)
       `)
       .eq('id', enrollmentId)
       .single();
 
     if (fetchError || !enrollment) {
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
-    }
-
-    const child = enrollment.children as any;
-    const parent = enrollment.parents as any;
-
-    // ============================================
-    // ACTION: PAUSE
-    // ============================================
-    if (action === 'pause') {
-      // Validate pause request
-      const validation = validatePauseRequest(enrollment, pauseStartDate, pauseEndDate);
-      if (!validation.valid) {
-        return NextResponse.json({ error: validation.error }, { status: 400 });
-      }
-
-      const pauseDays = Math.ceil(
-        (new Date(pauseEndDate).getTime() - new Date(pauseStartDate).getTime()) 
-        / (1000 * 60 * 60 * 24)
-      );
-
-      // Calculate new end date
-      const currentEndDate = new Date(enrollment.program_end);
-      const newEndDate = new Date(currentEndDate);
-      newEndDate.setDate(newEndDate.getDate() + pauseDays);
-
-      // Get sessions that will be affected
-      const { data: affectedSessions } = await supabase
-        .from('scheduled_sessions')
-        .select('id, google_event_id, scheduled_date')
-        .eq('enrollment_id', enrollmentId)
-        .eq('status', 'scheduled')
-        .gte('scheduled_date', pauseStartDate)
-        .lte('scheduled_date', pauseEndDate);
-
-      // Update enrollment
-      const { error: updateError } = await supabase
-        .from('enrollments')
-        .update({
-          is_paused: true,
-          pause_start_date: pauseStartDate,
-          pause_end_date: pauseEndDate,
-          pause_reason: pauseReason,
-          original_end_date: enrollment.original_end_date || enrollment.program_end,
-          program_end: newEndDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', enrollmentId);
-
-      if (updateError) throw updateError;
-
-      // Cancel/reschedule affected calendar events
-      const sessionResults = [];
-      for (const session of affectedSessions || []) {
-        if (session.google_event_id) {
-          // Calculate new date after pause ends
-          const originalDate = new Date(session.scheduled_date);
-          const daysFromPauseStart = Math.ceil(
-            (originalDate.getTime() - new Date(pauseStartDate).getTime()) / (1000 * 60 * 60 * 24)
-          );
-          const newSessionDate = new Date(pauseEndDate);
-          newSessionDate.setDate(newSessionDate.getDate() + daysFromPauseStart + 1);
-
-          // Update session in database
-          await supabase
-            .from('scheduled_sessions')
-            .update({
-              scheduled_date: newSessionDate.toISOString().split('T')[0],
-              status: 'rescheduled_pause',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', session.id);
-
-          // Reschedule Google Calendar event
-          try {
-            await rescheduleEvent(session.google_event_id, newSessionDate, 45);
-            sessionResults.push({ id: session.id, success: true });
-          } catch (calError) {
-            sessionResults.push({ id: session.id, success: false, error: (calError as Error).message });
-          }
-        }
-      }
-
-      // Log event
-      await logEnrollmentEvent(enrollmentId, 'pause_requested', {
-        start_date: pauseStartDate,
-        end_date: pauseEndDate,
-        reason: pauseReason,
-        pause_days: pauseDays,
-        new_end_date: newEndDate.toISOString().split('T')[0],
-        affected_sessions: affectedSessions?.length || 0,
-      }, 'parent');
-
-      // TODO: Send WhatsApp confirmation
-      // await sendWhatsApp(parent.phone, 'pause_confirmed', {...});
-
-      return NextResponse.json({
-        success: true,
-        message: 'Program paused successfully',
-        data: {
-          pauseStart: pauseStartDate,
-          pauseEnd: pauseEndDate,
-          pauseDays,
-          newProgramEnd: newEndDate.toISOString().split('T')[0],
-          sessionsRescheduled: sessionResults.filter(r => r.success).length,
-          sessionsFailed: sessionResults.filter(r => !r.success).length,
-        },
-      });
     }
 
     // ============================================
@@ -226,19 +148,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Enrollment is not paused' }, { status: 400 });
       }
 
-      // Calculate actual pause duration
+      // Calculate actual pause duration (never negative)
       const pauseStart = new Date(enrollment.pause_start_date!);
       const actualPauseEnd = new Date(); // Resume today
-      const actualPauseDays = Math.ceil(
+      const actualPauseDays = Math.max(0, Math.ceil(
         (actualPauseEnd.getTime() - pauseStart.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      ));
 
       // Recalculate end date based on actual pause duration
       const originalEnd = new Date(enrollment.original_end_date || enrollment.program_end);
       const newEndDate = new Date(originalEnd);
       newEndDate.setDate(newEndDate.getDate() + actualPauseDays);
 
-      // Update enrollment
+      // Get pending sessions to reschedule
+      const { data: pendingSessions } = await supabase
+        .from('scheduled_sessions')
+        .select('id, scheduled_date, scheduled_time')
+        .eq('child_id', (enrollment.children as any)?.[0]?.id)
+        .eq('status', 'paused')
+        .order('scheduled_date', { ascending: true });
+
+      // Update enrollment - NOTE: pause_count was already incremented when pause started
       const { error: updateError } = await supabase
         .from('enrollments')
         .update({
@@ -246,48 +176,16 @@ export async function POST(request: NextRequest) {
           status: 'active',
           pause_start_date: null,
           pause_end_date: null,
+          pause_reason: null,
           total_pause_days: (enrollment.total_pause_days || 0) + actualPauseDays,
-          pause_count: (enrollment.pause_count || 0) + 1,
           program_end: newEndDate.toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', enrollmentId);
 
-      if (updateError) throw updateError;
-
-      // Reschedule remaining sessions
-      const { data: pendingSessions } = await supabase
-        .from('scheduled_sessions')
-        .select('id, google_event_id, session_number')
-        .eq('enrollment_id', enrollmentId)
-        .in('status', ['scheduled', 'rescheduled_pause'])
-        .order('session_number', { ascending: true });
-
-      // Reschedule from tomorrow
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() + 1);
-
-      for (let i = 0; i < (pendingSessions?.length || 0); i++) {
-        const session = pendingSessions![i];
-        const newDate = new Date(startDate);
-        newDate.setDate(newDate.getDate() + (i * 5)); // 5 days apart
-
-        await supabase
-          .from('scheduled_sessions')
-          .update({
-            scheduled_date: newDate.toISOString().split('T')[0],
-            status: 'scheduled',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', session.id);
-
-        if (session.google_event_id) {
-          try {
-            await rescheduleEvent(session.google_event_id, newDate, 45);
-          } catch (calError) {
-            console.error('Failed to reschedule calendar event:', calError);
-          }
-        }
+      if (updateError) {
+        console.error('Error resuming enrollment:', updateError);
+        return NextResponse.json({ error: 'Failed to resume' }, { status: 500 });
       }
 
       // Log event
@@ -299,8 +197,8 @@ export async function POST(request: NextRequest) {
         new_end_date: newEndDate.toISOString().split('T')[0],
       }, 'parent');
 
+      // TODO: Reschedule paused sessions
       // TODO: Send WhatsApp notification
-      // await sendWhatsApp(parent.phone, 'program_resumed', {...});
 
       return NextResponse.json({
         success: true,
@@ -313,83 +211,177 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    // ============================================
+    // ACTION: PAUSE
+    // ============================================
+    if (action === 'pause') {
+      // Validate pause request
+      const validation = validatePauseRequest(enrollment, pauseStartDate, pauseEndDate, pauseReason);
+      if (!validation.valid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
 
-  } catch (error: any) {
-    console.error('Error processing pause/resume:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+      const startDate = new Date(pauseStartDate);
+      const endDate = new Date(pauseEndDate);
+      const pauseDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Store original end date if not already stored
+      const originalEndDate = enrollment.original_end_date || enrollment.program_end;
+
+      // Calculate new program end date
+      const currentEndDate = new Date(enrollment.program_end);
+      const newEndDate = new Date(currentEndDate);
+      newEndDate.setDate(newEndDate.getDate() + pauseDays);
+
+      // Get sessions during pause period to mark as paused
+      const { data: sessionsToCancel } = await supabase
+        .from('scheduled_sessions')
+        .select('id, scheduled_date, scheduled_time, google_calendar_event_id')
+        .eq('child_id', (enrollment.children as any)?.[0]?.id)
+        .gte('scheduled_date', pauseStartDate)
+        .lte('scheduled_date', pauseEndDate)
+        .in('status', ['scheduled', 'rescheduled']);
+
+      // Update enrollment - INCREMENT pause_count HERE when pause starts
+      const { error: updateError } = await supabase
+        .from('enrollments')
+        .update({
+          is_paused: true,
+          pause_start_date: pauseStartDate,
+          pause_end_date: pauseEndDate,
+          pause_reason: pauseReason,
+          pause_count: (enrollment.pause_count || 0) + 1,  // Increment on pause START
+          original_end_date: originalEndDate,
+          program_end: newEndDate.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', enrollmentId);
+
+      if (updateError) {
+        console.error('Error pausing enrollment:', updateError);
+        return NextResponse.json({ error: 'Failed to pause' }, { status: 500 });
+      }
+
+      // Mark sessions as paused
+      if (sessionsToCancel && sessionsToCancel.length > 0) {
+        const sessionIds = sessionsToCancel.map(s => s.id);
+        await supabase
+          .from('scheduled_sessions')
+          .update({ 
+            status: 'paused',
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', sessionIds);
+
+        // TODO: Cancel Google Calendar events
+      }
+
+      // Log event
+      await logEnrollmentEvent(enrollmentId, 'pause_started', {
+        start_date: pauseStartDate,
+        end_date: pauseEndDate,
+        reason: pauseReason,
+        pause_days: pauseDays,
+        sessions_affected: sessionsToCancel?.length || 0,
+        new_program_end: newEndDate.toISOString().split('T')[0],
+        pause_number: (enrollment.pause_count || 0) + 1,
+      }, 'parent');
+
+      // TODO: Send WhatsApp notification to parent
+      // TODO: Notify coach
+
+      return NextResponse.json({
+        success: true,
+        message: 'Program paused successfully',
+        data: {
+          pauseStartDate,
+          pauseEndDate,
+          pauseDays,
+          newProgramEnd: newEndDate.toISOString().split('T')[0],
+          sessionsAffected: sessionsToCancel?.length || 0,
+          pauseNumber: (enrollment.pause_count || 0) + 1,
+        },
+      });
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (error) {
+    console.error('Error in pause API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
+// =============================================================================
+// Validation helper
+// =============================================================================
 function validatePauseRequest(
-  enrollment: any, 
-  pauseStartDate: string, 
-  pauseEndDate: string
+  enrollment: any,
+  pauseStartDate: string,
+  pauseEndDate: string,
+  pauseReason: string
 ): { valid: boolean; error?: string } {
-  
   // Check if already paused
   if (enrollment.is_paused) {
-    return { valid: false, error: 'Program is already paused' };
+    return { valid: false, error: 'Enrollment is already paused' };
   }
 
-  // Check if active
+  // Check enrollment status
   if (enrollment.status !== 'active') {
     return { valid: false, error: 'Only active enrollments can be paused' };
   }
 
-  // Validate dates
-  if (!pauseStartDate || !pauseEndDate) {
-    return { valid: false, error: 'Start and end dates are required' };
+  // Check required fields
+  if (!pauseStartDate || !pauseEndDate || !pauseReason) {
+    return { valid: false, error: 'Start date, end date, and reason are required' };
   }
 
-  const start = new Date(pauseStartDate);
-  const end = new Date(pauseEndDate);
+  // Check pause count limit
+  const pauseCount = enrollment.pause_count || 0;
+  if (pauseCount >= MAX_PAUSE_COUNT) {
+    return { valid: false, error: `Maximum ${MAX_PAUSE_COUNT} pauses allowed per enrollment` };
+  }
+
+  // Parse dates
+  const startDate = new Date(pauseStartDate);
+  const endDate = new Date(pauseEndDate);
   const now = new Date();
 
-  // Check minimum notice
-  const hoursUntilStart = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
-  if (hoursUntilStart < MIN_NOTICE_HOURS) {
-    return { valid: false, error: `Pause must be requested at least ${MIN_NOTICE_HOURS} hours in advance` };
+  // Check dates are valid
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    return { valid: false, error: 'Invalid dates' };
   }
 
-  // Check date order
-  if (end <= start) {
+  // Check end date is after start date
+  if (endDate <= startDate) {
     return { valid: false, error: 'End date must be after start date' };
   }
 
+  // Check minimum notice (48 hours)
+  const hoursUntilStart = (startDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+  if (hoursUntilStart < MIN_NOTICE_HOURS) {
+    return { valid: false, error: `Pause requires at least ${MIN_NOTICE_HOURS} hours notice` };
+  }
+
   // Check pause duration
-  const pauseDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const pauseDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
   if (pauseDays > MAX_PAUSE_DAYS_SINGLE) {
-    return { valid: false, error: `Maximum pause duration is ${MAX_PAUSE_DAYS_SINGLE} days` };
+    return { valid: false, error: `Maximum ${MAX_PAUSE_DAYS_SINGLE} days per pause` };
   }
 
   // Check total pause days
-  const remainingPauseDays = MAX_PAUSE_DAYS_TOTAL - (enrollment.total_pause_days || 0);
+  const totalPauseDaysUsed = enrollment.total_pause_days || 0;
+  const remainingPauseDays = MAX_PAUSE_DAYS_TOTAL - totalPauseDaysUsed;
+  
   if (pauseDays > remainingPauseDays) {
     return { valid: false, error: `Only ${remainingPauseDays} pause days remaining` };
   }
 
-  return { valid: true };
-}
-
-async function logEnrollmentEvent(
-  enrollmentId: string, 
-  eventType: string, 
-  eventData: any, 
-  triggeredBy: string = 'system'
-) {
-  try {
-    await supabase.from('enrollment_events').insert({
-      enrollment_id: enrollmentId,
-      event_type: eventType,
-      event_data: eventData,
-      triggered_by: triggeredBy,
-    });
-  } catch (error) {
-    console.error('Failed to log enrollment event:', error);
+  // Check valid reason
+  const validReasons = ['exams', 'travel', 'illness', 'other'];
+  if (!validReasons.includes(pauseReason)) {
+    return { valid: false, error: 'Invalid pause reason' };
   }
+
+  return { valid: true };
 }

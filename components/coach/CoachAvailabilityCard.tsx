@@ -469,7 +469,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                     onChange={(e) => setStartDate(e.target.value)}
                     min={minStartDateStr}
                     max={maxEndDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-[#00abff] text-sm"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-[#00abff] text-sm text-gray-900 bg-white"
                   />
                 </div>
                 <div>
@@ -482,7 +482,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                     onChange={(e) => setEndDate(e.target.value)}
                     min={startDate || minStartDateStr}
                     max={maxEndDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-[#00abff] text-sm"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-[#00abff] text-sm text-gray-900 bg-white"
                   />
                 </div>
               </div>
@@ -615,3 +615,4 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
     </div>
   );
 }
+

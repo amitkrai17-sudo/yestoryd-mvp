@@ -18,13 +18,14 @@ import { useActivityTracker } from '@/hooks/useActivityTracker';
 import SupportWidget from '@/components/support/SupportWidget';
 import SupportForm from '@/components/support/SupportForm';
 import CoachTierCard from '@/components/coach/CoachTierCard';
+import CoachAvailabilityCard from '@/components/coach/CoachAvailabilityCard';
 
 // 4-Point Star Icon Component (Yestoryd branding for rAI)
 function StarIcon({ className }: { className?: string }) {
   return (
-    <svg 
-      viewBox="0 0 24 24" 
-      fill="currentColor" 
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
       className={className}
     >
       <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
@@ -72,7 +73,7 @@ const TABS = [
 
 export default function CoachDashboardPage() {
   const router = useRouter();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [coach, setCoach] = useState<Coach | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -89,7 +90,7 @@ export default function CoachDashboardPage() {
 
   useEffect(() => {
     checkAuth();
-    
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
@@ -110,7 +111,7 @@ export default function CoachDashboardPage() {
   const checkAuth = async () => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
       if (error || !session?.user) {
         console.log('No authenticated session, redirecting to login');
         router.push('/coach/login');
@@ -144,7 +145,7 @@ export default function CoachDashboardPage() {
       if (coachData) {
         setCoach(coachData);
         console.log('✅ Coach profile loaded:', coachData.name);
-        
+
         // Fetch dashboard stats
         fetchDashboardStats(coachData.id);
       }
@@ -188,7 +189,7 @@ export default function CoachDashboardPage() {
       // Get earnings (if payouts table exists)
       let totalEarnings = 0;
       let pendingEarnings = 0;
-      
+
       try {
         const { data: payouts } = await supabase
           .from('coach_payouts')
@@ -377,23 +378,23 @@ export default function CoachDashboardPage() {
         {activeTab === 'overview' && (
           <OverviewTab stats={stats} coach={coach} onTabChange={setActiveTab} />
         )}
-        
+
         {activeTab === 'students' && (
           <StudentsTab coachId={coach.id} />
         )}
-        
+
         {activeTab === 'sessions' && (
           <SessionsTab coachId={coach.id} />
         )}
-        
+
         {activeTab === 'referrals' && (
           <MyReferralsTab coachEmail={coach.email} />
         )}
-        
+
         {activeTab === 'earnings' && (
           <EarningsTab coachId={coach.id} />
         )}
-        
+
         {activeTab === 'support' && (
           <SupportTab coachEmail={coach.email} coachName={coach.name} />
         )}
@@ -409,7 +410,7 @@ export default function CoachDashboardPage() {
 }
 
 // ============================================================
-// OVERVIEW TAB - WITH COACH TIER CARD
+// OVERVIEW TAB - WITH COACH TIER CARD & AVAILABILITY
 // ============================================================
 function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | null; coach: Coach; onTabChange: (tab: string) => void }) {
   return (
@@ -417,11 +418,17 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
       {/* Welcome */}
       <div className="bg-gradient-to-r from-[#00abff] to-[#0066cc] rounded-2xl p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">Welcome back, {coach.name.split(' ')[0]}! 👋</h1>
-        <p className="text-blue-100">Here's what's happening with your coaching today.</p>
+        <p className="text-blue-100">Here&apos;s what&apos;s happening with your coaching today.</p>
       </div>
 
       {/* ========== COACH TIER CARD - SHOWS TIER, EARNINGS & PROGRESS ========== */}
       <CoachTierCard coachId={coach.id} coachEmail={coach.email} />
+
+      {/* ========== AVAILABILITY MANAGEMENT ========== */}
+      <CoachAvailabilityCard
+        coachId={coach.id}
+        coachEmail={coach.email}
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -472,28 +479,28 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
       <div className="bg-white rounded-xl border border-gray-100 p-6">
         <h2 className="font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button 
+          <button
             onClick={() => onTabChange('students')}
             className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
           >
             <Users className="w-6 h-6 text-[#00abff] mx-auto mb-2" />
             <span className="text-sm text-gray-700">View Students</span>
           </button>
-          <button 
+          <button
             onClick={() => onTabChange('sessions')}
             className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
           >
             <Calendar className="w-6 h-6 text-[#0066cc] mx-auto mb-2" />
             <span className="text-sm text-gray-700">Check Schedule</span>
           </button>
-          <button 
+          <button
             onClick={() => onTabChange('referrals')}
             className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
           >
             <Gift className="w-6 h-6 text-[#7B008B] mx-auto mb-2" />
             <span className="text-sm text-gray-700">Share Referral</span>
           </button>
-          <button 
+          <button
             onClick={() => onTabChange('earnings')}
             className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
           >
@@ -562,7 +569,7 @@ function StudentsTab({ coachId }: { coachId: string }) {
                   <p className="text-sm text-gray-500">Age {student.age} • {student.parent_name}</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  student.lead_status === 'active' ? 'bg-green-100 text-green-700' : 
+                  student.lead_status === 'active' ? 'bg-green-100 text-green-700' :
                   student.lead_status === 'enrolled' ? 'bg-blue-100 text-blue-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
@@ -881,7 +888,7 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
             <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
               <HelpCircle className="w-16 h-16 text-[#00abff]/30 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-800 mb-2">No Support Requests</h3>
-              <p className="text-gray-500 mb-6">You haven't submitted any requests yet.</p>
+              <p className="text-gray-500 mb-6">You haven&apos;t submitted any requests yet.</p>
               <button
                 onClick={() => setShowForm(true)}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-[#00abff] text-white rounded-xl font-semibold hover:bg-[#0099ee] transition-all"
