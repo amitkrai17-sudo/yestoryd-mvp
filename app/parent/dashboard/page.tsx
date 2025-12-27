@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ParentLayout from '@/components/parent/ParentLayout';
 import SupportWidget from '@/components/support/SupportWidget';
+import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
 import {
   Calendar,
   Clock,
