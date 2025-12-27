@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import Image from 'next/image';
 import {
   Play, Lock, CheckCircle, Clock, ChevronRight, ChevronLeft,
   BookOpen, Trophy, Star, ArrowLeft, Volume2, Maximize,
@@ -314,23 +315,35 @@ export default function ParentElearningPage() {
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {view !== 'levels' && (
-              <button
-                onClick={goBack}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-            )}
-            <div>
-              <h1 className="font-bold text-gray-900 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#7b008b]" />
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Back Button */}
+            <button
+              onClick={view === 'levels' ? () => router.push('/parent/dashboard') : goBack}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              title={view === 'levels' ? 'Back to Dashboard' : 'Back'}
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            
+            {/* Logo */}
+            <a href="/parent/dashboard" className="flex-shrink-0">
+              <Image
+                src="/images/logo.png"
+                alt="Yestoryd"
+                width={70}
+                height={70}
+                className="rounded-lg"
+              />
+            </a>
+            
+            {/* Page Title */}
+            <div className="border-l border-gray-200 pl-3">
+              <h1 className="font-semibold text-gray-900">
                 {view === 'levels' && 'Learning Library'}
                 {view === 'modules' && selectedLevel?.name}
                 {view === 'videos' && selectedModule?.name}
-                {view === 'player' && playingVideo?.title}
+                {view === 'player' && (playingVideo?.title || 'Video')}
               </h1>
               {childName && (
                 <p className="text-sm text-gray-500">Learning with {childName}</p>

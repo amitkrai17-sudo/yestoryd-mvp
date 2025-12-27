@@ -195,7 +195,11 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
             <p className="text-sm text-gray-500">
               {isPaused 
                 ? `Resumes ${new Date(currentPause!.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
-                : `${pauseStats.remainingPauseDays} pause days available`
+                : canPause 
+                  ? `${pauseStats.remainingPauseDays} pause days available`
+                  : pauseStats.remainingPauseDays > 0 
+                    ? `${pauseStats.pauseCount}/3 pauses used`
+                    : 'No pause days remaining'
               }
             </p>
           </div>
@@ -392,7 +396,7 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
                     value={pauseStartDate}
                     onChange={(e) => setPauseStartDate(e.target.value)}
                     min={minStartDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm text-gray-900 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm"
                   />
                 </div>
                 <div>
@@ -405,7 +409,7 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
                     onChange={(e) => setPauseEndDate(e.target.value)}
                     min={pauseStartDate || minStartDateStr}
                     max={maxEndDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm text-gray-900 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm"
                   />
                 </div>
               </div>
@@ -449,10 +453,28 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
             <div className="p-5">
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-600 font-medium">No pause days remaining</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  You've used all {45 - pauseStats.remainingPauseDays} available pause days.
-                </p>
+                {pauseStats.remainingPauseDays <= 0 ? (
+                  <>
+                    <p className="text-gray-600 font-medium">No pause days remaining</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      You&apos;ve used all {pauseStats.totalPauseDaysUsed} of your available pause days.
+                    </p>
+                  </>
+                ) : pauseStats.pauseCount >= 3 ? (
+                  <>
+                    <p className="text-gray-600 font-medium">Maximum pauses reached</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      You&apos;ve used all 3 allowed pauses. {pauseStats.remainingPauseDays} days remaining but no more pauses allowed.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-600 font-medium">Cannot pause right now</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Please contact support if you need assistance.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}
