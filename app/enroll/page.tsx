@@ -1,7 +1,7 @@
 // =============================================================================
 // FILE: app/enroll/page.tsx
 // PURPOSE: Unified Enrollment Page with "Pay Now, Start Later" feature
-// MERGED: /enroll + /checkout into single flow
+// DYNAMIC: Coach info pulled from site_settings table
 // =============================================================================
 
 'use client';
@@ -10,6 +10,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { createClient } from '@supabase/supabase-js';
 import {
   CheckCircle,
   ArrowRight,
@@ -39,11 +40,40 @@ declare global {
   }
 }
 
+// Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// Coach settings interface
+interface CoachSettings {
+  name: string;
+  title: string;
+  rating: string;
+  experience: string;
+  families: string;
+  initial: string;
+}
+
+// Default coach settings (fallback)
+const DEFAULT_COACH: CoachSettings = {
+  name: 'Rucha',
+  title: 'Founder & Lead Coach',
+  rating: '4.9',
+  experience: '7 years exp.',
+  families: '100+ families',
+  initial: 'R',
+};
+
 function EnrollContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  // Dynamic coach settings from database
+  const [coach, setCoach] = useState<CoachSettings>(DEFAULT_COACH);
 
   // Pre-fill from URL params (supports both /enroll direct and redirects from /checkout)
   const [formData, setFormData] = useState({
@@ -78,7 +108,7 @@ function EnrollContent() {
 
   const source = searchParams.get('source') || 'direct';
 
-  // WhatsApp
+  // WhatsApp - uses dynamic coach name
   const whatsappNumber = '918976287997';
   const whatsappMessage = encodeURIComponent(
     `Hi! I'd like to enroll${formData.childName ? ` ${formData.childName}` : ' my child'} in Yestoryd's reading program.`
@@ -87,6 +117,47 @@ function EnrollContent() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  // Fetch coach settings from site_settings
+  useEffect(() => {
+    async function fetchCoachSettings() {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('key, value')
+          .eq('category', 'enroll')
+          .like('key', 'enroll_coach_%');
+
+        if (error) {
+          console.error('Error fetching coach settings:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const settings: Partial<CoachSettings> = {};
+          data.forEach((row) => {
+            const keyName = row.key.replace('enroll_coach_', '');
+            // Parse JSON value (stored as "value" in JSON)
+            const parsedValue = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
+            settings[keyName as keyof CoachSettings] = parsedValue.replace(/^"|"$/g, '');
+          });
+
+          setCoach({
+            name: settings.name || DEFAULT_COACH.name,
+            title: settings.title || DEFAULT_COACH.title,
+            rating: settings.rating || DEFAULT_COACH.rating,
+            experience: settings.experience || DEFAULT_COACH.experience,
+            families: settings.families || DEFAULT_COACH.families,
+            initial: settings.initial || DEFAULT_COACH.initial,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch coach settings:', err);
+      }
+    }
+
+    fetchCoachSettings();
+  }, []);
 
   // Load Razorpay script
   useEffect(() => {
@@ -286,7 +357,7 @@ function EnrollContent() {
               </div>
             </div>
 
-            {/* Coach Card */}
+            {/* Coach Card - DYNAMIC from site_settings */}
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
               <div className="flex items-center gap-2 text-yellow-600 mb-3">
                 <Sparkles className="w-4 h-4" />
@@ -295,21 +366,21 @@ function EnrollContent() {
 
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xl font-bold">
-                  R
+                  {coach.initial}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Coach Rucha</h3>
-                  <p className="text-green-600 font-medium text-sm">Founder & Lead Coach</p>
+                  <h3 className="text-lg font-bold text-gray-900">Coach {coach.name}</h3>
+                  <p className="text-green-600 font-medium text-sm">{coach.title}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 text-xs text-gray-600">
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                  <span className="font-semibold">4.9</span>
+                  <span className="font-semibold">{coach.rating}</span>
                 </div>
-                <span>7 years exp.</span>
-                <span>100+ families</span>
+                <span>{coach.experience}</span>
+                <span>{coach.families}</span>
               </div>
             </div>
 
@@ -347,7 +418,7 @@ function EnrollContent() {
                   <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
                     2
                   </span>
-                  <span>Coach Rucha WhatsApps to introduce herself (within 24hrs)</span>
+                  <span>Coach {coach.name} WhatsApps to introduce herself (within 24hrs)</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
@@ -496,7 +567,7 @@ function EnrollContent() {
                   </div>
                 </div>
 
-                {/* ==================== NEW: When to Start Section ==================== */}
+                {/* ==================== When to Start Section ==================== */}
                 <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
                   <label className="block text-xs font-medium text-gray-700 flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-purple-500" />
