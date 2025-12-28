@@ -1,6 +1,8 @@
-// app/enroll/page.tsx
-// Payment/Enrollment Page - CRO Optimized
-// Fixes: Consistency, mobile testimonial, "what happens" section, urgency, redirect URL
+// =============================================================================
+// FILE: app/enroll/page.tsx
+// PURPOSE: Unified Enrollment Page with "Pay Now, Start Later" feature
+// MERGED: /enroll + /checkout into single flow
+// =============================================================================
 
 'use client';
 
@@ -27,6 +29,8 @@ import {
   Clock,
   CreditCard,
   Gift,
+  Zap,
+  Info,
 } from 'lucide-react';
 
 declare global {
@@ -41,7 +45,7 @@ function EnrollContent() {
   const [error, setError] = useState('');
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
-  // Pre-fill from URL params
+  // Pre-fill from URL params (supports both /enroll direct and redirects from /checkout)
   const [formData, setFormData] = useState({
     parentName: searchParams.get('parentName') || '',
     parentEmail: searchParams.get('parentEmail') || '',
@@ -49,6 +53,28 @@ function EnrollContent() {
     childName: searchParams.get('childName') || '',
     childAge: searchParams.get('childAge') || '',
   });
+
+  // ==================== NEW: Start Date Selection ====================
+  const [startOption, setStartOption] = useState<'now' | 'later'>('now');
+  const [startDate, setStartDate] = useState<string>('');
+
+  // Calculate min and max dates for date picker
+  const today = new Date();
+  const minDate = new Date(today);
+  minDate.setDate(minDate.getDate() + 3); // Minimum 3 days from now
+  const maxDate = new Date(today);
+  maxDate.setDate(maxDate.getDate() + 30); // Maximum 30 days from now
+
+  const formatDateForInput = (date: Date) => date.toISOString().split('T')[0];
+  const formatDateForDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  };
 
   const source = searchParams.get('source') || 'direct';
 
@@ -77,9 +103,15 @@ function EnrollContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!razorpayLoaded) {
       setError('Payment system is loading. Please try again.');
+      return;
+    }
+
+    // Validate start date if "later" is selected
+    if (startOption === 'later' && !startDate) {
+      setError('Please select a start date for the program.');
       return;
     }
 
@@ -121,6 +153,11 @@ function EnrollContent() {
           email: formData.parentEmail,
           contact: formData.parentPhone,
         },
+        notes: {
+          childName: formData.childName,
+          childAge: formData.childAge,
+          requestedStartDate: startOption === 'later' ? startDate : 'immediate',
+        },
         theme: {
           color: '#ff0099',
         },
@@ -139,33 +176,47 @@ function EnrollContent() {
                 parentEmail: formData.parentEmail,
                 parentPhone: formData.parentPhone,
                 parentName: formData.parentName,
+                // NEW: Pass start date info
+                requestedStartDate: startOption === 'later' ? startDate : null,
               }),
             });
 
             const verifyData = await verifyRes.json();
 
             if (verifyRes.ok) {
-              // FIXED: Correct redirect URL with params
-              window.location.href = `/enrollment/success?childName=${encodeURIComponent(formData.childName)}&enrollmentId=${verifyData.enrollmentId || ''}`;
+              // Build success URL with all relevant params
+              const successParams = new URLSearchParams({
+                childName: formData.childName,
+                enrollmentId: verifyData.enrollmentId || verifyData.data?.enrollmentId || '',
+              });
+
+              // Add delayed start info if applicable
+              if (startOption === 'later' && startDate) {
+                successParams.set('startDate', startDate);
+                successParams.set('delayed', 'true');
+              }
+
+              window.location.href = `/enrollment/success?${successParams.toString()}`;
             } else {
               setError('Payment verification failed. Please contact support.');
+              setLoading(false);
             }
           } catch (err) {
             setError('Payment verification failed. Please contact support.');
+            setLoading(false);
           }
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setLoading(false);
-          }
-        }
+          },
+        },
       };
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
-    } finally {
       setLoading(false);
     }
   };
@@ -179,12 +230,16 @@ function EnrollContent() {
     { icon: Award, text: 'Completion Certificate' },
   ];
 
-  // Personalized CTA
+  // Personalized CTA with start date info
   const renderCtaText = () => {
-    if (formData.childName) {
+    const name = formData.childName;
+    const dateInfo = startOption === 'later' && startDate ? ` • Start ${formatDateForDisplay(startDate)}` : '';
+
+    if (name) {
       return (
         <>
-          Enroll <span className="text-yellow-300 font-black underline underline-offset-2">{formData.childName}</span> — ₹5,999
+          Enroll <span className="text-yellow-300 font-black">{name}</span> — ₹5,999
+          {dateInfo && <span className="text-pink-200 text-xs font-normal">{dateInfo}</span>}
         </>
       );
     }
@@ -197,15 +252,15 @@ function EnrollContent() {
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <Image 
-              src="/images/logo.png" 
-              alt="Yestoryd" 
-              width={120} 
+            <Image
+              src="/images/logo.png"
+              alt="Yestoryd"
+              width={120}
               height={36}
               className="h-8 w-auto"
             />
           </Link>
-          <Link 
+          <Link
             href="/lets-talk"
             className="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1"
           >
@@ -218,11 +273,9 @@ function EnrollContent() {
 
       <main className="max-w-5xl mx-auto px-4 py-6 lg:py-10">
         <div className="grid lg:grid-cols-5 gap-6 lg:gap-10">
-          
           {/* Left Column - Info (2/5) */}
           <div className="lg:col-span-2 space-y-4">
-            
-            {/* URGENCY BADGE - NEW */}
+            {/* URGENCY BADGE */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
               <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <Clock className="w-5 h-5 text-amber-600" />
@@ -233,13 +286,13 @@ function EnrollContent() {
               </div>
             </div>
 
-            {/* Coach Card - FIXED consistency */}
+            {/* Coach Card */}
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
               <div className="flex items-center gap-2 text-yellow-600 mb-3">
                 <Sparkles className="w-4 h-4" />
                 <span className="font-semibold text-xs">YOUR READING COACH</span>
               </div>
-              
+
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xl font-bold">
                   R
@@ -250,7 +303,6 @@ function EnrollContent() {
                 </div>
               </div>
 
-              {/* FIXED: 7 years, 100+ families */}
               <div className="flex items-center gap-3 text-xs text-gray-600">
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
@@ -265,9 +317,9 @@ function EnrollContent() {
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
               <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3 text-sm">
                 <Gift className="w-4 h-4 text-pink-500" />
-                What's Included
+                What&apos;s Included
               </h3>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 {features.map((feature, index) => (
                   <div key={index} className="flex items-center gap-2">
@@ -278,7 +330,7 @@ function EnrollContent() {
               </div>
             </div>
 
-            {/* WHAT HAPPENS AFTER PAYMENT - NEW (StoryBrand Plan) */}
+            {/* WHAT HAPPENS AFTER PAYMENT - Dynamic based on start option */}
             <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
               <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3 text-sm">
                 <ArrowRight className="w-4 h-4 text-blue-500" />
@@ -286,25 +338,41 @@ function EnrollContent() {
               </h3>
               <ol className="space-y-2 text-xs text-gray-600">
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">1</span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
+                    1
+                  </span>
                   <span>Confirmation email with receipt (instant)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">2</span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
+                    2
+                  </span>
                   <span>Coach Rucha WhatsApps to introduce herself (within 24hrs)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">3</span>
-                  <span>Calendar invites for all 9 sessions (within 24hrs)</span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
+                    3
+                  </span>
+                  <span>
+                    {startOption === 'later' && startDate
+                      ? `Calendar invites sent 3 days before ${formatDateForDisplay(startDate)}`
+                      : 'Calendar invites for all 9 sessions (within 24hrs)'}
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">4</span>
-                  <span>First session scheduled within 3-5 days</span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
+                    4
+                  </span>
+                  <span>
+                    {startOption === 'later' && startDate
+                      ? `First session on ${formatDateForDisplay(startDate)}`
+                      : 'First session scheduled within 3-5 days'}
+                  </span>
                 </li>
               </ol>
             </div>
 
-            {/* Testimonial - FIXED: Now visible on mobile too */}
+            {/* Testimonial */}
             <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
               <div className="flex items-center gap-1 mb-2">
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -312,7 +380,7 @@ function EnrollContent() {
                 ))}
               </div>
               <p className="text-gray-700 italic text-sm mb-3">
-                "Amazing transformation! Aarav went from struggling to reading confidently in just 2 months."
+                &quot;Amazing transformation! Aarav went from struggling to reading confidently in just 2 months.&quot;
               </p>
               <p className="font-bold text-green-700 text-sm">— Priya S., Mumbai</p>
             </div>
@@ -395,7 +463,7 @@ function EnrollContent() {
                 {/* Child Name & Age Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Child's Name *</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Child&apos;s Name *</label>
                     <div className="relative">
                       <Baby className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -420,17 +488,119 @@ function EnrollContent() {
                     >
                       <option value="">Select age</option>
                       {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((age) => (
-                        <option key={age} value={age}>{age} years</option>
+                        <option key={age} value={age}>
+                          {age} years
+                        </option>
                       ))}
                     </select>
                   </div>
                 </div>
 
+                {/* ==================== NEW: When to Start Section ==================== */}
+                <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
+                  <label className="block text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-purple-500" />
+                    When would you like to start?
+                  </label>
+
+                  {/* Option 1: Start Immediately */}
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      startOption === 'now'
+                        ? 'border-pink-500 bg-pink-50'
+                        : 'border-gray-200 hover:border-pink-200 bg-white'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="startOption"
+                      value="now"
+                      checked={startOption === 'now'}
+                      onChange={() => setStartOption('now')}
+                      className="mt-0.5 w-4 h-4 text-pink-500 border-gray-300 focus:ring-pink-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-pink-500" />
+                        <span className="font-semibold text-gray-800 text-sm">Start Immediately</span>
+                        <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">
+                          RECOMMENDED
+                        </span>
+                      </div>
+                      <p className="text-gray-500 text-xs mt-0.5">Sessions scheduled within 48 hours</p>
+                    </div>
+                  </label>
+
+                  {/* Option 2: Choose a Date */}
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      startOption === 'later'
+                        ? 'border-pink-500 bg-pink-50'
+                        : 'border-gray-200 hover:border-pink-200 bg-white'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="startOption"
+                      value="later"
+                      checked={startOption === 'later'}
+                      onChange={() => setStartOption('later')}
+                      className="mt-0.5 w-4 h-4 text-pink-500 border-gray-300 focus:ring-pink-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-purple-500" />
+                        <span className="font-semibold text-gray-800 text-sm">Choose a Start Date</span>
+                      </div>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Perfect for after exams, holidays, or travel. Lock in today&apos;s price!
+                      </p>
+
+                      {/* Date Picker - Only show when "later" is selected */}
+                      {startOption === 'later' && (
+                        <div className="mt-2 space-y-2">
+                          <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            min={formatDateForInput(minDate)}
+                            max={formatDateForInput(maxDate)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-800 text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                          />
+                          {startDate && (
+                            <div className="flex items-center gap-2 text-xs text-purple-700 bg-purple-100 p-2 rounded-lg">
+                              <Calendar className="w-3 h-3" />
+                              <span>
+                                Program starts:{' '}
+                                <strong>
+                                  {new Date(startDate).toLocaleDateString('en-IN', {
+                                    weekday: 'long',
+                                    day: 'numeric',
+                                    month: 'long',
+                                  })}
+                                </strong>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* Info Note */}
+                  <div className="flex items-start gap-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700">
+                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>
+                      {startOption === 'now'
+                        ? "You'll receive your schedule within 48 hours via email and WhatsApp."
+                        : "You'll receive a reminder 3 days before your program starts."}
+                    </span>
+                  </div>
+                </div>
+
                 {/* Error */}
                 {error && (
-                  <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">
-                    {error}
-                  </div>
+                  <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">{error}</div>
                 )}
 
                 {/* Submit Button */}
@@ -449,7 +619,7 @@ function EnrollContent() {
                   )}
                 </button>
 
-                {/* Trust Signals - ENHANCED */}
+                {/* Trust Signals */}
                 <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500 pt-2">
                   <span className="flex items-center gap-1">
                     <Shield className="w-3 h-3 text-green-500" />
@@ -474,9 +644,7 @@ function EnrollContent() {
 
               {/* Alternative */}
               <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <p className="text-center text-gray-600 text-xs mb-2">
-                  Need help deciding?
-                </p>
+                <p className="text-center text-gray-600 text-xs mb-2">Need help deciding?</p>
                 <div className="flex gap-2">
                   <Link
                     href="/lets-talk"
@@ -506,11 +674,13 @@ function EnrollContent() {
 
 export default function EnrollPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="w-12 h-12 animate-spin text-pink-500" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-white">
+          <Loader2 className="w-12 h-12 animate-spin text-pink-500" />
+        </div>
+      }
+    >
       <EnrollContent />
     </Suspense>
   );
