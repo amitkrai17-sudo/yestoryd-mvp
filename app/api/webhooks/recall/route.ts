@@ -1,5 +1,5 @@
 ﻿// file: app/api/webhooks/recall/route.ts
-// rAI v2.0 - Recall.ai Webhook with Speaker Diarization & Parent Summary Caching
+// rAI v2.2 - Session Intelligence: No-show detection, attendance tracking, completion management
 
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,6 +16,10 @@ const supabase = createClient(
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const RECALL_WEBHOOK_SECRET = process.env.RECALL_WEBHOOK_SECRET;
+
+// ============================================================
+// TYPES
+// ============================================================
 
 interface RecallWebhookPayload {
   event: 'bot.status_change' | 'bot.transcription' | 'bot.recording_ready' | 'bot.done';
@@ -49,6 +53,10 @@ interface RecallWebhookPayload {
       id: number;
       name: string;
       is_host?: boolean;
+      events?: Array<{
+        code: string;
+        created_at: string;
+      }>;
     }>;
   };
 }
@@ -79,12 +87,29 @@ interface SessionAnalysis {
   child_name?: string | null;
   summary?: string;
   parent_summary?: string;
-  // Enhanced triggers v2.1
   concerns_array?: string[] | null;
   safety_flag?: boolean;
   safety_reason?: string | null;
   sentiment_score?: number;
 }
+
+// ============================================================
+// SESSION STATUS TYPES (for scheduled_sessions.status)
+// ============================================================
+type SessionStatus = 
+  | 'scheduled'      // Initial state
+  | 'bot_joining'    // Bot is joining the meeting
+  | 'in_progress'    // Session actively happening
+  | 'completed'      // Session completed successfully
+  | 'no_show'        // No one joined (child/parent didn't show)
+  | 'coach_no_show'  // Coach didn't join
+  | 'partial'        // Session ended early / incomplete
+  | 'cancelled'      // Manually cancelled
+  | 'bot_error';     // Technical failure
+
+// ============================================================
+// MAIN WEBHOOK HANDLER
+// ============================================================
 
 export async function POST(request: NextRequest) {
   try {
@@ -125,11 +150,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ============================================================
+// STATUS CHANGE HANDLER - Session Intelligence Core
+// ============================================================
+
 async function handleStatusChange(payload: RecallWebhookPayload) {
   const { bot_id, status, status_changes } = payload.data;
 
-  console.log(`Bot ${bot_id} status: ${status}`);
+  console.log(`🤖 Bot ${bot_id} status: ${status}`);
 
+  // Get session info
+  const { data: botSession } = await supabase
+    .from('recall_bot_sessions')
+    .select('session_id, child_id, coach_id')
+    .eq('bot_id', bot_id)
+    .single();
+
+  // Update bot session status
   await supabase
     .from('recall_bot_sessions')
     .upsert({
@@ -139,13 +176,143 @@ async function handleStatusChange(payload: RecallWebhookPayload) {
       status_history: status_changes,
     }, { onConflict: 'bot_id' });
 
+  // ============================================================
+  // SESSION INTELLIGENCE: Update session status based on bot status
+  // ============================================================
+  
+  if (botSession?.session_id) {
+    const sessionId = botSession.session_id;
+    
+    switch (status) {
+      case 'joining':
+      case 'in_waiting_room':
+        // Bot is attempting to join
+        await updateSessionStatus(sessionId, 'bot_joining');
+        break;
+
+      case 'in_call_not_recording':
+      case 'in_call_recording':
+        // Session has started
+        await updateSessionStatus(sessionId, 'in_progress', {
+          started_at: new Date().toISOString(),
+        });
+        break;
+
+      case 'call_ended':
+        // Will be handled more completely in bot.done
+        console.log(`📞 Call ended for session ${sessionId}`);
+        break;
+
+      case 'fatal':
+        // Bot encountered an error
+        await handleBotError(sessionId, status_changes);
+        break;
+    }
+  }
+
+  // ============================================================
+  // NO-SHOW DETECTION from status_changes
+  // ============================================================
+  
+  if (status_changes && status_changes.length > 0) {
+    const latestChange = status_changes[status_changes.length - 1];
+    
+    if (botSession?.session_id) {
+      await detectNoShowFromStatusChange(
+        botSession.session_id,
+        botSession.child_id,
+        botSession.coach_id,
+        latestChange.code,
+        latestChange.message
+      );
+    }
+  }
+
   return NextResponse.json({ status: 'ok' });
 }
+
+// ============================================================
+// NO-SHOW DETECTION LOGIC
+// ============================================================
+
+async function detectNoShowFromStatusChange(
+  sessionId: string,
+  childId: string | null,
+  coachId: string | null,
+  statusCode: string,
+  statusMessage: string
+) {
+  console.log(`🔍 Checking no-show: ${statusCode} - ${statusMessage}`);
+
+  // Recall.ai leave reason codes that indicate no-show
+  const noShowCodes = [
+    'waiting_room_timeout',    // Bot wasn't let in from waiting room
+    'noone_joined_timeout',    // No one joined after bot waited
+    'everyone_left_timeout',   // Everyone left early
+  ];
+
+  const errorCodes = [
+    'fatal_error',
+    'bot_kicked',
+    'connection_failed',
+  ];
+
+  if (noShowCodes.includes(statusCode)) {
+    console.log(`⚠️ NO-SHOW detected: ${statusCode}`);
+    
+    // Determine who was missing
+    const noShowStatus: SessionStatus = 'no_show';
+    const noShowReason = statusMessage || statusCode;
+
+    // Update session status
+    await updateSessionStatus(sessionId, noShowStatus, {
+      no_show_reason: noShowReason,
+      no_show_detected_at: new Date().toISOString(),
+    });
+
+    // Send no-show notification
+    await sendNoShowNotification(sessionId, childId, coachId, noShowReason);
+
+  } else if (errorCodes.includes(statusCode)) {
+    console.log(`❌ Bot error: ${statusCode}`);
+    
+    await updateSessionStatus(sessionId, 'bot_error', {
+      bot_error_reason: statusMessage || statusCode,
+      bot_error_at: new Date().toISOString(),
+    });
+  }
+}
+
+// ============================================================
+// BOT ERROR HANDLER
+// ============================================================
+
+async function handleBotError(sessionId: string, statusChanges?: Array<{ code: string; message: string }>) {
+  const errorMessage = statusChanges?.find(s => s.code === 'fatal')?.message || 'Unknown bot error';
+  
+  await updateSessionStatus(sessionId, 'bot_error', {
+    bot_error_reason: errorMessage,
+    bot_error_at: new Date().toISOString(),
+    flagged_for_attention: true,
+    flag_reason: `Bot error: ${errorMessage}`,
+  });
+
+  // Notify admin of bot failure
+  await notifyAdminOfBotError(sessionId, errorMessage);
+}
+
+// ============================================================
+// TRANSCRIPTION HANDLER
+// ============================================================
 
 async function handleTranscription(payload: RecallWebhookPayload) {
   console.log('Real-time transcription received for bot:', payload.data.bot_id);
   return NextResponse.json({ status: 'ok' });
 }
+
+// ============================================================
+// RECORDING READY HANDLER
+// ============================================================
 
 async function handleRecordingReady(payload: RecallWebhookPayload) {
   const { bot_id, recording } = payload.data;
@@ -163,31 +330,43 @@ async function handleRecordingReady(payload: RecallWebhookPayload) {
   return NextResponse.json({ status: 'ok' });
 }
 
+// ============================================================
+// BOT DONE HANDLER - Main Session Processing
+// ============================================================
+
 async function handleBotDone(payload: RecallWebhookPayload) {
   const { bot_id, transcript, meeting_metadata, meeting_participants, recording } = payload.data;
 
-  console.log('🎬 Bot done, processing transcript for:', bot_id);
+  console.log('🎬 Bot done, processing for:', bot_id);
 
+  // Get session info
   const { data: botSession } = await supabase
     .from('recall_bot_sessions')
     .select('session_id, child_id, coach_id')
     .eq('bot_id', bot_id)
     .single();
 
+  // ============================================================
+  // ATTENDANCE TRACKING
+  // ============================================================
+  const attendance = analyzeAttendance(meeting_participants || [], recording?.duration_seconds || 0);
+  console.log('👥 Attendance:', attendance);
+
+  // Build transcript
   const transcriptText = buildTranscriptWithSpeakers(
     transcript?.words || [],
     meeting_participants || []
   );
 
-  if (!transcriptText || transcriptText.length < 100) {
-    console.log('Transcript too short, skipping analysis');
-    return NextResponse.json({ status: 'skipped', reason: 'transcript_too_short' });
-  }
-
+  // ============================================================
+  // DETERMINE SESSION OUTCOME
+  // ============================================================
+  
   let sessionId = botSession?.session_id;
   let childId = botSession?.child_id;
   let coachId = botSession?.coach_id;
 
+  // Try to find session if not linked
   if (!sessionId) {
     const session = await findSessionByMeeting(
       meeting_metadata?.title || '',
@@ -202,35 +381,88 @@ async function handleBotDone(payload: RecallWebhookPayload) {
     }
   }
 
+  // ============================================================
+  // SESSION INTELLIGENCE: Determine final status
+  // ============================================================
+  
+  const sessionOutcome = determineSessionOutcome(attendance, transcriptText, recording?.duration_seconds);
+  console.log('📊 Session outcome:', sessionOutcome);
+
+  if (sessionOutcome.status !== 'completed') {
+    // Handle non-completed sessions (no-show, partial, etc.)
+    if (sessionId) {
+      await updateSessionStatus(sessionId, sessionOutcome.status, {
+        no_show_reason: sessionOutcome.reason,
+        attendance_summary: attendance,
+        duration_seconds: recording?.duration_seconds,
+      });
+
+      // Send appropriate notifications
+      if (sessionOutcome.status === 'no_show') {
+        await sendNoShowNotification(sessionId, childId, coachId, sessionOutcome.reason || 'No one joined');
+      } else if (sessionOutcome.status === 'coach_no_show') {
+        await sendCoachNoShowNotification(sessionId, childId, coachId);
+      }
+    }
+
+    return NextResponse.json({
+      status: 'processed',
+      session_id: sessionId,
+      outcome: sessionOutcome.status,
+      reason: sessionOutcome.reason,
+      attendance,
+    });
+  }
+
+  // ============================================================
+  // FULL SESSION PROCESSING (for completed sessions)
+  // ============================================================
+
+  // Skip analysis if transcript too short
+  if (!transcriptText || transcriptText.length < 100) {
+    console.log('Transcript too short, marking as partial');
+    
+    if (sessionId) {
+      await updateSessionStatus(sessionId, 'partial', {
+        partial_reason: 'Transcript too short - session may have been cut short',
+        duration_seconds: recording?.duration_seconds,
+        attendance_summary: attendance,
+      });
+    }
+
+    return NextResponse.json({ status: 'partial', reason: 'transcript_too_short' });
+  }
+
+  // Get child context
   const childContext = childId ? await getChildContext(childId) : null;
   const childName = childContext?.name || 'the child';
 
+  // Analyze transcript
   const analysis = await analyzeTranscript(transcriptText, childContext, childName);
 
   // ============================================================
-  // AUDIO STORAGE - Download and store audio permanently
+  // AUDIO STORAGE
   // ============================================================
   let audioResult: { success: boolean; storagePath?: string; publicUrl?: string; error?: string } = { success: false };
+  
   if (sessionId && childId) {
     const { data: sessionData } = await supabase
       .from('scheduled_sessions')
       .select('scheduled_date')
       .eq('id', sessionId)
       .single();
-    
+
     const sessionDate = sessionData?.scheduled_date || new Date().toISOString().split('T')[0];
-    
+
     console.log('📥 Downloading audio for permanent storage...');
     audioResult = await downloadAndStoreAudio(bot_id, sessionId, childId, sessionDate);
-    
+
     if (audioResult.success) {
       console.log('✅ Audio stored:', audioResult.storagePath);
-      
-      // Calculate video expiry (7 days)
+
       const videoExpiresAt = new Date();
       videoExpiresAt.setDate(videoExpiresAt.getDate() + 7);
-      
-      // Update session with audio and video info
+
       await supabase
         .from('scheduled_sessions')
         .update({
@@ -245,8 +477,11 @@ async function handleBotDone(payload: RecallWebhookPayload) {
       console.error('⚠️ Audio storage failed:', audioResult.error);
     }
   }
-  // ============================================================
 
+  // ============================================================
+  // SAVE ALL SESSION DATA
+  // ============================================================
+  
   await saveSessionData({
     sessionId,
     childId,
@@ -256,9 +491,13 @@ async function handleBotDone(payload: RecallWebhookPayload) {
     analysis,
     recordingUrl: recording?.url,
     durationSeconds: recording?.duration_seconds,
+    attendance,
   });
 
-  // Proactive Triggers
+  // ============================================================
+  // PROACTIVE NOTIFICATIONS
+  // ============================================================
+  
   if (childId && analysis) {
     try {
       const triggerResult = await checkAndSendProactiveNotifications({
@@ -276,25 +515,312 @@ async function handleBotDone(payload: RecallWebhookPayload) {
       console.error('Proactive trigger error (non-fatal):', triggerError);
     }
   }
+
+  // ============================================================
+  // SEND PARENT SESSION SUMMARY
+  // ============================================================
+  
+  if (childId && analysis.parent_summary) {
+    await sendParentSessionSummary(sessionId, childId, childName, analysis.parent_summary);
+  }
+
   console.log('✅ Session processed successfully');
 
   return NextResponse.json({
-    status: 'processed',
+    status: 'completed',
     session_id: sessionId,
     child_detected: analysis.child_name,
     parent_summary_cached: !!analysis.parent_summary,
     audio_stored: audioResult.success,
     audio_path: audioResult.storagePath,
+    attendance,
   });
 }
+
+// ============================================================
+// ATTENDANCE ANALYSIS
+// ============================================================
+
+interface AttendanceInfo {
+  totalParticipants: number;
+  participantNames: string[];
+  coachJoined: boolean;
+  childJoined: boolean;
+  durationMinutes: number;
+  isValidSession: boolean;
+}
+
+function analyzeAttendance(
+  participants: Array<{ id: number; name: string; is_host?: boolean }>,
+  durationSeconds: number
+): AttendanceInfo {
+  const participantNames = participants.map(p => p.name);
+  const durationMinutes = Math.round(durationSeconds / 60);
+  
+  // Heuristics to determine who joined
+  // Coach usually has longer/professional name or is host
+  // Child usually has shorter name or parent's name
+  const coachJoined = participants.some(p => 
+    p.is_host || 
+    p.name.toLowerCase().includes('coach') ||
+    p.name.toLowerCase().includes('yestoryd') ||
+    p.name.includes('@') // Email-based names are usually coaches
+  );
+
+  // If there are 2+ participants and duration > 5 min, likely valid
+  const childJoined = participants.length >= 2 && !participants.every(p => p.is_host);
+  
+  // Valid session: at least 2 participants and > 10 minutes
+  const isValidSession = participants.length >= 2 && durationMinutes >= 10;
+
+  return {
+    totalParticipants: participants.length,
+    participantNames,
+    coachJoined,
+    childJoined,
+    durationMinutes,
+    isValidSession,
+  };
+}
+
+// ============================================================
+// SESSION OUTCOME DETERMINATION
+// ============================================================
+
+interface SessionOutcome {
+  status: SessionStatus;
+  reason?: string;
+}
+
+function determineSessionOutcome(
+  attendance: AttendanceInfo,
+  transcript: string,
+  durationSeconds?: number
+): SessionOutcome {
+  const durationMinutes = durationSeconds ? Math.round(durationSeconds / 60) : 0;
+
+  // No participants at all
+  if (attendance.totalParticipants === 0) {
+    return { status: 'no_show', reason: 'No one joined the meeting' };
+  }
+
+  // Only 1 participant (likely just the bot or one person)
+  if (attendance.totalParticipants === 1) {
+    // Check if it was coach waiting alone
+    if (attendance.coachJoined && !attendance.childJoined) {
+      return { status: 'no_show', reason: 'Child/parent did not join' };
+    }
+    // Could be child waiting alone
+    if (!attendance.coachJoined) {
+      return { status: 'coach_no_show', reason: 'Coach did not join' };
+    }
+    return { status: 'no_show', reason: 'Only one participant joined' };
+  }
+
+  // Very short session (< 5 minutes)
+  if (durationMinutes < 5) {
+    return { status: 'partial', reason: `Session too short (${durationMinutes} min)` };
+  }
+
+  // Short session (5-10 minutes) - might be partial
+  if (durationMinutes < 10) {
+    return { status: 'partial', reason: `Session was brief (${durationMinutes} min)` };
+  }
+
+  // Transcript too short despite duration (technical issue?)
+  if (transcript.length < 100 && durationMinutes > 10) {
+    return { status: 'partial', reason: 'Recording/transcription issue' };
+  }
+
+  // Everything looks good
+  return { status: 'completed' };
+}
+
+// ============================================================
+// UPDATE SESSION STATUS HELPER
+// ============================================================
+
+async function updateSessionStatus(
+  sessionId: string,
+  status: SessionStatus,
+  additionalData?: Record<string, unknown>
+) {
+  const updateData: Record<string, unknown> = {
+    status,
+    recall_status: status,
+    updated_at: new Date().toISOString(),
+    ...additionalData,
+  };
+
+  // Set completed_at for terminal states
+  if (['completed', 'no_show', 'coach_no_show', 'partial', 'cancelled', 'bot_error'].includes(status)) {
+    updateData.completed_at = new Date().toISOString();
+  }
+
+  await supabase
+    .from('scheduled_sessions')
+    .update(updateData)
+    .eq('id', sessionId);
+
+  console.log(`📝 Session ${sessionId} status updated to: ${status}`);
+}
+
+// ============================================================
+// NOTIFICATION FUNCTIONS
+// ============================================================
+
+async function sendNoShowNotification(
+  sessionId: string | null,
+  childId: string | null,
+  coachId: string | null,
+  reason: string
+) {
+  console.log(`📢 Sending no-show notification: ${reason}`);
+
+  // Get session and child details
+  if (!sessionId || !childId) return;
+
+  const { data: session } = await supabase
+    .from('scheduled_sessions')
+    .select(`
+      scheduled_date,
+      scheduled_time,
+      child:children(child_name, parent_phone, parent_name),
+      coach:coaches(name, email)
+    `)
+    .eq('id', sessionId)
+    .single();
+
+  if (!session) return;
+
+  // Handle Supabase returning arrays for joins
+  const child = Array.isArray(session.child) ? session.child[0] : session.child;
+  const coach = Array.isArray(session.coach) ? session.coach[0] : session.coach;
+
+  // Log the no-show
+  await supabase.from('communication_logs').insert({
+    recipient_type: 'admin',
+    recipient_id: null,
+    channel: 'internal',
+    template_name: 'session_no_show',
+    message_content: JSON.stringify({
+      session_id: sessionId,
+      child_name: child?.child_name,
+      coach_name: coach?.name,
+      scheduled_date: session.scheduled_date,
+      scheduled_time: session.scheduled_time,
+      reason,
+    }),
+    status: 'logged',
+  });
+
+  // TODO: Send actual WhatsApp/email notifications via AiSensy
+  // For now, just log for admin visibility
+}
+
+async function sendCoachNoShowNotification(
+  sessionId: string | null,
+  childId: string | null,
+  coachId: string | null
+) {
+  console.log(`⚠️ COACH NO-SHOW detected for session ${sessionId}`);
+
+  // This is a serious issue - coach didn't show up
+  // Send urgent notification to admin
+
+  if (sessionId) {
+    // Flag for immediate attention
+    await supabase
+      .from('scheduled_sessions')
+      .update({
+        flagged_for_attention: true,
+        flag_reason: 'URGENT: Coach did not join scheduled session',
+      })
+      .eq('id', sessionId);
+  }
+
+  // Log for admin
+  await supabase.from('communication_logs').insert({
+    recipient_type: 'admin',
+    recipient_id: null,
+    channel: 'internal',
+    template_name: 'coach_no_show_urgent',
+    message_content: JSON.stringify({
+      session_id: sessionId,
+      child_id: childId,
+      coach_id: coachId,
+      detected_at: new Date().toISOString(),
+    }),
+    status: 'urgent',
+  });
+
+  // TODO: Send urgent WhatsApp to admin
+}
+
+async function notifyAdminOfBotError(sessionId: string, errorMessage: string) {
+  console.log(`🔴 Bot error notification: ${errorMessage}`);
+
+  await supabase.from('communication_logs').insert({
+    recipient_type: 'admin',
+    recipient_id: null,
+    channel: 'internal',
+    template_name: 'bot_error',
+    message_content: JSON.stringify({
+      session_id: sessionId,
+      error: errorMessage,
+      detected_at: new Date().toISOString(),
+    }),
+    status: 'logged',
+  });
+}
+
+async function sendParentSessionSummary(
+  sessionId: string | null,
+  childId: string,
+  childName: string,
+  summary: string
+) {
+  console.log(`📨 Sending parent session summary for ${childName}`);
+
+  // Get parent contact info
+  const { data: child } = await supabase
+    .from('children')
+    .select('parent_phone, parent_name, parent_email')
+    .eq('id', childId)
+    .single();
+
+  if (!child?.parent_phone) {
+    console.log('No parent phone found, skipping WhatsApp');
+    return;
+  }
+
+  // Log the summary message
+  await supabase.from('communication_logs').insert({
+    recipient_type: 'parent',
+    recipient_id: childId,
+    channel: 'whatsapp',
+    template_name: 'session_summary_parent',
+    message_content: summary,
+    metadata: {
+      session_id: sessionId,
+      child_name: childName,
+    },
+    status: 'pending',
+  });
+
+  // TODO: Actually send via AiSensy
+  // await sendAiSensyMessage(child.parent_phone, 'session_summary', { childName, summary });
+}
+
+// ============================================================
+// TRANSCRIPT BUILDING (with speaker diarization)
+// ============================================================
 
 function buildTranscriptWithSpeakers(
   words: Array<{ text: string; speaker_id?: number; start_time: number }>,
   participants: Array<{ id: number; name: string }>
 ): string {
   if (!words.length) return '';
-
-  const speakerMap = new Map(participants.map(p => [p.id, p.name]));
 
   const speakerCounts: Record<number, number> = {};
   const speakerFirstWords: Record<number, string[]> = {};
@@ -357,6 +883,10 @@ function buildTranscriptWithSpeakers(
   return lines.join('\n');
 }
 
+// ============================================================
+// SESSION LOOKUP
+// ============================================================
+
 async function findSessionByMeeting(title: string, startTime: string, participantNames: string[]) {
   const nameMatch = title.match(/Yestoryd\s*[-–]\s*(\w+\s*\w*)/i);
   const childNameFromTitle = nameMatch ? nameMatch[1].trim() : null;
@@ -372,7 +902,7 @@ async function findSessionByMeeting(title: string, startTime: string, participan
       coach:coaches(id, name, email)
     `)
     .eq('scheduled_date', dateStr)
-    .in('status', ['scheduled', 'in_progress', 'completed']);
+    .in('status', ['scheduled', 'in_progress', 'bot_joining']);
 
   const { data: sessions } = await query;
 
@@ -380,7 +910,7 @@ async function findSessionByMeeting(title: string, startTime: string, participan
 
   if (childNameFromTitle) {
     const matched = sessions.find((s) => {
-      const child = s.child as { child_name?: string; name?: string } | null;
+      const child = Array.isArray(s.child) ? s.child[0] : s.child;
       return child?.child_name?.toLowerCase().includes(childNameFromTitle.toLowerCase()) ||
              child?.name?.toLowerCase().includes(childNameFromTitle.toLowerCase());
     });
@@ -388,7 +918,7 @@ async function findSessionByMeeting(title: string, startTime: string, participan
   }
 
   for (const session of sessions) {
-    const child = session.child as { child_name?: string; name?: string } | null;
+    const child = Array.isArray(session.child) ? session.child[0] : session.child;
     const childName = child?.child_name || child?.name;
     if (childName && participantNames.some(p =>
       p.toLowerCase().includes(childName.toLowerCase()) ||
@@ -400,6 +930,10 @@ async function findSessionByMeeting(title: string, startTime: string, participan
 
   return sessions[0];
 }
+
+// ============================================================
+// CHILD CONTEXT
+// ============================================================
 
 async function getChildContext(childId: string): Promise<{
   name: string;
@@ -439,6 +973,10 @@ async function getChildContext(childId: string): Promise<{
     recentSessions,
   };
 }
+
+// ============================================================
+// TRANSCRIPT ANALYSIS
+// ============================================================
 
 async function analyzeTranscript(
   transcript: string,
@@ -559,6 +1097,10 @@ function getDefaultAnalysis(childName: string): SessionAnalysis {
   };
 }
 
+// ============================================================
+// SAVE SESSION DATA
+// ============================================================
+
 async function saveSessionData(data: {
   sessionId?: string | null;
   childId?: string | null;
@@ -568,9 +1110,11 @@ async function saveSessionData(data: {
   analysis: SessionAnalysis;
   recordingUrl?: string;
   durationSeconds?: number;
+  attendance?: AttendanceInfo;
 }) {
-  const { sessionId, childId, coachId, childName, transcriptText, analysis, recordingUrl, durationSeconds } = data;
+  const { sessionId, childId, coachId, childName, transcriptText, analysis, recordingUrl, durationSeconds, attendance } = data;
 
+  // Cache parent summary
   if (childId && analysis.parent_summary) {
     await supabase
       .from('children')
@@ -584,11 +1128,13 @@ async function saveSessionData(data: {
     console.log('📦 Parent summary cached for child:', childId);
   }
 
+  // Update scheduled_session
   if (sessionId) {
     await supabase
       .from('scheduled_sessions')
       .update({
         status: 'completed',
+        recall_status: 'completed',
         completed_at: new Date().toISOString(),
         focus_area: analysis.focus_area,
         skills_worked_on: analysis.skills_worked_on,
@@ -606,10 +1152,14 @@ async function saveSessionData(data: {
         flagged_for_attention: analysis.flagged_for_attention,
         flag_reason: analysis.flag_reason,
         ai_summary: analysis.parent_summary,
+        // Session Intelligence fields
+        duration_minutes: durationSeconds ? Math.round(durationSeconds / 60) : null,
+        attendance_count: attendance?.totalParticipants,
       })
       .eq('id', sessionId);
   }
 
+  // Create learning event
   if (childId && coachId) {
     const searchableContent = buildSessionSearchableContent(childName, {
       session_type: analysis.session_type,
@@ -657,6 +1207,7 @@ async function saveSessionData(data: {
         homework_assigned: analysis.homework_assigned,
         homework_description: analysis.homework_description,
         next_session_focus: analysis.next_session_focus,
+        attendance: attendance,
       },
       ai_summary: analysis.summary,
       content_for_embedding: searchableContent,
@@ -664,6 +1215,7 @@ async function saveSessionData(data: {
     });
   }
 
+  // Increment sessions completed
   if (childId) {
     await supabase.rpc('increment_sessions_completed', { child_id_param: childId });
   }
@@ -671,11 +1223,23 @@ async function saveSessionData(data: {
   console.log('📚 Session data saved to database');
 }
 
+// ============================================================
+// GET ENDPOINT (Health Check)
+// ============================================================
+
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    service: 'Recall.ai Webhook v2.1',
-    features: ['speaker_diarization', 'parent_summary_cache', 'embeddings', 'audio_storage'],
+    service: 'Recall.ai Webhook v2.2 - Session Intelligence',
+    features: [
+      'speaker_diarization',
+      'parent_summary_cache',
+      'embeddings',
+      'audio_storage',
+      'no_show_detection',
+      'attendance_tracking',
+      'completion_status',
+    ],
     timestamp: new Date().toISOString(),
   });
 }
