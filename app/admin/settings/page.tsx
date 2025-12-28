@@ -741,21 +741,7 @@ export default function AdminSettingsPage() {
               />
             </CollapsibleSection>
 
-            <CollapsibleSection
-              title="Enroll Page Coach"
-              icon={Users}
-              iconColor="pink"
-              expanded={expandedSections['enroll']}
-              onToggle={() => toggleSection('enroll')}
-              count={filterSettings(settingsByCategory['enroll'] || []).length}
-            >
-              <SettingsGrid
-                settings={filterSettings(settingsByCategory['enroll'] || [])}
-                onUpdate={updateSetting}
-                onSave={saveSetting}
-                saving={saving}
-              />
-            </CollapsibleSection>
+            
           </div>
         )}
 
@@ -1261,3 +1247,4 @@ function parseValue(value: string): string {
     return value;
   }
 }
+

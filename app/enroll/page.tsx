@@ -125,8 +125,8 @@ function EnrollContent() {
         const { data, error } = await supabase
           .from('site_settings')
           .select('key, value')
-          .eq('category', 'enroll')
-          .like('key', 'enroll_coach_%');
+          .eq('category', 'coach')
+          .like('key', 'default_coach_%');
 
         if (error) {
           console.error('Error fetching coach settings:', error);
@@ -136,7 +136,7 @@ function EnrollContent() {
         if (data && data.length > 0) {
           const settings: Partial<CoachSettings> = {};
           data.forEach((row) => {
-            const keyName = row.key.replace('enroll_coach_', '');
+            const keyName = row.key.replace('default_coach_', '');
             // Parse JSON value (stored as "value" in JSON)
             const parsedValue = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
             settings[keyName as keyof CoachSettings] = parsedValue.replace(/^"|"$/g, '');
@@ -756,3 +756,4 @@ export default function EnrollPage() {
     </Suspense>
   );
 }
+
