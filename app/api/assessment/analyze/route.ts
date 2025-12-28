@@ -285,7 +285,49 @@ Respond ONLY with valid JSON. No additional text.`;
       }
     }
 
-    return NextResponse.json({
+    // ============================================================
+    // HOT LEAD DETECTION & INSTANT ALERT
+    // ============================================================
+    if (childId) {
+      try {
+        let leadScore = 10;
+        
+        if (overallScore <= 3) leadScore += 50;
+        else if (overallScore <= 5) leadScore += 30;
+        else if (overallScore <= 7) leadScore += 15;
+        else leadScore += 5;
+        
+        if (age >= 4 && age <= 7) leadScore += 15;
+        else if (age >= 8 && age <= 10) leadScore += 10;
+        
+        const leadStatus = leadScore >= 60 ? 'hot' : leadScore >= 30 ? 'warm' : 'new';
+        
+        await supabase
+          .from('children')
+          .update({
+            lead_score: leadScore,
+            lead_status: leadStatus,
+            lead_score_updated_at: new Date().toISOString(),
+          })
+          .eq('id', childId);
+        
+        console.log(`?? Lead score: ${leadScore} (${leadStatus})`);
+        
+        if (leadStatus === 'hot') {
+          console.log('?? HOT LEAD detected! Triggering alert...');
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://yestoryd.com';
+          fetch(`${baseUrl}/api/leads/hot-alert`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ childId }),
+          }).catch(err => console.error('Hot lead alert failed:', err));
+        }
+      } catch (leadError) {
+        console.error('?? Lead scoring error (non-blocking):', leadError);
+      }
+    }
+
+        return NextResponse.json({
       success: true,
       childId,
       childName: name,
