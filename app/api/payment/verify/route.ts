@@ -1,7 +1,7 @@
 // ============================================================
 // FILE: app/api/payment/verify/route.ts
 // ============================================================
-// Payment verification with REVENUE SPLIT integration
+// Payment verification with REVENUE SPLIT + DELAYED START support
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -73,7 +73,6 @@ async function calculateRevenueSplit(
     }
 
     // Default to Rising Coach if no group assigned
-    // Supabase returns array for joined tables, take first element
     const coachGroupArray = coach.coach_groups as unknown as CoachGroup[] | null;
     const coachGroup = Array.isArray(coachGroupArray) ? coachGroupArray[0] : coachGroupArray;
     const group: CoachGroup = coachGroup || {
@@ -133,7 +132,7 @@ async function calculateRevenueSplit(
     // 3. Calculate amounts based on group percentages
     const leadCost = Math.round(amount * group.lead_cost_percent / 100);
     const coachCost = Math.round(amount * group.coach_cost_percent / 100);
-    const platformFee = amount - leadCost - coachCost; // Remainder
+    const platformFee = amount - leadCost - coachCost;
 
     // 4. Get TDS config
     const { data: config } = await supabase
@@ -151,10 +150,8 @@ async function calculateRevenueSplit(
     const projectedCumulative = coachCumulativeFY + coachCost;
     const tdsApplicable = projectedCumulative > tdsThreshold;
 
-    // TDS on coach cost
     const tdsOnCoachCost = tdsApplicable ? Math.round(coachCost * tdsRate / 100) : 0;
 
-    // TDS on lead bonus if coach-sourced
     let tdsOnLeadBonus = 0;
     if (leadSource === 'coach' && leadSourceCoachId && tdsApplicable) {
       tdsOnLeadBonus = Math.round(leadCost * tdsRate / 100);
@@ -211,7 +208,6 @@ async function calculateRevenueSplit(
     const monthlyCoachCost = Math.round(coachCost / 3);
     const monthlyCoachTds = Math.round(tdsOnCoachCost / 3);
 
-    // Coach cost payouts
     for (let month = 1; month <= 3; month++) {
       const { error } = await supabase.from('coach_payouts').insert({
         enrollment_revenue_id: revenue.id,
@@ -229,7 +225,6 @@ async function calculateRevenueSplit(
       if (!error) payoutsCreated++;
     }
 
-    // Lead bonus payouts (if coach-sourced)
     if (leadSource === 'coach' && leadSourceCoachId) {
       const monthlyLeadBonus = Math.round(leadCost / 3);
       const monthlyLeadTds = Math.round(tdsOnLeadBonus / 3);
@@ -286,7 +281,6 @@ async function calculateRevenueSplit(
   }
 }
 
-// Helper: Calculate payout dates
 function calculatePayoutDates(payoutDay: number): string[] {
   const dates: string[] = [];
   const now = new Date();
@@ -318,10 +312,11 @@ export async function POST(request: NextRequest) {
       parentEmail,
       parentPhone,
       coachId,
-      // NEW: Lead source tracking (from frontend/cookie)
       leadSource = 'yestoryd',
       leadSourceCoachId = null,
       referralCodeUsed = null,
+      // ==================== NEW: Delayed Start Support ====================
+      requestedStartDate = null, // null means "start immediately"
     } = body;
 
     console.log('🔐 Verifying payment:', {
@@ -329,6 +324,7 @@ export async function POST(request: NextRequest) {
       paymentId: razorpay_payment_id,
       childName,
       leadSource,
+      requestedStartDate: requestedStartDate || 'immediate',
     });
 
     // ============================================
@@ -405,7 +401,9 @@ export async function POST(request: NextRequest) {
           name: childName,
           age: parseInt(childAge) || null,
           parent_id: parent.id,
+          parent_email: parentEmail.toLowerCase().trim(), // Ensure parent_email is set
           enrollment_status: 'enrolled',
+          lead_status: 'enrolled',
         })
         .select()
         .single();
@@ -418,13 +416,16 @@ export async function POST(request: NextRequest) {
       console.log('👶 Created new child:', child.id);
     }
 
-    // Update child status
+    // Update child status and ensure parent_email is set
     await supabase
       .from('children')
       .update({
         enrollment_status: 'enrolled',
+        lead_status: 'enrolled',
         coach_id: coachId,
         parent_id: parent.id,
+        parent_email: parentEmail.toLowerCase().trim(),
+        enrolled_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', child.id);
@@ -443,7 +444,6 @@ export async function POST(request: NextRequest) {
       coach = foundCoach;
     }
 
-    // Fallback to Rucha (UPDATED EMAIL)
     if (!coach) {
       const { data: defaultCoach } = await supabase
         .from('coaches')
@@ -481,12 +481,29 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // STEP 6: Create Enrollment Record (WITH LEAD SOURCE)
+    // STEP 6: Determine Start Mode (IMMEDIATE vs DELAYED)
     // ============================================
-    const programStart = new Date();
-    const programEnd = new Date();
+    const startImmediately = !requestedStartDate;
+    
+    // Calculate program dates based on start mode
+    const programStart = startImmediately 
+      ? new Date() 
+      : new Date(requestedStartDate);
+    
+    const programEnd = new Date(programStart);
     programEnd.setMonth(programEnd.getMonth() + 3);
 
+    // Set enrollment status based on start mode
+    const enrollmentStatus = startImmediately ? 'active' : 'pending_start';
+
+    console.log(`📅 Start mode: ${startImmediately ? 'IMMEDIATE' : 'DELAYED'}`);
+    if (!startImmediately) {
+      console.log(`📅 Requested start date: ${requestedStartDate}`);
+    }
+
+    // ============================================
+    // STEP 7: Create Enrollment Record
+    // ============================================
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
       .insert({
@@ -495,15 +512,18 @@ export async function POST(request: NextRequest) {
         coach_id: coach.id,
         payment_id: razorpay_payment_id,
         amount: 5999,
-        status: 'active',
+        status: enrollmentStatus, // 'active' or 'pending_start'
         program_start: programStart.toISOString(),
         program_end: programEnd.toISOString(),
         schedule_confirmed: false,
         sessions_scheduled: 0,
-        // NEW: Lead source tracking
+        // Lead source tracking
         lead_source: leadSource,
         lead_source_coach_id: leadSourceCoachId,
         referral_code_used: referralCodeUsed,
+        // Delayed start fields
+        requested_start_date: requestedStartDate || null,
+        actual_start_date: startImmediately ? new Date().toISOString().split('T')[0] : null,
       })
       .select()
       .single();
@@ -513,10 +533,10 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create enrollment record');
     }
 
-    console.log('📝 Enrollment created:', enrollment.id);
+    console.log('📝 Enrollment created:', enrollment.id, `(status: ${enrollmentStatus})`);
 
     // ============================================
-    // STEP 7: 🆕 CALCULATE REVENUE SPLIT
+    // STEP 8: Calculate Revenue Split
     // ============================================
     const revenueResult = await calculateRevenueSplit(
       enrollment.id,
@@ -540,34 +560,57 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // STEP 8: Queue Background Job
+    // STEP 9: Queue Background Job (ONLY IF IMMEDIATE START)
     // ============================================
     let queueResult: { success: boolean; messageId: string | null } = {
       success: false,
       messageId: null,
     };
 
-    try {
-      queueResult = await queueEnrollmentComplete({
-        enrollmentId: enrollment.id,
-        childId: child.id,
-        childName: child.name,
-        parentId: parent.id,
-        parentEmail: parent.email,
-        parentName: parent.name,
-        parentPhone: parent.phone || parentPhone,
-        coachId: coach.id,
-        coachEmail: coach.email,
-        coachName: coach.name,
-      });
+    if (startImmediately) {
+      // Start immediately - queue session scheduling now
+      try {
+        queueResult = await queueEnrollmentComplete({
+          enrollmentId: enrollment.id,
+          childId: child.id,
+          childName: child.name,
+          parentId: parent.id,
+          parentEmail: parent.email,
+          parentName: parent.name,
+          parentPhone: parent.phone || parentPhone,
+          coachId: coach.id,
+          coachEmail: coach.email,
+          coachName: coach.name,
+        });
 
-      console.log('📤 Background job queued:', queueResult.messageId);
-    } catch (queueError: any) {
-      console.error('⚠️ Queue error (non-fatal):', queueError.message);
+        console.log('📤 Background job queued:', queueResult.messageId);
+      } catch (queueError: any) {
+        console.error('⚠️ Queue error (non-fatal):', queueError.message);
+      }
+    } else {
+      // Delayed start - sessions will be scheduled by cron job on start date
+      console.log(`📅 Delayed start: Sessions will be scheduled by cron on ${requestedStartDate}`);
+      
+      // Log the event for tracking
+      try {
+        await supabase.from('enrollment_events').insert({
+          enrollment_id: enrollment.id,
+          event_type: 'payment_received_delayed_start',
+          event_data: {
+            requested_start_date: requestedStartDate,
+            payment_id: razorpay_payment_id,
+            child_name: child.name,
+            coach_name: coach.name,
+          },
+          triggered_by: 'system',
+        });
+      } catch (eventError) {
+        console.error('⚠️ Event logging failed (non-fatal):', eventError);
+      }
     }
 
     // ============================================
-    // STEP 9: Return Success
+    // STEP 10: Return Success Response
     // ============================================
     const duration = Date.now() - startTime;
     console.log(`✅ Payment verified in ${duration}ms`);
@@ -575,6 +618,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Payment verified successfully',
+      enrollmentId: enrollment.id, // For easy access
       data: {
         enrollmentId: enrollment.id,
         childId: child.id,
@@ -591,9 +635,20 @@ export async function POST(request: NextRequest) {
           }
         : null,
       scheduling: {
-        status: queueResult.success ? 'queued' : 'pending',
+        status: startImmediately 
+          ? (queueResult.success ? 'queued' : 'pending')
+          : 'delayed',
         messageId: queueResult.messageId,
-        note: 'Calendar sessions and confirmation email are being processed.',
+        // Delayed start info
+        delayedStart: !startImmediately ? {
+          requestedStartDate,
+          programStartDate: programStart.toISOString().split('T')[0],
+          programEndDate: programEnd.toISOString().split('T')[0],
+          note: `Sessions will be automatically scheduled on ${requestedStartDate}. Reminder will be sent 3 days before.`,
+        } : null,
+        note: startImmediately 
+          ? 'Calendar sessions and confirmation email are being processed.'
+          : `Program starts on ${requestedStartDate}. Sessions will be scheduled closer to the start date.`,
       },
     });
   } catch (error: any) {

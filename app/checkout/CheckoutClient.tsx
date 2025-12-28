@@ -1,3 +1,8 @@
+// =============================================================================
+// FILE: app/checkout/CheckoutClient.tsx
+// PURPOSE: Checkout with "Pay Now, Start Later" feature
+// =============================================================================
+
 'use client';
 
 import { useState, Suspense } from 'react';
@@ -13,6 +18,10 @@ import {
   CreditCard,
   Loader2,
   AlertCircle,
+  Calendar,
+  Clock,
+  Zap,
+  Info,
 } from 'lucide-react';
 
 // Razorpay types
@@ -41,7 +50,7 @@ interface CheckoutClientProps {
 function CheckoutContent({ pricing }: CheckoutClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   // Get params from URL
   const childName = searchParams.get('childName') || '';
   const childAge = searchParams.get('childAge') || '';
@@ -49,14 +58,37 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
   const parentEmail = searchParams.get('parentEmail') || '';
   const parentPhone = searchParams.get('parentPhone') || '';
   const coachId = searchParams.get('coachId') || 'rucha';
-  
+
   // Use amount from URL if provided, otherwise use dynamic pricing
   const urlAmount = searchParams.get('amount');
   const amount = urlAmount ? parseInt(urlAmount) : pricing.discountedPrice;
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  // ==================== NEW: Start Date Selection ====================
+  const [startOption, setStartOption] = useState<'now' | 'later'>('now');
+  const [startDate, setStartDate] = useState<string>('');
+
+  // Calculate min and max dates for date picker
+  const today = new Date();
+  const minDate = new Date(today);
+  minDate.setDate(minDate.getDate() + 3); // Minimum 3 days from now
+  const maxDate = new Date(today);
+  maxDate.setDate(maxDate.getDate() + 30); // Maximum 30 days from now
+
+  const formatDateForInput = (date: Date) => date.toISOString().split('T')[0];
+  const formatDateForDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+  };
 
   // Order summary - DYNAMIC from props
   const orderSummary = {
@@ -72,6 +104,12 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
   const handlePayment = async () => {
     if (!razorpayLoaded) {
       setError('Payment system is loading. Please wait...');
+      return;
+    }
+
+    // Validate start date if "later" is selected
+    if (startOption === 'later' && !startDate) {
+      setError('Please select a start date for the program.');
       return;
     }
 
@@ -113,11 +151,11 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
         order_id: orderData.orderId,
         handler: async function (response: any) {
           console.log('Payment response:', response);
-          
+
           // Step 3: Verify payment on backend
           try {
             setIsLoading(true);
-            
+
             const verifyResponse = await fetch('/api/payment/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -132,6 +170,8 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
                 parentPhone,
                 coachId,
                 amount,
+                // NEW: Pass start date info
+                requestedStartDate: startOption === 'later' ? startDate : null,
               }),
             });
 
@@ -139,8 +179,19 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
             console.log('Verify response:', verifyData);
 
             if (verifyData.success) {
-              // Redirect to success page
-              router.push(`/enrollment/success?enrollmentId=${verifyData.enrollmentId}&childName=${encodeURIComponent(childName)}`);
+              // Redirect to success page with delayed start info
+              const successParams = new URLSearchParams({
+                enrollmentId: verifyData.enrollmentId || verifyData.data?.enrollmentId,
+                childName: childName,
+              });
+              
+              // Add delayed start info if applicable
+              if (startOption === 'later' && startDate) {
+                successParams.set('startDate', startDate);
+                successParams.set('delayed', 'true');
+              }
+              
+              router.push(`/enrollment/success?${successParams.toString()}`);
             } else {
               setError(verifyData.error || 'Payment verification failed. Please contact support.');
               setIsLoading(false);
@@ -160,6 +211,7 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
           childName,
           childAge,
           coachId,
+          requestedStartDate: startOption === 'later' ? startDate : 'immediate',
         },
         theme: {
           color: '#f59e0b', // amber-500
@@ -172,13 +224,13 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
       };
 
       const razorpay = new window.Razorpay(options);
-      
+
       razorpay.on('payment.failed', function (response: any) {
         console.error('Payment failed:', response.error);
         setError(`Payment failed: ${response.error.description}`);
         setIsLoading(false);
       });
-      
+
       razorpay.open();
 
     } catch (err: any) {
@@ -229,7 +281,7 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
               <h2 className="text-white font-semibold">Order Summary</h2>
             </div>
-            
+
             <div className="p-6 space-y-4">
               {/* Program - DYNAMIC */}
               <div className="flex justify-between items-start">
@@ -273,6 +325,108 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
                   <span>Total</span>
                   <span>₹{orderSummary.finalPrice.toLocaleString('en-IN')}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ==================== NEW: Start Date Selection ==================== */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-amber-500" />
+                When would you like to start?
+              </h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Option 1: Start Immediately */}
+              <label 
+                className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  startOption === 'now' 
+                    ? 'border-amber-500 bg-amber-50' 
+                    : 'border-gray-200 hover:border-amber-200 hover:bg-gray-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="startOption"
+                  value="now"
+                  checked={startOption === 'now'}
+                  onChange={() => setStartOption('now')}
+                  className="mt-1 w-5 h-5 text-amber-500 border-gray-300 focus:ring-amber-500"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-amber-500" />
+                    <span className="font-semibold text-gray-800">Start Immediately</span>
+                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Sessions will be scheduled within 48 hours. Get started right away!
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 2: Choose a Date */}
+              <label 
+                className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  startOption === 'later' 
+                    ? 'border-amber-500 bg-amber-50' 
+                    : 'border-gray-200 hover:border-amber-200 hover:bg-gray-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="startOption"
+                  value="later"
+                  checked={startOption === 'later'}
+                  onChange={() => setStartOption('later')}
+                  className="mt-1 w-5 h-5 text-amber-500 border-gray-300 focus:ring-amber-500"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-purple-500" />
+                    <span className="font-semibold text-gray-800">Choose a Start Date</span>
+                  </div>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Perfect for after exams, holidays, or travel. Lock in today&apos;s price!
+                  </p>
+
+                  {/* Date Picker - Only show when "later" is selected */}
+                  {startOption === 'later' && (
+                    <div className="mt-4 space-y-3">
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        min={formatDateForInput(minDate)}
+                        max={formatDateForInput(maxDate)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                      />
+                      {startDate && (
+                        <div className="flex items-center gap-2 text-sm text-purple-700 bg-purple-50 p-3 rounded-lg">
+                          <Calendar className="w-4 h-4" />
+                          <span>
+                            Program starts: <strong>{formatDateForDisplay(startDate)}</strong>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </label>
+
+              {/* Info Note */}
+              <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl text-sm">
+                <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <p className="text-blue-700">
+                  {startOption === 'now' 
+                    ? "You'll receive your schedule within 48 hours via email and WhatsApp."
+                    : "You'll receive a reminder 3 days before your program starts. Sessions will be scheduled automatically."
+                  }
+                </p>
               </div>
             </div>
           </div>
@@ -321,6 +475,9 @@ function CheckoutContent({ pricing }: CheckoutClientProps) {
               <>
                 <CreditCard className="w-5 h-5" />
                 Pay ₹{orderSummary.finalPrice.toLocaleString('en-IN')}
+                {startOption === 'later' && startDate && (
+                  <span className="text-amber-100 text-sm">• Start {new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                )}
               </>
             )}
           </button>
