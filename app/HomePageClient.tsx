@@ -1060,6 +1060,11 @@ export default function HomePageClient({
                 <li><Link href="/coach/login" className="hover:text-[#ff0099] transition-colors">Coach Login</Link></li>
                 <li><Link href="/yestoryd-academy" className="hover:text-[#ff0099] transition-colors">Become a Coach</Link></li>
               </ul>
+              <h4 className="font-bold text-sm mb-4 mt-6 text-gray-300">Legal</h4>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li><Link href="/privacy" className="hover:text-[#ff0099] transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-[#ff0099] transition-colors">Terms of Service</Link></li>
+              </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">

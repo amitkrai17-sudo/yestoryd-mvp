@@ -1,11 +1,11 @@
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
-  
+
   // Fix trailing slash redirect for webhooks
   skipTrailingSlashRedirect: true,
-  
+
   // Image optimization settings
   images: {
     domains: [
@@ -13,12 +13,12 @@ const nextConfig = {
       'drive.google.com', // Google Drive images
     ],
   },
-  
+
   // Environment variables available to the browser
   env: {
     NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   },
-  
+
   // Headers for security and CORS
   async headers() {
     return [
@@ -34,4 +34,18 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+const { withSentryConfig } = require("@sentry/nextjs");
+
+module.exports = withSentryConfig(nextConfig, {
+  org: "yestoryd",
+  project: "javascript-nextjs",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  webpack: {
+    automaticVercelMonitors: true,
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+});
