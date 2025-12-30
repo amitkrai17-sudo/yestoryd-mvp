@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
+import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 
 // Initialize Supabase with service role for full access
 const supabase = createClient(
@@ -31,26 +32,26 @@ const SESSION_CONFIG = {
   defaultHour: 10, // 10 AM IST
   // Schedule pattern: Sessions spread across ~6 weeks
   schedule: [
-    { day: 0,  type: 'coaching', number: 1, week: 1 },  // Week 1: First coaching
-    { day: 5,  type: 'coaching', number: 2, week: 1 },  // Week 1
-    { day: 10, type: 'parent',   number: 1, week: 2 },  // Week 2: Parent check-in
+    { day: 0, type: 'coaching', number: 1, week: 1 },  // Week 1: First coaching
+    { day: 5, type: 'coaching', number: 2, week: 1 },  // Week 1
+    { day: 10, type: 'parent', number: 1, week: 2 },  // Week 2: Parent check-in
     { day: 15, type: 'coaching', number: 3, week: 3 },  // Week 3
     { day: 20, type: 'coaching', number: 4, week: 3 },  // Week 3
-    { day: 25, type: 'parent',   number: 2, week: 4 },  // Week 4: Parent check-in
+    { day: 25, type: 'parent', number: 2, week: 4 },  // Week 4: Parent check-in
     { day: 30, type: 'coaching', number: 5, week: 5 },  // Week 5
     { day: 35, type: 'coaching', number: 6, week: 5 },  // Week 5
-    { day: 40, type: 'parent',   number: 3, week: 6 },  // Week 6: Final parent review
+    { day: 40, type: 'parent', number: 3, week: 6 },  // Week 6: Final parent review
   ],
 };
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     // 1. Get request body
     const body = await request.text();
     const signature = request.headers.get('upstash-signature');
-    
+
     // 2. Verify QStash signature (security)
     // Skip verification in development for testing
     if (process.env.NODE_ENV === 'production') {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
           signature: signature || '',
           body: body,
         });
-        
+
         if (!isValid) {
           console.error('❌ Invalid QStash signature');
           return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Signature verification failed' }, { status: 401 });
       }
     }
-    
+
     // 3. Parse job data
     const data = JSON.parse(body);
     console.log('📥 Processing enrollment-complete job:', {
@@ -82,11 +83,26 @@ export async function POST(request: NextRequest) {
     console.log('📅 Starting calendar scheduling...');
     const calendarResult = await scheduleCalendarSessions(data);
     console.log(`📅 Calendar result: ${calendarResult.sessionsCreated}/${SESSION_CONFIG.totalSessions} sessions`);
-    
+
+    // 4.5 Schedule Recall.ai bots for session recording
+    console.log('🤖 Scheduling Recall.ai bots for session recording...');
+    let botsScheduled = 0;
+    try {
+      const botResult = await scheduleBotsForEnrollment(data.enrollmentId);
+      botsScheduled = botResult.botsCreated;
+      console.log(`🤖 Recall bots: ${botResult.botsCreated} created, ${botResult.errors.length} errors`);
+
+      if (botResult.errors.length > 0) {
+        console.warn('⚠️ Some bot scheduling errors:', botResult.errors);
+      }
+    } catch (botError: any) {
+      console.error('⚠️ Recall bot scheduling failed (non-fatal):', botError.message);
+    }
+
     // 5. Send confirmation email
     console.log('📧 Sending confirmation email...');
     await sendConfirmationEmail(data, calendarResult.sessions);
-    
+
     // 6. Update enrollment status in database
     const { error: updateError } = await supabase
       .from('enrollments')
@@ -119,11 +135,11 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Enrollment complete job failed:', error);
-    
+
     // Return 500 so QStash will retry (up to 3 times)
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       },
@@ -158,7 +174,7 @@ async function scheduleCalendarSessions(data: {
   );
 
   const calendar = google.calendar({ version: 'v3', auth });
-  
+
   // Start from tomorrow to give time for notifications
   const startDate = new Date();
   startDate.setDate(startDate.getDate() + 1);
@@ -170,8 +186,8 @@ async function scheduleCalendarSessions(data: {
       const sessionDate = new Date(startDate);
       sessionDate.setDate(sessionDate.getDate() + session.day);
 
-      const duration = session.type === 'coaching' 
-        ? SESSION_CONFIG.coachingDurationMinutes 
+      const duration = session.type === 'coaching'
+        ? SESSION_CONFIG.coachingDurationMinutes
         : SESSION_CONFIG.parentDurationMinutes;
 
       const endDate = new Date(sessionDate);
@@ -258,7 +274,7 @@ Questions? WhatsApp: +91 89762 87997`;
       const meetLink = event.data.conferenceData?.entryPoints?.find(
         (ep: any) => ep.entryPointType === 'video'
       )?.uri || '';
-      
+
       // Save session to database
       const { data: savedSession, error: dbError } = await supabase
         .from('scheduled_sessions')
@@ -300,12 +316,12 @@ Questions? WhatsApp: +91 89762 87997`;
 
     } catch (calError: any) {
       console.error(`❌ Calendar error for session ${session.number}:`, calError.message);
-      errors.push({ 
-        session: session.number, 
+      errors.push({
+        session: session.number,
         type: session.type,
         error: calError.message,
       });
-      
+
       // Continue with other sessions even if one fails
     }
   }
@@ -336,9 +352,9 @@ async function sendConfirmationEmail(
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map((s, i) => {
         const date = new Date(s.date);
-        const dateStr = date.toLocaleDateString('en-IN', { 
-          weekday: 'short', 
-          day: 'numeric', 
+        const dateStr = date.toLocaleDateString('en-IN', {
+          weekday: 'short',
+          day: 'numeric',
           month: 'short',
           hour: '2-digit',
           minute: '2-digit',
@@ -476,7 +492,7 @@ async function sendConfirmationEmail(
 
     console.log('✅ Confirmation email sent to:', data.parentEmail);
     return { success: true };
-    
+
   } catch (error: any) {
     console.error('❌ Email send failed:', error.message);
     // Don't throw - email failure shouldn't fail the whole job
