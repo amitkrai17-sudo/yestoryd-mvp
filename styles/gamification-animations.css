@@ -1,0 +1,237 @@
+/* =============================================================================
+   GAMIFICATION ANIMATIONS
+   Add these to your globals.css file
+   ============================================================================= */
+
+/* XP Popup Animation */
+@keyframes bounce-up {
+  0% { 
+    transform: translateY(100px) scale(0.8); 
+    opacity: 0; 
+  }
+  30% { 
+    transform: translateY(-30px) scale(1.1); 
+    opacity: 1; 
+  }
+  50% { 
+    transform: translateY(10px) scale(1); 
+  }
+  70% { 
+    transform: translateY(-5px); 
+  }
+  100% { 
+    transform: translateY(0); 
+    opacity: 0; 
+  }
+}
+
+.animate-bounce-up {
+  animation: bounce-up 2s ease-out forwards;
+}
+
+/* Badge Earned Animation */
+@keyframes scale-up {
+  0% { 
+    transform: scale(0) rotate(-10deg); 
+    opacity: 0; 
+  }
+  50% { 
+    transform: scale(1.2) rotate(5deg); 
+  }
+  70% { 
+    transform: scale(0.95) rotate(-2deg); 
+  }
+  100% { 
+    transform: scale(1) rotate(0); 
+    opacity: 1; 
+  }
+}
+
+.animate-scale-up {
+  animation: scale-up 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Level Up Animation */
+@keyframes level-up {
+  0% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 rgba(123, 0, 139, 0.4);
+  }
+  50% { 
+    transform: scale(1.1); 
+    box-shadow: 0 0 0 20px rgba(123, 0, 139, 0);
+  }
+  100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 rgba(123, 0, 139, 0);
+  }
+}
+
+.animate-level-up {
+  animation: level-up 1s ease-out;
+}
+
+/* Sparkle Animation */
+@keyframes sparkle {
+  0%, 100% { 
+    opacity: 0; 
+    transform: scale(0) rotate(0deg); 
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1) rotate(180deg); 
+  }
+}
+
+.animate-sparkle {
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+
+/* Progress Bar Fill Animation */
+@keyframes progress-fill {
+  from { 
+    width: 0%; 
+  }
+}
+
+.animate-progress-fill {
+  animation: progress-fill 1s ease-out forwards;
+}
+
+/* Streak Flame Animation */
+@keyframes flame-dance {
+  0%, 100% { 
+    transform: scaleY(1) scaleX(1); 
+  }
+  25% { 
+    transform: scaleY(1.1) scaleX(0.95); 
+  }
+  50% { 
+    transform: scaleY(0.95) scaleX(1.05); 
+  }
+  75% { 
+    transform: scaleY(1.05) scaleX(0.98); 
+  }
+}
+
+.animate-flame {
+  animation: flame-dance 0.5s ease-in-out infinite;
+}
+
+/* Badge Hover Effect */
+.badge-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.badge-hover:hover {
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 4px 12px rgba(123, 0, 139, 0.3);
+}
+
+/* XP Counter Animation */
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count-up {
+  animation: count-up 0.3s ease-out forwards;
+}
+
+/* Confetti Animation (for perfect scores) */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  top: 0;
+  animation: confetti-fall 3s ease-out forwards;
+}
+
+/* Pulse Animation for Active Elements */
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Glow Effect for Achievements */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 0, 153, 0.5),
+                0 0 10px rgba(255, 0, 153, 0.3),
+                0 0 15px rgba(255, 0, 153, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 0, 153, 0.8),
+                0 0 20px rgba(255, 0, 153, 0.5),
+                0 0 30px rgba(255, 0, 153, 0.3);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Shake Animation (for wrong answers) */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Success Checkmark Animation */
+@keyframes checkmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-checkmark {
+  stroke-dasharray: 100;
+  animation: checkmark 0.5s ease-out forwards;
+}
+
+/* Floating Animation for Rewards */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
