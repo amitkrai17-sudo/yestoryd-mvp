@@ -81,7 +81,7 @@ PASSAGE CONTEXT:
 (Approx. Word Count: ${wordCount} words)
 
 CRITICAL SCORING RULES:
-1. COMPLETENESS CHECK: If the child reads less than 80% of the text, the 'reading_score' MUST be 4 or lower.
+1. COMPLETENESS CHECK: If the child reads less than 80% of the text, ALL scores MUST be 4 or lower.
 2. EVIDENCE REQUIRED: Do not be generic. You must quote specific misread words.
 3. STRICTNESS LEVEL: ${strictness.level}
    ${strictness.guidance}
@@ -89,16 +89,22 @@ CRITICAL SCORING RULES:
 
 Generate a JSON response with this EXACT structure:
 {
-    "reading_score": (integer 1-10),
-    "wpm": (integer),
-    "fluency_rating": "Smooth|Choppy|Monotone|Fast",
-    "pronunciation_rating": "Clear|Slurred|Inconsistent",
+    "clarity_score": (integer 1-10, pronunciation clarity),
+    "fluency_score": (integer 1-10, reading flow and smoothness),
+    "speed_score": (integer 1-10, appropriate pace for age),
+    "wpm": (integer, words per minute),
     "completeness_percentage": (integer 0-100),
     "feedback": (string, 80-100 words, 4 sentences - MUST use the name "${name}"),
     "errors": (list of specific words missed),
     "strengths": (list of 2-3 things done well),
     "areas_to_improve": (list of 2-3 specific areas)
 }
+
+SCORING CONSISTENCY RULES:
+- If completeness_percentage < 80%, ALL scores must be 4 or lower
+- If completeness_percentage < 50%, ALL scores must be 2 or lower
+- Speed score should reflect WPM: <30 WPM = 1-3, 30-60 WPM = 4-6, 60-100 WPM = 7-8, >100 WPM = 9-10
+- Be realistic: a choppy reader with many errors should NOT get 7+ in fluency
 
 Respond ONLY with valid JSON. No additional text.`;
 
@@ -119,11 +125,12 @@ Respond ONLY with valid JSON. No additional text.`;
     const response = await result.response;
     const responseText = response.text();
 
+    // Updated interface to match new AI response structure
     let analysisResult: {
-      reading_score: number;
+      clarity_score: number;
+      fluency_score: number;
+      speed_score: number;
       wpm: number;
-      fluency_rating: string;
-      pronunciation_rating: string;
       errors: string[];
       strengths: string[];
       areas_to_improve: string[];
@@ -151,11 +158,12 @@ Respond ONLY with valid JSON. No additional text.`;
       
     } catch {
       console.error('Failed to parse Gemini response:', responseText);
+      // Updated fallback to match new structure
       analysisResult = {
-        reading_score: 5,
+        clarity_score: 5,
+        fluency_score: 5,
+        speed_score: 5,
         wpm: 60,
-        fluency_rating: 'Choppy',
-        pronunciation_rating: 'Inconsistent',
         errors: [],
         strengths: ['Completed the reading', 'Showed effort'],
         areas_to_improve: ['Practice reading aloud daily', 'Work on fluency'],
@@ -164,10 +172,13 @@ Respond ONLY with valid JSON. No additional text.`;
       };
     }
 
-    const overallScore = analysisResult.reading_score;
-    const clarityScore = analysisResult.pronunciation_rating === 'Clear' ? 8 : analysisResult.pronunciation_rating === 'Slurred' ? 4 : 6;
-    const fluencyScore = analysisResult.fluency_rating === 'Smooth' ? 8 : analysisResult.fluency_rating === 'Choppy' ? 5 : analysisResult.fluency_rating === 'Fast' ? 7 : 4;
-    const speedScore = Math.min(10, Math.round(analysisResult.wpm / 15));
+    // Use AI-provided scores directly (with bounds checking)
+    const clarityScore = Math.min(10, Math.max(1, analysisResult.clarity_score || 5));
+    const fluencyScore = Math.min(10, Math.max(1, analysisResult.fluency_score || 5));
+    const speedScore = Math.min(10, Math.max(1, analysisResult.speed_score || 5));
+    
+    // Calculate overall as weighted average (clarity 35%, fluency 40%, speed 25%)
+    const overallScore = Math.round((clarityScore * 0.35) + (fluencyScore * 0.40) + (speedScore * 0.25));
 
     let childId: string | null = null;
     
@@ -232,8 +243,6 @@ Respond ONLY with valid JSON. No additional text.`;
         const eventData = {
           score: overallScore,
           wpm: analysisResult.wpm,
-          fluency: analysisResult.fluency_rating,
-          pronunciation: analysisResult.pronunciation_rating,
           completeness: analysisResult.completeness_percentage,
           feedback: analysisResult.feedback,
           errors: analysisResult.errors,
@@ -260,7 +269,9 @@ Respond ONLY with valid JSON. No additional text.`;
           console.error('⚠️ Embedding generation failed (non-blocking):', embError);
         }
 
-        const aiSummary = `${name} completed a reading assessment scoring ${overallScore}/10. Reading speed was ${analysisResult.wpm} WPM with ${analysisResult.fluency_rating.toLowerCase()} fluency. ${analysisResult.strengths?.[0] || 'Showed good effort'}. Areas to work on: ${analysisResult.areas_to_improve?.[0] || 'daily practice'}.`;
+        // Derive fluency description from score for summary
+        const fluencyDesc = fluencyScore >= 7 ? 'smooth' : fluencyScore >= 5 ? 'moderate' : 'developing';
+        const aiSummary = `${name} completed a reading assessment scoring ${overallScore}/10. Reading speed was ${analysisResult.wpm} WPM with ${fluencyDesc} fluency. ${analysisResult.strengths?.[0] || 'Showed good effort'}. Areas to work on: ${analysisResult.areas_to_improve?.[0] || 'daily practice'}.`;
 
         const { error: eventError } = await supabase
           .from('learning_events')
@@ -311,10 +322,10 @@ Respond ONLY with valid JSON. No additional text.`;
           })
           .eq('id', childId);
         
-        console.log(`?? Lead score: ${leadScore} (${leadStatus})`);
+        console.log(`📊 Lead score: ${leadScore} (${leadStatus})`);
         
         if (leadStatus === 'hot') {
-          console.log('?? HOT LEAD detected! Triggering alert...');
+          console.log('🔥 HOT LEAD detected! Triggering alert...');
           const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://yestoryd.com';
           fetch(`${baseUrl}/api/leads/hot-alert`, {
             method: 'POST',
@@ -323,11 +334,11 @@ Respond ONLY with valid JSON. No additional text.`;
           }).catch(err => console.error('Hot lead alert failed:', err));
         }
       } catch (leadError) {
-        console.error('?? Lead scoring error (non-blocking):', leadError);
+        console.error('📊 Lead scoring error (non-blocking):', leadError);
       }
     }
 
-        return NextResponse.json({
+    return NextResponse.json({
       success: true,
       childId,
       childName: name,
@@ -341,8 +352,6 @@ Respond ONLY with valid JSON. No additional text.`;
       fluency_score: fluencyScore,
       speed_score: speedScore,
       wpm: analysisResult.wpm,
-      fluency: analysisResult.fluency_rating,
-      pronunciation: analysisResult.pronunciation_rating,
       errors: analysisResult.errors,
       completeness: analysisResult.completeness_percentage,
       feedback: analysisResult.feedback,
