@@ -1,28 +1,30 @@
 // file: app/api/certificate/send/route.ts
-// Enhanced certificate email with LIGHT theme matching Yestoryd brand
+// Certificate email - FIXED: integer scores, no yellow on white
 
 import { NextRequest, NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
-// Brand Colors
+// Brand Colors - NO YELLOW ON WHITE (poor contrast)
 const COLORS = {
   pink: '#ff0099',
   blue: '#00abff',
-  yellow: '#ffde00',
   purple: '#7b008b',
   white: '#ffffff',
   lightGray: '#f8f9fa',
   darkGray: '#333333',
   mediumGray: '#666666',
+  green: '#22c55e',
+  orange: '#f97316',
+  red: '#ef4444',
 };
 
 function getScoreColor(score: number): string {
-  if (score >= 8) return '#22c55e';
-  if (score >= 6) return COLORS.yellow;
-  if (score >= 4) return '#f97316';
-  return '#ef4444';
+  if (score >= 8) return COLORS.green;
+  if (score >= 6) return COLORS.pink; // Changed from yellow
+  if (score >= 4) return COLORS.orange;
+  return COLORS.red;
 }
 
 function getScoreLabel(score: number): string {
@@ -44,15 +46,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     const {
-      email, childName, childAge, score, wpm, fluency, pronunciation, feedback,
-      clarityScore, fluencyScore, speedScore,
-      phonicsAnalysis, skillBreakdown, errorClassification, practiceRecommendations,
-      strengths, areasToImprove,
+      email,
+      childName,
+      childAge,
+      score,
+      wpm,
+      // Accept BOTH formats - scores take priority
+      fluency,           // Label format: "Good"
+      pronunciation,     // Label format: "Clear"
+      fluencyScore,      // Integer format: 8
+      clarityScore,      // Integer format: 7
+      speedScore,
+      feedback,
+      phonicsAnalysis,
+      skillBreakdown,
+      errorClassification,
+      practiceRecommendations,
+      strengths,
+      areasToImprove,
     } = body;
 
     if (!email || !childName) {
       return NextResponse.json({ error: 'Email and child name required' }, { status: 400 });
     }
+
+    // Use integer scores - fallback to 0 if not provided
+    const finalFluencyScore = fluencyScore || 0;
+    const finalClarityScore = clarityScore || 0;
+    const finalSpeedScore = speedScore || 0;
 
     const scoreColor = getScoreColor(score);
     const scoreLabel = getScoreLabel(score);
@@ -66,7 +87,9 @@ export async function POST(request: NextRequest) {
         { key: 'decoding', label: '📖 Decoding' },
         { key: 'sight_words', label: '⚡ Sight Words' },
         { key: 'blending', label: '🔗 Blending' },
+        { key: 'segmenting', label: '✂️ Segmenting' },
         { key: 'expression', label: '🎭 Expression' },
+        { key: 'comprehension_indicators', label: '💡 Comprehension' },
       ];
       
       const skillRows = skills
@@ -74,16 +97,16 @@ export async function POST(request: NextRequest) {
         .map(s => {
           const data = skillBreakdown[s.key];
           const pct = (data.score / 10) * 100;
-          const color = data.score >= 7 ? '#22c55e' : data.score >= 5 ? COLORS.yellow : '#ef4444';
+          const color = data.score >= 7 ? COLORS.green : data.score >= 5 ? COLORS.pink : COLORS.red;
           return `
             <tr>
               <td style="padding: 8px 0;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <div style="margin-bottom: 4px;">
                   <span style="color: ${COLORS.darkGray}; font-size: 14px;">${s.label}</span>
-                  <span style="color: ${COLORS.purple}; font-weight: bold;">${data.score}/10</span>
+                  <span style="float: right; color: ${COLORS.purple}; font-weight: bold;">${data.score}/10</span>
                 </div>
                 <div style="background: #e5e7eb; border-radius: 4px; height: 8px; overflow: hidden;">
-                  <div style="background: ${color}; height: 100%; width: ${pct}%;"></div>
+                  <div style="background: ${color}; height: 100%; width: ${pct}%; border-radius: 4px;"></div>
                 </div>
                 ${data.notes ? `<p style="color: ${COLORS.mediumGray}; font-size: 12px; margin: 4px 0 0;">${data.notes}</p>` : ''}
               </td>
@@ -108,32 +131,34 @@ export async function POST(request: NextRequest) {
       const strong = phonicsAnalysis.strong_phonemes || [];
       const focus = phonicsAnalysis.recommended_focus;
 
-      phonicsHtml = `
-        <div style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb;">
-          <h3 style="color: ${COLORS.pink}; font-size: 16px; margin: 0 0 16px;">🔤 Phonics Analysis</h3>
-          
-          ${focus ? `
-            <div style="background: rgba(255,0,153,0.1); border: 1px solid ${COLORS.pink}; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-              <p style="color: ${COLORS.pink}; font-size: 13px; margin: 0 0 4px; font-weight: 600;">💡 Focus Area</p>
-              <p style="color: ${COLORS.darkGray}; font-size: 14px; margin: 0;">${focus}</p>
-            </div>
-          ` : ''}
-          
-          ${struggling.length > 0 ? `
-            <div style="margin-bottom: 16px;">
-              <p style="color: ${COLORS.mediumGray}; font-size: 12px; text-transform: uppercase; margin: 0 0 8px;">Needs Practice</p>
-              <div>${struggling.map((p: string) => `<span style="display: inline-block; background: rgba(239,68,68,0.15); color: #dc2626; padding: 4px 12px; border-radius: 16px; font-size: 13px; margin: 4px 4px 4px 0; border: 1px solid rgba(239,68,68,0.3);">${p}</span>`).join('')}</div>
-            </div>
-          ` : ''}
-          
-          ${strong.length > 0 ? `
-            <div>
-              <p style="color: ${COLORS.mediumGray}; font-size: 12px; text-transform: uppercase; margin: 0 0 8px;">Strong Areas ✓</p>
-              <div>${strong.map((p: string) => `<span style="display: inline-block; background: rgba(34,197,94,0.15); color: #16a34a; padding: 4px 12px; border-radius: 16px; font-size: 13px; margin: 4px 4px 4px 0; border: 1px solid rgba(34,197,94,0.3);">${p}</span>`).join('')}</div>
-            </div>
-          ` : ''}
-        </div>
-      `;
+      if (focus || struggling.length > 0 || strong.length > 0) {
+        phonicsHtml = `
+          <div style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: ${COLORS.pink}; font-size: 16px; margin: 0 0 16px;">🔤 Phonics Analysis</h3>
+            
+            ${focus ? `
+              <div style="background: rgba(255,0,153,0.1); border: 1px solid ${COLORS.pink}; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                <p style="color: ${COLORS.pink}; font-size: 13px; margin: 0 0 4px; font-weight: 600;">💡 Focus Area</p>
+                <p style="color: ${COLORS.darkGray}; font-size: 14px; margin: 0;">${focus}</p>
+              </div>
+            ` : ''}
+            
+            ${struggling.length > 0 ? `
+              <div style="margin-bottom: 16px;">
+                <p style="color: ${COLORS.mediumGray}; font-size: 12px; text-transform: uppercase; margin: 0 0 8px;">Needs Practice</p>
+                <div>${struggling.map((p: string) => `<span style="display: inline-block; background: rgba(239,68,68,0.15); color: #dc2626; padding: 4px 12px; border-radius: 16px; font-size: 13px; margin: 4px 4px 4px 0; border: 1px solid rgba(239,68,68,0.3);">${p}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+            
+            ${strong.length > 0 ? `
+              <div>
+                <p style="color: ${COLORS.mediumGray}; font-size: 12px; text-transform: uppercase; margin: 0 0 8px;">Strong Areas ✓</p>
+                <div>${strong.map((p: string) => `<span style="display: inline-block; background: rgba(34,197,94,0.15); color: #16a34a; padding: 4px 12px; border-radius: 16px; font-size: 13px; margin: 4px 4px 4px 0; border: 1px solid rgba(34,197,94,0.3);">${p}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
     }
 
     // Build errors section
@@ -180,32 +205,34 @@ export async function POST(request: NextRequest) {
       const pFocus = practiceRecommendations.phonics_focus;
       const activity = practiceRecommendations.suggested_activity;
 
-      practiceHtml = `
-        <div style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb;">
-          <h3 style="color: ${COLORS.pink}; font-size: 16px; margin: 0 0 16px;">📝 Practice at Home</h3>
-          
-          ${words.length > 0 ? `
-            <div style="margin-bottom: 16px;">
-              <p style="color: ${COLORS.mediumGray}; font-size: 12px; text-transform: uppercase; margin: 0 0 8px;">Words to Practice Daily</p>
-              <div>${words.map((w: string) => `<span style="display: inline-block; background: rgba(0,171,255,0.15); color: ${COLORS.blue}; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; margin: 4px; border: 1px solid rgba(0,171,255,0.3);">${w}</span>`).join('')}</div>
-            </div>
-          ` : ''}
-          
-          ${pFocus ? `
-            <div style="background: rgba(123,0,139,0.1); border: 1px solid ${COLORS.purple}; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-              <p style="color: ${COLORS.purple}; font-size: 13px; margin: 0 0 4px; font-weight: 600;">🔤 Phonics Focus</p>
-              <p style="color: ${COLORS.darkGray}; font-size: 14px; margin: 0;">${pFocus}</p>
-            </div>
-          ` : ''}
-          
-          ${activity ? `
-            <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 12px;">
-              <p style="color: #16a34a; font-size: 13px; margin: 0 0 4px; font-weight: 600;">🎯 Suggested Activity</p>
-              <p style="color: ${COLORS.darkGray}; font-size: 14px; margin: 0;">${activity}</p>
-            </div>
-          ` : ''}
-        </div>
-      `;
+      if (words.length > 0 || pFocus || activity) {
+        practiceHtml = `
+          <div style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: ${COLORS.pink}; font-size: 16px; margin: 0 0 16px;">📝 Practice at Home</h3>
+            
+            ${words.length > 0 ? `
+              <div style="margin-bottom: 16px;">
+                <p style="color: ${COLORS.mediumGray}; font-size: 12px; text-transform: uppercase; margin: 0 0 8px;">Words to Practice Daily</p>
+                <div>${words.map((w: string) => `<span style="display: inline-block; background: rgba(0,171,255,0.15); color: ${COLORS.blue}; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; margin: 4px; border: 1px solid rgba(0,171,255,0.3);">${w}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+            
+            ${pFocus ? `
+              <div style="background: rgba(123,0,139,0.1); border: 1px solid ${COLORS.purple}; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                <p style="color: ${COLORS.purple}; font-size: 13px; margin: 0 0 4px; font-weight: 600;">🔤 Phonics Focus</p>
+                <p style="color: ${COLORS.darkGray}; font-size: 14px; margin: 0;">${pFocus}</p>
+              </div>
+            ` : ''}
+            
+            ${activity ? `
+              <div style="background: rgba(34,197,94,0.1); border: 1px solid ${COLORS.green}; border-radius: 8px; padding: 12px;">
+                <p style="color: #16a34a; font-size: 13px; margin: 0 0 4px; font-weight: 600;">🎯 Suggested Activity</p>
+                <p style="color: ${COLORS.darkGray}; font-size: 14px; margin: 0;">${activity}</p>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
     }
 
     // Strengths & Areas
@@ -216,7 +243,7 @@ export async function POST(request: NextRequest) {
           <tr>
             ${strengths?.length > 0 ? `
               <td style="width: 48%; vertical-align: top; padding-right: 8px;">
-                <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 12px; padding: 16px;">
+                <div style="background: rgba(34,197,94,0.1); border: 1px solid ${COLORS.green}; border-radius: 12px; padding: 16px;">
                   <p style="color: #16a34a; font-size: 14px; font-weight: 600; margin: 0 0 8px;">✓ Strengths</p>
                   <ul style="margin: 0; padding-left: 16px; color: ${COLORS.darkGray}; font-size: 13px;">
                     ${strengths.map((s: string) => `<li style="margin-bottom: 4px;">${s}</li>`).join('')}
@@ -226,7 +253,7 @@ export async function POST(request: NextRequest) {
             ` : ''}
             ${areasToImprove?.length > 0 ? `
               <td style="width: 48%; vertical-align: top; padding-left: 8px;">
-                <div style="background: rgba(249,115,22,0.1); border: 1px solid #f97316; border-radius: 12px; padding: 16px;">
+                <div style="background: rgba(249,115,22,0.1); border: 1px solid ${COLORS.orange}; border-radius: 12px; padding: 16px;">
                   <p style="color: #ea580c; font-size: 14px; font-weight: 600; margin: 0 0 8px;">↑ To Improve</p>
                   <ul style="margin: 0; padding-left: 16px; color: ${COLORS.darkGray}; font-size: 13px;">
                     ${areasToImprove.map((a: string) => `<li style="margin-bottom: 4px;">${a}</li>`).join('')}
@@ -270,7 +297,7 @@ export async function POST(request: NextRequest) {
         ${childAge ? `<p style="color: ${COLORS.mediumGray}; font-size: 14px; margin: 0;">Age ${childAge}</p>` : ''}
       </div>
       
-      <!-- Score Circle -->
+      <!-- Score Circle - PINK border instead of yellow -->
       <div style="text-align: center; margin: 30px 0;">
         <div style="width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; border: 8px solid ${scoreColor}; display: flex; align-items: center; justify-content: center; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
           <span style="font-size: 48px; font-weight: 800; color: ${scoreColor};">${score}</span>
@@ -281,7 +308,7 @@ export async function POST(request: NextRequest) {
         </div>
       </div>
       
-      <!-- Quick Stats -->
+      <!-- Quick Stats - INTEGER SCORES -->
       <table style="width: 100%; margin: 24px 0; text-align: center;" cellpadding="0" cellspacing="8">
         <tr>
           <td style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 16px; width: 33%;">
@@ -291,11 +318,11 @@ export async function POST(request: NextRequest) {
           </td>
           <td style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 16px; width: 33%;">
             <p style="color: ${COLORS.pink}; font-size: 12px; margin: 0;">Fluency</p>
-            <p style="color: ${COLORS.purple}; font-size: 18px; font-weight: bold; margin: 4px 0;">${fluency || 'N/A'}</p>
+            <p style="color: ${COLORS.purple}; font-size: 24px; font-weight: bold; margin: 4px 0;">${finalFluencyScore}/10</p>
           </td>
           <td style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 16px; width: 33%;">
             <p style="color: ${COLORS.purple}; font-size: 12px; margin: 0;">Clarity</p>
-            <p style="color: ${COLORS.purple}; font-size: 18px; font-weight: bold; margin: 4px 0;">${pronunciation || 'N/A'}</p>
+            <p style="color: ${COLORS.purple}; font-size: 24px; font-weight: bold; margin: 4px 0;">${finalClarityScore}/10</p>
           </td>
         </tr>
       </table>
@@ -303,7 +330,7 @@ export async function POST(request: NextRequest) {
       <!-- Feedback -->
       ${feedback ? `
         <div style="background: ${COLORS.lightGray}; border-radius: 12px; padding: 16px; margin: 20px 0; border-left: 4px solid ${COLORS.pink};">
-          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+          <div style="margin-bottom: 8px;">
             <span style="font-size: 18px; margin-right: 8px;">✨</span>
             <span style="color: ${COLORS.purple}; font-weight: 600;">Coach Feedback</span>
           </div>
@@ -358,7 +385,7 @@ export async function POST(request: NextRequest) {
       html: emailHtml,
     });
     
-    console.log(`✅ Certificate sent to ${email} for ${childName}`);
+    console.log('Certificate sent to', email, 'for', childName);
     return NextResponse.json({ success: true, message: 'Certificate sent' });
 
   } catch (error) {

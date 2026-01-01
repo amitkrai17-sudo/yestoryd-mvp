@@ -231,7 +231,7 @@ export default function ResultsPage() {
               <span className="font-bold">{config.label}</span>
             </div>
 
-            {/* Stats */}
+            {/* Stats - INTEGER SCORES */}
             <div className="grid grid-cols-3 gap-3 mb-5">
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                 <Zap className="w-6 h-6 text-[#00abff] mx-auto mb-1" />
@@ -242,12 +242,12 @@ export default function ResultsPage() {
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                 <Volume2 className="w-6 h-6 text-[#ff0099] mx-auto mb-1" />
                 <p className="text-xs text-gray-500">Fluency</p>
-                <p className="font-bold text-[#7b008b] text-base">{getFluencyLabel(data.fluency_score)}</p>
+                <p className="font-bold text-[#7b008b] text-lg">{data.fluency_score}/10</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                 <MessageSquare className="w-6 h-6 text-[#7b008b] mx-auto mb-1" />
                 <p className="text-xs text-gray-500">Clarity</p>
-                <p className="font-bold text-[#7b008b] text-base">{getClarityLabel(data.clarity_score)}</p>
+                <p className="font-bold text-[#7b008b] text-lg">{data.clarity_score}/10</p>
               </div>
             </div>
 
