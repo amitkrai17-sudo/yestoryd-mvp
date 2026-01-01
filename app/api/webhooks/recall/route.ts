@@ -96,7 +96,7 @@ interface SessionAnalysis {
 // ============================================================
 // SESSION STATUS TYPES (for scheduled_sessions.status)
 // ============================================================
-type SessionStatus = 
+type SessionStatus =
   | 'scheduled'      // Initial state
   | 'bot_joining'    // Bot is joining the meeting
   | 'in_progress'    // Session actively happening
@@ -179,10 +179,10 @@ async function handleStatusChange(payload: RecallWebhookPayload) {
   // ============================================================
   // SESSION INTELLIGENCE: Update session status based on bot status
   // ============================================================
-  
+
   if (botSession?.session_id) {
     const sessionId = botSession.session_id;
-    
+
     switch (status) {
       case 'joining':
       case 'in_waiting_room':
@@ -213,10 +213,10 @@ async function handleStatusChange(payload: RecallWebhookPayload) {
   // ============================================================
   // NO-SHOW DETECTION from status_changes
   // ============================================================
-  
+
   if (status_changes && status_changes.length > 0) {
     const latestChange = status_changes[status_changes.length - 1];
-    
+
     if (botSession?.session_id) {
       await detectNoShowFromStatusChange(
         botSession.session_id,
@@ -259,7 +259,7 @@ async function detectNoShowFromStatusChange(
 
   if (noShowCodes.includes(statusCode)) {
     console.log(`⚠️ NO-SHOW detected: ${statusCode}`);
-    
+
     // Determine who was missing
     const noShowStatus: SessionStatus = 'no_show';
     const noShowReason = statusMessage || statusCode;
@@ -275,7 +275,7 @@ async function detectNoShowFromStatusChange(
 
   } else if (errorCodes.includes(statusCode)) {
     console.log(`❌ Bot error: ${statusCode}`);
-    
+
     await updateSessionStatus(sessionId, 'bot_error', {
       bot_error_reason: statusMessage || statusCode,
       bot_error_at: new Date().toISOString(),
@@ -289,7 +289,7 @@ async function detectNoShowFromStatusChange(
 
 async function handleBotError(sessionId: string, statusChanges?: Array<{ code: string; message: string }>) {
   const errorMessage = statusChanges?.find(s => s.code === 'fatal')?.message || 'Unknown bot error';
-  
+
   await updateSessionStatus(sessionId, 'bot_error', {
     bot_error_reason: errorMessage,
     bot_error_at: new Date().toISOString(),
@@ -361,7 +361,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // ============================================================
   // DETERMINE SESSION OUTCOME
   // ============================================================
-  
+
   let sessionId = botSession?.session_id;
   let childId = botSession?.child_id;
   let coachId = botSession?.coach_id;
@@ -384,7 +384,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // ============================================================
   // SESSION INTELLIGENCE: Determine final status
   // ============================================================
-  
+
   const sessionOutcome = determineSessionOutcome(attendance, transcriptText, recording?.duration_seconds);
   console.log('📊 Session outcome:', sessionOutcome);
 
@@ -421,7 +421,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // Skip analysis if transcript too short
   if (!transcriptText || transcriptText.length < 100) {
     console.log('Transcript too short, marking as partial');
-    
+
     if (sessionId) {
       await updateSessionStatus(sessionId, 'partial', {
         partial_reason: 'Transcript too short - session may have been cut short',
@@ -444,7 +444,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // AUDIO STORAGE
   // ============================================================
   let audioResult: { success: boolean; storagePath?: string; publicUrl?: string; error?: string } = { success: false };
-  
+
   if (sessionId && childId) {
     const { data: sessionData } = await supabase
       .from('scheduled_sessions')
@@ -481,7 +481,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // ============================================================
   // SAVE ALL SESSION DATA
   // ============================================================
-  
+
   await saveSessionData({
     sessionId,
     childId,
@@ -497,7 +497,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // ============================================================
   // PROACTIVE NOTIFICATIONS
   // ============================================================
-  
+
   if (childId && analysis) {
     try {
       const triggerResult = await checkAndSendProactiveNotifications({
@@ -519,7 +519,7 @@ async function handleBotDone(payload: RecallWebhookPayload) {
   // ============================================================
   // SEND PARENT SESSION SUMMARY
   // ============================================================
-  
+
   if (childId && analysis.parent_summary) {
     await sendParentSessionSummary(sessionId, childId, childName, analysis.parent_summary);
   }
@@ -556,12 +556,12 @@ function analyzeAttendance(
 ): AttendanceInfo {
   const participantNames = participants.map(p => p.name);
   const durationMinutes = Math.round(durationSeconds / 60);
-  
+
   // Heuristics to determine who joined
   // Coach usually has longer/professional name or is host
   // Child usually has shorter name or parent's name
-  const coachJoined = participants.some(p => 
-    p.is_host || 
+  const coachJoined = participants.some(p =>
+    p.is_host ||
     p.name.toLowerCase().includes('coach') ||
     p.name.toLowerCase().includes('yestoryd') ||
     p.name.includes('@') // Email-based names are usually coaches
@@ -569,7 +569,7 @@ function analyzeAttendance(
 
   // If there are 2+ participants and duration > 5 min, likely valid
   const childJoined = participants.length >= 2 && !participants.every(p => p.is_host);
-  
+
   // Valid session: at least 2 participants and > 10 minutes
   const isValidSession = participants.length >= 2 && durationMinutes >= 10;
 
@@ -698,7 +698,7 @@ async function sendNoShowNotification(
   const coach = Array.isArray(session.coach) ? session.coach[0] : session.coach;
 
   // Log the no-show
-  await supabase.from('communication_logs').insert({
+  await supabase.from('communication_log').insert({
     recipient_type: 'admin',
     recipient_id: null,
     channel: 'internal',
@@ -740,7 +740,7 @@ async function sendCoachNoShowNotification(
   }
 
   // Log for admin
-  await supabase.from('communication_logs').insert({
+  await supabase.from('communication_log').insert({
     recipient_type: 'admin',
     recipient_id: null,
     channel: 'internal',
@@ -795,7 +795,7 @@ async function sendParentSessionSummary(
   }
 
   // Log the summary message
-  await supabase.from('communication_logs').insert({
+  await supabase.from('communication_log').insert({
     recipient_type: 'parent',
     recipient_id: childId,
     channel: 'whatsapp',
@@ -912,7 +912,7 @@ async function findSessionByMeeting(title: string, startTime: string, participan
     const matched = sessions.find((s) => {
       const child = Array.isArray(s.child) ? s.child[0] : s.child;
       return child?.child_name?.toLowerCase().includes(childNameFromTitle.toLowerCase()) ||
-             child?.name?.toLowerCase().includes(childNameFromTitle.toLowerCase());
+        child?.name?.toLowerCase().includes(childNameFromTitle.toLowerCase());
     });
     if (matched) return matched;
   }

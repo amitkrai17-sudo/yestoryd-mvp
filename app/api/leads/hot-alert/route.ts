@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
             .eq('id', lead.id);
 
           // Log the alert
-          await supabase.from('communication_logs').insert({
+          await supabase.from('communication_log').insert({
             recipient_type: 'admin',
             recipient_id: null,
             channel: 'whatsapp',
