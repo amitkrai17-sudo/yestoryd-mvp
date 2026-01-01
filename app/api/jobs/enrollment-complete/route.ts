@@ -234,7 +234,7 @@ Questions? WhatsApp: +91 89762 87997`;
 
       // Create Google Calendar event with Meet link
       const event = await calendar.events.insert({
-        calendarId: data.coachEmail, // Use coach's calendar
+        calendarId: process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com', // Use delegated calendar
         conferenceDataVersion: 1,    // Enable Meet link creation
         sendUpdates: 'all',          // Send email invites to all attendees
         requestBody: {
@@ -501,4 +501,5 @@ async function sendConfirmationEmail(
     return { success: false, error: error.message };
   }
 }
+
 
