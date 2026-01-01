@@ -33,7 +33,7 @@ interface EnrollmentJobData {
  * Runs asynchronously with automatic retries
  */
 export async function queueEnrollmentComplete(data: EnrollmentJobData) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yestoryd.com';
+  const appUrl = 'https://www.yestoryd.com';
   
   try {
     const response = await qstash.publishJSON({
@@ -72,7 +72,7 @@ export async function queueDelayedEmail(data: {
   childName?: string;
   delaySeconds?: number;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yestoryd.com';
+  const appUrl = 'https://www.yestoryd.com';
   
   const response = await qstash.publishJSON({
     url: `${appUrl}/api/jobs/send-email`,
@@ -103,7 +103,7 @@ export async function queueSessionReminder(data: {
   sessionDate: string;
   meetLink: string;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yestoryd.com';
+  const appUrl = 'https://www.yestoryd.com';
   
   // Calculate delay to send 24 hours before session
   const sessionTime = new Date(data.sessionDate).getTime();
