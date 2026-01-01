@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
 
     // Robust score extraction - check multiple possible field names
     const finalScore = score || 0;
-    const finalFluencyScore = fluencyScore ?? body.fluency_score ?? Math.round(finalScore * 0.9) || 0;
-    const finalClarityScore = clarityScore ?? body.clarity_score ?? Math.round(finalScore * 0.9) || 0;
+    const finalFluencyScore = fluencyScore ?? body.fluency_score ?? (Math.round(finalScore * 0.9) || 0);
+    const finalClarityScore = clarityScore ?? body.clarity_score ?? (Math.round(finalScore * 0.9) || 0);
     const finalWpm = wpm || 0;
 
     console.log('Final scores:', { finalScore, finalFluencyScore, finalClarityScore, finalWpm });
