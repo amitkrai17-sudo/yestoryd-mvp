@@ -351,12 +351,12 @@ function EnrollContent() {
     if (name) {
       return (
         <>
-          Enroll <span className="text-yellow-300 font-black">{name}</span> — ₹5,999
+          Enroll <span className="text-yellow-300 font-black">{name}</span> — {pricing.displayPrice}
           {dateInfo && <span className="text-pink-200 text-xs font-normal">{dateInfo}</span>}
         </>
       );
     }
-    return 'Proceed to Payment — ₹5,999';
+    return `Proceed to Payment — ${pricing.displayPrice}`;
   };
 
   return (
@@ -512,7 +512,7 @@ function EnrollContent() {
                   </div>
                   <div className="text-right">
                     <div className="text-xs line-through text-white/60">₹11,999</div>
-                    <div className="text-2xl font-black">₹5,999</div>
+                    <div className="text-2xl font-black">{pricing.displayPrice}</div>
                   </div>
                 </div>
                 <div className="mt-2 inline-block bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold">
@@ -618,11 +618,10 @@ function EnrollContent() {
 
                   {/* Option 1: Start Immediately */}
                   <label
-                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      startOption === 'now'
-                        ? 'border-pink-500 bg-pink-50'
-                        : 'border-gray-200 hover:border-pink-200 bg-white'
-                    }`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startOption === 'now'
+                      ? 'border-pink-500 bg-pink-50'
+                      : 'border-gray-200 hover:border-pink-200 bg-white'
+                      }`}
                   >
                     <input
                       type="radio"
@@ -646,11 +645,10 @@ function EnrollContent() {
 
                   {/* Option 2: Choose a Date */}
                   <label
-                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      startOption === 'later'
-                        ? 'border-pink-500 bg-pink-50'
-                        : 'border-gray-200 hover:border-pink-200 bg-white'
-                    }`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startOption === 'later'
+                      ? 'border-pink-500 bg-pink-50'
+                      : 'border-gray-200 hover:border-pink-200 bg-white'
+                      }`}
                   >
                     <input
                       type="radio"
