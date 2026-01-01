@@ -4,11 +4,13 @@
   "description": "Yestoryd - Complete Reading Assessment & Coaching Platform",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "typecheck": "tsc --noEmit",
+  "quality": "npm run typecheck && npm run lint"
+},
   "dependencies": {
     "@ai-sdk/google": "^2.0.45",
     "@google/generative-ai": "^0.21.0",
