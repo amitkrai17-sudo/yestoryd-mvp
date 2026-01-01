@@ -1,7 +1,7 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useParams } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Zap,
@@ -21,7 +21,73 @@ import {
   Star,
   ArrowRight,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Target,
+  AlertCircle,
+  TrendingUp,
+  Lightbulb,
+  BookOpenCheck,
 } from 'lucide-react';
+
+// Types for assessment data
+interface ErrorClassification {
+  substitutions: { original: string; read_as: string }[];
+  omissions: string[];
+  insertions: string[];
+  reversals: { original: string; read_as: string }[];
+  mispronunciations: { word: string; issue: string }[];
+}
+
+interface PhonicsAnalysis {
+  struggling_phonemes: string[];
+  phoneme_details: { phoneme: string; examples: string[]; frequency: string }[];
+  strong_phonemes: string[];
+  recommended_focus: string;
+}
+
+interface SkillScore {
+  score: number;
+  notes: string;
+}
+
+interface SkillBreakdown {
+  decoding: SkillScore;
+  sight_words: SkillScore;
+  blending: SkillScore;
+  segmenting: SkillScore;
+  expression: SkillScore;
+  comprehension_indicators: SkillScore;
+}
+
+interface PracticeRecommendations {
+  daily_words: string[];
+  phonics_focus: string;
+  suggested_activity: string;
+}
+
+interface AssessmentData {
+  childId: string;
+  childName: string;
+  childAge: string;
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  overall_score: number;
+  clarity_score: number;
+  fluency_score: number;
+  speed_score: number;
+  wpm: number;
+  completeness: number;
+  feedback: string;
+  errors: string[];
+  strengths: string[];
+  areas_to_improve: string[];
+  error_classification?: ErrorClassification;
+  phonics_analysis?: PhonicsAnalysis;
+  skill_breakdown?: SkillBreakdown;
+  practice_recommendations?: PracticeRecommendations;
+}
 
 // Score-based configuration
 function getScoreConfig(score: number, childName: string) {
@@ -91,27 +157,187 @@ const TESTIMONIALS = [
   },
 ];
 
-function ResultsContent() {
-  const searchParams = useSearchParams();
+// Phoneme display names
+const PHONEME_LABELS: Record<string, string> = {
+  'th': 'TH sound (the, this)',
+  'ch': 'CH sound (chat, child)',
+  'sh': 'SH sound (ship, shoe)',
+  'wh': 'WH sound (what, when)',
+  'bl': 'BL blend (blue, black)',
+  'br': 'BR blend (brown, bring)',
+  'cl': 'CL blend (clean, close)',
+  'cr': 'CR blend (cry, cross)',
+  'fl': 'FL blend (fly, flower)',
+  'fr': 'FR blend (from, friend)',
+  'gl': 'GL blend (glad, glass)',
+  'gr': 'GR blend (green, great)',
+  'pl': 'PL blend (play, please)',
+  'pr': 'PR blend (pretty, prince)',
+  'sl': 'SL blend (slow, sleep)',
+  'sm': 'SM blend (small, smile)',
+  'sn': 'SN blend (snow, snake)',
+  'sp': 'SP blend (spot, speak)',
+  'st': 'ST blend (stop, star)',
+  'sw': 'SW blend (swim, sweet)',
+  'tr': 'TR blend (tree, try)',
+  'short_a': 'Short A (cat, bat)',
+  'short_e': 'Short E (bed, red)',
+  'short_i': 'Short I (sit, pig)',
+  'short_o': 'Short O (hot, dog)',
+  'short_u': 'Short U (cup, bus)',
+  'long_a': 'Long A (cake, make)',
+  'long_e': 'Long E (feet, tree)',
+  'long_i': 'Long I (time, bike)',
+  'long_o': 'Long O (home, boat)',
+  'long_u': 'Long U (cute, tube)',
+  'r_controlled': 'R-controlled vowels (car, bird)',
+  'ar': 'AR sound (car, star)',
+  'er': 'ER sound (her, fern)',
+  'ir': 'IR sound (bird, girl)',
+  'or': 'OR sound (for, born)',
+  'ur': 'UR sound (fur, turn)',
+};
+
+// Skill icons and labels
+const SKILL_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
+  decoding: { icon: <BookOpen className="w-4 h-4" />, label: 'Decoding', color: 'text-blue-400' },
+  sight_words: { icon: <Zap className="w-4 h-4" />, label: 'Sight Words', color: 'text-yellow-400' },
+  blending: { icon: <TrendingUp className="w-4 h-4" />, label: 'Blending', color: 'text-green-400' },
+  segmenting: { icon: <Target className="w-4 h-4" />, label: 'Segmenting', color: 'text-purple-400' },
+  expression: { icon: <MessageSquare className="w-4 h-4" />, label: 'Expression', color: 'text-pink-400' },
+  comprehension_indicators: { icon: <Lightbulb className="w-4 h-4" />, label: 'Comprehension', color: 'text-orange-400' },
+};
+
+// Skill Bar Component
+function SkillBar({ skill, data }: { skill: string; data: SkillScore }) {
+  const config = SKILL_CONFIG[skill];
+  if (!config || !data) return null;
+  
+  const percentage = (data.score / 10) * 100;
+  
+  return (
+    <div className="mb-3">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <span className={config.color}>{config.icon}</span>
+          <span className="text-gray-300 text-sm">{config.label}</span>
+        </div>
+        <span className="text-white font-bold text-sm">{data.score}/10</span>
+      </div>
+      <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+        <div 
+          className={`h-full rounded-full transition-all duration-500 ${
+            data.score >= 7 ? 'bg-green-500' : data.score >= 5 ? 'bg-yellow-500' : 'bg-red-500'
+          }`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      {data.notes && (
+        <p className="text-gray-500 text-xs mt-1">{data.notes}</p>
+      )}
+    </div>
+  );
+}
+
+// Collapsible Section Component
+function CollapsibleSection({ 
+  title, 
+  icon, 
+  children, 
+  defaultOpen = false,
+  badge,
+}: { 
+  title: string; 
+  icon: React.ReactNode; 
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  badge?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  
+  return (
+    <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden mb-3">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 hover:bg-gray-750 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-pink-400">{icon}</span>
+          <span className="text-white font-semibold">{title}</span>
+          {badge && (
+            <span className="bg-pink-500/20 text-pink-400 text-xs px-2 py-0.5 rounded-full">
+              {badge}
+            </span>
+          )}
+        </div>
+        {isOpen ? (
+          <ChevronUp className="w-5 h-5 text-gray-400" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-gray-400" />
+        )}
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 border-t border-gray-700">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Fluency label helper
+function getFluencyLabel(score: number): string {
+  if (score >= 8) return 'Smooth';
+  if (score >= 6) return 'Good';
+  if (score >= 4) return 'Choppy';
+  return 'Developing';
+}
+
+// Clarity label helper
+function getClarityLabel(score: number): string {
+  if (score >= 8) return 'Clear';
+  if (score >= 6) return 'Mostly Clear';
+  if (score >= 4) return 'Inconsistent';
+  return 'Unclear';
+}
+
+export default function ResultsPage() {
+  const params = useParams();
+  const childId = params.id as string;
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<AssessmentData | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
-  const score = parseInt(searchParams.get('score') || '0');
-  const wpm = parseInt(searchParams.get('wpm') || '0');
-  const fluency = searchParams.get('fluency') || 'N/A';
-  const pronunciation = searchParams.get('pronunciation') || 'N/A';
-  const feedback = searchParams.get('feedback') || '';
-  const childName = searchParams.get('childName') || 'Student';
-  const childAge = searchParams.get('childAge') || '';
-  const parentEmail = searchParams.get('parentEmail') || '';
-  const parentPhone = searchParams.get('parentPhone') || '';
+  // Fetch assessment data
+  useEffect(() => {
+    async function fetchData() {
+      if (!childId) {
+        setError('No assessment ID provided');
+        setLoading(false);
+        return;
+      }
 
-  const config = getScoreConfig(score, childName);
+      try {
+        const response = await fetch(`/api/assessment/result/${childId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch assessment data');
+        }
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError('Failed to load assessment results');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const radius = 54;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (score / 10) * circumference;
+    fetchData();
+  }, [childId]);
 
   // Rotate testimonials
   useEffect(() => {
@@ -121,15 +347,71 @@ function ResultsContent() {
     return () => clearInterval(interval);
   }, []);
 
+  // Send certificate email with ALL enhanced data
+  const sendCertificateEmail = useCallback(async () => {
+    if (!data?.parentEmail || emailSent || sendingEmail) return;
+    setSendingEmail(true);
+    try {
+      const response = await fetch('/api/certificate/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Basic info
+          email: data.parentEmail,
+          childName: data.childName,
+          childAge: data.childAge,
+          // Scores
+          score: data.overall_score,
+          wpm: data.wpm,
+          fluency: getFluencyLabel(data.fluency_score),
+          pronunciation: getClarityLabel(data.clarity_score),
+          clarityScore: data.clarity_score,
+          fluencyScore: data.fluency_score,
+          speedScore: data.speed_score,
+          // Feedback
+          feedback: data.feedback,
+          strengths: data.strengths,
+          areasToImprove: data.areas_to_improve,
+          // Enhanced analysis
+          phonicsAnalysis: data.phonics_analysis,
+          skillBreakdown: data.skill_breakdown,
+          errorClassification: data.error_classification,
+          practiceRecommendations: data.practice_recommendations,
+        }),
+      });
+      if (response.ok) setEmailSent(true);
+    } catch (error) {
+      console.error('Email error:', error);
+    } finally {
+      setSendingEmail(false);
+    }
+  }, [data, emailSent, sendingEmail]);
+
+  useEffect(() => {
+    if (data) {
+      sendCertificateEmail();
+    }
+  }, [data, sendCertificateEmail]);
+
+  // WhatsApp share
   const getWhatsAppMessage = useCallback(() => {
-    const message = `🎉 *${childName}'s Reading Assessment Results*
+    if (!data) return '';
+    
+    const config = getScoreConfig(data.overall_score, data.childName);
+    let phonicsNote = '';
+    if (data.phonics_analysis?.recommended_focus) {
+      phonicsNote = `\n🔤 *Focus Area:* ${data.phonics_analysis.recommended_focus}`;
+    }
+    
+    const message = `🎉 *${data.childName}'s Reading Assessment Results*
 
-${config.emoji} *Score: ${score}/10* - ${config.label}
-⚡ *Speed:* ${wpm} WPM
-🎯 *Fluency:* ${fluency}
-🗣️ *Pronunciation:* ${pronunciation}
+${config.emoji} *Score: ${data.overall_score}/10* - ${config.label}
+⚡ *Speed:* ${data.wpm} WPM
+🎯 *Fluency:* ${getFluencyLabel(data.fluency_score)}
+🗣️ *Clarity:* ${getClarityLabel(data.clarity_score)}
+${phonicsNote}
 
-📝 *Feedback:* ${feedback}
+📝 *Feedback:* ${data.feedback}
 
 ✉️ Certificate sent to email!
 
@@ -139,35 +421,57 @@ https://yestoryd.com/assessment
 ━━━━━━━━━━━━━━━
 Powered by *Yestoryd* - AI Reading Coach 📚`;
     return encodeURIComponent(message);
-  }, [childName, score, config.emoji, config.label, wpm, fluency, pronunciation, feedback]);
+  }, [data]);
 
   const shareOnWhatsApp = () => {
     window.open(`https://wa.me/?text=${getWhatsAppMessage()}`, '_blank');
   };
 
-  const sendCertificateEmail = useCallback(async () => {
-    if (!parentEmail || emailSent || sendingEmail) return;
-    setSendingEmail(true);
-    try {
-      const response = await fetch('/api/certificate/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: parentEmail, childName, childAge, score, wpm, fluency, pronunciation, feedback }),
-      });
-      if (response.ok) setEmailSent(true);
-    } catch (error) {
-      console.error('Email error:', error);
-    } finally {
-      setSendingEmail(false);
-    }
-  }, [parentEmail, emailSent, sendingEmail, childName, childAge, score, wpm, fluency, pronunciation, feedback]);
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
+          <p className="text-gray-400">Loading results...</p>
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    sendCertificateEmail();
-  }, [sendCertificateEmail]);
+  // Error state
+  if (error || !data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-white text-lg mb-2">Oops! Something went wrong</p>
+          <p className="text-gray-400 mb-4">{error || 'Assessment not found'}</p>
+          <Link href="/assessment">
+            <button className="px-6 py-3 bg-pink-500 text-white rounded-xl font-semibold">
+              Take New Assessment
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  // Build checkout URL with params
-  const checkoutUrl = `/checkout?childId=new&childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}&package=coaching-6&source=assessment`;
+  const config = getScoreConfig(data.overall_score, data.childName);
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (data.overall_score / 10) * circumference;
+
+  // Count total errors
+  const totalErrors = data.error_classification ? 
+    (data.error_classification.substitutions?.length || 0) +
+    (data.error_classification.omissions?.length || 0) +
+    (data.error_classification.insertions?.length || 0) +
+    (data.error_classification.reversals?.length || 0) +
+    (data.error_classification.mispronunciations?.length || 0) : 0;
+
+  // Build checkout URL
+  const checkoutUrl = `/checkout?childId=${childId}&childName=${encodeURIComponent(data.childName)}&parentEmail=${encodeURIComponent(data.parentEmail)}&parentPhone=${encodeURIComponent(data.parentPhone || '')}&package=coaching-6&source=assessment`;
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -214,8 +518,8 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
           <div className="p-6 text-center">
             <p className="text-blue-400 text-base font-semibold">Certificate of Achievement</p>
             <p className="text-gray-400 text-sm mt-1">Proudly presented to</p>
-            <h2 className="text-3xl font-bold text-white mt-2">{childName}</h2>
-            {childAge && <p className="text-gray-500 text-sm mt-1">Age {childAge}</p>}
+            <h2 className="text-3xl font-bold text-white mt-2">{data.childName}</h2>
+            {data.childAge && <p className="text-gray-500 text-sm mt-1">Age {data.childAge}</p>}
 
             {/* Score Circle */}
             <div className="relative w-36 h-36 mx-auto my-6">
@@ -232,7 +536,7 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-5xl font-black ${config.color.text}`}>{score}</span>
+                <span className={`text-5xl font-black ${config.color.text}`}>{data.overall_score}</span>
               </div>
             </div>
 
@@ -247,41 +551,41 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
               <div className="bg-gray-700/50 rounded-xl p-3">
                 <Zap className="w-6 h-6 text-blue-400 mx-auto mb-1" />
                 <p className="text-xs text-gray-400">Speed</p>
-                <p className="font-bold text-white text-lg">{wpm}</p>
+                <p className="font-bold text-white text-lg">{data.wpm}</p>
                 <p className="text-[10px] text-gray-500">WPM</p>
               </div>
               <div className="bg-gray-700/50 rounded-xl p-3">
                 <Volume2 className="w-6 h-6 text-green-400 mx-auto mb-1" />
                 <p className="text-xs text-gray-400">Fluency</p>
-                <p className="font-bold text-white text-base">{fluency}</p>
+                <p className="font-bold text-white text-base">{getFluencyLabel(data.fluency_score)}</p>
               </div>
               <div className="bg-gray-700/50 rounded-xl p-3">
                 <MessageSquare className="w-6 h-6 text-purple-400 mx-auto mb-1" />
                 <p className="text-xs text-gray-400">Clarity</p>
-                <p className="font-bold text-white text-base">{pronunciation}</p>
+                <p className="font-bold text-white text-base">{getClarityLabel(data.clarity_score)}</p>
               </div>
             </div>
 
             {/* Feedback */}
-            {feedback && (
+            {data.feedback && (
               <div className="bg-gray-700/30 rounded-xl p-4 mb-5 text-left border border-gray-600">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-5 h-5 text-yellow-400" />
                   <span className="font-bold text-white text-base">Coach Feedback</span>
                 </div>
-                <p className="text-gray-300 text-sm leading-relaxed">{feedback}</p>
+                <p className="text-gray-300 text-sm leading-relaxed">{data.feedback}</p>
               </div>
             )}
 
             {/* Email Status with Spam Notice */}
             <div className="print:hidden">
-              {parentEmail && (
+              {data.parentEmail && (
                 <div className="mb-4">
                   <div className={`flex items-center justify-center gap-2 text-sm ${emailSent ? 'text-green-400' : 'text-gray-500'}`}>
                     {sendingEmail ? (
                       <><Loader2 className="w-4 h-4 animate-spin" /> Sending certificate...</>
                     ) : emailSent ? (
-                      <><CheckCircle className="w-4 h-4" /> Certificate sent to {parentEmail}</>
+                      <><CheckCircle className="w-4 h-4" /> Certificate sent to {data.parentEmail}</>
                     ) : (
                       <><Mail className="w-4 h-4" /> Sending certificate...</>
                     )}
@@ -302,6 +606,270 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
             </p>
           </div>
         </div>
+
+        {/* ============================================================ */}
+        {/* ENHANCED ANALYSIS SECTIONS */}
+        {/* ============================================================ */}
+        
+        {(data.skill_breakdown || data.phonics_analysis || data.error_classification) && (
+          <div className="mt-6 space-y-3 print:hidden">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <BookOpenCheck className="w-5 h-5 text-pink-400" />
+              Detailed Analysis
+            </h3>
+
+            {/* Skill Breakdown Section */}
+            {data.skill_breakdown && (
+              <CollapsibleSection 
+                title="Reading Skills Breakdown" 
+                icon={<Target className="w-5 h-5" />}
+                defaultOpen={true}
+              >
+                <div className="pt-4">
+                  {Object.entries(data.skill_breakdown).map(([skill, skillData]) => (
+                    <SkillBar key={skill} skill={skill} data={skillData as SkillScore} />
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* Phonics Analysis Section */}
+            {data.phonics_analysis && (
+              <CollapsibleSection 
+                title="Phonics Analysis" 
+                icon={<Volume2 className="w-5 h-5" />}
+                badge={data.phonics_analysis.struggling_phonemes?.length 
+                  ? `${data.phonics_analysis.struggling_phonemes.length} areas to improve` 
+                  : undefined}
+                defaultOpen={true}
+              >
+                <div className="pt-4 space-y-4">
+                  {/* Recommended Focus */}
+                  {data.phonics_analysis.recommended_focus && (
+                    <div className="bg-pink-500/10 border border-pink-500/30 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Lightbulb className="w-4 h-4 text-pink-400" />
+                        <span className="text-pink-400 font-semibold text-sm">Focus Area</span>
+                      </div>
+                      <p className="text-white text-sm">{data.phonics_analysis.recommended_focus}</p>
+                    </div>
+                  )}
+
+                  {/* Struggling Phonemes */}
+                  {data.phonics_analysis.struggling_phonemes?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">Needs Practice</p>
+                      <div className="flex flex-wrap gap-2">
+                        {data.phonics_analysis.struggling_phonemes.map((phoneme, i) => (
+                          <span 
+                            key={i}
+                            className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm border border-red-500/30"
+                            title={PHONEME_LABELS[phoneme] || phoneme}
+                          >
+                            {phoneme}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Phoneme Details */}
+                  {data.phonics_analysis.phoneme_details?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">Specific Examples</p>
+                      {data.phonics_analysis.phoneme_details.map((detail, i) => (
+                        <div key={i} className="bg-gray-700/50 rounded-lg p-2 mb-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-white font-medium">{detail.phoneme}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              detail.frequency === 'frequent' 
+                                ? 'bg-red-500/20 text-red-400' 
+                                : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {detail.frequency}
+                            </span>
+                          </div>
+                          <p className="text-gray-400 text-xs">
+                            Examples: {detail.examples.join(', ')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Strong Phonemes */}
+                  {data.phonics_analysis.strong_phonemes?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">Strong Areas ✓</p>
+                      <div className="flex flex-wrap gap-2">
+                        {data.phonics_analysis.strong_phonemes.map((phoneme, i) => (
+                          <span 
+                            key={i}
+                            className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm border border-green-500/30"
+                          >
+                            {phoneme}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* Error Classification Section */}
+            {data.error_classification && totalErrors > 0 && (
+              <CollapsibleSection 
+                title="Reading Errors" 
+                icon={<AlertCircle className="w-5 h-5" />}
+                badge={`${totalErrors} errors`}
+              >
+                <div className="pt-4 space-y-3">
+                  {/* Substitutions */}
+                  {data.error_classification.substitutions?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">
+                        Substitutions (read wrong word)
+                      </p>
+                      <div className="space-y-1">
+                        {data.error_classification.substitutions.map((sub, i) => (
+                          <div key={i} className="bg-gray-700/50 rounded px-3 py-2 flex items-center gap-2 text-sm">
+                            <span className="text-red-400 line-through">{sub.original}</span>
+                            <ArrowRight className="w-3 h-3 text-gray-500" />
+                            <span className="text-yellow-400">{sub.read_as}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Omissions */}
+                  {data.error_classification.omissions?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">
+                        Omissions (skipped words)
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {data.error_classification.omissions.map((word, i) => (
+                          <span key={i} className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded text-sm">
+                            {word}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reversals */}
+                  {data.error_classification.reversals?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">
+                        Reversals (letters/words reversed)
+                      </p>
+                      <div className="space-y-1">
+                        {data.error_classification.reversals.map((rev, i) => (
+                          <div key={i} className="bg-gray-700/50 rounded px-3 py-2 flex items-center gap-2 text-sm">
+                            <span className="text-red-400">{rev.original}</span>
+                            <ArrowRight className="w-3 h-3 text-gray-500" />
+                            <span className="text-yellow-400">{rev.read_as}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mispronunciations */}
+                  {data.error_classification.mispronunciations?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">
+                        Mispronunciations
+                      </p>
+                      <div className="space-y-1">
+                        {data.error_classification.mispronunciations.map((mis, i) => (
+                          <div key={i} className="bg-gray-700/50 rounded px-3 py-2 text-sm">
+                            <span className="text-white font-medium">{mis.word}:</span>{' '}
+                            <span className="text-gray-400">{mis.issue}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* Practice Recommendations Section */}
+            {data.practice_recommendations && (
+              <CollapsibleSection 
+                title="Practice at Home" 
+                icon={<Sparkles className="w-5 h-5" />}
+                defaultOpen={true}
+              >
+                <div className="pt-4 space-y-4">
+                  {/* Daily Words */}
+                  {data.practice_recommendations.daily_words?.length > 0 && (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">
+                        📝 Words to Practice Daily
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {data.practice_recommendations.daily_words.map((word, i) => (
+                          <span 
+                            key={i}
+                            className="bg-blue-500/20 text-blue-400 px-3 py-2 rounded-lg text-sm font-medium border border-blue-500/30"
+                          >
+                            {word}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Phonics Focus */}
+                  {data.practice_recommendations.phonics_focus && (
+                    <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                      <p className="text-purple-400 font-semibold text-sm mb-1">🔤 Phonics Focus</p>
+                      <p className="text-white text-sm">{data.practice_recommendations.phonics_focus}</p>
+                    </div>
+                  )}
+
+                  {/* Suggested Activity */}
+                  {data.practice_recommendations.suggested_activity && (
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                      <p className="text-green-400 font-semibold text-sm mb-1">🎯 Suggested Activity</p>
+                      <p className="text-white text-sm">{data.practice_recommendations.suggested_activity}</p>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* Strengths & Areas to Improve */}
+            {(data.strengths?.length || data.areas_to_improve?.length) && (
+              <div className="grid grid-cols-2 gap-3">
+                {data.strengths?.length > 0 && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+                    <p className="text-green-400 font-semibold text-sm mb-2">✓ Strengths</p>
+                    <ul className="space-y-1">
+                      {data.strengths.map((s, i) => (
+                        <li key={i} className="text-gray-300 text-xs">• {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {data.areas_to_improve?.length > 0 && (
+                  <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3">
+                    <p className="text-orange-400 font-semibold text-sm mb-2">↑ To Improve</p>
+                    <ul className="space-y-1">
+                      {data.areas_to_improve.map((a, i) => (
+                        <li key={i} className="text-gray-300 text-xs">• {a}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* CTA Section - Score Based */}
         <div className="mt-6 print:hidden">
@@ -324,7 +892,7 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
             <div className="mt-4 space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-300">
                 <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                <span>6 personalized coaching sessions for {childName}</span>
+                <span>6 personalized coaching sessions for {data.childName}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-300">
                 <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
@@ -356,10 +924,10 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
           </div>
 
           {/* Secondary CTA - Talk to Coach (Discovery Call) */}
-          <Link href={`/lets-talk?source=assessment&childName=${encodeURIComponent(childName)}&childAge=${encodeURIComponent(childAge)}&parentEmail=${encodeURIComponent(parentEmail)}&parentPhone=${encodeURIComponent(parentPhone)}`}>
+          <Link href={`/lets-talk?source=assessment&childName=${encodeURIComponent(data.childName)}&childAge=${encodeURIComponent(data.childAge || '')}&parentEmail=${encodeURIComponent(data.parentEmail)}&parentPhone=${encodeURIComponent(data.parentPhone || '')}`}>
             <button className="w-full py-3.5 bg-gray-700 text-white font-semibold rounded-xl text-base flex items-center justify-center gap-2 hover:bg-gray-600 transition-all border border-gray-600 mb-4">
               <Calendar className="w-5 h-5" />
-              Talk to {childName}&apos;s Coach First
+              Talk to {data.childName}&apos;s Coach First
             </button>
           </Link>
           <p className="text-center text-xs text-gray-500 -mt-2 mb-4">Free 15-min call • No obligation</p>
@@ -370,7 +938,7 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
             className="w-full py-3 bg-green-600 text-white font-semibold rounded-xl text-base flex items-center justify-center gap-2 hover:bg-green-500 transition-all mb-6"
           >
             <MessageCircle className="w-5 h-5" />
-            Share {childName}&apos;s Results
+            Share {data.childName}&apos;s Results
           </button>
 
           {/* Testimonial */}
@@ -439,24 +1007,5 @@ Powered by *Yestoryd* - AI Reading Coach 📚`;
         }
       `}</style>
     </div>
-  );
-}
-
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="text-center">
-        <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
-        <p className="text-gray-400">Loading results...</p>
-      </div>
-    </div>
-  );
-}
-
-export default function ResultsPage() {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <ResultsContent />
-    </Suspense>
   );
 }
