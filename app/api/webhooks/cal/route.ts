@@ -1,7 +1,9 @@
 // app/api/webhooks/cal/route.ts
 // Handles Cal.com booking webhooks - creates discovery_calls record
-// Updated: Auto-assigns coach using round-robin (excludes unavailable/exiting coaches)
-// Fixed: Properly extracts values from Cal.com JSON response objects
+// Features:
+//   - Auto-assigns coach using round-robin (excludes unavailable/exiting coaches)
+//   - Properly extracts values from Cal.com JSON response objects
+//   - Auto-links to children table by matching email + child name
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -82,6 +84,35 @@ async function getEligibleCoach(scheduledDate: string): Promise<{ id: string; na
     return { id: coaches[0].id, name: coaches[0].name };
   } catch (error) {
     console.error('Error in getEligibleCoach:', error);
+    return null;
+  }
+}
+
+// ============================================
+// Helper: Find matching child from children table
+// ============================================
+async function findMatchingChild(parentEmail: string, childName: string): Promise<string | null> {
+  if (!parentEmail || !childName) return null;
+
+  try {
+    const { data: matchedChild, error } = await supabase
+      .from('children')
+      .select('id')
+      .ilike('parent_email', parentEmail)
+      .ilike('child_name', childName)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !matchedChild) {
+      console.log('No matching child found for:', { parentEmail, childName });
+      return null;
+    }
+
+    console.log('Auto-linked to child_id:', matchedChild.id);
+    return matchedChild.id;
+  } catch (error) {
+    console.error('Error finding matching child:', error);
     return null;
   }
 }
@@ -180,6 +211,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // ============================================
+    // AUTO-LINK: Find matching child from children table
+    // ============================================
+    const childId = await findMatchingChild(parentEmail, childName);
+
     // Get scheduled date for availability check
     const scheduledDate = booking.startTime ? 
       new Date(booking.startTime).toISOString().split('T')[0] : 
@@ -195,15 +231,22 @@ export async function POST(request: NextRequest) {
       : 'No eligible coach - will need manual assignment'
     );
 
+    // ============================================
     // Create discovery call record
+    // ============================================
     const { data: discoveryCall, error } = await supabase
       .from('discovery_calls')
       .insert({
+        // Link to children table
+        child_id: childId,
+        // Parent info
         parent_name: parentName,
         parent_email: parentEmail,
         parent_phone: parentPhone,
+        // Child info
         child_name: childName || 'Not provided',
         child_age: childAge,
+        // Booking info
         status: 'scheduled',
         scheduled_at: booking.startTime,
         meeting_url: booking.metadata?.videoCallUrl || booking.location || null,
@@ -215,6 +258,7 @@ export async function POST(request: NextRequest) {
         assignment_type: eligibleCoach ? 'auto' : 'pending',
         assigned_at: eligibleCoach ? new Date().toISOString() : null,
         assigned_by: eligibleCoach ? 'system' : null,
+        // Timestamps
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -257,7 +301,8 @@ export async function POST(request: NextRequest) {
       discoveryCallId: discoveryCall.id,
       message: 'Discovery call created successfully',
       autoAssigned: !!eligibleCoach,
-      assignedCoach: eligibleCoach?.name || null
+      assignedCoach: eligibleCoach?.name || null,
+      childLinked: !!childId
     });
 
   } catch (error: any) {
