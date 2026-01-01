@@ -301,9 +301,10 @@ function EnrollContent() {
             if (verifyRes.ok) {
               // Build success URL with all relevant params
               const successParams = new URLSearchParams({
-                childName: formData.childName,
-                enrollmentId: verifyData.enrollmentId || verifyData.data?.enrollmentId || '',
-              });
+                  childName: formData.childName,
+                  enrollmentId: verifyData.enrollmentId || verifyData.data?.enrollmentId || '',
+                  coachName: verifyData.coachName || verifyData.data?.coachName || '',
+                });
 
               // Add delayed start info if applicable
               if (startOption === 'later' && startDate) {

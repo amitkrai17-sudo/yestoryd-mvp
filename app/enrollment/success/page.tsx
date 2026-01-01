@@ -56,7 +56,7 @@ function SuccessContent() {
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-green-100 py-4">
         <div className="container mx-auto px-4 flex justify-center">
-          <Image src="/images/logo.png" alt="Yestoryd" width={140} height={45} className="h-10 w-auto" />
+          <Link href="/"><Image src="/images/logo.png" alt="Yestoryd" width={140} height={45} className="h-10 w-auto cursor-pointer" /></Link>
         </div>
       </header>
 
@@ -92,7 +92,7 @@ function SuccessContent() {
               {enrollmentId && (
                 <div className="flex justify-between items-center pb-4 border-b border-gray-100">
                   <span className="text-gray-500">Enrollment ID</span>
-                  <span className="font-mono text-sm bg-gray-100 px-3 py-1 rounded-lg">
+                  <span className="font-mono text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-lg">
                     {enrollmentId.slice(0, 8)}...
                   </span>
                 </div>
@@ -257,3 +257,4 @@ export default function EnrollmentSuccessPage() {
     </Suspense>
   );
 }
+
