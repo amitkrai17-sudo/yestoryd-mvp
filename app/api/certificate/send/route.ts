@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const scorePercent = (score / 10) * 100;
 
     // Build Let's Talk URL with params
-    const letsTalkUrl = `https://yestoryd.com/lets-talk?childName=${encodeURIComponent(childName)}&childAge=${childAge || ''}&parentEmail=${encodeURIComponent(email)}&source=certificate_email`;
+    const enrollUrl = `https://yestoryd.com/enroll?childName=${encodeURIComponent(childName)}&childAge=${childAge || ''}&parentEmail=${encodeURIComponent(email)}&source=certificate_email`;
 
     // LIGHT THEME email template matching web result screen
     const htmlContent = `
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
         <table align="center" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 12px;">
           <tr>
             <td align="center" style="background: linear-gradient(135deg, #ff0099, #7b008b); border-radius: 14px;">
-              <a href="${letsTalkUrl}" 
+              <a href="${enrollUrl}" 
                  style="display: inline-block; color: white; padding: 14px 28px; text-decoration: none; font-weight: 700; font-size: 15px;">
                 ${content.prioritizeConsultation ? '📅' : '🚀'} ${content.primaryCTA}
               </a>
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
         <table align="center" cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td align="center" style="background-color: transparent; border: 1px solid #d1d5db; border-radius: 14px;">
-              <a href="${letsTalkUrl}" 
+              <a href="${enrollUrl}" 
                  style="display: inline-block; color: #6b7280; padding: 12px 24px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 ${content.prioritizeConsultation ? '🚀 View Coaching Options' : '📅 Talk to Coach First'}
               </a>
@@ -307,3 +307,5 @@ export async function POST(request: NextRequest) {
     });
   }
 }
+
+

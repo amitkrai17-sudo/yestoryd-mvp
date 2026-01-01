@@ -231,8 +231,8 @@ function SuccessContent() {
           <div className="text-center mt-8">
             <p className="text-gray-500 text-sm">
               Questions? Email us at{' '}
-              <a href="mailto:hello@yestoryd.com" className="text-amber-600 hover:underline">
-                hello@yestoryd.com
+              <a href="mailto:engage@yestoryd.com" className="text-amber-600 hover:underline">
+                engage@yestoryd.com
               </a>{' '}
               or WhatsApp{' '}
               <a href="https://wa.me/918976287997" className="text-green-600 hover:underline">
