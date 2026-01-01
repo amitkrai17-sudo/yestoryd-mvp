@@ -1,6 +1,7 @@
 // app/api/webhooks/cal/route.ts
 // Handles Cal.com booking webhooks - creates discovery_calls record
 // Updated: Auto-assigns coach using round-robin (excludes unavailable/exiting coaches)
+// Fixed: Properly extracts values from Cal.com JSON response objects
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -18,6 +19,18 @@ export async function GET() {
     timestamp: new Date().toISOString()
   });
 }
+
+// ============================================
+// Helper: Extract value from Cal.com response objects
+// Cal.com returns: { "label": "field_name", "value": "actual_value", "isHidden": false }
+// ============================================
+const extractValue = (field: any): string => {
+  if (!field) return '';
+  if (typeof field === 'object' && field.value !== undefined) {
+    return String(field.value);
+  }
+  return String(field);
+};
 
 // ============================================
 // Helper: Get eligible coach for auto-assignment
@@ -108,25 +121,44 @@ export async function POST(request: NextRequest) {
     const attendee = booking.attendees?.[0] || {};
     const responses = booking.responses || {};
 
-    // Cal.com field names - try multiple variations
-    const parentName = responses.name || attendee.name || responses['Your name'] || '';
-    const parentEmail = responses.email || attendee.email || responses['Email address'] || '';
-    const parentPhone = responses.phone || responses['Phone Number'] || responses.phoneNumber || '';
+    // ============================================
+    // Extract parent info - with value extraction for JSON objects
+    // ============================================
+    const parentName = extractValue(responses.your_name) || 
+                       extractValue(responses.name) || 
+                       extractValue(responses['Your name']) || 
+                       extractValue(responses['Your Name']) ||
+                       attendee.name || '';
+    
+    const parentEmail = extractValue(responses.email_address) || 
+                        extractValue(responses.email) || 
+                        extractValue(responses['Email address']) || 
+                        extractValue(responses['Email Address']) ||
+                        attendee.email || '';
+    
+    const parentPhone = extractValue(responses.phone) || 
+                        extractValue(responses['Phone Number']) || 
+                        extractValue(responses['Phone number']) ||
+                        extractValue(responses.phoneNumber) ||
+                        extractValue(responses.phone_number) || '';
 
-    // Child info - try multiple field name variations
-    const childName = responses.childName ||
-                     responses['Child Name'] ||
-                     responses['child-name'] ||
-                     responses['childname'] ||
-                     responses['child_name'] ||
-                     '';
+    // ============================================
+    // Extract child info - with value extraction for JSON objects
+    // ============================================
+    const childName = extractValue(responses['Child Name']) ||
+                      extractValue(responses['child name']) ||
+                      extractValue(responses.childName) ||
+                      extractValue(responses['child-name']) ||
+                      extractValue(responses.child_name) ||
+                      extractValue(responses.childname) || '';
 
-    const childAgeRaw = responses.childAge ||
-                       responses['Child Age'] ||
-                       responses['child-age'] ||
-                       responses['childage'] ||
-                       responses['child_age'] ||
-                       '';
+    const childAgeRaw = extractValue(responses['Child Age']) ||
+                        extractValue(responses['child age']) ||
+                        extractValue(responses.childAge) ||
+                        extractValue(responses['child-age']) ||
+                        extractValue(responses.child_age) ||
+                        extractValue(responses.childage) || '';
+    
     const childAge = parseInt(childAgeRaw) || null;
 
     console.log('Extracted data:', {
@@ -135,7 +167,7 @@ export async function POST(request: NextRequest) {
       parentPhone,
       childName,
       childAge,
-      responses: Object.keys(responses)
+      responseKeys: Object.keys(responses)
     });
 
     // Validate required fields
