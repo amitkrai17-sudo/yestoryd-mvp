@@ -249,10 +249,15 @@ Questions? WhatsApp: +91 89762 87997`;
             dateTime: endDate.toISOString(),
             timeZone: 'Asia/Kolkata',
           },
-          attendees: [
-            { email: data.parentEmail, displayName: data.parentName },
-            { email: data.coachEmail, displayName: data.coachName },
-            { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' }, // For tl;dv
+          organizer: {
+              email: 'engage@yestoryd.com',
+              displayName: 'Yestoryd Reading Sessions',
+              self: true,
+            },
+            attendees: [
+              { email: data.parentEmail, displayName: data.parentName },
+              { email: data.coachEmail, displayName: data.coachName },
+              { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' }, // For tl;dv
           ],
           conferenceData: {
             createRequest: {
@@ -502,6 +507,8 @@ async function sendConfirmationEmail(
     return { success: false, error: error.message };
   }
 }
+
+
 
 
 
