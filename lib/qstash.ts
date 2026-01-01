@@ -2,6 +2,13 @@
 // Background job processing - Direct call (bypassing QStash for now)
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
+import { Client } from '@upstash/qstash';
+
+// Export QStash client for other modules that need it
+export const qstash = new Client({
+  token: process.env.QSTASH_TOKEN!,
+});
+
 // Types for enrollment data
 interface EnrollmentJobData {
   enrollmentId: string;
