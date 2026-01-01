@@ -128,7 +128,7 @@ Generate a JSON response with this EXACT structure:
         "suggested_activity": "One specific activity for home practice"
     },
     
-    "feedback": "80-100 words, 4 sentences. MUST use name '${name}'. Include specific phonics observations and quote actual errors heard.",
+    "feedback": "100-120 words, 5 sentences. MUST use name '${name}'. Include specific phonics observations and quote actual errors heard.",
     
     "errors": ["simple list of all error words for quick reference"],
     "strengths": ["2-3 specific things done well with evidence"],
