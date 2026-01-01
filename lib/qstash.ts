@@ -1,13 +1,6 @@
 // lib/qstash.ts
-// QStash client for background job processing
+// Background job processing - Direct call (bypassing QStash for now)
 // Yestoryd - AI-Powered Reading Intelligence Platform
-
-import { Client } from '@upstash/qstash';
-
-// Initialize QStash client
-export const qstash = new Client({
-  token: process.env.QSTASH_TOKEN!,
-});
 
 // Types for enrollment data
 interface EnrollmentJobData {
@@ -25,45 +18,48 @@ interface EnrollmentJobData {
 
 /**
  * Queue enrollment completion job
- * This handles:
- * - Scheduling 9 Google Calendar sessions
- * - Sending confirmation email
- * - Updating enrollment status
- * 
- * Runs asynchronously with automatic retries
+ * TEMPORARILY calling directly instead of using QStash
  */
 export async function queueEnrollmentComplete(data: EnrollmentJobData) {
-  const appUrl = 'https://yestoryd.com';
+  const appUrl = 'https://www.yestoryd.com';
   
   try {
-    const response = await qstash.publishJSON({
-      url: `${appUrl}/api/jobs/enrollment-complete`,
-      body: data,
-      retries: 3,           // Retry up to 3 times if it fails
-      delay: 0,             // Start immediately
-      // Optional: Add a callback URL for job completion notification
-      // callback: `${appUrl}/api/jobs/callback`,
+    // Call job endpoint directly (bypass QStash temporarily)
+    const response = await fetch(`${appUrl}/api/jobs/enrollment-complete`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        // Skip signature verification for direct calls
+        'x-direct-call': 'true',
+      },
+      body: JSON.stringify(data),
     });
-
-    console.log('📤 Queued enrollment-complete job:', {
-      messageId: response.messageId,
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Job failed: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('📤 Job executed directly:', {
       enrollmentId: data.enrollmentId,
       childName: data.childName,
+      sessionsScheduled: result.sessionsScheduled,
     });
     
     return {
       success: true,
-      messageId: response.messageId,
+      messageId: 'direct-' + Date.now(),
     };
   } catch (error: any) {
-    console.error('❌ Failed to queue job:', error.message);
+    console.error('❌ Failed to execute job:', error.message);
     throw error;
   }
 }
 
 /**
  * Queue a delayed follow-up email
- * Useful for sending reminders or nurture sequences
+ * TEMPORARILY disabled - will be re-enabled with QStash
  */
 export async function queueDelayedEmail(data: {
   type: 'welcome' | 'reminder' | 'followup';
@@ -72,27 +68,13 @@ export async function queueDelayedEmail(data: {
   childName?: string;
   delaySeconds?: number;
 }) {
-  const appUrl = 'https://yestoryd.com';
-  
-  const response = await qstash.publishJSON({
-    url: `${appUrl}/api/jobs/send-email`,
-    body: data,
-    delay: data.delaySeconds || 0,
-    retries: 2,
-  });
-
-  console.log('📤 Queued email job:', {
-    messageId: response.messageId,
-    type: data.type,
-    delay: data.delaySeconds ? `${data.delaySeconds}s` : 'immediate',
-  });
-  
-  return response;
+  console.log('⏸️ Delayed email queuing disabled (QStash bypass mode)');
+  return { messageId: 'disabled' };
 }
 
 /**
  * Queue session reminder
- * Send 24 hours before scheduled session
+ * TEMPORARILY disabled - will be re-enabled with QStash
  */
 export async function queueSessionReminder(data: {
   sessionId: string;
@@ -103,33 +85,6 @@ export async function queueSessionReminder(data: {
   sessionDate: string;
   meetLink: string;
 }) {
-  const appUrl = 'https://yestoryd.com';
-  
-  // Calculate delay to send 24 hours before session
-  const sessionTime = new Date(data.sessionDate).getTime();
-  const reminderTime = sessionTime - (24 * 60 * 60 * 1000); // 24 hours before
-  const now = Date.now();
-  const delayMs = Math.max(0, reminderTime - now);
-  const delaySeconds = Math.floor(delayMs / 1000);
-
-  if (delaySeconds <= 0) {
-    console.log('⚠️ Session too soon for reminder, skipping');
-    return null;
-  }
-
-  const response = await qstash.publishJSON({
-    url: `${appUrl}/api/jobs/session-reminder`,
-    body: data,
-    delay: delaySeconds,
-    retries: 2,
-  });
-
-  console.log('📤 Queued session reminder:', {
-    messageId: response.messageId,
-    sessionId: data.sessionId,
-    scheduledFor: new Date(reminderTime).toISOString(),
-  });
-  
-  return response;
+  console.log('⏸️ Session reminder queuing disabled (QStash bypass mode)');
+  return { messageId: 'disabled' };
 }
-

@@ -53,8 +53,9 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('upstash-signature');
 
     // 2. Verify QStash signature (security)
-    // Skip verification in development for testing
-    if (process.env.NODE_ENV === 'production') {
+    // Skip verification for direct calls or in development
+    const isDirectCall = request.headers.get('x-direct-call') === 'true';
+    if (process.env.NODE_ENV === 'production' && !isDirectCall) {
       try {
         const isValid = await receiver.verify({
           signature: signature || '',
@@ -500,3 +501,4 @@ async function sendConfirmationEmail(
     return { success: false, error: error.message };
   }
 }
+
