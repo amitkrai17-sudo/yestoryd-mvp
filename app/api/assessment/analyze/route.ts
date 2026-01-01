@@ -1,5 +1,5 @@
 // file: app/api/assessment/analyze/route.ts
-// rAI v2.0 - Assessment analysis with learning_events integration
+// rAI v2.1 - Enhanced assessment with phonics analysis, error classification & skill breakdown
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const wordCount = passage.split(' ').length;
 
     const analysisPrompt = `
-Role: Expert Phonics & Reading Specialist.
+Role: Expert Phonics & Reading Specialist with deep knowledge of systematic phonics instruction.
 Task: Analyze audio of a ${age}-year-old child named "${name}" reading the passage below.
 
 IMPORTANT: The child's name is "${name}". You MUST use exactly "${name}" (not any other name) in your feedback.
@@ -94,17 +94,71 @@ Generate a JSON response with this EXACT structure:
     "speed_score": (integer 1-10, appropriate pace for age),
     "wpm": (integer, words per minute),
     "completeness_percentage": (integer 0-100),
-    "feedback": (string, 80-100 words, 4 sentences - MUST use the name "${name}"),
-    "errors": (list of specific words missed),
-    "strengths": (list of 2-3 things done well),
-    "areas_to_improve": (list of 2-3 specific areas)
+    
+    "error_classification": {
+        "substitutions": [{"original": "word", "read_as": "wrong_word"}],
+        "omissions": ["list of skipped words"],
+        "insertions": ["list of added words not in passage"],
+        "reversals": [{"original": "was", "read_as": "saw"}],
+        "mispronunciations": [{"word": "word", "issue": "description of how it was mispronounced"}]
+    },
+    
+    "phonics_analysis": {
+        "struggling_phonemes": ["th", "ch", "sh", "long_a", "r_controlled", etc.],
+        "phoneme_details": [
+            {"phoneme": "th", "examples": ["the→da", "this→dis"], "frequency": "frequent"},
+            {"phoneme": "bl", "examples": ["blue→bue"], "frequency": "occasional"}
+        ],
+        "strong_phonemes": ["short_a", "m", "s", etc.],
+        "recommended_focus": "Primary phonics area to practice"
+    },
+    
+    "skill_breakdown": {
+        "decoding": {"score": 1-10, "notes": "specific observation"},
+        "sight_words": {"score": 1-10, "notes": "specific observation"},
+        "blending": {"score": 1-10, "notes": "specific observation"},
+        "segmenting": {"score": 1-10, "notes": "specific observation"},
+        "expression": {"score": 1-10, "notes": "specific observation"},
+        "comprehension_indicators": {"score": 1-10, "notes": "based on phrasing/pauses"}
+    },
+    
+    "feedback": (string, 80-100 words, 4 sentences - MUST use the name "${name}". Include specific phonics observation.),
+    
+    "errors": (simple list of all error words for quick reference),
+    "strengths": (list of 2-3 specific things done well, mention phonics strengths),
+    "areas_to_improve": (list of 2-3 specific areas with phonics focus),
+    
+    "practice_recommendations": {
+        "daily_words": ["5 specific words to practice daily based on errors"],
+        "phonics_focus": "Specific phoneme pattern to work on (e.g., 'consonant blends bl, cl, fl')",
+        "suggested_activity": "One specific activity for home practice"
+    }
 }
+
+PHONEME CATEGORIES TO ASSESS:
+- Consonants: b, c, d, f, g, h, j, k, l, m, n, p, q, r, s, t, v, w, x, y, z
+- Consonant Blends: bl, br, cl, cr, dr, fl, fr, gl, gr, pl, pr, sc, sk, sl, sm, sn, sp, st, sw, tr, tw
+- Consonant Digraphs: ch, sh, th, wh, ph, ng, ck
+- Short Vowels: short_a, short_e, short_i, short_o, short_u
+- Long Vowels: long_a, long_e, long_i, long_o, long_u
+- Vowel Teams: ai, ay, ea, ee, ie, oa, oe, ue, ui, oo, ou, ow, oi, oy, au, aw
+- R-Controlled Vowels: ar, er, ir, or, ur
+- Silent Letters: kn, wr, gn, mb
+
+SKILL DEFINITIONS:
+- Decoding: Ability to sound out unfamiliar words using phonics rules
+- Sight Words: Recognition of common high-frequency words (the, was, said, etc.)
+- Blending: Combining individual sounds to form words (c-a-t → cat)
+- Segmenting: Breaking words into individual sounds
+- Expression: Reading with appropriate intonation and emotion
+- Comprehension Indicators: Pausing at punctuation, emphasis on key words
 
 SCORING CONSISTENCY RULES:
 - If completeness_percentage < 80%, ALL scores must be 4 or lower
 - If completeness_percentage < 50%, ALL scores must be 2 or lower
 - Speed score should reflect WPM: <30 WPM = 1-3, 30-60 WPM = 4-6, 60-100 WPM = 7-8, >100 WPM = 9-10
 - Be realistic: a choppy reader with many errors should NOT get 7+ in fluency
+- Skill scores should be consistent with overall performance
 
 Respond ONLY with valid JSON. No additional text.`;
 
@@ -125,18 +179,59 @@ Respond ONLY with valid JSON. No additional text.`;
     const response = await result.response;
     const responseText = response.text();
 
-    // Updated interface to match new AI response structure
-    let analysisResult: {
+    // Updated interface to match enhanced AI response structure
+    interface ErrorClassification {
+      substitutions: { original: string; read_as: string }[];
+      omissions: string[];
+      insertions: string[];
+      reversals: { original: string; read_as: string }[];
+      mispronunciations: { word: string; issue: string }[];
+    }
+
+    interface PhonicsAnalysis {
+      struggling_phonemes: string[];
+      phoneme_details: { phoneme: string; examples: string[]; frequency: string }[];
+      strong_phonemes: string[];
+      recommended_focus: string;
+    }
+
+    interface SkillScore {
+      score: number;
+      notes: string;
+    }
+
+    interface SkillBreakdown {
+      decoding: SkillScore;
+      sight_words: SkillScore;
+      blending: SkillScore;
+      segmenting: SkillScore;
+      expression: SkillScore;
+      comprehension_indicators: SkillScore;
+    }
+
+    interface PracticeRecommendations {
+      daily_words: string[];
+      phonics_focus: string;
+      suggested_activity: string;
+    }
+
+    interface AnalysisResult {
       clarity_score: number;
       fluency_score: number;
       speed_score: number;
       wpm: number;
+      completeness_percentage: number;
+      error_classification: ErrorClassification;
+      phonics_analysis: PhonicsAnalysis;
+      skill_breakdown: SkillBreakdown;
+      feedback: string;
       errors: string[];
       strengths: string[];
       areas_to_improve: string[];
-      completeness_percentage: number;
-      feedback: string;
-    };
+      practice_recommendations: PracticeRecommendations;
+    }
+
+    let analysisResult: AnalysisResult;
     
     try {
       let cleanedResponse = responseText
@@ -158,17 +253,43 @@ Respond ONLY with valid JSON. No additional text.`;
       
     } catch {
       console.error('Failed to parse Gemini response:', responseText);
-      // Updated fallback to match new structure
+      // Enhanced fallback with all new fields
       analysisResult = {
         clarity_score: 5,
         fluency_score: 5,
         speed_score: 5,
         wpm: 60,
+        completeness_percentage: 80,
+        error_classification: {
+          substitutions: [],
+          omissions: [],
+          insertions: [],
+          reversals: [],
+          mispronunciations: []
+        },
+        phonics_analysis: {
+          struggling_phonemes: [],
+          phoneme_details: [],
+          strong_phonemes: ['short_a', 'm', 's'],
+          recommended_focus: 'Continue practicing current level'
+        },
+        skill_breakdown: {
+          decoding: { score: 5, notes: 'Assessment needed' },
+          sight_words: { score: 5, notes: 'Assessment needed' },
+          blending: { score: 5, notes: 'Assessment needed' },
+          segmenting: { score: 5, notes: 'Assessment needed' },
+          expression: { score: 5, notes: 'Assessment needed' },
+          comprehension_indicators: { score: 5, notes: 'Assessment needed' }
+        },
         errors: [],
         strengths: ['Completed the reading', 'Showed effort'],
         areas_to_improve: ['Practice reading aloud daily', 'Work on fluency'],
-        completeness_percentage: 80,
-        feedback: `${name} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily reading aloud to build confidence and smooth out hesitations. With consistent effort, ${name} will show noticeable improvement in reading skills.`
+        feedback: `${name} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily reading aloud to build confidence and smooth out hesitations. With consistent effort, ${name} will show noticeable improvement in reading skills.`,
+        practice_recommendations: {
+          daily_words: [],
+          phonics_focus: 'Review current phonics level',
+          suggested_activity: 'Read aloud for 10 minutes daily'
+        }
       };
     }
 
@@ -179,6 +300,17 @@ Respond ONLY with valid JSON. No additional text.`;
     
     // Calculate overall as weighted average (clarity 35%, fluency 40%, speed 25%)
     const overallScore = Math.round((clarityScore * 0.35) + (fluencyScore * 0.40) + (speedScore * 0.25));
+
+    // Calculate average skill score
+    const skillScores = analysisResult.skill_breakdown;
+    const avgSkillScore = Math.round(
+      (skillScores.decoding.score + 
+       skillScores.sight_words.score + 
+       skillScores.blending.score + 
+       skillScores.segmenting.score + 
+       skillScores.expression.score + 
+       skillScores.comprehension_indicators.score) / 6
+    );
 
     let childId: string | null = null;
     
@@ -199,6 +331,9 @@ Respond ONLY with valid JSON. No additional text.`;
             parent_name: parentName,
             parent_phone: parentPhone,
             latest_assessment_score: overallScore,
+            // Store phonics focus for coach reference
+            phonics_focus: analysisResult.phonics_analysis?.recommended_focus || null,
+            struggling_phonemes: analysisResult.phonics_analysis?.struggling_phonemes || [],
             ...(lead_source === 'coach' && lead_source_coach_id ? {
               lead_source: 'coach',
               lead_source_coach_id,
@@ -220,6 +355,8 @@ Respond ONLY with valid JSON. No additional text.`;
             parent_phone: parentPhone,
             lead_status: 'assessed',
             latest_assessment_score: overallScore,
+            phonics_focus: analysisResult.phonics_analysis?.recommended_focus || null,
+            struggling_phonemes: analysisResult.phonics_analysis?.struggling_phonemes || [],
             lead_source: lead_source || 'yestoryd',
             lead_source_coach_id: lead_source_coach_id || null,
             referral_code_used: referral_code_used || null,
@@ -252,6 +389,11 @@ Respond ONLY with valid JSON. No additional text.`;
           fluency_score: fluencyScore,
           speed_score: speedScore,
           passage_word_count: wordCount,
+          // Enhanced data
+          error_classification: analysisResult.error_classification,
+          phonics_analysis: analysisResult.phonics_analysis,
+          skill_breakdown: analysisResult.skill_breakdown,
+          practice_recommendations: analysisResult.practice_recommendations,
         };
 
         const searchableContent = buildSearchableContent(
@@ -269,9 +411,10 @@ Respond ONLY with valid JSON. No additional text.`;
           console.error('⚠️ Embedding generation failed (non-blocking):', embError);
         }
 
-        // Derive fluency description from score for summary
+        // Enhanced AI summary with phonics info
         const fluencyDesc = fluencyScore >= 7 ? 'smooth' : fluencyScore >= 5 ? 'moderate' : 'developing';
-        const aiSummary = `${name} completed a reading assessment scoring ${overallScore}/10. Reading speed was ${analysisResult.wpm} WPM with ${fluencyDesc} fluency. ${analysisResult.strengths?.[0] || 'Showed good effort'}. Areas to work on: ${analysisResult.areas_to_improve?.[0] || 'daily practice'}.`;
+        const phonicsFocus = analysisResult.phonics_analysis?.recommended_focus || 'general practice';
+        const aiSummary = `${name} completed a reading assessment scoring ${overallScore}/10. Reading speed was ${analysisResult.wpm} WPM with ${fluencyDesc} fluency. ${analysisResult.strengths?.[0] || 'Showed good effort'}. Phonics focus: ${phonicsFocus}. Practice: ${analysisResult.practice_recommendations?.daily_words?.slice(0, 3).join(', ') || 'daily reading'}.`;
 
         const { error: eventError } = await supabase
           .from('learning_events')
@@ -310,6 +453,10 @@ Respond ONLY with valid JSON. No additional text.`;
         
         if (age >= 4 && age <= 7) leadScore += 15;
         else if (age >= 8 && age <= 10) leadScore += 10;
+
+        // Bonus for specific phonics struggles (indicates need for coaching)
+        const strugglingCount = analysisResult.phonics_analysis?.struggling_phonemes?.length || 0;
+        if (strugglingCount >= 3) leadScore += 10;
         
         const leadStatus = leadScore >= 60 ? 'hot' : leadScore >= 30 ? 'warm' : 'new';
         
@@ -338,6 +485,14 @@ Respond ONLY with valid JSON. No additional text.`;
       }
     }
 
+    // Count total errors for summary
+    const totalErrors = 
+      (analysisResult.error_classification?.substitutions?.length || 0) +
+      (analysisResult.error_classification?.omissions?.length || 0) +
+      (analysisResult.error_classification?.insertions?.length || 0) +
+      (analysisResult.error_classification?.reversals?.length || 0) +
+      (analysisResult.error_classification?.mispronunciations?.length || 0);
+
     return NextResponse.json({
       success: true,
       childId,
@@ -347,16 +502,33 @@ Respond ONLY with valid JSON. No additional text.`;
       parentEmail,
       parentPhone,
       passage,
+      
+      // Core scores
       overall_score: overallScore,
       clarity_score: clarityScore,
       fluency_score: fluencyScore,
       speed_score: speedScore,
       wpm: analysisResult.wpm,
-      errors: analysisResult.errors,
       completeness: analysisResult.completeness_percentage,
+      
+      // Error analysis
+      errors: analysisResult.errors,
+      error_classification: analysisResult.error_classification,
+      total_error_count: totalErrors,
+      
+      // Phonics analysis
+      phonics_analysis: analysisResult.phonics_analysis,
+      
+      // Skill breakdown
+      skill_breakdown: analysisResult.skill_breakdown,
+      avg_skill_score: avgSkillScore,
+      
+      // Feedback & recommendations
       feedback: analysisResult.feedback,
       strengths: analysisResult.strengths,
       areas_to_improve: analysisResult.areas_to_improve,
+      practice_recommendations: analysisResult.practice_recommendations,
+      
       encouragement: `Keep reading daily, ${name}! Every page makes you stronger.`,
       lead_source: lead_source || 'yestoryd',
     });
