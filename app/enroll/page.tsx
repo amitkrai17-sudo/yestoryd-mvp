@@ -75,6 +75,14 @@ function EnrollContent() {
   // Dynamic coach settings from database
   const [coach, setCoach] = useState<CoachSettings>(DEFAULT_COACH);
 
+  // Dynamic pricing from database
+  const [pricing, setPricing] = useState({
+    programPrice: 5999,
+    originalPrice: 9999,
+    displayPrice: '?5,999',
+    displayOriginalPrice: '?9,999',
+  });
+
   // Pre-fill from URL params (supports both /enroll direct and redirects from /checkout)
   const [formData, setFormData] = useState({
     parentName: searchParams.get('parentName') || '',
@@ -157,6 +165,40 @@ function EnrollContent() {
     }
 
     fetchCoachSettings();
+
+    // Fetch pricing settings
+    async function fetchPricingSettings() {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('key, value')
+          .eq('category', 'pricing');
+
+        if (error) {
+          console.error('Error fetching pricing:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const pricingData: any = {};
+          data.forEach((row) => {
+            const val = typeof row.value === 'string' ? row.value.replace(/^"|"$/g, '') : row.value;
+            pricingData[row.key] = val;
+          });
+
+          setPricing({
+            programPrice: parseInt(pricingData.program_price) || 5999,
+            originalPrice: parseInt(pricingData.program_original_price) || 9999,
+            displayPrice: pricingData.program_price_display || '?5,999',
+            displayOriginalPrice: pricingData.program_original_price_display || '?9,999',
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch pricing:', err);
+      }
+    }
+
+    fetchPricingSettings();
   }, []);
 
   // Load Razorpay script
@@ -195,7 +237,7 @@ function EnrollContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: 5999,
+          amount: pricing.programPrice,
           parentName: formData.parentName,
           parentEmail: formData.parentEmail,
           parentPhone: formData.parentPhone,
@@ -756,4 +798,7 @@ export default function EnrollPage() {
     </Suspense>
   );
 }
+
+
+
 
