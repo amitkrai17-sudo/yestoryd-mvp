@@ -1,7 +1,7 @@
 // =============================================================================
 // FILE: app/enroll/page.tsx
 // PURPOSE: Unified Enrollment Page with "Pay Now, Start Later" feature
-// DYNAMIC: Coach info pulled from site_settings table
+// DYNAMIC: Coach info from site_settings, Pricing from pricing_plans table
 // =============================================================================
 
 'use client';
@@ -75,12 +75,15 @@ function EnrollContent() {
   // Dynamic coach settings from database
   const [coach, setCoach] = useState<CoachSettings>(DEFAULT_COACH);
 
-  // Dynamic pricing from database
+  // Dynamic pricing from pricing_plans table
   const [pricing, setPricing] = useState({
     programPrice: 5999,
     originalPrice: 9999,
     displayPrice: '₹5,999',
     displayOriginalPrice: '₹9,999',
+    discountLabel: 'SAVE 50% — Launch Offer',
+    sessionsIncluded: 9,
+    durationMonths: 3,
   });
 
   // Pre-fill from URL params (supports both /enroll direct and redirects from /checkout)
@@ -187,6 +190,9 @@ function EnrollContent() {
             originalPrice: data.original_price,
             displayPrice: `₹${data.discounted_price.toLocaleString('en-IN')}`,
             displayOriginalPrice: `₹${data.original_price.toLocaleString('en-IN')}`,
+            discountLabel: data.discount_label || 'SAVE 50% — Launch Offer',
+            sessionsIncluded: data.sessions_included || 9,
+            durationMonths: data.duration_months || 3,
           });
         }
       } catch (err) {
@@ -255,7 +261,7 @@ function EnrollContent() {
         amount: data.amount,
         currency: 'INR',
         name: 'Yestoryd',
-        description: '3-Month Reading Coaching Program',
+        description: `${pricing.durationMonths}-Month Reading Coaching Program`,
         order_id: data.orderId,
         prefill: {
           name: formData.parentName,
@@ -465,7 +471,7 @@ function EnrollContent() {
                   <span>
                     {startOption === 'later' && startDate
                       ? `Calendar invites sent 3 days before ${formatDateForDisplay(startDate)}`
-                      : 'Calendar invites for all 9 sessions (within 24hrs)'}
+                      : `Calendar invites for all ${pricing.sessionsIncluded} sessions (within 24hrs)`}
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
@@ -503,16 +509,16 @@ function EnrollContent() {
               <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 text-white">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold">3-Month Reading Coaching</h2>
-                    <p className="text-white/80 text-xs">9 sessions • Everything included</p>
+                    <h2 className="text-lg font-bold">{pricing.durationMonths}-Month Reading Coaching</h2>
+                    <p className="text-white/80 text-xs">{pricing.sessionsIncluded} sessions • Everything included</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs line-through text-white/60">₹11,999</div>
+                    <div className="text-xs line-through text-white/60">{pricing.displayOriginalPrice}</div>
                     <div className="text-2xl font-black">{pricing.displayPrice}</div>
                   </div>
                 </div>
                 <div className="mt-2 inline-block bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold">
-                  SAVE 50% — Launch Offer
+                  {pricing.discountLabel}
                 </div>
               </div>
 
@@ -792,8 +798,3 @@ export default function EnrollPage() {
     </Suspense>
   );
 }
-
-
-
-
-
