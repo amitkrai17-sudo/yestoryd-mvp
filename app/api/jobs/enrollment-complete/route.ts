@@ -171,7 +171,8 @@ async function scheduleCalendarSessions(data: {
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     undefined,
     process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    ['https://www.googleapis.com/auth/calendar']
+    ['https://www.googleapis.com/auth/calendar'],
+    process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com'
   );
 
   const calendar = google.calendar({ version: 'v3', auth });
@@ -501,5 +502,6 @@ async function sendConfirmationEmail(
     return { success: false, error: error.message };
   }
 }
+
 
 
