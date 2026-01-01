@@ -79,8 +79,8 @@ function EnrollContent() {
   const [pricing, setPricing] = useState({
     programPrice: 5999,
     originalPrice: 9999,
-    displayPrice: '?5,999',
-    displayOriginalPrice: '?9,999',
+    displayPrice: '₹5,999',
+    displayOriginalPrice: '₹9,999',
   });
 
   // Pre-fill from URL params (supports both /enroll direct and redirects from /checkout)
@@ -166,31 +166,27 @@ function EnrollContent() {
 
     fetchCoachSettings();
 
-    // Fetch pricing settings
+    // Fetch pricing from pricing_plans table
     async function fetchPricingSettings() {
       try {
         const { data, error } = await supabase
-          .from('site_settings')
-          .select('key, value')
-          .eq('category', 'pricing');
+          .from('pricing_plans')
+          .select('*')
+          .eq('slug', 'coaching-3month')
+          .eq('is_active', true)
+          .single();
 
         if (error) {
           console.error('Error fetching pricing:', error);
           return;
         }
 
-        if (data && data.length > 0) {
-          const pricingData: any = {};
-          data.forEach((row) => {
-            const val = typeof row.value === 'string' ? row.value.replace(/^"|"$/g, '') : row.value;
-            pricingData[row.key] = val;
-          });
-
+        if (data) {
           setPricing({
-            programPrice: parseInt(pricingData.program_price) || 5999,
-            originalPrice: parseInt(pricingData.program_original_price) || 9999,
-            displayPrice: pricingData.program_price_display || '?5,999',
-            displayOriginalPrice: pricingData.program_original_price_display || '?9,999',
+            programPrice: data.discounted_price,
+            originalPrice: data.original_price,
+            displayPrice: `₹${data.discounted_price.toLocaleString('en-IN')}`,
+            displayOriginalPrice: `₹${data.original_price.toLocaleString('en-IN')}`,
           });
         }
       } catch (err) {
