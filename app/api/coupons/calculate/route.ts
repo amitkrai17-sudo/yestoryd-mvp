@@ -26,23 +26,20 @@ export async function POST(request: NextRequest) {
     const { couponCode, applyCredit, parentId, productType, customAmount } = body;
 
     // =================================================================
-    // STEP 1: Get base price from site_settings
+    // STEP 1: Get base price from appropriate source
     // =================================================================
-    const priceKeys: Record<string, string> = {
-      coaching: 'coaching_program_price',
-      elearning_quarterly: 'elearning_quarterly_price',
-      elearning_annual: 'elearning_annual_price',
-      group_class: 'group_class_price',
-    };
-
+    
+    // Get discount settings from site_settings
     const { data: settings } = await supabase
       .from('site_settings')
       .select('key, value')
       .in('key', [
-        priceKeys[productType],
         'max_discount_percent',
         'referral_discount_percent',
         'referral_credit_percent',
+        'elearning_quarterly_price',
+        'elearning_annual_price',
+        'group_class_price',
       ]);
 
     const settingsMap: Record<string, string> = {};
@@ -51,8 +48,28 @@ export async function POST(request: NextRequest) {
       settingsMap[s.key] = s.value?.toString().replace(/"/g, '') || '';
     });
 
-    // Get original amount from site_settings or use custom amount
-    const originalAmount = customAmount || parseInt(settingsMap[priceKeys[productType]] || '5999');
+    // Get base price based on product type
+    let originalAmount = customAmount || 5999; // Default fallback
+
+    if (productType === 'coaching') {
+      // Read coaching price from pricing_plans table (same as enroll page)
+      const { data: pricingPlan } = await supabase
+        .from('pricing_plans')
+        .select('discounted_price')
+        .eq('slug', 'coaching-3month')
+        .eq('is_active', true)
+        .single();
+      
+      if (pricingPlan) {
+        originalAmount = customAmount || pricingPlan.discounted_price;
+      }
+    } else if (productType === 'elearning_quarterly') {
+      originalAmount = customAmount || parseInt(settingsMap.elearning_quarterly_price || '999');
+    } else if (productType === 'elearning_annual') {
+      originalAmount = customAmount || parseInt(settingsMap.elearning_annual_price || '2999');
+    } else if (productType === 'group_class') {
+      originalAmount = customAmount || parseInt(settingsMap.group_class_price || '499');
+    }
     const maxDiscountPercent = parseInt(settingsMap.max_discount_percent || '20');
     const maxDiscount = Math.round(originalAmount * maxDiscountPercent / 100);
 
@@ -86,7 +103,8 @@ export async function POST(request: NextRequest) {
         couponInfo = coupon;
 
         // Calculate raw coupon discount
-        if (coupon.discountType === 'percent') {
+        // Handle both 'percent' and 'percentage' as percentage discount
+        if (coupon.discountType === 'percent' || coupon.discountType === 'percentage') {
           couponDiscount = Math.round(originalAmount * coupon.discountValue / 100);
         } else {
           couponDiscount = coupon.discountValue;

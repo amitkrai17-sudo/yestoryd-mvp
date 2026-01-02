@@ -23,16 +23,7 @@ interface SettingItem {
 }
 
 const SETTINGS_CONFIG: SettingItem[] = [
-  // Pricing
-  {
-    key: 'coaching_program_price',
-    value: '5999',
-    label: 'Coaching Program Price',
-    description: '3-month coaching program (9 sessions)',
-    type: 'number',
-    suffix: '₹',
-    category: 'pricing',
-  },
+  // Pricing (Note: Coaching price is managed in Site Settings → Pricing tab)
   {
     key: 'elearning_quarterly_price',
     value: '999',
@@ -294,6 +285,17 @@ export default function PricingSettingsPage() {
             {error}
           </div>
         )}
+
+        {/* Info Banner - Coaching price location */}
+        <div className="mb-6 flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-700">
+          <IndianRupee className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Coaching Program Price</p>
+            <p className="text-sm text-blue-600 mt-0.5">
+              Managed in <a href="/admin/settings" className="underline hover:text-blue-800 font-semibold">Site Settings → Pricing tab</a>
+            </p>
+          </div>
+        </div>
 
         {/* Settings Groups */}
         <div className="space-y-6">

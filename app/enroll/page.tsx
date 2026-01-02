@@ -1,6 +1,6 @@
 // =============================================================================
 // FILE: app/enroll/page.tsx
-// PURPOSE: Unified Enrollment Page with "Pay Now, Start Later" feature
+// PURPOSE: Unified Enrollment Page with Coupon/Referral Support
 // DYNAMIC: Coach info from site_settings, Pricing from pricing_plans table
 // =============================================================================
 
@@ -32,6 +32,9 @@ import {
   Gift,
   Zap,
   Info,
+  Ticket,
+  X,
+  Check,
 } from 'lucide-react';
 
 declare global {
@@ -66,6 +69,30 @@ const DEFAULT_COACH: CoachSettings = {
   initial: 'R',
 };
 
+// Discount breakdown interface
+interface DiscountBreakdown {
+  originalAmount: number;
+  couponDiscount: number;
+  couponCode: string | null;
+  couponInfo: {
+    type: string;
+    title: string;
+    discountType: string;
+    discountValue: number;
+  } | null;
+  creditApplied: number;
+  creditRemaining: number;
+  totalDiscount: number;
+  finalAmount: number;
+  maxDiscountPercent: number;
+  maxDiscountAmount: number;
+  wasCapped: boolean;
+  savings: {
+    amount: number;
+    percent: number;
+  };
+}
+
 function EnrollContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -98,6 +125,13 @@ function EnrollContent() {
   // ==================== NEW: Start Date Selection ====================
   const [startOption, setStartOption] = useState<'now' | 'later'>('now');
   const [startDate, setStartDate] = useState<string>('');
+
+  // ==================== NEW: Coupon/Discount State ====================
+  const [couponCode, setCouponCode] = useState(searchParams.get('ref') || searchParams.get('coupon') || '');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [discountBreakdown, setDiscountBreakdown] = useState<DiscountBreakdown | null>(null);
 
   // Calculate min and max dates for date picker
   const today = new Date();
@@ -203,6 +237,13 @@ function EnrollContent() {
     fetchPricingSettings();
   }, []);
 
+  // Auto-apply coupon from URL if present
+  useEffect(() => {
+    if (couponCode && !couponApplied) {
+      handleApplyCoupon();
+    }
+  }, [pricing.programPrice]); // Run after pricing loads
+
   // Load Razorpay script
   useEffect(() => {
     if (typeof window !== 'undefined' && !window.Razorpay) {
@@ -215,6 +256,69 @@ function EnrollContent() {
       setRazorpayLoaded(true);
     }
   }, []);
+
+  // ==================== Coupon Functions ====================
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponError('');
+
+    try {
+      const response = await fetch('/api/coupons/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          couponCode: couponCode.trim().toUpperCase(),
+          productType: 'coaching',
+          applyCredit: false, // Can add credit checkbox later
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setCouponError(data.error || 'Invalid coupon code');
+        setCouponApplied(false);
+        setDiscountBreakdown(null);
+        return;
+      }
+
+      if (data.breakdown.couponDiscount === 0) {
+        setCouponError('Coupon code not found or expired');
+        setCouponApplied(false);
+        setDiscountBreakdown(null);
+        return;
+      }
+
+      setDiscountBreakdown(data.breakdown);
+      setCouponApplied(true);
+      setCouponError('');
+    } catch (err) {
+      setCouponError('Failed to apply coupon');
+      setCouponApplied(false);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setCouponApplied(false);
+    setDiscountBreakdown(null);
+    setCouponError('');
+  };
+
+  // Get final amount to charge
+  const getFinalAmount = () => {
+    if (discountBreakdown) {
+      return discountBreakdown.finalAmount;
+    }
+    return pricing.programPrice;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,18 +338,24 @@ function EnrollContent() {
     setError('');
 
     try {
-      // Create Razorpay order
+      // Create Razorpay order with discounted amount
+      const finalAmount = getFinalAmount();
+      
       const response = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: pricing.programPrice,
+          amount: finalAmount,
           parentName: formData.parentName,
           parentEmail: formData.parentEmail,
           parentPhone: formData.parentPhone,
           childName: formData.childName,
           childAge: formData.childAge,
           source,
+          // NEW: Coupon info
+          couponCode: couponApplied ? couponCode : null,
+          originalAmount: pricing.programPrice,
+          discountAmount: discountBreakdown?.totalDiscount || 0,
         }),
       });
 
@@ -272,6 +382,9 @@ function EnrollContent() {
           childName: formData.childName,
           childAge: formData.childAge,
           requestedStartDate: startOption === 'later' ? startDate : 'immediate',
+          couponCode: couponApplied ? couponCode : '',
+          originalAmount: pricing.programPrice,
+          discountAmount: discountBreakdown?.totalDiscount || 0,
         },
         theme: {
           color: '#ff0099',
@@ -293,6 +406,10 @@ function EnrollContent() {
                 parentName: formData.parentName,
                 // NEW: Pass start date info
                 requestedStartDate: startOption === 'later' ? startDate : null,
+                // NEW: Pass coupon info for recording
+                couponCode: couponApplied ? couponCode : null,
+                originalAmount: pricing.programPrice,
+                discountAmount: discountBreakdown?.totalDiscount || 0,
               }),
             });
 
@@ -310,6 +427,11 @@ function EnrollContent() {
               if (startOption === 'later' && startDate) {
                 successParams.set('startDate', startDate);
                 successParams.set('delayed', 'true');
+              }
+
+              // Add savings info if coupon was applied
+              if (discountBreakdown?.totalDiscount) {
+                successParams.set('saved', discountBreakdown.totalDiscount.toString());
               }
 
               window.location.href = `/enrollment/success?${successParams.toString()}`;
@@ -349,17 +471,19 @@ function EnrollContent() {
   // Personalized CTA with start date info
   const renderCtaText = () => {
     const name = formData.childName;
+    const finalAmount = getFinalAmount();
+    const displayAmount = `₹${finalAmount.toLocaleString('en-IN')}`;
     const dateInfo = startOption === 'later' && startDate ? ` • Start ${formatDateForDisplay(startDate)}` : '';
 
     if (name) {
       return (
         <>
-          Enroll <span className="text-yellow-300 font-black">{name}</span> — {pricing.displayPrice}
+          Enroll <span className="text-yellow-300 font-black">{name}</span> — {displayAmount}
           {dateInfo && <span className="text-pink-200 text-xs font-normal">{dateInfo}</span>}
         </>
       );
     }
-    return `Proceed to Payment — ${pricing.displayPrice}`;
+    return `Proceed to Payment — ${displayAmount}`;
   };
 
   return (
@@ -554,7 +678,7 @@ function EnrollContent() {
                         value={formData.parentEmail}
                         onChange={handleInputChange}
                         required
-                        placeholder="your@email.com"
+                        placeholder="email@example.com"
                         className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
                       />
                     </div>
@@ -569,7 +693,7 @@ function EnrollContent() {
                         value={formData.parentPhone}
                         onChange={handleInputChange}
                         required
-                        placeholder="+91 98765 43210"
+                        placeholder="98765 43210"
                         className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
                       />
                     </div>
@@ -588,13 +712,13 @@ function EnrollContent() {
                         value={formData.childName}
                         onChange={handleInputChange}
                         required
-                        placeholder="Child's name"
+                        placeholder="Child's first name"
                         className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Age (4-12 years) *</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Child&apos;s Age *</label>
                     <select
                       name="childAge"
                       value={formData.childAge}
@@ -710,6 +834,95 @@ function EnrollContent() {
                         : "You'll receive a reminder 3 days before your program starts."}
                     </span>
                   </div>
+                </div>
+
+                {/* ==================== NEW: Coupon/Referral Section ==================== */}
+                <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-3">
+                  <label className="block text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                    <Ticket className="w-4 h-4 text-pink-500" />
+                    Have a coupon or referral code?
+                  </label>
+
+                  {!couponApplied ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="Enter code"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm uppercase"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponCode.trim()}
+                        className="px-4 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      >
+                        {couponLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Apply'
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="font-semibold text-green-800 text-sm">
+                            {couponCode} applied!
+                          </p>
+                          <p className="text-green-600 text-xs">
+                            You save ₹{discountBreakdown?.totalDiscount.toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {couponError && (
+                    <p className="text-red-500 text-xs flex items-center gap-1">
+                      <X className="w-3 h-3" />
+                      {couponError}
+                    </p>
+                  )}
+
+                  {/* Price Breakdown - Only show when coupon applied */}
+                  {couponApplied && discountBreakdown && (
+                    <div className="pt-2 border-t border-gray-200 space-y-1.5">
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Original Price</span>
+                        <span>₹{discountBreakdown.originalAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Coupon Discount</span>
+                        <span>-₹{discountBreakdown.couponDiscount.toLocaleString('en-IN')}</span>
+                      </div>
+                      {discountBreakdown.creditApplied > 0 && (
+                        <div className="flex justify-between text-sm text-green-600">
+                          <span>Credit Applied</span>
+                          <span>-₹{discountBreakdown.creditApplied.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-base font-bold text-gray-900 pt-1 border-t border-gray-200">
+                        <span>Final Amount</span>
+                        <span className="text-pink-600">₹{discountBreakdown.finalAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      {discountBreakdown.wasCapped && (
+                        <p className="text-xs text-gray-500 italic">
+                          Maximum {discountBreakdown.maxDiscountPercent}% discount applied
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Error */}
