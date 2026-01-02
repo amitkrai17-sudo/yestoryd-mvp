@@ -1,3 +1,8 @@
+// =============================================================================
+// FILE: app/api/admin/settings/route.ts
+// PURPOSE: Admin API for fetching and updating site settings
+// =============================================================================
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -6,126 +11,81 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET - Fetch all settings
-export async function GET() {
+// GET: Fetch settings by category
+export async function GET(request: NextRequest) {
   try {
-    const { data: settings, error } = await supabase
-      .from('site_settings')
-      .select('*')
-      .order('category', { ascending: true })
-      .order('key', { ascending: true });
+    const { searchParams } = new URL(request.url);
+    const categories = searchParams.get('categories')?.split(',') || [];
 
-    if (error) throw error;
+    let query = supabase.from('site_settings').select('*');
+
+    if (categories.length > 0) {
+      query = query.in('category', categories);
+    }
+
+    const { data: settings, error } = await query.order('key');
+
+    if (error) {
+      console.error('Error fetching settings:', error);
+      return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    }
 
     return NextResponse.json({ settings });
-  } catch (error: any) {
-    console.error('Failed to fetch settings:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+
+  } catch (error) {
+    console.error('Settings GET error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// Helper: Ensure value is a clean JSON string (no double encoding)
-function toCleanJsonString(value: any): string {
-  if (value === null || value === undefined) {
-    return '""';
-  }
-  
-  // Convert to string first
-  let str = String(value);
-  
-  // Remove any existing JSON encoding (escaped quotes at start/end)
-  // Handle cases like: "\"https://...\""
-  while (str.startsWith('"') && str.endsWith('"') && str.length > 2) {
-    try {
-      const parsed = JSON.parse(str);
-      if (typeof parsed === 'string') {
-        str = parsed;
-      } else {
-        break;
+// PATCH: Update multiple settings
+export async function PATCH(request: NextRequest) {
+  try {
+    const { settings } = await request.json();
+
+    if (!settings || typeof settings !== 'object') {
+      return NextResponse.json({ error: 'Invalid settings data' }, { status: 400 });
+    }
+
+    const updates = Object.entries(settings).map(([key, value]) => ({
+      key,
+      value: `"${value}"`, // Wrap in JSON quotes
+      updated_at: new Date().toISOString(),
+    }));
+
+    // Update each setting
+    const errors: string[] = [];
+    
+    for (const update of updates) {
+      const { error } = await supabase
+        .from('site_settings')
+        .update({ 
+          value: update.value,
+          updated_at: update.updated_at,
+        })
+        .eq('key', update.key);
+
+      if (error) {
+        console.error(`Error updating ${update.key}:`, error);
+        errors.push(update.key);
       }
-    } catch {
-      break;
-    }
-  }
-  
-  // Now str is the raw value, wrap it once for JSONB
-  return JSON.stringify(str);
-}
-
-// PUT - Update a setting
-export async function PUT(request: NextRequest) {
-  try {
-    const { key, value } = await request.json();
-
-    if (!key) {
-      return NextResponse.json(
-        { error: 'Setting key is required' },
-        { status: 400 }
-      );
     }
 
-    // Clean and encode the value properly
-    const jsonValue = toCleanJsonString(value);
-
-    const { data, error } = await supabase
-      .from('site_settings')
-      .update({
-        value: jsonValue,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('key', key)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json({ setting: data });
-  } catch (error: any) {
-    console.error('Failed to update setting:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-// POST - Create a new setting
-export async function POST(request: NextRequest) {
-  try {
-    const { category, key, value, description } = await request.json();
-
-    if (!category || !key) {
-      return NextResponse.json(
-        { error: 'Category and key are required' },
-        { status: 400 }
-      );
+    if (errors.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: `Failed to update: ${errors.join(', ')}`,
+        failedKeys: errors,
+      }, { status: 500 });
     }
 
-    // Clean and encode the value properly
-    const jsonValue = toCleanJsonString(value);
+    return NextResponse.json({
+      success: true,
+      message: `Updated ${updates.length} settings`,
+    });
 
-    const { data, error } = await supabase
-      .from('site_settings')
-      .insert({
-        category,
-        key,
-        value: jsonValue,
-        description,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json({ setting: data });
-  } catch (error: any) {
-    console.error('Failed to create setting:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('Settings PATCH error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

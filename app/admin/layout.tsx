@@ -29,6 +29,7 @@ import {
   UsersRound,
   Users2,
   BookOpen,
+  Ticket,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -101,6 +102,22 @@ const NAV_ITEMS = [
     section: 'leads',
   },
   // ===== REVENUE & PAYOUTS =====
+  {
+    label: 'Coupons',
+    href: '/admin/coupons',
+    icon: Ticket,
+    description: 'Manage discounts & referrals',
+    ready: true,
+    section: 'revenue',
+  },
+  {
+    label: 'Pricing Settings',
+    href: '/admin/settings/pricing',
+    icon: IndianRupee,
+    description: 'Discounts & referral config',
+    ready: true,
+    section: 'revenue',
+  },
   {
     label: 'Coach Groups',
     href: '/admin/coach-groups',
