@@ -1,6 +1,6 @@
 // =============================================================================
 // FILE: app/api/parent/referral/route.ts
-// PURPOSE: Get parent's referral code, credit balance, and history
+// PURPOSE: Get parent's referral code and stats
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,92 +14,81 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const parentId = searchParams.get('parentId');
+    const email = searchParams.get('email');
 
-    if (!parentId) {
-      return NextResponse.json({ error: 'Parent ID required' }, { status: 400 });
+    if (!email) {
+      return NextResponse.json(
+        { success: false, error: 'Email required' },
+        { status: 400 }
+      );
     }
 
-    // Get parent's referral coupon
-    const { data: coupon } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('parent_id', parentId)
-      .eq('coupon_type', 'parent_referral')
-      .single();
-
-    // Get discount and credit percentages from settings
-    const { data: settings } = await supabase
-      .from('site_settings')
-      .select('key, value')
-      .in('key', [
-        'parent_referral_discount_percent',
-        'parent_referral_credit_percent',
-        'coaching_program_price'
-      ]);
-
-    const settingsMap: Record<string, string> = {};
-    settings?.forEach(s => {
-      settingsMap[s.key] = s.value?.replace(/"/g, '') || '';
-    });
-
-    const discountPercent = parseInt(settingsMap.parent_referral_discount_percent || '10');
-    const creditPercent = parseInt(settingsMap.parent_referral_credit_percent || '10');
-    const programPrice = parseInt(settingsMap.coaching_program_price || '5999');
-    const creditAmount = Math.round(programPrice * creditPercent / 100);
-
-    // Get parent's credit balance
-    const { data: parent } = await supabase
+    // Find parent by email
+    const { data: parent, error: parentError } = await supabase
       .from('parents')
-      .select('referral_credit_balance, referral_credit_expires_at, total_referrals, total_credit_earned')
-      .eq('id', parentId)
+      .select('id, name, email, referral_code, referral_credit_balance, referral_credit_expires_at')
+      .eq('email', email.toLowerCase())
       .single();
 
-    // Get referral history (children who used this parent's code)
-    const { data: history } = await supabase
-      .from('children')
-      .select(`
-        id,
-        child_name,
-        created_at,
-        enrollments(id, status, created_at)
-      `)
-      .eq('referred_by_parent_id', parentId)
-      .order('created_at', { ascending: false })
-      .limit(20);
+    if (parentError || !parent) {
+      return NextResponse.json(
+        { success: false, error: 'Parent not found' },
+        { status: 404 }
+      );
+    }
 
-    // Format history
-    const formattedHistory = history?.map(child => {
-      const enrollment = child.enrollments?.[0];
-      return {
-        id: child.id,
-        childName: child.child_name,
-        status: enrollment?.status === 'active' || enrollment?.status === 'completed' 
-          ? 'enrolled' 
-          : 'pending',
-        creditAwarded: enrollment ? creditAmount : 0,
-        date: enrollment?.created_at || child.created_at,
-      };
-    }) || [];
+    // If no referral code yet, return empty data
+    if (!parent.referral_code) {
+      return NextResponse.json({
+        success: false,
+        error: 'No referral code generated yet',
+        needsGeneration: true,
+      });
+    }
+
+    // Count referrals (enrollments where this code was used)
+    let successfulReferrals = 0;
+    try {
+      const { count } = await supabase
+        .from('coupon_usages')
+        .select('*', { count: 'exact', head: true })
+        .eq('coupon_code', parent.referral_code);
+      successfulReferrals = count || 0;
+    } catch (e) {
+      // Table might not exist yet
+    }
+
+    // Calculate total earned
+    let totalEarned = 0;
+    try {
+      const { data: transactions } = await supabase
+        .from('referral_credit_transactions')
+        .select('amount')
+        .eq('parent_id', parent.id)
+        .eq('type', 'earned');
+      totalEarned = transactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    } catch (e) {
+      // Table might not exist yet
+    }
 
     return NextResponse.json({
-      referral: coupon ? {
-        code: coupon.code,
-        discountPercent,
-        creditPercent,
-        creditAmount,
-      } : null,
-      credit: {
-        balance: parent?.referral_credit_balance || 0,
-        expiresAt: parent?.referral_credit_expires_at,
-        totalEarned: parent?.total_credit_earned || 0,
-        totalReferrals: parent?.total_referrals || 0,
+      success: true,
+      data: {
+        referralCode: parent.referral_code,
+        creditBalance: parent.referral_credit_balance || 0,
+        creditExpiry: parent.referral_credit_expires_at,
+        totalReferrals: successfulReferrals,
+        successfulReferrals: successfulReferrals,
+        pendingReferrals: 0,
+        totalEarned,
       },
-      history: formattedHistory,
     });
 
   } catch (error) {
-    console.error('Parent referral GET error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Get referral error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to get referral data' },
+      { status: 500 }
+    );
   }
 }

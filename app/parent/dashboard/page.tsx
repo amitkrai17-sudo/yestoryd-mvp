@@ -14,12 +14,13 @@ import {
   LayoutDashboard, Calendar, TrendingUp, HelpCircle,
   LogOut, Menu, X, ChevronRight, Bell, Video,
   Clock, CheckCircle, Target, User, MessageCircle,
-  BookOpen, Sparkles, Users, Play
+  BookOpen, Sparkles, Users, Play, Gift
 } from 'lucide-react';
 import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
 import SupportWidget from '@/components/support/SupportWidget';
 import SupportForm from '@/components/support/SupportForm';
 import ChatWidget from '@/components/chat/ChatWidget';
+import ReferralsTab from '@/components/parent/ReferralsTab';
 
 // 4-Point Star Icon Component (Yestoryd branding)
 function StarIcon({ className }: { className?: string }) {
@@ -67,6 +68,7 @@ const TABS = [
   { id: 'elearning', label: 'E-Learning', icon: BookOpen },
   { id: 'sessions', label: 'Sessions', icon: Calendar },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
+  { id: 'referrals', label: 'Referrals', icon: Gift },
   { id: 'support', label: 'Support', icon: HelpCircle },
 ];
 
@@ -443,6 +445,14 @@ export default function ParentDashboardPage() {
             totalSessions={totalSessions}
             latestScore={latestScore}
             getProgressPercentage={getProgressPercentage}
+          />
+        )}
+
+        {activeTab === 'referrals' && (
+          <ReferralsTab
+            parentEmail={parentEmail}
+            parentName={parentName}
+            childName={childName}
           />
         )}
 

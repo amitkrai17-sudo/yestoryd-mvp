@@ -1,403 +1,379 @@
 // =============================================================================
 // FILE: components/parent/ReferralsTab.tsx
-// PURPOSE: Parent referral program tab with share functionality
-// UI/UX: AIDA + LIFT framework, mobile-first, CRO optimized
+// PURPOSE: Parent referral dashboard - view code, track referrals, share
 // =============================================================================
 
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Gift, Copy, CheckCircle, Share2, MessageCircle, 
-  Mail, Users, TrendingUp, Clock, Sparkles,
-  ChevronRight, AlertCircle, Wallet
+import {
+  Gift, Copy, Check, Share2, Users, IndianRupee,
+  Loader2, ChevronRight, MessageCircle, Clock, Sparkles
 } from 'lucide-react';
 
 interface ReferralData {
-  code: string;
-  discountPercent: number;
-  creditPercent: number;
-  creditAmount: number;
-}
-
-interface CreditBalance {
-  balance: number;
-  expiresAt: string | null;
-  totalEarned: number;
+  referralCode: string;
+  creditBalance: number;
+  creditExpiry: string | null;
   totalReferrals: number;
+  successfulReferrals: number;
+  pendingReferrals: number;
+  totalEarned: number;
 }
 
-interface ReferralHistory {
-  id: string;
-  childName: string;
-  status: 'pending' | 'enrolled';
-  creditAwarded: number;
-  date: string;
+interface ReferralConfig {
+  creditAmount: number;
+  discountPercent: number;
 }
 
-interface Props {
-  parentId: string;
+interface ReferralsTabProps {
+  parentEmail: string;
   parentName: string;
+  childName: string;
 }
 
-export default function ReferralsTab({ parentId, parentName }: Props) {
+export default function ReferralsTab({ parentEmail, parentName, childName }: ReferralsTabProps) {
   const [loading, setLoading] = useState(true);
-  const [referralData, setReferralData] = useState<ReferralData | null>(null);
-  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null);
-  const [referralHistory, setReferralHistory] = useState<ReferralHistory[]>([]);
+  const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [generatingCode, setGeneratingCode] = useState(false);
+  const [data, setData] = useState<ReferralData | null>(null);
+  const [config, setConfig] = useState<ReferralConfig>({ creditAmount: 600, discountPercent: 10 });
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchReferralData();
-  }, [parentId]);
+    fetchReferralConfig();
+  }, [parentEmail]);
 
-  const fetchReferralData = async () => {
-    setLoading(true);
+  async function fetchReferralConfig() {
     try {
-      const response = await fetch(`/api/parent/referral?parentId=${parentId}`);
-      const data = await response.json();
-      
-      setReferralData(data.referral);
-      setCreditBalance(data.credit);
-      setReferralHistory(data.history || []);
-    } catch (error) {
-      console.error('Failed to fetch referral data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateReferralCode = async () => {
-    setGeneratingCode(true);
-    try {
-      const response = await fetch('/api/parent/referral/generate', {
+      // Fetch program price and referral percentage
+      const res = await fetch('/api/coupons/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parentId, parentName }),
+        body: JSON.stringify({ productType: 'coaching' }),
+      });
+      const result = await res.json();
+      
+      if (result.success) {
+        const programPrice = result.breakdown.originalAmount;
+        
+        // Fetch referral percentage from settings
+        const settingsRes = await fetch('/api/admin/settings?categories=referral');
+        const settingsData = await settingsRes.json();
+        
+        let creditPercent = 10;
+        let discountPercent = 10;
+        
+        settingsData.settings?.forEach((s: { key: string; value: string }) => {
+          const val = String(s.value).replace(/"/g, '');
+          if (s.key === 'parent_referral_credit_percent' || s.key === 'referral_credit_percent') {
+            creditPercent = parseInt(val) || 10;
+          }
+          if (s.key === 'parent_referral_discount_percent' || s.key === 'referral_discount_percent') {
+            discountPercent = parseInt(val) || 10;
+          }
+        });
+        
+        const creditAmount = Math.round((programPrice * creditPercent) / 100);
+        setConfig({ creditAmount, discountPercent });
+      }
+    } catch (err) {
+      console.error('Error fetching referral config:', err);
+    }
+  }
+
+  async function fetchReferralData() {
+    try {
+      const res = await fetch(`/api/parent/referral?email=${encodeURIComponent(parentEmail)}`);
+      const result = await res.json();
+      
+      if (res.ok && result.success) {
+        setData(result.data);
+      } else {
+        // No referral code yet - show generate option
+        setData(null);
+      }
+    } catch (err) {
+      console.error('Error fetching referral data:', err);
+      setError('Failed to load referral data');
+    }
+    setLoading(false);
+  }
+
+  async function generateReferralCode() {
+    setGenerating(true);
+    setError('');
+    
+    try {
+      const res = await fetch('/api/parent/referral/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: parentEmail }),
       });
       
-      if (response.ok) {
-        fetchReferralData();
+      const result = await res.json();
+      
+      if (res.ok && result.success) {
+        setData(result.data);
+      } else {
+        setError(result.error || 'Failed to generate code');
       }
-    } catch (error) {
-      console.error('Failed to generate code:', error);
-    } finally {
-      setGeneratingCode(false);
+    } catch (err) {
+      setError('Failed to generate referral code');
     }
-  };
+    setGenerating(false);
+  }
 
-  const copyCode = () => {
-    if (referralData?.code) {
-      navigator.clipboard.writeText(referralData.code);
+  function copyToClipboard() {
+    if (data?.referralCode) {
+      navigator.clipboard.writeText(data.referralCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
+  }
 
-  const shareOnWhatsApp = () => {
-    if (!referralData) return;
-    
-    const message = encodeURIComponent(
-      `🎓 Hi! I want to share something that's really helping my child become a confident reader.\n\n` +
-      `Yestoryd provides personalized AI-powered reading coaching for children aged 4-12.\n\n` +
-      `Use my code *${referralData.code}* to get ${referralData.discountPercent}% off! ✨\n\n` +
-      `Start with a FREE reading assessment: https://yestoryd.com/assess?ref=${referralData.code}`
-    );
-    
-    window.open(`https://wa.me/?text=${message}`, '_blank');
-  };
+  function shareOnWhatsApp() {
+    if (data?.referralCode) {
+      const message = encodeURIComponent(
+        `Hey! 👋\n\n` +
+        `My child ${childName} has been doing amazing with Yestoryd's reading program! 📚\n\n` +
+        `Use my referral code *${data.referralCode}* to get ${config.discountPercent}% OFF your enrollment.\n\n` +
+        `Take the free AI reading assessment here: https://yestoryd.com/assessment?ref=${data.referralCode}\n\n` +
+        `Trust me, it's worth it! 🌟`
+      );
+      window.open(`https://wa.me/?text=${message}`, '_blank');
+    }
+  }
 
-  const shareViaEmail = () => {
-    if (!referralData) return;
-    
-    const subject = encodeURIComponent('Help your child become a confident reader 📚');
-    const body = encodeURIComponent(
-      `Hi,\n\n` +
-      `I wanted to share something that's been really helpful for my child's reading journey.\n\n` +
-      `Yestoryd provides personalized AI-powered reading coaching for children aged 4-12. ` +
-      `Their expert coaches work one-on-one with kids to improve their reading confidence, fluency, and comprehension.\n\n` +
-      `I have a special referral code for you: ${referralData.code}\n` +
-      `This will give you ${referralData.discountPercent}% off the program!\n\n` +
-      `You can start with a FREE 5-minute reading assessment here:\n` +
-      `https://yestoryd.com/assess?ref=${referralData.code}\n\n` +
-      `Hope this helps!\n`
-    );
-    
-    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-  };
+  function copyShareLink() {
+    if (data?.referralCode) {
+      const link = `https://yestoryd.com/assessment?ref=${data.referralCode}`;
+      navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  // Format credit amount for display
+  const formatCredit = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#7b008b] mx-auto mb-4" />
+          <p className="text-gray-500">Loading referral data...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Hero Section - Value Proposition */}
-      <div className="bg-gradient-to-br from-pink-500 via-purple-500 to-purple-600 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-        
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-5 h-5 text-yellow-300" />
-            <span className="text-sm font-medium text-pink-100">Referral Program</span>
+  // No referral code yet - show generate UI
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        {/* Hero Card */}
+        <div className="bg-gradient-to-br from-[#ff0099]/10 to-[#7b008b]/10 rounded-2xl p-8 text-center border border-[#ff0099]/20">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Gift className="w-10 h-10 text-white" />
           </div>
-          
-          <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-            Share the Gift of Reading
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            Refer Friends, Earn {formatCredit(config.creditAmount)}!
           </h2>
-          
-          <p className="text-pink-100 mb-6 max-w-md">
-            Help other families discover confident reading. You earn credits, they get a discount!
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            Share your love for Yestoryd! When your friends enroll using your code, 
+            you get {formatCredit(config.creditAmount)} credit and they get {config.discountPercent}% off.
           </p>
-
-          {/* Benefits */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <div className="text-2xl font-bold text-yellow-300">
-                {referralData?.discountPercent || 10}%
-              </div>
-              <div className="text-sm text-pink-100">Their discount</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <div className="text-2xl font-bold text-yellow-300">
-                ₹{referralData?.creditAmount || 600}
-              </div>
-              <div className="text-sm text-pink-100">Your credit</div>
-            </div>
-          </div>
-
-          {/* Referral Code */}
-          {referralData?.code ? (
-            <div className="bg-white rounded-2xl p-4">
-              <div className="text-xs text-gray-500 mb-2 font-medium">Your Referral Code</div>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3 font-mono text-lg font-bold text-gray-900 tracking-wider">
-                  {referralData.code}
-                </div>
-                <button
-                  onClick={copyCode}
-                  className={`p-3 rounded-xl transition-all ${
-                    copied 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-pink-100 text-pink-600 hover:bg-pink-200'
-                  }`}
-                >
-                  {copied ? <CheckCircle className="w-6 h-6" /> : <Copy className="w-6 h-6" />}
-                </button>
-              </div>
-              {copied && (
-                <div className="text-green-600 text-sm mt-2 flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
-                  Copied to clipboard!
-                </div>
-              )}
-            </div>
-          ) : (
-            <button
-              onClick={generateReferralCode}
-              disabled={generatingCode}
-              className="w-full bg-white text-pink-600 font-semibold py-4 px-6 rounded-xl hover:bg-pink-50 transition-colors disabled:opacity-50"
-            >
-              {generatingCode ? 'Generating...' : 'Get Your Referral Code'}
-            </button>
+          
+          <button
+            onClick={generateReferralCode}
+            disabled={generating}
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-bold text-lg hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Get My Referral Code
+              </>
+            )}
+          </button>
+          
+          {error && (
+            <p className="mt-4 text-red-500 text-sm">{error}</p>
           )}
         </div>
-      </div>
 
-      {/* Share Buttons */}
-      {referralData?.code && (
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            onClick={shareOnWhatsApp}
-            className="flex items-center justify-center gap-3 bg-[#25D366] text-white font-semibold py-4 px-6 rounded-xl hover:scale-[1.02] transition-all shadow-lg"
-          >
-            <MessageCircle className="w-5 h-5" />
-            Share on WhatsApp
-          </button>
-          <button
-            onClick={shareViaEmail}
-            className="flex items-center justify-center gap-3 bg-gray-900 text-white font-semibold py-4 px-6 rounded-xl hover:scale-[1.02] transition-all shadow-lg"
-          >
-            <Mail className="w-5 h-5" />
-            Share via Email
-          </button>
-        </div>
-      )}
-
-      {/* Credit Balance Card */}
-      {creditBalance && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-pink-500" />
-                Your Credits
-              </h3>
-              {creditBalance.expiresAt && (
-                <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Expires {new Date(creditBalance.expiresAt).toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
-                </span>
-              )}
-            </div>
-
-            <div className="text-4xl font-bold text-pink-600 mb-2">
-              ₹{creditBalance.balance.toLocaleString()}
-            </div>
-            <p className="text-sm text-gray-500">
-              Available to use on e-learning, re-enrollment, or group classes
-            </p>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 divide-x divide-gray-100 border-t border-gray-100 bg-gray-50">
-            <div className="p-4 text-center">
-              <div className="text-xl font-bold text-gray-900">{creditBalance.totalReferrals}</div>
-              <div className="text-xs text-gray-500">Total Referrals</div>
-            </div>
-            <div className="p-4 text-center">
-              <div className="text-xl font-bold text-gray-900">₹{creditBalance.totalEarned.toLocaleString()}</div>
-              <div className="text-xs text-gray-500">Total Earned</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* How It Works */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Gift className="w-5 h-5 text-purple-500" />
-          How It Works
-        </h3>
-        
-        <div className="space-y-4">
-          {[
-            { step: 1, title: 'Share your code', desc: 'Send your referral code to friends & family' },
-            { step: 2, title: 'They get a discount', desc: `${referralData?.discountPercent || 10}% off when they enroll` },
-            { step: 3, title: 'You earn credits', desc: `₹${referralData?.creditAmount || 600} added to your balance` },
-          ].map((item) => (
-            <div key={item.step} className="flex items-start gap-4">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
-                {item.step}
+        {/* How It Works */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="font-bold text-gray-900 mb-4">How It Works</h3>
+          <div className="grid gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                1
               </div>
               <div>
-                <div className="font-medium text-gray-900">{item.title}</div>
-                <div className="text-sm text-gray-500">{item.desc}</div>
+                <p className="font-medium text-gray-900">Get Your Code</p>
+                <p className="text-sm text-gray-500">Generate your unique referral code</p>
               </div>
             </div>
-          ))}
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                2
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Share With Friends</p>
+                <p className="text-sm text-gray-500">They get {config.discountPercent}% off on enrollment</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                3
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Earn {formatCredit(config.creditAmount)} Credit</p>
+                <p className="text-sm text-gray-500">Use for e-learning or re-enrollment</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Has referral code - show full dashboard
+  return (
+    <div className="space-y-6">
+      {/* Referral Code Card */}
+      <div className="bg-gradient-to-br from-[#ff0099]/10 to-[#7b008b]/10 rounded-2xl p-6 border border-[#ff0099]/20">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-xl flex items-center justify-center">
+            <Gift className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Your Referral Code</p>
+            <p className="text-2xl font-bold text-gray-900">{data.referralCode}</p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={copyToClipboard}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            {copied ? 'Copied!' : 'Copy Code'}
+          </button>
+          <button
+            onClick={shareOnWhatsApp}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-all"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Share on WhatsApp
+          </button>
+        </div>
+
+        <button
+          onClick={copyShareLink}
+          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 text-[#7b008b] text-sm font-medium hover:bg-white/50 rounded-lg transition-all"
+        >
+          <Share2 className="w-4 h-4" />
+          Copy Share Link
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Credit Balance */}
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center gap-2 text-green-600 mb-2">
+            <IndianRupee className="w-4 h-4" />
+            <span className="text-sm font-medium">Credit Balance</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">₹{data.creditBalance}</p>
+          {data.creditExpiry && (
+            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              Expires: {new Date(data.creditExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </p>
+          )}
+        </div>
+
+        {/* Successful Referrals */}
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center gap-2 text-purple-600 mb-2">
+            <Users className="w-4 h-4" />
+            <span className="text-sm font-medium">Referrals</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{data.successfulReferrals}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {data.pendingReferrals > 0 ? `${data.pendingReferrals} pending` : 'Successful enrollments'}
+          </p>
         </div>
       </div>
 
-      {/* Referral History */}
-      {referralHistory.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-500" />
-              Referral History
-            </h3>
-          </div>
-          
-          <div className="divide-y divide-gray-100">
-            {referralHistory.map((item) => (
-              <div key={item.id} className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{item.childName}'s Family</div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(item.date).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  {item.status === 'enrolled' ? (
-                    <>
-                      <div className="text-green-600 font-semibold">+₹{item.creditAwarded}</div>
-                      <div className="text-xs text-gray-500">Enrolled</div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-orange-500 font-medium">Pending</div>
-                      <div className="text-xs text-gray-500">Awaiting enrollment</div>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {referralHistory.length === 0 && referralData?.code && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 text-purple-500" />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-2">No referrals yet</h3>
-          <p className="text-gray-500 text-sm mb-6">
-            Share your code and start earning credits when families enroll!
-          </p>
-          <button
-            onClick={shareOnWhatsApp}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-full hover:scale-105 transition-all"
-          >
-            <Share2 className="w-5 h-5" />
-            Share Now
-          </button>
-        </div>
-      )}
-
-      {/* Use Credits CTA */}
-      {creditBalance && creditBalance.balance > 0 && (
-        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-200">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
+      {/* Total Earned Card */}
+      {data.totalEarned > 0 && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-green-600 font-medium">Total Earned</p>
+              <p className="text-3xl font-bold text-green-700">₹{data.totalEarned}</p>
             </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-gray-900 mb-1">
-                You have ₹{creditBalance.balance.toLocaleString()} in credits!
-              </h4>
-              <p className="text-sm text-gray-600 mb-4">
-                Use them for e-learning subscription, re-enrollment, or group classes.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a 
-                  href="/parent/elearning" 
-                  className="inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700"
-                >
-                  E-Learning <ChevronRight className="w-4 h-4" />
-                </a>
-                <a 
-                  href="/classes" 
-                  className="inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700"
-                >
-                  Group Classes <ChevronRight className="w-4 h-4" />
-                </a>
-              </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <IndianRupee className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
       )}
+
+      {/* How to Use Credit */}
+      <div className="bg-white rounded-xl border border-gray-100 p-6">
+        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-[#ff0099]" />
+          Use Your Credit
+        </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Gift className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">Re-enrollment</p>
+                <p className="text-xs text-gray-500">Apply to next coaching program</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">E-Learning</p>
+                <p className="text-xs text-gray-500">Subscribe to video library</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Share Prompt */}
+      <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4">
+        <p className="text-sm text-yellow-800">
+          <strong>💡 Tip:</strong> The more you share, the more you earn! 
+          Each successful referral = {formatCredit(config.creditAmount)} credit.
+        </p>
+      </div>
     </div>
   );
 }
