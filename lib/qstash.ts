@@ -72,6 +72,7 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData) {
     // The Razorpay webhook can retry, or admin can manually trigger
     return {
       success: false,
+      messageId: null,
       error: error.message,
     };
   }
@@ -169,3 +170,4 @@ export async function deleteQStashSchedule(scheduleId: string) {
     return { success: false, error: error.message };
   }
 }
+
