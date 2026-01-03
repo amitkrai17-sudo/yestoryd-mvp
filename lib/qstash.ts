@@ -43,10 +43,20 @@ interface EnrollmentJobData {
 export async function queueEnrollmentComplete(data: EnrollmentJobData) {
   // IMPORTANT: Must use www subdomain for production
   const appUrl = 'https://www.yestoryd.com';
+  const targetUrl = `${appUrl}/api/jobs/enrollment-complete`;
+
+  // Debug logging
+  console.log('🔍 QStash debug:', {
+    targetUrl,
+    hasToken: !!process.env.QSTASH_TOKEN,
+    tokenLength: process.env.QSTASH_TOKEN?.length || 0,
+    tokenPrefix: process.env.QSTASH_TOKEN?.substring(0, 10) || 'MISSING',
+    dataKeys: Object.keys(data),
+  });
 
   try {
     const response = await qstash.publishJSON({
-      url: `${appUrl}/api/jobs/enrollment-complete`,
+      url: targetUrl,
       body: data,
       retries: 3,           // Auto-retry up to 3 times
       delay: 0,             // Start immediately
@@ -64,12 +74,14 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData) {
     };
 
   } catch (error: any) {
-    // Log error but DO NOT fall back to sync call
-    // Sync call would take 25+ seconds and timeout at scale
-    console.error('❌ QStash queue failed:', error.message);
+    // Log full error details for debugging
+    console.error('❌ QStash queue failed:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack?.substring(0, 500),
+    });
     
     // Return error so payment webhook knows to handle it
-    // The Razorpay webhook can retry, or admin can manually trigger
     return {
       success: false,
       messageId: null,
@@ -107,7 +119,7 @@ export async function queueDelayedNotification(data: {
 
   } catch (error: any) {
     console.error('❌ Failed to queue notification:', error.message);
-    return { success: false, error: error.message };
+    return { success: false, messageId: null, error: error.message };
   }
 }
 
@@ -170,5 +182,3 @@ export async function deleteQStashSchedule(scheduleId: string) {
     return { success: false, error: error.message };
   }
 }
-
-
