@@ -1,7 +1,7 @@
 // ============================================================
 // FILE: app/api/payment/verify/route.ts
 // ============================================================
-// Payment verification with REVENUE SPLIT + DELAYED START support
+// Payment verification with REVENUE SPLIT + DELAYED START + REFERRAL CREDIT support
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,6 +37,146 @@ interface RevenueResult {
   net_to_coach?: number;
   payouts_scheduled?: number;
   error?: string;
+}
+
+interface CreditAwardResult {
+  success: boolean;
+  creditAwarded?: number;
+  referrerParentId?: string;
+  error?: string;
+}
+
+// ============================================
+// REFERRAL CREDIT AWARD FUNCTION
+// ============================================
+async function awardReferralCredit(
+  couponCode: string,
+  enrollmentId: string,
+  referredParentId: string,
+  programAmount: number
+): Promise<CreditAwardResult> {
+  try {
+    if (!couponCode) {
+      return { success: false, error: 'No coupon code provided' };
+    }
+
+    // 1. Find the coupon and check if it's a parent referral
+    const { data: coupon, error: couponError } = await supabase
+      .from('coupons')
+      .select('id, code, coupon_type, parent_id')
+      .eq('code', couponCode.toUpperCase())
+      .eq('coupon_type', 'parent_referral')
+      .single();
+
+    if (couponError || !coupon) {
+      console.log('ℹ️ Not a parent referral coupon, skipping credit award');
+      return { success: false, error: 'Not a parent referral coupon' };
+    }
+
+    if (!coupon.parent_id) {
+      console.log('⚠️ Parent referral coupon has no parent_id');
+      return { success: false, error: 'Coupon has no linked parent' };
+    }
+
+    // 2. Get referral credit percentage from settings
+    const { data: settings } = await supabase
+      .from('site_settings')
+      .select('key, value')
+      .in('key', ['parent_referral_credit_percent', 'referral_credit_percent', 'referral_credit_expiry_days']);
+
+    let creditPercent = 10; // Default 10%
+    let expiryDays = 30; // Default 30 days
+
+    settings?.forEach((s) => {
+      const val = String(s.value).replace(/"/g, '');
+      if (s.key === 'parent_referral_credit_percent' || s.key === 'referral_credit_percent') {
+        creditPercent = parseInt(val) || 10;
+      }
+      if (s.key === 'referral_credit_expiry_days') {
+        expiryDays = parseInt(val) || 30;
+      }
+    });
+
+    // 3. Calculate credit amount
+    const creditAmount = Math.round((programAmount * creditPercent) / 100);
+
+    // 4. Get current balance of referrer
+    const { data: referrer, error: referrerError } = await supabase
+      .from('parents')
+      .select('id, name, referral_credit_balance, referral_credit_expires_at')
+      .eq('id', coupon.parent_id)
+      .single();
+
+    if (referrerError || !referrer) {
+      console.error('❌ Referrer parent not found:', couponError);
+      return { success: false, error: 'Referrer parent not found' };
+    }
+
+    // 5. Calculate new balance and expiry
+    const currentBalance = referrer.referral_credit_balance || 0;
+    const newBalance = currentBalance + creditAmount;
+
+    // Extend expiry from today (each new referral extends the window)
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+    // 6. Update referrer's credit balance
+    const { error: updateError } = await supabase
+      .from('parents')
+      .update({
+        referral_credit_balance: newBalance,
+        referral_credit_expires_at: expiryDate.toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', referrer.id);
+
+    if (updateError) {
+      console.error('❌ Failed to update referrer balance:', updateError);
+      return { success: false, error: 'Failed to update credit balance' };
+    }
+
+    // 7. Create transaction record
+    const { error: transactionError } = await supabase
+      .from('referral_credit_transactions')
+      .insert({
+        parent_id: referrer.id,
+        type: 'earned',
+        amount: creditAmount,
+        balance_after: newBalance,
+        description: `Referral credit for enrollment`,
+        enrollment_id: enrollmentId,
+        coupon_code: couponCode,
+        referred_parent_id: referredParentId,
+        expires_at: expiryDate.toISOString(),
+      });
+
+    if (transactionError) {
+      console.error('⚠️ Transaction record failed (non-fatal):', transactionError);
+    }
+
+    // 8. Update coupon stats
+    await supabase
+      .from('coupons')
+      .update({
+        current_uses: (coupon as any).current_uses ? (coupon as any).current_uses + 1 : 1,
+        successful_conversions: (coupon as any).successful_conversions ? (coupon as any).successful_conversions + 1 : 1,
+        total_referrals: (coupon as any).total_referrals ? (coupon as any).total_referrals + 1 : 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', coupon.id);
+
+    console.log(`✅ Referral credit awarded: ₹${creditAmount} to parent ${referrer.id} (new balance: ₹${newBalance})`);
+
+    return {
+      success: true,
+      creditAwarded: creditAmount,
+      referrerParentId: referrer.id,
+    };
+
+  } catch (error: any) {
+    console.error('❌ Credit award error:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 // ============================================
@@ -314,16 +454,23 @@ export async function POST(request: NextRequest) {
       coachId,
       leadSource = 'yestoryd',
       leadSourceCoachId = null,
-      referralCodeUsed = null,
-      // ==================== NEW: Delayed Start Support ====================
+      // ==================== Coupon/Referral Support ====================
+      couponCode = null,
+      originalAmount = 5999,
+      discountAmount = 0,
+      // ==================== Delayed Start Support ====================
       requestedStartDate = null, // null means "start immediately"
     } = body;
+
+    // Use couponCode or legacy referralCodeUsed
+    const referralCodeUsed = couponCode || body.referralCodeUsed || null;
 
     console.log('🔐 Verifying payment:', {
       orderId: razorpay_order_id,
       paymentId: razorpay_payment_id,
       childName,
       leadSource,
+      couponCode: referralCodeUsed,
       requestedStartDate: requestedStartDate || 'immediate',
     });
 
@@ -401,7 +548,7 @@ export async function POST(request: NextRequest) {
           name: childName,
           age: parseInt(childAge) || null,
           parent_id: parent.id,
-          parent_email: parentEmail.toLowerCase().trim(), // Ensure parent_email is set
+          parent_email: parentEmail.toLowerCase().trim(),
           enrollment_status: 'enrolled',
           lead_status: 'enrolled',
         })
@@ -463,6 +610,8 @@ export async function POST(request: NextRequest) {
     // ============================================
     // STEP 5: Create Payment Record
     // ============================================
+    const finalAmount = originalAmount - discountAmount;
+    
     const { error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -470,10 +619,14 @@ export async function POST(request: NextRequest) {
         child_id: child.id,
         razorpay_order_id,
         razorpay_payment_id,
-        amount: 5999,
+        amount: finalAmount,
         currency: 'INR',
         status: 'captured',
         captured_at: new Date().toISOString(),
+        // Track discount info
+        original_amount: originalAmount,
+        discount_amount: discountAmount,
+        coupon_code: referralCodeUsed,
       });
 
     if (paymentError) {
@@ -485,7 +638,6 @@ export async function POST(request: NextRequest) {
     // ============================================
     const startImmediately = !requestedStartDate;
     
-    // Calculate program dates based on start mode
     const programStart = startImmediately 
       ? new Date() 
       : new Date(requestedStartDate);
@@ -493,7 +645,6 @@ export async function POST(request: NextRequest) {
     const programEnd = new Date(programStart);
     programEnd.setMonth(programEnd.getMonth() + 3);
 
-    // Set enrollment status based on start mode
     const enrollmentStatus = startImmediately ? 'active' : 'pending_start';
 
     console.log(`📅 Start mode: ${startImmediately ? 'IMMEDIATE' : 'DELAYED'}`);
@@ -511,19 +662,20 @@ export async function POST(request: NextRequest) {
         parent_id: parent.id,
         coach_id: coach.id,
         payment_id: razorpay_payment_id,
-        amount: 5999,
-        status: enrollmentStatus, // 'active' or 'pending_start'
+        amount: finalAmount,
+        status: enrollmentStatus,
         program_start: programStart.toISOString(),
         program_end: programEnd.toISOString(),
         schedule_confirmed: false,
         sessions_scheduled: 0,
-        // Lead source tracking
         lead_source: leadSource,
         lead_source_coach_id: leadSourceCoachId,
         referral_code_used: referralCodeUsed,
-        // Delayed start fields
         requested_start_date: requestedStartDate || null,
         actual_start_date: startImmediately ? new Date().toISOString().split('T')[0] : null,
+        // Track discount
+        original_amount: originalAmount,
+        discount_amount: discountAmount,
       })
       .select()
       .single();
@@ -536,11 +688,31 @@ export async function POST(request: NextRequest) {
     console.log('📝 Enrollment created:', enrollment.id, `(status: ${enrollmentStatus})`);
 
     // ============================================
-    // STEP 8: Calculate Revenue Split
+    // STEP 8: Award Referral Credit (NEW!)
+    // ============================================
+    let creditResult: CreditAwardResult = { success: false };
+    
+    if (referralCodeUsed) {
+      creditResult = await awardReferralCredit(
+        referralCodeUsed,
+        enrollment.id,
+        parent.id,
+        originalAmount // Use original amount for credit calculation
+      );
+
+      if (creditResult.success) {
+        console.log(`🎁 Referral credit: ₹${creditResult.creditAwarded} awarded to ${creditResult.referrerParentId}`);
+      } else {
+        console.log('ℹ️ No referral credit awarded:', creditResult.error);
+      }
+    }
+
+    // ============================================
+    // STEP 9: Calculate Revenue Split
     // ============================================
     const revenueResult = await calculateRevenueSplit(
       enrollment.id,
-      5999,
+      finalAmount, // Use final amount after discount
       coach.id,
       leadSource as 'yestoryd' | 'coach',
       leadSourceCoachId,
@@ -560,7 +732,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // STEP 9: Queue Background Job (ONLY IF IMMEDIATE START)
+    // STEP 10: Queue Background Job (ONLY IF IMMEDIATE START)
     // ============================================
     let queueResult: { success: boolean; messageId: string | null } = {
       success: false,
@@ -568,7 +740,6 @@ export async function POST(request: NextRequest) {
     };
 
     if (startImmediately) {
-      // Start immediately - queue session scheduling now
       try {
         queueResult = await queueEnrollmentComplete({
           enrollmentId: enrollment.id,
@@ -588,10 +759,8 @@ export async function POST(request: NextRequest) {
         console.error('⚠️ Queue error (non-fatal):', queueError.message);
       }
     } else {
-      // Delayed start - sessions will be scheduled by cron job on start date
       console.log(`📅 Delayed start: Sessions will be scheduled by cron on ${requestedStartDate}`);
       
-      // Log the event for tracking
       try {
         await supabase.from('enrollment_events').insert({
           enrollment_id: enrollment.id,
@@ -610,7 +779,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // STEP 10: Return Success Response
+    // STEP 11: Return Success Response
     // ============================================
     const duration = Date.now() - startTime;
     console.log(`✅ Payment verified in ${duration}ms`);
@@ -618,7 +787,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Payment verified successfully',
-      enrollmentId: enrollment.id, // For easy access
+      enrollmentId: enrollment.id,
       data: {
         enrollmentId: enrollment.id,
         childId: child.id,
@@ -634,12 +803,17 @@ export async function POST(request: NextRequest) {
             payouts_scheduled: revenueResult.payouts_scheduled,
           }
         : null,
+      referral: creditResult.success
+        ? {
+            creditAwarded: creditResult.creditAwarded,
+            referrerParentId: creditResult.referrerParentId,
+          }
+        : null,
       scheduling: {
         status: startImmediately 
           ? (queueResult.success ? 'queued' : 'pending')
           : 'delayed',
         messageId: queueResult.messageId,
-        // Delayed start info
         delayedStart: !startImmediately ? {
           requestedStartDate,
           programStartDate: programStart.toISOString().split('T')[0],
