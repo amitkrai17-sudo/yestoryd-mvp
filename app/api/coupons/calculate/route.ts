@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: app/api/coupons/calculate/route.ts
 // PURPOSE: Calculate total discount with 20% cap, stacking coupon + credit
-// READS: Base prices from site_settings table
+// READS: Base prices from pricing_plans and site_settings tables
+// REFACTORED: Direct Supabase query instead of internal API fetch
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,7 +18,7 @@ interface CalculateRequest {
   applyCredit?: boolean;
   parentId?: string;
   productType: 'coaching' | 'elearning_quarterly' | 'elearning_annual' | 'group_class';
-  customAmount?: number; // For group classes or custom pricing
+  customAmount?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -29,7 +30,6 @@ export async function POST(request: NextRequest) {
     // STEP 1: Get base price from appropriate source
     // =================================================================
     
-    // Get discount settings from site_settings
     const { data: settings } = await supabase
       .from('site_settings')
       .select('key, value')
@@ -44,15 +44,12 @@ export async function POST(request: NextRequest) {
 
     const settingsMap: Record<string, string> = {};
     settings?.forEach(s => {
-      // Remove quotes from JSON string values
       settingsMap[s.key] = s.value?.toString().replace(/"/g, '') || '';
     });
 
-    // Get base price based on product type
-    let originalAmount = customAmount || 5999; // Default fallback
+    let originalAmount = customAmount || 5999;
 
     if (productType === 'coaching') {
-      // Read coaching price from pricing_plans table (same as enroll page)
       const { data: pricingPlan } = await supabase
         .from('pricing_plans')
         .select('discounted_price')
@@ -70,56 +67,68 @@ export async function POST(request: NextRequest) {
     } else if (productType === 'group_class') {
       originalAmount = customAmount || parseInt(settingsMap.group_class_price || '499');
     }
+
     const maxDiscountPercent = parseInt(settingsMap.max_discount_percent || '20');
     const maxDiscount = Math.round(originalAmount * maxDiscountPercent / 100);
 
     // =================================================================
-    // STEP 2: Calculate coupon discount
+    // STEP 2: Validate and calculate coupon discount (DIRECT QUERY)
     // =================================================================
     let couponDiscount = 0;
     let couponInfo = null;
     let leadSource: 'yestoryd' | 'coach' | 'parent' = 'yestoryd';
 
     if (couponCode) {
-      // Validate coupon
-      const validateResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/coupons/validate`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: couponCode,
-            parentId,
-            productType,
-            amount: originalAmount,
-          }),
-        }
-      );
+      // Query coupon directly from database
+      const { data: coupon, error: couponError } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .single();
 
-      const validateResult = await validateResponse.json();
+      if (coupon && !couponError) {
+        // Check validity dates
+        const now = new Date();
+        const validFrom = coupon.valid_from ? new Date(coupon.valid_from) : null;
+        const validUntil = coupon.valid_until ? new Date(coupon.valid_until) : null;
 
-      if (validateResult.valid) {
-        const coupon = validateResult.coupon;
-        couponInfo = coupon;
+        const isDateValid = (!validFrom || now >= validFrom) && (!validUntil || now <= validUntil);
+        
+        // Check usage limits
+        const isUsageValid = !coupon.max_uses || (coupon.current_uses || 0) < coupon.max_uses;
 
-        // Calculate raw coupon discount
-        // Handle both 'percent' and 'percentage' as percentage discount
-        if (coupon.discountType === 'percent' || coupon.discountType === 'percentage') {
-          couponDiscount = Math.round(originalAmount * coupon.discountValue / 100);
-        } else {
-          couponDiscount = coupon.discountValue;
-        }
+        if (isDateValid && isUsageValid) {
+          couponInfo = {
+            id: coupon.id,
+            code: coupon.code,
+            couponType: coupon.coupon_type,
+            title: coupon.title,
+            discountType: coupon.discount_type,
+            discountValue: coupon.discount_value,
+            maxDiscount: coupon.max_discount,
+            coachId: coupon.coach_id,
+            parentId: coupon.parent_id,
+          };
 
-        // Apply max_discount cap from coupon itself
-        if (coupon.maxDiscount && couponDiscount > coupon.maxDiscount) {
-          couponDiscount = coupon.maxDiscount;
-        }
+          // Calculate raw coupon discount
+          if (coupon.discount_type === 'percent' || coupon.discount_type === 'percentage') {
+            couponDiscount = Math.round(originalAmount * coupon.discount_value / 100);
+          } else {
+            couponDiscount = coupon.discount_value;
+          }
 
-        // Determine lead source from coupon type
-        if (coupon.couponType === 'coach_referral') {
-          leadSource = 'coach';
-        } else if (coupon.couponType === 'parent_referral') {
-          leadSource = 'parent';
+          // Apply max_discount cap from coupon itself
+          if (coupon.max_discount && couponDiscount > coupon.max_discount) {
+            couponDiscount = coupon.max_discount;
+          }
+
+          // Determine lead source from coupon type
+          if (coupon.coupon_type === 'coach_referral') {
+            leadSource = 'coach';
+          } else if (coupon.coupon_type === 'parent_referral') {
+            leadSource = 'parent';
+          }
         }
       }
     }
@@ -135,7 +144,6 @@ export async function POST(request: NextRequest) {
     let availableCredit = 0;
 
     if (applyCredit && parentId) {
-      // Get parent's credit balance
       const { data: parent } = await supabase
         .from('parents')
         .select('referral_credit_balance, referral_credit_expires_at')
@@ -143,18 +151,13 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (parent?.referral_credit_balance) {
-        // Check if credit is not expired
         const expiresAt = parent.referral_credit_expires_at 
           ? new Date(parent.referral_credit_expires_at) 
           : null;
         
         if (!expiresAt || expiresAt > new Date()) {
           availableCredit = parent.referral_credit_balance;
-          
-          // Calculate remaining cap after coupon discount
           const remainingCap = maxDiscount - cappedCouponDiscount;
-          
-          // Apply credit up to remaining cap
           creditApplied = Math.min(availableCredit, remainingCap);
           creditRemaining = availableCredit - creditApplied;
         }
