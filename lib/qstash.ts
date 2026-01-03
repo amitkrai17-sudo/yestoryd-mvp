@@ -1,10 +1,16 @@
 // lib/qstash.ts
-// Background job processing - Direct call (bypassing QStash for now)
+// QStash client for background job processing
 // Yestoryd - AI-Powered Reading Intelligence Platform
+// 
+// CRITICAL: QStash enables async processing for 20K+ scale
+// - Payment returns in < 2 seconds
+// - Calendar/Email/WhatsApp processed in background
+// - Auto-retry on failure (3x)
+// - No timeout issues
 
 import { Client } from '@upstash/qstash';
 
-// Export QStash client for other modules that need it
+// Initialize QStash client
 export const qstash = new Client({
   token: process.env.QSTASH_TOKEN!,
 });
@@ -24,74 +30,142 @@ interface EnrollmentJobData {
 }
 
 /**
- * Queue enrollment completion job
- * TEMPORARILY calling directly instead of using QStash
+ * Queue enrollment completion job via QStash
+ * 
+ * This is the ONLY way to process enrollments.
+ * DO NOT add direct/synchronous fallback - it will break at scale!
+ * 
+ * At 20K scale:
+ * - 100 concurrent payments would timeout with sync calls
+ * - QStash handles unlimited concurrent queuing
+ * - Auto-retries ensure no lost enrollments
  */
 export async function queueEnrollmentComplete(data: EnrollmentJobData) {
+  // IMPORTANT: Must use www subdomain for production
   const appUrl = 'https://www.yestoryd.com';
-  
+
   try {
-    // Call job endpoint directly (bypass QStash temporarily)
-    const response = await fetch(`${appUrl}/api/jobs/enrollment-complete`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        // Skip signature verification for direct calls
-        'x-direct-call': 'true',
-      },
-      body: JSON.stringify(data),
+    const response = await qstash.publishJSON({
+      url: `${appUrl}/api/jobs/enrollment-complete`,
+      body: data,
+      retries: 3,           // Auto-retry up to 3 times
+      delay: 0,             // Start immediately
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Job failed: ${response.status} - ${errorText}`);
-    }
-    
-    const result = await response.json();
-    console.log('📤 Job executed directly:', {
+
+    console.log('📤 Queued enrollment-complete job via QStash:', {
+      messageId: response.messageId,
       enrollmentId: data.enrollmentId,
       childName: data.childName,
-      sessionsScheduled: result.sessionsScheduled,
     });
-    
+
     return {
       success: true,
-      messageId: 'direct-' + Date.now(),
+      messageId: response.messageId,
     };
+
   } catch (error: any) {
-    console.error('❌ Failed to execute job:', error.message);
-    throw error;
+    // Log error but DO NOT fall back to sync call
+    // Sync call would take 25+ seconds and timeout at scale
+    console.error('❌ QStash queue failed:', error.message);
+    
+    // Return error so payment webhook knows to handle it
+    // The Razorpay webhook can retry, or admin can manually trigger
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
 /**
- * Queue a delayed follow-up email
- * TEMPORARILY disabled - will be re-enabled with QStash
+ * Queue a delayed notification
+ * For follow-up emails, reminders, etc.
  */
-export async function queueDelayedEmail(data: {
-  type: 'welcome' | 'reminder' | 'followup';
-  recipientEmail: string;
-  recipientName: string;
-  childName?: string;
+export async function queueDelayedNotification(data: {
+  type: 'welcome_email' | 'session_reminder' | 'followup';
+  payload: any;
   delaySeconds?: number;
 }) {
-  console.log('⏸️ Delayed email queuing disabled (QStash bypass mode)');
-  return { messageId: 'disabled' };
+  const appUrl = 'https://www.yestoryd.com';
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${appUrl}/api/jobs/send-notification`,
+      body: data,
+      delay: data.delaySeconds || 0,
+      retries: 2,
+    });
+
+    console.log('📤 Queued notification job:', {
+      messageId: response.messageId,
+      type: data.type,
+      delay: data.delaySeconds,
+    });
+
+    return { success: true, messageId: response.messageId };
+
+  } catch (error: any) {
+    console.error('❌ Failed to queue notification:', error.message);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
- * Queue session reminder
- * TEMPORARILY disabled - will be re-enabled with QStash
+ * Create a QStash schedule (recurring job)
+ * Use this instead of Vercel crons when at limit
+ * 
+ * QStash schedules are UNLIMITED and don't count against Vercel crons!
  */
-export async function queueSessionReminder(data: {
-  sessionId: string;
-  parentEmail: string;
-  parentName: string;
-  childName: string;
-  coachName: string;
-  sessionDate: string;
-  meetLink: string;
+export async function createQStashSchedule(config: {
+  scheduleId?: string;
+  url: string;
+  cron: string;
+  body?: any;
 }) {
-  console.log('⏸️ Session reminder queuing disabled (QStash bypass mode)');
-  return { messageId: 'disabled' };
+  try {
+    const schedule = await qstash.schedules.create({
+      scheduleId: config.scheduleId,
+      destination: config.url,
+      cron: config.cron,
+      body: config.body ? JSON.stringify(config.body) : undefined,
+      retries: 3,
+    });
+
+    console.log('📅 Created QStash schedule:', {
+      scheduleId: schedule.scheduleId,
+      cron: config.cron,
+      destination: config.url,
+    });
+
+    return { success: true, scheduleId: schedule.scheduleId };
+
+  } catch (error: any) {
+    console.error('❌ Failed to create schedule:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * List all QStash schedules
+ */
+export async function listQStashSchedules() {
+  try {
+    const schedules = await qstash.schedules.list();
+    return { success: true, schedules };
+  } catch (error: any) {
+    return { success: false, error: error.message, schedules: [] };
+  }
+}
+
+/**
+ * Delete a QStash schedule
+ */
+export async function deleteQStashSchedule(scheduleId: string) {
+  try {
+    await qstash.schedules.delete(scheduleId);
+    console.log('🗑️ Deleted QStash schedule:', scheduleId);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
