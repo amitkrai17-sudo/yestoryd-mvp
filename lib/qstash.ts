@@ -34,32 +34,16 @@ interface EnrollmentJobData {
  * 
  * This is the ONLY way to process enrollments.
  * DO NOT add direct/synchronous fallback - it will break at scale!
- * 
- * At 20K scale:
- * - 100 concurrent payments would timeout with sync calls
- * - QStash handles unlimited concurrent queuing
- * - Auto-retries ensure no lost enrollments
  */
 export async function queueEnrollmentComplete(data: EnrollmentJobData) {
-  // IMPORTANT: Must use www subdomain for production
   const appUrl = 'https://www.yestoryd.com';
-  const targetUrl = `${appUrl}/api/jobs/enrollment-complete`;
-
-  // Debug logging
-  console.log('🔍 QStash debug:', {
-    targetUrl,
-    hasToken: !!process.env.QSTASH_TOKEN,
-    tokenLength: process.env.QSTASH_TOKEN?.length || 0,
-    tokenPrefix: process.env.QSTASH_TOKEN?.substring(0, 10) || 'MISSING',
-    dataKeys: Object.keys(data),
-  });
 
   try {
     const response = await qstash.publishJSON({
-      url: targetUrl,
+      url: `${appUrl}/api/jobs/enrollment-complete`,
       body: data,
-      retries: 3,           // Auto-retry up to 3 times
-      delay: 0,             // Start immediately
+      retries: 3,
+      delay: 0,
     });
 
     console.log('📤 Queued enrollment-complete job via QStash:', {
@@ -74,14 +58,7 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData) {
     };
 
   } catch (error: any) {
-    // Log full error details for debugging
-    console.error('❌ QStash queue failed:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack?.substring(0, 500),
-    });
-    
-    // Return error so payment webhook knows to handle it
+    console.error('❌ QStash queue failed:', error.message);
     return {
       success: false,
       messageId: null,
@@ -92,7 +69,6 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData) {
 
 /**
  * Queue a delayed notification
- * For follow-up emails, reminders, etc.
  */
 export async function queueDelayedNotification(data: {
   type: 'welcome_email' | 'session_reminder' | 'followup';
@@ -112,7 +88,6 @@ export async function queueDelayedNotification(data: {
     console.log('📤 Queued notification job:', {
       messageId: response.messageId,
       type: data.type,
-      delay: data.delaySeconds,
     });
 
     return { success: true, messageId: response.messageId };
@@ -126,8 +101,6 @@ export async function queueDelayedNotification(data: {
 /**
  * Create a QStash schedule (recurring job)
  * Use this instead of Vercel crons when at limit
- * 
- * QStash schedules are UNLIMITED and don't count against Vercel crons!
  */
 export async function createQStashSchedule(config: {
   scheduleId?: string;
@@ -147,7 +120,6 @@ export async function createQStashSchedule(config: {
     console.log('📅 Created QStash schedule:', {
       scheduleId: schedule.scheduleId,
       cron: config.cron,
-      destination: config.url,
     });
 
     return { success: true, scheduleId: schedule.scheduleId };
