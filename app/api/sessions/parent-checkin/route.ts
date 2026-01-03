@@ -1,6 +1,7 @@
 // file: app/api/sessions/parent-checkin/route.ts
 // API endpoint for saving parent check-in session data
 // Saves to scheduled_sessions + learning_events for RAG
+// AUTO-TRIGGERS final assessment email after session 9 (last parent check-in)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -17,26 +18,26 @@ interface ParentCheckinRequest {
   sessionId: string;
   coachId: string;
   childId: string;
-  
+
   // Parent sentiment
   parentSentiment: string;
   parentSeesProgress: string;
-  
+
   // Home practice
   homePracticeFrequency: string;
   homeHelpers: string[];
-  
+
   // Concerns
   concernsRaised: string[];
   concernDetails?: string;
   actionItems?: string;
-  
+
   // Follow-up and renewal
   followUpNeeded: boolean;
   followUpDate?: string;
   escalateToAdmin: boolean;
   renewalLikelihood: string;
-  
+
   // Voice note
   voiceNote?: string;
 }
@@ -46,7 +47,7 @@ async function transcribeVoiceNote(audioBase64: string): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     const audioData = audioBase64.split(',')[1] || audioBase64;
-    
+
     const result = await model.generateContent([
       {
         inlineData: {
@@ -73,7 +74,7 @@ async function generateCheckinSummary(
 ): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    
+
     const prompt = `
 You are summarizing a parent check-in call for a children's reading coaching program.
 
@@ -106,6 +107,207 @@ Be professional and factual. This will be stored for future reference.`;
     console.error('Summary generation error:', error);
     // Fallback summary
     return `Parent check-in completed. Sentiment: ${data.parentSentiment}. Progress perceived: ${data.parentSeesProgress}. Home practice: ${data.homePracticeFrequency}. Renewal likelihood: ${data.renewalLikelihood}.`;
+  }
+}
+
+// ==================== AUTO-TRIGGER FINAL ASSESSMENT ====================
+async function checkAndTriggerFinalAssessment(childId: string): Promise<{
+  triggered: boolean;
+  enrollmentId?: string;
+  message?: string;
+}> {
+  try {
+    // Count completed sessions for this child
+    const { count: completedSessions } = await supabase
+      .from('scheduled_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('child_id', childId)
+      .eq('status', 'completed');
+
+    const totalRequired = 9;
+
+    // If not yet 9 sessions, don't trigger
+    if ((completedSessions || 0) < totalRequired) {
+      return { 
+        triggered: false, 
+        message: `${completedSessions}/${totalRequired} sessions completed` 
+      };
+    }
+
+    // Get enrollment for this child
+    const { data: enrollment } = await supabase
+      .from('enrollments')
+      .select('id, status, parent_id, child_id')
+      .eq('child_id', childId)
+      .in('status', ['active', 'pending_start'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!enrollment) {
+      return { triggered: false, message: 'No active enrollment found' };
+    }
+
+    // Check if final assessment already sent
+    const { data: existingEvent } = await supabase
+      .from('enrollment_events')
+      .select('id')
+      .eq('enrollment_id', enrollment.id)
+      .eq('event_type', 'final_assessment_sent')
+      .single();
+
+    if (existingEvent) {
+      return { triggered: false, message: 'Final assessment already sent' };
+    }
+
+    // Get parent and child details
+    const { data: child } = await supabase
+      .from('children')
+      .select('name, child_name, parent_email, parent_name')
+      .eq('id', childId)
+      .single();
+
+    const { data: parent } = await supabase
+      .from('parents')
+      .select('email, name, phone')
+      .eq('id', enrollment.parent_id)
+      .single();
+
+    const parentEmail = parent?.email || child?.parent_email;
+    const parentName = parent?.name || child?.parent_name || 'Parent';
+    const childName = child?.name || child?.child_name || 'Student';
+    const parentPhone = parent?.phone;
+
+    if (!parentEmail) {
+      return { triggered: false, message: 'No parent email found' };
+    }
+
+    // Generate final assessment link
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+    const assessmentLink = `${baseUrl}/assessment?type=final&enrollment=${enrollment.id}`;
+
+    // Log the event
+    await supabase.from('enrollment_events').insert({
+      enrollment_id: enrollment.id,
+      event_type: 'final_assessment_sent',
+      event_data: {
+        parent_email: parentEmail,
+        child_name: childName,
+        link: assessmentLink,
+        sessions_completed: completedSessions,
+        auto_triggered: true,
+        sent_at: new Date().toISOString(),
+      },
+      triggered_by: 'system',
+    });
+
+    // Send email via SendGrid
+    try {
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+      await sgMail.send({
+        to: parentEmail,
+        from: {
+          email: 'engage@yestoryd.com',
+          name: 'Yestoryd',
+        },
+        subject: `🎉 ${childName}'s Final Reading Assessment - See Their Amazing Progress!`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #FF0099, #7B008B); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">🎉 Congratulations!</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">All Sessions Completed!</p>
+            </div>
+            
+            <div style="background: #fff; padding: 30px; border: 1px solid #eee; border-top: none;">
+              <p style="font-size: 16px; color: #333;">Hi ${parentName},</p>
+              
+              <p style="color: #555; line-height: 1.6;">
+                <strong>${childName}</strong> has successfully completed all 9 sessions of the reading program! 🌟
+              </p>
+              
+              <p style="color: #555; line-height: 1.6;">
+                It's time for the <strong>Final Assessment</strong> to measure how much they've improved. 
+                This takes just 5 minutes and will help us create a beautiful progress report comparing 
+                their reading skills from Day 1 to now.
+              </p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${assessmentLink}" 
+                   style="background: linear-gradient(to right, #FF0099, #7B008B); 
+                          color: white; 
+                          padding: 15px 40px; 
+                          text-decoration: none; 
+                          border-radius: 8px;
+                          font-weight: bold;
+                          font-size: 16px;
+                          display: inline-block;">
+                  📖 Take Final Assessment
+                </a>
+              </div>
+              
+              <div style="background: #FEF3C7; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; color: #92400E; font-size: 14px;">
+                  <strong>What happens next?</strong><br>
+                  After the assessment, you'll receive ${childName}'s official Completion Certificate 
+                  with a detailed Progress Report showing their improvement! 🏆
+                </p>
+              </div>
+              
+              <p style="color: #888; font-size: 14px;">
+                Questions? Reply to this email or WhatsApp us at 8976287997.
+              </p>
+              
+              <p style="color: #555;">
+                Best regards,<br>
+                <strong>Team Yestoryd</strong>
+              </p>
+            </div>
+            
+            <div style="background: #f9f9f9; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+              <p style="margin: 0; color: #888; font-size: 12px;">
+                Yestoryd • AI-Powered Reading Coaching for Kids
+              </p>
+            </div>
+          </div>
+        `,
+      });
+
+      console.log(`✅ Final assessment email sent to ${parentEmail} for ${childName}`);
+    } catch (emailError) {
+      console.error('Email send error:', emailError);
+    }
+
+    // Send WhatsApp via AiSensy (if phone available)
+    if (parentPhone) {
+      try {
+        await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: process.env.AISENSY_API_KEY,
+            campaignName: 'final_assessment_request',
+            destination: parentPhone.replace(/\D/g, ''),
+            userName: 'Yestoryd',
+            templateParams: [childName, assessmentLink],
+          }),
+        });
+        console.log(`✅ Final assessment WhatsApp sent to ${parentPhone}`);
+      } catch (waError) {
+        console.error('WhatsApp send error:', waError);
+      }
+    }
+
+    return {
+      triggered: true,
+      enrollmentId: enrollment.id,
+      message: `Final assessment sent to ${parentEmail}`,
+    };
+
+  } catch (error) {
+    console.error('Auto-trigger error:', error);
+    return { triggered: false, message: 'Error checking completion status' };
   }
 }
 
@@ -155,7 +357,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: 'completed',
         completed_at: new Date().toISOString(),
-        
+
         // Parent check-in specific fields
         parent_sentiment: data.parentSentiment,
         parent_sees_progress: data.parentSeesProgress,
@@ -167,13 +369,13 @@ export async function POST(request: NextRequest) {
         follow_up_needed: data.followUpNeeded,
         follow_up_date: data.followUpDate || null,
         escalate_to_admin: data.escalateToAdmin,
-        
+
         // Voice note
         voice_note_transcript: voiceTranscript || null,
-        
+
         // AI summary (visible to coach/parent)
         tldv_ai_summary: aiSummary,
-        
+
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.sessionId);
@@ -276,11 +478,21 @@ export async function POST(request: NextRequest) {
       // TODO: Send notification to Rucha via email/WhatsApp
     }
 
+    // ==================== AUTO-TRIGGER FINAL ASSESSMENT ====================
+    // Check if this was the 9th session and trigger final assessment
+    const autoTriggerResult = await checkAndTriggerFinalAssessment(data.childId);
+    
+    if (autoTriggerResult.triggered) {
+      console.log(`🎉 AUTO-TRIGGERED: Final assessment for ${child.name} - ${autoTriggerResult.message}`);
+    }
+
     return NextResponse.json({
       success: true,
       sessionId: data.sessionId,
       summary: aiSummary,
       escalated: data.escalateToAdmin,
+      // Include auto-trigger info
+      finalAssessment: autoTriggerResult,
     });
 
   } catch (error) {

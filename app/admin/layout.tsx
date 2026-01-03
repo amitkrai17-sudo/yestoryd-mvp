@@ -30,6 +30,7 @@ import {
   Users2,
   BookOpen,
   Ticket,
+  CheckCircle,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -151,6 +152,14 @@ const NAV_ITEMS = [
     section: 'revenue',
   },
   // ===== OPERATIONS =====
+  {
+    label: 'Completion Mgmt',
+    href: '/admin/completion',
+    icon: CheckCircle,
+    description: 'Track & complete programs',
+    ready: true,
+    section: 'ops',
+  },
   {
     label: 'Enrollments',
     href: '/admin/enrollments',

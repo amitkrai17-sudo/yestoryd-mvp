@@ -4,13 +4,13 @@
   "description": "Yestoryd - Complete Reading Assessment & Coaching Platform",
   "private": true,
   "scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "next lint",
-  "typecheck": "tsc --noEmit",
-  "quality": "npm run typecheck && npm run lint"
-},
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "quality": "npm run typecheck && npm run lint"
+  },
   "dependencies": {
     "@ai-sdk/google": "^2.0.45",
     "@google/generative-ai": "^0.21.0",
@@ -20,6 +20,7 @@
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tabs": "^1.0.4",
+    "@react-pdf/renderer": "^4.3.2",
     "@sendgrid/mail": "^8.1.6",
     "@sentry/nextjs": "^10.32.1",
     "@supabase/auth-helpers-nextjs": "^0.15.0",

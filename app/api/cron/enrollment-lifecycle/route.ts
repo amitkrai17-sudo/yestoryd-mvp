@@ -1,6 +1,6 @@
 // app/api/cron/enrollment-lifecycle/route.ts
 // Cron job for automated enrollment lifecycle management
-// Handles: delayed starts, pause endings, coach unavailability
+// Handles: delayed starts, pause endings, coach unavailability, COMPLETION ALERTS
 // Configure in vercel.json: runs daily at 6 AM IST
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
@@ -21,6 +21,18 @@ interface LifecycleResult {
   success: boolean;
   error?: string;
   details?: any;
+}
+
+interface CompletionAlert {
+  id: string;
+  childName: string;
+  parentName: string;
+  parentEmail: string;
+  coachName: string;
+  sessionsCompleted: number;
+  programEnd: string;
+  daysRemaining: number;
+  riskLevel: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -67,9 +79,9 @@ export async function GET(request: NextRequest) {
     results.push(...reminderResults);
 
     // ============================================
-    // 6. CHECK PROGRAM COMPLETIONS
+    // 6. COMPLETION MANAGEMENT & ALERTS (NEW)
     // ============================================
-    const completionResults = await checkProgramCompletions();
+    const completionResults = await runCompletionAlerts();
     results.push(...completionResults);
 
     const duration = Date.now() - startTime;
@@ -91,10 +103,10 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Lifecycle cron failed:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error.message,
-        results 
+        results
       },
       { status: 500 }
     );
@@ -204,7 +216,7 @@ async function resumePausedEnrollments(): Promise<LifecycleResult[]> {
     const { data: pausedEnrollments, error } = await supabase
       .from('enrollments')
       .select(`
-        id, child_id, parent_id, coach_id, pause_start_date, pause_end_date, 
+        id, child_id, parent_id, coach_id, pause_start_date, pause_end_date,
         sessions_remaining, original_end_date,
         children (id, name),
         parents (id, name, email, phone),
@@ -241,7 +253,7 @@ async function resumePausedEnrollments(): Promise<LifecycleResult[]> {
 
         // Calculate pause duration and extend end date
         const pauseDays = Math.ceil(
-          (new Date(enrollment.pause_end_date!).getTime() - new Date(enrollment.pause_start_date!).getTime()) 
+          (new Date(enrollment.pause_end_date!).getTime() - new Date(enrollment.pause_start_date!).getTime())
           / (1000 * 60 * 60 * 24)
         );
 
@@ -260,7 +272,7 @@ async function resumePausedEnrollments(): Promise<LifecycleResult[]> {
             pause_count: ((enrollment as any).pause_count || 0) + 1,
             program_end: newEndDate.toISOString(),
             coach_id: finalCoachId,
-            ...(coachChanged && { 
+            ...(coachChanged && {
               original_coach_id: enrollment.coach_id,
               coach_assigned_by: 'auto',
             }),
@@ -279,9 +291,6 @@ async function resumePausedEnrollments(): Promise<LifecycleResult[]> {
           coach_changed: coachChanged,
           new_end_date: newEndDate.toISOString().split('T')[0],
         });
-
-        // TODO: Send WhatsApp notification
-        // await sendWhatsApp(parent.phone, 'program_resumed', {...});
 
         results.push({
           action: 'resume_paused',
@@ -332,7 +341,7 @@ async function handleCoachUnavailabilityStart(): Promise<LifecycleResult[]> {
       try {
         const coach = unavail.coaches as any;
         const unavailDays = Math.ceil(
-          (new Date(unavail.end_date).getTime() - new Date(unavail.start_date).getTime()) 
+          (new Date(unavail.end_date).getTime() - new Date(unavail.start_date).getTime())
           / (1000 * 60 * 60 * 24)
         );
 
@@ -352,28 +361,22 @@ async function handleCoachUnavailabilityStart(): Promise<LifecycleResult[]> {
 
         // Determine resolution based on duration
         if (unavailDays <= 7) {
-          // Short absence: Reschedule sessions
           resolutionType = 'reschedule';
-          // Sessions will be rescheduled when coach returns
         } else if (unavailDays <= 21) {
-          // Medium absence: Assign backup coach temporarily
           resolutionType = 'backup_assigned';
           const backupCoachId = unavail.backup_coach_id || await getBackupCoach(unavail.coach_id);
-          
+
           if (backupCoachId) {
-            // Update affected sessions to backup coach
             await supabase
               .from('scheduled_sessions')
-              .update({ 
+              .update({
                 coach_id: backupCoachId,
                 updated_at: new Date().toISOString(),
               })
               .in('id', (affectedSessions || []).map(s => s.id));
           }
         } else {
-          // Long absence: Permanent reassignment
           resolutionType = 'permanent_reassign';
-          // This requires more complex handling - notify admin
         }
 
         // Update unavailability status
@@ -392,10 +395,10 @@ async function handleCoachUnavailabilityStart(): Promise<LifecycleResult[]> {
           enrollmentId: unavail.id,
           childName: `Coach: ${coach?.name}`,
           success: true,
-          details: { 
-            duration: unavailDays, 
-            resolution: resolutionType, 
-            affectedSessions: affectedCount 
+          details: {
+            duration: unavailDays,
+            resolution: resolutionType,
+            affectedSessions: affectedCount
           },
         });
 
@@ -424,7 +427,6 @@ async function handleCoachUnavailabilityEnd(): Promise<LifecycleResult[]> {
   const results: LifecycleResult[] = [];
 
   try {
-    // Find unavailability ending today
     const { data: endingUnavailabilities, error } = await supabase
       .from('coach_availability')
       .select(`
@@ -442,7 +444,6 @@ async function handleCoachUnavailabilityEnd(): Promise<LifecycleResult[]> {
 
         console.log(`✅ Coach returning: ${coach?.name}`);
 
-        // Mark unavailability as completed
         await supabase
           .from('coach_availability')
           .update({
@@ -450,13 +451,6 @@ async function handleCoachUnavailabilityEnd(): Promise<LifecycleResult[]> {
             updated_at: new Date().toISOString(),
           })
           .eq('id', unavail.id);
-
-        // If backup was assigned, transfer sessions back
-        if (unavail.resolution_type === 'backup_assigned') {
-          // Find sessions that were temporarily reassigned
-          // and move them back to original coach
-          // (This requires tracking original_coach_id on sessions)
-        }
 
         results.push({
           action: 'coach_unavailability_end',
@@ -490,7 +484,6 @@ async function sendStartReminders(): Promise<LifecycleResult[]> {
   const results: LifecycleResult[] = [];
 
   try {
-    // Find enrollments starting in 3 days
     const threeDaysFromNow = new Date();
     threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
     const targetDate = threeDaysFromNow.toISOString().split('T')[0];
@@ -511,17 +504,8 @@ async function sendStartReminders(): Promise<LifecycleResult[]> {
     for (const enrollment of upcomingStarts || []) {
       try {
         const child = enrollment.children as any;
-        const parent = enrollment.parents as any;
-        const coach = enrollment.coaches as any;
 
         console.log(`📢 Sending start reminder: ${child?.name}`);
-
-        // TODO: Send WhatsApp reminder
-        // await sendWhatsApp(parent.phone, 'start_reminder_3day', {
-        //   childName: child.name,
-        //   startDate: enrollment.requested_start_date,
-        //   coachName: coach.name,
-        // });
 
         await logEvent(enrollment.id, 'start_reminder_sent', {
           reminder_type: '3_day',
@@ -554,70 +538,371 @@ async function sendStartReminders(): Promise<LifecycleResult[]> {
 }
 
 // ============================================
-// TASK 6: Check Program Completions
+// TASK 6: COMPLETION ALERTS & RISK MANAGEMENT (NEW)
 // ============================================
-async function checkProgramCompletions(): Promise<LifecycleResult[]> {
+async function runCompletionAlerts(): Promise<LifecycleResult[]> {
   const results: LifecycleResult[] = [];
+  const today = new Date();
 
   try {
-    // Find enrollments with all sessions completed
-    const { data: potentialCompletions, error } = await supabase
+    console.log('📊 Running completion alerts...');
+
+    // Get all active enrollments
+    const { data: enrollments, error } = await supabase
       .from('enrollments')
       .select(`
-        id, sessions_completed, sessions_remaining,
-        children (id, name),
-        parents (id, name, email)
+        id,
+        status,
+        program_start,
+        program_end,
+        risk_level,
+        child_id,
+        parent_id,
+        coach_id,
+        children!child_id (
+          id,
+          name,
+          child_name,
+          parent_email,
+          parent_name,
+          parent_phone
+        ),
+        parents!parent_id (
+          id,
+          name,
+          email,
+          phone
+        ),
+        coaches!coach_id (
+          id,
+          name,
+          email
+        )
       `)
-      .eq('status', 'active')
-      .eq('sessions_remaining', 0);
+      .in('status', ['active', 'pending_start'])
+      .order('program_end', { ascending: true });
 
     if (error) throw error;
 
-    for (const enrollment of potentialCompletions || []) {
+    const alerts: {
+      overdue: CompletionAlert[];
+      atRisk: CompletionAlert[];
+      inactive: CompletionAlert[];
+      ready: CompletionAlert[];
+    } = {
+      overdue: [],
+      atRisk: [],
+      inactive: [],
+      ready: [],
+    };
+
+    // Process each enrollment
+    for (const enrollment of enrollments || []) {
       try {
-        const child = enrollment.children as any;
+        // Count completed sessions
+        const { count: sessionsCompleted } = await supabase
+          .from('scheduled_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('child_id', enrollment.child_id)
+          .eq('status', 'completed');
 
-        console.log(`🎓 Program completed: ${child?.name}`);
+        // Get last session date
+        const { data: lastSession } = await supabase
+          .from('scheduled_sessions')
+          .select('completed_at')
+          .eq('child_id', enrollment.child_id)
+          .eq('status', 'completed')
+          .order('completed_at', { ascending: false })
+          .limit(1)
+          .single();
 
-        // Update status
-        await supabase
-          .from('enrollments')
-          .update({
-            status: 'completed',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', enrollment.id);
+        const completed = sessionsCompleted || 0;
+        const programEnd = new Date(enrollment.program_end);
+        const daysRemaining = Math.ceil((programEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-        await logEvent(enrollment.id, 'program_completed', {
-          sessions_completed: enrollment.sessions_completed,
-        });
+        const lastSessionDate = lastSession?.completed_at ? new Date(lastSession.completed_at) : null;
+        const daysSinceLastSession = lastSessionDate
+          ? Math.ceil((today.getTime() - lastSessionDate.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
 
-        // TODO: Send completion certificate
-        // TODO: Send renewal offer
+        const childName = (enrollment.children as any)?.name || (enrollment.children as any)?.child_name || 'Unknown';
+        const parentName = (enrollment.parents as any)?.name || (enrollment.children as any)?.parent_name || 'Parent';
+        const parentEmail = (enrollment.parents as any)?.email || (enrollment.children as any)?.parent_email || '';
+        const coachName = (enrollment.coaches as any)?.name || 'Unassigned';
 
-        results.push({
-          action: 'program_completed',
-          enrollmentId: enrollment.id,
-          childName: child?.name || 'Unknown',
-          success: true,
-        });
+        const alertData: CompletionAlert = {
+          id: enrollment.id,
+          childName,
+          parentName,
+          parentEmail,
+          coachName,
+          sessionsCompleted: completed,
+          programEnd: enrollment.program_end,
+          daysRemaining,
+          riskLevel: 'on_track',
+        };
+
+        // Determine risk level
+        let newRiskLevel = 'active';
+
+        if (completed >= 9) {
+          newRiskLevel = 'ready';
+          alerts.ready.push({ ...alertData, riskLevel: 'ready' });
+        } else if (daysRemaining < 0) {
+          newRiskLevel = 'overdue';
+          alerts.overdue.push({ ...alertData, riskLevel: 'overdue' });
+        } else if (daysRemaining <= 7) {
+          newRiskLevel = 'at_risk';
+          alerts.atRisk.push({ ...alertData, riskLevel: 'at_risk' });
+        } else if (daysSinceLastSession && daysSinceLastSession >= 14) {
+          newRiskLevel = 'inactive';
+          alerts.inactive.push({ ...alertData, riskLevel: 'inactive' });
+        } else if (completed >= 6) {
+          newRiskLevel = 'on_track';
+        }
+
+        // Update risk level in database if changed
+        if (newRiskLevel !== enrollment.risk_level) {
+          await supabase
+            .from('enrollments')
+            .update({
+              risk_level: newRiskLevel,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', enrollment.id);
+
+          results.push({
+            action: 'risk_level_updated',
+            enrollmentId: enrollment.id,
+            childName,
+            success: true,
+            details: { oldRisk: enrollment.risk_level, newRisk: newRiskLevel },
+          });
+        }
 
       } catch (err: any) {
         results.push({
-          action: 'program_completed',
+          action: 'risk_check',
           enrollmentId: enrollment.id,
-          childName: (enrollment.children as any)?.name || 'Unknown',
+          childName: 'Unknown',
           success: false,
           error: err.message,
         });
       }
     }
 
+    // Send admin alert if there are issues
+    const hasAlerts = alerts.overdue.length > 0 || alerts.atRisk.length > 0 || alerts.inactive.length > 0;
+
+    if (hasAlerts) {
+      await sendCompletionAdminAlert(alerts);
+      results.push({
+        action: 'admin_alert_sent',
+        enrollmentId: 'batch',
+        childName: `${alerts.overdue.length} overdue, ${alerts.atRisk.length} at risk, ${alerts.inactive.length} inactive`,
+        success: true,
+      });
+    }
+
+    // Send parent reminders for "ready" enrollments waiting on final assessment
+    for (const readyEnrollment of alerts.ready) {
+      const reminded = await checkAndSendFinalAssessmentReminder(readyEnrollment);
+      if (reminded) {
+        results.push({
+          action: 'final_assessment_reminder',
+          enrollmentId: readyEnrollment.id,
+          childName: readyEnrollment.childName,
+          success: true,
+        });
+      }
+    }
+
+    console.log(`📊 Completion alerts: ${alerts.overdue.length} overdue, ${alerts.atRisk.length} at risk, ${alerts.inactive.length} inactive, ${alerts.ready.length} ready`);
+
   } catch (error: any) {
-    console.error('Error in checkProgramCompletions:', error);
+    console.error('Error in runCompletionAlerts:', error);
+    results.push({
+      action: 'completion_alerts',
+      enrollmentId: 'batch',
+      childName: 'Error',
+      success: false,
+      error: error.message,
+    });
   }
 
   return results;
+}
+
+// Send consolidated alert to admin
+async function sendCompletionAdminAlert(alerts: {
+  overdue: CompletionAlert[];
+  atRisk: CompletionAlert[];
+  inactive: CompletionAlert[];
+  ready: CompletionAlert[];
+}) {
+  try {
+    const sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+    const overdueList = alerts.overdue.map(a =>
+      `• ${a.childName} (${a.sessionsCompleted}/9 sessions, ${Math.abs(a.daysRemaining)} days overdue)`
+    ).join('\n');
+
+    const atRiskList = alerts.atRisk.map(a =>
+      `• ${a.childName} (${a.sessionsCompleted}/9 sessions, ${a.daysRemaining} days left)`
+    ).join('\n');
+
+    const inactiveList = alerts.inactive.map(a =>
+      `• ${a.childName} (${a.sessionsCompleted}/9 sessions, Coach: ${a.coachName})`
+    ).join('\n');
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1F2937;">📊 Daily Completion Alerts</h2>
+        <p style="color: #6B7280;">${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        
+        ${alerts.overdue.length > 0 ? `
+          <div style="background: #FEE2E2; border-left: 4px solid #EF4444; padding: 15px; margin: 15px 0; border-radius: 4px;">
+            <h3 style="color: #DC2626; margin: 0 0 10px;">🔴 Overdue (${alerts.overdue.length})</h3>
+            <pre style="margin: 0; font-family: inherit; white-space: pre-wrap;">${overdueList}</pre>
+          </div>
+        ` : ''}
+        
+        ${alerts.atRisk.length > 0 ? `
+          <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 15px 0; border-radius: 4px;">
+            <h3 style="color: #D97706; margin: 0 0 10px;">🟠 At Risk - Ending Soon (${alerts.atRisk.length})</h3>
+            <pre style="margin: 0; font-family: inherit; white-space: pre-wrap;">${atRiskList}</pre>
+          </div>
+        ` : ''}
+        
+        ${alerts.inactive.length > 0 ? `
+          <div style="background: #FEF9C3; border-left: 4px solid #EAB308; padding: 15px; margin: 15px 0; border-radius: 4px;">
+            <h3 style="color: #CA8A04; margin: 0 0 10px;">🟡 Inactive 14+ Days (${alerts.inactive.length})</h3>
+            <pre style="margin: 0; font-family: inherit; white-space: pre-wrap;">${inactiveList}</pre>
+          </div>
+        ` : ''}
+        
+        ${alerts.ready.length > 0 ? `
+          <div style="background: #DBEAFE; border-left: 4px solid #3B82F6; padding: 15px; margin: 15px 0; border-radius: 4px;">
+            <h3 style="color: #2563EB; margin: 0 0 10px;">🔵 Ready to Complete (${alerts.ready.length})</h3>
+            <p style="margin: 0;">These children have completed 9 sessions and are ready for program completion.</p>
+          </div>
+        ` : ''}
+        
+        <div style="margin-top: 20px; padding: 15px; background: #F3F4F6; border-radius: 8px;">
+          <a href="https://www.yestoryd.com/admin/completion" 
+             style="display: inline-block; background: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            Open Completion Dashboard
+          </a>
+        </div>
+      </div>
+    `;
+
+    await sgMail.send({
+      to: ['rucha.rai@yestoryd.com', 'amitkrai17@gmail.com'],
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd System' },
+      subject: `⚠️ Completion Alerts: ${alerts.overdue.length} Overdue, ${alerts.atRisk.length} At Risk`,
+      html: emailHtml,
+    });
+
+    console.log('✅ Admin alert email sent');
+  } catch (error) {
+    console.error('Admin alert email error:', error);
+  }
+}
+
+// Check if final assessment reminder needed
+async function checkAndSendFinalAssessmentReminder(enrollment: CompletionAlert): Promise<boolean> {
+  try {
+    // Check if final assessment was sent
+    const { data: assessmentEvent } = await supabase
+      .from('enrollment_events')
+      .select('created_at')
+      .eq('enrollment_id', enrollment.id)
+      .eq('event_type', 'final_assessment_sent')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!assessmentEvent) return false;
+
+    // Check if final assessment was submitted
+    const { data: finalAssessment } = await supabase
+      .from('assessment_results')
+      .select('id')
+      .eq('enrollment_id', enrollment.id)
+      .eq('assessment_type', 'final')
+      .single();
+
+    if (finalAssessment) return false;
+
+    // Check if reminder already sent in last 3 days
+    const { data: reminderEvent } = await supabase
+      .from('enrollment_events')
+      .select('created_at')
+      .eq('enrollment_id', enrollment.id)
+      .eq('event_type', 'final_assessment_reminder')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (reminderEvent) {
+      const daysSinceReminder = Math.ceil(
+        (new Date().getTime() - new Date(reminderEvent.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysSinceReminder < 3) return false;
+    }
+
+    // Check if original email was sent 3+ days ago
+    const daysSinceSent = Math.ceil(
+      (new Date().getTime() - new Date(assessmentEvent.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysSinceSent < 3) return false;
+
+    if (!enrollment.parentEmail) return false;
+
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+    const assessmentLink = `${baseUrl}/assessment?type=final&enrollment=${enrollment.id}`;
+
+    const sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+    await sgMail.send({
+      to: enrollment.parentEmail,
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+      subject: `⏰ Reminder: ${enrollment.childName}'s Final Assessment Awaiting`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1F2937;">Quick Reminder! 📖</h2>
+          <p>Hi ${enrollment.parentName},</p>
+          <p>${enrollment.childName}'s final reading assessment is still pending. It only takes 5 minutes!</p>
+          <div style="text-align: center; margin: 25px 0;">
+            <a href="${assessmentLink}" 
+               style="background: linear-gradient(to right, #FF0099, #7B008B); color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+              Complete Final Assessment
+            </a>
+          </div>
+          <p style="color: #6B7280; font-size: 14px;">Once completed, you'll receive ${enrollment.childName}'s certificate and progress report!</p>
+          <p>Best,<br>Team Yestoryd</p>
+        </div>
+      `,
+    });
+
+    // Log reminder sent
+    await supabase.from('enrollment_events').insert({
+      enrollment_id: enrollment.id,
+      event_type: 'final_assessment_reminder',
+      event_data: { sent_to: enrollment.parentEmail, sent_at: new Date().toISOString() },
+      triggered_by: 'cron',
+    });
+
+    console.log(`✅ Final assessment reminder sent to ${enrollment.parentEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Reminder send error:', error);
+    return false;
+  }
 }
 
 // ============================================
@@ -645,7 +930,6 @@ async function getBackupCoach(excludeCoachId: string): Promise<string | null> {
 }
 
 async function rescheduleRemainingSessions(enrollmentId: string, remainingSessions: number) {
-  // Get remaining scheduled sessions
   const { data: sessions } = await supabase
     .from('scheduled_sessions')
     .select('*')
@@ -655,13 +939,12 @@ async function rescheduleRemainingSessions(enrollmentId: string, remainingSessio
 
   if (!sessions || sessions.length === 0) return;
 
-  // Reschedule starting from today
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() + 1); // Start tomorrow
+  startDate.setDate(startDate.getDate() + 1);
 
   for (let i = 0; i < sessions.length; i++) {
     const newDate = new Date(startDate);
-    newDate.setDate(newDate.getDate() + (i * 5)); // 5 days apart
+    newDate.setDate(newDate.getDate() + (i * 5));
 
     await supabase
       .from('scheduled_sessions')
@@ -670,8 +953,5 @@ async function rescheduleRemainingSessions(enrollmentId: string, remainingSessio
         updated_at: new Date().toISOString(),
       })
       .eq('id', sessions[i].id);
-
-    // TODO: Update Google Calendar event
-    // await rescheduleEvent(sessions[i].google_event_id, newDate, sessions[i].duration_minutes);
   }
 }
