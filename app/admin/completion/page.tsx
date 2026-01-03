@@ -151,11 +151,13 @@ export default function CompletionManagementPage() {
   async function runCronManually() {
     setActionLoading('cron');
     try {
-      const res = await fetch('/api/cron/completion-alerts', { method: 'POST' });
+      const res = await fetch('/api/cron/enrollment-lifecycle', { method: 'GET' });
       const data = await res.json();
       if (data.success) {
-        alert(`Cron completed! Overdue: ${data.summary.overdue}, At Risk: ${data.summary.atRisk}`);
+        alert(`Cron completed! Check results in console.`);
         fetchEnrollments();
+      } else {
+        alert(data.error || 'Failed to run cron');
       }
     } catch (err) {
       alert('Failed to run cron');

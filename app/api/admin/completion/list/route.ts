@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
           id,
           name,
           child_name,
-          assessment_score,
           parent_email,
           parent_name,
           parent_phone
@@ -86,15 +85,15 @@ export async function GET(request: NextRequest) {
           .select('id, assessment_type, created_at')
           .eq('child_id', enrollment.child_id);
 
-        // Also check children table for initial assessment
-        const { data: childAssessment } = await supabase
+        // Check for initial assessment in children table
+        const { data: childData } = await supabase
           .from('children')
-          .select('assessment_score')
+          .select('id')
           .eq('id', enrollment.child_id)
           .single();
 
         const hasInitialAssessment = (assessments?.some(a => !a.assessment_type || a.assessment_type === 'initial')) || 
-                                     (childAssessment?.assessment_score != null);
+                                     !!childData;
         const hasFinalAssessment = assessments?.some(a => a.assessment_type === 'final') || false;
 
         // Check if final assessment was sent
