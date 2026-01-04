@@ -390,9 +390,7 @@ function DiscoveryCallModal({
           coach_id: assignedCoach,
         }),
       });
-      if (res.ok) {
-        onUpdate();
-      }
+      if (res.ok) { onUpdate(); onClose(); }
     } catch (error) {
       console.error('Error assigning coach:', error);
     }
@@ -405,9 +403,7 @@ function DiscoveryCallModal({
       const res = await fetch(`/api/discovery-call/${call.id}/send-payment-link`, {
         method: 'POST',
       });
-      if (res.ok) {
-        onUpdate();
-      }
+      if (res.ok) { onUpdate(); onClose(); }
     } catch (error) {
       console.error('Error sending payment link:', error);
     }
@@ -420,9 +416,7 @@ function DiscoveryCallModal({
       const res = await fetch(`/api/discovery-call/${call.id}/send-followup`, {
         method: 'POST',
       });
-      if (res.ok) {
-        onUpdate();
-      }
+      if (res.ok) { onUpdate(); onClose(); }
     } catch (error) {
       console.error('Error sending followup:', error);
     }
@@ -441,9 +435,7 @@ function DiscoveryCallModal({
           call_completed: true,
         }),
       });
-      if (res.ok) {
-        onUpdate();
-      }
+      if (res.ok) { onUpdate(); onClose(); }
     } catch (error) {
       console.error('Error saving post-call notes:', error);
     }

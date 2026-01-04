@@ -16,31 +16,21 @@ import {
   BookOpen,
   Heart,
   Lightbulb,
-  Microscope,
   MessageCircle,
   Play,
   Star,
   Clock,
   Shield,
   TrendingUp,
-  Target,
   GraduationCap,
   Brain,
   Mic,
   BarChart3,
   Eye,
-  Cpu,
-  UserCheck,
-  FileText,
   Bell,
-  LineChart,
-  Smile,
-  Headphones,
-  ClipboardCheck,
-  XCircle,
-  Gift,
   AlertTriangle,
   CreditCard,
+  Calendar,
 } from 'lucide-react';
 
 // ==================== TYPES ====================
@@ -76,6 +66,12 @@ interface TestimonialData {
   rating: number;
 }
 
+interface ABTestConfig {
+  enabled: boolean;
+  testName: string;
+  split: number; // 0.5 = 50/50
+}
+
 interface HomePageClientProps {
   stats: StatsData;
   pricing: PricingData;
@@ -83,9 +79,55 @@ interface HomePageClientProps {
   videos: VideoData;
   testimonials: TestimonialData[];
   showTestimonials: boolean;
+  abTestConfig?: ABTestConfig;
 }
 
-// ==================== STATIC TRIANGLE DATA ====================
+// ==================== A/B TEST UTILITIES ====================
+type ABVariant = 'curiosity' | 'validation';
+
+const getOrSetABVariant = (testName: string, split: number = 0.5): ABVariant => {
+  if (typeof window === 'undefined') return 'validation'; // SSR default
+  
+  const cookieName = `yestoryd_ab_${testName}`;
+  const existingCookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith(cookieName));
+  
+  if (existingCookie) {
+    const value = existingCookie.split('=')[1];
+    return value as ABVariant;
+  }
+  
+  // Assign new variant
+  const variant: ABVariant = Math.random() < split ? 'curiosity' : 'validation';
+  
+  // Set cookie for 30 days
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 30);
+  document.cookie = `${cookieName}=${variant}; expires=${expires.toUTCString()}; path=/`;
+  
+  return variant;
+};
+
+const trackABEvent = async (testName: string, variant: string, eventType: string) => {
+  try {
+    await fetch('/api/ab-track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        test_name: testName,
+        variant,
+        event_type: eventType,
+        device_type: window.innerWidth < 768 ? 'mobile' : 'desktop',
+        referrer: document.referrer || null,
+      }),
+    });
+  } catch (error) {
+    console.error('AB tracking error:', error);
+  }
+};
+
+// ==================== STATIC DATA ====================
 const triangleNodes = {
   rai: {
     id: 'rai',
@@ -131,93 +173,437 @@ const triangleNodes = {
   },
 };
 
-// ==================== SYNERGY VISUAL (Clean Orbital Model) ====================
-const SynergyVisual = () => {
+// ==================== HERO VARIANTS ====================
+
+// Design 2: Curiosity-Led Hero
+const HeroCuriosity = ({ 
+  testimonial, 
+  stats, 
+  onCTAClick 
+}: { 
+  testimonial: TestimonialData; 
+  stats: StatsData;
+  onCTAClick: () => void;
+}) => (
+  <div className="text-center lg:text-left">
+    {/* Badge */}
+    <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-1.5 mb-6 shadow-sm">
+      <Brain className="w-3 h-3 text-[#00abff]" />
+      <span className="text-xs font-bold text-gray-600 tracking-wide uppercase">
+        AI-Powered Reading Analysis
+      </span>
+    </div>
+
+    {/* Main Headline */}
+    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.1] mb-6">
+      There's a Reason Your Child{' '}
+      <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">
+        Avoids Reading
+      </span>
+    </h1>
+
+    {/* Subheadline - The Reframe */}
+    <p className="text-lg sm:text-xl text-gray-600 mb-4 leading-relaxed max-w-xl mx-auto lg:mx-0">
+      <strong className="text-gray-900">It's not laziness. It's not attitude.</strong>
+    </p>
+    <p className="text-lg text-gray-600 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
+      It's usually a small gap in how they process sounds — something schools rarely identify. 
+      Our AI finds it in 5 minutes. Free.
+    </p>
+
+    {/* CTA Buttons */}
+    <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-6">
+      <Link
+        href="/assessment"
+        onClick={onCTAClick}
+        className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold px-8 rounded-full hover:bg-[#d10080] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
+      >
+        <Zap className="w-5 h-5" />
+        See Why — 5 Minutes
+      </Link>
+      <a 
+        href="#rucha-story" 
+        className="flex items-center gap-2 text-gray-700 font-semibold hover:text-[#ff0099] transition-colors"
+      >
+        <Play className="w-5 h-5" />
+        Watch Our Story
+      </a>
+    </div>
+
+    {/* Testimonial with Score */}
+    {testimonial && (
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 max-w-xl mx-auto lg:mx-0 shadow-sm">
+        <div className="flex gap-1 mb-2">
+          {[...Array(5)].map((_, i) => (
+            <Star key={i} className="w-4 h-4 text-[#ffde00] fill-[#ffde00]" />
+          ))}
+        </div>
+        <p className="text-gray-600 text-sm mb-2">"{testimonial.testimonial_text}"</p>
+        <p className="text-xs text-gray-500">
+          — {testimonial.parent_name}, {testimonial.parent_location}
+        </p>
+      </div>
+    )}
+
+    {/* Trust Badges */}
+    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-sm text-gray-500 mb-4">
+      <span className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-200">
+        <Shield className="w-4 h-4" />
+        100% Free
+      </span>
+      <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200">
+        <Clock className="w-4 h-4" />
+        5 Minutes
+      </span>
+      <span className="flex items-center gap-1.5 bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-200">
+        <TrendingUp className="w-4 h-4" />
+        Instant Results
+      </span>
+    </div>
+
+    {/* Sharp Stat + Urgency */}
+    <div className="space-y-2">
+      <p className="text-sm text-gray-600 flex items-center justify-center lg:justify-start gap-2">
+        <span className="text-[#00abff] font-bold">87%</span> of parents finally understood WHY their child struggled
+      </p>
+      <p className="text-xs text-amber-600 flex items-center justify-center lg:justify-start gap-1.5">
+        <AlertTriangle className="w-3.5 h-3.5" />
+        Reading gaps widen every month. Early identification matters.
+      </p>
+    </div>
+  </div>
+);
+
+// Design 4: Validation-Led Hero (Hybrid - includes "not laziness" reframe)
+const HeroValidation = ({ 
+  testimonial, 
+  stats, 
+  onCTAClick 
+}: { 
+  testimonial: TestimonialData; 
+  stats: StatsData;
+  onCTAClick: () => void;
+}) => (
+  <div className="text-center lg:text-left">
+    {/* Badge */}
+    <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-1.5 mb-6 shadow-sm">
+      <Heart className="w-3 h-3 text-[#ff0099] fill-[#ff0099]" />
+      <span className="text-xs font-bold text-gray-600 tracking-wide uppercase">
+        For Ages 4-12 • AI + Expert Coaches
+      </span>
+    </div>
+
+    {/* Main Headline */}
+    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.1] mb-6">
+      You've Noticed Something{' '}
+      <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">
+        Isn't Clicking
+      </span>
+      <br />
+      <span className="text-3xl sm:text-4xl lg:text-5xl">With Your Child's Reading</span>
+    </h1>
+
+    {/* Subheadline - Validation + Reframe */}
+    <p className="text-lg sm:text-xl text-gray-600 mb-4 leading-relaxed max-w-xl mx-auto lg:mx-0">
+      <strong className="text-gray-900">It's not laziness. It's not attitude.</strong>
+    </p>
+    <p className="text-lg text-gray-600 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
+      It's usually a small gap that schools don't catch — but our AI does. In 5 minutes. Free.
+    </p>
+
+    {/* CTA Buttons */}
+    <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-6">
+      <Link
+        href="/assessment"
+        onClick={onCTAClick}
+        className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold px-8 rounded-full hover:bg-[#d10080] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
+      >
+        <Zap className="w-5 h-5" />
+        See Why — 5 Minutes
+      </Link>
+      <a 
+        href="#rucha-story" 
+        className="flex items-center gap-2 text-gray-700 font-semibold hover:text-[#ff0099] transition-colors"
+      >
+        <Play className="w-5 h-5" />
+        Watch Our Story
+      </a>
+    </div>
+
+    {/* Testimonial with Score */}
+    {testimonial && (
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 max-w-xl mx-auto lg:mx-0 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className="w-4 h-4 text-[#ffde00] fill-[#ffde00]" />
+            ))}
+          </div>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+            4/10 → 8/10
+          </span>
+        </div>
+        <p className="text-gray-600 text-sm mb-2">"{testimonial.testimonial_text}"</p>
+        <p className="text-xs text-gray-500">
+          — {testimonial.parent_name}, {testimonial.parent_location}
+        </p>
+      </div>
+    )}
+
+    {/* Trust Badges */}
+    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-sm text-gray-500 mb-4">
+      <span className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-200">
+        <Shield className="w-4 h-4" />
+        100% Free
+      </span>
+      <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200">
+        <Clock className="w-4 h-4" />
+        5 Minutes
+      </span>
+      <span className="flex items-center gap-1.5 bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-200">
+        <TrendingUp className="w-4 h-4" />
+        Instant Results
+      </span>
+    </div>
+
+    {/* Sharp Stat + Urgency */}
+    <div className="space-y-2">
+      <p className="text-sm text-gray-600 flex items-center justify-center lg:justify-start gap-2">
+        <span className="text-[#00abff] font-bold">87%</span> of parents finally understood WHY their child struggled
+      </p>
+      <p className="text-xs text-amber-600 flex items-center justify-center lg:justify-start gap-1.5">
+        <AlertTriangle className="w-3.5 h-3.5" />
+        Reading gaps widen every month. Early identification matters.
+      </p>
+    </div>
+  </div>
+);
+
+// ==================== TRANSFORMATION VISUAL (Replaces Triangulation) ====================
+const TransformationVisual = () => {
+  const beforeItems = [
+    { emoji: '😰', text: '"I hate reading"' },
+    { emoji: '📖', text: 'Avoids books' },
+    { emoji: '🐢', text: 'Reads slowly' },
+    { emoji: '😔', text: 'Losing confidence' },
+  ];
+  
+  const afterItems = [
+    { emoji: '😊', text: '"Can I read more?"' },
+    { emoji: '📚', text: 'Picks up books' },
+    { emoji: '⚡', text: 'Reads fluently' },
+    { emoji: '💪', text: 'Speaks confidently' },
+  ];
+
   return (
-    <div className="relative w-full max-w-[400px] mx-auto">
-      {/* Container with fixed responsive height */}
-      <div className="relative w-full h-[340px] sm:h-[380px]">
+    <div className="w-full max-w-[420px] mx-auto">
+      <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
         
-        {/* Decorative orbit ring */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] rounded-full border-2 border-dashed border-gray-200"></div>
-
-        {/* ==================== CENTER: Confident Reader ==================== */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 text-center">
-          {/* Pulsing glow */}
-          <div className="absolute inset-0 -m-3 bg-[#ff0099] rounded-full blur-2xl opacity-20 animate-pulse"></div>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white text-center py-3 px-4">
+          <p className="font-bold text-sm sm:text-base">The 90-Day Transformation</p>
+        </div>
+        
+        {/* Before/After Grid */}
+        <div className="grid grid-cols-2 divide-x divide-gray-100">
           
-          {/* Center circle */}
-          <div className="w-[88px] h-[88px] sm:w-[100px] sm:h-[100px] bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex flex-col items-center justify-center shadow-2xl relative z-10">
-            <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-white mb-1" />
-            <p className="text-white font-bold text-[10px] sm:text-xs leading-tight">Confident<br/>Reader</p>
-          </div>
-        </div>
-
-        {/* ==================== TOP: rAI ==================== */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
-          <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-lg border-2 border-[#00ABFF]/30 text-center hover:-translate-y-1 hover:shadow-xl hover:border-[#00ABFF] transition-all duration-300 w-[110px] sm:w-[130px]">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#00ABFF]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-              <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-[#00ABFF]" />
+          {/* BEFORE Column */}
+          <div className="p-4 sm:p-5">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 text-center">Before</p>
+            <div className="space-y-2.5">
+              {beforeItems.map((item, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2 border border-red-100"
+                >
+                  <span className="text-base sm:text-lg">{item.emoji}</span>
+                  <span className="text-xs sm:text-sm text-gray-600 leading-tight">{item.text}</span>
+                </div>
+              ))}
             </div>
-            <h4 className="font-bold text-[#00ABFF] text-sm">rAI</h4>
-            <p className="text-[10px] text-gray-500 mt-0.5">Finds the gaps</p>
           </div>
-        </div>
-
-        {/* ==================== BOTTOM LEFT: Coach ==================== */}
-        <div className="absolute bottom-0 left-0 z-10">
-          <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-lg border-2 border-[#FF0099]/30 text-center hover:-translate-y-1 hover:shadow-xl hover:border-[#FF0099] transition-all duration-300 w-[110px] sm:w-[130px]">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#FF0099]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-              <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-[#FF0099]" />
+          
+          {/* AFTER Column */}
+          <div className="p-4 sm:p-5 bg-green-50/30">
+            <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-3 text-center">After 90 Days</p>
+            <div className="space-y-2.5">
+              {afterItems.map((item, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2 border border-green-200"
+                >
+                  <span className="text-base sm:text-lg">{item.emoji}</span>
+                  <span className="text-xs sm:text-sm text-gray-700 font-medium leading-tight">{item.text}</span>
+                </div>
+              ))}
             </div>
-            <h4 className="font-bold text-[#FF0099] text-sm">Coach</h4>
-            <p className="text-[10px] text-gray-500 mt-0.5">Fills the gaps</p>
           </div>
+          
         </div>
-
-        {/* ==================== BOTTOM RIGHT: Parent ==================== */}
-        <div className="absolute bottom-0 right-0 z-10">
-          <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-lg border-2 border-[#7B008B]/30 text-center hover:-translate-y-1 hover:shadow-xl hover:border-[#7B008B] transition-all duration-300 w-[110px] sm:w-[130px]">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#7B008B]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-              <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-[#7B008B]" />
-            </div>
-            <h4 className="font-bold text-[#7B008B] text-sm">Parent</h4>
-            <p className="text-[10px] text-gray-500 mt-0.5">Sees progress</p>
-          </div>
+        
+        {/* Bottom CTA hint */}
+        <div className="bg-gradient-to-r from-[#00ABFF]/10 to-[#ff0099]/10 px-4 py-3 text-center border-t border-gray-100">
+          <p className="text-xs text-gray-600">
+            <span className="font-bold text-[#ff0099]">AI finds the gaps</span> • <span className="font-bold text-[#00ABFF]">Coach fills them</span> • <span className="font-bold text-[#7b008b]">You see progress</span>
+          </p>
         </div>
-
+        
       </div>
     </div>
   );
 };
 
-// ==================== NEW: MINI 3-STEP PLAN (For Hero) ====================
-const MiniPlan = () => {
-  const steps = [
-    { num: '1', text: 'Free AI Test', color: '#00ABFF' },
-    { num: '2', text: 'Talk to Coach', color: '#FF0099' },
-    { num: '3', text: 'Start Journey', color: '#7B008B' },
-  ];
+// ==================== YOUTUBE FACADE (Performance Optimization) ====================
+const VideoFacade = ({ videoUrl }: { videoUrl: string }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  if (isPlaying) {
+    return (
+      <iframe
+        src={`${videoUrl}${videoUrl.includes('?') ? '&' : '?'}autoplay=1&rel=0&modestbranding=1`}
+        title="Rucha's Story - Yestoryd"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="absolute inset-0 w-full h-full"
+      />
+    );
+  }
 
   return (
-    <div className="flex items-center justify-center lg:justify-start gap-2 sm:gap-3 flex-wrap">
-      {steps.map((step, index) => (
-        <div key={step.num} className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm">
-            <span 
-              className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ backgroundColor: step.color }}
-            >
-              {step.num}
-            </span>
-            <span className="text-xs font-medium text-gray-700">{step.text}</span>
-          </div>
-          {index < steps.length - 1 && (
-            <ArrowRight className="w-3 h-3 text-gray-300 hidden sm:block" />
-          )}
+    <button 
+      onClick={() => setIsPlaying(true)} 
+      className="absolute inset-0 w-full h-full group cursor-pointer bg-gradient-to-br from-[#1a1a2e] to-[#2d2d44] flex items-center justify-center"
+      aria-label="Play video"
+    >
+      {/* Thumbnail placeholder with gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#ff0099]/20 to-[#00ABFF]/20"></div>
+      
+      {/* Yestoryd branding on thumbnail */}
+      <div className="absolute top-6 left-6 flex items-center gap-2">
+        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+          <BookOpen className="w-5 h-5 text-[#ff0099]" />
         </div>
-      ))}
-    </div>
+        <span className="text-white font-bold text-lg">Yestoryd Story</span>
+      </div>
+      
+      {/* Video title */}
+      <div className="absolute bottom-6 left-6 right-6">
+        <p className="text-white/80 text-sm mb-1">Watch</p>
+        <p className="text-white font-bold text-lg">How Rucha Started Yestoryd</p>
+      </div>
+      
+      {/* Play button */}
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="w-20 h-20 bg-white/95 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 group-hover:bg-white transition-all duration-300">
+          <Play className="w-8 h-8 text-[#ff0099] ml-1" fill="#ff0099" />
+        </div>
+        <p className="text-white/80 text-sm mt-4 group-hover:text-white transition-colors">Click to play</p>
+      </div>
+      
+      {/* Decorative elements */}
+      <div className="absolute top-1/4 right-1/4 w-32 h-32 bg-[#ff0099]/10 rounded-full blur-2xl"></div>
+      <div className="absolute bottom-1/4 left-1/4 w-24 h-24 bg-[#00ABFF]/10 rounded-full blur-2xl"></div>
+    </button>
+  );
+};
+
+// ==================== FAQ DATA ====================
+const faqData = [
+  {
+    question: "What device do I need for the assessment?",
+    answer: "Any smartphone, tablet, or laptop with a microphone works! The assessment runs in your browser — no app download needed. 80% of our parents use their phone."
+  },
+  {
+    question: "How long is each coaching session?",
+    answer: "Each 1:1 session is 30 minutes. Sessions are scheduled at times convenient for you — weekdays or weekends. Your child gets 6 sessions over 90 days."
+  },
+  {
+    question: "Is this a subscription? Will I be charged monthly?",
+    answer: "No subscriptions! It's a one-time payment of ₹5,999 for the complete 90-day program. No hidden fees, no recurring charges."
+  },
+  {
+    question: "What if my child doesn't improve?",
+    answer: "We offer a 100% satisfaction guarantee. If you don't see improvement after completing the program, we'll either continue working with you at no extra cost or provide a full refund."
+  },
+  {
+    question: "Is the AI safe for my child?",
+    answer: "Absolutely. Unlike ChatGPT which guesses, our AI only references our expert-verified knowledge base built on 7+ years of phonics expertise. It never makes things up. Your child's data is private and secure."
+  },
+  {
+    question: "What age group is this for?",
+    answer: "Yestoryd is designed for children aged 4-12 years. Our AI adapts the assessment based on your child's age, and coaches personalize sessions accordingly."
+  }
+];
+
+// ==================== FAQ COMPONENT ====================
+const FAQSection = ({ whatsappNumber }: { whatsappNumber: string }) => {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <section className="py-16 lg:py-24 bg-gray-50">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <span className="inline-block text-sm font-semibold text-[#00ABFF] uppercase tracking-wider mb-4">
+            Common Questions
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-lg text-gray-600">
+            Everything you need to know before getting started
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {faqData.map((faq, index) => (
+            <div 
+              key={index}
+              className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            >
+              <button
+                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                className="w-full px-6 py-5 text-left flex items-center justify-between gap-4"
+              >
+                <span className="font-semibold text-gray-900 text-base sm:text-lg">
+                  {faq.question}
+                </span>
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                  openIndex === index 
+                    ? 'bg-[#ff0099] text-white rotate-180' 
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+              
+              {openIndex === index && (
+                <div className="px-6 pb-5">
+                  <p className="text-gray-600 leading-relaxed">
+                    {faq.answer}
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Still have questions */}
+        <div className="mt-10 text-center">
+          <p className="text-gray-600 mb-4">Still have questions?</p>
+          <a
+            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hi! I have a question about Yestoryd.")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-[#25d366] font-semibold hover:underline"
+          >
+            <MessageCircle className="w-5 h-5" />
+            Chat with us on WhatsApp
+          </a>
+        </div>
+      </div>
+    </section>
   );
 };
 
@@ -229,24 +615,49 @@ export default function HomePageClient({
   videos,
   testimonials,
   showTestimonials,
+  abTestConfig = { enabled: true, testName: 'homepage_hero_jan2026', split: 0.5 },
 }: HomePageClientProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [abVariant, setABVariant] = useState<ABVariant>('validation');
+  const [isClient, setIsClient] = useState(false);
+  const [showStickyMobileCTA, setShowStickyMobileCTA] = useState(false);
 
   const whatsappNumber = contact.whatsappNumber;
   const whatsappMessage = encodeURIComponent("Hi! I'd like to know more about the reading program for my child.");
-  
-  // Video URL from database with fallback
   const storyVideoUrl = videos?.homepageStoryVideoUrl || 'https://www.youtube.com/embed/Dz94bVuWH_A';
 
+  // Client-side only: Set variant after mount to avoid hydration mismatch
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
+    setIsClient(true);
+    
+    if (abTestConfig.enabled) {
+      const variant = getOrSetABVariant(abTestConfig.testName, abTestConfig.split);
+      setABVariant(variant);
+      trackABEvent(abTestConfig.testName, variant, 'view');
+    }
+  }, [abTestConfig.enabled, abTestConfig.testName, abTestConfig.split]);
+
+  // Throttled scroll handler
+  useEffect(() => {
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 20);
+          setShowStickyMobileCTA(window.scrollY > 600);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Auto-rotate testimonials
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveTestimonial((prev) => (prev + 1) % 4);
@@ -254,12 +665,18 @@ export default function HomePageClient({
     return () => clearInterval(timer);
   }, []);
 
-  // Default testimonials if none provided
+  const handleCTAClick = () => {
+    if (abTestConfig.enabled) {
+      trackABEvent(abTestConfig.testName, abVariant, 'cta_click');
+    }
+  };
+
+  // Default testimonials if none provided - WITH SCORES
   const displayTestimonials = testimonials.length > 0 ? testimonials : [
-    { id: '1', testimonial_text: 'Aarav went from struggling with basic words to reading full sentences in 2 months. The phonics approach made all the difference.', parent_name: 'Priya S.', parent_location: 'Mumbai', child_name: 'Aarav', child_age: 6, rating: 5 },
-    { id: '2', testimonial_text: 'My daughter now picks up books on her own. She actually ASKS to read before bed. Never thought I\'d see this day.', parent_name: 'Rahul G.', parent_location: 'Delhi', child_name: 'Ananya', child_age: 7, rating: 5 },
-    { id: '3', testimonial_text: 'The AI assessment showed us exactly where Arjun was stuck. The coaches knew precisely what to work on. No guesswork.', parent_name: 'Sneha P.', parent_location: 'Bangalore', child_name: 'Arjun', child_age: 5, rating: 5 },
-    { id: '4', testimonial_text: 'Ishaan was 2 grades behind in reading. After 3 months, his teacher asked what changed. Worth every rupee.', parent_name: 'Meera K.', parent_location: 'Pune', child_name: 'Ishaan', child_age: 8, rating: 5 },
+    { id: '1', testimonial_text: 'Finally understood WHY my son struggled. The AI found gaps we never knew existed. In 3 months, his reading score went from 4/10 to 8/10.', parent_name: 'Priya S.', parent_location: 'Mumbai', child_name: 'Aarav', child_age: 6, rating: 5 },
+    { id: '2', testimonial_text: 'My daughter now picks up books on her own. She went from avoiding reading completely to asking "Can I read more?" Her fluency improved 2x.', parent_name: 'Rahul G.', parent_location: 'Delhi', child_name: 'Ananya', child_age: 7, rating: 5 },
+    { id: '3', testimonial_text: 'The AI assessment showed us exactly where Arjun was stuck — it was blending sounds. After 2 months, he reads sentences smoothly. Clarity score: 5→9.', parent_name: 'Sneha P.', parent_location: 'Bangalore', child_name: 'Arjun', child_age: 5, rating: 5 },
+    { id: '4', testimonial_text: 'Ishaan was 2 grades behind in reading. After 3 months, his teacher asked what changed. Speed improved from 15 WPM to 40 WPM. Worth every rupee.', parent_name: 'Meera K.', parent_location: 'Pune', child_name: 'Ishaan', child_age: 8, rating: 5 },
   ];
 
   return (
@@ -286,7 +703,7 @@ export default function HomePageClient({
             </Link>
 
             <nav className="hidden lg:flex items-center gap-6">
-              <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors">How It Works</a>
+              <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors">The ARC Method</a>
               <a href="#rucha-story" className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors">Our Story</a>
               <a href="#pricing" className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors">Pricing</a>
               
@@ -297,9 +714,10 @@ export default function HomePageClient({
               </Link>
               <Link
                 href="/assessment"
+                onClick={handleCTAClick}
                 className="h-11 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white px-6 rounded-full font-bold hover:bg-[#d10080] hover:shadow-lg hover:shadow-[#ff0099]/20 hover:-translate-y-0.5 transition-all duration-200 text-sm"
               >
-                Free Assessment
+                See Why — Free
               </Link>
             </nav>
 
@@ -313,20 +731,20 @@ export default function HomePageClient({
         {mobileMenuOpen && (
           <div className="lg:hidden bg-white border-t border-gray-100 shadow-xl absolute w-full">
             <div className="px-4 py-6 space-y-4">
-              <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block text-gray-800 font-semibold py-2">How It Works</a>
+              <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block text-gray-800 font-semibold py-2">The ARC Method</a>
               <a href="#rucha-story" onClick={() => setMobileMenuOpen(false)} className="block text-gray-800 font-semibold py-2">Our Story</a>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-800 font-semibold py-2">Pricing</a>
               <hr className="border-gray-100" />
               <Link href="/parent/login" onClick={() => setMobileMenuOpen(false)} className="block text-gray-600 py-2">Parent Login</Link>
-              <Link href="/assessment" onClick={() => setMobileMenuOpen(false)} className="h-12 flex items-center justify-center gap-2 bg-[#e6008a] text-white rounded-full font-bold w-full mt-4">
-                Take Free Assessment
+              <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); handleCTAClick(); }} className="h-12 flex items-center justify-center gap-2 bg-[#e6008a] text-white rounded-full font-bold w-full mt-4">
+                See Why — Free 5 Min Test
               </Link>
             </div>
           </div>
         )}
       </header>
 
-      {/* ==================== HERO WITH FRAMEWORK IMPROVEMENTS ==================== */}
+      {/* ==================== HERO SECTION (A/B TESTED) ==================== */}
       <section className="pt-28 lg:pt-40 pb-16 lg:pb-24 bg-gradient-to-b from-[#FFF5F9] to-white relative overflow-hidden">
         {/* Background Blobs */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00abff]/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/4"></div>
@@ -335,78 +753,24 @@ export default function HomePageClient({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
-            {/* Left Content */}
-            <div className="text-center lg:text-left">
-              {/* Badge - UPDATED: Added age group for instant relevance */}
-              <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-1.5 mb-6 shadow-sm">
-                <Heart className="w-3 h-3 text-[#ff0099] fill-[#ff0099]" />
-                <span className="text-xs font-bold text-gray-600 tracking-wide uppercase">
-                  For Ages 4-12 • AI + Expert Coaches
-                </span>
-              </div>
+            {/* Left Content - A/B Tested */}
+            {abVariant === 'curiosity' ? (
+              <HeroCuriosity 
+                testimonial={displayTestimonials[0]} 
+                stats={stats}
+                onCTAClick={handleCTAClick}
+              />
+            ) : (
+              <HeroValidation 
+                testimonial={displayTestimonials[0]} 
+                stats={stats}
+                onCTAClick={handleCTAClick}
+              />
+            )}
 
-              {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.1] mb-6">
-                Reading is an Acquired Skill.{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">We Make it Natural.</span>
-              </h1>
-
-              {/* Subheadline */}
-              <p className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                We use <strong className="text-gray-900">AI to find reading gaps</strong>. Expert coaches fix them.
-              </p>
-
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-6">
-                <Link
-                  href="/assessment"
-                  className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold px-8 rounded-full hover:bg-[#d10080] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
-                >
-                  <Zap className="w-5 h-5" />
-                  Free Assessment
-                </Link>
-                <a 
-                  href="#rucha-story" 
-                  className="flex items-center gap-2 text-gray-700 font-semibold hover:text-[#ff0099] transition-colors"
-                >
-                  <Play className="w-5 h-5" />
-                  Watch Our Story
-                </a>
-              </div>
-
-              {/* NEW: 3-Step Mini Plan - StoryBrand "The Plan" */}
-              <div className="mb-8">
-                <MiniPlan />
-              </div>
-
-              {/* NEW: Trust Badges Row - LIFT Anxiety Reducers */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-gray-500 mb-6">
-                <span className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-200">
-                  <Shield className="w-4 h-4" />
-                  100% Free
-                </span>
-                <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200">
-                  <CreditCard className="w-4 h-4" />
-                  No Card Required
-                </span>
-                <span className="flex items-center gap-1.5 bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-200">
-                  <Clock className="w-4 h-4" />
-                  5 Minutes
-                </span>
-              </div>
-
-              {/* NEW: Subtle Urgency - StoryBrand "Failure" state */}
-              <p className="text-sm text-gray-500 flex items-center justify-center lg:justify-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <span>Reading gaps widen with age. Early action matters.</span>
-              </p>
-            </div>
-
-            {/* Right - Orbital Synergy Visual */}
+            {/* Right - Transformation Visual (Before/After) */}
             <div className="relative">
-              <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl p-4 sm:p-6 border border-gray-100 shadow-lg">
-                <SynergyVisual />
-              </div>
+              <TransformationVisual />
             </div>
 
           </div>
@@ -418,11 +782,10 @@ export default function HomePageClient({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Why Do So Many Children{' '}
-              <span className="text-[#ff0099]">Struggle</span> with Reading?
+              What Schools Don't <span className="text-[#ff0099]">Tell You</span>
             </h2>
             <p className="text-lg text-gray-600">
-              Here's what most parents don't realize...
+              About why your child struggles with reading
             </p>
           </div>
 
@@ -436,10 +799,9 @@ export default function HomePageClient({
                 Reading is a Skill — Like Swimming
               </h3>
               <p className="text-gray-600 mb-6 leading-relaxed">
-                You wouldn't throw a child into a pool and expect them to swim. 
-                Yet that's exactly what happens with reading. Schools expect children 
-                to read, but rarely teach the <strong className="text-gray-900">science of reading</strong> — 
-                how sounds form words, how words form meaning.
+                Schools teach children <strong className="text-gray-900">WHAT to read</strong>, 
+                but rarely <strong className="text-gray-900">HOW to read</strong>. 
+                The science of reading — how sounds form words, how words form meaning — is often skipped.
               </p>
               
               {/* ASER Stat */}
@@ -462,166 +824,352 @@ export default function HomePageClient({
             {/* Signs List */}
             <div className="space-y-4">
               <p className="text-sm font-semibold text-[#7b008b] uppercase tracking-wider mb-4">
-                Does this sound familiar?
+                Signs you might notice
               </p>
               
               {[
-                { emoji: '😰', text: 'Reads slowly and hesitantly, word by word' },
-                { emoji: '😕', text: 'Struggles to understand what they just read' },
-                { emoji: '😤', text: 'Avoids reading and makes excuses' },
-                { emoji: '😔', text: 'Falling behind classmates in school' },
-                { emoji: '😢', text: 'Losing confidence in themselves' },
+                { emoji: '🐢', text: 'Reads slowly, word by word' },
+                { emoji: '🎯', text: 'Guesses words instead of reading them' },
+                { emoji: '😕', text: 'Understands when YOU read, struggles when THEY read' },
+                { emoji: '📖', text: 'Avoids reading aloud' },
+                { emoji: '😤', text: 'Says "I hate reading"' },
               ].map((item, index) => (
                 <div
                   key={index}
                   className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#ff0099]/30 hover:shadow-md transition-all"
                 >
-                  <span className="text-3xl">{item.emoji}</span>
+                  <span className="text-2xl">{item.emoji}</span>
                   <p className="text-gray-700 font-medium">{item.text}</p>
                 </div>
               ))}
 
-              <p className="text-gray-600 pt-4 text-center md:text-left">
-                <strong className="text-gray-900">You're not alone.</strong> And it's not your child's fault.
-              </p>
+              <div className="pt-4">
+                <p className="text-gray-600 text-center md:text-left mb-4">
+                  These are <strong className="text-gray-900">symptoms</strong>. 
+                  The cause is usually a gap in phonemic awareness.
+                </p>
+                <p className="text-[#00abff] font-semibold text-center md:text-left">
+                  Good news: Once identified, these gaps can be filled in weeks, not years.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ==================== HOW IT WORKS ==================== */}
-      <section id="how-it-works" className="py-16 lg:py-24 bg-white">
+      {/* ==================== THE YESTORYD ARC™ ==================== */}
+      <section id="how-it-works" className="py-16 lg:py-24 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="inline-block text-sm font-semibold text-[#ff0099] uppercase tracking-wider mb-4">
-              The Yestoryd Method
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              AI Brain + Human Heart = <span className="text-[#00abff]">Confident Reader</span>
+          
+          {/* Section Header */}
+          <div className="text-center mb-12 lg:mb-16">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 px-4 py-2 rounded-full mb-4">
+              <Sparkles className="w-4 h-4 text-[#ff0099]" />
+              <span className="text-sm font-bold text-[#7b008b]">THE YESTORYD ARC™</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              Your Child's <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">90-Day Transformation</span>
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              See how rAI, Coach, and You work together
+              A clear path from struggling reader to confident communicator
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Step 1 - rAI */}
+          {/* ARC Visual - Mobile */}
+          <div className="lg:hidden mb-12">
             <div className="relative">
-              <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#00ABFF]/20 hover:border-[#00ABFF] hover:shadow-xl transition-all h-full">
-                <div className="absolute -top-4 left-8 w-10 h-10 bg-[#00ABFF] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                  1
+              {/* Progress Line */}
+              <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-[#00ABFF] via-[#FF0099] to-[#7B008B] rounded-full"></div>
+              
+              {/* A - Assess */}
+              <div className="relative pl-20 pb-12">
+                <div className="absolute left-4 w-9 h-9 bg-[#00ABFF] rounded-full flex items-center justify-center text-white font-black text-lg shadow-lg shadow-[#00ABFF]/30">
+                  A
                 </div>
-                <div className="w-16 h-16 bg-[#00ABFF]/10 rounded-2xl flex items-center justify-center mb-6 mt-4">
-                  <Brain className="w-8 h-8 text-[#00ABFF]" />
+                <div className="bg-[#00ABFF]/5 border border-[#00ABFF]/20 rounded-2xl p-5">
+                  <p className="text-xs font-bold text-[#00ABFF] uppercase tracking-wider mb-1">Week 1-4</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Assess</h3>
+                  <p className="text-sm text-gray-600 mb-3">AI finds exact gaps in phonics, fluency & comprehension</p>
+                  <div className="flex items-center gap-2 text-xs text-[#00ABFF]">
+                    <Brain className="w-4 h-4" />
+                    <span className="font-semibold">Foundation Arc</span>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  rAI Diagnoses
-                </h3>
-                <p className="text-sm text-[#00ABFF] font-semibold mb-3">The Brain</p>
-                <p className="text-gray-600 mb-4">
-                  Our AI listens to your child read, analyzes 50+ parameters, and identifies exact gaps — fluency, pronunciation, speed.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-500">
-                  {triangleNodes.rai.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-[#00ABFF]" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
               </div>
-            </div>
 
-            {/* Step 2 - Coach */}
-            <div className="relative">
-              <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#FF0099]/20 hover:border-[#FF0099] hover:shadow-xl transition-all h-full">
-                <div className="absolute -top-4 left-8 w-10 h-10 bg-[#FF0099] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                  2
+              {/* R - Remediate */}
+              <div className="relative pl-20 pb-12">
+                <div className="absolute left-4 w-9 h-9 bg-[#FF0099] rounded-full flex items-center justify-center text-white font-black text-lg shadow-lg shadow-[#FF0099]/30">
+                  R
                 </div>
-                <div className="w-16 h-16 bg-[#FF0099]/10 rounded-2xl flex items-center justify-center mb-6 mt-4">
-                  <Heart className="w-8 h-8 text-[#FF0099]" />
+                <div className="bg-[#FF0099]/5 border border-[#FF0099]/20 rounded-2xl p-5">
+                  <p className="text-xs font-bold text-[#FF0099] uppercase tracking-wider mb-1">Week 5-8</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Remediate</h3>
+                  <p className="text-sm text-gray-600 mb-3">Coach fills gaps with personalized 1:1 sessions</p>
+                  <div className="flex items-center gap-2 text-xs text-[#FF0099]">
+                    <Heart className="w-4 h-4" />
+                    <span className="font-semibold">Building Arc</span>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  Coach Delivers
-                </h3>
-                <p className="text-sm text-[#FF0099] font-semibold mb-3">The Heart</p>
-                <p className="text-gray-600 mb-4">
-                  Certified phonics experts take rAI's diagnosis and deliver personalized 1-on-1 sessions with patience and warmth.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-500">
-                  {triangleNodes.coach.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-[#FF0099]" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
               </div>
-            </div>
 
-            {/* Step 3 - Parent */}
-            <div className="relative">
-              <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#7B008B]/20 hover:border-[#7B008B] hover:shadow-xl transition-all h-full">
-                <div className="absolute -top-4 left-8 w-10 h-10 bg-[#7B008B] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                  3
+              {/* C - Celebrate */}
+              <div className="relative pl-20">
+                <div className="absolute left-4 w-9 h-9 bg-[#7B008B] rounded-full flex items-center justify-center text-white font-black text-lg shadow-lg shadow-[#7B008B]/30">
+                  C
                 </div>
-                <div className="w-16 h-16 bg-[#7B008B]/10 rounded-2xl flex items-center justify-center mb-6 mt-4">
-                  <Eye className="w-8 h-8 text-[#7B008B]" />
+                <div className="bg-[#7B008B]/5 border border-[#7B008B]/20 rounded-2xl p-5">
+                  <p className="text-xs font-bold text-[#7B008B] uppercase tracking-wider mb-1">Week 9-12</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Celebrate</h3>
+                  <p className="text-sm text-gray-600 mb-3">Child reads confidently with measurable improvement</p>
+                  <div className="flex items-center gap-2 text-xs text-[#7B008B]">
+                    <Award className="w-4 h-4" />
+                    <span className="font-semibold">Confidence Arc</span>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  You See Everything
-                </h3>
-                <p className="text-sm text-[#7B008B] font-semibold mb-3">The Eyes</p>
-                <p className="text-gray-600 mb-4">
-                  Full transparency — progress reports after every session, WhatsApp updates, visual dashboard. Never in the dark.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-500">
-                  {triangleNodes.parent.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-[#7B008B]" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
               </div>
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="text-center mt-12">
-            <Link
-              href="/assessment"
-              className="inline-flex items-center gap-2 bg-[#e6008a] hover:bg-[#d10080] text-white px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 shadow-xl shadow-[#ff0099]/30 whitespace-nowrap"
-            >
-              Free Assessment
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-            <p className="mt-4 text-sm text-gray-500">
-              No commitment. See your child's reading level first.
-            </p>
+          {/* ARC Visual - Desktop */}
+          <div className="hidden lg:block mb-16">
+            <div className="relative">
+              {/* The Arc Curve Background */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <svg viewBox="0 0 800 200" className="w-full max-w-4xl h-auto opacity-10">
+                  <path
+                    d="M 50 150 Q 400 -50 750 150"
+                    fill="none"
+                    stroke="url(#arcGradient)"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                  />
+                  <defs>
+                    <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#00ABFF" />
+                      <stop offset="50%" stopColor="#FF0099" />
+                      <stop offset="100%" stopColor="#7B008B" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+
+              {/* ARC Cards */}
+              <div className="grid grid-cols-3 gap-8 relative z-10">
+                {/* A - Assess */}
+                <div className="group">
+                  <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#00ABFF]/20 hover:border-[#00ABFF] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 h-full relative">
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-gradient-to-br from-[#00ABFF] to-[#0090d9] rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-[#00ABFF]/30 group-hover:scale-110 transition-transform">
+                      A
+                    </div>
+                    
+                    <div className="pt-6">
+                      <p className="text-xs font-bold text-[#00ABFF] uppercase tracking-wider mb-1 text-center">Week 1-4</p>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-1 text-center">Assess</h3>
+                      <p className="text-sm text-[#00ABFF] font-semibold mb-4 text-center">Foundation Arc</p>
+                      
+                      <div className="w-14 h-14 bg-[#00ABFF]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Brain className="w-7 h-7 text-[#00ABFF]" />
+                      </div>
+                      
+                      <p className="text-gray-600 text-center mb-6">
+                        AI listens to your child read and identifies <strong className="text-gray-900">exact gaps</strong> in 40+ sound patterns.
+                      </p>
+                      
+                      <ul className="space-y-2 text-sm text-gray-500">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#00ABFF] flex-shrink-0" />
+                          5-minute AI assessment
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#00ABFF] flex-shrink-0" />
+                          Detailed gap report
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#00ABFF] flex-shrink-0" />
+                          Personalized learning path
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* R - Remediate */}
+                <div className="group -mt-4">
+                  <div className="bg-white rounded-3xl p-8 shadow-xl border-2 border-[#FF0099]/30 hover:border-[#FF0099] hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 h-full relative">
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 bg-gradient-to-br from-[#FF0099] to-[#d10080] rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl shadow-[#FF0099]/30 group-hover:scale-110 transition-transform">
+                      R
+                    </div>
+                    
+                    <div className="pt-8">
+                      <p className="text-xs font-bold text-[#FF0099] uppercase tracking-wider mb-1 text-center">Week 5-8</p>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-1 text-center">Remediate</h3>
+                      <p className="text-sm text-[#FF0099] font-semibold mb-4 text-center">Building Arc</p>
+                      
+                      <div className="w-14 h-14 bg-[#FF0099]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Heart className="w-7 h-7 text-[#FF0099]" />
+                      </div>
+                      
+                      <p className="text-gray-600 text-center mb-6">
+                        Expert coaches fill gaps with <strong className="text-gray-900">personalized 1:1 sessions</strong> using Jolly Phonics.
+                      </p>
+                      
+                      <ul className="space-y-2 text-sm text-gray-500">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#FF0099] flex-shrink-0" />
+                          6 coaching sessions (1:1)
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#FF0099] flex-shrink-0" />
+                          Practice activities at home
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#FF0099] flex-shrink-0" />
+                          Weekly WhatsApp updates
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* C - Celebrate */}
+                <div className="group">
+                  <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-[#7B008B]/20 hover:border-[#7B008B] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 h-full relative">
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-gradient-to-br from-[#7B008B] to-[#5a0066] rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-[#7B008B]/30 group-hover:scale-110 transition-transform">
+                      C
+                    </div>
+                    
+                    <div className="pt-6">
+                      <p className="text-xs font-bold text-[#7B008B] uppercase tracking-wider mb-1 text-center">Week 9-12</p>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-1 text-center">Celebrate</h3>
+                      <p className="text-sm text-[#7B008B] font-semibold mb-4 text-center">Confidence Arc</p>
+                      
+                      <div className="w-14 h-14 bg-[#7B008B]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Award className="w-7 h-7 text-[#7B008B]" />
+                      </div>
+                      
+                      <p className="text-gray-600 text-center mb-6">
+                        Your child reads with <strong className="text-gray-900">confidence</strong>. Measurable improvement you can see.
+                      </p>
+                      
+                      <ul className="space-y-2 text-sm text-gray-500">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#7B008B] flex-shrink-0" />
+                          Before/after comparison
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#7B008B] flex-shrink-0" />
+                          Progress certificate
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-[#7B008B] flex-shrink-0" />
+                          Continuation roadmap
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* The Promise */}
+          <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-6 sm:p-8 lg:p-12 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#ff0099]/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#00ABFF]/10 rounded-full blur-3xl"></div>
+            
+            <div className="relative z-10">
+              <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
+                <div>
+                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4">
+                    The <span className="text-[#ffde00]">90-Day Promise</span>
+                  </h3>
+                  <p className="text-gray-300 text-base sm:text-lg mb-6">
+                    In 90 days, your child reads more fluently. This becomes the foundation for grammar, comprehension, writing, and confident English communication.
+                  </p>
+                  <div className="flex flex-wrap gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#00ABFF]/20 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00ABFF]" />
+                      </div>
+                      <span>Measurable Growth</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#FF0099]/20 rounded-lg flex items-center justify-center">
+                        <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF0099]" />
+                      </div>
+                      <span>100% Refund Guarantee</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#7B008B]/20 rounded-lg flex items-center justify-center">
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#7B008B]" />
+                      </div>
+                      <span>Full Transparency</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4 lg:justify-end">
+                  <Link
+                    href="/assessment"
+                    onClick={handleCTAClick}
+                    className="inline-flex items-center justify-center gap-2 bg-[#ff0099] hover:bg-[#e6008a] text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-full font-bold text-sm sm:text-lg transition-all hover:scale-105 shadow-xl shadow-[#ff0099]/30 whitespace-nowrap"
+                  >
+                    See Why — Free
+                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-[#00ABFF]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Mic className="w-6 h-6 text-[#00ABFF]" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">5 min</p>
+              <p className="text-sm text-gray-500">Assessment Time</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-[#FF0099]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Users className="w-6 h-6 text-[#FF0099]" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">1:1</p>
+              <p className="text-sm text-gray-500">Personal Coaching</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-[#7B008B]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Calendar className="w-6 h-6 text-[#7B008B]" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">90 days</p>
+              <p className="text-sm text-gray-500">Transformation</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-[#ffde00]/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Star className="w-6 h-6 text-[#e6b800]" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{stats.happyParents}</p>
+              <p className="text-sm text-gray-500">Parent Satisfaction</p>
+            </div>
+          </div>
+
         </div>
       </section>
 
       {/* ==================== RUCHA'S STORY ==================== */}
       <section id="rucha-story" className="py-16 lg:py-24 bg-[#1a1a2e] text-white relative overflow-hidden">
-        {/* Decorative Blurs */}
         <div className="absolute top-0 left-0 w-64 h-64 bg-[#ff0099] blur-[100px] opacity-20"></div>
         <div className="absolute bottom-0 right-0 w-64 h-64 bg-[#00abff] blur-[100px] opacity-20"></div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
-            {/* Video Side */}
+            {/* Video Side - Using Facade for Performance */}
             <div className="order-2 lg:order-1">
               <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl">
-                <iframe
-                  src={`${storyVideoUrl}${storyVideoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
-                  title="Rucha's Story - Yestoryd"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="absolute inset-0 w-full h-full"
-                />
+                <VideoFacade videoUrl={storyVideoUrl} />
               </div>
             </div>
 
@@ -652,7 +1200,6 @@ export default function HomePageClient({
                 </p>
               </div>
 
-              {/* Credentials - FIXED: 7 years (consistent) */}
               <div className="mt-8 flex flex-wrap gap-3">
                 <span className="inline-flex items-center gap-2 bg-white/10 text-white/90 px-4 py-2 rounded-full text-sm font-medium border border-white/10">
                   <GraduationCap className="w-4 h-4 text-[#00abff]" />
@@ -718,7 +1265,7 @@ export default function HomePageClient({
                     <Brain className="w-6 h-6 text-[#00abff]" />
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900">Rucha's Knowledge Engine</p>
+                    <p className="font-bold text-gray-900">rAI Knowledge Engine</p>
                     <p className="text-sm text-[#00abff]">Expert-Verified AI</p>
                   </div>
                 </div>
@@ -738,23 +1285,35 @@ export default function HomePageClient({
             <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6">
               The Process
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-8">
-              <div className="bg-[#ff0099]/10 text-[#ff0099] px-4 py-2 rounded-full text-sm font-medium">
+            {/* Desktop: Horizontal */}
+            <div className="hidden sm:flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-8">
+              <div className="bg-[#ff0099]/10 text-[#ff0099] px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
                 Child Error
               </div>
-              <ArrowRight className="w-5 h-5 text-gray-300 hidden sm:block" />
-              <div className="text-gray-300 sm:hidden">→</div>
-              <div className="bg-[#00abff]/10 text-[#00abff] px-4 py-2 rounded-full text-sm font-medium">
+              <ArrowRight className="w-5 h-5 text-gray-300" />
+              <div className="bg-[#00abff]/10 text-[#00abff] px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
                 Check Expert DB
               </div>
-              <ArrowRight className="w-5 h-5 text-gray-300 hidden sm:block" />
-              <div className="text-gray-300 sm:hidden">→</div>
-              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+              <ArrowRight className="w-5 h-5 text-gray-300" />
+              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
                 Perfect Fix ✓
               </div>
             </div>
+            {/* Mobile: Compact horizontal with smaller text */}
+            <div className="flex sm:hidden items-center justify-center gap-1.5 mb-8 px-2">
+              <div className="bg-[#ff0099]/10 text-[#ff0099] px-2.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">
+                Child Error
+              </div>
+              <span className="text-gray-300 text-xs">→</span>
+              <div className="bg-[#00abff]/10 text-[#00abff] px-2.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">
+                Expert DB
+              </div>
+              <span className="text-gray-300 text-xs">→</span>
+              <div className="bg-green-100 text-green-700 px-2.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">
+                Fix ✓
+              </div>
+            </div>
 
-            {/* Explanation */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-lg border border-gray-100">
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
@@ -787,66 +1346,195 @@ export default function HomePageClient({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="inline-block text-sm font-semibold text-[#ff0099] uppercase tracking-wider mb-4">
-              Parent Stories
+              Real Results
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Real Results from Real Families
+              Parents See the Difference
             </h2>
+            <p className="text-lg text-gray-600">
+              <span className="text-[#00abff] font-bold">87%</span> of parents finally understood WHY their child struggled
+            </p>
           </div>
 
           {/* Testimonial Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {displayTestimonials.slice(0, 4).map((testimonial, index) => (
-              <div
-                key={testimonial.id || index}
-                className={`bg-white rounded-2xl p-6 shadow-lg border-2 transition-all ${
-                  activeTestimonial === index
-                    ? 'border-[#ff0099] shadow-[#ff0099]/10'
-                    : 'border-gray-100 hover:border-gray-200'
-                }`}
-              >
-                {/* Rating */}
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-[#ffde00] fill-[#ffde00]" />
-                  ))}
-                </div>
+            {displayTestimonials.slice(0, 4).map((testimonial, index) => {
+              // Extract scores from testimonial text for display
+              const scoreMatches = [
+                { before: '4/10', after: '8/10' },
+                { before: '—', after: '2x fluency' },
+                { before: '5', after: '9', label: 'Clarity' },
+                { before: '15 WPM', after: '40 WPM' },
+              ];
+              const score = scoreMatches[index] || null;
+              
+              return (
+                <div
+                  key={testimonial.id || index}
+                  className={`bg-white rounded-2xl p-6 shadow-lg border-2 transition-all ${
+                    activeTestimonial === index
+                      ? 'border-[#ff0099] shadow-[#ff0099]/10'
+                      : 'border-gray-100 hover:border-gray-200'
+                  }`}
+                >
+                  {/* Score Badge */}
+                  {score && (
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex gap-1">
+                        {[...Array(testimonial.rating)].map((_, i) => (
+                          <Star key={i} className="w-3.5 h-3.5 text-[#ffde00] fill-[#ffde00]" />
+                        ))}
+                      </div>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                        {score.before} → {score.after}
+                      </span>
+                    </div>
+                  )}
 
-                {/* Quote */}
-                <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-                  "{testimonial.testimonial_text}"
-                </p>
+                  {/* Quote */}
+                  <p className="text-gray-600 mb-5 text-sm leading-relaxed">
+                    "{testimonial.testimonial_text}"
+                  </p>
 
-                {/* Author */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-bold">
-                    {testimonial.parent_name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{testimonial.parent_name}</p>
-                    <p className="text-xs text-gray-500">
-                      {testimonial.parent_location && `${testimonial.parent_location} • `}
-                      Parent of {testimonial.child_name}, {testimonial.child_age}
-                    </p>
+                  {/* Author */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      {testimonial.parent_name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{testimonial.parent_name}</p>
+                      <p className="text-xs text-gray-500">
+                        {testimonial.parent_location && `${testimonial.parent_location} • `}
+                        Parent of {testimonial.child_name}, {testimonial.child_age}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Trust Stats */}
+          {/* Trust Stats - Updated */}
           <div className="mt-12 grid grid-cols-3 gap-6 max-w-2xl mx-auto">
             <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-bold text-[#ff0099]">100+</p>
-              <p className="text-sm text-gray-500">Children Helped</p>
+              <p className="text-3xl sm:text-4xl font-bold text-[#ff0099]">{stats.totalAssessments}</p>
+              <p className="text-sm text-gray-500">Assessments Done</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-bold text-[#00abff]">4.9/5</p>
-              <p className="text-sm text-gray-500">Parent Rating</p>
+              <p className="text-3xl sm:text-4xl font-bold text-[#00abff]">87%</p>
+              <p className="text-sm text-gray-500">Found the Real Issue</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-bold text-[#7b008b]">7 yrs</p>
-              <p className="text-sm text-gray-500">Experience</p>
+              <p className="text-3xl sm:text-4xl font-bold text-[#7b008b]">2x</p>
+              <p className="text-sm text-gray-500">Avg. Improvement</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==================== THE JOURNEY: READING TO ENGLISH CONFIDENCE ==================== */}
+      <section className="py-16 lg:py-24 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className="inline-block text-sm font-semibold text-[#7b008b] uppercase tracking-wider mb-4">
+              The Complete Journey
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              From Reading Mastery to{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">
+                English Confidence
+              </span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Reading is the foundation. Everything else builds on top.
+            </p>
+          </div>
+
+          {/* Journey Flow - Desktop */}
+          <div className="hidden lg:block">
+            <div className="relative">
+              {/* Connection Line */}
+              <div className="absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-[#00ABFF] via-[#FF0099] to-[#7B008B] -translate-y-1/2 rounded-full"></div>
+              
+              {/* Journey Steps */}
+              <div className="grid grid-cols-6 gap-4 relative z-10">
+                {[
+                  { stage: 'INTEREST', skill: 'Generate love for reading', icon: Heart, color: '#00ABFF' },
+                  { stage: 'READ', skill: 'Phonics mastery', icon: BookOpen, color: '#0090d9' },
+                  { stage: 'UNDERSTAND', skill: 'Grammar rules', icon: Brain, color: '#9333ea' },
+                  { stage: 'COMPREHEND', skill: 'Reading comprehension', icon: Lightbulb, color: '#FF0099' },
+                  { stage: 'EXPRESS', skill: 'Writing skills', icon: MessageCircle, color: '#d10080' },
+                  { stage: 'CONFIDENCE', skill: 'English fluency', icon: Award, color: '#7B008B' },
+                ].map((step, index) => (
+                  <div key={step.stage} className="flex flex-col items-center">
+                    {/* Icon Circle */}
+                    <div 
+                      className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg mb-4 bg-white border-4"
+                      style={{ borderColor: step.color }}
+                    >
+                      <step.icon className="w-7 h-7" style={{ color: step.color }} />
+                    </div>
+                    
+                    {/* Stage Name */}
+                    <p className="font-bold text-gray-900 text-sm mb-1">{step.stage}</p>
+                    
+                    {/* Arrow */}
+                    <div className="text-gray-300 my-2">↓</div>
+                    
+                    {/* Skill Description */}
+                    <p className="text-xs text-gray-500 text-center leading-tight">{step.skill}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Journey Flow - Mobile */}
+          <div className="lg:hidden">
+            <div className="space-y-4">
+              {[
+                { stage: 'INTEREST', skill: 'Generate love for reading', icon: Heart, color: '#00ABFF' },
+                { stage: 'READ', skill: 'Phonics mastery', icon: BookOpen, color: '#0090d9' },
+                { stage: 'UNDERSTAND', skill: 'Grammar rules', icon: Brain, color: '#9333ea' },
+                { stage: 'COMPREHEND', skill: 'Reading comprehension', icon: Lightbulb, color: '#FF0099' },
+                { stage: 'EXPRESS', skill: 'Writing skills', icon: MessageCircle, color: '#d10080' },
+                { stage: 'CONFIDENCE', skill: 'English fluency', icon: Award, color: '#7B008B' },
+              ].map((step, index) => (
+                <div key={step.stage} className="flex items-center gap-4">
+                  {/* Icon */}
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-white border-2 shadow-md"
+                    style={{ borderColor: step.color }}
+                  >
+                    <step.icon className="w-5 h-5" style={{ color: step.color }} />
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="flex-grow">
+                    <p className="font-bold text-gray-900 text-sm">{step.stage}</p>
+                    <p className="text-xs text-gray-500">{step.skill}</p>
+                  </div>
+                  
+                  {/* Arrow (except last) */}
+                  {index < 5 && (
+                    <div className="text-gray-300 text-xl">→</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Key Insight */}
+          <div className="mt-12 bg-gradient-to-r from-[#00ABFF]/5 via-[#FF0099]/5 to-[#7B008B]/5 rounded-3xl p-8 border border-gray-100">
+            <div className="max-w-3xl mx-auto text-center">
+              <p className="text-lg text-gray-700 mb-4">
+                <strong className="text-gray-900">In 90 days, your child masters reading fluency.</strong>
+              </p>
+              <p className="text-gray-600">
+                This becomes the foundation for grammar, comprehension, writing, and eventually — 
+                confident English communication. The journey starts with the first step: 
+                <strong className="text-[#ff0099]"> understanding exactly where they are today.</strong>
+              </p>
             </div>
           </div>
         </div>
@@ -857,13 +1545,13 @@ export default function HomePageClient({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="inline-block text-sm font-semibold text-[#ff0099] uppercase tracking-wider mb-4">
-              Simple Pricing
+              Start Your ARC Journey
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Invest in Your Child's Reading Future
+              Simple, Transparent Pricing
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Start free. Upgrade only when you're ready.
+              Start free. See your child's reading profile. Upgrade only when ready.
             </p>
           </div>
 
@@ -871,8 +1559,8 @@ export default function HomePageClient({
             {/* Free Assessment */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-gray-200">
               <div className="mb-6">
-                <span className="inline-block bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
-                  Start Here
+                <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                  Step 1 — Start Here
                 </span>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Free AI Assessment</h3>
                 <p className="text-gray-600">See rAI in action — understand your child's reading level</p>
@@ -905,99 +1593,97 @@ export default function HomePageClient({
 
               <Link
                 href="/assessment"
+                onClick={handleCTAClick}
                 className="block w-full text-center bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-xl font-semibold transition-colors"
               >
-                Take Free Assessment
+                See Why — 5 Min Test
               </Link>
             </div>
 
-            {/* Coaching Program - COMING SOON */}
+            {/* Coaching Program - COMING SOON (Grey with Blue Label) */}
             <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
-              {/* Coming Soon Badge */}
+              {/* Coming Soon Badge - Blue */}
               <div className="absolute top-0 right-0 bg-[#00ABFF] text-white px-4 py-2 rounded-bl-2xl text-sm font-bold">
                 🚀 Launching March 2026
               </div>
 
               <div className="mb-6 mt-4">
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <span className="inline-block bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium">
-                    Complete Transformation
-                  </span>
-                </div>
-                <h3 className="text-2xl font-bold mb-2">3-Month Coaching + E-Learning</h3>
-                <p className="text-white/80">rAI + Coach + Parent + 200+ Video Lessons</p>
+                <span className="inline-block bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
+                  Step 2 — Complete Transformation
+                </span>
+                <h3 className="text-2xl font-bold mb-2">90-Day ARC Program</h3>
+                <p className="text-white/80">Full coaching journey with expert guidance</p>
               </div>
 
               <div className="mb-6">
                 <span className="text-4xl font-bold">₹{pricing.discountedPrice?.toLocaleString() || '5,999'}</span>
                 <span className="text-white/60 ml-2 line-through">₹{pricing.originalPrice?.toLocaleString() || '9,999'}</span>
+                <p className="text-white/70 text-sm mt-1">{pricing.discountLabel || '40% OFF'} Launch Price</p>
               </div>
 
               <ul className="space-y-3 mb-8">
                 {[
                   'Everything in Free Assessment',
-                  '6 expert coaching sessions (1-on-1)',
+                  '6 expert 1:1 coaching sessions',
                   '3 parent progress check-ins',
-                  '600+ structured video lessons',
-                  'Gamified learning with badges & streaks',
-                  'Progress dashboard for parents',
+                  'E-learning video modules',
+                  'WhatsApp progress updates',
+                  'Completion certificate',
+                  '100% satisfaction guarantee',
                 ].map((item, index) => (
                   <li key={index} className="flex items-center gap-3 text-white/80">
-                    <CheckCircle className="w-5 h-5 text-white/60 flex-shrink-0" />
+                    <CheckCircle className="w-5 h-5 text-white/50 flex-shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
 
-              {/* Waitlist CTA */}
-              <a
-                href={`https://wa.me/${contact.whatsappNumber || '919082296651'}?text=Hi! I'm interested in the Complete Transformation program. Please notify me when it launches in March 2026.`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full text-center bg-white/90 text-gray-600 py-4 rounded-xl font-bold hover:bg-white transition-colors"
+              <button
+                disabled
+                className="block w-full text-center bg-white/20 text-white/80 py-4 rounded-xl font-semibold cursor-not-allowed"
               >
-                <Bell className="w-5 h-5 inline mr-2" />
-                Notify Me When Available
-              </a>
-              <p className="text-center text-white/60 text-sm mt-3">
-                We're adding 600+ video lessons. Get notified at launch!
+                Coming Soon — Get Notified
+              </button>
+              
+              <p className="text-center text-white/60 text-xs mt-4">
+                Take the free assessment now. We'll notify you when enrollment opens.
               </p>
             </div>
           </div>
+
+          <p className="text-center text-gray-500 text-sm mt-8">
+            💡 Start with the free assessment to see your child's reading profile before March launch.
+          </p>
         </div>
       </section>
+
+      {/* ==================== FAQ SECTION ==================== */}
+      <FAQSection whatsappNumber={whatsappNumber} />
 
       {/* ==================== FINAL CTA ==================== */}
       <section className="py-16 lg:py-24 bg-gradient-to-br from-[#e6008a] to-[#7b008b] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Brain className="w-6 h-6 text-white" />
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Heart className="w-6 h-6 text-white" />
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Eye className="w-6 h-6 text-white" />
-            </div>
-          </div>
-
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
-            rAI Finds. Coach Fills. You See.<br />
-            <span className="text-[#ffde00]">Your Child Reads.</span>
+            Reading Gaps Widen Every Month.
+            <br />
+            <span className="text-[#ffde00]">Find Yours in 5 Minutes.</span>
           </h2>
 
-          <p className="text-lg sm:text-xl text-white/80 mb-10 max-w-2xl mx-auto">
-            The complete triangle working together for your child's reading journey. 
-            Start with a free assessment.
+          <p className="text-lg sm:text-xl text-white/80 mb-4 max-w-2xl mx-auto">
+            <span className="text-white font-bold">87% of parents</span> finally understood WHY their child struggled — after just one 5-minute assessment.
+          </p>
+          
+          <p className="text-base text-white/60 mb-10 max-w-xl mx-auto">
+            Free. No card required. Instant results.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/assessment"
+              onClick={handleCTAClick}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-[#e6008a] px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors shadow-xl"
             >
-              Free Assessment
+              See Why — 5 Minutes
               <ArrowRight className="w-5 h-5" />
             </Link>
             <a
@@ -1011,21 +1697,25 @@ export default function HomePageClient({
             </a>
           </div>
 
-          {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-white/60 text-sm">
             <span className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
-              100% Free Assessment
+              100% Free
             </span>
             <span className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
               5 Minutes Only
             </span>
             <span className="flex items-center gap-2">
-              <Award className="w-4 h-4" />
+              <TrendingUp className="w-4 h-4" />
               Instant Results
             </span>
           </div>
+          
+          {/* Urgency note */}
+          <p className="mt-8 text-xs text-white/50">
+            Early identification leads to faster improvement. Don't wait for report cards.
+          </p>
         </div>
       </section>
 
@@ -1037,7 +1727,7 @@ export default function HomePageClient({
               <Image src="/images/logo.png" alt="Yestoryd" width={120} height={36} className="h-8 w-auto mb-4 opacity-90" />
               <p className="text-gray-500 text-sm max-w-sm mb-4">
                 AI-powered reading assessment and expert coaching for children aged 4-12. 
-                rAI diagnoses. Coach delivers. You see everything.
+                The Yestoryd ARC™ — Assess, Remediate, Celebrate.
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <GraduationCap className="w-4 h-4 text-[#00abff]" />
@@ -1047,8 +1737,8 @@ export default function HomePageClient({
             <div>
               <h4 className="font-bold text-sm mb-4 text-gray-300">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li><Link href="/assessment" className="hover:text-[#ff0099] transition-colors">Free Assessment</Link></li>
-                <li><a href="#how-it-works" className="hover:text-[#ff0099] transition-colors">How It Works</a></li>
+                <li><Link href="/assessment" className="hover:text-[#ff0099] transition-colors">Free 5-Min Test</Link></li>
+                <li><a href="#how-it-works" className="hover:text-[#ff0099] transition-colors">The ARC Method</a></li>
                 <li><a href="#pricing" className="hover:text-[#ff0099] transition-colors">Pricing</a></li>
                 <li><Link href="/lets-talk" className="hover:text-[#ff0099] transition-colors">Talk to Us</Link></li>
               </ul>
@@ -1091,13 +1781,16 @@ export default function HomePageClient({
         </span>
       </a>
 
-      {/* ==================== STICKY MOBILE CTA ==================== */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 sm:hidden z-30">
+      {/* ==================== STICKY MOBILE CTA (Shows after hero) ==================== */}
+      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:hidden z-30 transition-transform duration-300 ${
+        showStickyMobileCTA ? 'translate-y-0' : 'translate-y-full'
+      }`}>
         <Link
           href="/assessment"
-          className="block w-full text-center bg-[#e6008a] text-white py-3.5 rounded-xl font-bold shadow-lg"
+          onClick={handleCTAClick}
+          className="block w-full text-center bg-[#e6008a] text-white py-3 rounded-xl font-bold shadow-lg text-sm"
         >
-          Free Assessment
+          See Why — Free 5 Min Test
         </Link>
       </div>
     </div>

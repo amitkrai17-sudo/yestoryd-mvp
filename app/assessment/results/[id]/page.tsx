@@ -3,20 +3,14 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
-  Zap, Volume2, MessageSquare, Calendar, BookOpen, Share2, Download, Mail,
-  CheckCircle, Loader2, Sparkles, MessageCircle, Shield, Users, Star,
-  ArrowRight, AlertTriangle, ChevronDown, ChevronUp, Target, AlertCircle,
-  TrendingUp, Lightbulb, BookOpenCheck,
+  Loader2, MessageCircle, CheckCircle, AlertCircle,
+  ChevronDown, ChevronUp, Target, Volume2, Lightbulb, 
+  BookOpenCheck, Sparkles, BookOpen, Zap, MessageSquare,
+  TrendingUp, Download, Share2, AlertTriangle,
 } from 'lucide-react';
-
-// Brand Colors
-const COLORS = {
-  pink: '#ff0099',
-  blue: '#00abff',
-  yellow: '#ffde00',
-  purple: '#7b008b',
-};
+import Confetti from '@/components/Confetti';
 
 // Types
 interface SkillScore { score: number; notes: string; }
@@ -30,18 +24,41 @@ interface AssessmentData {
   skill_breakdown?: any; practice_recommendations?: any;
 }
 
-function getScoreConfig(score: number, childName: string) {
-  if (score >= 8) return { color: 'bg-green-500', text: 'text-green-600', ring: 'border-green-500', label: 'Excellent!', emoji: '🌟', headline: `${childName} is a reading star!`, subheadline: 'Take their skills to the advanced level', primaryCTA: `Take ${childName} to Advanced Level`, ctaStyle: 'from-green-500 to-emerald-600' };
-  if (score >= 6) return { color: 'bg-yellow-500', text: 'text-yellow-600', ring: 'border-yellow-500', label: 'Good Progress!', emoji: '⭐', headline: `${childName} shows great potential!`, subheadline: 'Unlock their full reading abilities', primaryCTA: `Unlock ${childName}'s Full Potential`, ctaStyle: 'from-yellow-500 to-amber-600' };
-  if (score >= 4) return { color: 'bg-orange-500', text: 'text-orange-600', ring: 'border-orange-500', label: 'Keep Practicing!', emoji: '💪', headline: `${childName} is ready to improve!`, subheadline: 'Accelerate their reading progress', primaryCTA: `Accelerate ${childName}'s Progress`, ctaStyle: 'from-orange-500 to-red-500' };
-  return { color: 'bg-red-500', text: 'text-red-600', ring: 'border-red-500', label: 'Needs Support', emoji: '📚', headline: `${childName} needs expert guidance`, subheadline: 'Get personalized support from our coaches', primaryCTA: `Get ${childName} the Help They Need`, ctaStyle: 'from-red-500 to-pink-600' };
+// Score-based messaging (matching email)
+function getScoreMessage(score: number, childName: string, age: string) {
+  if (score >= 8) return {
+    headline: `${childName} Is Doing Amazingly!`,
+    subheadline: 'A true reading champion',
+    emoji: '⭐',
+    encouragement: `${score}/10 is excellent for age ${age}! Advanced coaching can take skills even higher.`,
+    dailyTip: `Keep reading daily, ${childName.toLowerCase()}! Every page makes you stronger.`,
+    ctaText: `Unlock ${childName.toLowerCase()}'s Full Potential`,
+  };
+  if (score >= 6) return {
+    headline: `${childName} Shows Great Potential!`,
+    subheadline: 'A rising reading star',
+    emoji: '🌟',
+    encouragement: `${score}/10 shows promise for age ${age}! A few sessions can unlock their full ability.`,
+    dailyTip: `Practice makes perfect, ${childName.toLowerCase()}! You're getting better every day.`,
+    ctaText: `Unlock ${childName.toLowerCase()}'s Full Potential`,
+  };
+  if (score >= 4) return {
+    headline: `${childName} Is On The Right Track!`,
+    subheadline: 'Building reading confidence',
+    emoji: '📖',
+    encouragement: `${score}/10 is a great start for age ${age}! Targeted coaching will accelerate progress.`,
+    dailyTip: `Every small step counts, ${childName.toLowerCase()}! Keep going!`,
+    ctaText: `Accelerate ${childName.toLowerCase()}'s Progress`,
+  };
+  return {
+    headline: `${childName} Has Taken The First Step!`,
+    subheadline: 'Every reader starts somewhere',
+    emoji: '🚀',
+    encouragement: `Our coaches specialize in building strong foundations for age ${age}. Let's begin!`,
+    dailyTip: `The journey of a thousand books begins with one page, ${childName.toLowerCase()}!`,
+    ctaText: `Get ${childName.toLowerCase()} Started`,
+  };
 }
-
-const TESTIMONIALS = [
-  { text: "My daughter's score improved from 4 to 8 in just 6 weeks!", name: "Priya M.", child: "Mother of Ananya, Age 7" },
-  { text: "The coaches understood exactly where my son was struggling.", name: "Rahul S.", child: "Father of Arjun, Age 9" },
-  { text: "Best investment for our child's education.", name: "Meera K.", child: "Mother of Diya, Age 6" },
-];
 
 const SKILL_CONFIG: Record<string, { icon: React.ReactNode; label: string }> = {
   decoding: { icon: <BookOpen className="w-4 h-4" />, label: 'Decoding' },
@@ -90,9 +107,6 @@ function CollapsibleSection({ title, icon, children, defaultOpen = false, badge 
   );
 }
 
-function getFluencyLabel(s: number) { return s >= 8 ? 'Smooth' : s >= 6 ? 'Good' : s >= 4 ? 'Choppy' : 'Developing'; }
-function getClarityLabel(s: number) { return s >= 8 ? 'Clear' : s >= 6 ? 'Mostly Clear' : s >= 4 ? 'Inconsistent' : 'Unclear'; }
-
 export default function ResultsPage() {
   const params = useParams();
   const childId = params.id as string;
@@ -102,25 +116,22 @@ export default function ResultsPage() {
   const [data, setData] = useState<AssessmentData | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       if (!childId) { setError('No assessment ID'); setLoading(false); return; }
       try {
-        const res = await fetch(`/api/assessment/result/${childId}`);
+        const res = await fetch(`/api/assessment/results/${childId}`);
         if (!res.ok) throw new Error('Failed to fetch');
         setData(await res.json());
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 4000);
       } catch { setError('Failed to load results'); }
       finally { setLoading(false); }
     }
     fetchData();
   }, [childId]);
-
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTestimonial(p => (p + 1) % TESTIMONIALS.length), 5000);
-    return () => clearInterval(interval);
-  }, []);
 
   const sendCertificateEmail = useCallback(async () => {
     if (!data?.parentEmail || emailSent || sendingEmail) return;
@@ -131,7 +142,6 @@ export default function ResultsPage() {
         body: JSON.stringify({
           email: data.parentEmail, childName: data.childName, childAge: data.childAge,
           score: data.overall_score, wpm: data.wpm,
-          fluency: getFluencyLabel(data.fluency_score), pronunciation: getClarityLabel(data.clarity_score),
           clarityScore: data.clarity_score, fluencyScore: data.fluency_score, speedScore: data.speed_score,
           feedback: data.feedback, strengths: data.strengths, areasToImprove: data.areas_to_improve,
           phonicsAnalysis: data.phonics_analysis, skillBreakdown: data.skill_breakdown,
@@ -146,8 +156,8 @@ export default function ResultsPage() {
 
   const getWhatsAppMessage = useCallback(() => {
     if (!data) return '';
-    const config = getScoreConfig(data.overall_score, data.childName);
-    return encodeURIComponent(`🎉 *${data.childName}'s Reading Assessment*\n\n${config.emoji} *Score: ${data.overall_score}/10* - ${config.label}\n⚡ Speed: ${data.wpm} WPM\n\n📝 ${data.feedback}\n\n🚀 Get FREE Assessment: https://yestoryd.com/assessment`);
+    const msg = getScoreMessage(data.overall_score, data.childName, data.childAge);
+    return encodeURIComponent(`🎉 *${data.childName}'s Reading Assessment*\n\n${msg.emoji} *${msg.headline}*\n${msg.subheadline}\n\n📊 Score: ${data.overall_score}/10\n⚡ Speed: ${data.wpm} WPM\n\n💡 ${msg.encouragement}\n\n🚀 Get FREE Assessment: https://yestoryd.com/assessment`);
   }, [data]);
 
   const shareOnWhatsApp = () => window.open(`https://wa.me/?text=${getWhatsAppMessage()}`, '_blank');
@@ -172,7 +182,7 @@ export default function ResultsPage() {
     </div>
   );
 
-  const config = getScoreConfig(data.overall_score, data.childName);
+  const msg = getScoreMessage(data.overall_score, data.childName, data.childAge);
   const checkoutUrl = `/checkout?childId=${childId}&childName=${encodeURIComponent(data.childName)}&parentEmail=${encodeURIComponent(data.parentEmail)}&parentPhone=${encodeURIComponent(data.parentPhone || '')}&source=assessment`;
 
   const totalErrors = data.error_classification ? 
@@ -180,113 +190,151 @@ export default function ResultsPage() {
     (data.error_classification.mispronunciations?.length || 0) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
+      {/* Confetti */}
+      {showConfetti && <Confetti duration={4000} />}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 print:hidden">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-xl flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold">
-              <span className="text-[#ff0099]">Yest</span>
-              <span className="text-gray-800">or</span>
-              <span className="text-[#ffde00]">yd</span>
-            </span>
+            <Image 
+              src="/images/logo.png" 
+              alt="Yestoryd" 
+              width={120} 
+              height={40}
+              className="h-9 w-auto"
+            />
           </Link>
-          <button onClick={shareOnWhatsApp} className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full text-sm font-semibold">
+          <button onClick={shareOnWhatsApp} className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full text-sm font-semibold hover:bg-green-600">
             <MessageCircle className="w-4 h-4" /> Share
           </button>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg">
-        {/* Certificate Card */}
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-          {/* Header */}
-          <div className="bg-gradient-to-br from-[#ff0099] to-[#7b008b] p-5 text-center">
-            <div className="w-20 h-20 mx-auto mb-3 bg-white rounded-2xl flex items-center justify-center">
-              <span className="text-4xl">📚</span>
+        {/* Certificate Card - MATCHING EMAIL */}
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+          
+          {/* Purple Header with rAI Logo */}
+          <div className="bg-gradient-to-br from-[#c847f4] to-[#7b008b] p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden">
+              <Image 
+                src="/images/rai-mascot.png" 
+                alt="rAI" 
+                width={48} 
+                height={48}
+                className="w-12 h-12 object-contain"
+              />
             </div>
             <h1 className="text-2xl font-bold text-white">Yestoryd</h1>
-            <p className="text-white/80 text-sm uppercase tracking-widest mt-1">Reading Assessment Report</p>
+            <p className="text-white/80 text-xs uppercase tracking-widest mt-1">Reading Assessment Report</p>
           </div>
 
           {/* Body */}
           <div className="p-6 text-center">
-            <p className="text-[#00abff] text-base font-semibold">Certificate of Achievement</p>
-            <p className="text-gray-500 text-sm mt-1">Proudly presented to</p>
-            <h2 className="text-3xl font-bold text-[#7b008b] mt-2">{data.childName}</h2>
-            {data.childAge && <p className="text-gray-500 text-sm mt-1">Age {data.childAge}</p>}
+            <div className="text-5xl mb-3">{msg.emoji}</div>
+            <h2 className="text-2xl font-bold text-gray-800">{msg.headline}</h2>
+            <p className="text-gray-500 mt-1">{msg.subheadline}</p>
 
-            {/* Score Circle */}
-            <div className="relative w-36 h-36 mx-auto my-6">
-              <div className={`w-full h-full rounded-full border-8 ${config.ring} flex items-center justify-center bg-white shadow-lg`}>
-                <span className={`text-5xl font-black ${config.text}`}>{data.overall_score}</span>
+            {/* Score Row */}
+            <div className="flex items-center justify-between mt-6 mb-4 px-2">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-[#7b008b] flex items-center justify-center">
+                  <span className="text-2xl font-black text-white">{data.overall_score}</span>
+                </div>
+                <div className="text-left">
+                  <p className="text-gray-400 text-xs uppercase">Overall Score</p>
+                  <p className="text-gray-700 font-medium">out of 10</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-400 text-xs uppercase">Speed</p>
+                <p className="text-[#00abff] text-xl font-bold">{data.wpm} <span className="text-sm">WPM</span></p>
               </div>
             </div>
 
-            <div className={`inline-flex items-center gap-2 ${config.color} text-white px-6 py-2 rounded-full text-base mb-5`}>
-              <span className="text-xl">{config.emoji}</span>
-              <span className="font-bold">{config.label}</span>
+            {/* Yellow Encouragement */}
+            <div className="bg-[#fff9e6] border border-[#ffde00] rounded-xl px-4 py-3 mb-5">
+              <p className="text-gray-700 text-sm">💡 {msg.encouragement}</p>
             </div>
 
-            {/* Stats - INTEGER SCORES */}
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                <Zap className="w-6 h-6 text-[#00abff] mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Speed</p>
-                <p className="font-bold text-[#7b008b] text-lg">{data.wpm}</p>
-                <p className="text-[10px] text-gray-400">WPM</p>
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-4 mb-5 border-t border-b border-gray-100 py-4">
+              <div className="text-center">
+                <p className="text-gray-400 text-xs uppercase">Clarity</p>
+                <p className="text-[#7b008b] text-2xl font-bold">{data.clarity_score}</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                <Volume2 className="w-6 h-6 text-[#ff0099] mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Fluency</p>
-                <p className="font-bold text-[#7b008b] text-lg">{data.fluency_score}/10</p>
+              <div className="text-center border-l border-r border-gray-100">
+                <p className="text-gray-400 text-xs uppercase">Fluency</p>
+                <p className="text-[#7b008b] text-2xl font-bold">{data.fluency_score}</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                <MessageSquare className="w-6 h-6 text-[#7b008b] mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Clarity</p>
-                <p className="font-bold text-[#7b008b] text-lg">{data.clarity_score}/10</p>
+              <div className="text-center">
+                <p className="text-gray-400 text-xs uppercase">Speed</p>
+                <p className="text-[#7b008b] text-2xl font-bold">{data.speed_score}</p>
               </div>
             </div>
 
-            {/* Feedback */}
+            {/* rAI Analysis */}
             {data.feedback && (
-              <div className="bg-gray-50 rounded-xl p-4 mb-5 text-left border-l-4 border-[#ff0099]">
+              <div className="bg-gray-50 rounded-xl p-4 mb-4 text-left border-l-4 border-[#ff0099]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-[#ffde00]" />
-                  <span className="font-bold text-[#7b008b]">Coach Feedback</span>
+                  <Image 
+                    src="/images/rai-mascot.png" 
+                    alt="rAI" 
+                    width={24} 
+                    height={24}
+                    className="w-6 h-6"
+                  />
+                  <span className="font-bold text-[#ff0099]">rAI Analysis</span>
                 </div>
                 <p className="text-gray-700 text-sm leading-relaxed">{data.feedback}</p>
               </div>
             )}
 
+            {/* Yellow Daily Tip */}
+            <div className="bg-[#ffde00] rounded-xl px-4 py-3 mb-4">
+              <p className="text-[#7b008b] text-sm font-semibold">✨ {msg.dailyTip}</p>
+            </div>
+
+            <p className="text-gray-500 text-sm mb-4">❤️ Join 100+ families already improving</p>
+
+            {/* CTA Button */}
+            <Link href={checkoutUrl}>
+              <button className="w-full py-4 bg-gradient-to-r from-[#ff0099] to-[#ff6b6b] text-white font-bold rounded-xl text-lg hover:opacity-90 shadow-lg mb-3">
+                🚀 {msg.ctaText}
+              </button>
+            </Link>
+
+            <p className="text-gray-400 text-xs">100% Refund Guarantee • Start within 3-5 days</p>
+
+            <Link href={`/lets-talk?source=assessment&childName=${encodeURIComponent(data.childName)}&parentEmail=${encodeURIComponent(data.parentEmail)}`}>
+              <button className="w-full mt-4 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50">
+                🎁 Have Questions? Talk to Coach First
+              </button>
+            </Link>
+
             {/* Email Status */}
-            <div className="print:hidden">
+            <div className="mt-6 print:hidden">
               {data.parentEmail && (
-                <div className="mb-4">
+                <div>
                   <div className={`flex items-center justify-center gap-2 text-sm ${emailSent ? 'text-green-600' : 'text-gray-500'}`}>
                     {sendingEmail ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : 
                      emailSent ? <><CheckCircle className="w-4 h-4" /> Sent to {data.parentEmail}</> : 
-                     <><Mail className="w-4 h-4" /> Sending...</>}
+                     <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>}
                   </div>
-                  {emailSent && (
-                    <div className="flex items-center justify-center gap-1 mt-1 text-xs text-amber-600">
-                      <AlertTriangle className="w-3 h-3" /><span>Check spam folder</span>
-                    </div>
-                  )}
+                  {emailSent && <p className="text-amber-600 text-xs mt-1"><AlertTriangle className="w-3 h-3 inline" /> Check spam folder</p>}
                 </div>
               )}
             </div>
 
-            <p className="text-gray-400 text-xs mt-3">
+            <p className="text-gray-400 text-xs mt-4">
               {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} • yestoryd.com
             </p>
           </div>
         </div>
 
-        {/* Enhanced Analysis */}
+        {/* Detailed Analysis */}
         {(data.skill_breakdown || data.phonics_analysis || data.error_classification) && (
           <div className="mt-6 space-y-3 print:hidden">
             <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -407,70 +455,13 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* CTA Section */}
-        <div className="mt-6 print:hidden">
-          <div className="text-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">{config.headline}</h3>
-            <p className="text-gray-500 text-sm mt-1">{config.subheadline}</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm mb-4">
-            <Link href={checkoutUrl}>
-              <button className={`w-full py-4 bg-gradient-to-r ${config.ctaStyle} text-white font-bold rounded-xl text-lg flex items-center justify-center gap-2 hover:opacity-90 shadow-lg`}>
-                {config.primaryCTA} <ArrowRight className="w-5 h-5" />
-              </button>
-            </Link>
-
-            <div className="mt-4 space-y-2">
-              {['6 personalized sessions', 'Dedicated coach', 'FREE learning resources'].map((f, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                  <CheckCircle className="w-4 h-4 text-green-500" /><span>{f}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-2 text-sm text-amber-600">
-              <Users className="w-4 h-4" /><span>🔥 12 parents enrolled today</span>
-            </div>
-
-            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
-              <Shield className="w-4 h-4 text-green-500" /><span>100% refund guarantee</span>
-            </div>
-
-            <div className="mt-3 text-center">
-              <span className="text-2xl font-bold text-gray-800">₹5,999</span>
-              <span className="text-gray-500 text-sm ml-2">one-time</span>
-            </div>
-          </div>
-
-          <Link href={`/lets-talk?source=assessment&childName=${encodeURIComponent(data.childName)}&parentEmail=${encodeURIComponent(data.parentEmail)}`}>
-            <button className="w-full py-3.5 bg-gray-100 text-gray-800 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 border border-gray-200 mb-4">
-              <Calendar className="w-5 h-5" /> Talk to Coach First
-            </button>
-          </Link>
-
-          <button onClick={shareOnWhatsApp} className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 mb-6">
-            <MessageCircle className="w-5 h-5" /> Share Results
-          </button>
-
-          {/* Testimonial */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-            <div className="flex gap-1 mb-2">{[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />)}</div>
-            <p className="text-gray-700 text-sm italic mb-3">&ldquo;{TESTIMONIALS[currentTestimonial].text}&rdquo;</p>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#ff0099] rounded-full flex items-center justify-center text-white font-bold text-sm">
-                {TESTIMONIALS[currentTestimonial].name.charAt(0)}
-              </div>
-              <div>
-                <p className="text-gray-800 text-sm font-medium">{TESTIMONIALS[currentTestimonial].name}</p>
-                <p className="text-gray-500 text-xs">{TESTIMONIALS[currentTestimonial].child}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* WhatsApp Share */}
+        <button onClick={shareOnWhatsApp} className="w-full mt-6 py-3 bg-green-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 print:hidden">
+          <MessageCircle className="w-5 h-5" /> Share Results on WhatsApp
+        </button>
 
         {/* Action Buttons */}
-        <div className="mt-5 grid grid-cols-2 gap-3 print:hidden">
+        <div className="mt-4 grid grid-cols-2 gap-3 print:hidden">
           <button onClick={() => window.print()} className="flex flex-col items-center gap-1.5 p-3 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50">
             <Download className="w-5 h-5" /> Download
           </button>
