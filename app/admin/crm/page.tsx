@@ -1,7 +1,7 @@
 // file: app/admin/crm/page.tsx
 // Admin CRM with Lead Source Visibility + Support Tickets Tab
-// UPDATED: Auto-assignment badges + filtered coach dropdown
-// Shows source column: Yestoryd or Coach (Name)
+// UPDATED: Auto-assignment badges + filtered coach dropdown + POST-CALL NOTES
+// FIXED: Filter state bug for discovery calls
 
 'use client';
 
@@ -10,7 +10,7 @@ import {
   Search, Filter, Phone, Mail, MessageCircle, Calendar,
   ChevronDown, X, Users, TrendingUp, Clock, CheckCircle,
   UserPlus, Eye, ExternalLink, RefreshCw, HelpCircle,
-  Zap, User, AlertCircle
+  Zap, User, AlertCircle, FileText
 } from 'lucide-react';
 import SupportTicketsTab from '@/components/admin/SupportTicketsTab';
 
@@ -76,6 +76,15 @@ interface DiscoveryCall {
   assignment_type?: string | null;
   assigned_by?: string | null;
   assigned_at?: string | null;
+  // Post-call notes fields
+  call_completed?: boolean;
+  call_outcome?: string | null;
+  likelihood?: string | null;
+  objections?: string | null;
+  concerns?: string | null;
+  follow_up_notes?: string | null;
+  follow_up_date?: string | null;
+  completed_at?: string | null;
 }
 
 // Status badge colors
@@ -334,7 +343,9 @@ function LeadModal({
   );
 }
 
-// Discovery Call Modal
+// ============================================================
+// DISCOVERY CALL MODAL - WITH POST-CALL NOTES
+// ============================================================
 function DiscoveryCallModal({
   call,
   coaches,
@@ -350,6 +361,18 @@ function DiscoveryCallModal({
   const [saving, setSaving] = useState(false);
   const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
   const [sendingFollowup, setSendingFollowup] = useState(false);
+  
+  // Post-call form state
+  const [showPostCallForm, setShowPostCallForm] = useState(call.call_completed || false);
+  const [postCallData, setPostCallData] = useState({
+    call_outcome: call.call_outcome || '',
+    likelihood: call.likelihood || '',
+    objections: call.objections || '',
+    concerns: call.concerns || '',
+    follow_up_notes: call.follow_up_notes || '',
+    follow_up_date: call.follow_up_date || '',
+  });
+  const [savingPostCall, setSavingPostCall] = useState(false);
 
   const availableCoaches = coaches.filter((c) => {
     return c.is_active !== false && c.is_available !== false && c.exit_status !== 'pending';
@@ -406,6 +429,41 @@ function DiscoveryCallModal({
     setSendingFollowup(false);
   };
 
+  // Save post-call notes
+  const handleSavePostCall = async () => {
+    setSavingPostCall(true);
+    try {
+      const res = await fetch(`/api/discovery-call/${call.id}/post-call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...postCallData,
+          call_completed: true,
+        }),
+      });
+      if (res.ok) {
+        onUpdate();
+      }
+    } catch (error) {
+      console.error('Error saving post-call notes:', error);
+    }
+    setSavingPostCall(false);
+  };
+
+  // Outcome options
+  const outcomeOptions = [
+    { value: 'enrolled', label: 'Enrolled ✅' },
+    { value: 'follow_up', label: 'Follow-up 📞' },
+    { value: 'not_interested', label: 'Not Interested ❌' },
+    { value: 'no_show', label: 'No Show 👻' },
+  ];
+
+  const likelihoodOptions = [
+    { value: 'hot', label: '🔥 Hot', desc: 'Likely to enroll', color: 'bg-red-100 text-red-700 border-red-300' },
+    { value: 'warm', label: '☀️ Warm', desc: 'Needs nurturing', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+    { value: 'cold', label: '❄️ Cold', desc: 'Unlikely', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  ];
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -420,6 +478,7 @@ function DiscoveryCallModal({
         </div>
 
         <div className="p-6 space-y-4">
+          {/* Scheduled Time */}
           <div className="flex items-center gap-2 text-gray-600">
             <Calendar className="w-4 h-4" />
             <span className="text-sm">
@@ -428,8 +487,14 @@ function DiscoveryCallModal({
                 timeStyle: 'short',
               })}
             </span>
+            {call.call_completed && (
+              <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                ✓ Completed
+              </span>
+            )}
           </div>
 
+          {/* Assignment Info */}
           <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <div>
               <span className="text-sm text-gray-500">Assignment:</span>
@@ -447,6 +512,7 @@ function DiscoveryCallModal({
             )}
           </div>
 
+          {/* Assessment Score */}
           {call.assessment_score !== null && (
             <div className="bg-gray-50 rounded-lg p-3">
               <span className="text-sm text-gray-500">Assessment Score:</span>
@@ -459,6 +525,7 @@ function DiscoveryCallModal({
             </div>
           )}
 
+          {/* Coach Assignment */}
           <div>
             <label className="text-xs text-gray-500 uppercase tracking-wide">
               {call.assigned_coach_id ? 'Reassign Coach' : 'Assign Coach'}
@@ -491,6 +558,162 @@ function DiscoveryCallModal({
             )}
           </div>
 
+          {/* ============================================================ */}
+          {/* POST-CALL NOTES SECTION */}
+          {/* ============================================================ */}
+          <div className="border-t pt-4">
+            <button
+              onClick={() => setShowPostCallForm(!showPostCallForm)}
+              className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-slate-600" />
+                <span className="font-medium text-slate-700">Post-Call Notes</span>
+                {call.call_completed && (
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Filled</span>
+                )}
+              </div>
+              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${showPostCallForm ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showPostCallForm && (
+              <div className="mt-3 space-y-4 p-4 bg-slate-50 rounded-lg">
+                {/* Call Outcome */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Call Outcome *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {outcomeOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setPostCallData({ ...postCallData, call_outcome: option.value })}
+                        className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                          postCallData.call_outcome === option.value
+                            ? 'border-pink-500 bg-pink-50 text-pink-700'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Likelihood (only if follow_up or not_interested) */}
+                {postCallData.call_outcome && postCallData.call_outcome !== 'enrolled' && postCallData.call_outcome !== 'no_show' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Likelihood to Enroll
+                    </label>
+                    <div className="flex gap-2">
+                      {likelihoodOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setPostCallData({ ...postCallData, likelihood: option.value })}
+                          className={`flex-1 p-2 rounded-lg border text-sm font-medium transition-all ${
+                            postCallData.likelihood === option.value
+                              ? option.color
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          <div>{option.label}</div>
+                          <div className="text-xs font-normal opacity-75">{option.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Objections */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Objections Raised
+                  </label>
+                  <textarea
+                    value={postCallData.objections}
+                    onChange={(e) => setPostCallData({ ...postCallData, objections: e.target.value })}
+                    placeholder="Price concerns, time constraints, spouse decision..."
+                    rows={2}
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white resize-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                {/* Concerns */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Parent Concerns / Questions
+                  </label>
+                  <textarea
+                    value={postCallData.concerns}
+                    onChange={(e) => setPostCallData({ ...postCallData, concerns: e.target.value })}
+                    placeholder="What questions did they ask? What worried them?"
+                    rows={2}
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white resize-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                {/* Follow-up Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Follow-up Notes
+                  </label>
+                  <textarea
+                    value={postCallData.follow_up_notes}
+                    onChange={(e) => setPostCallData({ ...postCallData, follow_up_notes: e.target.value })}
+                    placeholder="What should we do next? Any specific follow-up needed?"
+                    rows={2}
+                    className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white resize-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                {/* Follow-up Date (if needs follow-up) */}
+                {postCallData.call_outcome === 'follow_up' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Follow-up Date
+                    </label>
+                    <input
+                      type="date"
+                      value={postCallData.follow_up_date}
+                      onChange={(e) => setPostCallData({ ...postCallData, follow_up_date: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+                )}
+
+                {/* Save Button */}
+                <button
+                  onClick={handleSavePostCall}
+                  disabled={!postCallData.call_outcome || savingPostCall}
+                  className="w-full py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {savingPostCall ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : call.call_completed ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Update Notes
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Save Post-Call Notes
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+          {/* END POST-CALL NOTES SECTION */}
+
+          {/* Action Buttons */}
           <div className="space-y-2 pt-4">
             {call.call_status === 'completed' && !call.payment_link_sent_at && (
               <button
@@ -515,6 +738,7 @@ function DiscoveryCallModal({
             )}
           </div>
 
+          {/* Contact Buttons */}
           <div className="flex gap-2 pt-2">
             <a href={`tel:${call.parent_phone}`} className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-center text-sm font-medium flex items-center justify-center gap-1">
               <Phone className="w-4 h-4" />Call
@@ -616,10 +840,12 @@ export default function AdminCRMPage() {
     setLoading(false);
   };
 
-  const fetchDiscoveryCalls = async () => {
+  // FIXED: Accept optional filter parameter to avoid state timing issues
+  const fetchDiscoveryCalls = async (filterOverride?: string) => {
     setDiscoveryLoading(true);
     try {
-      const res = await fetch(`/api/discovery-call/pending?status=${discoveryFilter === 'all' ? '' : discoveryFilter}`);
+      const statusToUse = filterOverride ?? discoveryFilter;
+      const res = await fetch(`/api/discovery-call/pending?status=${statusToUse === 'all' ? '' : statusToUse}`);
       if (res.ok) {
         const data = await res.json();
         setDiscoveryCalls(data.calls || []);
@@ -894,7 +1120,8 @@ export default function AdminCRMPage() {
                   key={filter}
                   onClick={() => {
                     setDiscoveryFilter(filter);
-                    fetchDiscoveryCalls();
+                    // FIXED: Pass filter directly to avoid state timing issue
+                    fetchDiscoveryCalls(filter);
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
                     discoveryFilter === filter
@@ -929,7 +1156,27 @@ export default function AdminCRMPage() {
                             <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
                           )}
                           <div>
-                            <div className="font-medium text-gray-900">{call.child_name}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">{call.child_name}</span>
+                              {call.call_completed && (
+                                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                                  ✓ Done
+                                </span>
+                              )}
+                              {call.call_outcome && (
+                                <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                  call.call_outcome === 'enrolled' ? 'bg-green-100 text-green-700' :
+                                  call.call_outcome === 'follow_up' ? 'bg-blue-100 text-blue-700' :
+                                  call.call_outcome === 'not_interested' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {call.call_outcome === 'enrolled' ? '✅ Enrolled' :
+                                   call.call_outcome === 'follow_up' ? '📞 Follow-up' :
+                                   call.call_outcome === 'not_interested' ? '❌ Not Interested' :
+                                   call.call_outcome === 'no_show' ? '👻 No Show' : call.call_outcome}
+                                </span>
+                              )}
+                            </div>
                             <div className="text-sm text-gray-500">
                               {call.parent_name} - {new Date(call.scheduled_time).toLocaleString('en-IN', {
                                 dateStyle: 'medium',
@@ -973,7 +1220,7 @@ export default function AdminCRMPage() {
           call={selectedCall}
           coaches={coaches}
           onClose={() => setSelectedCall(null)}
-          onUpdate={fetchDiscoveryCalls}
+          onUpdate={() => fetchDiscoveryCalls()}
         />
       )}
     </div>

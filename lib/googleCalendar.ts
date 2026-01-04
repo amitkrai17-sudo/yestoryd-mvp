@@ -81,6 +81,40 @@ interface CreateAllSessionsResult {
   error?: string;
 }
 
+// =============================================================================
+// DISCOVERY CALL TYPES (NEW)
+// =============================================================================
+
+export interface DiscoverySlot {
+  date: string;      // 'YYYY-MM-DD'
+  time: string;      // 'HH:MM'
+  datetime: string;  // ISO string
+  available: boolean;
+}
+
+export interface DiscoveryBookingData {
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  childName: string;
+  childAge: number;
+  childId?: string;
+  slotDate: string;    // 'YYYY-MM-DD'
+  slotTime: string;    // 'HH:MM'
+  notes?: string;
+}
+
+export interface DiscoveryBookingResult {
+  success: boolean;
+  eventId?: string;
+  meetLink?: string;
+  error?: string;
+}
+
+// =============================================================================
+// EXISTING FUNCTIONS
+// =============================================================================
+
 // Schedule a single calendar event
 export async function scheduleCalendarEvent(
   session: SessionDetails
@@ -394,4 +428,196 @@ export async function cancelAllFutureSessions(
   }
 
   return { cancelled, failed };
+}
+
+// =============================================================================
+// DISCOVERY CALL FUNCTIONS (NEW)
+// =============================================================================
+
+/**
+ * Get available 30-min discovery call slots for next 14 days
+ * Discovery slots: Mon-Sat, 10 AM - 1 PM and 5 PM - 7 PM
+ */
+export async function getDiscoverySlots(
+  days: number = 14
+): Promise<DiscoverySlot[]> {
+  try {
+    const calendar = getCalendarClient();
+    
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1); // Start tomorrow
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + days);
+
+    // Get busy times from calendar
+    let busyTimes: { start: Date; end: Date }[] = [];
+    try {
+      const busyResponse = await calendar.freebusy.query({
+        requestBody: {
+          timeMin: startDate.toISOString(),
+          timeMax: endDate.toISOString(),
+          items: [{ id: CALENDAR_EMAIL }],
+        },
+      });
+      
+      busyTimes = (busyResponse.data.calendars?.[CALENDAR_EMAIL]?.busy || []).map(b => ({
+        start: new Date(b.start || ''),
+        end: new Date(b.end || ''),
+      }));
+    } catch (error) {
+      console.error('Error getting busy times for discovery:', error);
+    }
+
+    const slots: DiscoverySlot[] = [];
+    const current = new Date(startDate);
+    
+    // Discovery call time windows (IST)
+    const timeWindows = [
+      { startHour: 10, endHour: 13 },  // 10 AM - 1 PM
+      { startHour: 17, endHour: 19 },  // 5 PM - 7 PM
+    ];
+
+    while (current < endDate) {
+      const dayOfWeek = current.getDay();
+      
+      // Skip Sunday (0)
+      if (dayOfWeek !== 0) {
+        const dateStr = current.toISOString().split('T')[0];
+        
+        for (const window of timeWindows) {
+          // Generate 30-min slots
+          for (let hour = window.startHour; hour < window.endHour; hour++) {
+            for (const minute of [0, 30]) {
+              // Skip if we'd go past window end
+              if (hour === window.endHour - 1 && minute === 30) continue;
+              
+              const slotStart = new Date(current);
+              slotStart.setHours(hour, minute, 0, 0);
+              
+              const slotEnd = new Date(slotStart);
+              slotEnd.setMinutes(slotEnd.getMinutes() + 30);
+              
+              // Skip if in the past
+              if (slotStart <= new Date()) continue;
+              
+              // Check if busy
+              const isBusy = busyTimes.some(busy => 
+                slotStart < busy.end && slotEnd > busy.start
+              );
+              
+              const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+              
+              slots.push({
+                date: dateStr,
+                time: timeStr,
+                datetime: slotStart.toISOString(),
+                available: !isBusy,
+              });
+            }
+          }
+        }
+      }
+      
+      current.setDate(current.getDate() + 1);
+    }
+
+    return slots;
+  } catch (error) {
+    console.error('Error getting discovery slots:', error);
+    return [];
+  }
+}
+
+/**
+ * Book a discovery call - creates Google Calendar event with Meet link
+ */
+export async function bookDiscoveryCall(
+  data: DiscoveryBookingData
+): Promise<DiscoveryBookingResult> {
+  try {
+    const calendar = getCalendarClient();
+    
+    // Create datetime from date + time
+    const [hours, minutes] = data.slotTime.split(':').map(Number);
+    const slotDatetime = new Date(data.slotDate);
+    slotDatetime.setHours(hours, minutes, 0, 0);
+    
+    const endDatetime = new Date(slotDatetime);
+    endDatetime.setMinutes(endDatetime.getMinutes() + 30);
+
+    const event = {
+      summary: `Discovery Call: ${data.childName} (${data.childAge}yr)`,
+      description: `FREE Discovery Call - Yestoryd Reading Coaching
+
+Parent: ${data.parentName}
+Phone: ${data.parentPhone}
+Email: ${data.parentEmail}
+Child: ${data.childName} (Age ${data.childAge})
+
+${data.notes ? `Notes: ${data.notes}` : ''}
+
+This is a FREE 20-minute call to discuss ${data.childName}'s reading journey and see if Yestoryd is the right fit.`,
+      start: {
+        dateTime: slotDatetime.toISOString(),
+        timeZone: 'Asia/Kolkata',
+      },
+      end: {
+        dateTime: endDatetime.toISOString(),
+        timeZone: 'Asia/Kolkata',
+      },
+      attendees: [
+        { email: data.parentEmail },
+        { email: CALENDAR_EMAIL },
+      ],
+      conferenceData: {
+        createRequest: {
+          requestId: `discovery-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 24 * 60 },  // 24 hours before
+          { method: 'popup', minutes: 60 },        // 1 hour before
+          { method: 'popup', minutes: 15 },        // 15 min before
+        ],
+      },
+    };
+
+    const response = await calendar.events.insert({
+      calendarId: CALENDAR_EMAIL,
+      requestBody: event,
+      conferenceDataVersion: 1,
+      sendUpdates: 'all',
+    });
+
+    const meetLink = response.data.hangoutLink || 
+                     response.data.conferenceData?.entryPoints?.[0]?.uri || '';
+
+    return {
+      success: true,
+      eventId: response.data.id || '',
+      meetLink,
+    };
+
+  } catch (error) {
+    console.error('Error booking discovery call:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create calendar event',
+    };
+  }
+}
+
+/**
+ * Cancel a discovery call
+ */
+export async function cancelDiscoveryCall(
+  eventId: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  return cancelEvent(eventId, true);
 }
