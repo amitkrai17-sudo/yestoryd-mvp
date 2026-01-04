@@ -190,7 +190,7 @@ const HeroCuriosity = ({
     <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-1.5 mb-6 shadow-sm">
       <Brain className="w-3 h-3 text-[#00abff]" />
       <span className="text-xs font-bold text-gray-600 tracking-wide uppercase">
-        AI-Powered Reading Analysis
+        rAI-Powered Reading Analysis
       </span>
     </div>
 
@@ -208,7 +208,7 @@ const HeroCuriosity = ({
     </p>
     <p className="text-lg text-gray-600 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
       It's usually a small gap in how they process sounds — something schools rarely identify. 
-      Our AI finds it in 5 minutes. Free.
+      Our <span className="font-black text-[#00ABFF]">rAI</span> finds it in 5 minutes. <span className="text-green-600 font-bold">Free.</span>
     </p>
 
     {/* CTA Buttons */}
@@ -308,7 +308,7 @@ const HeroValidation = ({
       <strong className="text-gray-900">It's not laziness. It's not attitude.</strong>
     </p>
     <p className="text-lg text-gray-600 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-      It's usually a small gap that schools don't catch — but our AI does. In 5 minutes. Free.
+      It's usually a small gap that schools don't catch — but <span className="font-black text-[#00ABFF]">rAI</span> does. In 5 minutes. <span className="text-green-600 font-bold">Free.</span>
     </p>
 
     {/* CTA Buttons */}
@@ -444,7 +444,7 @@ const TransformationVisual = () => {
         {/* Bottom CTA hint */}
         <div className="bg-gradient-to-r from-[#00ABFF]/10 to-[#ff0099]/10 px-4 py-3 text-center border-t border-gray-100">
           <p className="text-xs text-gray-600">
-            <span className="font-bold text-[#ff0099]">AI finds the gaps</span> • <span className="font-bold text-[#00ABFF]">Coach fills them</span> • <span className="font-bold text-[#7b008b]">You see progress</span>
+            <span className="font-bold text-[#00ABFF]">rAI finds the gaps</span> • <span className="font-bold text-[#ff0099]">Coach fills them</span> • <span className="font-bold text-[#7b008b]">You see progress</span>
           </p>
         </div>
         
@@ -527,7 +527,7 @@ const faqData = [
   },
   {
     question: "Is the AI safe for my child?",
-    answer: "Absolutely. Unlike ChatGPT which guesses, our AI only references our expert-verified knowledge base built on 7+ years of phonics expertise. It never makes things up. Your child's data is private and secure."
+    answer: "Absolutely. Unlike ChatGPT which guesses, rAI (our Reading Intelligence) only references our expert-verified knowledge base built on 7+ years of phonics expertise. It never makes things up. Your child's data is private and secure."
   },
   {
     question: "What age group is this for?",
@@ -1220,11 +1220,14 @@ export default function HomePageClient({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="inline-block text-sm font-semibold text-[#00abff] uppercase tracking-wider mb-4">
-              Safe AI
+              Meet rAI
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Why Our AI is <span className="text-[#ff0099]">Different</span> (and Safer)
+              Why <span className="text-[#00ABFF]">rAI</span> is <span className="text-[#ff0099]">Different</span> (and Safer)
             </h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              rAI = <strong>Reading Intelligence</strong> — our AI that never guesses
+            </p>
           </div>
 
           {/* Comparison Cards */}
@@ -1326,11 +1329,11 @@ export default function HomePageClient({
                     <strong className="text-gray-900">Most AI makes things up.</strong> We couldn't risk that with your child's education.
                   </p>
                   <p className="text-gray-600 leading-relaxed mb-4">
-                    Imagine our AI as a <strong className="text-[#00abff]">librarian with a manual written by Rucha</strong>. 
+                    Imagine <strong className="text-[#00abff]">rAI</strong> as a <strong className="text-[#00abff]">librarian with a manual written by Rucha</strong>. 
                     Built on <strong className="text-[#ff0099]">7+ years of phonics expertise</strong>.
                   </p>
                   <p className="text-gray-600 leading-relaxed">
-                    When your child makes a mistake, the AI doesn't guess. It looks up the 
+                    When your child makes a mistake, <strong className="text-[#00abff]">rAI</strong> doesn't guess. It looks up the 
                     <strong className="text-gray-900"> exact page in our "Expert Manual"</strong> and tells the coach 
                     precisely which Phonics rule to practice.
                   </p>
