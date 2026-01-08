@@ -31,6 +31,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
+    "framer-motion": "^12.24.10",
     "google-auth-library": "^9.6.0",
     "googleapis": "^140.0.1",
     "lucide-react": "^0.363.0",

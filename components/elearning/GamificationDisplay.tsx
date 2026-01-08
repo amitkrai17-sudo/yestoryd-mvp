@@ -207,9 +207,9 @@ export function BadgeDisplay({ badges, allBadges, maxDisplay = 6 }: BadgeDisplay
           <div
             key={b.id}
             className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center text-xl border border-yellow-300"
-            title={b.badge?.name}
+            title={b.badge_name}
           >
-            {b.badge?.icon || '🏆'}
+            {b.badge_icon || '🏆'}
           </div>
         ))}
 
@@ -240,7 +240,7 @@ export function BadgeDisplay({ badges, allBadges, maxDisplay = 6 }: BadgeDisplay
 
             <div className="grid grid-cols-4 gap-3">
               {allBadges.map(badge => {
-                const isEarned = badges.some(b => b.badge_id === badge.id);
+                const isEarned = badges.some(b => b.badge_slug === badge.id);
                 return (
                   <div
                     key={badge.id}
@@ -416,10 +416,10 @@ export function LeaderboardMini({ entries, childId, childRank }: LeaderboardMini
 
       <div className="space-y-2">
         {entries.slice(0, 5).map((entry, idx) => {
-          const isCurrentChild = entry.child_id === childId;
+          const isCurrentChild = entry.childId === childId;
           return (
             <div
-              key={entry.child_id}
+              key={entry.childId}
               className={`flex items-center gap-3 p-2 rounded-lg ${
                 isCurrentChild ? 'bg-purple-50 border border-purple-200' : 'bg-gray-50'
               }`}
@@ -427,13 +427,13 @@ export function LeaderboardMini({ entries, childId, childRank }: LeaderboardMini
               {getRankIcon(idx + 1)}
               <div className="flex-1 min-w-0">
                 <p className={`font-medium truncate ${isCurrentChild ? 'text-[#7b008b]' : 'text-gray-900'}`}>
-                  {entry.child_name}
+                  {entry.childName}
                   {isCurrentChild && ' (You)'}
                 </p>
               </div>
               <div className="flex items-center gap-1 text-sm">
                 <Zap className="w-4 h-4 text-[#7b008b]" />
-                <span className="font-bold text-gray-700">{entry.total_xp.toLocaleString()}</span>
+                <span className="font-bold text-gray-700">{entry.totalXP.toLocaleString()}</span>
               </div>
             </div>
           );
@@ -442,3 +442,7 @@ export function LeaderboardMini({ entries, childId, childRank }: LeaderboardMini
     </div>
   );
 }
+
+
+
+

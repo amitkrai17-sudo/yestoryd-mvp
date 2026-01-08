@@ -319,11 +319,8 @@ export default function ELearningPage() {
       )}
 
       {/* Ask rAI Modal */}
-      <AskRAIModal
-        isOpen={showAskRAI}
-        onClose={() => setShowAskRAI(false)}
-        onSubmit={handleAskRAI}
-      />
+      {showAskRAI && <AskRAIModal onSelect={handleAskRAI} onClose={() => setShowAskRAI(false)} />}
     </div>
   );
 }
+
