@@ -545,7 +545,7 @@ export async function POST(request: NextRequest) {
       const { data: newChild, error: childError } = await supabase
         .from('children')
         .insert({
-          name: childName,
+          child_name: childName,
           age: parseInt(childAge) || null,
           parent_id: parent.id,
           parent_email: parentEmail.toLowerCase().trim(),
@@ -567,6 +567,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('children')
       .update({
+        child_name: childName || child.child_name,
         enrollment_status: 'enrolled',
         lead_status: 'enrolled',
         coach_id: coachId,
@@ -837,3 +838,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
