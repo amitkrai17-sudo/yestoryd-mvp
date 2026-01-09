@@ -1,46 +1,161 @@
-// =============================================================================
+// ============================================================
 // FILE: app/api/coupons/calculate/route.ts
-// PURPOSE: Calculate total discount with 20% cap, stacking coupon + credit
-// READS: Base prices from pricing_plans and site_settings tables
-// REFACTORED: Direct Supabase query instead of internal API fetch
-// =============================================================================
+// ============================================================
+// HARDENED VERSION - Discount Calculation with 20% Cap
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security features:
+// - Session-based parentId for credit checks (CRITICAL)
+// - Rate limiting
+// - Input validation with Zod
+// - Request tracing
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-const supabase = createClient(
+// --- CONFIGURATION (Lazy initialization) ---
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-interface CalculateRequest {
-  couponCode?: string;
-  applyCredit?: boolean;
-  parentId?: string;
-  productType: 'coaching' | 'elearning_quarterly' | 'elearning_annual' | 'group_class';
-  customAmount?: number;
+// --- RATE LIMITING ---
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(identifier: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute
+  const maxRequests = 20; // 20 calculations per minute
+
+  const record = rateLimitMap.get(identifier);
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
+    return { allowed: true };
+  }
+
+  if (record.count >= maxRequests) {
+    const retryAfter = Math.ceil((record.resetTime - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  record.count++;
+  return { allowed: true };
 }
 
+// --- VALIDATION SCHEMA ---
+const calculateSchema = z.object({
+  couponCode: z.string().max(50).transform(val => val?.toUpperCase().trim()).optional(),
+  applyCredit: z.boolean().optional().default(false),
+  productType: z.enum(['coaching', 'elearning_quarterly', 'elearning_annual', 'group_class']),
+  customAmount: z.number().positive().max(1000000).optional(),
+});
+
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
-    const body: CalculateRequest = await request.json();
-    const { couponCode, applyCredit, parentId, productType, customAmount } = body;
+    // 1. Rate limiting by IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
+               request.headers.get('x-real-ip') || 
+               'unknown';
+    
+    const rateCheck = checkRateLimit(`coupon-calc:${ip}`);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait.', requestId },
+        { 
+          status: 429,
+          headers: { 'Retry-After': String(rateCheck.retryAfter || 60) },
+        }
+      );
+    }
+
+    // 2. Get session (required for credit application)
+    const session = await getServerSession(authOptions);
+    const sessionParentId = (session?.user as any)?.parentId as string | undefined;
+
+    // 3. Parse and validate body
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', requestId },
+        { status: 400 }
+      );
+    }
+
+    const validationResult = calculateSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          details: validationResult.error.flatten().fieldErrors,
+          requestId,
+        },
+        { status: 400 }
+      );
+    }
+
+    const { couponCode, applyCredit, productType, customAmount } = validationResult.data;
+
+    // SECURITY: If applying credit, must have session
+    if (applyCredit && !sessionParentId) {
+      return NextResponse.json(
+        { error: 'Login required to apply credits', requestId },
+        { status: 401 }
+      );
+    }
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'discount_calculation_request',
+      productType,
+      hasCoupon: !!couponCode,
+      applyCredit,
+      hasSession: !!session,
+    }));
+
+    const supabase = getSupabase();
 
     // =================================================================
     // STEP 1: Get base price from appropriate source
+    // Fetch settings and pricing in PARALLEL to avoid waterfall
     // =================================================================
-    
-    const { data: settings } = await supabase
-      .from('site_settings')
-      .select('key, value')
-      .in('key', [
-        'max_discount_percent',
-        'referral_discount_percent',
-        'referral_credit_percent',
-        'elearning_quarterly_price',
-        'elearning_annual_price',
-        'group_class_price',
-      ]);
+
+    const [settingsResult, pricingResult] = await Promise.all([
+      // Settings for discount limits and e-learning prices
+      supabase
+        .from('site_settings')
+        .select('key, value')
+        .in('key', [
+          'max_discount_percent',
+          'referral_discount_percent',
+          'referral_credit_percent',
+          'elearning_quarterly_price',
+          'elearning_annual_price',
+          'group_class_price',
+        ]),
+      // Coaching price (always fetch, may not use)
+      supabase
+        .from('pricing_plans')
+        .select('discounted_price')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+    ]);
+
+    const settings = settingsResult.data;
+    const pricingPlan = pricingResult.data;
 
     const settingsMap: Record<string, string> = {};
     settings?.forEach(s => {
@@ -50,13 +165,7 @@ export async function POST(request: NextRequest) {
     let originalAmount = customAmount || 5999;
 
     if (productType === 'coaching') {
-      const { data: pricingPlan } = await supabase
-        .from('pricing_plans')
-        .select('discounted_price')
-        .eq('slug', 'coaching-3month')
-        .eq('is_active', true)
-        .single();
-      
+      // Use pricing_plans table (single source of truth)
       if (pricingPlan) {
         originalAmount = customAmount || pricingPlan.discounted_price;
       }
@@ -72,18 +181,17 @@ export async function POST(request: NextRequest) {
     const maxDiscount = Math.round(originalAmount * maxDiscountPercent / 100);
 
     // =================================================================
-    // STEP 2: Validate and calculate coupon discount (DIRECT QUERY)
+    // STEP 2: Validate and calculate coupon discount
     // =================================================================
     let couponDiscount = 0;
     let couponInfo = null;
     let leadSource: 'yestoryd' | 'coach' | 'parent' = 'yestoryd';
 
     if (couponCode) {
-      // Query coupon directly from database
       const { data: coupon, error: couponError } = await supabase
         .from('coupons')
         .select('*')
-        .eq('code', couponCode.toUpperCase())
+        .eq('code', couponCode)
         .eq('is_active', true)
         .single();
 
@@ -94,8 +202,6 @@ export async function POST(request: NextRequest) {
         const validUntil = coupon.valid_until ? new Date(coupon.valid_until) : null;
 
         const isDateValid = (!validFrom || now >= validFrom) && (!validUntil || now <= validUntil);
-        
-        // Check usage limits
         const isUsageValid = !coupon.max_uses || (coupon.current_uses || 0) < coupon.max_uses;
 
         if (isDateValid && isUsageValid) {
@@ -115,7 +221,7 @@ export async function POST(request: NextRequest) {
           if (coupon.discount_type === 'percent' || coupon.discount_type === 'percentage') {
             couponDiscount = Math.round(originalAmount * coupon.discount_value / 100);
           } else {
-            couponDiscount = coupon.discount_value;
+            couponDiscount = coupon.discount_value || 0;
           }
 
           // Apply max_discount cap from coupon itself
@@ -137,24 +243,25 @@ export async function POST(request: NextRequest) {
     const cappedCouponDiscount = Math.min(couponDiscount, maxDiscount);
 
     // =================================================================
-    // STEP 3: Calculate credit application
+    // STEP 3: Calculate credit application (SESSION-BASED - CRITICAL!)
     // =================================================================
     let creditApplied = 0;
     let creditRemaining = 0;
     let availableCredit = 0;
 
-    if (applyCredit && parentId) {
+    // SECURITY: Only check credits for the LOGGED-IN user, not client-provided ID
+    if (applyCredit && sessionParentId) {
       const { data: parent } = await supabase
         .from('parents')
         .select('referral_credit_balance, referral_credit_expires_at')
-        .eq('id', parentId)
+        .eq('id', sessionParentId) // Use SESSION parentId, not client-provided!
         .single();
 
       if (parent?.referral_credit_balance) {
-        const expiresAt = parent.referral_credit_expires_at 
-          ? new Date(parent.referral_credit_expires_at) 
+        const expiresAt = parent.referral_credit_expires_at
+          ? new Date(parent.referral_credit_expires_at)
           : null;
-        
+
         if (!expiresAt || expiresAt > new Date()) {
           availableCredit = parent.referral_credit_balance;
           const remainingCap = maxDiscount - cappedCouponDiscount;
@@ -168,14 +275,33 @@ export async function POST(request: NextRequest) {
     // STEP 4: Calculate final amounts
     // =================================================================
     const totalDiscount = cappedCouponDiscount + creditApplied;
-    const finalAmount = originalAmount - totalDiscount;
+    const finalAmount = Math.max(0, originalAmount - totalDiscount);
+    
+    // UX flags for frontend tooltips
     const wasCapped = totalDiscount >= maxDiscount;
+    const creditWasLimited = availableCredit > 0 && creditApplied < availableCredit;
+    const unusedCredit = availableCredit - creditApplied;
+    const couponWasCapped = couponDiscount > cappedCouponDiscount;
+
+    const duration = Date.now() - startTime;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'discount_calculated',
+      originalAmount,
+      totalDiscount,
+      finalAmount,
+      wasCapped,
+      creditWasLimited,
+      duration: `${duration}ms`,
+    }));
 
     // =================================================================
     // STEP 5: Return breakdown
     // =================================================================
     return NextResponse.json({
       success: true,
+      requestId,
       breakdown: {
         originalAmount,
         couponDiscount: cappedCouponDiscount,
@@ -188,14 +314,19 @@ export async function POST(request: NextRequest) {
         } : null,
         creditApplied,
         creditRemaining,
+        availableCredit,
         totalDiscount,
         finalAmount,
         maxDiscountPercent,
         maxDiscountAmount: maxDiscount,
-        wasCapped,
+        // UX flags for frontend tooltips
+        wasCapped,               // Total discount hit the cap
+        couponWasCapped,         // Coupon alone exceeded cap
+        creditWasLimited,        // User had more credit but couldn't use it
+        unusedCredit,            // How much credit couldn't be applied
         savings: {
           amount: totalDiscount,
-          percent: Math.round((totalDiscount / originalAmount) * 100),
+          percent: originalAmount > 0 ? Math.round((totalDiscount / originalAmount) * 100) : 0,
         },
       },
       leadSource,
@@ -203,9 +334,17 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Calculate discount error:', error);
+    const duration = Date.now() - startTime;
+
+    console.error(JSON.stringify({
+      requestId,
+      event: 'discount_calculation_error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json(
-      { error: 'Failed to calculate discount' },
+      { error: 'Failed to calculate discount', requestId },
       { status: 500 }
     );
   }
