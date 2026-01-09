@@ -1,28 +1,129 @@
-// file: app/api/enrollment/calculate-revenue/route.ts
-// Calculate and store revenue breakdown when enrollment is confirmed
-// Called after successful Razorpay payment
+// ============================================================
+// FILE: app/api/enrollment/calculate-revenue/route.ts
+// ============================================================
+// HARDENED VERSION - Enrollment Revenue Calculator
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security features:
+// - Internal-only access (payment webhook or admin)
+// - UUID validation
+// - Latest-wins config pattern (no race condition)
+// - Audit logging
+// - Request tracing
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-const supabase = createClient(
+// --- CONFIGURATION (Lazy initialization) ---
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-interface RevenueRequest {
-  enrollment_id: string;
-  total_amount: number;
-  lead_source: 'yestoryd' | 'coach' | 'referral';
-  lead_source_coach_id?: string;
-  coaching_coach_id: string;
-  child_id: string;
-  child_name: string;
+// Internal API key for webhook-to-API calls
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+
+// --- HELPER: UUID validation ---
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+// --- VALIDATION SCHEMA ---
+const revenueRequestSchema = z.object({
+  enrollment_id: z.string().refine(isValidUUID, 'Invalid enrollment_id format'),
+  total_amount: z.number().int().positive().max(100000, 'Amount too large'),
+  lead_source: z.enum(['yestoryd', 'coach', 'referral']),
+  lead_source_coach_id: z.string().refine(isValidUUID, 'Invalid lead_source_coach_id').optional().nullable(),
+  coaching_coach_id: z.string().refine(isValidUUID, 'Invalid coaching_coach_id'),
+  child_id: z.string().refine(isValidUUID, 'Invalid child_id'),
+  child_name: z.string().min(1).max(100),
+});
+
+// --- HELPER: Verify internal call ---
+function isInternalCall(request: NextRequest): boolean {
+  const apiKey = request.headers.get('x-internal-api-key');
+  return !!(INTERNAL_API_KEY && apiKey === INTERNAL_API_KEY);
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
-    const body: RevenueRequest = await request.json();
+    // =================================================================
+    // 1. AUTHORIZATION: Internal call OR Admin only
+    // This route should ONLY be called by:
+    // - Payment webhook (internal API key)
+    // - Admin manually (session auth)
+    // =================================================================
+    
+    const isInternal = isInternalCall(request);
+    let adminEmail: string | null = null;
+
+    if (!isInternal) {
+      // Check for admin session
+      const session = await getServerSession(authOptions);
+
+      if (!session?.user?.email) {
+        console.log(JSON.stringify({
+          requestId,
+          event: 'auth_failed',
+          error: 'No session or internal key',
+        }));
+
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized. Internal or admin access required.' },
+          { status: 401 }
+        );
+      }
+
+      if ((session.user as any).role !== 'admin') {
+        console.log(JSON.stringify({
+          requestId,
+          event: 'auth_failed',
+          error: 'Non-admin tried to calculate revenue',
+          userEmail: session.user.email,
+        }));
+
+        return NextResponse.json(
+          { success: false, error: 'Admin access required' },
+          { status: 403 }
+        );
+      }
+
+      adminEmail = session.user.email;
+    }
+
+    // =================================================================
+    // 2. PARSE AND VALIDATE BODY
+    // =================================================================
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
+
+    const validationResult = revenueRequestSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed',
+          details: validationResult.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
 
     const {
       enrollment_id,
@@ -32,27 +133,32 @@ export async function POST(request: NextRequest) {
       coaching_coach_id,
       child_id,
       child_name,
-    } = body;
+    } = validationResult.data;
 
-    // Validate required fields
-    if (!enrollment_id || !total_amount || !lead_source || !coaching_coach_id) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
+    console.log(JSON.stringify({
+      requestId,
+      event: 'revenue_calculation_request',
+      source: isInternal ? 'internal' : 'admin',
+      adminEmail,
+      enrollment_id,
+      total_amount,
+      lead_source,
+    }));
 
-    // 1. Get active revenue config
+    const supabase = getSupabase();
+
+    // =================================================================
+    // 3. GET ACTIVE REVENUE CONFIG (Latest-wins pattern)
+    // =================================================================
     const { data: config, error: configError } = await supabase
       .from('revenue_split_config')
       .select('*')
-      .eq('is_active', true)
-      .order('effective_from', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
-    if (configError) {
-      console.error('No active config found, using defaults');
+    if (configError && configError.code !== 'PGRST116') {
+      console.error('Error fetching config:', configError);
     }
 
     const activeConfig = config || {
@@ -61,33 +167,12 @@ export async function POST(request: NextRequest) {
       platform_fee_percent: 30,
       tds_rate_percent: 10,
       tds_threshold_annual: 30000,
+      payout_day_of_month: 7,
     };
 
-    // 2. Calculate split amounts
-    const leadCostAmount = Math.round(total_amount * activeConfig.lead_cost_percent / 100);
-    const coachCostAmount = Math.round(total_amount * activeConfig.coach_cost_percent / 100);
-    const platformFeeAmount = total_amount - leadCostAmount - coachCostAmount;
-
-    // 3. Check TDS applicability for coaching coach
-    const { data: coach } = await supabase
-      .from('coaches')
-      .select('tds_cumulative_fy, pan_number, name')
-      .eq('id', coaching_coach_id)
-      .single();
-
-    const coachYTD = (coach?.tds_cumulative_fy || 0) + coachCostAmount;
-    const tdsApplicable = coachYTD > activeConfig.tds_threshold_annual;
-    const tdsAmount = tdsApplicable
-      ? Math.round(coachCostAmount * activeConfig.tds_rate_percent / 100)
-      : 0;
-
-    // 4. Calculate net amounts
-    const netToCoach = coachCostAmount - tdsAmount;
-    const netToLeadSource = lead_source === 'coach' ? leadCostAmount : 0;
-    const netRetainedByPlatform = platformFeeAmount + tdsAmount +
-      (lead_source === 'yestoryd' ? leadCostAmount : 0);
-
-    // 5. Check if enrollment revenue already exists
+    // =================================================================
+    // 4. CHECK IF ALREADY CALCULATED (Idempotency)
+    // =================================================================
     const { data: existing } = await supabase
       .from('enrollment_revenue')
       .select('id')
@@ -95,6 +180,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existing) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'revenue_already_exists',
+        enrollment_id,
+        existing_id: existing.id,
+      }));
+
       return NextResponse.json({
         success: false,
         error: 'Revenue already calculated for this enrollment',
@@ -102,7 +194,46 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 6. Store enrollment revenue
+    // =================================================================
+    // 5. CALCULATE SPLIT AMOUNTS
+    // =================================================================
+    const leadCostAmount = Math.round(total_amount * activeConfig.lead_cost_percent / 100);
+    const coachCostAmount = Math.round(total_amount * activeConfig.coach_cost_percent / 100);
+    const platformFeeAmount = total_amount - leadCostAmount - coachCostAmount;
+
+    // =================================================================
+    // 6. CHECK TDS APPLICABILITY FOR COACHING COACH
+    // =================================================================
+    const { data: coach } = await supabase
+      .from('coaches')
+      .select('tds_cumulative_fy, pan_number, name')
+      .eq('id', coaching_coach_id)
+      .single();
+
+    if (!coach) {
+      return NextResponse.json(
+        { success: false, error: 'Coaching coach not found' },
+        { status: 404 }
+      );
+    }
+
+    const coachYTD = (coach.tds_cumulative_fy || 0) + coachCostAmount;
+    const tdsApplicable = coachYTD > activeConfig.tds_threshold_annual;
+    const tdsAmount = tdsApplicable
+      ? Math.round(coachCostAmount * activeConfig.tds_rate_percent / 100)
+      : 0;
+
+    // =================================================================
+    // 7. CALCULATE NET AMOUNTS
+    // =================================================================
+    const netToCoach = coachCostAmount - tdsAmount;
+    const netToLeadSource = lead_source === 'coach' ? leadCostAmount : 0;
+    const netRetainedByPlatform = platformFeeAmount + tdsAmount +
+      (lead_source === 'yestoryd' || lead_source === 'referral' ? leadCostAmount : 0);
+
+    // =================================================================
+    // 8. STORE ENROLLMENT REVENUE
+    // =================================================================
     const { data: enrollmentRevenue, error: revenueError } = await supabase
       .from('enrollment_revenue')
       .insert({
@@ -128,7 +259,9 @@ export async function POST(request: NextRequest) {
 
     if (revenueError) throw revenueError;
 
-    // 7. Calculate payout schedule (monthly for 3 months)
+    // =================================================================
+    // 9. CALCULATE PAYOUT SCHEDULE (Monthly for 3 months)
+    // =================================================================
     const payoutDayOfMonth = activeConfig.payout_day_of_month || 7;
     const today = new Date();
     const payoutSchedule: Date[] = [];
@@ -138,11 +271,14 @@ export async function POST(request: NextRequest) {
       payoutSchedule.push(payoutDate);
     }
 
-    // 8. Create staggered payout entries for coaching coach
+    // =================================================================
+    // 10. CREATE STAGGERED PAYOUT ENTRIES
+    // =================================================================
     const monthlyCoachCost = Math.round(coachCostAmount / 3);
     const monthlyTds = Math.round(tdsAmount / 3);
 
     const coachPayouts: any[] = [];
+    
     for (let month = 1; month <= 3; month++) {
       // Adjust last month to handle rounding
       const thisMonthCoachCost = month === 3
@@ -167,53 +303,120 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 9. If coach-sourced, also schedule lead bonus payouts
+    // =================================================================
+    // 11. IF COACH-SOURCED, SCHEDULE LEAD BONUS PAYOUTS
+    // =================================================================
     if (lead_source === 'coach' && lead_source_coach_id) {
-      const monthlyLeadBonus = Math.round(leadCostAmount / 3);
-      const leadBonusTds = tdsApplicable
-        ? Math.round(monthlyLeadBonus * activeConfig.tds_rate_percent / 100)
-        : 0;
+      // Validate lead source coach exists
+      const { data: leadCoach } = await supabase
+        .from('coaches')
+        .select('id, tds_cumulative_fy')
+        .eq('id', lead_source_coach_id)
+        .single();
 
-      for (let month = 1; month <= 3; month++) {
-        const thisMonthBonus = month === 3
-          ? leadCostAmount - (monthlyLeadBonus * 2)
-          : monthlyLeadBonus;
-        const thisMonthTds = month === 3 && tdsApplicable
-          ? Math.round(leadCostAmount * activeConfig.tds_rate_percent / 100) - (leadBonusTds * 2)
-          : leadBonusTds;
+      if (!leadCoach) {
+        console.warn(`Lead source coach ${lead_source_coach_id} not found, skipping lead bonus`);
+      } else {
+        const monthlyLeadBonus = Math.round(leadCostAmount / 3);
+        
+        // Check TDS for lead source coach
+        const leadCoachYTD = (leadCoach.tds_cumulative_fy || 0) + leadCostAmount;
+        const leadBonusTdsApplicable = leadCoachYTD > activeConfig.tds_threshold_annual;
+        const leadBonusTds = leadBonusTdsApplicable
+          ? Math.round(monthlyLeadBonus * activeConfig.tds_rate_percent / 100)
+          : 0;
 
-        coachPayouts.push({
-          enrollment_revenue_id: enrollmentRevenue.id,
-          coach_id: lead_source_coach_id,
-          child_id,
-          child_name,
-          payout_month: month,
-          payout_type: 'lead_bonus',
-          gross_amount: thisMonthBonus,
-          tds_amount: thisMonthTds,
-          net_amount: thisMonthBonus - thisMonthTds,
-          scheduled_date: payoutSchedule[month - 1].toISOString().split('T')[0],
-          status: 'scheduled',
-        });
+        for (let month = 1; month <= 3; month++) {
+          const thisMonthBonus = month === 3
+            ? leadCostAmount - (monthlyLeadBonus * 2)
+            : monthlyLeadBonus;
+          const thisMonthTds = month === 3 && leadBonusTdsApplicable
+            ? Math.round(leadCostAmount * activeConfig.tds_rate_percent / 100) - (leadBonusTds * 2)
+            : leadBonusTds;
+
+          coachPayouts.push({
+            enrollment_revenue_id: enrollmentRevenue.id,
+            coach_id: lead_source_coach_id,
+            child_id,
+            child_name,
+            payout_month: month,
+            payout_type: 'lead_bonus',
+            gross_amount: thisMonthBonus,
+            tds_amount: thisMonthTds,
+            net_amount: thisMonthBonus - thisMonthTds,
+            scheduled_date: payoutSchedule[month - 1].toISOString().split('T')[0],
+            status: 'scheduled',
+          });
+        }
+
+        // Update lead source coach cumulative TDS
+        await supabase
+          .from('coaches')
+          .update({ tds_cumulative_fy: leadCoachYTD })
+          .eq('id', lead_source_coach_id);
       }
     }
 
-    // 10. Insert all payouts
+    // =================================================================
+    // 12. INSERT ALL PAYOUTS
+    // =================================================================
     const { error: payoutsError } = await supabase
       .from('coach_payouts')
       .insert(coachPayouts);
 
     if (payoutsError) throw payoutsError;
 
-    // 11. Update coach cumulative TDS tracker
+    // =================================================================
+    // 13. UPDATE COACH CUMULATIVE TDS TRACKER
+    // =================================================================
     await supabase
       .from('coaches')
       .update({ tds_cumulative_fy: coachYTD })
       .eq('id', coaching_coach_id);
 
-    // 12. Return success response with breakdown
+    // =================================================================
+    // 14. AUDIT LOG
+    // =================================================================
+    await supabase.from('activity_log').insert({
+      user_email: adminEmail || 'system@yestoryd.com',
+      action: 'enrollment_revenue_calculated',
+      details: {
+        request_id: requestId,
+        enrollment_id,
+        enrollment_revenue_id: enrollmentRevenue.id,
+        total_amount,
+        lead_source,
+        coaching_coach_id,
+        breakdown: {
+          lead_cost: leadCostAmount,
+          coach_cost: coachCostAmount,
+          platform_fee: platformFeeAmount,
+          tds: tdsAmount,
+        },
+        payouts_created: coachPayouts.length,
+        source: isInternal ? 'payment_webhook' : 'admin_manual',
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    });
+
+    const duration = Date.now() - startTime;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'revenue_calculated',
+      enrollment_id,
+      enrollment_revenue_id: enrollmentRevenue.id,
+      payouts_created: coachPayouts.length,
+      duration: `${duration}ms`,
+    }));
+
+    // =================================================================
+    // 15. RETURN SUCCESS RESPONSE
+    // =================================================================
     return NextResponse.json({
       success: true,
+      requestId,
       enrollment_revenue_id: enrollmentRevenue.id,
       breakdown: {
         total_amount,
@@ -246,10 +449,18 @@ export async function POST(request: NextRequest) {
       })),
     });
 
-  } catch (error: unknown) {
-    console.error('Error calculating enrollment revenue:', error);
+  } catch (error) {
+    const duration = Date.now() - startTime;
+
+    console.error(JSON.stringify({
+      requestId,
+      event: 'revenue_calculation_error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to calculate revenue' },
+      { success: false, error: 'Failed to calculate revenue', requestId },
       { status: 500 }
     );
   }
