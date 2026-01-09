@@ -46,13 +46,13 @@ interface ScheduledSession {
   number: number;
   week: number;
   scheduledAt: string;
-  
+
   // Used by sessions/confirm
   googleEventId: string;
   sessionNumber: number;
   scheduledDate: string;
   scheduledTime: string;
-  
+
   // Common
   meetLink: string;
   title: string;
@@ -101,6 +101,7 @@ export interface DiscoveryBookingData {
   childId?: string;
   slotDate: string;    // 'YYYY-MM-DD'
   slotTime: string;    // 'HH:MM'
+  coachEmail?: string; // Optional: Include coach in calendar invite
   notes?: string;
 }
 
@@ -169,7 +170,7 @@ export async function scheduleCalendarEvent(
 // Create all sessions - returns { success, sessions, error }
 export async function createAllSessions(params: CreateAllSessionsParams): Promise<CreateAllSessionsResult> {
   const { childName, parentEmail, coachEmail, startDate, preferredTime, preferredHour, preferredDay } = params;
-  
+
   const sessions: ScheduledSession[] = [];
   const sessionSchedule = [
     { week: 1, type: 'coaching', title: 'Session 1: Initial Assessment', number: 1 },
@@ -186,17 +187,17 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
   try {
     for (const schedule of sessionSchedule) {
       const sessionDate = new Date(startDate);
-      
+
       // If preferredDay is set, find the next occurrence of that day
       if (preferredDay !== undefined) {
         const currentDay = sessionDate.getDay();
         const daysUntilPreferred = (preferredDay - currentDay + 7) % 7;
         sessionDate.setDate(sessionDate.getDate() + daysUntilPreferred);
       }
-      
+
       // Add weeks
       sessionDate.setDate(sessionDate.getDate() + (schedule.week - 1) * 7);
-      
+
       // Set time
       if (preferredHour !== undefined) {
         sessionDate.setHours(preferredHour, 0, 0, 0);
@@ -230,13 +231,13 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
           number: schedule.number,
           week: schedule.week,
           scheduledAt: sessionDate.toISOString(),
-          
+
           // For sessions/confirm route
           googleEventId: result.eventId,
           sessionNumber: schedule.number,
           scheduledDate: dateStr,
           scheduledTime: timeStr,
-          
+
           // Common
           meetLink: result.meetLink,
           title: schedule.title,
@@ -362,8 +363,8 @@ export async function rescheduleEvent(
     };
   } catch (error) {
     console.error('Error rescheduling event:', error);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error instanceof Error ? error.message : 'Failed to reschedule'
     };
   }
@@ -372,7 +373,7 @@ export async function rescheduleEvent(
 // Cancel an event
 // Route calls: cancelEvent(eventId, true)
 export async function cancelEvent(
-  eventId: string, 
+  eventId: string,
   sendNotifications: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -387,10 +388,45 @@ export async function cancelEvent(
     return { success: true };
   } catch (error) {
     console.error('Error canceling event:', error);
-    return { 
+    return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to cancel'
     };
+  }
+}
+
+// =============================================================================
+// DELETE CALENDAR EVENT (NEW - For Rollback)
+// =============================================================================
+
+/**
+ * Delete a Google Calendar event silently (no notifications)
+ * Used for rollback when booking DB insert fails
+ * 
+ * @param eventId - Google Calendar event ID
+ * @returns true if deleted successfully, false otherwise
+ */
+export async function deleteCalendarEvent(eventId: string): Promise<boolean> {
+  try {
+    const calendar = getCalendarClient();
+
+    await calendar.events.delete({
+      calendarId: CALENDAR_EMAIL,
+      eventId: eventId,
+      sendUpdates: 'none', // Silent delete - no notifications to attendees
+    });
+
+    console.log('🗑️ Calendar event deleted (rollback):', eventId);
+    return true;
+  } catch (error: any) {
+    // If event doesn't exist (already deleted), that's fine
+    if (error.code === 404 || error.code === 410) {
+      console.log('Calendar event already deleted or not found:', eventId);
+      return true;
+    }
+
+    console.error('Failed to delete calendar event:', eventId, error.message);
+    return false;
   }
 }
 
@@ -443,11 +479,11 @@ export async function getDiscoverySlots(
 ): Promise<DiscoverySlot[]> {
   try {
     const calendar = getCalendarClient();
-    
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() + 1); // Start tomorrow
     startDate.setHours(0, 0, 0, 0);
-    
+
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + days);
 
@@ -461,7 +497,7 @@ export async function getDiscoverySlots(
           items: [{ id: CALENDAR_EMAIL }],
         },
       });
-      
+
       busyTimes = (busyResponse.data.calendars?.[CALENDAR_EMAIL]?.busy || []).map(b => ({
         start: new Date(b.start || ''),
         end: new Date(b.end || ''),
@@ -472,7 +508,7 @@ export async function getDiscoverySlots(
 
     const slots: DiscoverySlot[] = [];
     const current = new Date(startDate);
-    
+
     // Discovery call time windows (IST)
     const timeWindows = [
       { startHour: 10, endHour: 13 },  // 10 AM - 1 PM
@@ -481,34 +517,34 @@ export async function getDiscoverySlots(
 
     while (current < endDate) {
       const dayOfWeek = current.getDay();
-      
+
       // Skip Sunday (0)
       if (dayOfWeek !== 0) {
         const dateStr = current.toISOString().split('T')[0];
-        
+
         for (const window of timeWindows) {
           // Generate 30-min slots
           for (let hour = window.startHour; hour < window.endHour; hour++) {
             for (const minute of [0, 30]) {
               // Skip if we'd go past window end
               if (hour === window.endHour - 1 && minute === 30) continue;
-              
+
               const slotStart = new Date(current);
               slotStart.setHours(hour, minute, 0, 0);
-              
+
               const slotEnd = new Date(slotStart);
               slotEnd.setMinutes(slotEnd.getMinutes() + 30);
-              
+
               // Skip if in the past
               if (slotStart <= new Date()) continue;
-              
+
               // Check if busy
-              const isBusy = busyTimes.some(busy => 
+              const isBusy = busyTimes.some(busy =>
                 slotStart < busy.end && slotEnd > busy.start
               );
-              
+
               const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-              
+
               slots.push({
                 date: dateStr,
                 time: timeStr,
@@ -519,7 +555,7 @@ export async function getDiscoverySlots(
           }
         }
       }
-      
+
       current.setDate(current.getDate() + 1);
     }
 
@@ -538,14 +574,25 @@ export async function bookDiscoveryCall(
 ): Promise<DiscoveryBookingResult> {
   try {
     const calendar = getCalendarClient();
-    
+
     // Create datetime from date + time
     const [hours, minutes] = data.slotTime.split(':').map(Number);
     const slotDatetime = new Date(data.slotDate);
     slotDatetime.setHours(hours, minutes, 0, 0);
-    
+
     const endDatetime = new Date(slotDatetime);
     endDatetime.setMinutes(endDatetime.getMinutes() + 30);
+
+    // Build attendees list
+    const attendees = [
+      { email: data.parentEmail },
+      { email: CALENDAR_EMAIL },
+    ];
+
+    // Add coach if provided
+    if (data.coachEmail) {
+      attendees.push({ email: data.coachEmail });
+    }
 
     const event = {
       summary: `Discovery Call: ${data.childName} (${data.childAge}yr)`,
@@ -567,10 +614,7 @@ This is a FREE 20-minute call to discuss ${data.childName}'s reading journey and
         dateTime: endDatetime.toISOString(),
         timeZone: 'Asia/Kolkata',
       },
-      attendees: [
-        { email: data.parentEmail },
-        { email: CALENDAR_EMAIL },
-      ],
+      attendees,
       conferenceData: {
         createRequest: {
           requestId: `discovery-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -594,8 +638,8 @@ This is a FREE 20-minute call to discuss ${data.childName}'s reading journey and
       sendUpdates: 'all',
     });
 
-    const meetLink = response.data.hangoutLink || 
-                     response.data.conferenceData?.entryPoints?.[0]?.uri || '';
+    const meetLink = response.data.hangoutLink ||
+      response.data.conferenceData?.entryPoints?.[0]?.uri || '';
 
     return {
       success: true,

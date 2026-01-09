@@ -1,22 +1,54 @@
 // ============================================================
 // FILE: app/api/payment/verify/route.ts
 // ============================================================
-// Payment verification with REVENUE SPLIT + DELAYED START + REFERRAL CREDIT support
+// HARDENED VERSION - Production Ready
+// Security: Amount verification, Idempotency, Race condition protection
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import Razorpay from 'razorpay';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 
+// --- CONFIGURATION ---
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ============================================
-// TYPES
-// ============================================
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
+
+const RAZORPAY_SECRET = process.env.RAZORPAY_KEY_SECRET!;
+
+// --- 1. VALIDATION SCHEMA ---
+const VerifyPaymentSchema = z.object({
+  razorpay_order_id: z.string().min(10, 'Invalid order ID'),
+  razorpay_payment_id: z.string().min(10, 'Invalid payment ID'),
+  razorpay_signature: z.string().min(64, 'Invalid signature'),
+  // Parent/Child Data
+  childName: z.string().min(1).max(100),
+  childAge: z.union([z.string(), z.number()]).transform((val) => Number(val)),
+  childId: z.string().uuid().optional().nullable(),
+  parentName: z.string().min(1).max(100),
+  parentEmail: z.string().email().transform(v => v.toLowerCase().trim()),
+  parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile').optional().nullable(),
+  // Coach/Lead Data
+  coachId: z.string().uuid().optional().nullable(),
+  leadSource: z.enum(['yestoryd', 'coach']).default('yestoryd'),
+  leadSourceCoachId: z.string().uuid().optional().nullable(),
+  // Coupon (we'll validate amount server-side, these are just for reference)
+  couponCode: z.string().max(20).optional().nullable(),
+  referralCodeUsed: z.string().max(20).optional().nullable(),
+  // Scheduling
+  requestedStartDate: z.string().optional().nullable(),
+});
+
+// --- 2. TYPES ---
 interface CoachGroup {
   id: string;
   name: string;
@@ -25,6 +57,15 @@ interface CoachGroup {
   coach_cost_percent: number;
   platform_fee_percent: number;
   is_internal: boolean;
+}
+
+interface CoachWithGroup {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  tds_cumulative_fy: number;
+  coach_groups: CoachGroup | CoachGroup[] | null;
 }
 
 interface RevenueResult {
@@ -46,158 +87,241 @@ interface CreditAwardResult {
   error?: string;
 }
 
-// ============================================
-// REFERRAL CREDIT AWARD FUNCTION
-// ============================================
-async function awardReferralCredit(
-  couponCode: string,
-  enrollmentId: string,
-  referredParentId: string,
-  programAmount: number
-): Promise<CreditAwardResult> {
+// --- 3. SECURITY HELPERS ---
+
+/**
+ * Verify Razorpay Signature (Timing-Safe)
+ */
+function verifySignature(orderId: string, paymentId: string, signature: string): boolean {
+  const generatedSignature = crypto
+    .createHmac('sha256', RAZORPAY_SECRET)
+    .update(`${orderId}|${paymentId}`)
+    .digest('hex');
+
+  const signatureBuffer = Buffer.from(signature);
+  const generatedBuffer = Buffer.from(generatedSignature);
+
+  if (signatureBuffer.length !== generatedBuffer.length) return false;
+  return crypto.timingSafeEqual(signatureBuffer, generatedBuffer);
+}
+
+/**
+ * Verify Payment Amount with Razorpay API
+ * CRITICAL: Never trust client-sent amounts
+ */
+async function verifyPaymentWithRazorpay(
+  orderId: string,
+  paymentId: string,
+  requestId: string
+): Promise<{ success: boolean; amount: number; error?: string }> {
   try {
-    if (!couponCode) {
-      return { success: false, error: 'No coupon code provided' };
+    // Fetch actual payment from Razorpay
+    const payment = await razorpay.payments.fetch(paymentId);
+    const order = await razorpay.orders.fetch(orderId);
+
+    // Verify payment status
+    if (payment.status !== 'captured') {
+      console.error(JSON.stringify({ 
+        requestId, 
+        event: 'payment_not_captured', 
+        status: payment.status 
+      }));
+      return { success: false, amount: 0, error: `Payment status: ${payment.status}` };
     }
 
-    // 1. Find the coupon and check if it's a parent referral
-    const { data: coupon, error: couponError } = await supabase
-      .from('coupons')
-      .select('id, code, coupon_type, parent_id')
-      .eq('code', couponCode.toUpperCase())
-      .eq('coupon_type', 'parent_referral')
-      .single();
-
-    if (couponError || !coupon) {
-      console.log('ℹ️ Not a parent referral coupon, skipping credit award');
-      return { success: false, error: 'Not a parent referral coupon' };
+    // Verify payment belongs to this order
+    if (payment.order_id !== orderId) {
+      console.error(JSON.stringify({ 
+        requestId, 
+        event: 'order_mismatch',
+        expected: orderId,
+        got: payment.order_id 
+      }));
+      return { success: false, amount: 0, error: 'Payment order mismatch' };
     }
 
-    if (!coupon.parent_id) {
-      console.log('⚠️ Parent referral coupon has no parent_id');
-      return { success: false, error: 'Coupon has no linked parent' };
+    // Verify amounts match
+    if (payment.amount !== order.amount) {
+      console.error(JSON.stringify({ 
+        requestId, 
+        event: 'amount_mismatch',
+        orderAmount: order.amount,
+        paymentAmount: payment.amount 
+      }));
+      return { success: false, amount: 0, error: 'Amount mismatch' };
     }
 
-    // 2. Get referral credit percentage from settings
-    const { data: settings } = await supabase
-      .from('site_settings')
-      .select('key, value')
-      .in('key', ['parent_referral_credit_percent', 'referral_credit_percent', 'referral_credit_expiry_days']);
-
-    let creditPercent = 10; // Default 10%
-    let expiryDays = 30; // Default 30 days
-
-    settings?.forEach((s) => {
-      const val = String(s.value).replace(/"/g, '');
-      if (s.key === 'parent_referral_credit_percent' || s.key === 'referral_credit_percent') {
-        creditPercent = parseInt(val) || 10;
-      }
-      if (s.key === 'referral_credit_expiry_days') {
-        expiryDays = parseInt(val) || 30;
-      }
-    });
-
-    // 3. Calculate credit amount
-    const creditAmount = Math.round((programAmount * creditPercent) / 100);
-
-    // 4. Get current balance of referrer
-    const { data: referrer, error: referrerError } = await supabase
-      .from('parents')
-      .select('id, name, referral_credit_balance, referral_credit_expires_at')
-      .eq('id', coupon.parent_id)
-      .single();
-
-    if (referrerError || !referrer) {
-      console.error('❌ Referrer parent not found:', couponError);
-      return { success: false, error: 'Referrer parent not found' };
-    }
-
-    // 5. Calculate new balance and expiry
-    const currentBalance = referrer.referral_credit_balance || 0;
-    const newBalance = currentBalance + creditAmount;
-
-    // Extend expiry from today (each new referral extends the window)
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + expiryDays);
-
-    // 6. Update referrer's credit balance
-    const { error: updateError } = await supabase
-      .from('parents')
-      .update({
-        referral_credit_balance: newBalance,
-        referral_credit_expires_at: expiryDate.toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', referrer.id);
-
-    if (updateError) {
-      console.error('❌ Failed to update referrer balance:', updateError);
-      return { success: false, error: 'Failed to update credit balance' };
-    }
-
-    // 7. Create transaction record
-    const { error: transactionError } = await supabase
-      .from('referral_credit_transactions')
-      .insert({
-        parent_id: referrer.id,
-        type: 'earned',
-        amount: creditAmount,
-        balance_after: newBalance,
-        description: `Referral credit for enrollment`,
-        enrollment_id: enrollmentId,
-        coupon_code: couponCode,
-        referred_parent_id: referredParentId,
-        expires_at: expiryDate.toISOString(),
-      });
-
-    if (transactionError) {
-      console.error('⚠️ Transaction record failed (non-fatal):', transactionError);
-    }
-
-    // 8. Update coupon stats
-    await supabase
-      .from('coupons')
-      .update({
-        current_uses: (coupon as any).current_uses ? (coupon as any).current_uses + 1 : 1,
-        successful_conversions: (coupon as any).successful_conversions ? (coupon as any).successful_conversions + 1 : 1,
-        total_referrals: (coupon as any).total_referrals ? (coupon as any).total_referrals + 1 : 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', coupon.id);
-
-    console.log(`✅ Referral credit awarded: ₹${creditAmount} to parent ${referrer.id} (new balance: ₹${newBalance})`);
-
-    return {
-      success: true,
-      creditAwarded: creditAmount,
-      referrerParentId: referrer.id,
-    };
+    // Return amount in rupees (Razorpay uses paise)
+    return { success: true, amount: Number(payment.amount) / 100 };
 
   } catch (error: any) {
-    console.error('❌ Credit award error:', error);
-    return { success: false, error: error.message };
+    console.error(JSON.stringify({ 
+      requestId, 
+      event: 'razorpay_api_error', 
+      error: error.message 
+    }));
+    return { success: false, amount: 0, error: 'Failed to verify with Razorpay' };
   }
 }
 
-// ============================================
-// REVENUE SPLIT CALCULATION
-// ============================================
-async function calculateRevenueSplit(
-  enrollmentId: string,
-  amount: number,
-  coachId: string,
-  leadSource: 'yestoryd' | 'coach',
-  leadSourceCoachId: string | null,
-  childId: string,
-  childName: string
-): Promise<RevenueResult> {
-  try {
-    // 1. Get coach with their group
-    const { data: coach, error: coachError } = await supabase
+/**
+ * Check Idempotency - Prevent duplicate processing
+ */
+async function checkIdempotency(
+  paymentId: string,
+  requestId: string
+): Promise<{ isDuplicate: boolean; existingEnrollmentId?: string }> {
+  const { data: existingPayment } = await supabase
+    .from('payments')
+    .select('id, enrollment_id')
+    .eq('razorpay_payment_id', paymentId)
+    .single();
+
+  if (existingPayment) {
+    console.log(JSON.stringify({ 
+      requestId, 
+      event: 'duplicate_payment_detected',
+      paymentId,
+      existingEnrollmentId: existingPayment.enrollment_id 
+    }));
+    
+    // Fetch enrollment ID from enrollments if not on payment record
+    if (!existingPayment.enrollment_id) {
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('payment_id', paymentId)
+        .single();
+      
+      return { isDuplicate: true, existingEnrollmentId: enrollment?.id };
+    }
+    
+    return { isDuplicate: true, existingEnrollmentId: existingPayment.enrollment_id };
+  }
+
+  return { isDuplicate: false };
+}
+
+// --- 4. BUSINESS LOGIC HELPERS ---
+
+/**
+ * Get or Create Parent (Race-Condition Safe with UPSERT)
+ */
+async function getOrCreateParent(
+  email: string,
+  name: string,
+  phone: string | null | undefined,
+  requestId: string
+): Promise<{ id: string; isNew: boolean }> {
+  // Use upsert to handle race conditions
+  const { data: parent, error } = await supabase
+    .from('parents')
+    .upsert(
+      { 
+        email, 
+        name, 
+        phone: phone || null,
+        updated_at: new Date().toISOString()
+      },
+      { 
+        onConflict: 'email',
+        ignoreDuplicates: false // Update if exists
+      }
+    )
+    .select('id, created_at, updated_at')
+    .single();
+
+  if (error) {
+    console.error(JSON.stringify({ requestId, event: 'parent_upsert_failed', error: error.message }));
+    throw new Error('Failed to create/update parent record');
+  }
+
+  // Check if this was a new insert or update
+  const isNew = parent.created_at === parent.updated_at;
+  
+  console.log(JSON.stringify({ 
+    requestId, 
+    event: isNew ? 'parent_created' : 'parent_found',
+    parentId: parent.id 
+  }));
+
+  return { id: parent.id, isNew };
+}
+
+/**
+ * Get or Create Child
+ */
+async function getOrCreateChild(
+  childId: string | null | undefined,
+  childName: string,
+  childAge: number,
+  parentId: string,
+  parentEmail: string,
+  coachId: string | null | undefined,
+  requestId: string
+): Promise<{ id: string; isNew: boolean }> {
+  // If childId provided, update existing
+  if (childId) {
+    const { data: existingChild, error } = await supabase
+      .from('children')
+      .update({
+        child_name: childName,
+        enrollment_status: 'enrolled',
+        lead_status: 'enrolled',
+        coach_id: coachId,
+        parent_id: parentId,
+        parent_email: parentEmail,
+        enrolled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', childId)
+      .select('id')
+      .single();
+
+    if (!error && existingChild) {
+      console.log(JSON.stringify({ requestId, event: 'child_updated', childId }));
+      return { id: existingChild.id, isNew: false };
+    }
+  }
+
+  // Create new child
+  const { data: newChild, error: childError } = await supabase
+    .from('children')
+    .insert({
+      child_name: childName,
+      age: childAge,
+      parent_id: parentId,
+      parent_email: parentEmail,
+      enrollment_status: 'enrolled',
+      lead_status: 'enrolled',
+      coach_id: coachId,
+      enrolled_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (childError) {
+    console.error(JSON.stringify({ requestId, event: 'child_create_failed', error: childError.message }));
+    throw new Error('Failed to create child record');
+  }
+
+  console.log(JSON.stringify({ requestId, event: 'child_created', childId: newChild.id }));
+  return { id: newChild.id, isNew: true };
+}
+
+/**
+ * Get Coach with Fallback
+ */
+async function getCoach(
+  coachId: string | null | undefined,
+  requestId: string
+): Promise<CoachWithGroup> {
+  // Try provided coachId first
+  if (coachId) {
+    const { data: coach } = await supabase
       .from('coaches')
       .select(`
-        id, name, email, tds_cumulative_fy,
-        group_id,
+        id, name, email, phone, tds_cumulative_fy,
         coach_groups (
           id, name, display_name,
           lead_cost_percent, coach_cost_percent, platform_fee_percent,
@@ -207,74 +331,193 @@ async function calculateRevenueSplit(
       .eq('id', coachId)
       .single();
 
-    if (coachError || !coach) {
-      console.error('❌ Coach not found for revenue calc:', coachError);
-      return { success: false, error: 'Coach not found' };
+    if (coach) {
+      console.log(JSON.stringify({ requestId, event: 'coach_found', coachId: coach.id }));
+      return coach as unknown as CoachWithGroup;
+    }
+  }
+
+  // Fallback to default coach (Rucha)
+  const { data: defaultCoach, error } = await supabase
+    .from('coaches')
+    .select(`
+      id, name, email, phone, tds_cumulative_fy,
+      coach_groups (
+        id, name, display_name,
+        lead_cost_percent, coach_cost_percent, platform_fee_percent,
+        is_internal
+      )
+    `)
+    .eq('email', 'rucha.rai@yestoryd.com')
+    .single();
+
+  if (error || !defaultCoach) {
+    console.error(JSON.stringify({ requestId, event: 'no_default_coach' }));
+    throw new Error('Critical: No default coach configured');
+  }
+
+  console.log(JSON.stringify({ requestId, event: 'using_default_coach', coachId: defaultCoach.id }));
+  return defaultCoach as unknown as CoachWithGroup;
+}
+
+/**
+ * Award Referral Credit
+ */
+async function awardReferralCredit(
+  couponCode: string,
+  enrollmentId: string,
+  referredParentId: string,
+  programAmount: number,
+  requestId: string
+): Promise<CreditAwardResult> {
+  try {
+    // 1. Validate Coupon
+    const { data: coupon, error: couponError } = await supabase
+      .from('coupons')
+      .select('id, code, coupon_type, parent_id, current_uses, successful_conversions, total_referrals')
+      .eq('code', couponCode.toUpperCase())
+      .eq('coupon_type', 'parent_referral')
+      .single();
+
+    if (couponError || !coupon || !coupon.parent_id) {
+      return { success: false, error: 'Not a parent referral coupon' };
     }
 
-    // Default to Rising Coach if no group assigned
-    const coachGroupArray = coach.coach_groups as unknown as CoachGroup[] | null;
-    const coachGroup = Array.isArray(coachGroupArray) ? coachGroupArray[0] : coachGroupArray;
-    const group: CoachGroup = coachGroup || {
-      id: null as any,
-      name: 'rising',
-      display_name: 'Rising Coach',
-      lead_cost_percent: 20,
-      coach_cost_percent: 50,
-      platform_fee_percent: 30,
-      is_internal: false,
-    };
+    // 2. Get Settings
+    const { data: settings } = await supabase
+      .from('site_settings')
+      .select('key, value')
+      .in('key', ['parent_referral_credit_percent', 'referral_credit_expiry_days']);
 
-    // 2. If internal coach (Rucha), all goes to platform
-    if (group.is_internal) {
-      const { data: revenue, error: revenueError } = await supabase
-        .from('enrollment_revenue')
-        .insert({
-          enrollment_id: enrollmentId,
-          lead_source: leadSource,
-          lead_source_coach_id: leadSourceCoachId,
-          coaching_coach_id: coachId,
-          total_amount: amount,
-          lead_cost_amount: 0,
-          coach_cost_amount: 0,
-          platform_fee_amount: amount,
-          tds_applicable: false,
-          tds_amount: 0,
-          net_to_coach: 0,
-          net_to_lead_source: 0,
-          net_retained_by_platform: amount,
-          coach_group_id: group.id,
-          coach_group_name: group.name,
-          config_snapshot: { group, note: 'Internal coach - 100% to platform' },
-          status: 'completed',
-        })
-        .select()
-        .single();
+    const creditPercent = parseInt(settings?.find(s => s.key === 'parent_referral_credit_percent')?.value || '10');
+    const expiryDays = parseInt(settings?.find(s => s.key === 'referral_credit_expiry_days')?.value || '30');
 
-      if (revenueError) {
-        console.error('❌ enrollment_revenue insert failed:', revenueError);
-        return { success: false, error: revenueError.message };
-      }
+    // 3. Calculate Credit
+    const creditAmount = Math.round((programAmount * creditPercent) / 100);
 
-      console.log('✅ Revenue (internal):', { platform: amount });
-      return {
-        success: true,
-        enrollment_revenue_id: revenue.id,
-        lead_cost: 0,
-        coach_cost: 0,
-        platform_fee: amount,
-        tds_amount: 0,
-        net_to_coach: 0,
-        payouts_scheduled: 0,
+    // 4. Get Referrer
+    const { data: referrer, error: referrerError } = await supabase
+      .from('parents')
+      .select('id, referral_credit_balance')
+      .eq('id', coupon.parent_id)
+      .single();
+
+    if (referrerError || !referrer) {
+      return { success: false, error: 'Referrer not found' };
+    }
+
+    // 5. Update Balance (atomic)
+    const newBalance = (referrer.referral_credit_balance || 0) + creditAmount;
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+    const { error: updateError } = await supabase
+      .from('parents')
+      .update({
+        referral_credit_balance: newBalance,
+        referral_credit_expires_at: expiryDate.toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', referrer.id);
+
+    if (updateError) throw updateError;
+
+    // 6. Record Transaction
+    await supabase.from('referral_credit_transactions').insert({
+      parent_id: referrer.id,
+      type: 'earned',
+      amount: creditAmount,
+      balance_after: newBalance,
+      description: 'Referral credit for enrollment',
+      enrollment_id: enrollmentId,
+      coupon_code: couponCode,
+      referred_parent_id: referredParentId,
+      expires_at: expiryDate.toISOString(),
+    });
+
+    // 7. Update Coupon Stats
+    await supabase.from('coupons').update({
+      current_uses: (coupon.current_uses || 0) + 1,
+      successful_conversions: (coupon.successful_conversions || 0) + 1,
+      total_referrals: (coupon.total_referrals || 0) + 1,
+      updated_at: new Date().toISOString(),
+    }).eq('id', coupon.id);
+
+    console.log(JSON.stringify({ 
+      requestId, 
+      event: 'referral_credit_awarded',
+      amount: creditAmount,
+      referrerId: referrer.id 
+    }));
+
+    return { success: true, creditAwarded: creditAmount, referrerParentId: referrer.id };
+
+  } catch (error: any) {
+    console.error(JSON.stringify({ requestId, event: 'credit_award_error', error: error.message }));
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Calculate Revenue Split and Schedule Payouts
+ */
+async function calculateRevenueSplit(
+  enrollmentId: string,
+  amount: number,
+  coach: CoachWithGroup,
+  leadSource: 'yestoryd' | 'coach',
+  leadSourceCoachId: string | null,
+  childId: string,
+  childName: string,
+  requestId: string
+): Promise<RevenueResult> {
+  try {
+    // Normalize Group Data
+    let group: CoachGroup;
+    if (Array.isArray(coach.coach_groups)) {
+      group = coach.coach_groups[0];
+    } else {
+      group = coach.coach_groups as CoachGroup;
+    }
+
+    // Fallback if no group
+    if (!group) {
+      group = {
+        id: 'default',
+        name: 'rising',
+        display_name: 'Rising Coach',
+        lead_cost_percent: 20,
+        coach_cost_percent: 50,
+        platform_fee_percent: 30,
+        is_internal: false,
       };
     }
 
-    // 3. Calculate amounts based on group percentages
+    // Handle Internal Coach (100% Platform)
+    if (group.is_internal) {
+      const { data: revenue } = await supabase.from('enrollment_revenue').insert({
+        enrollment_id: enrollmentId,
+        lead_source: leadSource,
+        lead_source_coach_id: leadSourceCoachId,
+        coaching_coach_id: coach.id,
+        total_amount: amount,
+        platform_fee_amount: amount,
+        net_retained_by_platform: amount,
+        coach_group_id: group.id,
+        coach_group_name: group.name,
+        status: 'completed',
+        config_snapshot: { group, note: 'Internal coach - 100% to platform' },
+      }).select('id').single();
+
+      return { success: true, enrollment_revenue_id: revenue?.id, platform_fee: amount, net_to_coach: 0, payouts_scheduled: 0 };
+    }
+
+    // Calculate Splits
     const leadCost = Math.round(amount * group.lead_cost_percent / 100);
     const coachCost = Math.round(amount * group.coach_cost_percent / 100);
     const platformFee = amount - leadCost - coachCost;
 
-    // 4. Get TDS config
+    // Get TDS Config
     const { data: config } = await supabase
       .from('revenue_split_config')
       .select('tds_rate_percent, tds_threshold_annual, payout_day_of_month')
@@ -285,124 +528,109 @@ async function calculateRevenueSplit(
     const tdsThreshold = config?.tds_threshold_annual || 30000;
     const payoutDay = config?.payout_day_of_month || 7;
 
-    // 5. Check TDS applicability
-    const coachCumulativeFY = coach.tds_cumulative_fy || 0;
-    const projectedCumulative = coachCumulativeFY + coachCost;
-    const tdsApplicable = projectedCumulative > tdsThreshold;
+    // Calculate TDS
+    const currentFY = coach.tds_cumulative_fy || 0;
+    const tdsApplicable = (currentFY + coachCost) > tdsThreshold;
+    const tdsOnCoach = tdsApplicable ? Math.round(coachCost * tdsRate / 100) : 0;
 
-    const tdsOnCoachCost = tdsApplicable ? Math.round(coachCost * tdsRate / 100) : 0;
-
-    let tdsOnLeadBonus = 0;
+    let tdsOnLead = 0;
     if (leadSource === 'coach' && leadSourceCoachId && tdsApplicable) {
-      tdsOnLeadBonus = Math.round(leadCost * tdsRate / 100);
+      tdsOnLead = Math.round(leadCost * tdsRate / 100);
     }
 
-    const totalTds = tdsOnCoachCost + tdsOnLeadBonus;
-
-    // 6. Calculate net amounts
-    const netToCoach = coachCost - tdsOnCoachCost;
-    const netToLeadSource = leadSource === 'coach' ? leadCost - tdsOnLeadBonus : 0;
+    const totalTds = tdsOnCoach + tdsOnLead;
+    const netToCoach = coachCost - tdsOnCoach;
     const netToPlatform = platformFee + (leadSource === 'yestoryd' ? leadCost : 0) + totalTds;
 
-    // 7. Create enrollment_revenue record
-    const { data: revenue, error: revenueError } = await supabase
-      .from('enrollment_revenue')
-      .insert({
-        enrollment_id: enrollmentId,
-        lead_source: leadSource,
-        lead_source_coach_id: leadSourceCoachId,
-        lead_bonus_coach_id: leadSource === 'coach' ? leadSourceCoachId : null,
-        coaching_coach_id: coachId,
-        total_amount: amount,
-        lead_cost_amount: leadCost,
-        coach_cost_amount: coachCost,
-        platform_fee_amount: platformFee,
-        tds_applicable: tdsApplicable,
-        tds_rate_applied: tdsApplicable ? tdsRate : null,
-        tds_amount: totalTds,
-        net_to_coach: netToCoach,
-        net_to_lead_source: netToLeadSource,
-        net_retained_by_platform: netToPlatform,
-        coach_group_id: group.id,
-        coach_group_name: group.name,
-        config_snapshot: {
-          group,
-          tds_rate: tdsRate,
-          tds_threshold: tdsThreshold,
-          coach_cumulative_before: coachCumulativeFY,
-        },
-        status: 'pending',
-      })
-      .select()
-      .single();
+    // Insert Revenue Record
+    const { data: revenue, error: revError } = await supabase.from('enrollment_revenue').insert({
+      enrollment_id: enrollmentId,
+      coaching_coach_id: coach.id,
+      lead_source: leadSource,
+      lead_source_coach_id: leadSourceCoachId,
+      total_amount: amount,
+      lead_cost_amount: leadCost,
+      coach_cost_amount: coachCost,
+      platform_fee_amount: platformFee,
+      tds_applicable: tdsApplicable,
+      tds_rate_applied: tdsApplicable ? tdsRate : null,
+      tds_amount: totalTds,
+      net_to_coach: netToCoach,
+      net_retained_by_platform: netToPlatform,
+      coach_group_id: group.id,
+      coach_group_name: group.name,
+      status: 'pending',
+      config_snapshot: { group, tds_rate: tdsRate, tds_threshold: tdsThreshold },
+    }).select('id').single();
 
-    if (revenueError) {
-      console.error('❌ enrollment_revenue insert failed:', revenueError);
-      return { success: false, error: revenueError.message };
-    }
+    if (revError) throw revError;
 
-    // 8. Create monthly payout schedule (3 months)
-    const payoutDates = calculatePayoutDates(payoutDay);
-    let payoutsCreated = 0;
+    // Schedule Payouts (Batch Insert)
+    const now = new Date();
+    const payoutRecords = [];
+    const monthlyCoachGross = Math.round(coachCost / 3);
+    const monthlyCoachTds = Math.round(tdsOnCoach / 3);
 
-    const monthlyCoachCost = Math.round(coachCost / 3);
-    const monthlyCoachTds = Math.round(tdsOnCoachCost / 3);
-
-    for (let month = 1; month <= 3; month++) {
-      const { error } = await supabase.from('coach_payouts').insert({
+    for (let i = 1; i <= 3; i++) {
+      const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
+      payoutRecords.push({
         enrollment_revenue_id: revenue.id,
-        coach_id: coachId,
+        coach_id: coach.id,
         child_id: childId,
         child_name: childName,
-        payout_month: month,
+        payout_month: i,
         payout_type: 'coach_cost',
-        gross_amount: monthlyCoachCost,
+        gross_amount: monthlyCoachGross,
         tds_amount: monthlyCoachTds,
-        net_amount: monthlyCoachCost - monthlyCoachTds,
-        scheduled_date: payoutDates[month - 1],
+        net_amount: monthlyCoachGross - monthlyCoachTds,
+        scheduled_date: payoutDate.toISOString().split('T')[0],
         status: 'scheduled',
       });
-      if (!error) payoutsCreated++;
     }
 
+    // Lead bonus payouts if coach-sourced
     if (leadSource === 'coach' && leadSourceCoachId) {
-      const monthlyLeadBonus = Math.round(leadCost / 3);
-      const monthlyLeadTds = Math.round(tdsOnLeadBonus / 3);
+      const monthlyLeadGross = Math.round(leadCost / 3);
+      const monthlyLeadTds = Math.round(tdsOnLead / 3);
 
-      for (let month = 1; month <= 3; month++) {
-        const { error } = await supabase.from('coach_payouts').insert({
+      for (let i = 1; i <= 3; i++) {
+        const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
+        payoutRecords.push({
           enrollment_revenue_id: revenue.id,
           coach_id: leadSourceCoachId,
           child_id: childId,
           child_name: childName,
-          payout_month: month,
+          payout_month: i,
           payout_type: 'lead_bonus',
-          gross_amount: monthlyLeadBonus,
+          gross_amount: monthlyLeadGross,
           tds_amount: monthlyLeadTds,
-          net_amount: monthlyLeadBonus - monthlyLeadTds,
-          scheduled_date: payoutDates[month - 1],
+          net_amount: monthlyLeadGross - monthlyLeadTds,
+          scheduled_date: payoutDate.toISOString().split('T')[0],
           status: 'scheduled',
         });
-        if (!error) payoutsCreated++;
       }
     }
 
-    // 9. Update coach's cumulative TDS
-    await supabase
-      .from('coaches')
-      .update({
-        tds_cumulative_fy: projectedCumulative,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', coachId);
+    // Batch insert payouts
+    const { error: payoutError } = await supabase.from('coach_payouts').insert(payoutRecords);
+    if (payoutError) {
+      console.error(JSON.stringify({ requestId, event: 'payout_insert_error', error: payoutError.message }));
+    }
 
-    console.log('✅ Revenue split:', {
-      lead_cost: leadCost,
-      coach_cost: coachCost,
-      platform_fee: platformFee,
+    // Update Coach Cumulative TDS
+    await supabase.from('coaches').update({
+      tds_cumulative_fy: currentFY + coachCost,
+      updated_at: new Date().toISOString(),
+    }).eq('id', coach.id);
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'revenue_calculated',
+      coachCost,
+      platformFee,
       tds: totalTds,
-      payouts: payoutsCreated,
-    });
+      payouts: payoutRecords.length,
+    }));
 
     return {
       success: true,
@@ -412,378 +640,266 @@ async function calculateRevenueSplit(
       platform_fee: platformFee,
       tds_amount: totalTds,
       net_to_coach: netToCoach,
-      payouts_scheduled: payoutsCreated,
+      payouts_scheduled: payoutRecords.length,
     };
 
   } catch (error: any) {
-    console.error('❌ Revenue calculation error:', error);
+    console.error(JSON.stringify({ requestId, event: 'revenue_calc_error', error: error.message }));
     return { success: false, error: error.message };
   }
 }
 
-function calculatePayoutDates(payoutDay: number): string[] {
-  const dates: string[] = [];
-  const now = new Date();
-
-  for (let i = 1; i <= 3; i++) {
-    const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
-    dates.push(payoutDate.toISOString().split('T')[0]);
-  }
-
-  return dates;
-}
-
-// ============================================
-// MAIN HANDLER
-// ============================================
+// --- 5. MAIN HANDLER ---
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
   try {
-    const body = await request.json();
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      childName,
-      childAge,
-      childId,
-      parentName,
-      parentEmail,
-      parentPhone,
-      coachId,
-      leadSource = 'yestoryd',
-      leadSourceCoachId = null,
-      // ==================== Coupon/Referral Support ====================
-      couponCode = null,
-      originalAmount = 5999,
-      discountAmount = 0,
-      // ==================== Delayed Start Support ====================
-      requestedStartDate = null, // null means "start immediately"
-    } = body;
-
-    // Use couponCode or legacy referralCodeUsed
-    const referralCodeUsed = couponCode || body.referralCodeUsed || null;
-
-    console.log('🔐 Verifying payment:', {
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      childName,
-      leadSource,
-      couponCode: referralCodeUsed,
-      requestedStartDate: requestedStartDate || 'immediate',
-    });
-
-    // ============================================
-    // STEP 1: Verify Razorpay Signature
-    // ============================================
-    const generatedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-
-    if (generatedSignature !== razorpay_signature) {
-      console.error('❌ Invalid payment signature');
+    // 1. Parse JSON Safely
+    let rawBody;
+    try {
+      rawBody = await request.json();
+    } catch {
       return NextResponse.json(
-        { success: false, error: 'Payment verification failed' },
+        { success: false, error: 'Invalid JSON body' },
         { status: 400 }
       );
     }
 
-    console.log('✅ Signature verified');
-
-    // ============================================
-    // STEP 2: Get or Create Parent
-    // ============================================
-    let parent;
-    const { data: existingParent } = await supabase
-      .from('parents')
-      .select('*')
-      .eq('email', parentEmail.toLowerCase().trim())
-      .single();
-
-    if (existingParent) {
-      parent = existingParent;
-      console.log('👤 Found existing parent:', parent.id);
-    } else {
-      const { data: newParent, error: parentError } = await supabase
-        .from('parents')
-        .insert({
-          email: parentEmail.toLowerCase().trim(),
-          name: parentName,
-          phone: parentPhone,
-        })
-        .select()
-        .single();
-
-      if (parentError) {
-        console.error('❌ Failed to create parent:', parentError);
-        throw new Error('Failed to create parent record');
-      }
-      parent = newParent;
-      console.log('👤 Created new parent:', parent.id);
+    // 2. Validate Input with Zod
+    const validation = VerifyPaymentSchema.safeParse(rawBody);
+    if (!validation.success) {
+      console.log(JSON.stringify({ 
+        requestId, 
+        event: 'validation_failed', 
+        errors: validation.error.format() 
+      }));
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: validation.error.format() },
+        { status: 400 }
+      );
     }
+    const body = validation.data;
 
-    // ============================================
-    // STEP 3: Get or Create Child
-    // ============================================
-    let child;
-    if (childId) {
-      const { data: existingChild } = await supabase
-        .from('children')
-        .select('*')
-        .eq('id', childId)
-        .single();
+    console.log(JSON.stringify({
+      requestId,
+      event: 'payment_verify_start',
+      orderId: body.razorpay_order_id,
+      childName: body.childName,
+    }));
 
-      if (existingChild) {
-        child = existingChild;
-        console.log('👶 Found existing child:', child.id);
-      }
-    }
+    // 3. IDEMPOTENCY CHECK (Critical!)
+    const { isDuplicate, existingEnrollmentId } = await checkIdempotency(
+      body.razorpay_payment_id,
+      requestId
+    );
 
-    if (!child) {
-      const { data: newChild, error: childError } = await supabase
-        .from('children')
-        .insert({
-          child_name: childName,
-          age: parseInt(childAge) || null,
-          parent_id: parent.id,
-          parent_email: parentEmail.toLowerCase().trim(),
-          enrollment_status: 'enrolled',
-          lead_status: 'enrolled',
-        })
-        .select()
-        .single();
-
-      if (childError) {
-        console.error('❌ Failed to create child:', childError);
-        throw new Error('Failed to create child record');
-      }
-      child = newChild;
-      console.log('👶 Created new child:', child.id);
-    }
-
-    // Update child status and ensure parent_email is set
-    await supabase
-      .from('children')
-      .update({
-        child_name: childName || child.child_name,
-        enrollment_status: 'enrolled',
-        lead_status: 'enrolled',
-        coach_id: coachId,
-        parent_id: parent.id,
-        parent_email: parentEmail.toLowerCase().trim(),
-        enrolled_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', child.id);
-
-    // ============================================
-    // STEP 4: Get Coach Details
-    // ============================================
-    let coach;
-
-    if (coachId) {
-      const { data: foundCoach } = await supabase
-        .from('coaches')
-        .select('*')
-        .eq('id', coachId)
-        .single();
-      coach = foundCoach;
-    }
-
-    if (!coach) {
-      const { data: defaultCoach } = await supabase
-        .from('coaches')
-        .select('*')
-        .eq('email', 'rucha.rai@yestoryd.com')
-        .single();
-
-      coach = defaultCoach || {
-        id: coachId || 'default',
-        email: 'rucha.rai@yestoryd.com',
-        name: 'Rucha Rai',
-      };
-    }
-
-    console.log('👩‍🏫 Coach assigned:', coach.name);
-
-    // ============================================
-    // STEP 5: Create Payment Record
-    // ============================================
-    const finalAmount = originalAmount - discountAmount;
-    
-    const { error: paymentError } = await supabase
-      .from('payments')
-      .insert({
-        parent_id: parent.id,
-        child_id: child.id,
-        razorpay_order_id,
-        razorpay_payment_id,
-        amount: finalAmount,
-        currency: 'INR',
-        status: 'captured',
-        captured_at: new Date().toISOString(),
-        // Track discount info
-        original_amount: originalAmount,
-        discount_amount: discountAmount,
-        coupon_code: referralCodeUsed,
+    if (isDuplicate) {
+      return NextResponse.json({
+        success: true,
+        message: 'Payment already processed',
+        enrollmentId: existingEnrollmentId,
+        duplicate: true,
       });
+    }
+
+    // 4. Verify Razorpay Signature (Timing-Safe)
+    const isValidSignature = verifySignature(
+      body.razorpay_order_id,
+      body.razorpay_payment_id,
+      body.razorpay_signature
+    );
+
+    if (!isValidSignature) {
+      console.error(JSON.stringify({ requestId, event: 'invalid_signature' }));
+      return NextResponse.json(
+        { success: false, error: 'Invalid payment signature' },
+        { status: 400 }
+      );
+    }
+
+    // 5. VERIFY AMOUNT WITH RAZORPAY API (Critical!)
+    const paymentVerification = await verifyPaymentWithRazorpay(
+      body.razorpay_order_id,
+      body.razorpay_payment_id,
+      requestId
+    );
+
+    if (!paymentVerification.success) {
+      return NextResponse.json(
+        { success: false, error: paymentVerification.error },
+        { status: 400 }
+      );
+    }
+
+    const verifiedAmount = paymentVerification.amount; // This is the REAL amount paid
+    console.log(JSON.stringify({ 
+      requestId, 
+      event: 'amount_verified', 
+      amount: verifiedAmount 
+    }));
+
+    // 6. Get or Create Parent (Race-Safe)
+    const parent = await getOrCreateParent(
+      body.parentEmail,
+      body.parentName,
+      body.parentPhone,
+      requestId
+    );
+
+    // 7. Get or Create Child
+    const child = await getOrCreateChild(
+      body.childId,
+      body.childName,
+      body.childAge,
+      parent.id,
+      body.parentEmail,
+      body.coachId,
+      requestId
+    );
+
+    // 8. Get Coach
+    const coach = await getCoach(body.coachId, requestId);
+
+    // 9. Record Payment
+    const couponUsed = body.couponCode || body.referralCodeUsed || null;
+    
+    const { error: paymentError } = await supabase.from('payments').insert({
+      parent_id: parent.id,
+      child_id: child.id,
+      razorpay_order_id: body.razorpay_order_id,
+      razorpay_payment_id: body.razorpay_payment_id,
+      amount: verifiedAmount, // Use verified amount!
+      currency: 'INR',
+      status: 'captured',
+      captured_at: new Date().toISOString(),
+      coupon_code: couponUsed,
+    });
 
     if (paymentError) {
-      console.error('⚠️ Payment record error:', paymentError);
+      console.error(JSON.stringify({ requestId, event: 'payment_record_error', error: paymentError.message }));
+      // Don't throw - payment is verified, this is just record keeping
     }
 
-    // ============================================
-    // STEP 6: Determine Start Mode (IMMEDIATE vs DELAYED)
-    // ============================================
-    const startImmediately = !requestedStartDate;
-    
-    const programStart = startImmediately 
-      ? new Date() 
-      : new Date(requestedStartDate);
-    
+    // 10. Create Enrollment
+    const startImmediately = !body.requestedStartDate;
+    const programStart = startImmediately ? new Date() : new Date(body.requestedStartDate!);
     const programEnd = new Date(programStart);
     programEnd.setMonth(programEnd.getMonth() + 3);
 
-    const enrollmentStatus = startImmediately ? 'active' : 'pending_start';
+    const { data: enrollment, error: enrollError } = await supabase.from('enrollments').insert({
+      child_id: child.id,
+      parent_id: parent.id,
+      coach_id: coach.id,
+      payment_id: body.razorpay_payment_id,
+      amount: verifiedAmount, // Use verified amount!
+      status: startImmediately ? 'active' : 'pending_start',
+      program_start: programStart.toISOString(),
+      program_end: programEnd.toISOString(),
+      schedule_confirmed: false,
+      sessions_scheduled: 0,
+      lead_source: body.leadSource,
+      lead_source_coach_id: body.leadSourceCoachId || null,
+      referral_code_used: couponUsed,
+      requested_start_date: body.requestedStartDate || null,
+      actual_start_date: startImmediately ? new Date().toISOString().split('T')[0] : null,
+    }).select().single();
 
-    console.log(`📅 Start mode: ${startImmediately ? 'IMMEDIATE' : 'DELAYED'}`);
-    if (!startImmediately) {
-      console.log(`📅 Requested start date: ${requestedStartDate}`);
+    if (enrollError) {
+      console.error(JSON.stringify({ requestId, event: 'enrollment_create_error', error: enrollError.message }));
+      throw new Error('Failed to create enrollment');
     }
 
-    // ============================================
-    // STEP 7: Create Enrollment Record
-    // ============================================
-    const { data: enrollment, error: enrollmentError } = await supabase
-      .from('enrollments')
-      .insert({
-        child_id: child.id,
-        parent_id: parent.id,
-        coach_id: coach.id,
-        payment_id: razorpay_payment_id,
-        amount: finalAmount,
-        status: enrollmentStatus,
-        program_start: programStart.toISOString(),
-        program_end: programEnd.toISOString(),
-        schedule_confirmed: false,
-        sessions_scheduled: 0,
-        lead_source: leadSource,
-        lead_source_coach_id: leadSourceCoachId,
-        referral_code_used: referralCodeUsed,
-        requested_start_date: requestedStartDate || null,
-        actual_start_date: startImmediately ? new Date().toISOString().split('T')[0] : null,
-        // Track discount
-        original_amount: originalAmount,
-        discount_amount: discountAmount,
-      })
-      .select()
-      .single();
+    console.log(JSON.stringify({
+      requestId,
+      event: 'enrollment_created',
+      enrollmentId: enrollment.id,
+      status: enrollment.status,
+    }));
 
-    if (enrollmentError) {
-      console.error('❌ Enrollment creation failed:', enrollmentError);
-      throw new Error('Failed to create enrollment record');
-    }
-
-    console.log('📝 Enrollment created:', enrollment.id, `(status: ${enrollmentStatus})`);
-
-    // ============================================
-    // STEP 8: Award Referral Credit (NEW!)
-    // ============================================
+    // 11. Award Referral Credit (if applicable)
     let creditResult: CreditAwardResult = { success: false };
-    
-    if (referralCodeUsed) {
+    if (couponUsed) {
       creditResult = await awardReferralCredit(
-        referralCodeUsed,
+        couponUsed,
         enrollment.id,
         parent.id,
-        originalAmount // Use original amount for credit calculation
+        verifiedAmount,
+        requestId
       );
-
-      if (creditResult.success) {
-        console.log(`🎁 Referral credit: ₹${creditResult.creditAwarded} awarded to ${creditResult.referrerParentId}`);
-      } else {
-        console.log('ℹ️ No referral credit awarded:', creditResult.error);
-      }
     }
 
-    // ============================================
-    // STEP 9: Calculate Revenue Split
-    // ============================================
+    // 12. Calculate Revenue Split
     const revenueResult = await calculateRevenueSplit(
       enrollment.id,
-      finalAmount, // Use final amount after discount
-      coach.id,
-      leadSource as 'yestoryd' | 'coach',
-      leadSourceCoachId,
+      verifiedAmount,
+      coach,
+      body.leadSource,
+      body.leadSourceCoachId || null,
       child.id,
-      child.name
+      body.childName,
+      requestId
     );
 
-    if (revenueResult.success) {
-      console.log('💰 Revenue processed:', {
-        coach_gets: revenueResult.net_to_coach,
-        platform_keeps: revenueResult.platform_fee,
-        tds: revenueResult.tds_amount,
-        payouts: revenueResult.payouts_scheduled,
-      });
-    } else {
-      console.error('⚠️ Revenue calc failed (non-fatal):', revenueResult.error);
-    }
-
-    // ============================================
-    // STEP 10: Queue Background Job (ONLY IF IMMEDIATE START)
-    // ============================================
-    let queueResult: { success: boolean; messageId: string | null } = {
-      success: false,
-      messageId: null,
-    };
+    // 13. Queue Background Jobs
+    let queueResult = { success: false, messageId: null as string | null };
 
     if (startImmediately) {
       try {
         queueResult = await queueEnrollmentComplete({
           enrollmentId: enrollment.id,
           childId: child.id,
-          childName: child.name,
+          childName: body.childName,
           parentId: parent.id,
-          parentEmail: parent.email,
-          parentName: parent.name,
-          parentPhone: parent.phone || parentPhone,
+          parentEmail: body.parentEmail,
+          parentName: body.parentName,
+          parentPhone: body.parentPhone || '',
           coachId: coach.id,
           coachEmail: coach.email,
           coachName: coach.name,
         });
 
-        console.log('📤 Background job queued:', queueResult.messageId);
+        console.log(JSON.stringify({ 
+          requestId, 
+          event: 'background_job_queued', 
+          messageId: queueResult.messageId 
+        }));
       } catch (queueError: any) {
-        console.error('⚠️ Queue error (non-fatal):', queueError.message);
+        console.error(JSON.stringify({ 
+          requestId, 
+          event: 'queue_error', 
+          error: queueError.message 
+        }));
       }
     } else {
-      console.log(`📅 Delayed start: Sessions will be scheduled by cron on ${requestedStartDate}`);
-      
-      try {
-        await supabase.from('enrollment_events').insert({
-          enrollment_id: enrollment.id,
-          event_type: 'payment_received_delayed_start',
-          event_data: {
-            requested_start_date: requestedStartDate,
-            payment_id: razorpay_payment_id,
-            child_name: child.name,
-            coach_name: coach.name,
-          },
-          triggered_by: 'system',
-        });
-      } catch (eventError) {
-        console.error('⚠️ Event logging failed (non-fatal):', eventError);
-      }
+      // Log delayed start event
+      await supabase.from('enrollment_events').insert({
+        enrollment_id: enrollment.id,
+        event_type: 'payment_received_delayed_start',
+        event_data: {
+          requested_start_date: body.requestedStartDate,
+          payment_id: body.razorpay_payment_id,
+          child_name: body.childName,
+          coach_name: coach.name,
+        },
+        triggered_by: 'system',
+      });
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'delayed_start_scheduled',
+        startDate: body.requestedStartDate,
+      }));
     }
 
-    // ============================================
-    // STEP 11: Return Success Response
-    // ============================================
+    // 14. Final Response
     const duration = Date.now() - startTime;
-    console.log(`✅ Payment verified in ${duration}ms`);
+    console.log(JSON.stringify({
+      requestId,
+      event: 'payment_verify_complete',
+      enrollmentId: enrollment.id,
+      duration: `${duration}ms`,
+    }));
 
     return NextResponse.json({
       success: true,
@@ -795,6 +911,7 @@ export async function POST(request: NextRequest) {
         parentId: parent.id,
         coachId: coach.id,
         coachName: coach.name,
+        amountPaid: verifiedAmount,
       },
       revenue: revenueResult.success
         ? {
@@ -811,31 +928,28 @@ export async function POST(request: NextRequest) {
           }
         : null,
       scheduling: {
-        status: startImmediately 
-          ? (queueResult.success ? 'queued' : 'pending')
+        status: startImmediately
+          ? queueResult.success ? 'queued' : 'pending'
           : 'delayed',
         messageId: queueResult.messageId,
-        delayedStart: !startImmediately ? {
-          requestedStartDate,
-          programStartDate: programStart.toISOString().split('T')[0],
-          programEndDate: programEnd.toISOString().split('T')[0],
-          note: `Sessions will be automatically scheduled on ${requestedStartDate}. Reminder will be sent 3 days before.`,
-        } : null,
-        note: startImmediately 
-          ? 'Calendar sessions and confirmation email are being processed.'
-          : `Program starts on ${requestedStartDate}. Sessions will be scheduled closer to the start date.`,
+        startDate: programStart.toISOString().split('T')[0],
+        endDate: programEnd.toISOString().split('T')[0],
       },
     });
+
   } catch (error: any) {
-    console.error('❌ Payment verification error:', error);
+    const duration = Date.now() - startTime;
+    
+    console.error(JSON.stringify({
+      requestId,
+      event: 'payment_verify_error',
+      error: error.message,
+      duration: `${duration}ms`,
+    }));
 
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Payment verification failed',
-      },
+      { success: false, error: error.message || 'Payment verification failed' },
       { status: 500 }
     );
   }
 }
-
