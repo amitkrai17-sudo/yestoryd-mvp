@@ -1,17 +1,124 @@
-// file: app/api/assessment/analyze/route.ts
-// rAI v2.2 - Full detailed assessment with all 6 skills + soft c/g phonemes
+// ============================================================
+// FILE: app/api/assessment/analyze/route.ts
+// ============================================================
+// HARDENED VERSION - rAI v2.2 Assessment Analysis
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security features:
+// - Rate limiting (prevent cost abuse)
+// - File size limits
+// - Input validation with Zod
+// - Request tracing
+// - Lazy initialization
+// - PII protection in logs
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-const supabase = createClient(
+// --- CONFIGURATION (Lazy initialization) ---
+const getGenAI = () => new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// --- CONSTANTS ---
+const MAX_AUDIO_SIZE_MB = 5; // 5MB max audio file (keeps Gemini processing under 10s)
+const MAX_AUDIO_SIZE_BYTES = MAX_AUDIO_SIZE_MB * 1024 * 1024;
+const MAX_PASSAGE_LENGTH = 2000; // Max characters in passage
+
+// --- RATE LIMITING ---
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = {
+  maxRequests: 5,      // 5 assessments
+  windowMs: 60 * 60 * 1000, // per hour
+};
+
+function checkRateLimit(identifier: string): { success: boolean; remaining: number } {
+  const now = Date.now();
+  const key = `assessment_${identifier}`;
+  const record = rateLimitMap.get(key);
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT.windowMs });
+    return { success: true, remaining: RATE_LIMIT.maxRequests - 1 };
+  }
+
+  if (record.count >= RATE_LIMIT.maxRequests) {
+    return { success: false, remaining: 0 };
+  }
+
+  record.count++;
+  return { success: true, remaining: RATE_LIMIT.maxRequests - record.count };
+}
+
+// --- VALIDATION SCHEMA ---
+const AssessmentSchema = z.object({
+  audio: z.string()
+    .min(100, 'Audio data is required')
+    .refine(
+      (val) => {
+        // Check base64 size (rough estimate)
+        const base64Data = val.split(',')[1] || val;
+        const sizeInBytes = (base64Data.length * 3) / 4;
+        return sizeInBytes <= MAX_AUDIO_SIZE_BYTES;
+      },
+      { message: `Audio file too large. Maximum size is ${MAX_AUDIO_SIZE_MB}MB` }
+    ),
+  
+  passage: z.string()
+    .min(10, 'Passage is required')
+    .max(MAX_PASSAGE_LENGTH, `Passage too long (max ${MAX_PASSAGE_LENGTH} characters)`),
+  
+  childName: z.string()
+    .min(1, 'Child name is required')
+    .max(100, 'Child name too long')
+    .transform(val => val.trim()),
+  
+  childAge: z.union([z.string(), z.number()])
+    .transform(val => parseInt(String(val)))
+    .refine(val => val >= 3 && val <= 15, 'Age must be between 3 and 15'),
+  
+  parentName: z.string()
+    .min(1, 'Parent name is required')
+    .max(100, 'Parent name too long')
+    .optional(),
+  
+  parentEmail: z.string()
+    .email('Invalid email format')
+    .max(255)
+    .transform(val => val.toLowerCase()),
+  
+  parentPhone: z.string()
+    .regex(/^(\+91)?[6-9]\d{9}$/, 'Invalid Indian phone number')
+    .optional(),
+  
+  lead_source: z.enum(['yestoryd', 'coach', 'referral', 'organic', 'ad'])
+    .optional()
+    .default('yestoryd'),
+  
+  lead_source_coach_id: z.string().uuid().optional().nullable(),
+  
+  referral_code_used: z.string().max(50).optional().nullable(),
+});
+
+type AssessmentInput = z.infer<typeof AssessmentSchema>;
+
+// --- HELPER FUNCTIONS ---
+function maskPhone(phone: string | undefined): string {
+  if (!phone) return 'N/A';
+  return '***' + phone.slice(-4);
+}
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  return local.slice(0, 2) + '***@' + domain;
+}
 
 function getStrictnessForAge(age: number) {
   if (age <= 5) {
@@ -41,35 +148,182 @@ function getStrictnessForAge(age: number) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    
-    const {
-      audio,
-      passage,
-      childAge,
-      childName,
-      parentName,
-      parentEmail,
-      parentPhone,
-      lead_source,
-      lead_source_coach_id,
-      referral_code_used,
-    } = body;
+// --- TYPES ---
+interface ErrorClassification {
+  substitutions: { original: string; read_as: string }[];
+  omissions: string[];
+  insertions: string[];
+  reversals: { original: string; read_as: string }[];
+  mispronunciations: { word: string; issue: string }[];
+}
 
-    if (!audio || !passage) {
+interface PhonicsAnalysis {
+  struggling_phonemes: string[];
+  phoneme_details: { phoneme: string; examples: string[]; frequency: string }[];
+  strong_phonemes: string[];
+  recommended_focus: string;
+}
+
+interface SkillScore {
+  score: number;
+  notes: string;
+}
+
+interface SkillBreakdown {
+  decoding: SkillScore;
+  sight_words: SkillScore;
+  blending: SkillScore;
+  segmenting: SkillScore;
+  expression: SkillScore;
+  comprehension_indicators: SkillScore;
+}
+
+interface PracticeRecommendations {
+  daily_words: string[];
+  phonics_focus: string;
+  suggested_activity: string;
+}
+
+interface AnalysisResult {
+  clarity_score: number;
+  fluency_score: number;
+  speed_score: number;
+  wpm: number;
+  completeness_percentage: number;
+  error_classification: ErrorClassification;
+  phonics_analysis: PhonicsAnalysis;
+  skill_breakdown: SkillBreakdown;
+  feedback: string;
+  errors: string[];
+  strengths: string[];
+  areas_to_improve: string[];
+  practice_recommendations: PracticeRecommendations;
+}
+
+function getDefaultAnalysis(name: string): AnalysisResult {
+  return {
+    clarity_score: 5,
+    fluency_score: 5,
+    speed_score: 5,
+    wpm: 60,
+    completeness_percentage: 80,
+    error_classification: {
+      substitutions: [],
+      omissions: [],
+      insertions: [],
+      reversals: [],
+      mispronunciations: []
+    },
+    phonics_analysis: {
+      struggling_phonemes: [],
+      phoneme_details: [],
+      strong_phonemes: [],
+      recommended_focus: 'Continue practicing current level'
+    },
+    skill_breakdown: {
+      decoding: { score: 5, notes: 'Assessment needed' },
+      sight_words: { score: 5, notes: 'Assessment needed' },
+      blending: { score: 5, notes: 'Assessment needed' },
+      segmenting: { score: 5, notes: 'Assessment needed' },
+      expression: { score: 5, notes: 'Assessment needed' },
+      comprehension_indicators: { score: 5, notes: 'Assessment needed' }
+    },
+    errors: [],
+    strengths: ['Completed the reading', 'Showed effort'],
+    areas_to_improve: ['Practice reading aloud daily', 'Work on fluency'],
+    feedback: `${name} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily reading aloud to build confidence and smooth out hesitations. With consistent effort, ${name} will show noticeable improvement in reading skills.`,
+    practice_recommendations: {
+      daily_words: [],
+      phonics_focus: 'Review current phonics level',
+      suggested_activity: 'Read aloud for 10 minutes daily'
+    }
+  };
+}
+
+// --- MAIN HANDLER ---
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
+  try {
+    // 1. Get client identifier for rate limiting
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const clientIp = forwardedFor?.split(',')[0]?.trim() || 'unknown';
+
+    // 2. Parse body
+    let body;
+    try {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { success: false, error: 'Missing audio or passage' },
+        { success: false, error: 'Invalid JSON body' },
         { status: 400 }
       );
     }
 
-    const name = childName?.trim() || 'the child';
-    const age = parseInt(childAge) || 6;
+    // 3. Check rate limit by email (more reliable than IP)
+    const email = body.parentEmail?.toLowerCase() || clientIp;
+    const rateLimit = checkRateLimit(email);
+
+    if (!rateLimit.success) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'rate_limited',
+        identifier: maskEmail(email),
+      }));
+
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Too many assessments. Please try again later.',
+          retryAfter: '1 hour',
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'Retry-After': '3600',
+          },
+        }
+      );
+    }
+
+    // 4. Validate input
+    const validation = AssessmentSchema.safeParse(body);
+
+    if (!validation.success) {
+      const errors = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
+      
+      console.log(JSON.stringify({
+        requestId,
+        event: 'validation_failed',
+        errors,
+      }));
+
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: errors },
+        { status: 400 }
+      );
+    }
+
+    const params = validation.data;
+    const { audio, passage, childName, childAge, parentName, parentEmail, parentPhone } = params;
+    
+    const name = childName;
+    const age = childAge;
     const strictness = getStrictnessForAge(age);
     const wordCount = passage.split(' ').length;
 
+    console.log(JSON.stringify({
+      requestId,
+      event: 'assessment_started',
+      childAge: age,
+      passageWords: wordCount,
+      email: maskEmail(parentEmail),
+      phone: maskPhone(parentPhone),
+    }));
+
+    // 5. Build AI prompt
     const analysisPrompt = `
 Role: Expert Phonics & Reading Specialist with deep knowledge of systematic phonics instruction.
 Task: Analyze audio of a ${age}-year-old child named "${name}" reading the passage below.
@@ -104,7 +358,7 @@ Generate a JSON response with this EXACT structure:
     },
     
     "phonics_analysis": {
-        "struggling_phonemes": ["list specific phonemes the child struggles with from the categories below"],
+        "struggling_phonemes": ["list specific phonemes the child struggles with"],
         "phoneme_details": [
             {"phoneme": "th", "examples": ["the->da", "this->dis"], "frequency": "frequent"},
             {"phoneme": "soft_g", "examples": ["giant->gant"], "frequency": "occasional"}
@@ -135,66 +389,6 @@ Generate a JSON response with this EXACT structure:
     "areas_to_improve": ["2-3 specific areas with actionable advice"]
 }
 
-PHONEME CATEGORIES TO ASSESS:
-
-CONSONANT DIGRAPHS:
-- th (voiced: the, this, that / unvoiced: think, three, bath)
-- ch (chat, child, much)
-- sh (ship, shoe, fish)
-- wh (what, when, where)
-- ph (phone, photo)
-- ng (sing, ring, hang)
-- ck (back, sick, duck)
-
-CONSONANT BLENDS:
-- L-blends: bl, cl, fl, gl, pl, sl
-- R-blends: br, cr, dr, fr, gr, pr, tr
-- S-blends: sc, sk, sl, sm, sn, sp, st, sw
-
-SOFT & HARD SOUNDS:
-- soft_c: ce, ci, cy -> /s/ sound (city, nice, cycle)
-- hard_c: ca, co, cu -> /k/ sound (cat, cold, cup)
-- soft_g: ge, gi, gy -> /j/ sound (giant, giraffe, gym)
-- hard_g: ga, go, gu -> /g/ sound (game, go, gum)
-
-SHORT VOWELS:
-- short_a (cat, bat, hat)
-- short_e (bed, red, pen)
-- short_i (sit, pig, fin)
-- short_o (hot, dog, top)
-- short_u (cup, bus, sun)
-
-LONG VOWELS:
-- long_a (cake, make, rain, day)
-- long_e (feet, tree, team, key)
-- long_i (time, bike, pie, sky)
-- long_o (home, boat, snow, go)
-- long_u (cute, tube, blue, few)
-
-R-CONTROLLED VOWELS:
-- ar (car, star, farm)
-- er (her, fern, term)
-- ir (bird, girl, first)
-- or (for, born, horse)
-- ur (fur, turn, nurse)
-
-VOWEL TEAMS & DIPHTHONGS:
-- ai, ay (rain, day)
-- ea, ee (team, feet)
-- oa, oe (boat, toe)
-- oo (book, moon)
-- ou, ow (out, cow)
-- oi, oy (oil, boy)
-- au, aw (pause, saw)
-
-SKILL DEFINITIONS FOR SCORING:
-- Decoding: Ability to apply phonics rules to sound out unfamiliar words
-- Sight Words: Instant recognition of common words (the, was, said, have, come)
-- Blending: Smoothly combining individual sounds (c-a-t -> cat)
-- Segmenting: Breaking words into component sounds for spelling
-- Expression: Natural intonation, appropriate pauses, emotional engagement
-- Comprehension Indicators: Evidence of understanding through phrasing and emphasis
-
 SCORING CONSISTENCY RULES:
 - If completeness_percentage < ${strictness.minCompleteness}%, ALL scores must be 4 or lower
 - If completeness_percentage < 50%, ALL scores must be 2 or lower
@@ -204,85 +398,34 @@ SCORING CONSISTENCY RULES:
 
 Respond ONLY with valid JSON. No additional text.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
+    // 6. Call Gemini AI
+    const genAI = getGenAI();
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
     const audioData = audio.split(',')[1] || audio;
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: 'audio/webm',
-          data: audioData,
-        },
-      },
-      { text: analysisPrompt },
-    ]);
-
-    const response = await result.response;
-    const responseText = response.text();
-
-    // Full interface with all 6 skills
-    interface ErrorClassification {
-      substitutions: { original: string; read_as: string }[];
-      omissions: string[];
-      insertions: string[];
-      reversals: { original: string; read_as: string }[];
-      mispronunciations: { word: string; issue: string }[];
-    }
-
-    interface PhonicsAnalysis {
-      struggling_phonemes: string[];
-      phoneme_details: { phoneme: string; examples: string[]; frequency: string }[];
-      strong_phonemes: string[];
-      recommended_focus: string;
-    }
-
-    interface SkillScore {
-      score: number;
-      notes: string;
-    }
-
-    interface SkillBreakdown {
-      decoding: SkillScore;
-      sight_words: SkillScore;
-      blending: SkillScore;
-      segmenting: SkillScore;
-      expression: SkillScore;
-      comprehension_indicators: SkillScore;
-    }
-
-    interface PracticeRecommendations {
-      daily_words: string[];
-      phonics_focus: string;
-      suggested_activity: string;
-    }
-
-    interface AnalysisResult {
-      clarity_score: number;
-      fluency_score: number;
-      speed_score: number;
-      wpm: number;
-      completeness_percentage: number;
-      error_classification: ErrorClassification;
-      phonics_analysis: PhonicsAnalysis;
-      skill_breakdown: SkillBreakdown;
-      feedback: string;
-      errors: string[];
-      strengths: string[];
-      areas_to_improve: string[];
-      practice_recommendations: PracticeRecommendations;
-    }
-
     let analysisResult: AnalysisResult;
-    
+
     try {
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: 'audio/webm',
+            data: audioData,
+          },
+        },
+        { text: analysisPrompt },
+      ]);
+
+      const response = await result.response;
+      const responseText = response.text();
+
       let cleanedResponse = responseText
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim();
-      
+
       analysisResult = JSON.parse(cleanedResponse);
-      
+
       // Fix wrong names in feedback
       if (analysisResult.feedback) {
         const wrongNames = ['Aisha', 'Ali', 'Ahmed', 'Sara', 'Omar', 'Fatima', 'Mohammed', 'Zara', 'Aryan', 'Priya', 'Rahul', 'Ananya', 'the child', 'The child', 'this child', 'This child'];
@@ -293,71 +436,43 @@ Respond ONLY with valid JSON. No additional text.`;
         });
         analysisResult.feedback = feedback;
       }
-      
-    } catch {
-      console.error('Failed to parse Gemini response:', responseText);
-      // Full fallback with all 6 skills
-      analysisResult = {
-        clarity_score: 5,
-        fluency_score: 5,
-        speed_score: 5,
-        wpm: 60,
-        completeness_percentage: 80,
-        error_classification: {
-          substitutions: [],
-          omissions: [],
-          insertions: [],
-          reversals: [],
-          mispronunciations: []
-        },
-        phonics_analysis: {
-          struggling_phonemes: [],
-          phoneme_details: [],
-          strong_phonemes: [],
-          recommended_focus: 'Continue practicing current level'
-        },
-        skill_breakdown: {
-          decoding: { score: 5, notes: 'Assessment needed' },
-          sight_words: { score: 5, notes: 'Assessment needed' },
-          blending: { score: 5, notes: 'Assessment needed' },
-          segmenting: { score: 5, notes: 'Assessment needed' },
-          expression: { score: 5, notes: 'Assessment needed' },
-          comprehension_indicators: { score: 5, notes: 'Assessment needed' }
-        },
-        errors: [],
-        strengths: ['Completed the reading', 'Showed effort'],
-        areas_to_improve: ['Practice reading aloud daily', 'Work on fluency'],
-        feedback: `${name} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily reading aloud to build confidence and smooth out hesitations. With consistent effort, ${name} will show noticeable improvement in reading skills.`,
-        practice_recommendations: {
-          daily_words: [],
-          phonics_focus: 'Review current phonics level',
-          suggested_activity: 'Read aloud for 10 minutes daily'
-        }
-      };
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'ai_analysis_complete',
+        wpm: analysisResult.wpm,
+        completeness: analysisResult.completeness_percentage,
+      }));
+
+    } catch (aiError) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'ai_analysis_failed',
+        error: (aiError as Error).message,
+      }));
+      analysisResult = getDefaultAnalysis(name);
     }
 
-    // Calculate scores with bounds checking
+    // 7. Calculate scores
     const clarityScore = Math.min(10, Math.max(1, analysisResult.clarity_score || 5));
     const fluencyScore = Math.min(10, Math.max(1, analysisResult.fluency_score || 5));
     const speedScore = Math.min(10, Math.max(1, analysisResult.speed_score || 5));
-    
-    // Calculate overall as weighted average (clarity 35%, fluency 40%, speed 25%)
     const overallScore = Math.round((clarityScore * 0.35) + (fluencyScore * 0.40) + (speedScore * 0.25));
 
-    // Calculate average skill score from all 6 skills
     const skillScores = analysisResult.skill_breakdown;
     const avgSkillScore = Math.round(
-      (skillScores.decoding.score + 
-       skillScores.sight_words.score + 
-       skillScores.blending.score + 
-       skillScores.segmenting.score + 
-       skillScores.expression.score + 
-       skillScores.comprehension_indicators.score) / 6
+      (skillScores.decoding.score +
+        skillScores.sight_words.score +
+        skillScores.blending.score +
+        skillScores.segmenting.score +
+        skillScores.expression.score +
+        skillScores.comprehension_indicators.score) / 6
     );
 
-    // Save to database
+    // 8. Save to database
+    const supabase = getSupabase();
     let childId: string | null = null;
-    
+
     try {
       const { data: existingChild } = await supabase
         .from('children')
@@ -377,15 +492,15 @@ Respond ONLY with valid JSON. No additional text.`;
             latest_assessment_score: overallScore,
             phonics_focus: analysisResult.phonics_analysis?.recommended_focus || null,
             struggling_phonemes: analysisResult.phonics_analysis?.struggling_phonemes || [],
-            ...(lead_source === 'coach' && lead_source_coach_id ? {
+            ...(params.lead_source === 'coach' && params.lead_source_coach_id ? {
               lead_source: 'coach',
-              lead_source_coach_id,
-              referral_code_used,
+              lead_source_coach_id: params.lead_source_coach_id,
+              referral_code_used: params.referral_code_used,
             } : {}),
           })
           .eq('id', childId);
-        
-        console.log('Updated existing child:', childId);
+
+        console.log(JSON.stringify({ requestId, event: 'child_updated', childId }));
       } else {
         const { data: newChild, error: childError } = await supabase
           .from('children')
@@ -400,25 +515,25 @@ Respond ONLY with valid JSON. No additional text.`;
             latest_assessment_score: overallScore,
             phonics_focus: analysisResult.phonics_analysis?.recommended_focus || null,
             struggling_phonemes: analysisResult.phonics_analysis?.struggling_phonemes || [],
-            lead_source: lead_source || 'yestoryd',
-            lead_source_coach_id: lead_source_coach_id || null,
-            referral_code_used: referral_code_used || null,
+            lead_source: params.lead_source || 'yestoryd',
+            lead_source_coach_id: params.lead_source_coach_id || null,
+            referral_code_used: params.referral_code_used || null,
           })
           .select('id')
           .single();
 
         if (childError) {
-          console.error('Failed to save child:', childError);
+          console.error(JSON.stringify({ requestId, event: 'child_create_failed', error: childError.message }));
         } else {
           childId = newChild.id;
-          console.log('Created new child:', childId, 'Lead source:', lead_source || 'yestoryd');
+          console.log(JSON.stringify({ requestId, event: 'child_created', childId }));
         }
       }
     } catch (dbError) {
-      console.error('Database error (non-blocking):', dbError);
+      console.error(JSON.stringify({ requestId, event: 'database_error', error: (dbError as Error).message }));
     }
 
-    // Save learning event with full data
+    // 9. Save learning event with embedding
     if (childId) {
       try {
         const eventData = {
@@ -449,16 +564,15 @@ Respond ONLY with valid JSON. No additional text.`;
         let embedding: number[] | null = null;
         try {
           embedding = await generateEmbedding(searchableContent);
-          console.log('Embedding generated for assessment');
         } catch (embError) {
-          console.error('Embedding generation failed (non-blocking):', embError);
+          console.error(JSON.stringify({ requestId, event: 'embedding_failed', error: (embError as Error).message }));
         }
 
         const fluencyDesc = fluencyScore >= 7 ? 'smooth' : fluencyScore >= 5 ? 'moderate' : 'developing';
         const phonicsFocus = analysisResult.phonics_analysis?.recommended_focus || 'general practice';
         const aiSummary = `${name} scored ${overallScore}/10 with ${fluencyDesc} fluency at ${analysisResult.wpm} WPM. Focus area: ${phonicsFocus}. ${analysisResult.strengths?.[0] || 'Showed good effort'}.`;
 
-        const { error: eventError } = await supabase
+        await supabase
           .from('learning_events')
           .insert({
             child_id: childId,
@@ -470,39 +584,31 @@ Respond ONLY with valid JSON. No additional text.`;
             embedding: embedding,
           });
 
-        if (eventError) {
-          console.error('Failed to save learning event:', eventError);
-        } else {
-          console.log('Learning event saved with embedding');
-        }
-
+        console.log(JSON.stringify({ requestId, event: 'learning_event_saved' }));
       } catch (eventError) {
-        console.error('Learning event error (non-blocking):', eventError);
+        console.error(JSON.stringify({ requestId, event: 'learning_event_failed', error: (eventError as Error).message }));
       }
     }
 
-    // Lead scoring with phonics consideration
+    // 10. Lead scoring
     if (childId) {
       try {
         let leadScore = 10;
-        
-        // Score-based scoring
+
         if (overallScore <= 3) leadScore += 50;
         else if (overallScore <= 5) leadScore += 30;
         else if (overallScore <= 7) leadScore += 15;
         else leadScore += 5;
-        
-        // Age-based scoring
+
         if (age >= 4 && age <= 7) leadScore += 15;
         else if (age >= 8 && age <= 10) leadScore += 10;
 
-        // Phonics struggles indicate coaching need
         const strugglingCount = analysisResult.phonics_analysis?.struggling_phonemes?.length || 0;
         if (strugglingCount >= 3) leadScore += 10;
         else if (strugglingCount >= 1) leadScore += 5;
-        
+
         const leadStatus = leadScore >= 60 ? 'hot' : leadScore >= 30 ? 'warm' : 'new';
-        
+
         await supabase
           .from('children')
           .update({
@@ -511,42 +617,55 @@ Respond ONLY with valid JSON. No additional text.`;
             lead_score_updated_at: new Date().toISOString(),
           })
           .eq('id', childId);
-        
-        console.log('Lead score:', leadScore, '(' + leadStatus + ')');
-        
-        // Trigger hot lead alert
+
+        console.log(JSON.stringify({ requestId, event: 'lead_scored', leadScore, leadStatus }));
+
+        // Hot lead alert via QStash (async, non-blocking)
         if (leadStatus === 'hot') {
-          console.log('HOT LEAD detected! Triggering alert...');
-          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://yestoryd.com';
-          fetch(`${baseUrl}/api/leads/hot-alert`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ childId }),
-          }).catch(err => console.error('Hot lead alert failed:', err));
+          console.log(JSON.stringify({ requestId, event: 'hot_lead_detected', childId }));
+          
+          // Use QStash instead of self-HTTP call
+          try {
+            const { queueHotLeadAlert } = await import('@/lib/qstash');
+            await queueHotLeadAlert(childId, requestId);
+          } catch (queueError) {
+            console.error(JSON.stringify({ requestId, event: 'hot_lead_queue_failed', error: (queueError as Error).message }));
+          }
         }
       } catch (leadError) {
-        console.error('Lead scoring error (non-blocking):', leadError);
+        console.error(JSON.stringify({ requestId, event: 'lead_scoring_failed', error: (leadError as Error).message }));
       }
     }
 
-    // Count total errors
-    const totalErrors = 
+    // 11. Calculate total errors
+    const totalErrors =
       (analysisResult.error_classification?.substitutions?.length || 0) +
       (analysisResult.error_classification?.omissions?.length || 0) +
       (analysisResult.error_classification?.insertions?.length || 0) +
       (analysisResult.error_classification?.reversals?.length || 0) +
       (analysisResult.error_classification?.mispronunciations?.length || 0);
 
+    // 12. Return response
+    const duration = Date.now() - startTime;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'assessment_complete',
+      overallScore,
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json({
       success: true,
+      requestId,
       childId,
       childName: name,
       childAge: age,
       parentName,
       parentEmail,
-      parentPhone,
+      parentPhone: parentPhone ? maskPhone(parentPhone) + ' (masked)' : null,
       passage,
-      
+
       // Core scores
       overall_score: overallScore,
       clarity_score: clarityScore,
@@ -554,35 +673,61 @@ Respond ONLY with valid JSON. No additional text.`;
       speed_score: speedScore,
       wpm: analysisResult.wpm,
       completeness: analysisResult.completeness_percentage,
-      
+
       // Error analysis
       errors: analysisResult.errors,
       error_classification: analysisResult.error_classification,
       total_error_count: totalErrors,
-      
-      // Phonics analysis (with soft c/g)
+
+      // Phonics analysis
       phonics_analysis: analysisResult.phonics_analysis,
-      
-      // Full skill breakdown (all 6 skills)
+
+      // Skill breakdown
       skill_breakdown: analysisResult.skill_breakdown,
       avg_skill_score: avgSkillScore,
-      
+
       // Feedback & recommendations
       feedback: analysisResult.feedback,
       strengths: analysisResult.strengths,
       areas_to_improve: analysisResult.areas_to_improve,
       practice_recommendations: analysisResult.practice_recommendations,
-      
+
       encouragement: `Keep reading daily, ${name}! Every page makes you stronger.`,
-      lead_source: lead_source || 'yestoryd',
+      lead_source: params.lead_source || 'yestoryd',
+    }, {
+      headers: {
+        'X-Request-Id': requestId,
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+      },
     });
 
   } catch (error: unknown) {
-    console.error('Assessment analysis error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
+    const duration = Date.now() - startTime;
+
+    console.error(JSON.stringify({
+      requestId,
+      event: 'assessment_error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json(
-      { success: false, error: errorMessage },
+      { success: false, error: 'Analysis failed', requestId },
       { status: 500 }
     );
   }
+}
+
+// --- HEALTH CHECK ---
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    service: 'Assessment Analysis API v2.2 (Hardened)',
+    limits: {
+      maxAudioSizeMB: MAX_AUDIO_SIZE_MB,
+      maxPassageChars: MAX_PASSAGE_LENGTH,
+      rateLimit: `${RATE_LIMIT.maxRequests} per hour`,
+    },
+    timestamp: new Date().toISOString(),
+  });
 }

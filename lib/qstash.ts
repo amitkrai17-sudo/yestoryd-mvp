@@ -331,6 +331,94 @@ export async function deleteQStashSchedule(scheduleId: string) {
 }
 
 // ============================================================
+// HOT LEAD ALERT
+// ============================================================
+
+/**
+ * Queue hot lead alert for admin notification
+ * Called when a child scores low on assessment (high coaching need)
+ */
+export async function queueHotLeadAlert(
+  childId: string,
+  requestId: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  if (!isQStashConfigured()) {
+    console.log('⚠️ QStash not configured, skipping hot lead alert');
+    return { success: false, error: 'QStash not configured' };
+  }
+
+  try {
+    const result = await qstash.publishJSON({
+      url: `${APP_URL}/api/leads/hot-alert`,
+      body: {
+        childId,
+        requestId,
+        timestamp: new Date().toISOString(),
+      },
+      retries: 3,
+      delay: 2, // 2 second delay
+    });
+
+    console.log('🔥 Queued hot lead alert:', {
+      childId,
+      messageId: result.messageId,
+    });
+
+    return { success: true, messageId: result.messageId };
+  } catch (error: any) {
+    console.error('Failed to queue hot lead alert:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================
+// CALENDAR ATTENDEE UPDATE
+// ============================================================
+
+interface CalendarAttendeeUpdateData {
+  eventId: string;
+  newCoachEmail: string;
+  oldCoachEmail?: string;
+  requestId: string;
+}
+
+/**
+ * Queue Google Calendar attendee update
+ * Used when reassigning a coach to a discovery call or session
+ */
+export async function queueCalendarAttendeeUpdate(
+  data: CalendarAttendeeUpdateData
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  if (!isQStashConfigured()) {
+    console.log('⚠️ QStash not configured, skipping calendar update');
+    return { success: false, error: 'QStash not configured' };
+  }
+
+  try {
+    const result = await qstash.publishJSON({
+      url: `${APP_URL}/api/jobs/update-calendar-attendee`,
+      body: {
+        ...data,
+        timestamp: new Date().toISOString(),
+      },
+      retries: 3,
+      delay: 2, // 2 second delay
+    });
+
+    console.log('📅 Queued calendar attendee update:', {
+      eventId: data.eventId,
+      newCoachEmail: data.newCoachEmail,
+      messageId: result.messageId,
+    });
+
+    return { success: true, messageId: result.messageId };
+  } catch (error: any) {
+    console.error('Failed to queue calendar update:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 

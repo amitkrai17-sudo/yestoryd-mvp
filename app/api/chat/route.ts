@@ -1,9 +1,23 @@
-// file: app/api/chat/route.ts
-// rAI v2.0 - Intelligent Chat API
+// ============================================================
+// FILE: app/api/chat/route.ts
+// ============================================================
+// HARDENED VERSION - rAI v2.0 Intelligent Chat API
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security features:
+// - Session-based authentication (NOT client-provided)
+// - Role verification from session (NOT trusted from client)
+// - Rate limiting per user (prevent AI cost abuse)
+// - Request tracing
+// - Usage tracking for cost monitoring
+// - Lazy initialization
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
 import {
   ChatResponse,
   UserRole,
@@ -25,107 +39,321 @@ import {
   OPERATIONAL_RESPONSES,
   OFF_LIMITS_RESPONSES,
 } from '@/lib/rai/prompts';
-
 import { handleAdminInsightQuery } from '@/lib/rai/admin-insights';
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import crypto from 'crypto';
 
-const supabase = createClient(
+// --- CONFIGURATION (Lazy initialization) ---
+const getGenAI = () => new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-interface ChatRequestBody {
-  message: string;
-  userRole: UserRole;
-  userId?: string;
-  userEmail: string;
-  childId?: string;
-  chatHistory?: Array<{ role: string; content: string }>;
+// --- RATE LIMITING ---
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+const RATE_LIMITS: Record<string, { max: number; windowMs: number }> = {
+  admin: { max: 100, windowMs: 60 * 1000 },    // 100/min for admins
+  coach: { max: 50, windowMs: 60 * 1000 },     // 50/min for coaches
+  parent: { max: 20, windowMs: 60 * 1000 },    // 20/min for parents
+  default: { max: 5, windowMs: 60 * 1000 },    // 5/min fallback
+};
+
+function checkRateLimit(
+  identifier: string,
+  role: string
+): { success: boolean; remaining: number } {
+  const now = Date.now();
+  const limits = RATE_LIMITS[role] || RATE_LIMITS.default;
+  const key = `chat_${identifier}`;
+
+  const record = rateLimitMap.get(key);
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(key, { count: 1, resetTime: now + limits.windowMs });
+    return { success: true, remaining: limits.max - 1 };
+  }
+
+  if (record.count >= limits.max) {
+    return { success: false, remaining: 0 };
+  }
+
+  record.count++;
+  return { success: true, remaining: limits.max - record.count };
 }
 
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  
+// --- USAGE TRACKING ---
+async function trackAIUsage(
+  requestId: string,
+  userEmail: string,
+  userRole: string,
+  intent: string,
+  source: string,
+  latencyMs: number,
+  tokensEstimate?: number
+) {
   try {
-    const body: ChatRequestBody = await request.json();
-    const { message, userRole, userEmail, childId, chatHistory } = body;
+    const supabase = getSupabase();
+    await supabase.from('activity_log').insert({
+      user_email: userEmail,
+      action: 'rai_chat',
+      details: {
+        request_id: requestId,
+        intent,
+        source,
+        user_role: userRole,
+        latency_ms: latencyMs,
+        tokens_estimate: tokensEstimate,
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('Failed to track AI usage:', err);
+  }
+}
 
-    if (!message || message.trim().length === 0) {
-      return NextResponse.json({ error: 'Message required' }, { status: 400 });
-    }
-    if (!userEmail || !userRole) {
-      return NextResponse.json({ error: 'User context required' }, { status: 400 });
+// --- MAIN HANDLER ---
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
+  try {
+    // 1. AUTHENTICATE - Get user from session (NOT from request body)
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'auth_failed',
+        error: 'No session',
+      }));
+
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
     }
 
+    // 2. GET ROLE FROM SESSION (NOT from request body)
+    const userEmail = session.user.email;
+    const sessionRole = (session.user as any).role as string;
+    const coachId = (session.user as any).coachId as string | undefined;
+    const parentId = (session.user as any).parentId as string | undefined;
+
+    // Map session role to UserRole
+    let userRole: UserRole;
+    if (sessionRole === 'admin') {
+      userRole = 'admin';
+    } else if (sessionRole === 'coach') {
+      userRole = 'coach';
+    } else if (sessionRole === 'parent') {
+      userRole = 'parent';
+    } else {
+      return NextResponse.json(
+        { error: 'Invalid user role' },
+        { status: 403 }
+      );
+    }
+
+    // 3. RATE LIMITING
+    const rateLimit = checkRateLimit(userEmail, userRole);
+
+    if (!rateLimit.success) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'rate_limited',
+        userEmail,
+        userRole,
+      }));
+
+      return NextResponse.json(
+        { error: 'Too many requests. Please slow down.' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'Retry-After': '60',
+          },
+        }
+      );
+    }
+
+    // 4. PARSE BODY (only message and childId from client)
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
+
+    const { message, childId, chatHistory } = body;
+
+    // 5. VALIDATE MESSAGE
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Message is required' },
+        { status: 400 }
+      );
+    }
+
+    if (message.length > 2000) {
+      return NextResponse.json(
+        { error: 'Message too long (max 2000 characters)' },
+        { status: 400 }
+      );
+    }
+
+    // 6. VALIDATE CHAT HISTORY (with token budget)
+    const MAX_HISTORY_CHARS = 6000; // ~1500 tokens
+    let validChatHistory: Array<{ role: string; content: string }> = [];
+    
+    if (Array.isArray(chatHistory)) {
+      let totalChars = 0;
+      // Process from newest to oldest, keep within budget
+      const reversedHistory = [...chatHistory]
+        .filter((msg): msg is { role: string; content: string } =>
+          typeof msg === 'object' &&
+          typeof msg.role === 'string' &&
+          typeof msg.content === 'string'
+        )
+        .slice(-6)
+        .reverse();
+      
+      for (const msg of reversedHistory) {
+        const msgChars = msg.content.length;
+        if (totalChars + msgChars > MAX_HISTORY_CHARS) {
+          break; // Stop adding older messages
+        }
+        validChatHistory.unshift(msg); // Add to front (oldest first)
+        totalChars += msgChars;
+      }
+    }
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'chat_request',
+      userEmail,
+      userRole,
+      messageLength: message.length,
+      hasChildId: !!childId,
+    }));
+
+    // 7. CLASSIFY INTENT
     const { intent, tier0Match } = await classifyIntent(message, userRole);
     console.log(`🎯 Intent: ${intent} (Tier ${tier0Match ? '0' : '1'})`);
-    
-    // Admin Insight Check (fast path for pre-computed insights)
+
+    // 8. ADMIN INSIGHT CHECK (fast path)
     if (userRole === 'admin') {
       const insightResponse = await handleAdminInsightQuery(message);
       if (insightResponse) {
-        console.log('📊 Admin insight query matched');
+        const latency = Date.now() - startTime;
+        await trackAIUsage(requestId, userEmail, userRole, 'ADMIN_INSIGHT', 'cached_insight', latency);
+
         return NextResponse.json({
           response: insightResponse,
           intent: 'ADMIN_INSIGHT',
           source: 'cached_insight',
+          requestId,
           debug: {
             tier0Match: false,
-            latencyMs: Date.now() - startTime,
-          }
+            latencyMs: latency,
+          },
+        }, {
+          headers: {
+            'X-Request-Id': requestId,
+            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          },
         });
       }
     }
-    
+
+    // 9. HANDLE INTENT
     let response: ChatResponse;
     switch (intent) {
       case 'LEARNING':
-        response = await handleLearning(message, userRole, userEmail, childId, chatHistory);
+        response = await handleLearning(message, userRole, userEmail, childId, validChatHistory, coachId);
         break;
-        
+
       case 'OPERATIONAL':
         response = await handleOperational(message, userRole, userEmail);
         break;
-        
+
       case 'SCHEDULE':
-        response = await handleSchedule(message, userRole, userEmail);
+        response = await handleSchedule(message, userRole, userEmail, coachId);
         break;
-        
+
       case 'OFF_LIMITS':
         response = handleOffLimits(userRole);
         break;
-        
+
       default:
-        response = await handleLearning(message, userRole, userEmail, childId, chatHistory);
+        response = await handleLearning(message, userRole, userEmail, childId, validChatHistory, coachId);
     }
 
     response.intent = intent;
+    const latency = Date.now() - startTime;
     response.debug = {
       ...response.debug,
       tier0Match,
-      latencyMs: Date.now() - startTime,
+      latencyMs: latency,
     };
 
-    return NextResponse.json(response);
+    // 10. TRACK USAGE
+    await trackAIUsage(requestId, userEmail, userRole, intent, response.source || 'unknown', latency);
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'chat_complete',
+      intent,
+      source: response.source,
+      latencyMs: latency,
+    }));
+
+    return NextResponse.json({
+      ...response,
+      requestId,
+    }, {
+      headers: {
+        'X-Request-Id': requestId,
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+      },
+    });
 
   } catch (error: unknown) {
-    console.error('rAI Chat API error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Chat failed';
+    const latency = Date.now() - startTime;
+
+    console.error(JSON.stringify({
+      requestId,
+      event: 'chat_error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      latencyMs: latency,
+    }));
+
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'Chat service temporarily unavailable', requestId },
       { status: 500 }
     );
   }
 }
+
+// ============================================================
+// INTENT HANDLERS
+// ============================================================
 
 async function handleLearning(
   message: string,
   userRole: UserRole,
   userEmail: string,
   childId?: string,
-  chatHistory?: Array<{ role: string; content: string }>
+  chatHistory?: Array<{ role: string; content: string }>,
+  sessionCoachId?: string
 ): Promise<ChatResponse> {
-  
+  const supabase = getSupabase();
+
   let child: ChildWithCache | null = null;
   let coach: Coach | null = null;
   let children: { id: string; name: string }[] = [];
@@ -147,15 +375,12 @@ async function handleLearning(
 
     children = parentChildren.map(c => ({ id: c.id, name: c.child_name || c.name }));
 
-    // If only one child, auto-select regardless of childId passed
     if (parentChildren.length === 1) {
       child = parentChildren[0] as ChildWithCache;
     } else if (childId) {
-      // Multiple children - try to match childId
       const found = parentChildren.find(c => c.id === childId);
       child = found ? (found as ChildWithCache) : null;
       if (!child) {
-        // childId didn't match - ask for clarification
         return {
           response: `I see you have ${parentChildren.length} children enrolled: ${children.map(c => c.name).join(' and ')}. Which child are you asking about?`,
           intent: 'LEARNING',
@@ -165,7 +390,6 @@ async function handleLearning(
         };
       }
     } else {
-      // No childId and multiple children - ask for clarification
       return {
         response: `I see you have ${parentChildren.length} children enrolled: ${children.map(c => c.name).join(' and ')}. Which child are you asking about?`,
         intent: 'LEARNING',
@@ -190,14 +414,9 @@ async function handleLearning(
         .select('id, name, child_name, age, parent_email, assigned_coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
         .eq('id', childId)
         .single();
-      
-      const { data: coachData } = await supabase
-        .from('coaches')
-        .select('id')
-        .eq('email', userEmail)
-        .single();
 
-      if (childData?.assigned_coach_id !== coachData?.id) {
+      // SECURITY: Verify coach owns this child
+      if (childData?.assigned_coach_id !== sessionCoachId) {
         return {
           response: "I can only provide information about students assigned to you.",
           intent: 'LEARNING',
@@ -211,9 +430,10 @@ async function handleLearning(
 
   const childName = child?.child_name || child?.name || 'your child';
 
+  // Cache check for recent session queries
   if (userRole === 'parent' && child && isRecentSessionQuery(message)) {
     const cache = await getSessionCache(child.id);
-    
+
     if (cache.isFresh && cache.summary && cache.date) {
       console.log('📦 Cache hit! Returning cached summary');
       return {
@@ -225,10 +445,11 @@ async function handleLearning(
     }
   }
 
+  // Hybrid search for context
   const searchResult = await hybridSearch({
     query: message,
     childId: child?.id,
-    coachId: userRole === 'coach' ? await getCoachId(userEmail) : null,
+    coachId: userRole === 'coach' ? sessionCoachId : null,
     userRole,
     limit: 15,
   });
@@ -242,13 +463,15 @@ async function handleLearning(
     coach ? { name: coach.name, phone: coach.phone || '918976287997', email: coach.email } : null
   );
 
+  // Generate AI response
+  const genAI = getGenAI();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
-  const conversationContext = chatHistory?.slice(-6).map(msg => 
+  const conversationContext = chatHistory?.slice(-6).map(msg =>
     `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
   ).join('\n') || '';
 
-  const prompt = conversationContext 
+  const prompt = conversationContext
     ? `${systemPrompt}\n\nConversation so far:\n${conversationContext}\n\nUser: ${message}`
     : `${systemPrompt}\n\nUser: ${message}`;
 
@@ -278,9 +501,9 @@ async function handleOperational(
   userRole: UserRole,
   userEmail: string
 ): Promise<ChatResponse> {
+  const supabase = getSupabase();
   const lowerMessage = message.toLowerCase();
 
-  // What can you help with / What can you do
   if (/what can you (do|help|answer|assist)|how can you help|what are you (for|able)|what.*your (purpose|capabilities)|^help$/i.test(lowerMessage)) {
     return {
       response: OPERATIONAL_RESPONSES.what_can_help,
@@ -346,7 +569,7 @@ async function handleOperational(
       .select('*', { count: 'exact', head: true })
       .eq('assigned_coach_id', coachId)
       .eq('status', 'enrolled');
-    
+
     return {
       response: `You currently have ${count || 0} active student${count !== 1 ? 's' : ''} enrolled.`,
       intent: 'OPERATIONAL',
@@ -363,10 +586,10 @@ async function handleOperational(
 
     if (children && children.length > 0) {
       const child = children[0];
-      const enrolledDate = child.enrolled_at 
+      const enrolledDate = child.enrolled_at
         ? new Date(child.enrolled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'recently';
-      
+
       return {
         response: `${child.child_name}'s enrollment is active. Enrolled on ${enrolledDate}. Progress: ${child.sessions_completed || 0}/${child.total_sessions || 9} sessions completed. You have Master Key access to all Yestoryd services.`,
         intent: 'OPERATIONAL',
@@ -391,8 +614,10 @@ async function handleOperational(
 async function handleSchedule(
   message: string,
   userRole: UserRole,
-  userEmail: string
+  userEmail: string,
+  sessionCoachId?: string
 ): Promise<ChatResponse> {
+  const supabase = getSupabase();
   const now = new Date();
   const today = now.toISOString().split('T')[0];
 
@@ -446,11 +671,11 @@ async function handleSchedule(
       day: 'numeric',
       month: 'short',
     });
-    
+
     const coachData = nextSession.coach as { name: string } | { name: string }[] | null;
     const coachName = Array.isArray(coachData) ? coachData[0]?.name : coachData?.name;
     let responseText = `${child?.child_name}'s next session is on ${sessionDate} at ${formatTime(nextSession.scheduled_time)} with Coach ${coachName || 'your coach'}.`;
-    
+
     if (nextSession.google_meet_link) {
       responseText += ` Meeting link: ${nextSession.google_meet_link}`;
     }
@@ -466,7 +691,7 @@ async function handleSchedule(
     };
 
   } else if (userRole === 'coach') {
-    const coachId = await getCoachId(userEmail);
+    const coachId = sessionCoachId || await getCoachId(userEmail);
 
     if (/today/i.test(message)) {
       const { data: sessions } = await supabase
@@ -569,7 +794,12 @@ function handleOffLimits(userRole: UserRole): ChatResponse {
   };
 }
 
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
 async function getCoachId(email: string): Promise<string | null> {
+  const supabase = getSupabase();
   const { data } = await supabase
     .from('coaches')
     .select('id')
@@ -579,6 +809,7 @@ async function getCoachId(email: string): Promise<string | null> {
 }
 
 async function getCoachForParent(parentEmail: string): Promise<Coach | null> {
+  const supabase = getSupabase();
   const { data: child } = await supabase
     .from('children')
     .select('assigned_coach_id')
@@ -603,4 +834,18 @@ function formatTime(time: string): string {
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 || 12;
   return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+}
+
+// ============================================================
+// HEALTH CHECK
+// ============================================================
+
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    service: 'rAI Chat API v2.0 (Hardened)',
+    features: ['authentication', 'rate_limiting', 'usage_tracking'],
+    rateLimits: RATE_LIMITS,
+    timestamp: new Date().toISOString(),
+  });
 }
