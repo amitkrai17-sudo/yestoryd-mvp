@@ -253,8 +253,8 @@ function handleSubdomainRouting(
 
 function getLoginUrl(pathname: string, baseUrl: URL): URL {
   if (pathname.startsWith('/admin')) {
-    return new URL('/admin/login',
-  '/admin', baseUrl);
+    return new URL('/admin/login', baseUrl);
+
   }
   if (pathname.startsWith('/coach')) {
     return new URL('/coach/login', baseUrl);
