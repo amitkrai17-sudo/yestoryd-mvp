@@ -625,9 +625,9 @@ function LetsTalkContent() {
                     You'll receive a confirmation on WhatsApp with the Google Meet link.
                   </p>
                   
-                  {bookingResult.meetLink && (
+                  {bookingResult.date && bookingResult.time && (
                     <a
-                      href={bookingResult.meetLink}
+                      href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=Discovery%20Call%20-%20Yestoryd&dates=${bookingResult.date.replace(/-/g, "")}T${bookingResult.time.replace(":", "")}00/${bookingResult.date.replace(/-/g, "")}T${String(Number(bookingResult.time.split(":")[0]) + 1).padStart(2, "0")}${bookingResult.time.split(":")[1]}00&details=Discovery%20call%20with%20Yestoryd%20Reading%20Coach`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 bg-[#ff0099] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#e6008a] transition-all"

@@ -22,12 +22,23 @@ export default function AdminLoginPage() {
     checkExistingSession();
   }, []);
 
+  const ADMIN_EMAILS = [
+    'rucha.rai@yestoryd.com',
+    'rucha@yestoryd.com',
+    'amitkrai17@gmail.com',
+  ];
+
   const checkExistingSession = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Already logged in - redirect to admin
-        router.push('/admin');
+        const userEmail = session.user.email?.toLowerCase() || '';
+        if (ADMIN_EMAILS.includes(userEmail)) {
+          router.push('/admin');
+        } else {
+          await supabase.auth.signOut();
+          setError('Access denied. Admin privileges required.');
+        }
       }
     } catch (err) {
       console.error('Session check error:', err);
