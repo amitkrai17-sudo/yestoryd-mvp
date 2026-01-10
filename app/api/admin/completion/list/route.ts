@@ -1,21 +1,35 @@
-// =============================================================================
+// ============================================================
 // FILE: app/api/admin/completion/list/route.ts
-// PURPOSE: List enrollments with completion status, risk levels, and all details
-// =============================================================================
+// ============================================================
+// HARDENED VERSION - List Enrollments with Completion Status
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ⚠️ CRITICAL FIX: Original had NO AUTHENTICATION!
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'completion_list_auth_failed', error: auth.error }));
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    console.log(JSON.stringify({ requestId, event: 'completion_list_request', adminEmail: auth.email }));
+
+    const supabase = getSupabase();
     const today = new Date();
 
-    // Get all enrollments (active, pending_start, and completed for history)
+    // Get all enrollments
     const { data: enrollments, error } = await supabase
       .from('enrollments')
       .select(`
@@ -55,8 +69,8 @@ export async function GET(request: NextRequest) {
       .order('program_end', { ascending: true });
 
     if (error) {
-      console.error('Enrollment fetch error:', error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      console.error(JSON.stringify({ requestId, event: 'completion_list_db_error', error: error.message }));
+      return NextResponse.json({ success: false, error: 'Failed to fetch enrollments' }, { status: 500 });
     }
 
     // Enrich each enrollment with session data and risk calculation
@@ -77,7 +91,7 @@ export async function GET(request: NextRequest) {
           .eq('status', 'completed')
           .order('completed_at', { ascending: false, nullsFirst: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         // Check for assessments
         const { data: assessments } = await supabase
@@ -90,10 +104,9 @@ export async function GET(request: NextRequest) {
           .from('children')
           .select('id')
           .eq('id', enrollment.child_id)
-          .single();
+          .maybeSingle();
 
-        const hasInitialAssessment = (assessments?.some(a => !a.assessment_type || a.assessment_type === 'initial')) || 
-                                     !!childData;
+        const hasInitialAssessment = (assessments?.some(a => !a.assessment_type || a.assessment_type === 'initial')) || !!childData;
         const hasFinalAssessment = assessments?.some(a => a.assessment_type === 'final') || false;
 
         // Check if final assessment was sent
@@ -103,16 +116,16 @@ export async function GET(request: NextRequest) {
           .eq('enrollment_id', enrollment.id)
           .eq('event_type', 'final_assessment_sent')
           .limit(1)
-          .single();
+          .maybeSingle();
 
         const finalAssessmentSent = !!finalAssessmentEvent;
 
         // Calculate days and risk
         const programEnd = new Date(enrollment.program_end);
         const daysRemaining = Math.ceil((programEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         const lastSessionDate = lastSession?.completed_at || lastSession?.session_date || null;
-        const daysSinceLastSession = lastSessionDate 
+        const daysSinceLastSession = lastSessionDate
           ? Math.ceil((today.getTime() - new Date(lastSessionDate).getTime()) / (1000 * 60 * 60 * 24))
           : null;
 
@@ -137,14 +150,14 @@ export async function GET(request: NextRequest) {
         }
 
         // Get parent info (prefer parents table, fallback to children table)
-        const parentName = (enrollment.parents as any)?.name || 
-                          (enrollment.children as any)?.parent_name || 
+        const parentName = (enrollment.parents as any)?.name ||
+                          (enrollment.children as any)?.parent_name ||
                           'Unknown';
-        const parentEmail = (enrollment.parents as any)?.email || 
-                           (enrollment.children as any)?.parent_email || 
+        const parentEmail = (enrollment.parents as any)?.email ||
+                           (enrollment.children as any)?.parent_email ||
                            '';
-        const parentPhone = (enrollment.parents as any)?.phone || 
-                           (enrollment.children as any)?.parent_phone || 
+        const parentPhone = (enrollment.parents as any)?.phone ||
+                           (enrollment.children as any)?.parent_phone ||
                            '';
 
         return {
@@ -175,13 +188,12 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Update risk levels in database (batch update for efficiency)
+    // Update risk levels in database (batch update)
     const riskUpdates = enrichedEnrollments
       .filter(e => e.status !== 'completed')
       .map(e => ({ id: e.id, risk_level: e.riskLevel }));
 
     if (riskUpdates.length > 0) {
-      // Update each enrollment's risk level
       for (const update of riskUpdates) {
         await supabase
           .from('enrollments')
@@ -190,8 +202,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'completion_list_success', count: enrichedEnrollments.length, duration: `${duration}ms` }));
+
     return NextResponse.json({
       success: true,
+      requestId,
       enrollments: enrichedEnrollments,
       summary: {
         total: enrichedEnrollments.length,
@@ -205,7 +221,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('List enrollments error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(JSON.stringify({ requestId, event: 'completion_list_error', error: error.message }));
+    return NextResponse.json({ success: false, error: error.message, requestId }, { status: 500 });
   }
 }

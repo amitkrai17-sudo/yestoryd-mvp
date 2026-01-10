@@ -1,58 +1,97 @@
-// file: app/api/admin/agreements/upload/route.ts
-// Upload new agreement DOCX to Supabase Storage
-// POST /api/admin/agreements/upload
+// ============================================================
+// FILE: app/api/admin/agreements/upload/route.ts
+// ============================================================
+// HARDENED VERSION - Upload Agreement DOCX
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ⚠️ CRITICAL FIX: Original had NO AUTHENTICATION!
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// --- VALIDATION SCHEMA ---
+const uploadSchema = z.object({
+  version: z.string().min(1).max(20).regex(/^[\d.]+$/, 'Version must be numeric (e.g., 1.0, 2.1)'),
+  title: z.string().min(1).max(200),
+  description: z.string().max(1000).optional(),
+  entityType: z.enum(['proprietorship', 'company', 'partnership', 'llp']).default('proprietorship'),
+});
 
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'agreements_upload_auth_failed', error: auth.error }));
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    let formData;
+    try {
+      formData = await request.formData();
+    } catch {
+      return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
+    }
+
+    const file = formData.get('file') as File | null;
     const version = formData.get('version') as string;
     const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const entityType = formData.get('entityType') as string || 'proprietorship';
-    const uploadedByEmail = formData.get('uploadedByEmail') as string;
+    const description = formData.get('description') as string | null;
+    const entityType = formData.get('entityType') as string | null;
 
-    // Validation
-    if (!file || !version || !title) {
-      return NextResponse.json(
-        { error: 'File, version, and title are required' },
-        { status: 400 }
-      );
+    // Validate required fields
+    const validation = uploadSchema.safeParse({
+      version,
+      title,
+      description: description || undefined,
+      entityType: entityType || 'proprietorship',
+    });
+
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Validation failed', details: validation.error.flatten() }, { status: 400 });
     }
 
-    // Check file type
+    // Validate file
+    if (!file) {
+      return NextResponse.json({ error: 'File is required' }, { status: 400 });
+    }
+
     if (!file.name.endsWith('.docx')) {
-      return NextResponse.json(
-        { error: 'Only .docx files are allowed' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Only .docx files are allowed' }, { status: 400 });
     }
+
+    // File size limit (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
+    }
+
+    const validatedData = validation.data;
+
+    console.log(JSON.stringify({ requestId, event: 'agreements_upload_request', adminEmail: auth.email, version: validatedData.version, fileName: file.name }));
+
+    const supabase = getSupabase();
 
     // Check if version already exists
     const { data: existingVersion } = await supabase
       .from('agreement_versions')
       .select('id')
-      .eq('version', version)
-      .single();
+      .eq('version', validatedData.version)
+      .maybeSingle();
 
     if (existingVersion) {
-      return NextResponse.json(
-        { error: `Version ${version} already exists. Use a different version number.` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `Version ${validatedData.version} already exists. Use a different version number.` }, { status: 409 });
     }
 
     // Generate unique filename
     const timestamp = Date.now();
-    const sanitizedVersion = version.replace(/[^a-zA-Z0-9.-]/g, '-');
+    const sanitizedVersion = validatedData.version.replace(/[^a-zA-Z0-9.-]/g, '-');
     const fileName = `agreement-v${sanitizedVersion}-${timestamp}.docx`;
     const filePath = `agreements/${fileName}`;
 
@@ -65,15 +104,12 @@ export async function POST(request: NextRequest) {
       .from('coach-documents')
       .upload(filePath, buffer, {
         contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        upsert: false
+        upsert: false,
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
-      return NextResponse.json(
-        { error: 'Failed to upload file: ' + uploadError.message },
-        { status: 500 }
-      );
+      console.error(JSON.stringify({ requestId, event: 'agreements_upload_storage_error', error: uploadError.message }));
+      return NextResponse.json({ error: 'Failed to upload file: ' + uploadError.message }, { status: 500 });
     }
 
     // Get public URL
@@ -87,40 +123,54 @@ export async function POST(request: NextRequest) {
     const { data: agreementRecord, error: dbError } = await supabase
       .from('agreement_versions')
       .insert({
-        version,
-        title,
-        description,
+        version: validatedData.version,
+        title: validatedData.title,
+        description: validatedData.description || null,
         file_url: fileUrl,
         file_name: file.name,
         file_size_bytes: file.size,
-        entity_type: entityType,
-        uploaded_by_email: uploadedByEmail,
-        is_active: false
+        entity_type: validatedData.entityType,
+        uploaded_by_email: auth.email,
+        is_active: false,
       })
       .select()
       .single();
 
     if (dbError) {
-      console.error('Database error:', dbError);
+      console.error(JSON.stringify({ requestId, event: 'agreements_upload_db_error', error: dbError.message }));
       // Try to delete the uploaded file
       await supabase.storage.from('coach-documents').remove([filePath]);
-      return NextResponse.json(
-        { error: 'Failed to save agreement record: ' + dbError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to save agreement record: ' + dbError.message }, { status: 500 });
     }
+
+    // Audit log
+    await supabase.from('activity_log').insert({
+      user_email: auth.email,
+      action: 'agreement_uploaded',
+      details: {
+        request_id: requestId,
+        agreement_id: agreementRecord.id,
+        version: validatedData.version,
+        title: validatedData.title,
+        file_name: file.name,
+        file_size: file.size,
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    });
+
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'agreements_upload_success', agreementId: agreementRecord.id, duration: `${duration}ms` }));
 
     return NextResponse.json({
       success: true,
+      requestId,
       message: 'Agreement uploaded successfully',
-      agreement: agreementRecord
+      agreement: agreementRecord,
     });
 
-  } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error(JSON.stringify({ requestId, event: 'agreements_upload_error', error: error.message }));
+    return NextResponse.json({ error: 'Internal server error', requestId }, { status: 500 });
   }
 }

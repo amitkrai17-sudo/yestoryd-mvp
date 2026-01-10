@@ -1,26 +1,54 @@
-// =============================================================================
+// ============================================================
 // FILE: app/api/admin/completion/send-final-assessment/route.ts
-// PURPOSE: Send final assessment link to parent via email/WhatsApp
-// =============================================================================
+// ============================================================
+// HARDENED VERSION - Send Final Assessment Link
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ⚠️ CRITICAL FIX: Original had NO AUTHENTICATION!
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// --- VALIDATION SCHEMA ---
+const sendAssessmentSchema = z.object({
+  enrollmentId: z.string().uuid('Invalid enrollment ID'),
+  parentEmail: z.string().email('Invalid email'),
+  childName: z.string().min(1).max(100),
+});
 
 export async function POST(request: NextRequest) {
-  try {
-    const { enrollmentId, parentEmail, childName } = await request.json();
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
 
-    if (!enrollmentId || !parentEmail) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
+  try {
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'send_final_assessment_auth_failed', error: auth.error }));
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
     }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const validation = sendAssessmentSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: 'Validation failed', details: validation.error.flatten() }, { status: 400 });
+    }
+
+    const { enrollmentId, parentEmail, childName } = validation.data;
+
+    console.log(JSON.stringify({ requestId, event: 'send_final_assessment_request', adminEmail: auth.email, enrollmentId, parentEmail }));
+
+    const supabase = getSupabase();
 
     // Get enrollment details
     const { data: enrollment, error: enrollmentError } = await supabase
@@ -35,10 +63,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (enrollmentError || !enrollment) {
-      return NextResponse.json(
-        { success: false, error: 'Enrollment not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Enrollment not found' }, { status: 404 });
     }
 
     // Generate final assessment link
@@ -54,105 +79,106 @@ export async function POST(request: NextRequest) {
         child_name: childName,
         link: assessmentLink,
         sent_at: new Date().toISOString(),
+        sent_by: auth.email,
       },
       triggered_by: 'admin',
     });
 
+    // Audit log
+    await supabase.from('activity_log').insert({
+      user_email: auth.email,
+      action: 'final_assessment_sent',
+      details: {
+        request_id: requestId,
+        enrollment_id: enrollmentId,
+        parent_email: parentEmail,
+        child_name: childName,
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    });
+
     // Send via SendGrid
+    let emailSent = false;
     try {
       const sgMail = require('@sendgrid/mail');
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
       await sgMail.send({
         to: parentEmail,
-        from: {
-          email: 'engage@yestoryd.com',
-          name: 'Yestoryd',
-        },
+        from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
         subject: `🎉 ${childName}'s Final Reading Assessment - See How Far They've Come!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #FF0099;">Congratulations! 🎉</h2>
             <p>Hi there,</p>
             <p><strong>${childName}</strong> has almost completed the 3-month reading program! It's time to see how much they've improved.</p>
-            
             <p>Please complete the final reading assessment so we can create a personalized progress report comparing their journey from Day 1 to now.</p>
-            
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${assessmentLink}" 
-                 style="background: linear-gradient(to right, #FF0099, #7B008B); 
-                        color: white; 
-                        padding: 15px 40px; 
-                        text-decoration: none; 
+              <a href="${assessmentLink}"
+                 style="background: linear-gradient(to right, #FF0099, #7B008B);
+                        color: white;
+                        padding: 15px 40px;
+                        text-decoration: none;
                         border-radius: 8px;
                         font-weight: bold;
                         display: inline-block;">
                 Start Final Assessment
               </a>
             </div>
-            
             <p style="color: #666; font-size: 14px;">
               This assessment takes just 5 minutes and will help us generate ${childName}'s completion certificate with their progress report.
             </p>
-            
             <p>Best regards,<br>Team Yestoryd</p>
           </div>
         `,
       });
+      emailSent = true;
     } catch (emailError) {
       console.error('Email send error:', emailError);
-      // Continue even if email fails
     }
 
-    // Send via AiSensy WhatsApp (if template exists)
+    // Send via AiSensy WhatsApp
+    let whatsappSent = false;
     try {
-      const parentPhone = await getParentPhone(enrollment.parent_id);
-      if (parentPhone) {
-        await sendWhatsAppMessage(parentPhone, childName, assessmentLink);
+      const { data: parent } = await supabase
+        .from('parents')
+        .select('phone')
+        .eq('id', enrollment.parent_id)
+        .single();
+
+      if (parent?.phone) {
+        const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: process.env.AISENSY_API_KEY,
+            campaignName: 'final_assessment_request',
+            destination: parent.phone.replace(/\D/g, ''),
+            userName: 'Yestoryd',
+            templateParams: [childName, assessmentLink],
+          }),
+        });
+        whatsappSent = response.ok;
       }
     } catch (waError) {
       console.error('WhatsApp send error:', waError);
-      // Continue even if WhatsApp fails
     }
+
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'send_final_assessment_success', enrollmentId, emailSent, whatsappSent, duration: `${duration}ms` }));
 
     return NextResponse.json({
       success: true,
+      requestId,
       message: 'Final assessment link sent',
       link: assessmentLink,
+      emailSent,
+      whatsappSent,
     });
 
   } catch (error: any) {
-    console.error('Send final assessment error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    console.error(JSON.stringify({ requestId, event: 'send_final_assessment_error', error: error.message }));
+    return NextResponse.json({ success: false, error: error.message, requestId }, { status: 500 });
   }
-}
-
-async function getParentPhone(parentId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('parents')
-    .select('phone')
-    .eq('id', parentId)
-    .single();
-  return data?.phone || null;
-}
-
-async function sendWhatsAppMessage(phone: string, childName: string, link: string) {
-  // AiSensy API call
-  const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      apiKey: process.env.AISENSY_API_KEY,
-      campaignName: 'final_assessment_request',
-      destination: phone.replace(/\D/g, ''),
-      userName: 'Yestoryd',
-      templateParams: [childName, link],
-    }),
-  });
-  return response.json();
 }

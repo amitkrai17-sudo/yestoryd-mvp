@@ -1,20 +1,21 @@
-// app/api/admin/crm/coaches/route.ts
-// GET - Fetch all active coaches for assignment dropdown
-// UPDATED: Include availability/exit fields for filtering
+// ============================================================
+// FILE: app/api/admin/crm/coaches/route.ts
+// ============================================================
+// HARDENED VERSION - Admin CRM Coaches API
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ============================================================
 
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import crypto from 'crypto';
 
 // Default coaches (always available even without DB)
 const DEFAULT_COACHES = [
-  { 
-    id: 'rucha-default', 
-    name: 'Rucha Rai', 
+  {
+    id: 'rucha-default',
+    name: 'Rucha Rai',
     email: 'rucha@yestoryd.com',
     is_available: true,
     is_active: true,
@@ -22,9 +23,21 @@ const DEFAULT_COACHES = [
   },
 ];
 
-// GET - Fetch all active coaches for assignment dropdown
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    console.log(JSON.stringify({ requestId, event: 'crm_coaches_request', adminEmail: auth.email }));
+
+    const supabase = getSupabase();
+
     const { data, error } = await supabase
       .from('coaches')
       .select('id, name, email, status, is_available, is_active, exit_status')
@@ -36,20 +49,24 @@ export async function GET() {
     // Combine default coaches with DB coaches (avoid duplicates by email)
     const dbCoaches = (data || []).map(c => ({
       ...c,
-      is_available: c.is_available !== false, // default true
-      is_active: c.is_active !== false, // default true
+      is_available: c.is_available !== false,
+      is_active: c.is_active !== false,
     }));
-    
+
     const dbEmails = dbCoaches.map(c => c.email.toLowerCase());
     const allCoaches = [
       ...DEFAULT_COACHES.filter(dc => !dbEmails.includes(dc.email.toLowerCase())),
       ...dbCoaches
     ];
 
-    return NextResponse.json({ coaches: allCoaches });
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'crm_coaches_success', count: allCoaches.length, duration: `${duration}ms` }));
+
+    return NextResponse.json({ success: true, requestId, coaches: allCoaches });
+
   } catch (error: any) {
-    console.error('Error fetching coaches:', error);
+    console.error(JSON.stringify({ requestId, event: 'crm_coaches_error', error: error.message }));
     // Return default coaches if table doesn't exist or other error
-    return NextResponse.json({ coaches: DEFAULT_COACHES });
+    return NextResponse.json({ success: true, requestId, coaches: DEFAULT_COACHES });
   }
 }

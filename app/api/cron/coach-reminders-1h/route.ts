@@ -1,100 +1,109 @@
-// file: app/api/cron/coach-reminders-1h/route.ts
-// 1-hour session reminders for coaches
-// Called by QStash schedule (not Vercel cron) every hour
-// This doesn't count against Vercel's 2 cron limit!
+// ============================================================
+// FILE: app/api/cron/coach-reminders-1h/route.ts
+// ============================================================
+// HARDENED VERSION - 1-Hour Session Reminders for Coaches
+// Called by QStash schedule every hour
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security features:
+// - QStash signature verification
+// - CRON_SECRET + Internal API key fallback
+// - Lazy Supabase initialization
+// - Request tracing
+// - Structured logging
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Receiver } from '@upstash/qstash';
+import crypto from 'crypto';
 
-const supabase = createClient(
+// --- CONFIGURATION (Lazy initialization) ---
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Verify request is from QStash or authorized caller
-async function verifyRequest(request: NextRequest): Promise<boolean> {
-  // Check for CRON_SECRET (manual testing)
+// --- VERIFICATION ---
+async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
+  // 1. Check CRON_SECRET
   const authHeader = request.headers.get('authorization');
-  if (authHeader === `Bearer ${process.env.CRON_SECRET}`) {
-    return true;
+  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
+    return { isValid: true, source: 'cron_secret' };
   }
 
-  // Check for QStash signature
+  // 2. Check internal API key
+  const internalKey = request.headers.get('x-internal-api-key');
+  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
+    return { isValid: true, source: 'internal' };
+  }
+
+  // 3. Check QStash signature
   const signature = request.headers.get('upstash-signature');
-  if (signature) {
+  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
     try {
       const receiver = new Receiver({
-        currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-        nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
+        currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
+        nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
       });
 
-      const body = await request.text();
       const isValid = await receiver.verify({
         signature,
-        body,
+        body: body || '',
       });
-      return isValid;
+
+      if (isValid) {
+        return { isValid: true, source: 'qstash' };
+      }
     } catch (e) {
       console.error('QStash signature verification failed:', e);
-      return false;
     }
   }
 
-  return false;
+  return { isValid: false, source: 'none' };
 }
 
-export async function GET(request: NextRequest) {
-  // For GET requests, just check auth header
-  const authHeader = request.headers.get('authorization');
-  const qstashSig = request.headers.get('upstash-signature');
-  
-  if (!qstashSig && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  return processReminders();
-}
-
-export async function POST(request: NextRequest) {
-  const isValid = await verifyRequest(request);
-  if (!isValid) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  return processReminders();
-}
-
-async function processReminders() {
+// --- MAIN PROCESSOR ---
+async function processReminders(requestId: string, source: string) {
+  const startTime = Date.now();
   const results = {
     sent: 0,
     failed: 0,
+    skipped: 0,
     errors: [] as string[],
   };
 
   try {
+    const supabase = getSupabase();
+
+    // Calculate IST time
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
     const nowIST = new Date(now.getTime() + istOffset);
-    
-    const todayStr = nowIST.toISOString().split('T')[0];
-    const currentHour = nowIST.getHours();
-    const targetHour = currentHour + 1;
 
-    // Skip if target hour is past midnight (would be next day)
+    let targetDateStr = nowIST.toISOString().split('T')[0];
+    const currentHour = nowIST.getHours();
+    let targetHour = currentHour + 1;
+
+    // Handle midnight rollover (Cinderella Bug Fix)
+    // When currentHour is 23, targetHour is 24 → should be 00:00 tomorrow
     if (targetHour >= 24) {
-      return NextResponse.json({
-        success: true,
-        message: 'No sessions in next hour (past midnight)',
-        results,
-      });
+      targetHour = targetHour - 24; // 24 → 0
+      const tomorrow = new Date(nowIST);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      targetDateStr = tomorrow.toISOString().split('T')[0];
     }
 
-    // Format target time range
     const targetTimeStart = `${String(targetHour).padStart(2, '0')}:00:00`;
     const targetTimeEnd = `${String(targetHour).padStart(2, '0')}:59:59`;
 
-    console.log(`⏰ Checking for sessions between ${targetTimeStart} and ${targetTimeEnd} on ${todayStr}`);
+    console.log(JSON.stringify({
+      requestId,
+      event: 'coach_reminders_1h_started',
+      source,
+      targetDate: targetDateStr,
+      targetTimeRange: `${targetTimeStart} - ${targetTimeEnd}`,
+    }));
 
     // Get sessions in the next hour
     const { data: sessions, error } = await supabase
@@ -108,48 +117,68 @@ async function processReminders() {
         child_id,
         google_meet_link,
         coach_reminder_1h_sent,
-        children (
-          id,
-          name,
-          child_name
-        ),
-        coaches (
-          id,
-          name,
-          phone,
-          email
-        )
+        children (id, name, child_name),
+        coaches (id, name, phone, email)
       `)
-      .eq('scheduled_date', todayStr)
+      .eq('scheduled_date', targetDateStr)
       .eq('status', 'scheduled')
       .gte('scheduled_time', targetTimeStart)
       .lte('scheduled_time', targetTimeEnd)
       .or('coach_reminder_1h_sent.is.null,coach_reminder_1h_sent.eq.false');
 
     if (error) {
-      console.error('Error fetching sessions:', error);
+      console.error(JSON.stringify({
+        requestId,
+        event: 'db_error',
+        error: error.message,
+      }));
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, requestId, error: error.message },
         { status: 500 }
       );
     }
 
     if (!sessions || sessions.length === 0) {
-      console.log('No sessions found for 1h reminders');
+      console.log(JSON.stringify({
+        requestId,
+        event: 'no_sessions_found',
+        targetDate: targetDateStr,
+        targetTimeRange: `${targetTimeStart} - ${targetTimeEnd}`,
+      }));
       return NextResponse.json({
         success: true,
+        requestId,
         message: 'No sessions in next hour',
         results,
       });
     }
 
-    console.log(`📅 Found ${sessions.length} sessions for 1h reminders`);
+    console.log(JSON.stringify({
+      requestId,
+      event: 'sessions_found',
+      count: sessions.length,
+    }));
+
+    // Check AiSensy API key
+    const aisensyKey = process.env.AISENSY_API_KEY;
+    if (!aisensyKey) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'config_error',
+        error: 'AISENSY_API_KEY not configured',
+      }));
+      return NextResponse.json(
+        { success: false, requestId, error: 'WhatsApp API not configured' },
+        { status: 500 }
+      );
+    }
 
     for (const session of sessions) {
       const coach = session.coaches as any;
       const child = session.children as any;
 
       if (!coach?.phone) {
+        results.skipped++;
         results.errors.push(`Session ${session.id}: Coach has no phone`);
         continue;
       }
@@ -159,20 +188,15 @@ async function processReminders() {
       const sessionTime = session.scheduled_time?.slice(0, 5) || 'soon';
 
       try {
-        // Send WhatsApp via AiSensy
         const waResponse = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            apiKey: process.env.AISENSY_API_KEY,
+            apiKey: aisensyKey,
             campaignName: 'coach_session_1h',
             destination: coach.phone.replace(/\D/g, ''),
             userName: 'Yestoryd',
-            templateParams: [
-              coachFirstName,
-              childName,
-              sessionTime,
-            ],
+            templateParams: [coachFirstName, childName, sessionTime],
           }),
         });
 
@@ -186,7 +210,14 @@ async function processReminders() {
             .eq('id', session.id);
 
           results.sent++;
-          console.log(`✅ 1h reminder sent to ${coach.name} for ${childName}`);
+
+          console.log(JSON.stringify({
+            requestId,
+            event: 'reminder_sent',
+            sessionId: session.id,
+            coachName: coach.name,
+            childName,
+          }));
         } else {
           const errText = await waResponse.text();
           results.failed++;
@@ -197,24 +228,92 @@ async function processReminders() {
         results.errors.push(`Session ${session.id}: ${e.message}`);
       }
 
-      // Small delay
+      // Rate limiting delay
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log('📊 1h reminder cron complete:', results);
+    // Audit log
+    await supabase.from('activity_log').insert({
+      user_email: 'system@yestoryd.com',
+      action: 'coach_reminders_1h_executed',
+      details: {
+        request_id: requestId,
+        source,
+        target_date: targetDateStr,
+        target_time: `${targetTimeStart} - ${targetTimeEnd}`,
+        sessions_found: sessions.length,
+        sent: results.sent,
+        failed: results.failed,
+        skipped: results.skipped,
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    });
+
+    const duration = Date.now() - startTime;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'coach_reminders_1h_complete',
+      duration: `${duration}ms`,
+      results,
+    }));
 
     return NextResponse.json({
       success: true,
+      requestId,
       timestamp: new Date().toISOString(),
       targetTime: `${targetTimeStart} - ${targetTimeEnd}`,
       results,
     });
 
   } catch (error: any) {
-    console.error('1h reminder cron error:', error);
+    const duration = Date.now() - startTime;
+
+    console.error(JSON.stringify({
+      requestId,
+      event: 'coach_reminders_1h_error',
+      error: error.message,
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, requestId, error: error.message },
       { status: 500 }
     );
   }
+}
+
+// --- HANDLERS ---
+export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const auth = await verifyCronAuth(request);
+
+  if (!auth.isValid) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'auth_failed',
+      error: 'Unauthorized cron request',
+    }));
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return processReminders(requestId, auth.source);
+}
+
+export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const body = await request.text();
+  const auth = await verifyCronAuth(request, body);
+
+  if (!auth.isValid) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'auth_failed',
+      error: 'Unauthorized cron request',
+    }));
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return processReminders(requestId, auth.source);
 }

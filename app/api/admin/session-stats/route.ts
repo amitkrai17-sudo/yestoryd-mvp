@@ -1,35 +1,84 @@
-// file: app/api/admin/session-stats/route.ts
-// Session Intelligence API - Returns session statistics for admin dashboard
+// ============================================================
+// FILE: app/api/admin/session-stats/route.ts
+// ============================================================
+// HARDENED VERSION - Session Intelligence API
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// --- VALIDATION ---
+const querySchema = z.object({
+  days: z.coerce.number().min(1).max(365).default(30),
+});
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const daysBack = parseInt(searchParams.get('days') || '30');
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
 
+  try {
+    // 1. Authenticate
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'session_stats_auth_failed',
+        error: auth.error,
+      }));
+      
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.email ? 403 : 401 }
+      );
+    }
+
+    // 2. Validate query params
+    const { searchParams } = new URL(request.url);
+    const validation = querySchema.safeParse({
+      days: searchParams.get('days'),
+    });
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid parameters', details: validation.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { days: daysBack } = validation.data;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'session_stats_request',
+      adminEmail: auth.email,
+      daysBack,
+    }));
+
+    const supabase = getSupabase();
+
+    // 3. Calculate date range
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysBack);
     const startDateStr = startDate.toISOString().split('T')[0];
 
-    // Get session stats
+    // 4. Get session stats
     const { data: sessions, error } = await supabase
       .from('scheduled_sessions')
       .select('id, status, duration_minutes, flagged_for_attention, scheduled_date, session_type')
       .gte('scheduled_date', startDateStr);
 
     if (error) {
-      console.error('Error fetching session stats:', error);
+      console.error(JSON.stringify({ requestId, event: 'db_error', error: error.message }));
       return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
     }
 
-    // Calculate stats
+    // 5. Calculate stats
     const total = sessions?.length || 0;
     const completed = sessions?.filter(s => s.status === 'completed').length || 0;
     const noShows = sessions?.filter(s => s.status === 'no_show').length || 0;
@@ -39,31 +88,22 @@ export async function GET(request: NextRequest) {
     const scheduled = sessions?.filter(s => s.status === 'scheduled').length || 0;
     const flagged = sessions?.filter(s => s.flagged_for_attention).length || 0;
 
-    // Calculate average duration
     const completedSessions = sessions?.filter(s => s.status === 'completed' && s.duration_minutes) || [];
     const avgDuration = completedSessions.length > 0
       ? Math.round(completedSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) / completedSessions.length)
       : 0;
 
-    // Completion rate (of sessions that should have happened)
     const attemptedSessions = total - scheduled;
-    const completionRate = attemptedSessions > 0 
-      ? Math.round((completed / attemptedSessions) * 100) 
-      : 0;
+    const completionRate = attemptedSessions > 0 ? Math.round((completed / attemptedSessions) * 100) : 0;
 
-    // Get weekly breakdown
+    // 6. Get weekly breakdown
     const weeklyData = getWeeklyBreakdown(sessions || []);
 
-    // Get recent issues (no-shows, coach no-shows, flagged)
+    // 7. Get recent issues
     const { data: recentIssues } = await supabase
       .from('scheduled_sessions')
       .select(`
-        id,
-        status,
-        scheduled_date,
-        scheduled_time,
-        flag_reason,
-        no_show_reason,
+        id, status, scheduled_date, scheduled_time, flag_reason, no_show_reason,
         child:children(child_name),
         coach:coaches(name)
       `)
@@ -72,7 +112,6 @@ export async function GET(request: NextRequest) {
       .order('scheduled_date', { ascending: false })
       .limit(10);
 
-    // Format issues
     const formattedIssues = (recentIssues || []).map(issue => {
       const child = Array.isArray(issue.child) ? issue.child[0] : issue.child;
       const coach = Array.isArray(issue.coach) ? issue.coach[0] : issue.coach;
@@ -87,31 +126,32 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    const duration = Date.now() - startTime;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'session_stats_success',
+      totalSessions: total,
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json({
       success: true,
-      stats: {
-        total,
-        completed,
-        noShows,
-        coachNoShows,
-        partial,
-        botErrors,
-        scheduled,
-        flagged,
-        avgDuration,
-        completionRate,
-      },
+      requestId,
+      stats: { total, completed, noShows, coachNoShows, partial, botErrors, scheduled, flagged, avgDuration, completionRate },
       weeklyData,
       recentIssues: formattedIssues,
       period: `Last ${daysBack} days`,
     });
 
-  } catch (error) {
-    console.error('Session stats error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    console.error(JSON.stringify({ requestId, event: 'session_stats_error', error: error.message, duration: `${duration}ms` }));
+    return NextResponse.json({ error: 'Internal server error', requestId }, { status: 500 });
   }
 }
 
+// --- HELPER FUNCTIONS ---
 function getWeeklyBreakdown(sessions: Array<{ scheduled_date: string; status: string }>) {
   const weeks: Record<string, { completed: number; noShow: number; partial: number; total: number }> = {};
 
@@ -130,7 +170,6 @@ function getWeeklyBreakdown(sessions: Array<{ scheduled_date: string; status: st
     if (session.status === 'partial') weeks[weekKey].partial++;
   });
 
-  // Convert to array and sort
   return Object.entries(weeks)
     .map(([weekStart, data]) => ({
       weekStart,
@@ -139,7 +178,7 @@ function getWeeklyBreakdown(sessions: Array<{ scheduled_date: string; status: st
       completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
     }))
     .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
-    .slice(-8); // Last 8 weeks
+    .slice(-8);
 }
 
 function getWeekStart(date: Date): Date {

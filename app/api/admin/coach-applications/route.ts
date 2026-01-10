@@ -1,28 +1,53 @@
+// ============================================================
+// FILE: app/api/admin/coach-applications/route.ts
+// ============================================================
+// HARDENED VERSION - List Coach Applications
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ⚠️ CRITICAL FIX: Original had NO AUTHENTICATION!
+// ============================================================
+
 export const dynamic = 'force-dynamic';
 
-// app/api/admin/coach-applications/route.ts
-// API to list all coach applications for admin review
-// FIXED: Added no-cache headers and detailed logging
-
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { z } from 'zod';
+import crypto from 'crypto';
+
+// --- VALIDATION SCHEMA ---
+const querySchema = z.object({
+  status: z.enum(['all', 'pending', 'reviewing', 'approved', 'rejected', 'onboarding']).optional().default('all'),
+  search: z.string().max(100).optional(),
+});
 
 export async function GET(request: NextRequest) {
-  console.log('📋 GET /api/admin/coach-applications called');
-  
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
-    // Create fresh Supabase client per request
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'coach_applications_get_auth_failed', error: auth.error }));
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
 
-    // Get query params for filtering
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
+    const validation = querySchema.safeParse({
+      status: searchParams.get('status') || 'all',
+      search: searchParams.get('search') || undefined,
+    });
 
-    console.log('📋 Filters - status:', status, 'search:', search);
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Invalid parameters', details: validation.error.flatten() }, { status: 400 });
+    }
+
+    const { status, search } = validation.data;
+
+    console.log(JSON.stringify({ requestId, event: 'coach_applications_get_request', adminEmail: auth.email, status, search: search || 'none' }));
+
+    const supabase = getSupabase();
 
     // Build query
     let query = supabase
@@ -31,50 +56,44 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     // Apply status filter
-    if (status && status !== 'all') {
+    if (status !== 'all') {
       query = query.eq('status', status);
     }
 
-    // Apply search filter
+    // Apply search filter (sanitize to prevent injection)
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+      const sanitizedSearch = search.replace(/[%_]/g, '\\$&');
+      query = query.or(`name.ilike.%${sanitizedSearch}%,email.ilike.%${sanitizedSearch}%,phone.ilike.%${sanitizedSearch}%`);
     }
 
     const { data: applications, error } = await query;
 
     if (error) {
-      console.error('❌ Error fetching applications:', error);
+      console.error(JSON.stringify({ requestId, event: 'coach_applications_get_db_error', error: error.message }));
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log('✅ Fetched', applications?.length, 'applications');
-    
-    // Log status of first few for debugging
-    if (applications && applications.length > 0) {
-      console.log('📊 Sample statuses:', applications.slice(0, 5).map(a => ({
-        name: a.name,
-        status: a.status,
-        id: a.id.slice(0, 8)
-      })));
-    }
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'coach_applications_get_success', count: applications?.length || 0, duration: `${duration}ms` }));
 
     // Create response with no-cache headers
-    const response = NextResponse.json({ 
+    const response = NextResponse.json({
+      success: true,
+      requestId,
       applications: applications || [],
       count: applications?.length || 0,
-      fetchedAt: new Date().toISOString()
+      fetchedAt: new Date().toISOString(),
     });
 
-    // CRITICAL: Prevent caching
+    // Prevent caching
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
-    response.headers.set('Surrogate-Control', 'no-store');
 
     return response;
 
   } catch (error: any) {
-    console.error('💥 Error in coach applications API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error(JSON.stringify({ requestId, event: 'coach_applications_get_error', error: error.message }));
+    return NextResponse.json({ error: 'Internal server error', requestId }, { status: 500 });
   }
 }

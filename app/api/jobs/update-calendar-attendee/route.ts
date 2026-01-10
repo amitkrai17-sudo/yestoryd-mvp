@@ -1,14 +1,27 @@
 // ============================================================
 // FILE: app/api/jobs/update-calendar-attendee/route.ts
 // ============================================================
-// Background Job: Update Google Calendar Event Attendees
+// HARDENED VERSION - Update Google Calendar Event Attendees
 // Used when reassigning coaches to discovery calls or sessions
 // Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security features:
+// - QStash signature verification (using SDK for consistency)
+// - Internal API key fallback for admin testing
+// - Zod validation
+// - Request tracing
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Receiver } from '@upstash/qstash';
 import { z } from 'zod';
 import crypto from 'crypto';
+
+// --- CONFIGURATION (Lazy initialization) ---
+const getReceiver = () => new Receiver({
+  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
+  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
+});
 
 // --- VALIDATION SCHEMA ---
 const CalendarUpdateSchema = z.object({
@@ -19,57 +32,35 @@ const CalendarUpdateSchema = z.object({
   timestamp: z.string().optional(),
 });
 
-// --- QSTASH SIGNATURE VERIFICATION ---
-async function verifyQStashSignature(
-  request: NextRequest,
-  body: string
-): Promise<{ isValid: boolean; error?: string }> {
-  // Skip verification in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('⚠️ Skipping QStash signature verification in development');
-    return { isValid: true };
+// --- VERIFICATION (Using SDK for consistency with other jobs) ---
+async function verifyAuth(request: NextRequest, body: string): Promise<{ isValid: boolean; source: string }> {
+  // 1. Check internal API key (for admin testing)
+  const internalKey = request.headers.get('x-internal-api-key');
+  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
+    return { isValid: true, source: 'internal' };
   }
 
+  // 2. Check QStash signature using SDK (consistent with enrollment-complete)
   const signature = request.headers.get('upstash-signature');
-  if (!signature) {
-    return { isValid: false, error: 'Missing upstash-signature header' };
-  }
-
-  const currentSigningKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-  const nextSigningKey = process.env.QSTASH_NEXT_SIGNING_KEY;
-
-  if (!currentSigningKey) {
-    console.error('QSTASH_CURRENT_SIGNING_KEY not configured');
-    return { isValid: false, error: 'Server configuration error' };
-  }
-
-  const keysToTry = [currentSigningKey, nextSigningKey].filter(Boolean) as string[];
-
-  for (const key of keysToTry) {
+  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
     try {
-      const [timestamp, providedSignature] = signature.split('.');
-      
-      const timestampMs = parseInt(timestamp) * 1000;
-      const now = Date.now();
-      if (Math.abs(now - timestampMs) > 5 * 60 * 1000) {
-        continue;
+      const receiver = getReceiver();
+      const isValid = await receiver.verify({ signature, body });
+      if (isValid) {
+        return { isValid: true, source: 'qstash' };
       }
-
-      const toSign = `${timestamp}.${body}`;
-      const expectedSignature = crypto
-        .createHmac('sha256', key)
-        .update(toSign)
-        .digest('base64');
-
-      if (providedSignature === expectedSignature) {
-        return { isValid: true };
-      }
-    } catch {
-      continue;
+    } catch (e) {
+      console.error('QStash SDK verification failed:', e);
     }
   }
 
-  return { isValid: false, error: 'Invalid signature' };
+  // 3. Development bypass (ONLY in dev)
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ Development mode - skipping signature verification');
+    return { isValid: true, source: 'dev_bypass' };
+  }
+
+  return { isValid: false, source: 'none' };
 }
 
 // --- MAIN HANDLER ---
@@ -81,16 +72,16 @@ export async function POST(request: NextRequest) {
     // 1. Get raw body for signature verification
     const body = await request.text();
 
-    // 2. Verify QStash signature
-    const verification = await verifyQStashSignature(request, body);
-    if (!verification.isValid) {
+    // 2. Verify authorization (using SDK)
+    const auth = await verifyAuth(request, body);
+    if (!auth.isValid) {
       console.error(JSON.stringify({
         jobRequestId,
-        event: 'qstash_signature_invalid',
-        error: verification.error,
+        event: 'auth_failed',
+        error: 'Unauthorized calendar update request',
       }));
       return NextResponse.json(
-        { error: verification.error },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -119,6 +110,7 @@ export async function POST(request: NextRequest) {
       jobRequestId,
       originalRequestId: requestId,
       event: 'calendar_update_started',
+      source: auth.source,
       eventId,
       newCoachEmail,
       oldCoachEmail,
@@ -167,6 +159,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      jobRequestId,
       eventId,
       message: 'Calendar attendees updated',
       duration: `${duration}ms`,

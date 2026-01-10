@@ -4,25 +4,14 @@
 // HARDENED VERSION - Revenue Split Configuration
 // Yestoryd - AI-Powered Reading Intelligence Platform
 //
-// Security features:
-// - Admin-only authentication
-// - Input validation with Zod
-// - Audit logging for all changes
-// - Request tracing
+// Security: Uses shared lib/admin-auth.ts helper
+// Features: Input validation, audit logging, latest-wins pattern
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
-
-// --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // --- VALIDATION SCHEMA ---
 const updateConfigSchema = z.object({
@@ -54,41 +43,24 @@ const updateConfigSchema = z.object({
   { message: 'Lead Cost + Coach Cost cannot exceed 100%' }
 );
 
-// ============================================================
-// GET: Fetch active revenue configuration
-// ============================================================
+// --- GET: Fetch active revenue configuration ---
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
+  const startTime = Date.now();
 
   try {
-    // 1. Admin-only authentication
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'revenue_config_get_auth_failed', error: auth.error }));
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
     }
 
-    if ((session.user as any).role !== 'admin') {
-      console.log(JSON.stringify({
-        requestId,
-        event: 'auth_failed',
-        error: 'Admin required for revenue config',
-        userEmail: session.user.email,
-      }));
-
-      return NextResponse.json(
-        { success: false, error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
+    console.log(JSON.stringify({ requestId, event: 'revenue_config_get_request', adminEmail: auth.email }));
 
     const supabase = getSupabase();
 
     // Latest-wins pattern: Always fetch most recent config
-    // This eliminates race conditions during config updates
     const { data, error } = await supabase
       .from('revenue_split_config')
       .select('*')
@@ -102,6 +74,9 @@ export async function GET(request: NextRequest) {
 
     // Return default if no config exists
     if (!data) {
+      const duration = Date.now() - startTime;
+      console.log(JSON.stringify({ requestId, event: 'revenue_config_get_default', duration: `${duration}ms` }));
+
       return NextResponse.json({
         success: true,
         requestId,
@@ -119,6 +94,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'revenue_config_get_success', duration: `${duration}ms` }));
+
     return NextResponse.json({
       success: true,
       requestId,
@@ -126,95 +104,50 @@ export async function GET(request: NextRequest) {
       isDefault: false,
     });
 
-  } catch (error) {
-    console.error(JSON.stringify({
-      requestId,
-      event: 'revenue_config_error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }));
-
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch config', requestId },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error(JSON.stringify({ requestId, event: 'revenue_config_get_error', error: error.message }));
+    return NextResponse.json({ success: false, error: 'Failed to fetch config', requestId }, { status: 500 });
   }
 }
 
-// ============================================================
-// POST: Update revenue configuration
-// ============================================================
+// --- POST: Update revenue configuration ---
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
   try {
-    // 1. Admin-only authentication
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'revenue_config_post_auth_failed', error: auth.error }));
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
     }
 
-    if ((session.user as any).role !== 'admin') {
-      console.log(JSON.stringify({
-        requestId,
-        event: 'auth_failed',
-        error: 'Admin required for revenue config update',
-        userEmail: session.user.email,
-      }));
-
-      return NextResponse.json(
-        { success: false, error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const adminEmail = session.user.email;
-
-    // 2. Parse and validate body
     let body;
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { success: false, error: 'Invalid JSON body' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const validationResult = updateConfigSchema.safeParse(body);
-
-    if (!validationResult.success) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Validation failed',
-          details: validationResult.error.flatten().fieldErrors,
-        },
-        { status: 400 }
-      );
+    const validation = updateConfigSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: 'Validation failed', details: validation.error.flatten() }, { status: 400 });
     }
 
-    const validated = validationResult.data;
+    const validated = validation.data;
     const platformFee = 100 - validated.lead_cost_percent - validated.coach_cost_percent;
 
     console.log(JSON.stringify({
       requestId,
-      event: 'revenue_config_update_request',
-      adminEmail,
-      newConfig: {
-        lead: validated.lead_cost_percent,
-        coach: validated.coach_cost_percent,
-        platform: platformFee,
-      },
+      event: 'revenue_config_post_request',
+      adminEmail: auth.email,
+      newConfig: { lead: validated.lead_cost_percent, coach: validated.coach_cost_percent, platform: platformFee },
     }));
 
     const supabase = getSupabase();
 
-    // 3. Get current config for audit comparison (latest-wins pattern)
+    // Get current config for audit comparison
     const { data: currentConfig } = await supabase
       .from('revenue_split_config')
       .select('*')
@@ -222,8 +155,7 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .single();
 
-    // 4. Insert new config (NO deactivation needed - latest wins)
-    // This eliminates the race condition where no active config exists
+    // Insert new config (latest-wins pattern - no deactivation needed)
     const { data, error } = await supabase
       .from('revenue_split_config')
       .insert({
@@ -234,8 +166,8 @@ export async function POST(request: NextRequest) {
         tds_threshold_annual: validated.tds_threshold_annual,
         payout_frequency: validated.payout_frequency,
         payout_day_of_month: validated.payout_day_of_month,
-        is_active: true, // Keep for backwards compatibility, but not used for queries
-        created_by: adminEmail,
+        is_active: true,
+        created_by: auth.email,
         notes: validated.notes || `Updated: Lead ${validated.lead_cost_percent}%, Coach ${validated.coach_cost_percent}%, Platform ${platformFee}%`,
       })
       .select()
@@ -243,9 +175,9 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    // 5. Audit log
+    // Audit log
     await supabase.from('activity_log').insert({
-      user_email: adminEmail,
+      user_email: auth.email,
       action: 'revenue_config_updated',
       details: {
         request_id: requestId,
@@ -267,13 +199,7 @@ export async function POST(request: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
-
-    console.log(JSON.stringify({
-      requestId,
-      event: 'revenue_config_updated',
-      adminEmail,
-      duration: `${duration}ms`,
-    }));
+    console.log(JSON.stringify({ requestId, event: 'revenue_config_post_success', duration: `${duration}ms` }));
 
     return NextResponse.json({
       success: true,
@@ -282,19 +208,8 @@ export async function POST(request: NextRequest) {
       message: 'Revenue configuration updated successfully',
     });
 
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    console.error(JSON.stringify({
-      requestId,
-      event: 'revenue_config_update_error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      duration: `${duration}ms`,
-    }));
-
-    return NextResponse.json(
-      { success: false, error: 'Failed to update config', requestId },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error(JSON.stringify({ requestId, event: 'revenue_config_post_error', error: error.message }));
+    return NextResponse.json({ success: false, error: 'Failed to update config', requestId }, { status: 500 });
   }
 }

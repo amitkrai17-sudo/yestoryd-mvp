@@ -1,67 +1,70 @@
-// =============================================================================
+// ============================================================
 // FILE: app/api/admin/group-classes/route.ts
-// PURPOSE: Admin API for listing and creating group sessions
-// FIXED: Using same Google Calendar approach as lib/googleCalendar.ts
-// =============================================================================
+// ============================================================
+// HARDENED VERSION - Admin Group Classes Management
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ⚠️ CRITICAL FIX: Original had NO AUTHENTICATION!
+// ============================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { z } from 'zod';
+import crypto from 'crypto';
 import { google, calendar_v3 } from 'googleapis';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// --- VALIDATION SCHEMAS ---
+const getQuerySchema = z.object({
+  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
+  limit: z.coerce.number().min(1).max(100).default(50),
+  offset: z.coerce.number().min(0).default(0),
+});
 
-// =============================================================================
-// GOOGLE CALENDAR SETUP - SAME AS lib/googleCalendar.ts
-// =============================================================================
+const createSessionSchema = z.object({
+  classTypeId: z.string().uuid('Invalid class type ID'),
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
+  scheduledTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
+  durationMinutes: z.number().min(15).max(180).optional(),
+  maxParticipants: z.number().min(1).max(50).optional(),
+  priceInr: z.number().min(0).max(10000).optional(),
+  ageMin: z.number().min(3).max(18).optional(),
+  ageMax: z.number().min(3).max(18).optional(),
+  instructorId: z.string().uuid().optional(),
+  bookId: z.string().uuid().optional(),
+  notes: z.string().max(1000).optional(),
+});
+
+// --- GOOGLE CALENDAR SETUP ---
 function getCalendarClient(): calendar_v3.Calendar | null {
   const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   const delegatedUser = process.env.GOOGLE_CALENDAR_DELEGATED_USER;
 
-  console.log('=== Google Calendar Config ===');
-  console.log('Service Account:', serviceEmail || 'NOT SET');
-  console.log('Private Key:', privateKey ? `✓ (${privateKey.length} chars)` : 'NOT SET');
-  console.log('Delegated User:', delegatedUser || 'NOT SET');
-
   if (!serviceEmail || !privateKey || !delegatedUser) {
-    console.error('❌ Missing Google Calendar credentials');
+    console.log('Google Calendar not configured');
     return null;
   }
 
   try {
-    // SAME APPROACH AS YOUR WORKING lib/googleCalendar.ts
     const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: serviceEmail,
-        private_key: privateKey,
-      },
+      credentials: { client_email: serviceEmail, private_key: privateKey },
       scopes: ['https://www.googleapis.com/auth/calendar'],
-      clientOptions: {
-        subject: delegatedUser, // Domain-wide delegation - impersonate this user
-      },
+      clientOptions: { subject: delegatedUser },
     });
-
     return google.calendar({ version: 'v3', auth });
   } catch (error) {
-    console.error('❌ Error creating Google Calendar client:', error);
+    console.error('Error creating Google Calendar client:', error);
     return null;
   }
 }
 
-// =============================================================================
-// RECALL.AI BOT SCHEDULING
-// =============================================================================
+// --- RECALL.AI BOT SCHEDULING ---
 async function scheduleRecallBot(meetLink: string, sessionTitle: string, scheduledTime: Date): Promise<string | null> {
   try {
-    if (!process.env.RECALL_API_KEY) {
-      console.log('Recall.ai not configured');
-      return null;
-    }
-
-    console.log('Scheduling Recall.ai bot...');
+    if (!process.env.RECALL_API_KEY) return null;
 
     const response = await fetch('https://us-west-2.recall.ai/api/v1/bot/', {
       method: 'POST',
@@ -73,40 +76,49 @@ async function scheduleRecallBot(meetLink: string, sessionTitle: string, schedul
         meeting_url: meetLink,
         bot_name: 'Yestoryd Recorder 📚',
         join_at: scheduledTime.toISOString(),
-        automatic_leave: {
-          waiting_room_timeout: 600,
-          noone_joined_timeout: 300,
-          everyone_left_timeout: 60,
-        },
+        automatic_leave: { waiting_room_timeout: 600, noone_joined_timeout: 300, everyone_left_timeout: 60 },
         recording_mode: 'speaker_view',
         transcription_options: { provider: 'default' },
       }),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Recall.ai error:', error);
-      return null;
-    }
-
+    if (!response.ok) return null;
     const data = await response.json();
-    console.log('✅ Recall.ai bot scheduled:', data.id);
     return data.id;
-  } catch (error) {
-    console.error('Recall.ai error:', error);
+  } catch {
     return null;
   }
 }
 
-// =============================================================================
-// GET - List sessions
-// =============================================================================
+// --- GET: List sessions ---
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'group_classes_get_auth_failed', error: auth.error }));
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const validation = getQuerySchema.safeParse({
+      status: searchParams.get('status') || undefined,
+      limit: searchParams.get('limit') || 50,
+      offset: searchParams.get('offset') || 0,
+    });
+
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Invalid parameters', details: validation.error.flatten() }, { status: 400 });
+    }
+
+    const { status, limit, offset } = validation.data;
+
+    console.log(JSON.stringify({ requestId, event: 'group_classes_get_request', adminEmail: auth.email, status: status || 'all', limit, offset }));
+
+    const supabase = getSupabase();
 
     let query = supabase
       .from('group_sessions')
@@ -131,42 +143,57 @@ export async function GET(request: NextRequest) {
     const { data: sessions, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching sessions:', error);
+      console.error(JSON.stringify({ requestId, event: 'group_classes_get_db_error', error: error.message }));
       return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
     }
 
-    return NextResponse.json({ sessions, total: count, limit, offset });
-  } catch (error) {
-    console.error('GET error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'group_classes_get_success', count: sessions?.length || 0, total: count, duration: `${duration}ms` }));
+
+    return NextResponse.json({ success: true, requestId, sessions, total: count, limit, offset });
+
+  } catch (error: any) {
+    console.error(JSON.stringify({ requestId, event: 'group_classes_get_error', error: error.message }));
+    return NextResponse.json({ error: 'Internal server error', requestId }, { status: 500 });
   }
 }
 
-// =============================================================================
-// POST - Create session with Google Meet
-// =============================================================================
+// --- POST: Create session with Google Meet ---
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
-    const body = await request.json();
-    const {
-      classTypeId, title, description, scheduledDate, scheduledTime,
-      durationMinutes, maxParticipants, priceInr, ageMin, ageMax,
-      instructorId, bookId, notes,
-    } = body;
-
-    console.log('=== Creating Group Session ===');
-    console.log('Title:', title);
-    console.log('Date:', scheduledDate, scheduledTime);
-
-    if (!classTypeId || !title || !scheduledDate || !scheduledTime) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'group_classes_post_auth_failed', error: auth.error }));
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
     }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const validation = createSessionSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Validation failed', details: validation.error.flatten() }, { status: 400 });
+    }
+
+    const sessionData = validation.data;
+
+    console.log(JSON.stringify({ requestId, event: 'group_classes_post_request', adminEmail: auth.email, title: sessionData.title, date: sessionData.scheduledDate }));
+
+    const supabase = getSupabase();
 
     // Get class type
     const { data: classType } = await supabase
       .from('group_class_types')
       .select('*')
-      .eq('id', classTypeId)
+      .eq('id', sessionData.classTypeId)
       .single();
 
     if (!classType) {
@@ -176,11 +203,11 @@ export async function POST(request: NextRequest) {
     // Get instructor
     let instructorEmail = process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com';
     let instructorName = 'Yestoryd Team';
-    if (instructorId) {
+    if (sessionData.instructorId) {
       const { data: instructor } = await supabase
         .from('coaches')
         .select('name, email')
-        .eq('id', instructorId)
+        .eq('id', sessionData.instructorId)
         .single();
       if (instructor) {
         instructorEmail = instructor.email;
@@ -189,122 +216,84 @@ export async function POST(request: NextRequest) {
     }
 
     // Build datetime (IST)
-    const sessionDateTime = new Date(`${scheduledDate}T${scheduledTime}:00+05:30`);
+    const sessionDateTime = new Date(`${sessionData.scheduledDate}T${sessionData.scheduledTime}:00+05:30`);
+    const durationMins = sessionData.durationMinutes || classType.duration_minutes || 45;
     const sessionEndTime = new Date(sessionDateTime);
-    sessionEndTime.setMinutes(sessionEndTime.getMinutes() + (durationMinutes || classType.duration_minutes || 45));
+    sessionEndTime.setMinutes(sessionEndTime.getMinutes() + durationMins);
 
-    // =============================================================================
-    // CREATE GOOGLE CALENDAR EVENT
-    // =============================================================================
+    // Create Google Calendar Event
     let googleMeetLink = null;
     let googleEventId = null;
 
     const calendar = getCalendarClient();
-    
     if (calendar) {
-      console.log('=== Creating Google Calendar Event ===');
-      
       try {
         const eventDescription = `📚 ${classType.name} - Group Class
 
-${description || classType.description || ''}
+${sessionData.description || classType.description || ''}
 
 👨‍🏫 Instructor: ${instructorName} (${instructorEmail})
-⏱️ Duration: ${durationMinutes || classType.duration_minutes} minutes
-👧 Ages: ${ageMin || classType.age_min}-${ageMax || classType.age_max} years
-💰 Price: ₹${priceInr ?? classType.price_inr}
+⏱️ Duration: ${durationMins} minutes
+👧 Ages: ${sessionData.ageMin ?? classType.age_min}-${sessionData.ageMax ?? classType.age_max} years
+💰 Price: ₹${sessionData.priceInr ?? classType.price_inr}
 
 📌 This session will be recorded.
 
 WhatsApp: +91 89762 87997`;
 
-        // Use delegated user's calendar (engage@yestoryd.com)
         const calendarId = process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'primary';
-        console.log('Calendar ID:', calendarId);
 
         const event = await calendar.events.insert({
           calendarId,
           conferenceDataVersion: 1,
           sendUpdates: 'all',
           requestBody: {
-            summary: `📚 Yestoryd: ${title}`,
+            summary: `📚 Yestoryd: ${sessionData.title}`,
             description: eventDescription,
-            start: {
-              dateTime: sessionDateTime.toISOString(),
-              timeZone: 'Asia/Kolkata',
-            },
-            end: {
-              dateTime: sessionEndTime.toISOString(),
-              timeZone: 'Asia/Kolkata',
-            },
-            attendees: [
-              { email: instructorEmail, displayName: instructorName },
-            ],
+            start: { dateTime: sessionDateTime.toISOString(), timeZone: 'Asia/Kolkata' },
+            end: { dateTime: sessionEndTime.toISOString(), timeZone: 'Asia/Kolkata' },
+            attendees: [{ email: instructorEmail, displayName: instructorName }],
             conferenceData: {
-              createRequest: {
-                requestId: `yestoryd-gc-${Date.now()}`,
-                conferenceSolutionKey: { type: 'hangoutsMeet' },
-              },
+              createRequest: { requestId: `yestoryd-gc-${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } },
             },
-            reminders: {
-              useDefault: false,
-              overrides: [
-                { method: 'email', minutes: 60 },
-                { method: 'popup', minutes: 15 },
-              ],
-            },
+            reminders: { useDefault: false, overrides: [{ method: 'email', minutes: 60 }, { method: 'popup', minutes: 15 }] },
           },
         });
 
         googleEventId = event.data.id;
-        googleMeetLink = event.data.conferenceData?.entryPoints?.find(
-          (e: any) => e.entryPointType === 'video'
-        )?.uri || event.data.hangoutLink || null;
+        googleMeetLink = event.data.conferenceData?.entryPoints?.find((e: any) => e.entryPointType === 'video')?.uri || event.data.hangoutLink || null;
 
-        console.log('✅ Event created:', googleEventId);
-        console.log('✅ Meet link:', googleMeetLink);
-        console.log('✅ HTML link:', event.data.htmlLink);
-
+        console.log(JSON.stringify({ requestId, event: 'google_calendar_created', eventId: googleEventId, meetLink: googleMeetLink }));
       } catch (calError: any) {
-        console.error('❌ Google Calendar Error:');
-        console.error('Message:', calError.message);
-        console.error('Code:', calError.code);
-        console.error('Status:', calError.response?.status);
-        console.error('Data:', JSON.stringify(calError.response?.data, null, 2));
+        console.error(JSON.stringify({ requestId, event: 'google_calendar_error', error: calError.message }));
       }
-    } else {
-      console.log('⚠️ Google Calendar not configured');
     }
 
-    // =============================================================================
-    // SCHEDULE RECALL.AI BOT
-    // =============================================================================
+    // Schedule Recall.ai bot
     let recallBotId = null;
     if (googleMeetLink) {
-      recallBotId = await scheduleRecallBot(googleMeetLink, title, sessionDateTime);
+      recallBotId = await scheduleRecallBot(googleMeetLink, sessionData.title, sessionDateTime);
     }
 
-    // =============================================================================
-    // SAVE TO DATABASE
-    // =============================================================================
-    const sessionData = {
+    // Save to database
+    const dbData = {
       session_type: classType.slug || 'group_class',
-      title,
-      scheduled_date: scheduledDate,
-      scheduled_time: scheduledTime,
-      duration_minutes: durationMinutes || classType.duration_minutes || 45,
-      class_type_id: classTypeId,
-      description: description || classType.description || null,
-      max_participants: maxParticipants || classType.max_participants || 10,
+      title: sessionData.title,
+      scheduled_date: sessionData.scheduledDate,
+      scheduled_time: sessionData.scheduledTime,
+      duration_minutes: durationMins,
+      class_type_id: sessionData.classTypeId,
+      description: sessionData.description || classType.description || null,
+      max_participants: sessionData.maxParticipants || classType.max_participants || 10,
       current_participants: 0,
-      price_inr: priceInr ?? classType.price_inr ?? 199,
-      age_min: ageMin ?? classType.age_min ?? 4,
-      age_max: ageMax ?? classType.age_max ?? 12,
-      instructor_id: instructorId || null,
+      price_inr: sessionData.priceInr ?? classType.price_inr ?? 199,
+      age_min: sessionData.ageMin ?? classType.age_min ?? 4,
+      age_max: sessionData.ageMax ?? classType.age_max ?? 12,
+      instructor_id: sessionData.instructorId || null,
       instructor_split_percent: classType.default_instructor_split_percent || 50,
-      book_id: bookId || null,
+      book_id: sessionData.bookId || null,
       status: 'scheduled',
-      notes: notes || null,
+      notes: sessionData.notes || null,
       google_meet_link: googleMeetLink,
       google_event_id: googleEventId,
       recall_bot_id: recallBotId,
@@ -312,7 +301,7 @@ WhatsApp: +91 89762 87997`;
 
     const { data: session, error } = await supabase
       .from('group_sessions')
-      .insert(sessionData)
+      .insert(dbData)
       .select(`
         *,
         class_type:group_class_types(id, name, slug, icon_emoji),
@@ -322,25 +311,38 @@ WhatsApp: +91 89762 87997`;
       .single();
 
     if (error) {
-      console.error('DB Error:', error);
+      console.error(JSON.stringify({ requestId, event: 'group_classes_post_db_error', error: error.message }));
       return NextResponse.json({ error: 'Failed to create: ' + error.message }, { status: 500 });
     }
 
-    console.log('=== Session Created ===');
-    console.log('ID:', session.id);
-    console.log('Meet:', googleMeetLink || 'None');
-    console.log('Recall:', recallBotId || 'None');
+    // Audit log
+    await supabase.from('activity_log').insert({
+      user_email: auth.email,
+      action: 'group_session_created',
+      details: {
+        request_id: requestId,
+        session_id: session.id,
+        title: sessionData.title,
+        scheduled_date: sessionData.scheduledDate,
+        google_meet: !!googleMeetLink,
+        recall_bot: !!recallBotId,
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    });
 
-    return NextResponse.json({ 
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'group_classes_post_success', sessionId: session.id, duration: `${duration}ms` }));
+
+    return NextResponse.json({
+      success: true,
+      requestId,
       session,
-      integrations: {
-        googleMeet: !!googleMeetLink,
-        recallBot: !!recallBotId,
-      }
+      integrations: { googleMeet: !!googleMeetLink, recallBot: !!recallBotId },
     }, { status: 201 });
 
   } catch (error: any) {
-    console.error('POST error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error(JSON.stringify({ requestId, event: 'group_classes_post_error', error: error.message }));
+    return NextResponse.json({ error: error.message || 'Internal server error', requestId }, { status: 500 });
   }
 }

@@ -1,110 +1,216 @@
-// app/api/jobs/enrollment-complete/route.ts
-// Background worker that processes enrollment after payment
-// Called by QStash (not directly by users)
+// ============================================================
+// FILE: app/api/jobs/enrollment-complete/route.ts
+// ============================================================
+// HARDENED VERSION - Background Worker for Post-Payment Enrollment
+// Called by QStash after successful payment
 // Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security features:
+// - QStash signature verification (REMOVED direct-call bypass!)
+// - Internal API key for admin testing
+// - Lazy initialization
+// - Request tracing
+// - Audit logging
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-// Initialize Supabase with service role for full access
-const supabase = createClient(
+// --- CONFIGURATION (Lazy initialization) ---
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Initialize QStash Receiver for signature verification
-const receiver = new Receiver({
+const getReceiver = () => new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
+  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
 });
 
-// Session configuration - 9 sessions over 3 months
-// 6 coaching sessions (45 min) + 3 parent check-ins (20 min)
+// --- SESSION CONFIGURATION ---
 const SESSION_CONFIG = {
   totalSessions: 9,
   coachingSessions: 6,
   parentSessions: 3,
   coachingDurationMinutes: 45,
   parentDurationMinutes: 20,
-  defaultHour: 10, // 10 AM IST
-  // Schedule pattern: Sessions spread across ~6 weeks
+  defaultHour: 10,
   schedule: [
-    { day: 0, type: 'coaching', number: 1, week: 1 },  // Week 1: First coaching
-    { day: 5, type: 'coaching', number: 2, week: 1 },  // Week 1
-    { day: 10, type: 'parent', number: 1, week: 2 },  // Week 2: Parent check-in
-    { day: 15, type: 'coaching', number: 3, week: 3 },  // Week 3
-    { day: 20, type: 'coaching', number: 4, week: 3 },  // Week 3
-    { day: 25, type: 'parent', number: 2, week: 4 },  // Week 4: Parent check-in
-    { day: 30, type: 'coaching', number: 5, week: 5 },  // Week 5
-    { day: 35, type: 'coaching', number: 6, week: 5 },  // Week 5
-    { day: 40, type: 'parent', number: 3, week: 6 },  // Week 6: Final parent review
+    { day: 0, type: 'coaching', number: 1, week: 1 },
+    { day: 5, type: 'coaching', number: 2, week: 1 },
+    { day: 10, type: 'parent', number: 1, week: 2 },
+    { day: 15, type: 'coaching', number: 3, week: 3 },
+    { day: 20, type: 'coaching', number: 4, week: 3 },
+    { day: 25, type: 'parent', number: 2, week: 4 },
+    { day: 30, type: 'coaching', number: 5, week: 5 },
+    { day: 35, type: 'coaching', number: 6, week: 5 },
+    { day: 40, type: 'parent', number: 3, week: 6 },
   ],
 };
 
+// --- VALIDATION SCHEMA ---
+const enrollmentJobSchema = z.object({
+  enrollmentId: z.string().uuid(),
+  childId: z.string().uuid(),
+  childName: z.string().min(1),
+  parentEmail: z.string().email(),
+  parentName: z.string().min(1),
+  coachId: z.string().uuid(),
+  coachEmail: z.string().email(),
+  coachName: z.string().min(1),
+});
+
+// --- VERIFICATION ---
+async function verifyAuth(request: NextRequest, body: string): Promise<{ isValid: boolean; source: string }> {
+  // 1. Check internal API key (for admin testing)
+  const internalKey = request.headers.get('x-internal-api-key');
+  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
+    return { isValid: true, source: 'internal' };
+  }
+
+  // 2. Check QStash signature (production)
+  const signature = request.headers.get('upstash-signature');
+  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
+    try {
+      const receiver = getReceiver();
+      const isValid = await receiver.verify({ signature, body });
+      if (isValid) {
+        return { isValid: true, source: 'qstash' };
+      }
+    } catch (e) {
+      console.error('QStash verification failed:', e);
+    }
+  }
+
+  // 3. Development bypass (ONLY in dev, not production!)
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ Development mode - skipping signature verification');
+    return { isValid: true, source: 'dev_bypass' };
+  }
+
+  return { isValid: false, source: 'none' };
+}
+
+// --- MAIN HANDLER ---
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
   try {
     // 1. Get request body
     const body = await request.text();
-    const signature = request.headers.get('upstash-signature');
 
-    // 2. Verify QStash signature (security)
-    // Skip verification for direct calls or in development
-    const isDirectCall = request.headers.get('x-direct-call') === 'true';
-    if (process.env.NODE_ENV === 'production' && !isDirectCall) {
-      try {
-        const isValid = await receiver.verify({
-          signature: signature || '',
-          body: body,
-        });
+    // 2. Verify authorization
+    // SECURITY: Removed dangerous x-direct-call bypass!
+    const auth = await verifyAuth(request, body);
 
-        if (!isValid) {
-          console.error('❌ Invalid QStash signature');
-          return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-        }
-      } catch (verifyError: any) {
-        console.error('❌ Signature verification failed:', verifyError.message);
-        return NextResponse.json({ error: 'Signature verification failed' }, { status: 401 });
-      }
+    if (!auth.isValid) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'auth_failed',
+        error: 'Unauthorized enrollment job request',
+      }));
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 3. Parse job data
-    const data = JSON.parse(body);
-    console.log('📥 Processing enrollment-complete job:', {
+    // 3. Parse and validate job data
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(body);
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const validation = enrollmentJobSchema.safeParse(parsedBody);
+    if (!validation.success) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'validation_failed',
+        errors: validation.error.flatten(),
+      }));
+      return NextResponse.json(
+        { error: 'Invalid payload', details: validation.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const data = validation.data;
+    const supabase = getSupabase();
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'enrollment_complete_started',
+      source: auth.source,
       enrollmentId: data.enrollmentId,
       childName: data.childName,
       coachName: data.coachName,
-    });
+    }));
 
-    // 4. Schedule Google Calendar sessions
-    console.log('📅 Starting calendar scheduling...');
-    const calendarResult = await scheduleCalendarSessions(data);
-    console.log(`📅 Calendar result: ${calendarResult.sessionsCreated}/${SESSION_CONFIG.totalSessions} sessions`);
+    // 4. IDEMPOTENCY CHECK - Don't reprocess if already completed
+    const { data: enrollment } = await supabase
+      .from('enrollments')
+      .select('schedule_confirmed, sessions_scheduled')
+      .eq('id', data.enrollmentId)
+      .single();
 
-    // 4.5 Schedule Recall.ai bots for session recording
-    console.log('🤖 Scheduling Recall.ai bots for session recording...');
-    let botsScheduled = 0;
-    try {
-      const botResult = await scheduleBotsForEnrollment(data.enrollmentId);
-      botsScheduled = botResult.botsCreated;
-      console.log(`🤖 Recall bots: ${botResult.botsCreated} created, ${botResult.errors.length} errors`);
+    if (enrollment?.schedule_confirmed) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'skipping_duplicate',
+        enrollmentId: data.enrollmentId,
+        reason: 'Already processed',
+      }));
 
-      if (botResult.errors.length > 0) {
-        console.warn('⚠️ Some bot scheduling errors:', botResult.errors);
-      }
-    } catch (botError: any) {
-      console.error('⚠️ Recall bot scheduling failed (non-fatal):', botError.message);
+      return NextResponse.json({
+        success: true,
+        message: 'Enrollment already processed',
+        sessionsScheduled: enrollment.sessions_scheduled,
+      });
     }
 
-    // 5. Send confirmation email
-    console.log('📧 Sending confirmation email...');
-    await sendConfirmationEmail(data, calendarResult.sessions);
+    // 5. Schedule Google Calendar sessions
+    console.log(JSON.stringify({ requestId, event: 'scheduling_calendar_sessions' }));
+    const calendarResult = await scheduleCalendarSessions(data, requestId, supabase);
 
-    // 6. Update enrollment status in database
+    console.log(JSON.stringify({
+      requestId,
+      event: 'calendar_sessions_created',
+      count: calendarResult.sessionsCreated,
+      errors: calendarResult.errors.length,
+    }));
+
+    // 6. Schedule Recall.ai bots for session recording
+    let botsScheduled = 0;
+    try {
+      console.log(JSON.stringify({ requestId, event: 'scheduling_recall_bots' }));
+      const botResult = await scheduleBotsForEnrollment(data.enrollmentId);
+      botsScheduled = botResult.botsCreated;
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'recall_bots_scheduled',
+        botsCreated: botResult.botsCreated,
+        errors: botResult.errors.length,
+      }));
+    } catch (botError: any) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'recall_bot_error',
+        error: botError.message,
+      }));
+      // Non-fatal - continue with enrollment
+    }
+
+    // 7. Send confirmation email
+    console.log(JSON.stringify({ requestId, event: 'sending_confirmation_email' }));
+    const emailResult = await sendConfirmationEmail(data, calendarResult.sessions);
+
+    // 8. Update enrollment status
     const { error: updateError } = await supabase
       .from('enrollments')
       .update({
@@ -115,35 +221,69 @@ export async function POST(request: NextRequest) {
       .eq('id', data.enrollmentId);
 
     if (updateError) {
-      console.error('⚠️ Failed to update enrollment:', updateError);
+      console.error(JSON.stringify({
+        requestId,
+        event: 'enrollment_update_error',
+        error: updateError.message,
+      }));
     }
 
-    // 7. Log completion
+    // 9. AUDIT LOG
+    await supabase.from('activity_log').insert({
+      user_email: 'system@yestoryd.com',
+      action: 'enrollment_complete_processed',
+      details: {
+        request_id: requestId,
+        source: auth.source,
+        enrollment_id: data.enrollmentId,
+        child_name: data.childName,
+        coach_name: data.coachName,
+        sessions_scheduled: calendarResult.sessionsCreated,
+        bots_scheduled: botsScheduled,
+        email_sent: emailResult.success,
+        calendar_errors: calendarResult.errors.length,
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    });
+
+    // 10. Return success
     const duration = Date.now() - startTime;
-    console.log(`✅ Enrollment complete processed in ${duration}ms`, {
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'enrollment_complete_finished',
       enrollmentId: data.enrollmentId,
       sessionsScheduled: calendarResult.sessionsCreated,
-      errors: calendarResult.errors.length,
-    });
+      botsScheduled,
+      duration: `${duration}ms`,
+    }));
 
     return NextResponse.json({
       success: true,
+      requestId,
       enrollmentId: data.enrollmentId,
       sessionsScheduled: calendarResult.sessionsCreated,
-      errors: calendarResult.errors,
+      botsScheduled,
+      emailSent: emailResult.success,
+      errors: calendarResult.errors.length > 0 ? calendarResult.errors : undefined,
       duration: `${duration}ms`,
     });
 
   } catch (error: any) {
-    console.error('❌ Enrollment complete job failed:', error);
+    const duration = Date.now() - startTime;
 
-    // Return 500 so QStash will retry (up to 3 times)
+    console.error(JSON.stringify({
+      requestId,
+      event: 'enrollment_complete_error',
+      error: error.message,
+      stack: error.stack,
+      duration: `${duration}ms`,
+    }));
+
+    // Return 500 so QStash will retry
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      },
+      { success: false, requestId, error: error.message },
       { status: 500 }
     );
   }
@@ -151,22 +291,26 @@ export async function POST(request: NextRequest) {
 
 /**
  * Schedule all 9 sessions in Google Calendar
- * Creates events with Google Meet links and sends invites
+ * 
+ * ⚠️ SCALING TODO (when >10 enrollments/minute):
+ * Google Calendar API limits: ~60 requests/minute per user
+ * 10 enrollments × 9 events = 90 requests → 429 errors
+ * 
+ * Fixes when hitting limits:
+ * 1. Increase delay between events (currently 300ms → try 1000ms)
+ * 2. Use Google Calendar batch endpoint (limited Node.js support)
+ * 3. Service account pooling (multiple accounts for high volume)
+ * 4. Queue enrollments and process sequentially via QStash
  */
-async function scheduleCalendarSessions(data: {
-  enrollmentId: string;
-  childId: string;
-  childName: string;
-  parentEmail: string;
-  parentName: string;
-  coachId: string;
-  coachEmail: string;
-  coachName: string;
-}) {
+async function scheduleCalendarSessions(
+  data: z.infer<typeof enrollmentJobSchema>,
+  requestId: string,
+  supabase: ReturnType<typeof getSupabase>
+) {
   const sessionsCreated: any[] = [];
   const errors: any[] = [];
 
-  // Initialize Google Calendar API with service account
+  // Initialize Google Calendar API
   const auth = new google.auth.JWT(
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     undefined,
@@ -177,14 +321,13 @@ async function scheduleCalendarSessions(data: {
 
   const calendar = google.calendar({ version: 'v3', auth });
 
-  // Start from tomorrow to give time for notifications
+  // Start from tomorrow
   const startDate = new Date();
   startDate.setDate(startDate.getDate() + 1);
   startDate.setHours(SESSION_CONFIG.defaultHour, 0, 0, 0);
 
   for (const session of SESSION_CONFIG.schedule) {
     try {
-      // Calculate session date
       const sessionDate = new Date(startDate);
       sessionDate.setDate(sessionDate.getDate() + session.day);
 
@@ -195,69 +338,28 @@ async function scheduleCalendarSessions(data: {
       const endDate = new Date(sessionDate);
       endDate.setMinutes(endDate.getMinutes() + duration);
 
-      // Build event title and description
       const isCoaching = session.type === 'coaching';
       const eventTitle = isCoaching
         ? `📚 Yestoryd: ${data.childName} - Coaching Session ${session.number}`
         : `👨‍👩‍👧 Yestoryd: ${data.childName} - Parent Check-in ${session.number}`;
 
       const eventDescription = isCoaching
-        ? `1:1 Reading Coaching Session with ${data.childName}
+        ? `1:1 Reading Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`
+        : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`;
 
-Coach: ${data.coachName}
-Parent: ${data.parentName}
-Duration: ${duration} minutes
-
-📋 Session Focus:
-- Reading practice and assessment
-- Skill development exercises
-- Progress tracking
-
-💡 Tips for parents:
-- Ensure a quiet environment
-- Have the current reading material ready
-- Note any concerns to discuss
-
-Questions? WhatsApp: +91 89762 87997`
-        : `Parent Progress Check-in for ${data.childName}
-
-Coach: ${data.coachName}
-Parent: ${data.parentName}
-Duration: ${duration} minutes
-
-📋 We'll Discuss:
-- ${data.childName}'s progress over the past sessions
-- Areas of improvement
-- Goals for upcoming sessions
-- Your questions and feedback
-
-Questions? WhatsApp: +91 89762 87997`;
-
-      // Create Google Calendar event with Meet link
       const event = await calendar.events.insert({
-        calendarId: process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com', // Use delegated calendar
-        conferenceDataVersion: 1,    // Enable Meet link creation
-        sendUpdates: 'all',          // Send email invites to all attendees
+        calendarId: process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com',
+        conferenceDataVersion: 1,
+        sendUpdates: 'all',
         requestBody: {
           summary: eventTitle,
           description: eventDescription,
-          start: {
-            dateTime: sessionDate.toISOString(),
-            timeZone: 'Asia/Kolkata',
-          },
-          end: {
-            dateTime: endDate.toISOString(),
-            timeZone: 'Asia/Kolkata',
-          },
-          organizer: {
-              email: 'engage@yestoryd.com',
-              displayName: 'Yestoryd Reading Sessions',
-              self: true,
-            },
-            attendees: [
-              { email: data.parentEmail, displayName: data.parentName },
-              { email: data.coachEmail, displayName: data.coachName },
-              { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' }, // For tl;dv
+          start: { dateTime: sessionDate.toISOString(), timeZone: 'Asia/Kolkata' },
+          end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Kolkata' },
+          attendees: [
+            { email: data.parentEmail, displayName: data.parentName },
+            { email: data.coachEmail, displayName: data.coachName },
+            { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
           ],
           conferenceData: {
             createRequest: {
@@ -268,21 +370,20 @@ Questions? WhatsApp: +91 89762 87997`;
           reminders: {
             useDefault: false,
             overrides: [
-              { method: 'email', minutes: 24 * 60 }, // 24 hours before
-              { method: 'email', minutes: 60 },      // 1 hour before
-              { method: 'popup', minutes: 30 },      // 30 mins before
+              { method: 'email', minutes: 24 * 60 },
+              { method: 'email', minutes: 60 },
+              { method: 'popup', minutes: 30 },
             ],
           },
-          colorId: isCoaching ? '9' : '5', // Blue for coaching, Yellow for parent
+          colorId: isCoaching ? '9' : '5',
         },
       });
 
-      // Extract Meet link from response
       const meetLink = event.data.conferenceData?.entryPoints?.find(
         (ep: any) => ep.entryPointType === 'video'
       )?.uri || '';
 
-      // Save session to database
+      // Save to database
       const { data: savedSession, error: dbError } = await supabase
         .from('scheduled_sessions')
         .insert({
@@ -303,7 +404,12 @@ Questions? WhatsApp: +91 89762 87997`;
         .single();
 
       if (dbError) {
-        console.error(`⚠️ DB error for session ${session.number}:`, dbError);
+        console.error(JSON.stringify({
+          requestId,
+          event: 'session_db_error',
+          sessionNumber: session.number,
+          error: dbError.message,
+        }));
       }
 
       sessionsCreated.push({
@@ -316,48 +422,39 @@ Questions? WhatsApp: +91 89762 87997`;
         dbId: savedSession?.id,
       });
 
-      console.log(`✅ Session ${session.type} #${session.number} scheduled: ${sessionDate.toLocaleDateString('en-IN')}`);
-
-      // Small delay between API calls to avoid rate limiting
+      // Rate limiting delay
       await new Promise(resolve => setTimeout(resolve, 300));
 
     } catch (calError: any) {
-      console.error(`❌ Calendar error for session ${session.number}:`, calError.message);
+      console.error(JSON.stringify({
+        requestId,
+        event: 'calendar_error',
+        sessionNumber: session.number,
+        error: calError.message,
+      }));
+
       errors.push({
         session: session.number,
         type: session.type,
         error: calError.message,
       });
-
-      // Continue with other sessions even if one fails
     }
   }
 
-  return {
-    sessionsCreated: sessionsCreated.length,
-    sessions: sessionsCreated,
-    errors,
-  };
+  return { sessionsCreated: sessionsCreated.length, sessions: sessionsCreated, errors };
 }
 
 /**
  * Send enrollment confirmation email via SendGrid
  */
 async function sendConfirmationEmail(
-  data: {
-    parentEmail: string;
-    parentName: string;
-    childName: string;
-    coachName: string;
-    enrollmentId: string;
-  },
+  data: z.infer<typeof enrollmentJobSchema>,
   sessions: any[]
-) {
+): Promise<{ success: boolean; error?: string }> {
   try {
-    // Format session list for email
     const sessionList = sessions
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .map((s, i) => {
+      .map((s) => {
         const date = new Date(s.date);
         const dateStr = date.toLocaleDateString('en-IN', {
           weekday: 'short',
@@ -381,21 +478,35 @@ async function sendConfirmationEmail(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        personalizations: [{
-          to: [{ email: data.parentEmail, name: data.parentName }],
-        }],
-        from: {
-          email: 'engage@yestoryd.com',
-          name: 'Yestoryd',
-        },
-        reply_to: {
-          email: 'support@yestoryd.com',
-          name: 'Yestoryd Support',
-        },
+        personalizations: [{ to: [{ email: data.parentEmail, name: data.parentName }] }],
+        from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+        reply_to: { email: 'support@yestoryd.com', name: 'Yestoryd Support' },
         subject: `🎉 Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
         content: [{
           type: 'text/html',
-          value: `
+          value: generateEmailHtml(data, sessionList),
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`SendGrid error: ${response.status} - ${errorText}`);
+    }
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('Email send failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate email HTML (extracted for cleaner code)
+ */
+function generateEmailHtml(data: z.infer<typeof enrollmentJobSchema>, sessionList: string): string {
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -404,22 +515,17 @@ async function sendConfirmationEmail(
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9;">
   <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    
-    <!-- Header -->
     <div style="text-align: center; margin-bottom: 24px;">
       <h1 style="color: #FF0099; margin: 0; font-size: 28px;">Welcome to Yestoryd! 🎉</h1>
       <p style="color: #666; margin-top: 8px;">Your child's reading transformation begins now</p>
     </div>
-    
-    <!-- Greeting -->
+
     <p style="font-size: 16px; color: #333;">Hi ${data.parentName},</p>
-    
     <p style="font-size: 16px; color: #333;">
-      Great news! <strong style="color: #FF0099;">${data.childName}</strong> is officially enrolled in the 
+      Great news! <strong style="color: #FF0099;">${data.childName}</strong> is officially enrolled in the
       <strong>Yestoryd Reading Program</strong>.
     </p>
-    
-    <!-- Quick Summary Box -->
+
     <div style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); color: white; padding: 24px; border-radius: 12px; margin: 24px 0;">
       <h2 style="margin: 0 0 16px 0; font-size: 18px;">📋 Enrollment Summary</h2>
       <table style="width: 100%; color: white;">
@@ -429,11 +535,10 @@ async function sendConfirmationEmail(
         <tr><td>⏱️ Duration:</td><td><strong>3-month program</strong></td></tr>
       </table>
     </div>
-    
-    <!-- Session Schedule -->
+
     <h2 style="color: #00ABFF; font-size: 18px; margin-top: 32px;">📅 Your Session Schedule</h2>
-    <p style="color: #666; font-size: 14px;">Calendar invites have been sent to your email. Check your Google Calendar!</p>
-    
+    <p style="color: #666; font-size: 14px;">Calendar invites have been sent to your email.</p>
+
     <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
       <thead>
         <tr style="background: #f5f5f5;">
@@ -445,70 +550,38 @@ async function sendConfirmationEmail(
         ${sessionList || '<tr><td colspan="2" style="padding: 12px; color: #666;">Sessions are being scheduled...</td></tr>'}
       </tbody>
     </table>
-    
-    <!-- What's Included -->
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 24px 0;">
-      <h3 style="margin: 0 0 12px 0; color: #333;">🎁 Your Program Includes:</h3>
-      <ul style="margin: 0; padding-left: 20px; color: #555;">
-        <li>📚 6 one-on-one coaching sessions (45 min each)</li>
-        <li>👨‍👩‍👧 3 parent check-in calls (20 min each)</li>
-        <li>📊 Real-time progress tracking in your dashboard</li>
-        <li>🤖 AI-powered reading assessments</li>
-        <li>🎓 Certificate upon completion</li>
-      </ul>
-    </div>
-    
-    <!-- CTA Button -->
+
     <div style="text-align: center; margin: 32px 0;">
-      <a href="https://yestoryd.com/parent/dashboard" 
+      <a href="https://yestoryd.com/parent/dashboard"
          style="background: #FF0099; color: white; padding: 16px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
         View Your Dashboard →
       </a>
     </div>
-    
-    <!-- Contact Info -->
+
     <div style="border-top: 1px solid #eee; padding-top: 24px; margin-top: 24px;">
       <p style="color: #666; font-size: 14px; margin: 0;">
-        <strong>Questions?</strong> We're here to help!<br>
+        <strong>Questions?</strong><br>
         📧 Email: support@yestoryd.com<br>
         💬 WhatsApp: <a href="https://wa.me/918976287997" style="color: #25D366;">+91 89762 87997</a>
       </p>
     </div>
-    
-    <!-- Footer -->
+
     <div style="text-align: center; margin-top: 32px; color: #999; font-size: 12px;">
       <p>Let's make reading fun! 📖✨</p>
       <p>— Team Yestoryd</p>
-      <p style="margin-top: 16px;">
-        <a href="https://yestoryd.com" style="color: #FF0099;">yestoryd.com</a>
-      </p>
     </div>
-    
   </div>
 </body>
 </html>
-          `,
-        }],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`SendGrid error: ${response.status} - ${errorText}`);
-    }
-
-    console.log('✅ Confirmation email sent to:', data.parentEmail);
-    return { success: true };
-
-  } catch (error: any) {
-    console.error('❌ Email send failed:', error.message);
-    // Don't throw - email failure shouldn't fail the whole job
-    // Sessions are already scheduled, email can be resent manually
-    return { success: false, error: error.message };
-  }
+  `;
 }
 
-
-
-
-
+// --- HEALTH CHECK ---
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    service: 'Enrollment Complete Job',
+    description: 'Background worker for post-payment enrollment processing',
+    timestamp: new Date().toISOString(),
+  });
+}

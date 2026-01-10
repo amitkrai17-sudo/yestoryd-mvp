@@ -1,20 +1,51 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+// ============================================================
+// FILE: app/api/admin/dashboard/route.ts
+// ============================================================
+// HARDENED VERSION - Admin Dashboard API
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ============================================================
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import crypto from 'crypto';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   try {
-    // Get current date info
+    // 1. Authenticate - Admin only
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'admin_dashboard_auth_failed',
+        error: auth.error,
+        attemptedEmail: auth.email,
+      }));
+      
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.email ? 403 : 401 }
+      );
+    }
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'admin_dashboard_request',
+      adminEmail: auth.email,
+    }));
+
+    const supabase = getSupabase();
+
+    // 2. Get current date info
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
 
-    // Fetch all stats in parallel
+    // 3. Fetch all stats in parallel
     const [
       enrollmentsResult,
       childrenResult,
@@ -24,38 +55,25 @@ export async function GET() {
       completedSessionsResult,
       recentEnrollmentsResult,
     ] = await Promise.all([
-      // Total enrollments
       supabase.from('enrollments').select('id', { count: 'exact', head: true }),
-      
-      // Active children
       supabase.from('children').select('id', { count: 'exact', head: true }),
-      
-      // Total revenue
       supabase.from('payments').select('amount').eq('status', 'captured'),
-      
-      // This month revenue
       supabase
         .from('payments')
         .select('amount')
         .eq('status', 'captured')
         .gte('created_at', startOfMonth.toISOString()),
-      
-      // Upcoming sessions (next 7 days)
       supabase
         .from('scheduled_sessions')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'scheduled')
         .gte('scheduled_date', now.toISOString().split('T')[0])
         .lte('scheduled_date', new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
-      
-      // Completed sessions this month
       supabase
         .from('scheduled_sessions')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'completed')
         .gte('scheduled_date', startOfMonth.toISOString().split('T')[0]),
-      
-      // Recent enrollments with details
       supabase
         .from('enrollments')
         .select(`
@@ -69,16 +87,15 @@ export async function GET() {
         .limit(5),
     ]);
 
-    // Calculate totals
+    // 4. Calculate totals
     const totalRevenue = paymentsResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
     const thisMonthRevenue = monthPaymentsResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
 
-    // Format recent enrollments with safe type handling
+    // 5. Format recent enrollments
     const recentEnrollments = recentEnrollmentsResult.data?.map((enrollment: any) => {
-      // Handle joined data - Supabase returns arrays for joins
       const child = Array.isArray(enrollment.child) ? enrollment.child[0] : enrollment.child;
       const parent = Array.isArray(enrollment.parent) ? enrollment.parent[0] : enrollment.parent;
-      
+
       return {
         id: enrollment.id,
         childName: child?.name || 'Unknown',
@@ -89,7 +106,17 @@ export async function GET() {
       };
     }) || [];
 
+    const duration = Date.now() - startTime;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'admin_dashboard_success',
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json({
+      success: true,
+      requestId,
       stats: {
         totalEnrollments: enrollmentsResult.count || 0,
         activeChildren: childrenResult.count || 0,
@@ -97,15 +124,24 @@ export async function GET() {
         thisMonthRevenue,
         upcomingSessions: upcomingSessionsResult.count || 0,
         completedSessions: completedSessionsResult.count || 0,
-        conversionRate: 0, // TODO: Calculate from assessments vs enrollments
-        assessmentsTaken: 0, // TODO: Add assessments table tracking
+        conversionRate: 0,
+        assessmentsTaken: 0,
       },
       recentEnrollments,
     });
+
   } catch (error: any) {
-    console.error('Dashboard API error:', error);
+    const duration = Date.now() - startTime;
+
+    console.error(JSON.stringify({
+      requestId,
+      event: 'admin_dashboard_error',
+      error: error.message,
+      duration: `${duration}ms`,
+    }));
+
     return NextResponse.json(
-      { error: error.message },
+      { error: 'Failed to load dashboard', requestId },
       { status: 500 }
     );
   }

@@ -1,26 +1,54 @@
-// =============================================================================
+// ============================================================
 // FILE: app/api/admin/completion/extend/route.ts
-// PURPOSE: Extend program end date for overdue/at-risk enrollments
-// =============================================================================
+// ============================================================
+// HARDENED VERSION - Extend Program End Date
+// Yestoryd - AI-Powered Reading Intelligence Platform
+//
+// Security: Uses shared lib/admin-auth.ts helper
+// ⚠️ CRITICAL FIX: Original had NO AUTHENTICATION!
+// ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { z } from 'zod';
+import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// --- VALIDATION SCHEMA ---
+const extendSchema = z.object({
+  enrollmentId: z.string().uuid('Invalid enrollment ID'),
+  days: z.number().min(1).max(90).default(14),
+  reason: z.string().max(500).optional(),
+});
 
 export async function POST(request: NextRequest) {
-  try {
-    const { enrollmentId, days = 14, reason } = await request.json();
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
 
-    if (!enrollmentId) {
-      return NextResponse.json(
-        { success: false, error: 'Enrollment ID required' },
-        { status: 400 }
-      );
+  try {
+    const auth = await requireAdmin();
+    
+    if (!auth.authorized) {
+      console.log(JSON.stringify({ requestId, event: 'completion_extend_auth_failed', error: auth.error }));
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
     }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const validation = extendSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ success: false, error: 'Validation failed', details: validation.error.flatten() }, { status: 400 });
+    }
+
+    const { enrollmentId, days, reason } = validation.data;
+
+    console.log(JSON.stringify({ requestId, event: 'completion_extend_request', adminEmail: auth.email, enrollmentId, days }));
+
+    const supabase = getSupabase();
 
     // Get current enrollment
     const { data: enrollment, error: fetchError } = await supabase
@@ -37,10 +65,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (fetchError || !enrollment) {
-      return NextResponse.json(
-        { success: false, error: 'Enrollment not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Enrollment not found' }, { status: 404 });
     }
 
     // Calculate new end date
@@ -50,6 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Store original end date if first extension
     const originalEnd = enrollment.original_program_end || enrollment.program_end;
+    const newExtensionCount = (enrollment.extension_count || 0) + 1;
 
     // Update enrollment
     const { error: updateError } = await supabase
@@ -57,18 +83,15 @@ export async function POST(request: NextRequest) {
       .update({
         program_end: newEndDate.toISOString().split('T')[0],
         original_program_end: originalEnd,
-        extension_count: (enrollment.extension_count || 0) + 1,
-        risk_level: 'active', // Reset risk level
+        extension_count: newExtensionCount,
+        risk_level: 'active',
         updated_at: new Date().toISOString(),
       })
       .eq('id', enrollmentId);
 
     if (updateError) {
-      console.error('Update error:', updateError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to extend program' },
-        { status: 500 }
-      );
+      console.error(JSON.stringify({ requestId, event: 'completion_extend_db_error', error: updateError.message }));
+      return NextResponse.json({ success: false, error: 'Failed to extend program' }, { status: 500 });
     }
 
     // Log the event
@@ -80,9 +103,27 @@ export async function POST(request: NextRequest) {
         new_end: newEndDate.toISOString().split('T')[0],
         days_added: days,
         reason: reason || 'Admin extended',
-        extension_number: (enrollment.extension_count || 0) + 1,
+        extension_number: newExtensionCount,
+        extended_by: auth.email,
       },
       triggered_by: 'admin',
+    });
+
+    // Audit log
+    await supabase.from('activity_log').insert({
+      user_email: auth.email,
+      action: 'enrollment_extended',
+      details: {
+        request_id: requestId,
+        enrollment_id: enrollmentId,
+        previous_end: enrollment.program_end,
+        new_end: newEndDate.toISOString().split('T')[0],
+        days_added: days,
+        extension_count: newExtensionCount,
+        reason: reason || null,
+        timestamp: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
     });
 
     // Notify parent (optional)
@@ -110,22 +151,24 @@ export async function POST(request: NextRequest) {
         });
       } catch (emailError) {
         console.error('Extension email error:', emailError);
+        // Non-critical - don't fail the request
       }
     }
 
+    const duration = Date.now() - startTime;
+    console.log(JSON.stringify({ requestId, event: 'completion_extend_success', enrollmentId, newExtensionCount, duration: `${duration}ms` }));
+
     return NextResponse.json({
       success: true,
+      requestId,
       previousEnd: enrollment.program_end,
       newEnd: newEndDate.toISOString().split('T')[0],
-      extensionCount: (enrollment.extension_count || 0) + 1,
+      extensionCount: newExtensionCount,
       daysAdded: days,
     });
 
   } catch (error: any) {
-    console.error('Extend program error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    console.error(JSON.stringify({ requestId, event: 'completion_extend_error', error: error.message }));
+    return NextResponse.json({ success: false, error: error.message, requestId }, { status: 500 });
   }
 }
