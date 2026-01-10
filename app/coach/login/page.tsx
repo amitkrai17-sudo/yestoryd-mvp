@@ -48,6 +48,31 @@ export default function CoachLoginPage() {
     fetchVideoUrl();
   }, []);
 
+  // Handle OAuth callback - check for session on mount
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log('Session found, redirecting to dashboard...');
+        router.push('/coach/dashboard');
+        return;
+      }
+    };
+    
+    // Check if we have a hash (OAuth callback) or just on mount
+    handleAuthCallback();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event, session?.user?.email);
+      if (event === 'SIGNED_IN' && session) {
+        router.push('/coach/dashboard');
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [router]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -458,3 +483,4 @@ export default function CoachLoginPage() {
     </div>
   );
 }
+

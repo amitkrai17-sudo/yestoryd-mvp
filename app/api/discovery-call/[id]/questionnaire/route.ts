@@ -14,8 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -34,13 +33,13 @@ function isValidUUID(str: string): boolean {
 const questionnaireSchema = z.object({
   callStatus: z.enum(['completed', 'no_show', 'rescheduled']),
   questionnaire: z.object({
-    reading_frequency: z.enum(['rarely', 'sometimes', 'daily']).optional(),
-    child_attitude: z.enum(['resistant', 'neutral', 'enjoys']).optional(),
+    reading_frequency: z.enum(['rarely', 'sometimes', 'daily', '']).optional(),
+    child_attitude: z.enum(['resistant', 'neutral', 'enjoys', '']).optional(),
     parent_goal: z.string().max(500).optional(),
-    previous_support: z.enum(['none', 'tutor', 'app', 'school']).optional(),
-    preferred_session_time: z.enum(['morning', 'afternoon', 'evening']).optional(),
+    previous_support: z.enum(['none', 'tutor', 'app', 'school', '']).optional(),
+    preferred_session_time: z.enum(['morning', 'afternoon', 'evening', '']).optional(),
     specific_concerns: z.string().max(1000).optional(),
-    likelihood_to_enroll: z.enum(['high', 'medium', 'low']).optional(),
+    likelihood_to_enroll: z.enum(['high', 'medium', 'low', '']).optional(),
     objections: z.array(z.string().max(100)).max(10).optional(),
     objection_details: z.string().max(1000).optional(),
     coach_notes: z.string().max(2000).optional(),
@@ -67,18 +66,17 @@ export async function POST(
     }
 
     // 2. Authenticate
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
+    const auth = await requireAdminOrCoach();
+    if (!auth.authorized) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const userEmail = session.user.email;
-    const userRole = (session.user as any).role as string;
-    const sessionCoachId = (session.user as any).coachId as string | undefined;
+    const userEmail = auth.email || '';
+    const userRole = auth.role || 'coach';
+    const sessionCoachId = auth.coachId;
 
     // 3. Authorize - Admin or Coach only
     if (!['admin', 'coach'].includes(userRole)) {
@@ -222,3 +220,13 @@ export async function POST(
     );
   }
 }
+
+
+
+
+
+
+
+
+
+

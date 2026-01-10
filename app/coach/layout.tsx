@@ -88,7 +88,7 @@ interface CoachData {
   email: string;
   phone?: string;
   is_active: boolean;
-  profile_photo?: string;
+  photo_url?: string;
 }
 
 interface CoachContextType {
@@ -174,6 +174,27 @@ export default function CoachLayout({
     setSidebarOpen(false);
   }, [pathname]);
 
+  // Setup authenticated fetch for coach API calls
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      // Intercept coach and discovery-call API calls
+      if (url.includes('/api/coach') || url.includes('/api/discovery-call')) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const headers = new Headers(init?.headers);
+          headers.set('Authorization', 'Bearer ' + session.access_token);
+          return originalFetch(input, { ...init, headers });
+        }
+      }
+      return originalFetch(input, init);
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   useEffect(() => {
     // Skip auth check for public routes
     if (isPublicRoute(pathname)) {
@@ -218,6 +239,16 @@ export default function CoachLayout({
   };
 
   const validateCoach = async (authUser: any) => {
+    // DEBUG - REMOVE AFTER TESTING
+    console.log('=== COACH AUTH DEBUG ===');
+    console.log('Auth User ID:', authUser?.id);
+    console.log('Auth User Email:', authUser?.email);
+    console.log('========================');
+    // DEBUG - REMOVE AFTER TESTING
+    console.log('=== COACH AUTH DEBUG ===');
+    console.log('Auth User ID:', authUser.id);
+    console.log('Auth User Email:', authUser.email);
+    console.log('========================');
     const email = authUser.email?.toLowerCase();
     const authId = authUser.id;
 
@@ -235,7 +266,7 @@ export default function CoachLayout({
     if (authId) {
       const result = await supabase
         .from('coaches')
-        .select('id, name, email, phone, is_active, profile_photo')
+        .select('id, name, email, phone, is_active, photo_url')
         .eq('user_id', authId)
         .single();
       
@@ -248,7 +279,7 @@ export default function CoachLayout({
     if (!coachData && email) {
       const result = await supabase
         .from('coaches')
-        .select('id, name, email, phone, is_active, profile_photo')
+        .select('id, name, email, phone, is_active, photo_url')
         .eq('email', email)
         .single();
       
@@ -451,3 +482,7 @@ export default function CoachLayout({
     </CoachContext.Provider>
   );
 }
+
+
+
+

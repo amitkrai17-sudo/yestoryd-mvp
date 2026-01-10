@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin, getSupabase as getAdminSupabase } from '@/lib/admin-auth';
+import { requireAdminOrCoach } from '@/lib/api-auth';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. Authenticate using Supabase Auth
-    const auth = await requireAdmin();
+    const auth = await requireAdminOrCoach();
 
     if (!auth.authorized) {
       console.log(JSON.stringify({
@@ -292,3 +292,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+

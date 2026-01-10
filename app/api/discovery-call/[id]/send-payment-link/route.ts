@@ -15,8 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -110,17 +109,17 @@ export async function POST(
     const { id } = paramsValidation.data;
 
     // 2. Authenticate
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const auth = await requireAdminOrCoach();
+    if (!auth.authorized) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const userRole = (session.user as any).role;
-    const userCoachId = (session.user as any).coachId;
-    const userEmail = session.user.email;
+    const userRole = auth.role || 'coach';
+    const userCoachId = auth.coachId;
+    const userEmail = auth.email || '';
 
     // 3. Parse and validate body
     let body = {};
@@ -449,8 +448,8 @@ export async function GET(
     const { id } = paramsValidation.data;
 
     // Authenticate
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const auth = await requireAdminOrCoach();
+    if (!auth.authorized) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -487,3 +486,8 @@ export async function GET(
     );
   }
 }
+
+
+
+
+

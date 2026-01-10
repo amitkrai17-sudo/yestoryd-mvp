@@ -14,8 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdminOrCoach } from '@/lib/api-auth';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
@@ -61,21 +60,21 @@ function generateSuggestedQuestions(call: any): string[] {
   questions.push(`What time works best for weekly sessions?`);
   
   // Score-based questions
-  if (call.assessment_score !== null && call.assessment_score !== undefined) {
-    if (call.assessment_score < 5) {
-      questions.push(`I noticed ${childName} scored ${call.assessment_score}/10. Have you observed any specific struggles at home?`);
+  if (call.child?.latest_assessment_score !== null && call.child?.latest_assessment_score !== undefined) {
+    if (call.child?.latest_assessment_score < 5) {
+      questions.push(`I noticed ${childName} scored ${call.child?.latest_assessment_score}/10. Have you observed any specific struggles at home?`);
       questions.push(`Does ${childName} get frustrated when reading difficult words?`);
-    } else if (call.assessment_score >= 7) {
-      questions.push(`${childName} scored well at ${call.assessment_score}/10! What would you like to focus on - speed, comprehension, or confidence?`);
+    } else if (call.child?.latest_assessment_score >= 7) {
+      questions.push(`${childName} scored well at ${call.child?.latest_assessment_score}/10! What would you like to focus on - speed, comprehension, or confidence?`);
     }
   }
   
   // Age-based questions
-  if (call.child_age) {
-    if (call.child_age <= 5) {
-      questions.push(`At ${call.child_age} years old, we focus a lot on phonics and letter sounds. Is ${childName} familiar with the alphabet?`);
-    } else if (call.child_age >= 8) {
-      questions.push(`For ${call.child_age}-year-olds, we often work on comprehension and reading fluency. Does ${childName} understand what they read?`);
+  if (call.child?.age) {
+    if (call.child?.age <= 5) {
+      questions.push(`At ${call.child?.age} years old, we focus a lot on phonics and letter sounds. Is ${childName} familiar with the alphabet?`);
+    } else if (call.child?.age >= 8) {
+      questions.push(`For ${call.child?.age}-year-olds, we often work on comprehension and reading fluency. Does ${childName} understand what they read?`);
     }
   }
   
@@ -151,9 +150,8 @@ export async function GET(
     }
 
     // 2. Authenticate
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
+    const auth = await requireAdminOrCoach();
+    if (!auth.authorized) {
       console.log(JSON.stringify({
         requestId,
         event: 'auth_failed',
@@ -167,9 +165,9 @@ export async function GET(
       );
     }
 
-    const userEmail = session.user.email;
-    const userRole = (session.user as any).role as string;
-    const sessionCoachId = (session.user as any).coachId as string | undefined;
+    const userEmail = auth.email || '';
+    const userRole = auth.role || 'coach';
+    const sessionCoachId = auth.coachId;
 
     // 3. Authorize - Admin or Coach only
     if (!['admin', 'coach'].includes(userRole)) {
@@ -204,11 +202,20 @@ export async function GET(
       .select(`
         *,
         coach:coaches!assigned_coach_id (
-          id,
-          name,
-          email,
-          phone
-        )
+            id,
+            name,
+            email,
+            phone
+          ),
+          child:children!child_id (
+            id,
+            child_name,
+            age,
+            latest_assessment_score,
+            assessment_wpm,
+            phonics_focus,
+            struggling_phonemes
+          )
       `)
       .eq('id', id)
       .single();
@@ -292,3 +299,15 @@ export async function GET(
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+

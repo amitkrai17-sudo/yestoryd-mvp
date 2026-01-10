@@ -17,6 +17,15 @@ interface DiscoveryCall {
   assessment_score: number;
   assessment_wpm: number;
   assessment_feedback: string;
+  child?: {
+    id: string;
+    child_name: string;
+    age: number;
+    latest_assessment_score: number;
+    assessment_wpm: number;
+    phonics_focus: string;
+    struggling_phonemes: string[];
+  };
   status: string;
   scheduled_at: string | null;
   meeting_url: string | null;
@@ -223,7 +232,7 @@ export default function CoachDiscoveryCallDetailPage() {
             <p className="text-sm text-gray-500 truncate">{call.parent_name}</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-pink-600">{call.assessment_score}</p>
+            <p className="text-2xl font-bold text-pink-600">{call.child?.latest_assessment_score}</p>
             <p className="text-xs text-gray-400">Score</p>
           </div>
         </div>
@@ -280,15 +289,15 @@ export default function CoachDiscoveryCallDetailPage() {
         <div className="bg-white rounded-xl border p-4 mb-4">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-pink-600">{call.assessment_score}</p>
+              <p className="text-2xl font-bold text-pink-600">{call.child?.latest_assessment_score}</p>
               <p className="text-xs text-gray-500">Score</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-blue-600">{call.assessment_wpm}</p>
+              <p className="text-2xl font-bold text-blue-600">{call.child?.assessment_wpm || '-'}</p>
               <p className="text-xs text-gray-500">WPM</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{call.child_age}</p>
+              <p className="text-2xl font-bold text-gray-900">{call.child?.age}</p>
               <p className="text-xs text-gray-500">Age</p>
             </div>
           </div>
@@ -606,3 +615,11 @@ export default function CoachDiscoveryCallDetailPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
