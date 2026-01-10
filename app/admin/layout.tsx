@@ -259,7 +259,7 @@ export default function AdminLayout({
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       
       // Only intercept admin API calls
-      if (url.includes("/api/admin")) {
+      if (url.includes("/api/admin") || url.includes("/api/discovery-call")) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.access_token) {

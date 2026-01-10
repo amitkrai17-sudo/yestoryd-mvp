@@ -15,8 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, getSupabase as getAdminSupabase } from '@/lib/admin-auth';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
@@ -55,41 +54,28 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 1. Authenticate
-    const session = await getServerSession(authOptions);
+    // 1. Authenticate using Supabase Auth
+    const auth = await requireAdmin();
 
-    if (!session?.user?.email) {
+    if (!auth.authorized) {
       console.log(JSON.stringify({
         requestId,
         event: 'auth_failed',
-        error: 'No session',
+        error: auth.error,
+        attemptedEmail: auth.email,
       }));
 
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.email ? 403 : 401 }
       );
     }
 
-    const userEmail = session.user.email;
-    const userRole = (session.user as any).role as string;
-    const sessionCoachId = (session.user as any).coachId as string | undefined;
+    const userEmail = auth.email!;
+    const userRole = 'admin'; // All authenticated admins have admin role
+    const sessionCoachId: string | undefined = undefined; // Admin mode, no coach restriction
 
-    // 2. Authorize - Admin or Coach only
-    if (!['admin', 'coach'].includes(userRole)) {
-      console.log(JSON.stringify({
-        requestId,
-        event: 'auth_failed',
-        error: 'Insufficient permissions',
-        userEmail,
-        userRole,
-      }));
 
-      return NextResponse.json(
-        { error: 'Access denied. Admin or Coach role required.' },
-        { status: 403 }
-      );
-    }
 
     // 3. Parse query params
     const { searchParams } = new URL(request.url);
@@ -114,29 +100,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 4. AUTHORIZATION: Coaches can only see their own calls
-    let effectiveCoachId: string | null = coachId;
+    // 4. Admin sees all calls, coachId is optional filter
+    const effectiveCoachId: string | null = coachId || null;
 
-    if (userRole === 'coach') {
-      // Coaches can ONLY see their assigned calls
-      if (coachId && coachId !== sessionCoachId) {
-        console.log(JSON.stringify({
-          requestId,
-          event: 'auth_failed',
-          error: 'Coach tried to view other coach calls',
-          userEmail,
-          requestedCoachId: coachId,
-          sessionCoachId,
-        }));
-
-        return NextResponse.json(
-          { error: 'You can only view your own assigned calls' },
-          { status: 403 }
-        );
-      }
-      // Force filter to coach's own calls
-      effectiveCoachId = sessionCoachId || null;
-    }
 
     console.log(JSON.stringify({
       requestId,
