@@ -677,6 +677,7 @@ https://yestoryd.com/lets-talk
   // Build lets-talk URL with params
   const getLetsTalkUrl = () => {
     const params = new URLSearchParams({
+      childId: results?.childId || '',
       childName: formData.childName,
       childAge: formData.childAge,
       parentName: formData.parentName,
@@ -691,6 +692,7 @@ https://yestoryd.com/lets-talk
   // CRO FIX: Build enroll URL with params for high scorers
   const getEnrollUrl = () => {
     const params = new URLSearchParams({
+      childId: results?.childId || '',
       childName: formData.childName,
       childAge: formData.childAge,
       parentName: formData.parentName,
