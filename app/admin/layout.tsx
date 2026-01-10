@@ -251,6 +251,32 @@ export default function AdminLayout({
     return () => subscription.unsubscribe();
   }, []);
 
+  // Setup authenticated fetch for admin API calls
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      
+      // Only intercept admin API calls
+      if (url.startsWith("/api/admin")) {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.access_token) {
+          const headers = new Headers(init?.headers);
+          headers.set("Authorization", `Bearer ${session.access_token}`);
+          return originalFetch(input, { ...init, headers });
+        }
+      }
+      
+      return originalFetch(input, init);
+    };
+    
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   const checkAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();

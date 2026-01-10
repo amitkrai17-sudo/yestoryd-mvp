@@ -25,6 +25,7 @@ const PROTECTED_ROUTES = [
 // Routes that are always public
 const PUBLIC_ROUTES = [
   '/admin/login',
+  '/admin',
   '/coach/login',
   '/parent/login',
   '/login',
@@ -133,9 +134,13 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  console.log('[Middleware] Checking auth for:', pathname);
+  console.log('[Middleware] Cookies:', request.cookies.getAll().map(c => c.name));
   try {
     // 6. Get User (Use getUser instead of getSession for better security)
     const { data: { user }, error } = await supabase.auth.getUser();
+    console.log('[Middleware] User:', user?.email || 'NO USER');
+    console.log('[Middleware] Error:', error?.message || 'NO ERROR');
 
     // 7. No session → redirect to login
     if (error || !user) {
@@ -248,7 +253,8 @@ function handleSubdomainRouting(
 
 function getLoginUrl(pathname: string, baseUrl: URL): URL {
   if (pathname.startsWith('/admin')) {
-    return new URL('/admin/login', baseUrl);
+    return new URL('/admin/login',
+  '/admin', baseUrl);
   }
   if (pathname.startsWith('/coach')) {
     return new URL('/coach/login', baseUrl);

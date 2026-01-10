@@ -18,34 +18,26 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Check if already logged in
-    checkExistingSession();
-  }, []);
-
-  const ADMIN_EMAILS = [
-    'rucha.rai@yestoryd.com',
-    'rucha@yestoryd.com',
-    'amitkrai17@gmail.com',
-  ];
-
-  const checkExistingSession = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const userEmail = session.user.email?.toLowerCase() || '';
-        if (ADMIN_EMAILS.includes(userEmail)) {
-          router.push('/admin');
-        } else {
-          await supabase.auth.signOut();
-          setError('Access denied. Admin privileges required.');
-        }
+    // Listen for auth state changes (handles OAuth callback)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event);
+      if (event === 'SIGNED_IN' && session) {
+        setTimeout(() => { window.location.href = '/admin'; }, 500);
       }
-    } catch (err) {
-      console.error('Session check error:', err);
-    } finally {
       setCheckingSession(false);
-    }
-  };
+    });
+
+    // Check existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setTimeout(() => { window.location.href = '/admin'; }, 500);
+      } else {
+        setCheckingSession(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -55,7 +47,7 @@ export default function AdminLoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/admin`,
+          redirectTo: `${window.location.origin}/admin/login`,
         },
       });
 
