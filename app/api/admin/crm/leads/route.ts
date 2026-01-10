@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const validation = getLeadsSchema.safeParse({
       source: searchParams.get('source') || 'all',
-      status: searchParams.get('status'),
-      search: searchParams.get('search'),
+      status: searchParams.get('status') || undefined,
+      search: searchParams.get('search') || undefined,
     });
 
     if (!validation.success) {

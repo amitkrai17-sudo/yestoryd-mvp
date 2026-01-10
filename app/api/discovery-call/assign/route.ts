@@ -15,16 +15,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
-// --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from lib/api-auth.ts
 
 // --- VALIDATION SCHEMA ---
 const AssignCoachSchema = z.object({
@@ -32,26 +27,8 @@ const AssignCoachSchema = z.object({
   coach_id: z.string().uuid('Invalid coach ID'),
 });
 
-// --- AUTHENTICATION ---
-async function requireAdmin(request: NextRequest): Promise<{
-  authorized: boolean;
-  email?: string;
-  error?: string;
-}> {
-  const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
-    return { authorized: false, error: 'Authentication required' };
-  }
-
-  const role = (session.user as any).role;
-
-  if (role !== 'admin') {
-    return { authorized: false, error: 'Admin access required', email: session.user.email };
-  }
-
-  return { authorized: true, email: session.user.email };
-}
+// --- AUTHENTICATION: Using requireAdminOrCoach from lib/api-auth.ts ---
 
 // --- MAIN HANDLER ---
 export async function POST(request: NextRequest) {
@@ -60,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // 1. Authenticate - Admin only
-    const auth = await requireAdmin(request);
+    const auth = await requireAdminOrCoach();
 
     if (!auth.authorized) {
       console.log(JSON.stringify({
@@ -114,7 +91,7 @@ export async function POST(request: NextRequest) {
       adminEmail: auth.email,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 3. Verify coach exists and is active
     const { data: coach, error: coachError } = await supabase
@@ -232,6 +209,10 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', coach_id);
+
+
+
+      // 7b. Children sync handled by database trigger: trigger_sync_discovery_to_children
 
     // 8. CRITICAL: Sync external systems (Calendar + Notifications)
     const previousCoachId = existingCall.assigned_coach_id;
@@ -418,7 +399,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. Authenticate - Admin only
-    const auth = await requireAdmin(request);
+    const auth = await requireAdminOrCoach();
 
     if (!auth.authorized) {
       return NextResponse.json(
@@ -427,7 +408,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 2. Get all active coaches
     const { data: coaches, error } = await supabase

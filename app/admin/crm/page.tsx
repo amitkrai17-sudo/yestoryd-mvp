@@ -174,10 +174,11 @@ function LeadModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/crm/leads/${lead.id}`, {
+      const res = await fetch(`/api/admin/crm/leads`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: lead.id,           // ← ADD THIS LINE
           lead_status: status,
           coach_id: assignedCoach || null,
           lead_notes: notes,
@@ -248,10 +249,9 @@ function LeadModal({
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wide">Assessment Score</label>
               <div className="mt-1">
-                <span className={`text-2xl font-bold ${
-                  lead.latest_assessment_score >= 7 ? 'text-green-600' :
+                <span className={`text-2xl font-bold ${lead.latest_assessment_score >= 7 ? 'text-green-600' :
                   lead.latest_assessment_score >= 5 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
+                  }`}>
                   {lead.latest_assessment_score}/10
                 </span>
               </div>
@@ -361,7 +361,7 @@ function DiscoveryCallModal({
   const [saving, setSaving] = useState(false);
   const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
   const [sendingFollowup, setSendingFollowup] = useState(false);
-  
+
   // Post-call form state
   const [showPostCallForm, setShowPostCallForm] = useState(call.call_completed || false);
   const [postCallData, setPostCallData] = useState({
@@ -508,10 +508,9 @@ function DiscoveryCallModal({
           {call.assessment_score !== null && (
             <div className="bg-gray-50 rounded-lg p-3">
               <span className="text-sm text-gray-500">Assessment Score:</span>
-              <span className={`ml-2 text-lg font-bold ${
-                call.assessment_score >= 7 ? 'text-green-600' :
+              <span className={`ml-2 text-lg font-bold ${call.assessment_score >= 7 ? 'text-green-600' :
                 call.assessment_score >= 5 ? 'text-yellow-600' : 'text-red-600'
-              }`}>
+                }`}>
                 {call.assessment_score}/10
               </span>
             </div>
@@ -581,11 +580,10 @@ function DiscoveryCallModal({
                         key={option.value}
                         type="button"
                         onClick={() => setPostCallData({ ...postCallData, call_outcome: option.value })}
-                        className={`p-2 rounded-lg border text-sm font-medium transition-all ${
-                          postCallData.call_outcome === option.value
-                            ? 'border-pink-500 bg-pink-50 text-pink-700'
-                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                        }`}
+                        className={`p-2 rounded-lg border text-sm font-medium transition-all ${postCallData.call_outcome === option.value
+                          ? 'border-pink-500 bg-pink-50 text-pink-700'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                          }`}
                       >
                         {option.label}
                       </button>
@@ -605,11 +603,10 @@ function DiscoveryCallModal({
                           key={option.value}
                           type="button"
                           onClick={() => setPostCallData({ ...postCallData, likelihood: option.value })}
-                          className={`flex-1 p-2 rounded-lg border text-sm font-medium transition-all ${
-                            postCallData.likelihood === option.value
-                              ? option.color
-                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                          }`}
+                          className={`flex-1 p-2 rounded-lg border text-sm font-medium transition-all ${postCallData.likelihood === option.value
+                            ? option.color
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                            }`}
                         >
                           <div>{option.label}</div>
                           <div className="text-xs font-normal opacity-75">{option.desc}</div>
@@ -877,17 +874,15 @@ export default function AdminCRMPage() {
           <div className="flex gap-1 mt-4">
             <button
               onClick={() => setActiveTab('leads')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
-                activeTab === 'leads' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${activeTab === 'leads' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'
+                }`}
             >
               Leads ({stats.total})
             </button>
             <button
               onClick={() => setActiveTab('discovery')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${
-                activeTab === 'discovery' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'discovery' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'
+                }`}
             >
               Discovery Calls ({discoveryCalls.length})
               {pendingAssignments > 0 && (
@@ -898,9 +893,8 @@ export default function AdminCRMPage() {
             </button>
             <button
               onClick={() => setActiveTab('support')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${
-                activeTab === 'support' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'support' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'
+                }`}
             >
               <HelpCircle className="w-4 h-4" />
               Support
@@ -1054,10 +1048,9 @@ export default function AdminCRMPage() {
                           </td>
                           <td className="px-4 py-3">
                             {lead.latest_assessment_score !== null ? (
-                              <span className={`font-semibold ${
-                                lead.latest_assessment_score >= 7 ? 'text-green-600' :
+                              <span className={`font-semibold ${lead.latest_assessment_score >= 7 ? 'text-green-600' :
                                 lead.latest_assessment_score >= 5 ? 'text-yellow-600' : 'text-red-600'
-                              }`}>
+                                }`}>
                                 {lead.latest_assessment_score}/10
                               </span>
                             ) : (
@@ -1115,11 +1108,10 @@ export default function AdminCRMPage() {
                     // FIXED: Pass filter directly to avoid state timing issue
                     fetchDiscoveryCalls(filter);
                   }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
-                    discoveryFilter === filter
-                      ? 'bg-pink-100 text-pink-700'
-                      : 'bg-white text-gray-600 border hover:bg-gray-50'
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${discoveryFilter === filter
+                    ? 'bg-pink-100 text-pink-700'
+                    : 'bg-white text-gray-600 border hover:bg-gray-50'
+                    }`}
                 >
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
                 </button>
@@ -1139,9 +1131,8 @@ export default function AdminCRMPage() {
                       <div
                         key={call.id}
                         onClick={() => setSelectedCall(call)}
-                        className={`p-4 hover:bg-gray-50 cursor-pointer flex items-center justify-between ${
-                          isPending ? 'bg-orange-50/50' : ''
-                        }`}
+                        className={`p-4 hover:bg-gray-50 cursor-pointer flex items-center justify-between ${isPending ? 'bg-orange-50/50' : ''
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           {isPending && (
@@ -1156,16 +1147,15 @@ export default function AdminCRMPage() {
                                 </span>
                               )}
                               {call.call_outcome && (
-                                <span className={`px-1.5 py-0.5 rounded text-xs ${
-                                  call.call_outcome === 'enrolled' ? 'bg-green-100 text-green-700' :
+                                <span className={`px-1.5 py-0.5 rounded text-xs ${call.call_outcome === 'enrolled' ? 'bg-green-100 text-green-700' :
                                   call.call_outcome === 'follow_up' ? 'bg-blue-100 text-blue-700' :
-                                  call.call_outcome === 'not_interested' ? 'bg-red-100 text-red-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
+                                    call.call_outcome === 'not_interested' ? 'bg-red-100 text-red-700' :
+                                      'bg-gray-100 text-gray-700'
+                                  }`}>
                                   {call.call_outcome === 'enrolled' ? '✅ Enrolled' :
-                                   call.call_outcome === 'follow_up' ? '📞 Follow-up' :
-                                   call.call_outcome === 'not_interested' ? '❌ Not Interested' :
-                                   call.call_outcome === 'no_show' ? '👻 No Show' : call.call_outcome}
+                                    call.call_outcome === 'follow_up' ? '📞 Follow-up' :
+                                      call.call_outcome === 'not_interested' ? '❌ Not Interested' :
+                                        call.call_outcome === 'no_show' ? '👻 No Show' : call.call_outcome}
                                 </span>
                               )}
                             </div>

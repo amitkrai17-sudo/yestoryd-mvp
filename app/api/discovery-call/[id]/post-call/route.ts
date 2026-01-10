@@ -14,16 +14,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from lib/api-auth.ts
 
 // --- HELPER: UUID validation ---
 function isValidUUID(str: string): boolean {
@@ -32,12 +28,12 @@ function isValidUUID(str: string): boolean {
 
 // --- VALIDATION SCHEMA ---
 const postCallSchema = z.object({
-  call_outcome: z.enum(['enrolled', 'interested', 'maybe_later', 'not_interested', 'no_show', 'rescheduled']),
-  likelihood: z.enum(['high', 'medium', 'low']).optional().nullable(),
+  call_outcome: z.enum(['enrolled', 'follow_up', 'interested', 'maybe_later', 'not_interested', 'no_show', 'rescheduled']),
+  likelihood: z.union([z.literal(''), z.enum(['hot', 'warm', 'cold', 'high', 'medium', 'low'])]).optional().nullable(),
   objections: z.string().max(1000).optional().nullable(),
   concerns: z.string().max(1000).optional().nullable(),
   follow_up_notes: z.string().max(2000).optional().nullable(),
-  follow_up_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format').optional().nullable(),
+  follow_up_date: z.union([z.string().length(0), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format')]).optional().nullable(),
   call_completed: z.boolean().optional().default(true),
 });
 
@@ -62,27 +58,20 @@ export async function POST(
       );
     }
 
-    // 2. Authenticate
-    const session = await getServerSession(authOptions);
+    // 2. Authenticate - Admin or Coach
+    const auth = await requireAdminOrCoach();
 
-    if (!session?.user?.email) {
+    if (!auth.authorized) {
       return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
+        { success: false, error: auth.error },
+        { status: auth.email ? 403 : 401 }
       );
     }
 
-    const userEmail = session.user.email;
-    const userRole = (session.user as any).role as string;
-    const sessionCoachId = (session.user as any).coachId as string | undefined;
+    const userEmail = auth.email!;
+    const userRole = auth.role!;
+    const sessionCoachId = auth.coachId;
 
-    // 3. Authorize - Admin or Coach only
-    if (!['admin', 'coach'].includes(userRole)) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied. Admin or Coach role required.' },
-        { status: 403 }
-      );
-    }
 
     // 4. Parse and validate body
     let body;
@@ -110,7 +99,7 @@ export async function POST(
 
     const validated = validationResult.data;
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 5. Fetch discovery call and verify ownership
     const { data: existingCall, error: fetchError } = await supabase
@@ -169,7 +158,7 @@ export async function POST(
 
     // If enrolled, also update call_status
     if (validated.call_outcome === 'enrolled') {
-      updateData.call_status = 'completed';
+      updateData.status = 'completed';
     }
 
     // 8. Update discovery call
@@ -188,13 +177,8 @@ export async function POST(
       );
     }
 
-    // 9. Update child's lead_status if outcome is 'enrolled'
-    if (validated.call_outcome === 'enrolled' && existingCall.child_id) {
-      await supabase
-        .from('children')
-        .update({ lead_status: 'enrolled' })
-        .eq('id', existingCall.child_id);
-    }
+
+    // 9. Children sync handled by database trigger: trigger_sync_discovery_to_children
 
     // 10. Audit log
     await supabase.from('activity_log').insert({
@@ -272,29 +256,22 @@ export async function GET(
       );
     }
 
-    // 2. Authenticate
-    const session = await getServerSession(authOptions);
+    // 2. Authenticate - Admin or Coach
+    const auth = await requireAdminOrCoach();
 
-    if (!session?.user?.email) {
+    if (!auth.authorized) {
       return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
+        { success: false, error: auth.error },
+        { status: auth.email ? 403 : 401 }
       );
     }
 
-    const userEmail = session.user.email;
-    const userRole = (session.user as any).role as string;
-    const sessionCoachId = (session.user as any).coachId as string | undefined;
+    const userEmail = auth.email!;
+    const userRole = auth.role!;
+    const sessionCoachId = auth.coachId;
 
-    // 3. Authorize - Admin or Coach only
-    if (!['admin', 'coach'].includes(userRole)) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied. Admin or Coach role required.' },
-        { status: 403 }
-      );
-    }
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 4. Fetch discovery call
     const { data, error } = await supabase
