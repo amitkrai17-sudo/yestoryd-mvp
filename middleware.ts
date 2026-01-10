@@ -61,6 +61,10 @@ function isCoachRoute(pathname: string): boolean {
          pathname.startsWith('/coach/payouts');
 }
 
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+}
+
 function isParentRoute(pathname: string): boolean {
   return pathname.startsWith('/parent');
 }
@@ -94,7 +98,12 @@ export async function middleware(request: NextRequest) {
     return subdomainResult;
   }
 
-  // 4. Check if route requires auth
+  // 4. Check if route is public (skip auth)
+  if (isPublicRoute(pathname)) {
+    return response;
+  }
+
+  // 5. Check if route requires auth
   if (!isProtectedRoute(pathname)) {
     return response;
   }
