@@ -169,10 +169,16 @@ export async function requireAdminOrCoach(): Promise<AuthResult> {
     return { authorized: false, error: 'Invalid session - no email' };
   }
 
-  // Check admin first
-  if (ADMIN_EMAILS.includes(email)) {
-    return { authorized: true, email, userId: user.id, role: 'admin' };
-  }
+  // Check admin first - but also get coachId if they're a coach too
+    if (ADMIN_EMAILS.includes(email)) {
+      const supabase = getServiceSupabase();
+      const { data: coach } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('email', email)
+        .single();
+      return { authorized: true, email, userId: user.id, role: 'admin', coachId: coach?.id };
+    }
 
   // Check coach
   const supabase = getServiceSupabase();

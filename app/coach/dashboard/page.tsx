@@ -179,7 +179,7 @@ export default function CoachDashboardPage() {
           .from('scheduled_sessions')
           .select('*', { count: 'exact', head: true })
           .eq('coach_id', coachId)
-          .gte('scheduled_time', new Date().toISOString())
+          .gte('scheduled_date', new Date().toISOString().split('T')[0])
           .eq('status', 'scheduled');
         sessionsCount = count || 0;
       } catch (e) {
@@ -601,7 +601,7 @@ function SessionsTab({ coachId }: { coachId: string }) {
         .from('scheduled_sessions')
         .select('*, children(name)')
         .eq('coach_id', coachId)
-        .gte('scheduled_time', new Date().toISOString())
+        .gte('scheduled_date', new Date().toISOString().split('T')[0])
         .order('scheduled_time', { ascending: true })
         .limit(20);
 
@@ -636,7 +636,7 @@ function SessionsTab({ coachId }: { coachId: string }) {
                 <div>
                   <p className="font-medium text-gray-900">{session.children?.name || 'Student'}</p>
                   <p className="text-sm text-gray-500">
-                    {new Date(session.scheduled_time).toLocaleString('en-IN', {
+                    {new Date(`${session.scheduled_date}T${session.scheduled_time}`).toLocaleString('en-IN', {
                       dateStyle: 'medium',
                       timeStyle: 'short',
                     })}
