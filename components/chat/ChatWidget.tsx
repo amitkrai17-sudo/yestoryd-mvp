@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, X, Minimize2, Send, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { X, Minimize2, Send, Loader2 } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -51,10 +52,10 @@ const themes: Record<string, {
     label: 'rAI',
   },
   coach: {
-    gradient: 'from-[#00abff] to-[#0066cc]',
-    gradientHover: 'hover:shadow-[#00abff]/30',
-    accent: '#00abff',
-    accentBg: 'bg-[#00abff]/10',
+    gradient: 'from-[#FF0099] to-[#7B008B]',
+    gradientHover: 'hover:shadow-[#FF0099]/30',
+    accent: '#FF0099',
+    accentBg: 'bg-[#FF0099]/10',
     label: 'rAI Coach',
   },
   admin: {
@@ -65,6 +66,29 @@ const themes: Record<string, {
     label: 'rAI Admin',
   },
 };
+
+// rAI Mascot Component - reusable across the widget
+function RAIMascot({ size = 'md', className = '' }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
+  const sizes = {
+    sm: { width: 20, height: 20, container: 'w-7 h-7' },
+    md: { width: 28, height: 28, container: 'w-9 h-9' },
+    lg: { width: 32, height: 32, container: 'w-12 h-12' },
+  };
+  
+  const s = sizes[size];
+  
+  return (
+    <div className={`${s.container} rounded-xl flex items-center justify-center overflow-hidden ${className}`}>
+      <Image
+        src="/images/rai-mascot.png"
+        alt="rAI"
+        width={s.width}
+        height={s.height}
+        className="object-contain"
+      />
+    </div>
+  );
+}
 
 export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -169,10 +193,18 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl ${theme.gradientHover}`}
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 pl-2 pr-4 py-2 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl ${theme.gradientHover}`}
         aria-label={`Open ${theme.label} chat`}
       >
-        <Sparkles className="w-4 h-4" />
+        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+          <Image
+            src="/images/rai-mascot.png"
+            alt="rAI"
+            width={28}
+            height={28}
+            className="object-contain"
+          />
+        </div>
         <span className="font-medium text-sm">{theme.label}</span>
       </button>
     );
@@ -183,9 +215,17 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg hover:shadow-xl transition-all`}
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 pl-2 pr-4 py-2 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg hover:shadow-xl transition-all`}
       >
-        <Sparkles className="w-4 h-4" />
+        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+          <Image
+            src="/images/rai-mascot.png"
+            alt="rAI"
+            width={28}
+            height={28}
+            className="object-contain"
+          />
+        </div>
         <span className="text-sm font-medium">{theme.label}</span>
       </button>
     );
@@ -197,8 +237,14 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
       {/* Header */}
       <div className={`bg-gradient-to-r ${theme.gradient} px-4 py-3 flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center overflow-hidden">
+            <Image
+              src="/images/rai-mascot.png"
+              alt="rAI"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
           </div>
           <div>
             <h3 className="text-white font-semibold text-sm">{theme.label}</h3>
@@ -230,8 +276,14 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className={`w-12 h-12 ${theme.accentBg} rounded-2xl flex items-center justify-center mb-4`}>
-              <Sparkles className="w-6 h-6" style={{ color: theme.accent }} />
+            <div className={`w-16 h-16 ${theme.accentBg} rounded-2xl flex items-center justify-center mb-4 overflow-hidden`}>
+              <Image
+                src="/images/rai-mascot.png"
+                alt="rAI"
+                width={48}
+                height={48}
+                className="object-contain"
+              />
             </div>
             <h3 className="text-gray-800 font-semibold mb-2 text-sm">
               {userRole === 'parent' && childName ? `Ask about ${childName}` : 'How can I help?'}
@@ -267,8 +319,14 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
                 className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
-                  <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                  <div className={`w-8 h-8 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden`}>
+                    <Image
+                      src="/images/rai-mascot.png"
+                      alt="rAI"
+                      width={24}
+                      height={24}
+                      className="object-contain"
+                    />
                   </div>
                 )}
                 <div
@@ -284,8 +342,14 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
             ))}
             {isLoading && (
               <div className="flex gap-2 justify-start">
-                <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center`}>
-                  <Sparkles className="w-3.5 h-3.5 text-white" />
+                <div className={`w-8 h-8 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center overflow-hidden`}>
+                  <Image
+                    src="/images/rai-mascot.png"
+                    alt="rAI"
+                    width={24}
+                    height={24}
+                    className="object-contain"
+                  />
                 </div>
                 <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
                   <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.accent }} />

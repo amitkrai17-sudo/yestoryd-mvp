@@ -1,15 +1,17 @@
-// ============================================================
+﻿// ============================================================
 // FILE: app/coach/layout.tsx
 // ============================================================
 // Coach Layout - Auth + Role Verification
 // Yestoryd - AI-Powered Reading Intelligence Platform
 //
-// DARK THEME with Brand Colors:
-// - Primary CTA: #FF0099 (pink)
-// - Secondary: #00ABFF (blue)
-// - Dark BG: #0f1419
-// - Card BG: bg-gray-800
-// - Borders: border-gray-700
+// Works with existing structure - no folder changes needed!
+// Public routes: /coach/login, /coach/[subdomain] (landing pages)
+// Protected routes: everything else
+//
+// Features:
+// - Auth verification with ID-based lookup
+// - React Context for state sharing (avoids redundant API calls)
+// - Automatic public/protected route detection
 // ============================================================
 
 'use client';
@@ -29,9 +31,11 @@ import {
   X,
   ChevronRight,
   Shield,
+  BookOpen,
   PhoneCall,
   FileText,
   Bot,
+  ClipboardList,
 } from 'lucide-react';
 
 // ==================== SUPABASE CLIENT ====================
@@ -41,9 +45,16 @@ const supabase = createClient(
 );
 
 // ==================== ROUTE CONFIGURATION ====================
-const PUBLIC_ROUTES = ['/coach/login', '/coach/confirm'];
+// Routes that don't require auth (login, public landing pages)
+const PUBLIC_ROUTES = [
+  '/coach/login',
+  '/coach/confirm',
+];
 
+// Check if route is a public coach landing page (/coach/[subdomain])
 function isPublicLandingPage(pathname: string): boolean {
+  // /coach/rucha, /coach/john etc. are public landing pages
+  // But /coach/dashboard, /coach/sessions etc. are protected
   const protectedPaths = [
     '/coach/dashboard',
     '/coach/sessions',
@@ -55,10 +66,12 @@ function isPublicLandingPage(pathname: string): boolean {
     '/coach/onboarding',
   ];
   
+  // If it matches a protected path, it's not a landing page
   if (protectedPaths.some(p => pathname.startsWith(p))) {
     return false;
   }
   
+  // If it's just /coach/something (single segment after /coach/), it's a landing page
   const segments = pathname.split('/').filter(Boolean);
   return segments.length === 2 && segments[0] === 'coach';
 }
@@ -88,7 +101,7 @@ interface CoachContextType {
 // ==================== CONTEXT ====================
 const CoachContext = createContext<CoachContextType | null>(null);
 
-export function useCoachContext() {
+function useCoachContext() {
   const context = useContext(CoachContext);
   if (!context) {
     throw new Error('useCoachContext must be used within CoachLayout');
@@ -166,6 +179,7 @@ export default function CoachLayout({
     const originalFetch = window.fetch;
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      // Intercept coach and discovery-call API calls
       if (url.includes('/api/coach') || url.includes('/api/discovery-call')) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.access_token) {
@@ -182,6 +196,7 @@ export default function CoachLayout({
   }, []);
 
   useEffect(() => {
+    // Skip auth check for public routes
     if (isPublicRoute(pathname)) {
       setLoading(false);
       return;
@@ -224,6 +239,16 @@ export default function CoachLayout({
   };
 
   const validateCoach = async (authUser: any) => {
+    // DEBUG - REMOVE AFTER TESTING
+    console.log('=== COACH AUTH DEBUG ===');
+    console.log('Auth User ID:', authUser?.id);
+    console.log('Auth User Email:', authUser?.email);
+    console.log('========================');
+    // DEBUG - REMOVE AFTER TESTING
+    console.log('=== COACH AUTH DEBUG ===');
+    console.log('Auth User ID:', authUser.id);
+    console.log('Auth User Email:', authUser.email);
+    console.log('========================');
     const email = authUser.email?.toLowerCase();
     const authId = authUser.id;
 
@@ -303,6 +328,7 @@ export default function CoachLayout({
   };
 
   // ==================== PUBLIC ROUTES ====================
+  // Render without sidebar/auth for login and landing pages
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
   }
@@ -310,12 +336,12 @@ export default function CoachLayout({
   // ==================== LOADING STATE ====================
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#FF0099] to-[#00ABFF] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <p className="text-gray-400">Verifying access...</p>
+          <p className="text-gray-500">Verifying access...</p>
         </div>
       </div>
     );
@@ -324,19 +350,19 @@ export default function CoachLayout({
   // ==================== UNAUTHORIZED ====================
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-4">
-        <div className="bg-gray-800 border border-gray-700 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-red-400" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-500 mb-6">
             {user?.email || 'Your account'} is not authorized as a coach.
             {coach && !coach.is_active && ' Your account has been deactivated.'}
           </p>
           <button
             onClick={handleSignOut}
-            className="w-full py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#FF0099]/90 transition-colors"
+            className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
           >
             Sign Out
           </button>
@@ -348,7 +374,7 @@ export default function CoachLayout({
   // ==================== AUTHORIZED - FULL LAYOUT ====================
   return (
     <CoachContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-[#0f1419] flex">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex">
         {/* Mobile Menu Button */}
         <button
           onClick={() => setSidebarOpen(true)}
@@ -360,20 +386,20 @@ export default function CoachLayout({
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
-            className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+            className="lg:hidden fixed inset-0 bg-black/50 z-40"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
         <aside className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-[#0a0d10] border-r border-gray-800
+          fixed inset-y-0 left-0 z-50 w-72 bg-[#0f1419] border-r border-gray-800
           transform transition-transform duration-300 ease-in-out
-          lg:translate-x-0 flex flex-col
+          lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
           {/* Header */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
+          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
             <Link href="/coach/dashboard" className="flex items-center gap-3">
               <Image
                 src="/images/logo.png"
@@ -388,12 +414,12 @@ export default function CoachLayout({
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-1 hover:bg-gray-800 rounded-lg"
             >
-              <X className="w-5 h-5 text-gray-400" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <nav className="p-4 space-y-1">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
@@ -404,29 +430,29 @@ export default function CoachLayout({
                   onClick={() => setSidebarOpen(false)}
                   className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isActive
-                      ? 'bg-[#FF0099]/10 text-[#FF0099]'
+                      ? 'bg-emerald-50 text-emerald-700'
                       : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                   }`}
                 >
                   <item.icon className={`w-5 h-5 ${
-                    isActive ? 'text-[#FF0099]' : 'text-gray-500 group-hover:text-gray-300'
+                    isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-gray-400'
                   }`} />
                   <div className="flex-1">
-                    <p className={`font-medium ${isActive ? 'text-[#FF0099]' : ''}`}>
+                    <p className={`font-medium ${isActive ? 'text-emerald-700' : ''}`}>
                       {item.label}
                     </p>
-                    <p className="text-xs text-gray-500">{item.description}</p>
+                    <p className="text-xs text-slate-400">{item.description}</p>
                   </div>
-                  {isActive && <ChevronRight className="w-4 h-4 text-[#FF0099]" />}
+                  {isActive && <ChevronRight className="w-4 h-4 text-emerald-400" />}
                 </Link>
               );
             })}
           </nav>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-gray-800 bg-[#0a0d10]">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 bg-white">
             <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#FF0099] to-[#00ABFF] rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                 {coach?.name?.charAt(0).toUpperCase() || 'C'}
               </div>
               <div className="flex-1 min-w-0">
@@ -437,7 +463,7 @@ export default function CoachLayout({
               </div>
               <button
                 onClick={handleSignOut}
-                className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 title="Sign out"
               >
                 <LogOut className="w-4 h-4" />
@@ -447,8 +473,8 @@ export default function CoachLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-72 min-h-screen bg-[#0f1419]">
-          <div className="p-4 lg:p-6 pt-16 lg:pt-6">
+        <main className="flex-1 lg:ml-72 min-h-screen">
+          <div className="pt-16 lg:pt-0">
             {children}
           </div>
         </main>
@@ -456,3 +482,7 @@ export default function CoachLayout({
     </CoachContext.Provider>
   );
 }
+
+
+
+
