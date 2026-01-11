@@ -42,10 +42,7 @@ const CreateOrderSchema = z.object({
   parentId: z.string().uuid().optional().nullable(),
   parentName: z.string().min(1, 'Parent name required').max(100),
   parentEmail: z.string().email('Invalid email').transform((v) => v.toLowerCase().trim()),
-  parentPhone: z.string()
-    .regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number')
-    .optional()
-    .nullable(),
+  parentPhone: z.string().transform((v) => v ? v.replace(/[\s\-\(\)]/g, '') : v).refine((v) => !v || /^\+?\d{7,15}$/.test(v), 'Invalid phone number').optional().nullable(),
   
   // Coupon/Discount
   couponCode: z.string().max(20).optional().nullable(),
@@ -553,26 +550,28 @@ export async function POST(request: NextRequest) {
     // 9. Save Booking Record (for webhook to find)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .insert({
-        razorpay_order_id: order.id,
-        child_id: childId,
-        child_name: body.childName,
-        parent_id: parentId,
-        parent_email: body.parentEmail,
-        parent_name: body.parentName,
-        parent_phone: body.parentPhone,
-        amount: pricing.finalAmount,
-        original_amount: basePrice,
-        coupon_code: pricing.couponCode,
-        coupon_discount: pricing.couponDiscount,
-        referral_credit_used: pricing.referralCreditUsed,
-        coach_id: body.coachId,
-        lead_source: body.leadSource,
-        lead_source_coach_id: body.leadSourceCoachId,
-        requested_start_date: body.requestedStartDate,
-        status: 'pending',
-        receipt_id: receiptId,
-        request_id: requestId,
+        .insert({
+          razorpay_order_id: order.id,
+          child_id: childId,
+          parent_id: parentId,
+          amount: pricing.finalAmount,
+          coach_id: body.coachId,
+          status: 'pending',
+          metadata: {
+            child_name: body.childName,
+            parent_email: body.parentEmail,
+            parent_name: body.parentName,
+            parent_phone: body.parentPhone,
+            original_amount: basePrice,
+            coupon_code: pricing.couponCode,
+            coupon_discount: pricing.couponDiscount,
+            referral_credit_used: pricing.referralCreditUsed,
+            lead_source: body.leadSource,
+            lead_source_coach_id: body.leadSourceCoachId,
+            requested_start_date: body.requestedStartDate,
+            receipt_id: receiptId,
+            request_id: requestId,
+          },
       })
       .select('id')
       .single();
@@ -674,3 +673,8 @@ export async function GET() {
     message: 'Payment create endpoint. Use POST to create orders.',
   });
 }
+
+
+
+
+

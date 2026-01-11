@@ -5,6 +5,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import Confetti from '@/components/Confetti';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -53,6 +54,7 @@ function SuccessContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-emerald-50 flex flex-col">
+      <Confetti duration={5000} />
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-green-100 py-4">
         <div className="container mx-auto px-4 flex justify-center">
@@ -257,4 +259,6 @@ export default function EnrollmentSuccessPage() {
     </Suspense>
   );
 }
+
+
 

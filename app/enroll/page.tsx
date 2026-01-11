@@ -152,6 +152,7 @@ function EnrollContent() {
   };
 
   const source = searchParams.get('source') || 'direct';
+  const discoveryCallId = searchParams.get('discoveryCallId') || '';
 
   // WhatsApp - uses dynamic coach name
   const whatsappNumber = '918976287997';
@@ -354,7 +355,8 @@ function EnrollContent() {
           source,
           // NEW: Coupon info
           couponCode: couponApplied ? couponCode : null,
-          originalAmount: pricing.programPrice,
+                  discoveryCallId: discoveryCallId || null,
+                  originalAmount: pricing.programPrice,
           discountAmount: discountBreakdown?.totalDiscount || 0,
         }),
       });
@@ -408,7 +410,8 @@ function EnrollContent() {
                 requestedStartDate: startOption === 'later' ? startDate : null,
                 // NEW: Pass coupon info for recording
                 couponCode: couponApplied ? couponCode : null,
-                originalAmount: pricing.programPrice,
+                  discoveryCallId: discoveryCallId || null,
+                  originalAmount: pricing.programPrice,
                 discountAmount: discountBreakdown?.totalDiscount || 0,
               }),
             });
@@ -1012,3 +1015,5 @@ export default function EnrollPage() {
     </Suspense>
   );
 }
+
+

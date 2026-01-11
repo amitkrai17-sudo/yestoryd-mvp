@@ -36,7 +36,7 @@ const VerifyPaymentSchema = z.object({
   childId: z.string().uuid().optional().nullable(),
   parentName: z.string().min(1).max(100),
   parentEmail: z.string().email().transform(v => v.toLowerCase().trim()),
-  parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile').optional().nullable(),
+  parentPhone: z.string().transform((v) => v ? v.replace(/[\s\-\(\)]/g, '') : v).refine((v) => !v || /^\+?\d{7,15}$/.test(v), 'Invalid phone number').optional().nullable(),
   // Coach/Lead Data
   coachId: z.string().uuid().optional().nullable(),
   leadSource: z.enum(['yestoryd', 'coach']).default('yestoryd'),
@@ -46,6 +46,7 @@ const VerifyPaymentSchema = z.object({
   referralCodeUsed: z.string().max(20).optional().nullable(),
   // Scheduling
   requestedStartDate: z.string().optional().nullable(),
+  discoveryCallId: z.string().uuid().optional().nullable(),
 });
 
 // --- 2. TYPES ---
@@ -747,9 +748,21 @@ export async function POST(request: NextRequest) {
       requestId
     );
 
-    // 7. Get or Create Child
+    // 7. Get or Create Child (check discovery_call first)
+    let childIdToUse = body.childId;
+    if (!childIdToUse && body.discoveryCallId) {
+      const { data: dc } = await supabase
+        .from('discovery_calls')
+        .select('child_id')
+        .eq('id', body.discoveryCallId)
+        .single();
+      if (dc?.child_id) {
+        childIdToUse = dc.child_id;
+        console.log(JSON.stringify({ requestId, event: 'child_from_discovery', childId: childIdToUse, discoveryCallId: body.discoveryCallId }));
+      }
+    }
     const child = await getOrCreateChild(
-      body.childId,
+      childIdToUse,
       body.childName,
       body.childAge,
       parent.id,
@@ -816,6 +829,54 @@ export async function POST(request: NextRequest) {
       enrollmentId: enrollment.id,
       status: enrollment.status,
     }));
+
+    // 10b. Create Scheduled Sessions (9 total: 6 coaching + 3 parent check-ins)
+    const sessionsToCreate = [];
+    const sessionSchedule = [
+      { number: 1, type: 'coaching', week: 1, title: 'Session 1: Initial Assessment & Goals' },
+      { number: 2, type: 'coaching', week: 2, title: 'Session 2: Foundation Building' },
+      { number: 3, type: 'parent', week: 3, title: 'Parent Check-in 1: Progress Review' },
+      { number: 4, type: 'coaching', week: 4, title: 'Session 3: Skill Development' },
+      { number: 5, type: 'coaching', week: 5, title: 'Session 4: Practice & Reinforcement' },
+      { number: 6, type: 'parent', week: 6, title: 'Parent Check-in 2: Mid-Program Review' },
+      { number: 7, type: 'coaching', week: 7, title: 'Session 5: Advanced Techniques' },
+      { number: 8, type: 'coaching', week: 8, title: 'Session 6: Confidence Building' },
+      { number: 9, type: 'parent', week: 9, title: 'Parent Check-in 3: Final Review & Next Steps' },
+    ];
+    
+    for (const session of sessionSchedule) {
+      const sessionDate = new Date(programStart);
+      sessionDate.setDate(sessionDate.getDate() + (session.week - 1) * 7);
+      
+      sessionsToCreate.push({
+        enrollment_id: enrollment.id,
+        child_id: child.id,
+        coach_id: coach.id,
+        session_number: session.number,
+        session_type: session.type,
+        session_title: session.title,
+        week_number: session.week,
+        scheduled_date: sessionDate.toISOString().split('T')[0],
+          scheduled_time: '10:00:00',
+          status: 'pending',
+        duration_minutes: session.type === 'parent' ? 15 : 30,
+      });
+    }
+    
+    const { error: sessionsError } = await supabase
+      .from('scheduled_sessions')
+      .insert(sessionsToCreate);
+    
+    if (sessionsError) {
+      console.error(JSON.stringify({ requestId, event: 'sessions_create_failed', error: sessionsError.message }));
+    } else {
+      // Update enrollment with session count
+      await supabase
+        .from('enrollments')
+        .update({ sessions_scheduled: 9 })
+        .eq('id', enrollment.id);
+      console.log(JSON.stringify({ requestId, event: 'sessions_created', count: 9, enrollmentId: enrollment.id }));
+    }
 
     // 11. Award Referral Credit (if applicable)
     let creditResult: CreditAwardResult = { success: false };
@@ -953,3 +1014,7 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+
+
+
