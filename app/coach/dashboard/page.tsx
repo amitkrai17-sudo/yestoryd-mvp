@@ -12,7 +12,6 @@ import {
   TrendingUp, Clock, CheckCircle, Brain, HelpCircle, Loader2
 } from 'lucide-react';
 import MyReferralsTab from './MyReferralsTab';
-import RAIAssistantTab from './RAIAssistantTab';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 import SupportWidget from '@/components/support/SupportWidget';
