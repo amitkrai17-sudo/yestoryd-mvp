@@ -140,6 +140,27 @@ export default function ParentLayout({
     setSidebarOpen(false);
   }, [pathname]);
 
+  // Setup authenticated fetch for parent API calls
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes('/api/parent') || url.includes('/api/children')) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const headers = new Headers(init?.headers);
+          headers.set('Authorization', 'Bearer ' + session.access_token);
+          return originalFetch(input, { ...init, headers });
+        }
+      }
+      return originalFetch(input, init);
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
+
   useEffect(() => {
     // Skip auth check for public routes
     if (isPublicRoute(pathname)) {
@@ -448,3 +469,4 @@ export default function ParentLayout({
     </ParentContext.Provider>
   );
 }
+

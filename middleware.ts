@@ -29,7 +29,8 @@ const PUBLIC_ROUTES = [
   '/coach/login',
     '/coach',
     '/parent/login',
-  '/login',
+    '/parent',
+    '/login',
   '/register',
   '/assessment',
   '/discovery',
@@ -273,4 +274,8 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
+
+
+
+
 
