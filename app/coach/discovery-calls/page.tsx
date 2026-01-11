@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -69,7 +69,7 @@ export default function CoachDiscoveryCallsPage() {
     if (call.payment_link_sent_at) return { text: 'Payment Sent', color: 'text-blue-600' };
     if (call.status === 'completed') return { text: 'Fill Form', color: 'text-pink-600' };
     if (call.status === 'scheduled') return { text: 'View', color: 'text-blue-600' };
-    return { text: 'View', color: 'text-gray-600' };
+    return { text: 'View', color: 'text-gray-400' };
   };
 
   return (
@@ -77,13 +77,13 @@ export default function CoachDiscoveryCallsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">My Discovery Calls</h1>
+          <h1 className="text-xl font-bold text-white">My Discovery Calls</h1>
           <p className="text-sm text-gray-500">Manage your assigned calls</p>
         </div>
         <button 
           onClick={fetchCalls} 
           disabled={loading}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="p-2 hover:bg-gray-700 rounded-lg"
         >
           <RefreshCw className={`w-5 h-5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
         </button>
@@ -97,12 +97,12 @@ export default function CoachDiscoveryCallsPage() {
           { label: 'Completed', value: calls.filter(c => c.status === 'completed').length, icon: Clock, color: 'bg-green-500' },
           { label: 'Converted', value: calls.filter(c => c.converted_to_enrollment).length, icon: Users, color: 'bg-pink-500' },
         ].map((s, i) => (
-          <div key={i} className="bg-white rounded-xl border p-3 sm:p-4 flex items-center gap-3">
+          <div key={i} className="bg-gray-800 rounded-xl border p-3 sm:p-4 flex items-center gap-3">
             <div className={`w-8 h-8 sm:w-10 sm:h-10 ${s.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
               <s.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <p className="text-lg sm:text-xl font-bold text-gray-900">{s.value}</p>
+              <p className="text-lg sm:text-xl font-bold text-white">{s.value}</p>
               <p className="text-xs text-gray-500">{s.label}</p>
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function CoachDiscoveryCallsPage() {
             className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap text-sm transition-colors ${
               filter === tab.key
                 ? 'bg-pink-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
             }`}
           >
             {tab.label}
@@ -149,7 +149,7 @@ export default function CoachDiscoveryCallsPage() {
                 <Link
                   key={call.id}
                   href={`/coach/discovery-calls/${call.id}`}
-                  className="block bg-white rounded-xl border p-4 hover:shadow-md transition-shadow active:bg-gray-50"
+                  className="block bg-gray-800 rounded-xl border p-4 hover:shadow-md transition-shadow active:bg-[#0f1419]"
                 >
                   <div className="flex items-center justify-between gap-3">
                     {/* Left: Score + Info */}
@@ -166,7 +166,7 @@ export default function CoachDiscoveryCallsPage() {
                       
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-gray-900 truncate">{call.child_name}</p>
+                          <p className="font-semibold text-white truncate">{call.child_name}</p>
                           <span className="text-xs text-gray-400">({call.child_age}y)</span>
                         </div>
                         <p className="text-sm text-gray-500 truncate">{call.parent_name}</p>
@@ -193,7 +193,7 @@ export default function CoachDiscoveryCallsPage() {
               );
             })
           ) : (
-            <div className="bg-white rounded-xl border p-12 text-center">
+            <div className="bg-gray-800 rounded-xl border p-12 text-center">
               <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p className="text-gray-500">No discovery calls found</p>
             </div>

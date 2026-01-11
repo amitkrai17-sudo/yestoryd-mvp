@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
@@ -160,7 +160,7 @@ export default function WhatsAppTemplatesPage() {
       case 'retention':
         return 'bg-yellow-500/20 text-yellow-400';
       default:
-        return 'bg-gray-500/20 text-gray-400';
+        return 'bg-[#0f1419]0/20 text-gray-400';
     }
   };
 

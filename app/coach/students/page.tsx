@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -125,7 +125,7 @@ export default function CoachStudentsPage() {
       case 'paused':
         return <span className="bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded text-xs">Paused</span>;
       default:
-        return <span className="bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded text-xs">Pending</span>;
+        return <span className="bg-[#0f1419]0/20 text-gray-400 px-2 py-0.5 rounded text-xs">Pending</span>;
     }
   };
 
@@ -201,7 +201,7 @@ export default function CoachStudentsPage() {
         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           {filteredStudents.length === 0 ? (
             <div className="p-12 text-center">
-              <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-400">No students found</p>
             </div>
           ) : (

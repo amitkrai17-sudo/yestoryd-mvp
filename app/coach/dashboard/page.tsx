@@ -224,10 +224,10 @@ export default function CoachDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#00abff] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <p className="text-gray-400">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -235,9 +235,9 @@ export default function CoachDashboardPage() {
 
   if (!user || !coach) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Unable to load dashboard</p>
+          <p className="text-gray-400 mb-4">Unable to load dashboard</p>
           <button
             onClick={() => router.push('/coach/login')}
             className="px-4 py-2 bg-[#00abff] text-white rounded-lg"
@@ -250,16 +250,16 @@ export default function CoachDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0f1419]">
       {/* Top Navigation */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Mobile Menu */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="lg:hidden p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -267,7 +267,7 @@ export default function CoachDashboardPage() {
                 <div className="w-8 h-8 bg-gradient-to-br from-[#00abff] to-[#0066cc] rounded-lg flex items-center justify-center">
                   <StarIcon className="w-5 h-5 text-white" />
                 </div>
-                <span className="font-bold text-gray-900 hidden sm:block">Yestoryd Coach</span>
+                <span className="font-bold text-white hidden sm:block">Yestoryd Coach</span>
               </div>
             </div>
 
@@ -282,7 +282,7 @@ export default function CoachDashboardPage() {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                       activeTab === tab.id
                         ? 'bg-[#00abff]/10 text-[#00abff]'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        : 'text-gray-400 hover:bg-gray-700'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -294,13 +294,13 @@ export default function CoachDashboardPage() {
 
             {/* User Menu */}
             <div className="flex items-center gap-3">
-              <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg relative">
+              <button className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg relative">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-[#00abff] rounded-full"></span>
               </button>
               <div className="flex items-center gap-3">
                 <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium text-gray-900">{coach.name}</p>
+                  <p className="text-sm font-medium text-white">{coach.name}</p>
                   <p className="text-xs text-gray-500">{coach.email}</p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-[#00abff] to-[#0066cc] rounded-full flex items-center justify-center text-white font-bold">
@@ -308,7 +308,7 @@ export default function CoachDashboardPage() {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
                   title="Logout"
                 >
                   <LogOut className="w-5 h-5" />
@@ -320,7 +320,7 @@ export default function CoachDashboardPage() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200 bg-white">
+          <div className="lg:hidden border-t border-gray-700 bg-gray-800">
             <nav className="px-4 py-2 space-y-1">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
@@ -334,7 +334,7 @@ export default function CoachDashboardPage() {
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                       activeTab === tab.id
                         ? 'bg-[#00abff]/10 text-[#00abff]'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        : 'text-gray-400 hover:bg-gray-700'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -362,7 +362,7 @@ export default function CoachDashboardPage() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
                     activeTab === tab.id
                       ? 'bg-[#00abff] text-white'
-                      : 'bg-white text-gray-600 border border-gray-200'
+                      : 'bg-gray-800 text-gray-400 border border-gray-700'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -431,43 +431,43 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="w-4 h-4 text-blue-600" />
+            <div className="p-2 bg-[#00abff]/20 rounded-lg">
+              <Users className="w-4 h-4 text-[#00abff]" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{stats?.total_students || 0}</p>
+          <p className="text-3xl font-bold text-white">{stats?.total_students || 0}</p>
           <p className="text-sm text-gray-500">Total Students</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-green-600" />
+            <div className="p-2 bg-emerald-500/20 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-green-600">{stats?.active_students || 0}</p>
+          <p className="text-3xl font-bold text-emerald-400">{stats?.active_students || 0}</p>
           <p className="text-sm text-gray-500">Active Students</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Calendar className="w-4 h-4 text-purple-600" />
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <Calendar className="w-4 h-4 text-purple-400" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-purple-600">{stats?.upcoming_sessions || 0}</p>
+          <p className="text-3xl font-bold text-purple-400">{stats?.upcoming_sessions || 0}</p>
           <p className="text-sm text-gray-500">Upcoming Sessions</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-emerald-100 rounded-lg">
-              <Wallet className="w-4 h-4 text-emerald-600" />
+            <div className="p-2 bg-[#FF0099]/20 rounded-lg">
+              <Wallet className="w-4 h-4 text-[#FF0099]" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-emerald-600">
+          <p className="text-3xl font-bold text-[#FF0099]">
             ₹{(stats?.total_earnings || 0).toLocaleString('en-IN')}
           </p>
           <p className="text-sm text-gray-500">Total Earnings</p>
@@ -475,36 +475,36 @@ function OverviewTab({ stats, coach, onTabChange }: { stats: DashboardStats | nu
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <h2 className="font-bold text-gray-900 mb-4">Quick Actions</h2>
+      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <h2 className="font-bold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button
             onClick={() => onTabChange('students')}
-            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700 transition text-center"
           >
             <Users className="w-6 h-6 text-[#00abff] mx-auto mb-2" />
-            <span className="text-sm text-gray-700">View Students</span>
+            <span className="text-sm text-gray-300">View Students</span>
           </button>
           <button
             onClick={() => onTabChange('sessions')}
-            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700 transition text-center"
           >
             <Calendar className="w-6 h-6 text-[#0066cc] mx-auto mb-2" />
-            <span className="text-sm text-gray-700">Check Schedule</span>
+            <span className="text-sm text-gray-300">Check Schedule</span>
           </button>
           <button
             onClick={() => onTabChange('referrals')}
-            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700 transition text-center"
           >
             <Gift className="w-6 h-6 text-[#7B008B] mx-auto mb-2" />
-            <span className="text-sm text-gray-700">Share Referral</span>
+            <span className="text-sm text-gray-300">Share Referral</span>
           </button>
           <button
             onClick={() => onTabChange('earnings')}
-            className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition text-center"
+            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700 transition text-center"
           >
-            <Wallet className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-            <span className="text-sm text-gray-700">View Earnings</span>
+            <Wallet className="w-6 h-6 text-[#FF0099] mx-auto mb-2" />
+            <span className="text-sm text-gray-300">View Earnings</span>
           </button>
         </div>
       </div>
@@ -549,9 +549,9 @@ function StudentsTab({ coachId }: { coachId: string }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b bg-gray-50">
-        <h2 className="font-bold text-gray-900">My Students ({students.length})</h2>
+    <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div className="px-6 py-4 border-b bg-[#0f1419]">
+        <h2 className="font-bold text-white">My Students ({students.length})</h2>
       </div>
       {students.length === 0 ? (
         <div className="p-8 text-center text-gray-500">
@@ -561,16 +561,16 @@ function StudentsTab({ coachId }: { coachId: string }) {
       ) : (
         <div className="divide-y">
           {students.map((student) => (
-            <div key={student.id} className="p-4 hover:bg-gray-50">
+            <div key={student.id} className="p-4 hover:bg-[#0f1419]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{student.name}</p>
+                  <p className="font-medium text-white">{student.name}</p>
                   <p className="text-sm text-gray-500">Age {student.age} • {student.parent_name}</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   student.lead_status === 'active' ? 'bg-green-100 text-green-700' :
                   student.lead_status === 'enrolled' ? 'bg-blue-100 text-blue-700' :
-                  'bg-gray-100 text-gray-700'
+                  'bg-gray-700 text-gray-400'
                 }`}>
                   {student.lead_status || 'Pending'}
                 </span>
@@ -618,9 +618,9 @@ function SessionsTab({ coachId }: { coachId: string }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b bg-gray-50">
-        <h2 className="font-bold text-gray-900">Upcoming Sessions ({sessions.length})</h2>
+    <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div className="px-6 py-4 border-b bg-[#0f1419]">
+        <h2 className="font-bold text-white">Upcoming Sessions ({sessions.length})</h2>
       </div>
       {sessions.length === 0 ? (
         <div className="p-8 text-center text-gray-500">
@@ -630,10 +630,10 @@ function SessionsTab({ coachId }: { coachId: string }) {
       ) : (
         <div className="divide-y">
           {sessions.map((session) => (
-            <div key={session.id} className="p-4 hover:bg-gray-50">
+            <div key={session.id} className="p-4 hover:bg-[#0f1419]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{session.children?.name || 'Student'}</p>
+                  <p className="font-medium text-white">{session.children?.name || 'Student'}</p>
                   <p className="text-sm text-gray-500">
                     {new Date(`${session.scheduled_date}T${session.scheduled_time}`).toLocaleString('en-IN', {
                       dateStyle: 'medium',
@@ -781,27 +781,27 @@ function EarningsTab({ coachId }: { coachId: string }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 text-center">
           <p className="text-sm text-gray-500 mb-1">Total Earned</p>
-          <p className="text-2xl font-bold text-emerald-600">&#8377;{earnings.total.toLocaleString('en-IN')}</p>
+          <p className="text-3xl font-bold text-[#FF0099]">&#8377;{earnings.total.toLocaleString('en-IN')}</p>
         </div>
-        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 text-center">
           <p className="text-sm text-gray-500 mb-1">This Month</p>
           <p className="text-2xl font-bold text-[#00abff]">&#8377;{earnings.thisMonth.toLocaleString('en-IN')}</p>
         </div>
-        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 text-center">
           <p className="text-sm text-gray-500 mb-1">Total Students</p>
-          <p className="text-2xl font-bold text-gray-900">{earnings.totalStudents}</p>
+          <p className="text-3xl font-bold text-white">{earnings.totalStudents}</p>
         </div>
-        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
+        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 text-center">
           <p className="text-sm text-gray-500 mb-1">Avg per Student</p>
-          <p className="text-2xl font-bold text-purple-600">&#8377;{earnings.avgPerStudent.toLocaleString('en-IN')}</p>
+          <p className="text-3xl font-bold text-purple-400">&#8377;{earnings.avgPerStudent.toLocaleString('en-IN')}</p>
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Earnings Breakdown</h3>
-          <select value={filterPeriod} onChange={(e) => setFilterPeriod(e.target.value)} className="bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-sm focus:outline-none focus:border-[#00abff]">
+      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+          <h3 className="font-semibold text-white">Earnings Breakdown</h3>
+          <select value={filterPeriod} onChange={(e) => setFilterPeriod(e.target.value)} className="bg-[#0f1419] border border-gray-700 rounded-lg py-1.5 px-3 text-sm focus:outline-none focus:border-[#00abff]">
             <option value="all">All Time</option>
             <option value="this_month">This Month</option>
           </select>
@@ -811,42 +811,42 @@ function EarningsTab({ coachId }: { coachId: string }) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-[#0f1419]">
                 <tr>
-                  <th className="text-left text-gray-600 text-sm font-medium px-4 py-3">Student</th>
-                  <th className="text-left text-gray-600 text-sm font-medium px-4 py-3">Enrolled</th>
-                  <th className="text-left text-gray-600 text-sm font-medium px-4 py-3">Split</th>
-                  <th className="text-right text-gray-600 text-sm font-medium px-4 py-3">Your Earnings</th>
+                  <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Student</th>
+                  <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Enrolled</th>
+                  <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Split</th>
+                  <th className="text-right text-gray-400 text-sm font-medium px-4 py-3">Your Earnings</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-700">
                 {filteredBreakdown.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr key={item.id} className="hover:bg-[#0f1419]">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{item.child_name}</p>
+                      <p className="font-medium text-white">{item.child_name}</p>
                       {item.parent_name && <p className="text-sm text-gray-500">{item.parent_name}</p>}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{new Date(item.enrollment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                    <td className="px-4 py-3 text-gray-400">{new Date(item.enrollment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${item.split_type === '70-30' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{item.split_type}</span>
                     </td>
-                    <td className="px-4 py-3 text-right"><span className="text-emerald-600 font-semibold">&#8377;{item.coach_amount.toLocaleString('en-IN')}</span></td>
+                    <td className="px-4 py-3 text-right"><span className="text-[#FF0099] font-semibold">&#8377;{item.coach_amount.toLocaleString('en-IN')}</span></td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50">
+              <tfoot className="bg-[#0f1419]">
                 <tr>
-                  <td colSpan={3} className="px-4 py-3 text-right font-medium text-gray-700">Total</td>
-                  <td className="px-4 py-3 text-right"><span className="text-emerald-600 font-bold text-lg">&#8377;{filteredBreakdown.reduce((sum, e) => sum + e.coach_amount, 0).toLocaleString('en-IN')}</span></td>
+                  <td colSpan={3} className="px-4 py-3 text-right font-medium text-gray-300">Total</td>
+                  <td className="px-4 py-3 text-right"><span className="text-[#FF0099] font-bold text-lg">&#8377;{filteredBreakdown.reduce((sum, e) => sum + e.coach_amount, 0).toLocaleString('en-IN')}</span></td>
                 </tr>
               </tfoot>
             </table>
           </div>
         )}
       </div>
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
-        <h3 className="font-bold text-gray-900 mb-2">How You Earn</h3>
-        <ul className="space-y-2 text-sm text-gray-600">
+      <div className="bg-gradient-to-r from-[#00abff]/20 to-[#0066cc]/20 rounded-xl p-6 border border-[#00abff]/30">
+        <h3 className="font-bold text-white mb-2">How You Earn</h3>
+        <ul className="space-y-2 text-sm text-gray-400">
           <li>&#8226; <strong>{coachSplit}%</strong> of coaching fee for each enrolled student (Yestoryd leads)</li>
           <li>&#8226; <strong>70%</strong> when you refer a student (Your leads)</li>
           <li>&#8226; Earn more as you progress: Expert (55%) to Master (60%)</li>
@@ -891,7 +891,7 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
     open: { label: 'Open', color: 'bg-yellow-100 text-yellow-700' },
     in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
     resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700' },
-    closed: { label: 'Closed', color: 'bg-gray-100 text-gray-700' },
+    closed: { label: 'Closed', color: 'bg-gray-700 text-gray-400' },
   };
 
   const CATEGORY_LABELS: Record<string, string> = {
@@ -911,7 +911,7 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Support Center</h2>
+          <h2 className="text-xl font-bold text-white">Support Center</h2>
           <p className="text-gray-500 text-sm">Get help with your questions and concerns</p>
         </div>
         {!showForm && (
@@ -927,12 +927,12 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
 
       {/* Support Form */}
       {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-800">New Support Request</h3>
+            <h3 className="font-semibold text-gray-100">New Support Request</h3>
             <button
               onClick={() => setShowForm(false)}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-gray-500 hover:text-gray-300"
             >
               Cancel
             </button>
@@ -953,7 +953,7 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
           {/* Active Tickets */}
           {openTickets.length > 0 && (
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <h3 className="font-semibold text-gray-100 mb-3 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-yellow-600" />
                 Active Requests ({openTickets.length})
               </h3>
@@ -961,7 +961,7 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
                 {openTickets.map((ticket) => {
                   const statusConfig = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.open;
                   return (
-                    <div key={ticket.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div key={ticket.id} className="bg-gray-800 rounded-xl border border-gray-700 p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -970,11 +970,11 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
                               {statusConfig.label}
                             </span>
                           </div>
-                          <p className="font-medium text-gray-800">
+                          <p className="font-medium text-gray-100">
                             {CATEGORY_LABELS[ticket.category] || ticket.category}
                           </p>
                           {ticket.subject && (
-                            <p className="text-sm text-gray-600 mt-1">{ticket.subject}</p>
+                            <p className="text-sm text-gray-400 mt-1">{ticket.subject}</p>
                           )}
                           <p className="text-xs text-gray-400 mt-2">
                             {new Date(ticket.created_at).toLocaleDateString('en-IN', {
@@ -995,22 +995,22 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
           {/* Resolved Tickets */}
           {resolvedTickets.length > 0 && (
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600" />
+              <h3 className="font-semibold text-gray-100 mb-3 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
                 Resolved ({resolvedTickets.length})
               </h3>
               <div className="space-y-3">
                 {resolvedTickets.slice(0, 5).map((ticket) => {
                   const statusConfig = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.resolved;
                   return (
-                    <div key={ticket.id} className="bg-white rounded-xl border border-gray-200 p-4 opacity-75">
+                    <div key={ticket.id} className="bg-gray-800 rounded-xl border border-gray-700 p-4 opacity-75">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-mono text-gray-400">{ticket.ticket_number}</span>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}>
                           {statusConfig.label}
                         </span>
                       </div>
-                      <p className="font-medium text-gray-800">
+                      <p className="font-medium text-gray-100">
                         {CATEGORY_LABELS[ticket.category] || ticket.category}
                       </p>
                     </div>
@@ -1022,9 +1022,9 @@ function SupportTab({ coachEmail, coachName }: { coachEmail: string; coachName: 
 
           {/* Empty State */}
           {!loading && tickets.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+            <div className="text-center py-12 bg-gray-800 rounded-xl border border-gray-700">
               <HelpCircle className="w-16 h-16 text-[#00abff]/30 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">No Support Requests</h3>
+              <h3 className="text-lg font-semibold text-gray-100 mb-2">No Support Requests</h3>
               <p className="text-gray-500 mb-6">You haven&apos;t submitted any requests yet.</p>
               <button
                 onClick={() => setShowForm(true)}

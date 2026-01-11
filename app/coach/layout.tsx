@@ -341,7 +341,7 @@ export default function CoachLayout({
           <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <p className="text-slate-500">Verifying access...</p>
+          <p className="text-gray-500">Verifying access...</p>
         </div>
       </div>
     );
@@ -355,8 +355,8 @@ export default function CoachLayout({
           <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-6">
+          <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-gray-500 mb-6">
             {user?.email || 'Your account'} is not authorized as a coach.
             {coach && !coach.is_active && ' Your account has been deactivated.'}
           </p>
@@ -378,9 +378,9 @@ export default function CoachLayout({
         {/* Mobile Menu Button */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-xl shadow-lg border border-slate-200"
+          className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-gray-800 rounded-xl shadow-lg border border-gray-700"
         >
-          <Menu className="w-6 h-6 text-slate-700" />
+          <Menu className="w-6 h-6 text-gray-300" />
         </button>
 
         {/* Mobile Overlay */}
@@ -393,7 +393,7 @@ export default function CoachLayout({
 
         {/* Sidebar */}
         <aside className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200
+          fixed inset-y-0 left-0 z-50 w-72 bg-[#0f1419] border-r border-gray-800
           transform transition-transform duration-300 ease-in-out
           lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -408,13 +408,13 @@ export default function CoachLayout({
                 height={32}
                 className="rounded-lg"
               />
-              <span className="font-bold text-slate-900">Coach Portal</span>
+              <span className="font-bold text-white">Coach Portal</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 hover:bg-slate-100 rounded-lg"
+              className="lg:hidden p-1 hover:bg-gray-800 rounded-lg"
             >
-              <X className="w-5 h-5 text-slate-500" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
@@ -431,11 +431,11 @@ export default function CoachLayout({
                   className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isActive
                       ? 'bg-emerald-50 text-emerald-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                   }`}
                 >
                   <item.icon className={`w-5 h-5 ${
-                    isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'
+                    isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-gray-400'
                   }`} />
                   <div className="flex-1">
                     <p className={`font-medium ${isActive ? 'text-emerald-700' : ''}`}>
@@ -456,10 +456,10 @@ export default function CoachLayout({
                 {coach?.name?.charAt(0).toUpperCase() || 'C'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 truncate text-sm">
+                <p className="font-medium text-white truncate text-sm">
                   {coach?.name || 'Coach'}
                 </p>
-                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
               <button
                 onClick={handleSignOut}
