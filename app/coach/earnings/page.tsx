@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
@@ -88,10 +88,19 @@ export default function CoachEarningsPage() {
       const { data: children } = await supabase
         .from('children')
         .select('*')
-        .eq('assigned_coach_id', coachData.id)
+        .eq('coach_id', coachData.id)
         .order('created_at', { ascending: false });
 
-      const programFee = 5999;
+      // Get program price from site_settings (single source of truth)
+      const { data: priceSetting } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'program_price')
+        .single();
+      
+      const programFee = priceSetting?.value 
+        ? parseInt(String(priceSetting.value).replace(/[^0-9]/g, '')) 
+        : 5999; // Fallback only if not set
       const defaultCoachSplit = coachData.coach_split_percentage / 100;
       const coachLeadSplit = 0.70; // 70% for coach leads
 

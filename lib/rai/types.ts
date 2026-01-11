@@ -74,7 +74,7 @@ export interface ChildWithCache {
   age?: number;
   parent_id?: string;
   parent_email?: string;
-  assigned_coach_id?: string | null;
+  coach_id?: string | null;
   last_session_summary?: string | null;
   last_session_date?: string | null;
   last_session_focus?: string | null;

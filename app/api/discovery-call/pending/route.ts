@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
         parent_phone,
         scheduled_at,
         status,
-        assigned_coach_id,
+        coach_id,
         assignment_type,
         assigned_by,
         assigned_at,
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
         follow_up_notes,
         follow_up_date,
         completed_at,
-        assigned_coach:coaches!assigned_coach_id (
+        assigned_coach:coaches!coach_id (
           id,
           name,
           email
@@ -177,8 +177,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', 'pending');
       countQuery = countQuery.eq('status', 'pending');
     } else if (status === 'assigned') {
-      query = query.not('assigned_coach_id', 'is', null).eq('status', 'pending');
-      countQuery = countQuery.not('assigned_coach_id', 'is', null).eq('status', 'pending');
+      query = query.not('coach_id', 'is', null).eq('status', 'pending');
+      countQuery = countQuery.not('coach_id', 'is', null).eq('status', 'pending');
     } else if (status === 'scheduled') {
       query = query.eq('status', 'scheduled');
       countQuery = countQuery.eq('status', 'scheduled');
@@ -190,8 +190,8 @@ export async function GET(request: NextRequest) {
 
     // Apply coach filter (enforced for coaches, optional for admins)
     if (effectiveCoachId) {
-      query = query.eq('assigned_coach_id', effectiveCoachId);
-      countQuery = countQuery.eq('assigned_coach_id', effectiveCoachId);
+      query = query.eq('coach_id', effectiveCoachId);
+      countQuery = countQuery.eq('coach_id', effectiveCoachId);
     }
 
     // Execute queries

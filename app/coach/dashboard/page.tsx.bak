@@ -1,4 +1,4 @@
-﻿// file: app/coach/dashboard/page.tsx
+// file: app/coach/dashboard/page.tsx
 // Complete Coach Dashboard with My Referrals Tab, Floating rAI Widget, Activity Tracking & Support
 
 'use client';
@@ -9,7 +9,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet,
   LogOut, Menu, X, ChevronRight, Bell, Settings,
-  TrendingUp, Clock, CheckCircle, Brain, HelpCircle, Loader2
+  TrendingUp, Clock, CheckCircle, Brain, HelpCircle
 } from 'lucide-react';
 import MyReferralsTab from './MyReferralsTab';
 import RAIAssistantTab from './RAIAssistantTab';
@@ -665,29 +665,8 @@ function SessionsTab({ coachId }: { coachId: string }) {
 // EARNINGS TAB
 // ============================================================
 function EarningsTab({ coachId }: { coachId: string }) {
-  const [earnings, setEarnings] = useState<{
-    total: number;
-    thisMonth: number;
-    totalStudents: number;
-    avgPerStudent: number;
-    breakdown: Array<{
-      id: string;
-      child_name: string;
-      parent_name: string;
-      enrollment_date: string;
-      split_type: string;
-      coach_amount: number;
-    }>;
-  }>({
-    total: 0,
-    thisMonth: 0,
-    totalStudents: 0,
-    avgPerStudent: 0,
-    breakdown: [],
-  });
+  const [earnings, setEarnings] = useState({ total: 0, pending: 0, paid: 0 });
   const [loading, setLoading] = useState(true);
-  const [coachSplit, setCoachSplit] = useState(50);
-  const [filterPeriod, setFilterPeriod] = useState('all');
 
   useEffect(() => {
     fetchEarnings();
@@ -695,163 +674,46 @@ function EarningsTab({ coachId }: { coachId: string }) {
 
   const fetchEarnings = async () => {
     try {
-      // 1. Get program price from site_settings (single source of truth)
-      const { data: priceSetting } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'program_price')
-        .single();
-      
-      const programFee = priceSetting?.value 
-        ? parseInt(String(priceSetting.value).replace(/[^0-9]/g, '')) 
-        : 5999; // Fallback only if not set
+      const { data } = await supabase
+        .from('coach_payouts')
+        .select('net_amount, status')
+        .eq('coach_id', coachId);
 
-      // 2. Get coach data for split percentage
-      const { data: coachData } = await supabase
-        .from('coaches')
-        .select('coach_split_percentage')
-        .eq('id', coachId)
-        .single();
-
-      const defaultSplit = coachData?.coach_split_percentage || 50;
-      setCoachSplit(defaultSplit);
-
-      // 3. Get all enrolled children for this coach
-      const { data: children } = await supabase
-        .from('children')
-        .select('id, child_name, parent_name, created_at, lead_source, custom_coach_split')
-        .eq('coach_id', coachId)
-        .order('created_at', { ascending: false });
-
-      if (!children || children.length === 0) {
-        setEarnings({ total: 0, thisMonth: 0, totalStudents: 0, avgPerStudent: 0, breakdown: [] });
-        setLoading(false);
-        return;
+      if (data) {
+        const total = data.reduce((sum, p) => sum + (p.net_amount || 0), 0);
+        const paid = data.filter(p => p.status === 'paid').reduce((sum, p) => sum + (p.net_amount || 0), 0);
+        setEarnings({ total, pending: total - paid, paid });
       }
-
-      const coachLeadSplit = 0.70; // 70% for coach-sourced leads
-
-      // 4. Calculate earnings for each child
-      const breakdown = children.map((child) => {
-        const isCoachLead = child.lead_source === 'coach';
-        const splitPct = child.custom_coach_split
-          ? child.custom_coach_split / 100
-          : isCoachLead ? coachLeadSplit : defaultSplit / 100;
-        const coachAmount = Math.round(programFee * splitPct);
-        return {
-          id: child.id,
-          child_name: child.child_name,
-          parent_name: child.parent_name || '',
-          enrollment_date: child.created_at,
-          split_type: isCoachLead ? '70-30' : '50-50',
-          coach_amount: coachAmount,
-        };
-      });
-
-      const total = breakdown.reduce((sum, e) => sum + e.coach_amount, 0);
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const thisMonth = breakdown
-        .filter((e) => new Date(e.enrollment_date) >= startOfMonth)
-        .reduce((sum, e) => sum + e.coach_amount, 0);
-
-      setEarnings({
-        total,
-        thisMonth,
-        totalStudents: breakdown.length,
-        avgPerStudent: breakdown.length > 0 ? Math.round(total / breakdown.length) : 0,
-        breakdown,
-      });
     } catch (e) {
-      console.error('Error fetching earnings:', e);
+      console.log('Error fetching earnings');
     }
     setLoading(false);
   };
 
-  const filteredBreakdown = earnings.breakdown.filter((e) => {
-    if (filterPeriod === 'all') return true;
-    const date = new Date(e.enrollment_date);
-    const now = new Date();
-    return filterPeriod === 'this_month' && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-  });
-
-  if (loading) {
-    return (<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-[#00abff] animate-spin" /></div>);
-  }
-
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
           <p className="text-sm text-gray-500 mb-1">Total Earned</p>
-          <p className="text-2xl font-bold text-emerald-600">&#8377;{earnings.total.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-bold text-emerald-600">₹{earnings.total.toLocaleString('en-IN')}</p>
         </div>
         <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
-          <p className="text-sm text-gray-500 mb-1">This Month</p>
-          <p className="text-2xl font-bold text-[#00abff]">&#8377;{earnings.thisMonth.toLocaleString('en-IN')}</p>
+          <p className="text-sm text-gray-500 mb-1">Pending</p>
+          <p className="text-2xl font-bold text-amber-600">₹{earnings.pending.toLocaleString('en-IN')}</p>
         </div>
         <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
-          <p className="text-sm text-gray-500 mb-1">Total Students</p>
-          <p className="text-2xl font-bold text-gray-900">{earnings.totalStudents}</p>
-        </div>
-        <div className="bg-white rounded-xl p-5 border border-gray-100 text-center">
-          <p className="text-sm text-gray-500 mb-1">Avg per Student</p>
-          <p className="text-2xl font-bold text-purple-600">&#8377;{earnings.avgPerStudent.toLocaleString('en-IN')}</p>
+          <p className="text-sm text-gray-500 mb-1">Paid</p>
+          <p className="text-2xl font-bold text-[#00abff]">₹{earnings.paid.toLocaleString('en-IN')}</p>
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Earnings Breakdown</h3>
-          <select value={filterPeriod} onChange={(e) => setFilterPeriod(e.target.value)} className="bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-sm focus:outline-none focus:border-[#00abff]">
-            <option value="all">All Time</option>
-            <option value="this_month">This Month</option>
-          </select>
-        </div>
-        {filteredBreakdown.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No earnings yet. Students you coach will appear here.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left text-gray-600 text-sm font-medium px-4 py-3">Student</th>
-                  <th className="text-left text-gray-600 text-sm font-medium px-4 py-3">Enrolled</th>
-                  <th className="text-left text-gray-600 text-sm font-medium px-4 py-3">Split</th>
-                  <th className="text-right text-gray-600 text-sm font-medium px-4 py-3">Your Earnings</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredBreakdown.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{item.child_name}</p>
-                      {item.parent_name && <p className="text-sm text-gray-500">{item.parent_name}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{new Date(item.enrollment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${item.split_type === '70-30' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{item.split_type}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right"><span className="text-emerald-600 font-semibold">&#8377;{item.coach_amount.toLocaleString('en-IN')}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-gray-50">
-                <tr>
-                  <td colSpan={3} className="px-4 py-3 text-right font-medium text-gray-700">Total</td>
-                  <td className="px-4 py-3 text-right"><span className="text-emerald-600 font-bold text-lg">&#8377;{filteredBreakdown.reduce((sum, e) => sum + e.coach_amount, 0).toLocaleString('en-IN')}</span></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-      </div>
+
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
-        <h3 className="font-bold text-gray-900 mb-2">How You Earn</h3>
+        <h3 className="font-bold text-gray-900 mb-2">💰 How You Earn</h3>
         <ul className="space-y-2 text-sm text-gray-600">
-          <li>&#8226; <strong>{coachSplit}%</strong> of coaching fee for each enrolled student (Yestoryd leads)</li>
-          <li>&#8226; <strong>70%</strong> when you refer a student (Your leads)</li>
-          <li>&#8226; Earn more as you progress: Expert (55%) to Master (60%)</li>
-          <li>&#8226; Payments processed on <strong>7th of each month</strong></li>
+          <li>• <strong>50%</strong> of coaching fee for each enrolled student (Rising Coach)</li>
+          <li>• <strong>+20%</strong> lead bonus when you refer a student</li>
+          <li>• Earn more as you progress: Expert (55%) → Master (60%)</li>
+          <li>• Payments processed on <strong>7th of each month</strong></li>
         </ul>
       </div>
     </div>

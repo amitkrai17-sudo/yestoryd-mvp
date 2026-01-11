@@ -288,7 +288,7 @@ export async function POST(request: NextRequest) {
         concerns_noted: data.concerns || null,
         
         // AI summary
-        tldv_ai_summary: aiSummary,
+        ai_summary: aiSummary,
         
         updated_at: new Date().toISOString(),
       })

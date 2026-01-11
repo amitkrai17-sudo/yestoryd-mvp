@@ -132,7 +132,7 @@ async function computeInsights(requestId: string, source: string) {
         .select('id, status, coach_id, child_id, scheduled_date')
         .gte('scheduled_date', thirtyDaysAgo),
       supabase.from('children')
-        .select('id, child_name, parent_email, status, assigned_coach_id, created_at'),
+        .select('id, child_name, parent_email, status, coach_id, created_at'),
       supabase.from('payments')
         .select('amount, created_at')
         .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
@@ -169,11 +169,11 @@ async function computeInsights(requestId: string, source: string) {
     }
 
     for (const child of allChildren) {
-      if (child.assigned_coach_id) {
-        if (!childrenByCoach.has(child.assigned_coach_id)) {
-          childrenByCoach.set(child.assigned_coach_id, []);
+      if (child.coach_id) {
+        if (!childrenByCoach.has(child.coach_id)) {
+          childrenByCoach.set(child.coach_id, []);
         }
-        childrenByCoach.get(child.assigned_coach_id)!.push(child);
+        childrenByCoach.get(child.coach_id)!.push(child);
       }
     }
 

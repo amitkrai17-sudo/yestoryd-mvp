@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // FILE: app/api/jobs/process-session/route.ts
 // ============================================================
 // Background Job: Session Processing
@@ -170,7 +170,7 @@ async function getChildContext(childId: string): Promise<{
   // Get recent sessions for context
   const { data: sessions } = await supabase
     .from('scheduled_sessions')
-    .select('focus_area, progress_rating, tldv_ai_summary, scheduled_date')
+    .select('focus_area, progress_rating, ai_summary, scheduled_date')
     .eq('child_id', childId)
     .eq('status', 'completed')
     .order('scheduled_date', { ascending: false })
@@ -358,12 +358,11 @@ async function saveSessionData(
         homework_assigned: analysis.homework_assigned,
         homework_topic: analysis.homework_topic,
         homework_description: analysis.homework_description,
-        tldv_ai_summary: analysis.summary,
-        tldv_recording_url: recordingUrl,
-        tldv_transcript: transcriptText.substring(0, 10000),
+        ai_summary: analysis.summary,
+        recording_url: recordingUrl,
+        transcript: transcriptText.substring(0, 10000),
         flagged_for_attention: analysis.flagged_for_attention,
         flag_reason: analysis.flag_reason,
-        ai_summary: analysis.parent_summary,
         audio_storage_path: audioStoragePath,
         duration_minutes: durationSeconds ? Math.round(durationSeconds / 60) : null,
         attendance_count: attendance.totalParticipants,

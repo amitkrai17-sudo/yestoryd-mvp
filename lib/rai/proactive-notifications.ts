@@ -73,8 +73,8 @@ export async function checkAndSendProactiveNotifications(
   try {
     const { data: child } = await supabase
       .from('children')
-      .select(`id, child_name, parent_email, parent_phone, assigned_coach_id,
-        coach:coaches!assigned_coach_id (id, name, email, phone)`)
+      .select(`id, child_name, parent_email, parent_phone, coach_id,
+        coach:coaches!coach_id (id, name, email, phone)`)
       .eq('id', childId)
       .single();
 

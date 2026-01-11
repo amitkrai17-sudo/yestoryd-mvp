@@ -131,7 +131,7 @@ export default function StudentDetailPage() {
         .from('children')
         .select('*')
         .eq('id', studentId)
-        .eq('assigned_coach_id', coachData.id)
+        .eq('coach_id', coachData.id)
         .single();
 
       if (!studentData) {
@@ -176,7 +176,7 @@ export default function StudentDetailPage() {
   };
 
   const askAI = async () => {
-    if (!aiQuestion.trim() || !student) return;
+    if (!aiQuestion.trim() || !student || !coach) return;
 
     setAiLoading(true);
     setAiResponse('');
@@ -186,7 +186,9 @@ export default function StudentDetailPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: aiQuestion,
+          message: aiQuestion,
+            coachId: coach.id,
+            coachName: coach.name,
           studentId: student.id,
           studentName: student.child_name,
           studentAge: student.age,

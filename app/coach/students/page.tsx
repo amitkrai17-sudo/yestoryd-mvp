@@ -74,7 +74,7 @@ export default function CoachStudentsPage() {
       const { data: studentsData } = await supabase
         .from('children')
         .select('*')
-        .eq('assigned_coach_id', coachData.id)
+        .eq('coach_id', coachData.id)
         .order('created_at', { ascending: false });
 
       // Get session counts for each student

@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
         cal_booking_uid: booking.uid,
         source: 'cal.com',
         // Auto-assignment fields
-        assigned_coach_id: eligibleCoach?.id || null,
+        coach_id: eligibleCoach?.id || null,
         assignment_type: eligibleCoach ? 'auto' : 'pending',
         assigned_at: eligibleCoach ? new Date().toISOString() : null,
         assigned_by: eligibleCoach ? 'system' : null,

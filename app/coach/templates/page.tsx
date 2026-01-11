@@ -92,7 +92,7 @@ export default function WhatsAppTemplatesPage() {
       const { data: studentsData } = await supabase
         .from('children')
         .select('id, child_name, parent_name, parent_phone, latest_assessment_score')
-        .eq('assigned_coach_id', coachData.id)
+        .eq('coach_id', coachData.id)
         .order('child_name');
 
       setStudents(studentsData || []);

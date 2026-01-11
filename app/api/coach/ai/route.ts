@@ -1,4 +1,4 @@
-// file: app/api/coach/ai/route.ts
+﻿// file: app/api/coach/ai/route.ts
 // Enhanced rAI API - RAG-powered AI Assistant for coaches
 // Pulls from all data sources: children, learning_events, sessions, skills, passages, tips
 
@@ -100,7 +100,7 @@ async function fetchChildContext(childName: string, coachId: string) {
   const { data: child, error: childError } = await supabase
     .from('children')
     .select(`
-      id, name, age, 
+      id, child_name, age, 
       parent_name, parent_email, parent_phone,
       school_name, grade, board,
       languages_at_home, learning_challenges,
@@ -113,7 +113,7 @@ async function fetchChildContext(childName: string, coachId: string) {
       lead_status
     `)
     .eq('coach_id', coachId)
-    .ilike('name', `%${childName}%`)
+    .ilike('child_name', `%${childName}%`)
     .single();
 
   if (childError || !child) {
@@ -135,7 +135,7 @@ async function fetchChildContext(childName: string, coachId: string) {
       id, session_type, scheduled_date, scheduled_time, status,
       focus_area, progress_rating, engagement_level,
       confidence_level, skills_worked_on,
-      tldv_ai_summary, voice_note_transcript,
+      ai_summary, voice_note_transcript,
       homework_assigned, homework_topic,
       breakthrough_moment, concerns_noted,
       flagged_for_attention, flag_reason
@@ -192,7 +192,7 @@ async function fetchAllStudentsOverview(coachId: string) {
   const { data: children, error } = await supabase
     .from('children')
     .select(`
-      id, name, age,
+      id, child_name, age,
       latest_assessment_score, sessions_completed,
       current_confidence_level, lead_status,
       renewal_likelihood
@@ -319,8 +319,8 @@ function buildContext(
         if (s.skills_worked_on?.length > 0) {
           context += `- Skills: ${s.skills_worked_on.join(', ')}\n`;
         }
-        if (s.tldv_ai_summary) {
-          context += `- Summary: ${s.tldv_ai_summary}\n`;
+        if (s.ai_summary) {
+          context += `- Summary: ${s.ai_summary}\n`;
         }
         if (s.breakthrough_moment) {
           context += `- Breakthrough: ${s.breakthrough_moment}\n`;
@@ -567,7 +567,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       response,
-      detectedChild: childContext?.profile?.name || null,
+      detectedChild: childContext?.profile?.child_name || null,
       intent,
       hasData: !!(childContext || allStudents.length > 0),
     });

@@ -201,7 +201,7 @@ export async function GET(
       .from('discovery_calls')
       .select(`
         *,
-        coach:coaches!assigned_coach_id (
+        coach:coaches!coach_id (
             id,
             name,
             email,
@@ -235,14 +235,14 @@ export async function GET(
 
     // 5. AUTHORIZATION: Coaches can only see their assigned calls
     if (userRole === 'coach') {
-      if (call.assigned_coach_id !== sessionCoachId) {
+      if (call.coach_id !== sessionCoachId) {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
           error: 'Coach tried to access unassigned call',
           userEmail,
           callId: id,
-          assignedCoachId: call.assigned_coach_id,
+          assignedCoachId: call.coach_id,
           sessionCoachId,
         }));
 

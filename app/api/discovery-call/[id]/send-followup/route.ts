@@ -124,7 +124,7 @@ export async function POST(
       .from('discovery_calls')
       .select(`
         *,
-        coach:coaches!assigned_coach_id (
+        coach:coaches!coach_id (
           id,
           name,
           email,
@@ -143,14 +143,14 @@ export async function POST(
 
     // 6. AUTHORIZATION: Coaches can only send follow-up for their assigned calls
     if (userRole === 'coach') {
-      if (call.assigned_coach_id !== sessionCoachId) {
+      if (call.coach_id !== sessionCoachId) {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
           error: 'Coach tried to send followup for unassigned call',
           userEmail,
           callId: id,
-          assignedCoachId: call.assigned_coach_id,
+          assignedCoachId: call.coach_id,
           sessionCoachId,
         }));
 

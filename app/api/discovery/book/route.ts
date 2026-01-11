@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
         slot_time: body.slotTime,
         source: body.source,
         // Coach assignment
-        assigned_coach_id: assignedCoach?.id || null,
+        coach_id: assignedCoach?.id || null,
         assignment_type: assignedCoach ? 'auto' : 'pending',
         assigned_at: assignedCoach ? new Date().toISOString() : null,
         assigned_by: assignedCoach ? 'system' : null,

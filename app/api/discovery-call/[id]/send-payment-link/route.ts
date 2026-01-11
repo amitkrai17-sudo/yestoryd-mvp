@@ -145,7 +145,7 @@ export async function POST(
       .from('discovery_calls')
       .select(`
         *,
-        coach:coaches!assigned_coach_id (
+        coach:coaches!coach_id (
           id,
           name,
           email,
@@ -170,7 +170,7 @@ export async function POST(
 
     // 5. Authorization check
     const isAdmin = userRole === 'admin';
-    const isAssignedCoach = userRole === 'coach' && call.assigned_coach_id === userCoachId;
+    const isAssignedCoach = userRole === 'coach' && call.coach_id === userCoachId;
 
     if (!isAdmin && !isAssignedCoach) {
       console.log(JSON.stringify({
@@ -178,7 +178,7 @@ export async function POST(
         event: 'authorization_failed',
         userEmail,
         userRole,
-        assignedCoachId: call.assigned_coach_id,
+        assignedCoachId: call.coach_id,
       }));
 
       return NextResponse.json(

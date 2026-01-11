@@ -374,7 +374,7 @@ export async function POST(request: NextRequest) {
         voice_note_transcript: voiceTranscript || null,
 
         // AI summary (visible to coach/parent)
-        tldv_ai_summary: aiSummary,
+        ai_summary: aiSummary,
 
         updated_at: new Date().toISOString(),
       })

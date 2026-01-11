@@ -104,7 +104,7 @@ export async function POST(
     // 5. Fetch discovery call and verify ownership
     const { data: existingCall, error: fetchError } = await supabase
       .from('discovery_calls')
-      .select('id, child_id, child_name, assigned_coach_id')
+      .select('id, child_id, child_name, coach_id')
       .eq('id', id)
       .single();
 
@@ -117,14 +117,14 @@ export async function POST(
 
     // 6. AUTHORIZATION: Coaches can only update their assigned calls
     if (userRole === 'coach') {
-      if (existingCall.assigned_coach_id !== sessionCoachId) {
+      if (existingCall.coach_id !== sessionCoachId) {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
           error: 'Coach tried to update unassigned call',
           userEmail,
           callId: id,
-          assignedCoachId: existingCall.assigned_coach_id,
+          assignedCoachId: existingCall.coach_id,
           sessionCoachId,
         }));
 
@@ -278,7 +278,7 @@ export async function GET(
       .from('discovery_calls')
       .select(`
         id,
-        assigned_coach_id,
+        coach_id,
         call_completed,
         call_outcome,
         likelihood,
@@ -300,7 +300,7 @@ export async function GET(
 
     // 5. AUTHORIZATION: Coaches can only view their assigned calls
     if (userRole === 'coach') {
-      if (data.assigned_coach_id !== sessionCoachId) {
+      if (data.coach_id !== sessionCoachId) {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
@@ -316,8 +316,8 @@ export async function GET(
       }
     }
 
-    // Remove assigned_coach_id from response (internal field)
-    const { assigned_coach_id, ...responseData } = data;
+    // Remove coach_id from response (internal field)
+    const { coach_id, ...responseData } = data;
 
     return NextResponse.json({
       success: true,

@@ -51,7 +51,7 @@ Add after the coach assignment is saved:
 
 import { notifyCoachAssignment } from '@/lib/notify-coach-assignment';
 
-// After: await supabase.from('discovery_calls').update({ assigned_coach_id: coachId })...
+// After: await supabase.from('discovery_calls').update({ coach_id: coachId })...
 
 await notifyCoachAssignment({
   coachId: selectedCoachId,
@@ -67,7 +67,7 @@ Add after round-robin assignment:
 
 import { notifyCoachAssignment } from '@/lib/notify-coach-assignment';
 
-// After: assigned_coach_id is set
+// After: coach_id is set
 
 if (assignedCoachId && childId) {
   await notifyCoachAssignment({

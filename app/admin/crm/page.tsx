@@ -64,7 +64,7 @@ interface DiscoveryCall {
   parent_phone: string;
   scheduled_time: string;
   status: string;
-  assigned_coach_id: string | null;
+  coach_id: string | null;
   assigned_coach?: Coach | null;
   assessment_score: number | null;
   call_status: string;
@@ -357,7 +357,7 @@ function DiscoveryCallModal({
   onClose: () => void;
   onUpdate: () => void;
 }) {
-  const [assignedCoach, setAssignedCoach] = useState(call.assigned_coach_id || '');
+  const [assignedCoach, setAssignedCoach] = useState(call.coach_id || '');
   const [saving, setSaving] = useState(false);
   const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
   const [sendingFollowup, setSendingFollowup] = useState(false);
@@ -519,7 +519,7 @@ function DiscoveryCallModal({
           {/* Coach Assignment */}
           <div>
             <label className="text-xs text-gray-500 uppercase tracking-wide">
-              {call.assigned_coach_id ? 'Reassign Coach' : 'Assign Coach'}
+              {call.coach_id ? 'Reassign Coach' : 'Assign Coach'}
             </label>
             <div className="flex gap-2 mt-1">
               <select
@@ -539,7 +539,7 @@ function DiscoveryCallModal({
                 disabled={!assignedCoach || saving}
                 className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50"
               >
-                {saving ? '...' : call.assigned_coach_id ? 'Reassign' : 'Assign'}
+                {saving ? '...' : call.coach_id ? 'Reassign' : 'Assign'}
               </button>
             </div>
             {availableCoaches.length < coaches.length && (
@@ -764,7 +764,7 @@ export default function AdminCRMPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
 
-  const pendingAssignments = discoveryCalls.filter(c => !c.assigned_coach_id || c.assignment_type === 'pending').length;
+  const pendingAssignments = discoveryCalls.filter(c => !c.coach_id || c.assignment_type === 'pending').length;
 
   useEffect(() => {
     fetchData();
@@ -1126,7 +1126,7 @@ export default function AdminCRMPage() {
               ) : (
                 <div className="divide-y">
                   {discoveryCalls.map((call) => {
-                    const isPending = !call.assigned_coach_id || call.assignment_type === 'pending';
+                    const isPending = !call.coach_id || call.assignment_type === 'pending';
                     return (
                       <div
                         key={call.id}

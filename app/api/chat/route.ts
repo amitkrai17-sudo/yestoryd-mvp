@@ -361,7 +361,7 @@ async function handleLearning(
   if (userRole === 'parent') {
     const { data: parentChildren } = await supabase
       .from('children')
-      .select('id, name, child_name, age, parent_email, assigned_coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
+      .select('id, name, child_name, age, parent_email, coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
       .eq('parent_email', userEmail)
       .in('status', ['enrolled', 'assessment_complete']);
 
@@ -399,11 +399,11 @@ async function handleLearning(
       };
     }
 
-    if (child?.assigned_coach_id) {
+    if (child?.coach_id) {
       const { data: coachData } = await supabase
         .from('coaches')
         .select('id, name, email, phone')
-        .eq('id', child.assigned_coach_id)
+        .eq('id', child.coach_id)
         .single();
       coach = coachData as Coach | null;
     }
@@ -411,12 +411,12 @@ async function handleLearning(
     if (childId) {
       const { data: childData } = await supabase
         .from('children')
-        .select('id, name, child_name, age, parent_email, assigned_coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
+        .select('id, name, child_name, age, parent_email, coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
         .eq('id', childId)
         .single();
 
       // SECURITY: Verify coach owns this child
-      if (childData?.assigned_coach_id !== sessionCoachId) {
+      if (childData?.coach_id !== sessionCoachId) {
         return {
           response: "I can only provide information about students assigned to you.",
           intent: 'LEARNING',
@@ -567,7 +567,7 @@ async function handleOperational(
     const { count } = await supabase
       .from('children')
       .select('*', { count: 'exact', head: true })
-      .eq('assigned_coach_id', coachId)
+      .eq('coach_id', coachId)
       .eq('status', 'enrolled');
 
     return {
@@ -812,18 +812,18 @@ async function getCoachForParent(parentEmail: string): Promise<Coach | null> {
   const supabase = getSupabase();
   const { data: child } = await supabase
     .from('children')
-    .select('assigned_coach_id')
+    .select('coach_id')
     .eq('parent_email', parentEmail)
     .eq('status', 'enrolled')
     .limit(1)
     .single();
 
-  if (!child?.assigned_coach_id) return null;
+  if (!child?.coach_id) return null;
 
   const { data: coach } = await supabase
     .from('coaches')
     .select('id, name, email, phone')
-    .eq('id', child.assigned_coach_id)
+    .eq('id', child.coach_id)
     .single();
 
   return coach as Coach | null;
