@@ -182,19 +182,15 @@ export default function StudentDetailPage() {
     setAiResponse('');
 
     try {
-      const response = await fetch('/api/coach/ai', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: aiQuestion,
-            coachId: coach.id,
-            coachName: coach.name,
-          studentId: student.id,
-          studentName: student.child_name,
-          studentAge: student.age,
-          assessments: assessments,
-          sessionNotes: sessionNotes,
-          sessions: sessions,
+          childId: student.id,
+          userRole: 'coach',
+          userEmail: coach.email,
+          chatHistory: [],
         }),
       });
 

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // FILE: app/coach/layout.tsx
 // ============================================================
 // Coach Layout - Auth + Role Verification
@@ -101,7 +101,7 @@ interface CoachContextType {
 // ==================== CONTEXT ====================
 const CoachContext = createContext<CoachContextType | null>(null);
 
-export function useCoachContext() {
+function useCoachContext() {
   const context = useContext(CoachContext);
   if (!context) {
     throw new Error('useCoachContext must be used within CoachLayout');

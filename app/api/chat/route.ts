@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // FILE: app/api/chat/route.ts
 // ============================================================
 // HARDENED VERSION - rAI v2.0 Intelligent Chat API
@@ -119,41 +119,67 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 1. AUTHENTICATE - Get user from session (NOT from request body)
+    // 1. AUTHENTICATE - Try NextAuth first, then Supabase auth fallback
     const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      console.log(JSON.stringify({
-        requestId,
-        event: 'auth_failed',
-        error: 'No session',
-      }));
-
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // 2. GET ROLE FROM SESSION (NOT from request body)
-    const userEmail = session.user.email;
-    const sessionRole = (session.user as any).role as string;
-    const coachId = (session.user as any).coachId as string | undefined;
-    const parentId = (session.user as any).parentId as string | undefined;
-
-    // Map session role to UserRole
+    const supabase = getSupabase();
+    
+    let userEmail: string;
     let userRole: UserRole;
-    if (sessionRole === 'admin') {
-      userRole = 'admin';
-    } else if (sessionRole === 'coach') {
-      userRole = 'coach';
-    } else if (sessionRole === 'parent') {
-      userRole = 'parent';
+    let coachId: string | undefined;
+    let parentId: string | undefined;
+
+    if (session?.user?.email) {
+      // NextAuth session (admin)
+      userEmail = session.user.email;
+      const sessionRole = (session.user as any).role as string;
+      coachId = (session.user as any).coachId as string | undefined;
+      parentId = (session.user as any).parentId as string | undefined;
+
+      if (sessionRole === 'admin') {
+        userRole = 'admin';
+      } else if (sessionRole === 'coach') {
+        userRole = 'coach';
+      } else if (sessionRole === 'parent') {
+        userRole = 'parent';
+      } else {
+        return NextResponse.json({ error: 'Invalid user role' }, { status: 403 });
+      }
     } else {
-      return NextResponse.json(
-        { error: 'Invalid user role' },
-        { status: 403 }
-      );
+      // Supabase auth fallback (coach/parent dashboards)
+      const body = await request.clone().json();
+      const requestEmail = body.userEmail;
+      const requestRole = body.userRole;
+
+      if (!requestEmail || !requestRole) {
+        console.log(JSON.stringify({ requestId, event: 'auth_failed', error: 'No session or credentials' }));
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      }
+
+      // Verify email exists in appropriate table
+      if (requestRole === 'coach') {
+        const { data: coach } = await supabase.from('coaches').select('id').eq('email', requestEmail).single();
+        if (!coach) {
+          return NextResponse.json({ error: 'Coach not found' }, { status: 401 });
+        }
+        coachId = coach.id;
+        userRole = 'coach';
+      } else if (requestRole === 'parent') {
+        const { data: parent } = await supabase.from('parents').select('id').eq('email', requestEmail).single();
+        if (!parent) {
+          const { data: child } = await supabase.from('children').select('id').eq('parent_email', requestEmail).limit(1).single();
+          if (!child) {
+            return NextResponse.json({ error: 'Parent not found' }, { status: 401 });
+          }
+        } else {
+          parentId = parent.id;
+        }
+        userRole = 'parent';
+      } else {
+        return NextResponse.json({ error: 'Invalid role for fallback auth' }, { status: 403 });
+      }
+      
+      userEmail = requestEmail;
+      console.log(JSON.stringify({ requestId, event: 'supabase_auth_fallback', email: userEmail, role: userRole }));
     }
 
     // 3. RATE LIMITING

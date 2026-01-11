@@ -136,17 +136,15 @@ export default function AIAssistantPage() {
         };
       }
 
-      const response = await fetch('/api/coach/ai', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: input,
-          studentId: selectedStudent?.id,
-          studentName: selectedStudent?.child_name || 'general',
-          studentAge: selectedStudent?.age,
-          assessments: studentData?.assessments || [],
-          sessionNotes: studentData?.sessionNotes || [],
-          sessions: studentData?.sessions || [],
+          message: input,
+          childId: selectedStudent?.id || null,
+          userRole: 'coach',
+          userEmail: coach.email,
+          chatHistory: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
         }),
       });
 
