@@ -14,6 +14,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { assessmentRateLimiter, getClientIP, rateLimitResponse } from '@/lib/rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
@@ -244,6 +245,15 @@ function getDefaultAnalysis(name: string): AnalysisResult {
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
+
+    // ??? UPSTASH RATE LIMITING - Persistent across serverless instances
+    const clientIP = getClientIP(request);
+    const { success: ipAllowed, limit, remaining, reset } = await assessmentRateLimiter.limit(clientIP);
+    
+    if (!ipAllowed) {
+      console.log(JSON.stringify({ requestId, event: 'rate_limit_ip', ip: clientIP }));
+      return rateLimitResponse(limit, remaining, reset);
+    }
 
   try {
     // 1. Get client identifier for rate limiting
