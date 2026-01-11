@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 
-import { useState, useRef, useEffect, Suspense } from 'react';
+import { useState, useRef, useEffect, Suspense, useCallback } from 'react';
+import { AudioRecorderCheck } from '@/components/assessment/AudioRecorderCheck';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
@@ -42,7 +43,7 @@ import {
 const trackEvent = (eventName: string, params?: Record<string, any>) => {
   if (typeof window !== 'undefined' && (window as any).gtag) {
     (window as any).gtag('event', eventName, params);
-    console.log(`📊 GA4: ${eventName}`, params);
+    console.log(`?? GA4: ${eventName}`, params);
   }
 };
 
@@ -219,7 +220,7 @@ function getScoreBasedCTA(score: number, childName: string) {
     return {
       headline: `Great start, ${childName}! Let's build from here`,
       subtext: 'Our coaches specialize in building reading confidence from the ground up',
-      emoji: '🌱',
+      emoji: '??',
       primaryCTA: `Start ${childName}'s Reading Journey`,
       secondaryCTA: `Talk to a Coach First`,
       // LOW SCORE: Consultation first (reassurance needed)
@@ -229,7 +230,7 @@ function getScoreBasedCTA(score: number, childName: string) {
     return {
       headline: `${childName} has a solid foundation!`,
       subtext: 'With guided practice, improvement comes quickly',
-      emoji: '📈',
+      emoji: '??',
       primaryCTA: `Accelerate ${childName}'s Progress`,
       secondaryCTA: `Talk to a Coach First`,
       // MID SCORE: Consultation first (explore options)
@@ -239,7 +240,7 @@ function getScoreBasedCTA(score: number, childName: string) {
     return {
       headline: `${childName} is doing wonderfully!`,
       subtext: 'Ready to reach the next level',
-      emoji: '⭐',
+      emoji: '?',
       primaryCTA: `Unlock ${childName}'s Full Potential`,
       secondaryCTA: `Talk to a Coach`,
       // HIGH SCORE: Enroll first (confident)
@@ -249,7 +250,7 @@ function getScoreBasedCTA(score: number, childName: string) {
     return {
       headline: `${childName} is a reading star!`,
       subtext: 'Advanced coaching for gifted readers',
-      emoji: '🌟',
+      emoji: '??',
       primaryCTA: `Challenge ${childName} Further`,
       secondaryCTA: `Explore Advanced Options`,
       // EXCELLENT SCORE: Enroll first (celebration)
@@ -301,6 +302,8 @@ function AssessmentPageContent() {
   // Recording state
   const [passage, setPassage] = useState<{ text: string; level: string; readingTime: string } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [supportedMimeType, setSupportedMimeType] = useState<string | null>(null);
+  const handleAudioReady = useCallback((mimeType: string) => setSupportedMimeType(mimeType), []);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -312,7 +315,7 @@ function AssessmentPageContent() {
 
   // Dynamic pricing from database
   const [pricing, setPricing] = useState({
-    displayPrice: '₹5,999',
+    displayPrice: '?5,999',
     programPrice: 5999
   });
 
@@ -374,7 +377,7 @@ function AssessmentPageContent() {
 
         if (data?.discounted_price) {
           setPricing({
-            displayPrice: '₹' + data.discounted_price.toLocaleString('en-IN'),
+            displayPrice: '?' + data.discounted_price.toLocaleString('en-IN'),
             programPrice: data.discounted_price
           });
         }
@@ -424,7 +427,7 @@ function AssessmentPageContent() {
             }).catch(console.error);
           }
 
-          console.log('✅ Referral tracked:', data.referral_code);
+          console.log('? Referral tracked:', data.referral_code);
         }
       } catch (error) {
         console.error('Referral tracking error:', error);
@@ -494,7 +497,7 @@ function AssessmentPageContent() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: supportedMimeType || 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -637,33 +640,33 @@ function AssessmentPageContent() {
 
     const ctaInfo = getScoreBasedCTA(results.overall_score, formData.childName);
 
-    const text = `📚 *Yestoryd Reading Report for ${formData.childName}*
+    const text = `?? *Yestoryd Reading Report for ${formData.childName}*
 
 ${ctaInfo.emoji} *Overall Score: ${results.overall_score}/10*
 
-📊 *Detailed Scores:*
-🔊 Clarity: ${results.clarity_score}/10
-🗣️ Fluency: ${results.fluency_score}/10
-⚡ Speed: ${results.speed_score}/10
-📈 WPM: ${results.wpm}
+?? *Detailed Scores:*
+?? Clarity: ${results.clarity_score}/10
+??? Fluency: ${results.fluency_score}/10
+? Speed: ${results.speed_score}/10
+?? WPM: ${results.wpm}
 
-💬 *rAI Analysis:*
+?? *rAI Analysis:*
 ${results.feedback}
 
-✨ ${results.encouragement}
+? ${results.encouragement}
 
-━━━━━━━━━━━━━━━
+???????????????
 
-🎯 *${ctaInfo.headline}*
+?? *${ctaInfo.headline}*
 ${ctaInfo.subtext}
 
-📅 Book FREE Discovery Call:
+?? Book FREE Discovery Call:
 https://yestoryd.com/lets-talk
 
-📧 Certificate sent to ${formData.parentEmail}
+?? Certificate sent to ${formData.parentEmail}
 
-━━━━━━━━━━━━━━━
-🚀 Get FREE assessment at yestoryd.com`;
+???????????????
+?? Get FREE assessment at yestoryd.com`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
@@ -930,16 +933,16 @@ https://yestoryd.com/lets-talk
                         onChange={handleInputChange}
                         className="w-[90px] flex-shrink-0 bg-gray-50 border border-gray-300 rounded-xl px-2 py-3 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       >
-                        <option value="+91">🇮🇳 +91</option>
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+971">🇦🇪 +971</option>
-                        <option value="+65">🇸🇬 +65</option>
-                        <option value="+61">🇦🇺 +61</option>
-                        <option value="+60">🇲🇾 +60</option>
-                        <option value="+974">🇶🇦 +974</option>
-                        <option value="+966">🇸🇦 +966</option>
-                        <option value="+49">🇩🇪 +49</option>
+                        <option value="+91">???? +91</option>
+                        <option value="+1">???? +1</option>
+                        <option value="+44">???? +44</option>
+                        <option value="+971">???? +971</option>
+                        <option value="+65">???? +65</option>
+                        <option value="+61">???? +61</option>
+                        <option value="+60">???? +60</option>
+                        <option value="+974">???? +974</option>
+                        <option value="+966">???? +966</option>
+                        <option value="+49">???? +49</option>
                       </select>
                       <input
                         type="tel"
@@ -1001,7 +1004,7 @@ https://yestoryd.com/lets-talk
                 </button>
 
                 <p className="text-center text-gray-400 text-xs">
-                  🔒 Your information is secure and will never be shared
+                  ?? Your information is secure and will never be shared
                 </p>
               </div>
             )}
@@ -1010,6 +1013,9 @@ https://yestoryd.com/lets-talk
             {currentStep === 2 && passage && (
               <div className="space-y-6">
                 {/* PAPER MODE PASSAGE CARD */}
+                  {/* Browser Compatibility Check */}
+                  <AudioRecorderCheck onReady={handleAudioReady} />
+
                 <div className="bg-white rounded-2xl p-6 shadow-2xl border-l-8 border-pink-500 relative overflow-hidden">
                   {/* Paper corner fold effect */}
                   <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-gray-100 to-transparent -mr-8 -mt-8 rotate-45"></div>
@@ -1120,9 +1126,9 @@ https://yestoryd.com/lets-talk
 
                   {/* Clearer text states */}
                   <p className={`text-sm font-medium ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
-                    {isRecording ? '🔴 RECORDING... Tap square to stop' :
-                      audioBlob ? '✅ Recording complete! Review or re-record' :
-                        '🎤 Tap microphone to start recording'}
+                    {isRecording ? '?? RECORDING... Tap square to stop' :
+                      audioBlob ? '? Recording complete! Review or re-record' :
+                        '?? Tap microphone to start recording'}
                   </p>
                 </div>
 
@@ -1151,7 +1157,7 @@ https://yestoryd.com/lets-talk
                   onClick={() => setCurrentStep(1)}
                   className="w-full py-3 text-gray-500 hover:text-gray-900 transition-colors text-sm"
                 >
-                  ← Go back to details
+                  ? Go back to details
                 </button>
               </div>
             )}
@@ -1194,7 +1200,7 @@ https://yestoryd.com/lets-talk
 
                         {/* Context message - reduces anxiety */}
                         <p className="text-gray-600 text-sm bg-white rounded-lg p-3 border border-gray-100">
-                          💡 {scoreContext}
+                          ?? {scoreContext}
                         </p>
                       </div>
 
@@ -1228,7 +1234,7 @@ https://yestoryd.com/lets-talk
                       {/* Encouragement */}
                       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                         <p className="text-yellow-700 font-medium">
-                          ✨ {results.encouragement}
+                          ? {results.encouragement}
                         </p>
                       </div>
 
@@ -1241,7 +1247,7 @@ https://yestoryd.com/lets-talk
                         </div>
 
                         {ctaInfo.prioritizeConsultation ? (
-                          // LOW/MID SCORE (≤6): Consultation first (reassurance needed)
+                          // LOW/MID SCORE (=6): Consultation first (reassurance needed)
                           <>
                             <Link
                               href={getLetsTalkUrl()}
@@ -1260,11 +1266,11 @@ https://yestoryd.com/lets-talk
                               className="w-full bg-transparent border border-gray-300 hover:border-gray-400 font-semibold py-3 px-6 rounded-2xl text-gray-600 flex items-center justify-center gap-3 transition-all"
                             >
                               <Rocket className="w-5 h-5" />
-                              Ready to Enroll? Skip the Call →
+                              Ready to Enroll? Skip the Call ?
                             </Link>
                           </>
                         ) : (
-                          // HIGH SCORE (≥7): Enroll first (confident parents)
+                          // HIGH SCORE (=7): Enroll first (confident parents)
                           <>
                             <Link
                               href={getEnrollUrl()}
@@ -1330,11 +1336,11 @@ https://yestoryd.com/lets-talk
                         }}
                         className="w-full py-3 text-gray-500 hover:text-gray-900 transition-colors text-sm"
                       >
-                        🔄 Assess Another Child
+                        ?? Assess Another Child
                       </button>
 
                       <p className="text-gray-400 text-xs">
-                        📧 Certificate sent to {formData.parentEmail}
+                        ?? Certificate sent to {formData.parentEmail}
                         <br />
                         <span className="text-yellow-600">Check spam folder if not in inbox</span>
                       </p>
