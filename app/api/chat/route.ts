@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // FILE: app/api/chat/route.ts
 // ============================================================
 // HARDENED VERSION - rAI v2.0 Intelligent Chat API
@@ -14,6 +14,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { chatRateLimiter, getClientIP, rateLimitResponse } from '@/lib/rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
@@ -117,6 +118,15 @@ async function trackAIUsage(
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
+
+    // ??? RATE LIMITING - Protect Gemini API from abuse (IP-based)
+    const clientIP = getClientIP(request);
+    const { success, limit, remaining, reset } = await chatRateLimiter.limit(clientIP);
+    
+    if (!success) {
+      console.log(JSON.stringify({ requestId, event: 'rate_limit_ip', ip: clientIP }));
+      return rateLimitResponse(limit, remaining, reset);
+    }
 
   try {
     // 1. AUTHENTICATE - Try NextAuth first, then Supabase auth fallback
@@ -270,7 +280,7 @@ export async function POST(request: NextRequest) {
 
     // 7. CLASSIFY INTENT
     const { intent, tier0Match } = await classifyIntent(message, userRole);
-    console.log(`🎯 Intent: ${intent} (Tier ${tier0Match ? '0' : '1'})`);
+    console.log(`?? Intent: ${intent} (Tier ${tier0Match ? '0' : '1'})`);
 
     // 8. ADMIN INSIGHT CHECK (fast path)
     if (userRole === 'admin') {
@@ -461,7 +471,7 @@ async function handleLearning(
     const cache = await getSessionCache(child.id);
 
     if (cache.isFresh && cache.summary && cache.date) {
-      console.log('📦 Cache hit! Returning cached summary');
+      console.log('?? Cache hit! Returning cached summary');
       return {
         response: formatCachedSummary(cache.summary, cache.date, childName),
         intent: 'LEARNING',
