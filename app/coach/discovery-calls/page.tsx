@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -149,7 +149,7 @@ export default function CoachDiscoveryCallsPage() {
                 <Link
                   key={call.id}
                   href={`/coach/discovery-calls/${call.id}`}
-                  className="block bg-gray-800 rounded-xl border p-4 hover:shadow-md transition-shadow active:bg-[#0f1419]"
+                  className="block bg-gray-800 rounded-xl border p-4 hover:shadow-md transition-shadow active:bg-gray-900"
                 >
                   <div className="flex items-center justify-between gap-3">
                     {/* Left: Score + Info */}
@@ -203,3 +203,4 @@ export default function CoachDiscoveryCallsPage() {
     </div>
   );
 }
+

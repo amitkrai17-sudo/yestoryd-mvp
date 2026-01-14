@@ -1,12 +1,11 @@
-// app/coach/sessions/page.tsx
+﻿// app/coach/sessions/page.tsx
 // Coach Sessions Page - HARDENED VERSION
 // Full TypeScript, proper types, constants, error handling
-
 'use client';
-
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { SessionCompleteForm, PreSessionBrief } from '@/components/coach';
+import { ParentUpdateButton } from '@/components/coach/ParentUpdateButton';
 import { RescheduleModal } from '@/components/shared';
 import type { RescheduleSession } from '@/components/shared';
 import {
@@ -26,11 +25,9 @@ import {
   RefreshCw,
   AlertCircle,
 } from 'lucide-react';
-
 // ============================================================
 // CONSTANTS
 // ============================================================
-
 const SESSION_STATUS = {
   SCHEDULED: 'scheduled',
   PENDING: 'pending',
@@ -39,9 +36,7 @@ const SESSION_STATUS = {
   RESCHEDULED: 'rescheduled',
   CANCELLED: 'cancelled',
 } as const;
-
 const UNRESOLVED_STATUSES = [SESSION_STATUS.SCHEDULED, SESSION_STATUS.PENDING] as const;
-
 const FILTER_OPTIONS = [
   { value: 'all', label: 'All Sessions' },
   { value: 'today', label: 'Today' },
@@ -50,13 +45,10 @@ const FILTER_OPTIONS = [
   { value: 'missed', label: 'Missed' },
   { value: 'cancelled', label: 'Cancelled' },
 ] as const;
-
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
-
 // ============================================================
 // TYPES
 // ============================================================
-
 interface Coach {
   id: string;
   name: string;
@@ -64,13 +56,13 @@ interface Coach {
   photo_url: string | null;
   specialization: string | null;
 }
-
 interface Session {
   id: string;
   child_id: string;
   child_name: string;
   child_age: number;
   parent_name: string;
+  parent_phone?: string;
   scheduled_date: string;
   scheduled_time: string;
   session_type: string;
@@ -88,19 +80,16 @@ interface Session {
   motivators: string[];
   sessions_completed: number;
   total_sessions: number;
+  parent_update_sent_at?: string | null;
 }
-
 type FilterValue = typeof FILTER_OPTIONS[number]['value'];
 type ViewMode = 'list' | 'calendar';
-
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================
-
 function isUnresolvedStatus(status: string): boolean {
   return UNRESOLVED_STATUSES.includes(status as typeof UNRESOLVED_STATUSES[number]);
 }
-
 function canCompleteSession(
   session: Session,
   allSessions: Session[]
@@ -108,66 +97,53 @@ function canCompleteSession(
   if (!session.session_number) {
     return { allowed: true, blockedBy: null };
   }
-
   const childSessions = allSessions.filter((s) => s.child_id === session.child_id);
-
   const previousUnresolved = childSessions.find(
     (s) =>
       s.session_number !== null &&
       s.session_number < session.session_number! &&
       isUnresolvedStatus(s.status)
   );
-
   if (previousUnresolved) {
     return { allowed: false, blockedBy: previousUnresolved.session_number };
   }
-
   return { allowed: true, blockedBy: null };
 }
-
-function isSessionPast(scheduledDate: string): boolean {
-  const sessionDate = new Date(scheduledDate);
+function isUpcoming(dateStr: string): boolean {
+  const sessionDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return sessionDate >= today;
+}
+function isToday(dateStr: string): boolean {
+  const sessionDate = new Date(dateStr);
+  const today = new Date();
+  return (
+    sessionDate.getDate() === today.getDate() &&
+    sessionDate.getMonth() === today.getMonth() &&
+    sessionDate.getFullYear() === today.getFullYear()
+  );
+}
+function isSessionPast(dateStr: string): boolean {
+  const sessionDate = new Date(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return sessionDate < today;
 }
-
-function isToday(dateStr: string): boolean {
-  const today = new Date().toISOString().split('T')[0];
-  return dateStr === today;
-}
-
-function isUpcoming(dateStr: string): boolean {
-  const today = new Date().toISOString().split('T')[0];
-  return dateStr >= today;
-}
-
 function formatDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-  } catch {
-    return dateStr;
-  }
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 }
-
-function formatTime(timeStr: string | null): string {
-  if (!timeStr) return '';
-  try {
-    const [hours, minutes] = timeStr.split(':');
-    const hour = parseInt(hours, 10);
-    if (isNaN(hour)) return timeStr;
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  } catch {
-    return timeStr;
-  }
+function formatTime(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
 }
-
 function getStatusBadgeConfig(status: string): { bg: string; text: string; label: string } {
   switch (status) {
     case SESSION_STATUS.COMPLETED:
@@ -178,31 +154,22 @@ function getStatusBadgeConfig(status: string): { bg: string; text: string; label
       return { bg: 'bg-orange-500/20', text: 'text-orange-400', label: 'Missed' };
     case SESSION_STATUS.RESCHEDULED:
       return { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'Rescheduled' };
+    case SESSION_STATUS.PENDING:
     case SESSION_STATUS.SCHEDULED:
-      return { bg: 'bg-[#00ABFF]/20', text: 'text-[#00ABFF]', label: 'Scheduled' };
     default:
-      return { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'Pending' };
+      return { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Scheduled' };
   }
 }
-
-function getDaysInMonth(date: Date): (number | null)[] {
+function getDaysInMonth(date: Date): number[] {
   const year = date.getFullYear();
   const month = date.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const daysInMonth = lastDay.getDate();
-  const startingDay = firstDay.getDay();
-
-  const days: (number | null)[] = [];
-  for (let i = 0; i < startingDay; i++) {
-    days.push(null);
-  }
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const days: number[] = [];
   for (let i = 1; i <= daysInMonth; i++) {
     days.push(i);
   }
   return days;
 }
-
 function sessionToRescheduleSession(session: Session): RescheduleSession {
   return {
     id: session.id,
@@ -212,11 +179,9 @@ function sessionToRescheduleSession(session: Session): RescheduleSession {
     scheduled_time: session.scheduled_time,
   };
 }
-
 // ============================================================
 // STATUS BADGE COMPONENT
 // ============================================================
-
 function StatusBadge({ status }: { status: string }) {
   const config = getStatusBadgeConfig(status);
   return (
@@ -225,48 +190,39 @@ function StatusBadge({ status }: { status: string }) {
     </span>
   );
 }
-
 // ============================================================
 // MAIN COMPONENT
 // ============================================================
-
 export default function CoachSessionsPage() {
   // Data state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [coach, setCoach] = useState<Coach | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-
   // UI state
   const [view, setView] = useState<ViewMode>('list');
   const [filterStatus, setFilterStatus] = useState<FilterValue>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
-
   // Modal state
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showPrepModal, setShowPrepModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showMissedConfirm, setShowMissedConfirm] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-
   // Action state
   const [markingMissed, setMarkingMissed] = useState<string | null>(null);
   const [missedReason, setMissedReason] = useState('');
-  
   // Cancel state
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState<string | null>(null);
-
   // ============================================================
   // DATA LOADING
   // ============================================================
-
   const loadSessions = useCallback(async () => {
     try {
       setError(null);
       const response = await fetch('/api/coach/sessions');
-
       if (!response.ok) {
         if (response.status === 401) {
           window.location.href = '/coach/login';
@@ -274,14 +230,11 @@ export default function CoachSessionsPage() {
         }
         throw new Error('Failed to fetch sessions');
       }
-
       const data = await response.json();
-
       if (!data.coach) {
         window.location.href = '/coach/login';
         return;
       }
-
       setCoach(data.coach);
       setSessions(data.sessions || []);
     } catch (err) {
@@ -291,15 +244,12 @@ export default function CoachSessionsPage() {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
-
   // ============================================================
   // COMPUTED VALUES
   // ============================================================
-
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
       if (filterStatus === 'all') return true;
@@ -310,7 +260,6 @@ export default function CoachSessionsPage() {
       return s.status === filterStatus;
     });
   }, [sessions, filterStatus]);
-
   const groupedSessions = useMemo(() => {
     return filteredSessions.reduce((groups: Record<string, Session[]>, session) => {
       const date = session.scheduled_date;
@@ -321,7 +270,6 @@ export default function CoachSessionsPage() {
       return groups;
     }, {});
   }, [filteredSessions]);
-
   const stats = useMemo(() => ({
     today: sessions.filter((s) => isToday(s.scheduled_date)).length,
     thisWeek: sessions.filter((s) => {
@@ -334,11 +282,9 @@ export default function CoachSessionsPage() {
     missed: sessions.filter((s) => s.status === SESSION_STATUS.MISSED).length,
     upcoming: sessions.filter((s) => isUpcoming(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
   }), [sessions]);
-
   // ============================================================
   // HANDLERS
   // ============================================================
-
   const openCompleteModal = useCallback((session: Session) => {
     const canComplete = canCompleteSession(session, sessions);
     if (!canComplete.allowed) {
@@ -348,147 +294,120 @@ export default function CoachSessionsPage() {
     setSelectedSession(session);
     setShowCompleteModal(true);
   }, [sessions]);
-
   const openPrepModal = useCallback((session: Session) => {
     setSelectedSession(session);
     setShowPrepModal(true);
   }, []);
-
   const openRescheduleModal = useCallback((session: Session) => {
     setSelectedSession(session);
     setShowRescheduleModal(true);
   }, []);
-
   const openMissedConfirm = useCallback((session: Session) => {
     setSelectedSession(session);
     setMissedReason('');
     setShowMissedConfirm(true);
   }, []);
-
   const openCancelConfirm = useCallback((session: Session) => {
     setSelectedSession(session);
     setCancelReason('');
     setShowCancelConfirm(true);
   }, []);
-
-  const handleSessionCompleted = useCallback(() => {
-    loadSessions();
-    setShowCompleteModal(false);
-    setSelectedSession(null);
-  }, [loadSessions]);
-
-  const handleRescheduleSuccess = useCallback(() => {
-    loadSessions();
-  }, [loadSessions]);
-
   const handleMarkMissed = useCallback(async () => {
     if (!selectedSession) return;
-
     setMarkingMissed(selectedSession.id);
     try {
-      const response = await fetch('/api/sessions/missed', {
+      const response = await fetch(`/api/sessions/${selectedSession.id}/missed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionId: selectedSession.id,
           reason: missedReason || 'No-show',
-          notifyParent: true,
+          missedBy: 'parent',
         }),
       });
-
-      const data = await response.json();
-
       if (!response.ok) {
-        alert(data.error || 'Failed to mark session as missed');
-        return;
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to mark session as missed');
       }
-
-      loadSessions();
+      await loadSessions();
       setShowMissedConfirm(false);
       setSelectedSession(null);
       setMissedReason('');
     } catch (err) {
       console.error('Error marking missed:', err);
-      alert('Failed to mark session as missed');
+      alert(err instanceof Error ? err.message : 'Failed to mark session as missed');
     } finally {
       setMarkingMissed(null);
     }
   }, [selectedSession, missedReason, loadSessions]);
-
-  const handleCancel = useCallback(async () => {
+  const handleCancelSession = useCallback(async () => {
     if (!selectedSession) return;
-
     setCancelling(selectedSession.id);
     try {
-      const response = await fetch(`/api/sessions?sessionId=${selectedSession.id}&reason=${encodeURIComponent(cancelReason || 'Parent requested cancellation')}`, {
-        method: 'DELETE',
+      const response = await fetch(`/api/sessions/${selectedSession.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: cancelReason || 'Cancelled by coach',
+          cancelledBy: 'coach',
+        }),
       });
-
-      const data = await response.json();
-
       if (!response.ok) {
-        alert(data.error || 'Failed to cancel session');
-        return;
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to cancel session');
       }
-
-      loadSessions();
+      await loadSessions();
       setShowCancelConfirm(false);
       setSelectedSession(null);
       setCancelReason('');
     } catch (err) {
       console.error('Error cancelling:', err);
-      alert('Failed to cancel session');
+      alert(err instanceof Error ? err.message : 'Failed to cancel session');
     } finally {
       setCancelling(null);
     }
   }, [selectedSession, cancelReason, loadSessions]);
-
-  const closeAllModals = useCallback(() => {
-    setShowCompleteModal(false);
-    setShowPrepModal(false);
+  const handleRescheduleComplete = useCallback(() => {
     setShowRescheduleModal(false);
-    setShowMissedConfirm(false);
-    setShowCancelConfirm(false);
     setSelectedSession(null);
-    setMissedReason('');
-    setCancelReason('');
-  }, []);
-
-  // Calendar navigation
-  const prevMonth = useCallback(() => {
-    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  }, []);
-
-  const nextMonth = useCallback(() => {
-    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  }, []);
-
-  const getSessionsForDay = useCallback((day: number) => {
+    loadSessions();
+  }, [loadSessions]);
+  const handleCompleteSuccess = useCallback(() => {
+    setShowCompleteModal(false);
+    setSelectedSession(null);
+    loadSessions();
+  }, [loadSessions]);
+  // ============================================================
+  // CALENDAR NAVIGATION
+  // ============================================================
+  const prevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+  const getSessionsForDay = (day: number): Session[] => {
     const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return sessions.filter((s) => s.scheduled_date === dateStr);
-  }, [currentMonth, sessions]);
-
+  };
   // ============================================================
   // RENDER
   // ============================================================
-
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
       </div>
     );
   }
-
   if (error) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-400 text-lg mb-4">{error}</p>
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-white text-lg mb-4">{error}</p>
           <button
             onClick={loadSessions}
-            className="px-6 py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#FF0099]/80"
+            className="px-4 py-2 bg-[#FF0099] text-white rounded-xl hover:bg-[#FF0099]/90"
           >
             Retry
           </button>
@@ -496,317 +415,314 @@ export default function CoachSessionsPage() {
       </div>
     );
   }
-
-  if (!coach) return null;
-
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-900">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#00ABFF]/20 rounded-xl flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-[#00ABFF]" />
+      <div className="border-b border-gray-800 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Sessions</h1>
+              <p className="text-gray-400 text-sm mt-1">
+                {stats.today} today â€¢ {stats.upcoming} upcoming â€¢ {stats.completed} completed
+              </p>
             </div>
-            Sessions
-          </h1>
-          <p className="text-gray-400 mt-1">{sessions.length} total sessions</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* View Toggle */}
-          <div className="flex bg-gray-800 rounded-xl p-1 border border-gray-700">
-            <button
-              onClick={() => setView('list')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                view === 'list' ? 'bg-[#FF0099] text-white' : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              List
-            </button>
-            <button
-              onClick={() => setView('calendar')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                view === 'calendar' ? 'bg-[#FF0099] text-white' : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Calendar
-            </button>
-          </div>
-
-          {/* Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as FilterValue)}
-              className="bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-4 text-white text-sm focus:outline-none focus:border-[#FF0099]"
-            >
-              {FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <p className="text-gray-400 text-sm mb-1">Today</p>
-          <p className="text-3xl font-bold text-white">{stats.today}</p>
-        </div>
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <p className="text-gray-400 text-sm mb-1">This Week</p>
-          <p className="text-3xl font-bold text-[#00ABFF]">{stats.thisWeek}</p>
-        </div>
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <p className="text-gray-400 text-sm mb-1">Completed</p>
-          <p className="text-3xl font-bold text-emerald-400">{stats.completed}</p>
-        </div>
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <p className="text-gray-400 text-sm mb-1">Missed</p>
-          <p className="text-3xl font-bold text-orange-400">{stats.missed}</p>
-        </div>
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <p className="text-gray-400 text-sm mb-1">Upcoming</p>
-          <p className="text-3xl font-bold text-purple-400">{stats.upcoming}</p>
-        </div>
-      </div>
-
-      {/* List View */}
-      {view === 'list' && (
-        <div className="bg-gray-800/50 rounded-2xl border border-gray-700 overflow-hidden">
-          {Object.keys(groupedSessions).length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="w-16 h-16 bg-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-gray-500" />
+            <div className="flex items-center gap-3">
+              {/* View Toggle */}
+              <div className="flex items-center bg-gray-800 rounded-xl p-1">
+                <button
+                  onClick={() => setView('list')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    view === 'list' ? 'bg-[#00ABFF] text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  List
+                </button>
+                <button
+                  onClick={() => setView('calendar')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    view === 'calendar' ? 'bg-[#00ABFF] text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Calendar
+                </button>
               </div>
-              <p className="text-gray-400 text-lg">No sessions found</p>
-              <p className="text-gray-500 text-sm mt-1">Try adjusting your filters</p>
+              {/* Filter */}
+              <div className="relative">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as FilterValue)}
+                  className="appearance-none bg-gray-800 text-white border border-gray-700 rounded-xl px-4 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ABFF]"
+                >
+                  {FILTER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <Filter className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
-          ) : (
-            <div className="divide-y divide-gray-700/50">
-              {Object.entries(groupedSessions).map(([date, dateSessions]) => (
-                <div key={date}>
-                  <div className={`px-5 py-3 ${isToday(date) ? 'bg-[#FF0099]/10' : 'bg-gray-700/30'}`}>
-                    <p className={`font-semibold ${isToday(date) ? 'text-[#FF0099]' : 'text-gray-300'}`}>
-                      {isToday(date) ? '📅 Today - ' : ''}{formatDate(date)}
-                    </p>
-                  </div>
-                  {dateSessions.map((session) => {
-                    const canComplete = canCompleteSession(session, sessions);
-                    const isPast = isSessionPast(session.scheduled_date);
-                    const isPending = isUnresolvedStatus(session.status);
-
-                    return (
-                      <div key={session.id} className="p-5 hover:bg-gray-700/30 transition-colors">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                          <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="text-center min-w-[60px]">
-                              <p className="text-white font-semibold">{formatTime(session.scheduled_time)}</p>
-                              {session.session_number && (
-                                <p className="text-gray-500 text-xs">#{session.session_number}</p>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-white font-medium text-lg">{session.child_name}</p>
-                                <StatusBadge status={session.status} />
-                                {session.has_notes && (
-                                  <span title="Has notes">
-                                    <FileText className="w-4 h-4 text-yellow-400" />
-                                  </span>
-                                )}
-                                {isPending && !canComplete.allowed && (
-                                  <span title={`Complete Session ${canComplete.blockedBy} first`}>
-                                    <Lock className="w-4 h-4 text-gray-500" />
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-gray-400 text-sm mt-0.5">{session.session_type}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 ml-[60px] sm:ml-0 flex-wrap">
-                            {isPending && (
-                              <>
-                                <button
-                                  onClick={() => openPrepModal(session)}
-                                  className="flex items-center gap-1.5 bg-[#00ABFF] text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-[#00ABFF]/80 transition-colors"
-                                >
-                                  <FileText className="w-4 h-4" />
-                                  Prep
-                                </button>
-
-                                {isPast && (
-                                  <button
-                                    onClick={() => openMissedConfirm(session)}
-                                    disabled={markingMissed === session.id}
-                                    className="flex items-center gap-1.5 bg-orange-500 text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
-                                  >
-                                    <Ban className="w-4 h-4" />
-                                    Missed
-                                  </button>
-                                )}
-
-                                <button
-                                  onClick={() => openRescheduleModal(session)}
-                                  className="flex items-center gap-1.5 bg-yellow-500 text-black px-3 py-2 rounded-xl text-sm font-medium hover:bg-yellow-400 transition-colors"
-                                >
-                                  <RefreshCw className="w-4 h-4" />
-                                  Reschedule
-                                </button>
-
-                                <button
-                                  onClick={() => openCancelConfirm(session)}
-                                  disabled={cancelling === session.id}
-                                  className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                  Cancel
-                                </button>
-
-                                <button
-                                  onClick={() => openCompleteModal(session)}
-                                  disabled={!canComplete.allowed}
-                                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                                    canComplete.allowed
-                                      ? 'bg-purple-500 text-white hover:bg-purple-600'
-                                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                                  }`}
-                                  title={canComplete.allowed ? 'Complete session' : `Complete Session ${canComplete.blockedBy} first`}
-                                >
-                                  {canComplete.allowed ? <CheckCircle className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                                  Complete
-                                </button>
-
-                                {session.google_meet_link && (
-                                  <a
-                                    href={session.google_meet_link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-[#25D366]/90 transition-colors"
-                                  >
-                                    <Video className="w-4 h-4" />
-                                    Join
-                                  </a>
-                                )}
-                              </>
-                            )}
-
-                            <Link
-                              href={`/coach/students/${session.child_id}`}
-                              className="p-2 bg-gray-700 text-gray-400 rounded-xl hover:bg-gray-600 hover:text-white transition-colors"
-                              title="View Student"
-                            >
-                              <User className="w-5 h-5" />
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Calendar View */}
-      {view === 'calendar' && (
-        <div className="bg-gray-800/50 rounded-2xl border border-gray-700 overflow-hidden">
-          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-            <button onClick={prevMonth} className="p-2 hover:bg-gray-700 rounded-xl transition-colors">
-              <ChevronLeft className="w-5 h-5 text-gray-400" />
-            </button>
-            <h3 className="text-white font-semibold text-lg">
-              {currentMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-            </h3>
-            <button onClick={nextMonth} className="p-2 hover:bg-gray-700 rounded-xl transition-colors">
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </button>
           </div>
-
-          <div className="p-4">
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {DAYS_OF_WEEK.map((day) => (
-                <div key={day} className="text-center text-gray-500 text-sm py-2 font-medium">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7 gap-1">
-              {getDaysInMonth(currentMonth).map((day, index) => {
-                if (day === null) {
-                  return <div key={index} className="h-24" />;
-                }
-
-                const daySessions = getSessionsForDay(day);
-                const isCurrentDay =
-                  day === new Date().getDate() &&
-                  currentMonth.getMonth() === new Date().getMonth() &&
-                  currentMonth.getFullYear() === new Date().getFullYear();
-
-                return (
-                  <div
-                    key={index}
-                    className={`h-24 border border-gray-700 rounded-lg p-1 ${
-                      isCurrentDay ? 'bg-[#FF0099]/10 border-[#FF0099]' : ''
-                    }`}
-                  >
-                    <p className={`text-xs font-medium mb-1 ${isCurrentDay ? 'text-[#FF0099]' : 'text-gray-400'}`}>
-                      {day}
-                    </p>
-                    <div className="space-y-0.5 overflow-y-auto max-h-16">
-                      {daySessions.slice(0, 3).map((session) => {
-                        const config = getStatusBadgeConfig(session.status);
-                        return (
-                          <div
-                            key={session.id}
-                            className={`text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${config.bg} ${config.text}`}
-                            onClick={() => isUnresolvedStatus(session.status) && openCompleteModal(session)}
-                          >
-                            {formatTime(session.scheduled_time)} {session.child_name}
-                          </div>
-                        );
-                      })}
-                      {daySessions.length > 3 && (
-                        <p className="text-xs text-gray-500">+{daySessions.length - 3} more</p>
-                      )}
+        </div>
+      </div>
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {/* List View */}
+        {view === 'list' && (
+          <div className="space-y-6">
+            {Object.keys(groupedSessions).length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400">No sessions found</p>
+              </div>
+            ) : (
+              Object.entries(groupedSessions)
+                .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+                .map(([date, daySessions]) => (
+                  <div key={date} className="bg-gray-800/50 rounded-2xl border border-gray-700 overflow-hidden">
+                    <div className="bg-gray-800 px-5 py-3 border-b border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-[#FF0099]" />
+                        <span className="text-white font-medium">{formatDate(date)}</span>
+                        <span className="text-gray-500 text-sm">
+                          ({daySessions.length} session{daySessions.length !== 1 ? 's' : ''})
+                        </span>
+                        {isToday(date) && (
+                          <span className="bg-[#00ABFF] text-white text-xs px-2 py-0.5 rounded-full">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-700/50">
+                      {daySessions
+                        .sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
+                        .map((session) => {
+                          const canComplete = canCompleteSession(session, sessions);
+                          const isPast = isSessionPast(session.scheduled_date);
+                          const isPending = isUnresolvedStatus(session.status);
+                          return (
+                            <div key={session.id} className="p-5 hover:bg-gray-700/30 transition-colors">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="text-center min-w-[60px]">
+                                    <p className="text-white font-semibold">{formatTime(session.scheduled_time)}</p>
+                                    {session.session_number && (
+                                      <p className="text-gray-500 text-xs">#{session.session_number}</p>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-white font-medium text-lg">{session.child_name}</p>
+                                      <StatusBadge status={session.status} />
+                                      {session.has_notes && (
+                                        <span title="Has notes">
+                                          <FileText className="w-4 h-4 text-yellow-400" />
+                                        </span>
+                                      )}
+                                      {isPending && !canComplete.allowed && (
+                                        <span title={`Complete Session ${canComplete.blockedBy} first`}>
+                                          <Lock className="w-4 h-4 text-gray-500" />
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-gray-400 text-sm mt-0.5">{session.session_type}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 ml-[60px] sm:ml-0 flex-wrap">
+                                  {isPending && (
+                                    <>
+                                      <button
+                                        onClick={() => openPrepModal(session)}
+                                        className="flex items-center gap-1.5 bg-[#00ABFF] text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-[#00ABFF]/80 transition-colors"
+                                      >
+                                        <FileText className="w-4 h-4" />
+                                        Prep
+                                      </button>
+                                      {isPast && (
+                                        <button
+                                          onClick={() => openMissedConfirm(session)}
+                                          disabled={markingMissed === session.id}
+                                          className="flex items-center gap-1.5 bg-orange-500 text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
+                                        >
+                                          <Ban className="w-4 h-4" />
+                                          Missed
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => openRescheduleModal(session)}
+                                        className="flex items-center gap-1.5 bg-yellow-500 text-black px-3 py-2 rounded-xl text-sm font-medium hover:bg-yellow-400 transition-colors"
+                                      >
+                                        <RefreshCw className="w-4 h-4" />
+                                        Reschedule
+                                      </button>
+                                      <button
+                                        onClick={() => openCancelConfirm(session)}
+                                        disabled={cancelling === session.id}
+                                        className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                                      >
+                                        <XCircle className="w-4 h-4" />
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => openCompleteModal(session)}
+                                        disabled={!canComplete.allowed}
+                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                                          canComplete.allowed
+                                            ? 'bg-purple-500 text-white hover:bg-purple-600'
+                                            : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                        }`}
+                                        title={canComplete.allowed ? 'Complete session' : `Complete Session ${canComplete.blockedBy} first`}
+                                      >
+                                        {canComplete.allowed ? <CheckCircle className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                                        Complete
+                                      </button>
+                                      {session.google_meet_link && (
+                                        <a
+                                          href={session.google_meet_link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-[#25D366]/90 transition-colors"
+                                        >
+                                          <Video className="w-4 h-4" />
+                                          Join
+                                        </a>
+                                      )}
+                                    </>
+                                  )}
+                                  {session.status === 'completed' && coach && (
+                                    <ParentUpdateButton
+                                      session={{
+                                        id: session.id,
+                                        scheduled_time: `${session.scheduled_date}T${session.scheduled_time}`,
+                                        status: session.status,
+                                        parent_update_sent_at: session.parent_update_sent_at || null,
+                                        child: {
+                                          id: session.child_id,
+                                          child_name: session.child_name,
+                                          parent_phone: session.parent_phone || '',
+                                          parent_name: session.parent_name,
+                                        }
+                                      }}
+                                      coachEmail={coach.email}
+                                    />
+                                  )}
+                                  <Link
+                                    href={`/coach/students/${session.child_id}`}
+                                    className="p-2 bg-gray-700 text-gray-400 rounded-xl hover:bg-gray-600 hover:text-white transition-colors"
+                                    title="View Student"
+                                  >
+                                    <User className="w-5 h-5" />
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
-                );
-              })}
+                ))
+            )}
+          </div>
+        )}
+        {/* Calendar View */}
+        {view === 'calendar' && (
+          <div className="bg-gray-800/50 rounded-2xl border border-gray-700 overflow-hidden">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+              <button
+                onClick={prevMonth}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-400" />
+              </button>
+              <h3 className="text-white font-semibold">
+                {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+              <button
+                onClick={nextMonth}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            {/* Calendar Grid */}
+            <div className="p-4">
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {DAYS_OF_WEEK.map((day) => (
+                  <div key={day} className="text-center text-gray-500 text-sm font-medium py-2">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              {/* Days */}
+              <div className="grid grid-cols-7 gap-1">
+                {/* Empty cells for days before the first of the month */}
+                {Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() }).map((_, i) => (
+                  <div key={`empty-${i}`} className="aspect-square" />
+                ))}
+                {/* Days of the month */}
+                {getDaysInMonth(currentMonth).map((day) => {
+                  const daySessions = getSessionsForDay(day);
+                  const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const isCurrentDay = isToday(dateStr);
+                  return (
+                    <div
+                      key={day}
+                      className={`aspect-square p-1 rounded-lg border transition-colors ${
+                        isCurrentDay
+                          ? 'border-[#00ABFF] bg-[#00ABFF]/10'
+                          : daySessions.length > 0
+                          ? 'border-gray-600 bg-gray-700/30 hover:bg-gray-700/50'
+                          : 'border-transparent'
+                      }`}
+                    >
+                      <div className="text-xs text-gray-400 mb-0.5">{day}</div>
+                      <div className="space-y-0.5 overflow-y-auto max-h-16">
+                        {daySessions.slice(0, 3).map((session) => {
+                          const config = getStatusBadgeConfig(session.status);
+                          return (
+                            <div
+                              key={session.id}
+                              className={`text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${config.bg} ${config.text}`}
+                              onClick={() => isUnresolvedStatus(session.status) && openCompleteModal(session)}
+                            >
+                              {formatTime(session.scheduled_time)} {session.child_name}
+                            </div>
+                          );
+                        })}
+                        {daySessions.length > 3 && (
+                          <div className="text-xs text-gray-500 text-center">
+                            +{daySessions.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Session Complete Modal */}
+        )}
+      </div>
+      {/* Modals */}
       {showCompleteModal && selectedSession && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <SessionCompleteForm
-            sessionId={selectedSession.id}
-            childId={selectedSession.child_id}
-            childName={selectedSession.child_name}
-            childAge={selectedSession.child_age}
-            sessionTitle={selectedSession.session_type}
-            coachId={coach.id}
-            onComplete={handleSessionCompleted}
-            onClose={() => {
-              setShowCompleteModal(false);
-              setSelectedSession(null);
-            }}
-          />
-        </div>
+        <SessionCompleteForm
+          sessionId={selectedSession.id}
+          childId={selectedSession.child_id}
+          childName={selectedSession.child_name}
+          childAge={selectedSession.child_age}
+          sessionTitle={`Session ${selectedSession.session_number || ''} - ${selectedSession.session_type}`}
+          coachId={coach?.id || ''}
+          onClose={() => {
+            setShowCompleteModal(false);
+            setSelectedSession(null);
+          }}
+          onComplete={handleCompleteSuccess}
+        />
       )}
-
-      {/* Pre-Session Brief Modal */}
       {showPrepModal && selectedSession && (
         <PreSessionBrief
           session={selectedSession}
@@ -816,118 +732,114 @@ export default function CoachSessionsPage() {
           }}
         />
       )}
-
-      {/* Reschedule Modal (Shared Component) */}
-      {selectedSession && (
+      {showRescheduleModal && selectedSession && (
         <RescheduleModal
           session={sessionToRescheduleSession(selectedSession)}
-          isOpen={showRescheduleModal}
           onClose={() => {
             setShowRescheduleModal(false);
             setSelectedSession(null);
           }}
-          onSuccess={handleRescheduleSuccess}
+          onSuccess={handleRescheduleComplete}
         />
       )}
-
-      {/* Mark as Missed Confirmation Modal */}
+      {/* Missed Confirmation Modal */}
       {showMissedConfirm && selectedSession && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-[#1a1f2e] rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold text-white mb-2">Mark Session as Missed?</h3>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Mark as Missed?</h3>
             <p className="text-gray-400 mb-4">
-              This will mark {selectedSession.child_name}&apos;s Session #{selectedSession.session_number || '?'} as missed (no-show).
+              Mark {selectedSession.child_name}&apos;s Session #{selectedSession.session_number} as missed?
             </p>
-
             <div className="mb-4">
-              <label htmlFor="missed-reason" className="block text-sm text-gray-400 mb-2">
-                Reason (optional)
-              </label>
-              <input
-                id="missed-reason"
-                type="text"
+              <label className="block text-gray-400 text-sm mb-2">Reason (optional)</label>
+              <select
                 value={missedReason}
                 onChange={(e) => setMissedReason(e.target.value)}
-                placeholder="e.g., No-show, Parent cancelled last minute"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#FF0099]"
-              />
+                className="w-full bg-gray-700 text-white border border-gray-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="">Select reason...</option>
+                <option value="Parent no-show">Parent no-show</option>
+                <option value="Child unwell">Child unwell</option>
+                <option value="Technical issues">Technical issues</option>
+                <option value="Last-minute cancellation">Last-minute cancellation</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
-
             <div className="flex gap-3">
               <button
-                onClick={closeAllModals}
-                className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-colors"
+                onClick={() => {
+                  setShowMissedConfirm(false);
+                  setSelectedSession(null);
+                  setMissedReason('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors"
               >
-                Back
+                Cancel
               </button>
               <button
                 onClick={handleMarkMissed}
                 disabled={markingMissed === selectedSession.id}
-                className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {markingMissed === selectedSession.id ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Marking...
-                  </>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  'Mark as Missed'
+                  <>
+                    <Ban className="w-4 h-4" />
+                    Mark Missed
+                  </>
                 )}
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Cancel Session Confirmation Modal */}
+      {/* Cancel Confirmation Modal */}
       {showCancelConfirm && selectedSession && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-[#1a1f2e] rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold text-white mb-2">Cancel Session?</h3>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Cancel Session?</h3>
             <p className="text-gray-400 mb-4">
-              This will cancel {selectedSession.child_name}&apos;s Session #{selectedSession.session_number || '?'} and remove it from the calendar.
+              Cancel {selectedSession.child_name}&apos;s Session #{selectedSession.session_number}? This action cannot be undone.
             </p>
-
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4">
-              <p className="text-red-400 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                This action cannot be undone. The time slot will be freed up.
-              </p>
-            </div>
-
             <div className="mb-4">
-              <label htmlFor="cancel-reason" className="block text-sm text-gray-400 mb-2">
-                Reason for cancellation
-              </label>
-              <input
-                id="cancel-reason"
-                type="text"
+              <label className="block text-gray-400 text-sm mb-2">Reason (required)</label>
+              <select
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="e.g., Parent requested, Schedule conflict"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#FF0099]"
-              />
+                className="w-full bg-gray-700 text-white border border-gray-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">Select reason...</option>
+                <option value="Parent requested">Parent requested</option>
+                <option value="Coach unavailable">Coach unavailable</option>
+                <option value="Child dropped out">Child dropped out</option>
+                <option value="Schedule conflict">Schedule conflict</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
-
             <div className="flex gap-3">
               <button
-                onClick={closeAllModals}
-                className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-colors"
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setSelectedSession(null);
+                  setCancelReason('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors"
               >
-                Back
+                Go Back
               </button>
               <button
-                onClick={handleCancel}
-                disabled={cancelling === selectedSession.id}
-                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                onClick={handleCancelSession}
+                disabled={cancelling === selectedSession.id || !cancelReason}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {cancelling === selectedSession.id ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Cancelling...
-                  </>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  'Cancel Session'
+                  <>
+                    <XCircle className="w-4 h-4" />
+                    Cancel Session
+                  </>
                 )}
               </button>
             </div>
@@ -937,3 +849,5 @@ export default function CoachSessionsPage() {
     </div>
   );
 }
+
+

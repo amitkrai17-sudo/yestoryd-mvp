@@ -1,4 +1,4 @@
-// file: app/coach/dashboard/page.tsx
+﻿// file: app/coach/dashboard/page.tsx
 // Clean Coach Dashboard - No duplicate navigation, uses layout.tsx sidebar
 
 'use client';
@@ -80,7 +80,7 @@ export default function CoachDashboardPage() {
       }
 
       setCoach(coachData);
-      await fetchStats(coachData.id);
+      await fetchStats(coachData.id, coachData.email);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -88,7 +88,7 @@ export default function CoachDashboardPage() {
     }
   };
 
-  const fetchStats = async (coachId: string) => {
+  const fetchStats = async (coachId: string, coachEmail: string) => {
     try {
       const { count: studentsCount } = await supabase
         .from('children')
@@ -114,18 +114,16 @@ export default function CoachDashboardPage() {
         console.log('scheduled_sessions table may not exist');
       }
 
+      // Fetch earnings from single source of truth API
       let totalEarnings = 0;
       try {
-        const { data: payouts } = await supabase
-          .from('coach_payouts')
-          .select('net_amount, status')
-          .eq('coach_id', coachId);
-
-        if (payouts) {
-          totalEarnings = payouts.reduce((sum, p) => sum + (p.net_amount || 0), 0);
+        const earningsRes = await fetch(`/api/coach/earnings-summary?email=${encodeURIComponent(coachEmail)}`);
+        if (earningsRes.ok) {
+          const earningsData = await earningsRes.json();
+          totalEarnings = earningsData.summary?.totalEarnings || 0;
         }
       } catch (e) {
-        console.log('Payouts table may not exist yet');
+        console.log('Earnings fetch error:', e);
       }
 
       setStats({
@@ -201,7 +199,7 @@ export default function CoachDashboardPage() {
             <Wallet className="w-5 h-5 text-[#FF0099]" />
           </div>
           <p className="text-3xl font-bold text-[#FF0099]">
-            ₹{(stats?.total_earnings || 0).toLocaleString('en-IN')}
+            ₹{Math.round(stats?.total_earnings || 0).toLocaleString('en-IN')}
           </p>
           <p className="text-sm text-gray-400 mt-1">Total Earnings</p>
         </div>
@@ -213,28 +211,28 @@ export default function CoachDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Link
             href="/coach/students"
-            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
             <Users className="w-7 h-7 text-[#00ABFF] mx-auto mb-2 group-hover:scale-110 transition-transform" />
             <span className="text-sm text-gray-300">View Students</span>
           </Link>
           <Link
             href="/coach/sessions"
-            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
             <Calendar className="w-7 h-7 text-purple-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
             <span className="text-sm text-gray-300">Check Schedule</span>
           </Link>
           <Link
             href="/coach/templates"
-            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
             <Gift className="w-7 h-7 text-[#7B008B] mx-auto mb-2 group-hover:scale-110 transition-transform" />
             <span className="text-sm text-gray-300">Share Referral</span>
           </Link>
           <Link
             href="/coach/earnings"
-            className="p-4 bg-[#0f1419] rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
             <Wallet className="w-7 h-7 text-[#FF0099] mx-auto mb-2 group-hover:scale-110 transition-transform" />
             <span className="text-sm text-gray-300">View Earnings</span>

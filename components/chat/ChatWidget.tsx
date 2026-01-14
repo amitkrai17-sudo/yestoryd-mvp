@@ -1,8 +1,7 @@
-'use client';
+﻿'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
-import { X, Minimize2, Send, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Send, Loader2, Sparkles, Minimize2, Copy, MessageCircle, Check } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -16,6 +15,16 @@ interface ChatWidgetProps {
   childName?: string;
   userRole: 'parent' | 'coach' | 'admin';
   userEmail: string;
+  // NEW: For One-Click Parent Update
+  initialPrompt?: string;
+  autoSend?: boolean;
+  onMessageSent?: (message: string) => void;
+  sessionContext?: {
+    sessionId: string;
+    parentPhone: string;
+    parentName: string;
+    sessionDate: string;
+  };
 }
 
 const quickPrompts: Record<string, string[]> = {
@@ -36,7 +45,6 @@ const quickPrompts: Record<string, string[]> = {
   ],
 };
 
-// Theme colors per role
 const themes: Record<string, {
   gradient: string;
   gradientHover: string;
@@ -52,10 +60,10 @@ const themes: Record<string, {
     label: 'rAI',
   },
   coach: {
-    gradient: 'from-[#FF0099] to-[#7B008B]',
-    gradientHover: 'hover:shadow-[#FF0099]/30',
-    accent: '#FF0099',
-    accentBg: 'bg-[#FF0099]/10',
+    gradient: 'from-[#00abff] to-[#0066cc]',
+    gradientHover: 'hover:shadow-[#00abff]/30',
+    accent: '#00abff',
+    accentBg: 'bg-[#00abff]/10',
     label: 'rAI Coach',
   },
   admin: {
@@ -67,57 +75,64 @@ const themes: Record<string, {
   },
 };
 
-// rAI Mascot Component - reusable across the widget
-function RAIMascot({ size = 'md', className = '' }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
-  const sizes = {
-    sm: { width: 20, height: 20, container: 'w-7 h-7' },
-    md: { width: 28, height: 28, container: 'w-9 h-9' },
-    lg: { width: 32, height: 32, container: 'w-12 h-12' },
-  };
-  
-  const s = sizes[size];
-  
-  return (
-    <div className={`${s.container} rounded-xl flex items-center justify-center overflow-hidden ${className}`}>
-      <Image
-        src="/images/rai-mascot.png"
-        alt="rAI"
-        width={s.width}
-        height={s.height}
-        className="object-contain"
-      />
-    </div>
-  );
-}
-
-export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidgetProps) {
+export function ChatWidget({ 
+  childId, 
+  childName, 
+  userRole, 
+  userEmail,
+  initialPrompt,
+  autoSend = false,
+  onMessageSent,
+  sessionContext
+}: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
+  const hasAutoSent = useRef(false);
+  
   const theme = themes[userRole] || themes.parent;
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Focus input when chat opens
   useEffect(() => {
     if (isOpen && !isMinimized) {
       inputRef.current?.focus();
     }
   }, [isOpen, isMinimized]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // Handle initial prompt - open widget and optionally auto-send
+  useEffect(() => {
+    if (initialPrompt && !hasAutoSent.current) {
+      setIsOpen(true);
+      setIsMinimized(false);
+      setInput(initialPrompt);
+      
+      if (autoSend) {
+        hasAutoSent.current = true;
+        // Small delay to show the widget first
+        setTimeout(() => {
+          handleSendWithContent(initialPrompt);
+        }, 300);
+      }
+    }
+  }, [initialPrompt, autoSend]);
+
+  const handleSendWithContent = async (content: string) => {
+    if (!content.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: content.trim(),
       timestamp: new Date(),
     };
 
@@ -130,43 +145,41 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage.content,
-          chatHistory: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          message: content.trim(),
           childId,
           userRole,
-          userEmail,
+          userEmail: userEmail,
+          chatHistory: messages.slice(-10),
         }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response');
-      }
-
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
+        content: data.response || 'Sorry, I could not process that request.',
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error: unknown) {
+      onMessageSent?.(assistantMessage.content);
+    } catch (error) {
       console.error('Chat error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again or contact support on WhatsApp.',
+        content: 'Sorry, something went wrong. Please try again.',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSend = () => {
+    handleSendWithContent(input);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -176,16 +189,46 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     }
   };
 
-  const handleQuickPrompt = (prompt: string) => {
-    setInput(prompt);
-    inputRef.current?.focus();
+  // Copy message to clipboard
+  const handleCopy = async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(messageId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
-  const getContextLabel = () => {
-    if (userRole === 'parent' && childName) return `Helping with ${childName}`;
-    if (userRole === 'coach') return 'Coaching Assistant';
-    if (userRole === 'admin') return 'Platform Insights';
-    return 'Reading Assistant';
+  // Send via WhatsApp
+  const handleWhatsAppSend = async (content: string) => {
+    if (!sessionContext) {
+      // Fallback: Open WhatsApp with message
+      const phone = '91' + (sessionContext?.parentPhone || '').replace(/\D/g, '');
+      const encodedMessage = encodeURIComponent(content);
+      window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
+      return;
+    }
+
+    const phone = '91' + sessionContext.parentPhone.replace(/\D/g, '');
+    const encodedMessage = encodeURIComponent(content);
+    
+    // Open WhatsApp
+    window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
+
+    // Mark session as updated
+    try {
+      await fetch(`/api/coach/sessions/${sessionContext.sessionId}/parent-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: content,
+          sentAt: new Date().toISOString()
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to mark session updated:', err);
+    }
   };
 
   // Floating button when closed
@@ -193,19 +236,10 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 pl-2 pr-4 py-2 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl ${theme.gradientHover}`}
-        aria-label={`Open ${theme.label} chat`}
+        className={`fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r ${theme.gradient} rounded-full shadow-lg ${theme.gradientHover} hover:shadow-xl transition-all flex items-center justify-center z-50`}
+        aria-label="Open chat"
       >
-        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
-          <Image
-            src="/images/rai-mascot.png"
-            alt="rAI"
-            width={28}
-            height={28}
-            className="object-contain"
-          />
-        </div>
-        <span className="font-medium text-sm">{theme.label}</span>
+        <Sparkles className="w-6 h-6 text-white" />
       </button>
     );
   }
@@ -213,61 +247,49 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
   // Minimized state
   if (isMinimized) {
     return (
-      <button
+      <div
         onClick={() => setIsMinimized(false)}
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 pl-2 pr-4 py-2 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-lg hover:shadow-xl transition-all`}
+        className={`fixed bottom-6 right-6 bg-gradient-to-r ${theme.gradient} text-white px-4 py-2 rounded-full shadow-lg cursor-pointer hover:shadow-xl transition-all flex items-center gap-2 z-50`}
       >
-        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
-          <Image
-            src="/images/rai-mascot.png"
-            alt="rAI"
-            width={28}
-            height={28}
-            className="object-contain"
-          />
-        </div>
+        <Sparkles className="w-4 h-4" />
         <span className="text-sm font-medium">{theme.label}</span>
-      </button>
+        {messages.length > 0 && (
+          <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
+            {messages.length}
+          </span>
+        )}
+      </div>
     );
   }
 
   // Full chat window
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[360px] h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+    <div className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-48px)] h-[500px] max-h-[calc(100vh-100px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 border border-gray-200">
       {/* Header */}
       <div className={`bg-gradient-to-r ${theme.gradient} px-4 py-3 flex items-center justify-between`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center overflow-hidden">
-            <Image
-              src="/images/rai-mascot.png"
-              alt="rAI"
-              width={32}
-              height={32}
-              className="object-contain"
-            />
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
             <h3 className="text-white font-semibold text-sm">{theme.label}</h3>
-            <p className="text-white/80 text-xs">{getContextLabel()}</p>
+            {childName && (
+              <p className="text-white/70 text-xs">Helping with {childName}</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsMinimized(true)}
-            className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-            aria-label="Minimize"
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <Minimize2 className="w-4 h-4" />
+            <Minimize2 className="w-4 h-4 text-white" />
           </button>
           <button
-            onClick={() => {
-              setIsOpen(false);
-              setIsMinimized(false);
-            }}
-            className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-            aria-label="Close"
+            onClick={() => setIsOpen(false)}
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 text-white" />
           </button>
         </div>
       </div>
@@ -276,35 +298,21 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className={`w-16 h-16 ${theme.accentBg} rounded-2xl flex items-center justify-center mb-4 overflow-hidden`}>
-              <Image
-                src="/images/rai-mascot.png"
-                alt="rAI"
-                width={48}
-                height={48}
-                className="object-contain"
-              />
+            <div className={`w-12 h-12 bg-gradient-to-br ${theme.gradient} rounded-xl flex items-center justify-center mb-3`}>
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-gray-800 font-semibold mb-2 text-sm">
-              {userRole === 'parent' && childName ? `Ask about ${childName}` : 'How can I help?'}
-            </h3>
-            <p className="text-gray-500 text-xs mb-4">
-              {userRole === 'parent' && childName
-                ? `I have access to ${childName}'s progress data.`
-                : userRole === 'coach'
-                ? 'I can help with session prep, student insights, and more.'
-                : userRole === 'admin'
-                ? 'Ask me about platform metrics and insights.'
-                : 'Ask me anything about reading progress.'}
+            <h4 className="text-gray-800 font-medium mb-1">
+              {childName ? `Ask about ${childName}` : 'How can I help?'}
+            </h4>
+            <p className="text-gray-500 text-sm mb-4">
+              I can help with reading progress, session prep, and more.
             </p>
-
-            {/* Quick Prompts */}
             <div className="flex flex-wrap gap-2 justify-center">
-              {quickPrompts[userRole].map((prompt) => (
+              {quickPrompts[userRole]?.map((prompt) => (
                 <button
                   key={prompt}
-                  onClick={() => handleQuickPrompt(prompt)}
-                  className="text-xs bg-white text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-400 hover:text-gray-800 transition-colors"
+                  onClick={() => setInput(prompt)}
+                  className="text-xs bg-white text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-300 transition-colors"
                 >
                   {prompt}
                 </button>
@@ -319,37 +327,61 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
                 className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
-                  <div className={`w-8 h-8 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden`}>
-                    <Image
-                      src="/images/rai-mascot.png"
-                      alt="rAI"
-                      width={24}
-                      height={24}
-                      className="object-contain"
-                    />
+                  <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
-                <div
-                  className={`max-w-[75%] rounded-2xl px-3 py-2 ${
-                    message.role === 'user'
-                      ? `bg-gradient-to-r ${theme.gradient} text-white`
-                      : 'bg-white text-gray-800 border border-gray-100 shadow-sm'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <div className="flex flex-col gap-1 max-w-[80%]">
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 ${
+                      message.role === 'user'
+                        ? `bg-gradient-to-r ${theme.gradient} text-white`
+                        : 'bg-white text-gray-800 border border-gray-100 shadow-sm'
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                  
+                  {/* Action buttons for coach on AI responses */}
+                  {message.role === 'assistant' && userRole === 'coach' && (
+                    <div className="flex items-center gap-2 ml-1">
+                      <button
+                        onClick={() => handleCopy(message.id, message.content)}
+                        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                        title="Copy to clipboard"
+                      >
+                        {copiedId === message.id ? (
+                          <>
+                            <Check className="w-3 h-3 text-green-500" />
+                            <span className="text-green-500">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                      
+                      {sessionContext && (
+                        <button
+                          onClick={() => handleWhatsAppSend(message.content)}
+                          className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 transition-colors"
+                          title="Send via WhatsApp"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
             {isLoading && (
               <div className="flex gap-2 justify-start">
-                <div className={`w-8 h-8 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center overflow-hidden`}>
-                  <Image
-                    src="/images/rai-mascot.png"
-                    alt="rAI"
-                    width={24}
-                    height={24}
-                    className="object-contain"
-                  />
+                <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center`}>
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
                   <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.accent }} />
@@ -371,8 +403,12 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
             onKeyDown={handleKeyDown}
             placeholder="Ask about reading progress..."
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300 transition-all"
-            style={{ maxHeight: '80px' }}
+            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+            style={{ 
+              maxHeight: '80px',
+              // @ts-ignore
+              '--tw-ring-color': `${theme.accent}33`,
+            }}
           />
           <button
             onClick={handleSend}
@@ -388,3 +424,4 @@ export function ChatWidget({ childId, childName, userRole, userEmail }: ChatWidg
 }
 
 export default ChatWidget;
+
