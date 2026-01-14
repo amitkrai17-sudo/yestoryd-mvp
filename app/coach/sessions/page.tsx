@@ -734,6 +734,7 @@ export default function CoachSessionsPage() {
       )}
       {showRescheduleModal && selectedSession && (
         <RescheduleModal
+          isOpen={showRescheduleModal}
           session={sessionToRescheduleSession(selectedSession)}
           onClose={() => {
             setShowRescheduleModal(false);
@@ -849,5 +850,6 @@ export default function CoachSessionsPage() {
     </div>
   );
 }
+
 
 
