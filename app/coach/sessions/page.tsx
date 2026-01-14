@@ -4,8 +4,9 @@
 'use client';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { SessionCompleteForm, PreSessionBrief } from '@/components/coach';
+import { PreSessionBrief } from '@/components/coach';
 import { ParentUpdateButton } from '@/components/coach/ParentUpdateButton';
+import PostSessionForm from '@/components/coach/PostSessionForm';
 import { RescheduleModal } from '@/components/shared';
 import type { RescheduleSession } from '@/components/shared';
 import {
@@ -709,13 +710,11 @@ export default function CoachSessionsPage() {
       </div>
       {/* Modals */}
       {showCompleteModal && selectedSession && (
-        <SessionCompleteForm
+        <PostSessionForm
           sessionId={selectedSession.id}
-          childId={selectedSession.child_id}
           childName={selectedSession.child_name}
           childAge={selectedSession.child_age}
-          sessionTitle={`Session ${selectedSession.session_number || ''} - ${selectedSession.session_type}`}
-          coachId={coach?.id || ''}
+          sessionNumber={selectedSession.session_number || 1}
           onClose={() => {
             setShowCompleteModal(false);
             setSelectedSession(null);
@@ -850,6 +849,3 @@ export default function CoachSessionsPage() {
     </div>
   );
 }
-
-
-

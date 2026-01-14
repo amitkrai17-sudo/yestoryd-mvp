@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -17,15 +17,6 @@ interface DiscoveryCall {
   assessment_score: number;
   assessment_wpm: number;
   assessment_feedback: string;
-  child?: {
-    id: string;
-    child_name: string;
-    age: number;
-    latest_assessment_score: number;
-    assessment_wpm: number;
-    phonics_focus: string;
-    struggling_phonemes: string[];
-  };
   status: string;
   scheduled_at: string | null;
   meeting_url: string | null;
@@ -34,7 +25,7 @@ interface DiscoveryCall {
   payment_link_sent_at: string | null;
   followup_sent_at: string | null;
   converted_to_enrollment: boolean;
-  coach?: {
+  assigned_coach?: {
     name: string;
     email: string;
     phone: string;
@@ -54,14 +45,19 @@ interface QuestionnaireForm {
   coach_notes: string;
 }
 
+interface AIQuestion {
+  category: string;
+  question: string;
+  priority: string;
+}
+
 export default function CoachDiscoveryCallDetailPage() {
   const params = useParams();
   const router = useRouter();
   const callId = params.id as string;
 
   const [call, setCall] = useState<DiscoveryCall | null>(null);
-  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [closingPrompts, setClosingPrompts] = useState<string[]>([]);
+  const [aiQuestions, setAiQuestions] = useState<AIQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingPayment, setSendingPayment] = useState(false);
@@ -91,10 +87,10 @@ export default function CoachDiscoveryCallDetailPage() {
     try {
       const res = await fetch(`/api/discovery-call/${callId}`);
       const data = await res.json();
-      if (data.success) {
+      
+      if (res.ok && data.call) {
         setCall(data.call);
-        setSuggestedQuestions(data.suggestedQuestions || []);
-        setClosingPrompts(data.closingPrompts || []);
+        setAiQuestions(data.aiQuestions || []);
         
         if (data.call.questionnaire && Object.keys(data.call.questionnaire).length > 0) {
           setQuestionnaire({
@@ -232,7 +228,7 @@ export default function CoachDiscoveryCallDetailPage() {
             <p className="text-sm text-gray-500 truncate">{call.parent_name}</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-pink-600">{call.child?.latest_assessment_score}</p>
+            <p className="text-2xl font-bold text-pink-600">{call.assessment_score || '-'}</p>
             <p className="text-xs text-gray-400">Score</p>
           </div>
         </div>
@@ -257,13 +253,13 @@ export default function CoachDiscoveryCallDetailPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-t">
+        <div className="flex border-t border-gray-700">
           <button
             onClick={() => setActiveTab('questions')}
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'questions' 
-                ? 'border-pink-600 text-pink-600 bg-pink-50' 
-                : 'border-transparent text-gray-500'
+                ? 'border-pink-600 text-pink-600 bg-gray-900' 
+                : 'border-transparent text-gray-500 bg-gray-800'
             }`}
           >
             <Sparkles className="w-4 h-4 inline-block mr-1" />
@@ -273,8 +269,8 @@ export default function CoachDiscoveryCallDetailPage() {
             onClick={() => setActiveTab('questionnaire')}
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'questionnaire' 
-                ? 'border-pink-600 text-pink-600 bg-pink-50' 
-                : 'border-transparent text-gray-500'
+                ? 'border-pink-600 text-pink-600 bg-gray-900' 
+                : 'border-transparent text-gray-500 bg-gray-800'
             }`}
           >
             <Target className="w-4 h-4 inline-block mr-1" />
@@ -289,15 +285,15 @@ export default function CoachDiscoveryCallDetailPage() {
         <div className="bg-gray-800 rounded-xl border p-4 mb-4">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-pink-600">{call.child?.latest_assessment_score}</p>
+              <p className="text-2xl font-bold text-pink-600">{call.assessment_score || '-'}</p>
               <p className="text-xs text-gray-500">Score</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-blue-600">{call.child?.assessment_wpm || '-'}</p>
+              <p className="text-2xl font-bold text-blue-600">{call.assessment_wpm || '-'}</p>
               <p className="text-xs text-gray-500">WPM</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{call.child?.age}</p>
+              <p className="text-2xl font-bold text-white">{call.child_age}</p>
               <p className="text-xs text-gray-500">Age</p>
             </div>
           </div>
@@ -306,41 +302,32 @@ export default function CoachDiscoveryCallDetailPage() {
         {/* AI Questions Tab */}
         {activeTab === 'questions' && (
           <div className="space-y-4">
-            {/* Suggested Questions */}
-            <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl border border-pink-100 p-4">
-              <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-pink-600" />
-                Ask During Call
-              </h2>
-              <div className="space-y-2">
-                {suggestedQuestions.map((q, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-gray-800 rounded-lg p-3 border border-pink-100">
-                    <span className="w-6 h-6 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    <span className="text-gray-300 text-sm">{q.replace(/"/g, '')}</span>
-                  </div>
-                ))}
+            {aiQuestions.length > 0 ? (
+              <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+                <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-pink-600" />
+                  AI-Generated Questions
+                </h2>
+                <div className="space-y-2">
+                  {aiQuestions.map((q, i) => (
+                    <div key={i} className="flex items-start gap-3 bg-gray-900 rounded-lg p-3 border border-gray-700">
+                      <span className="w-6 h-6 bg-pink-600 text-white rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-xs text-pink-500 font-medium mb-1">{q.category}</p>
+                        <p className="text-gray-300 text-sm">{q.question}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            {/* Closing Prompts */}
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-100 p-4">
-              <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-                <Target className="w-5 h-5 text-blue-600" />
-                Closing Scripts
-              </h2>
-              <div className="space-y-2">
-                {closingPrompts.map((p, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-gray-800 rounded-lg p-3 border border-blue-100">
-                    <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm flex-shrink-0">
-                      ✓
-                    </span>
-                    <span className="text-gray-300 text-sm">{p.replace(/"/g, '')}</span>
-                  </div>
-                ))}
+            ) : (
+              <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center">
+                <Sparkles className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400">No AI questions available yet</p>
               </div>
-            </div>
+            )}
 
             {/* Go to Questionnaire Button */}
             <button
@@ -356,7 +343,7 @@ export default function CoachDiscoveryCallDetailPage() {
         {activeTab === 'questionnaire' && (
           <div className="space-y-4">
             {/* Call Status - Radio Buttons */}
-            <div className="bg-gray-800 rounded-xl border p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
               <label className="block text-sm font-medium text-gray-300 mb-3">Call Status *</label>
               <div className="space-y-2">
                 {[
@@ -370,7 +357,7 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => setCallStatus(status.value)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
                       callStatus === status.value
-                        ? 'border-pink-500 bg-pink-50'
+                        ? 'border-pink-500 bg-gray-900'
                         : 'border-gray-700 bg-gray-800'
                     }`}
                   >
@@ -380,7 +367,7 @@ export default function CoachDiscoveryCallDetailPage() {
                         : 'border-gray-600'
                     }`}>
                       {callStatus === status.value && (
-                        <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -393,7 +380,7 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Reading Frequency - Radio */}
-            <div className="bg-gray-800 rounded-xl border p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 How often does {call.child_name} read?
               </label>
@@ -409,7 +396,7 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => setQuestionnaire({ ...questionnaire, reading_frequency: opt.value })}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
                       questionnaire.reading_frequency === opt.value
-                        ? 'border-pink-500 bg-pink-50'
+                        ? 'border-pink-500 bg-gray-900'
                         : 'border-gray-700 bg-gray-800'
                     }`}
                   >
@@ -419,7 +406,7 @@ export default function CoachDiscoveryCallDetailPage() {
                         : 'border-gray-600'
                     }`}>
                       {questionnaire.reading_frequency === opt.value && (
-                        <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -432,7 +419,7 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Child Attitude - Radio */}
-            <div className="bg-gray-800 rounded-xl border p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 Child's attitude toward reading
               </label>
@@ -448,7 +435,7 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => setQuestionnaire({ ...questionnaire, child_attitude: opt.value })}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
                       questionnaire.child_attitude === opt.value
-                        ? 'border-pink-500 bg-pink-50'
+                        ? 'border-pink-500 bg-gray-900'
                         : 'border-gray-700 bg-gray-800'
                     }`}
                   >
@@ -458,7 +445,7 @@ export default function CoachDiscoveryCallDetailPage() {
                         : 'border-gray-600'
                     }`}>
                       {questionnaire.child_attitude === opt.value && (
-                        <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -471,7 +458,7 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Likelihood to Enroll - Radio */}
-            <div className="bg-gray-800 rounded-xl border p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 Likelihood to enroll
               </label>
@@ -487,12 +474,10 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => setQuestionnaire({ ...questionnaire, likelihood_to_enroll: opt.value })}
                     className={`flex-1 p-3 rounded-lg border-2 transition-all text-center ${
                       questionnaire.likelihood_to_enroll === opt.value
-                        ? `border-${opt.color}-500 bg-${opt.color}-50`
+                        ? opt.color === 'green' ? 'border-green-500 bg-green-900' :
+                          opt.color === 'yellow' ? 'border-yellow-500 bg-yellow-900' :
+                          'border-red-500 bg-red-900'
                         : 'border-gray-700 bg-gray-800'
-                    } ${questionnaire.likelihood_to_enroll === opt.value ? 
-                      opt.color === 'green' ? 'border-green-500 bg-green-50' :
-                      opt.color === 'yellow' ? 'border-yellow-500 bg-yellow-50' :
-                      'border-red-500 bg-red-50' : ''
                     }`}
                   >
                     <p className="font-medium text-white">{opt.label}</p>
@@ -502,7 +487,7 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Parent Goal */}
-            <div className="bg-gray-800 rounded-xl border p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Parent's goal for {call.child_name}
               </label>
@@ -511,12 +496,12 @@ export default function CoachDiscoveryCallDetailPage() {
                 value={questionnaire.parent_goal}
                 onChange={(e) => setQuestionnaire({ ...questionnaire, parent_goal: e.target.value })}
                 placeholder="e.g., improve reading speed, build confidence..."
-                className="w-full border rounded-lg px-3 py-2.5 text-sm text-white bg-gray-800"
+                className="w-full border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white bg-gray-900 placeholder-gray-500"
               />
             </div>
 
             {/* Objections - Checkboxes */}
-            <div className="bg-gray-800 rounded-xl border p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 Objections raised (select all that apply)
               </label>
@@ -534,8 +519,8 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => handleObjectionChange(obj.value)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       questionnaire.objections.includes(obj.value)
-                        ? 'bg-pink-100 text-pink-700 border-2 border-pink-500'
-                        : 'bg-gray-100 text-gray-400 border-2 border-transparent'
+                        ? 'bg-pink-600 text-white border-2 border-pink-500'
+                        : 'bg-gray-900 text-gray-400 border-2 border-gray-700'
                     }`}
                   >
                     {obj.label}
@@ -545,7 +530,7 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Coach Notes */}
-            <div className="bg-gray-800 rounded-xl border p-4">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Your notes
               </label>
@@ -554,7 +539,7 @@ export default function CoachDiscoveryCallDetailPage() {
                 onChange={(e) => setQuestionnaire({ ...questionnaire, coach_notes: e.target.value })}
                 rows={3}
                 placeholder="Your observations and notes..."
-                className="w-full border rounded-lg px-3 py-2.5 text-sm text-white bg-gray-800"
+                className="w-full border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white bg-gray-900 placeholder-gray-500"
               />
             </div>
           </div>
@@ -615,11 +600,3 @@ export default function CoachDiscoveryCallDetailPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
