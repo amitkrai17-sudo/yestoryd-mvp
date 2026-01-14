@@ -53,6 +53,7 @@ function isPublicLandingPage(pathname: string): boolean {
     '/coach/templates',
     '/coach/ai-assistant',
     '/coach/onboarding',
+    '/coach/profile',
   ];
   
   if (protectedPaths.some(p => pathname.startsWith(p))) {
@@ -139,6 +140,12 @@ const NAV_ITEMS = [
     href: '/coach/ai-assistant',
     icon: Bot,
     description: 'rAI coaching helper',
+  },
+  {
+    label: 'Profile',
+    href: '/coach/profile',
+    icon: Shield,
+    description: 'Skills & availability',
   },
 ];
 

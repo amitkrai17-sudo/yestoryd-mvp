@@ -60,8 +60,8 @@ const BookDiscoverySchema = z.object({
     .regex(/^\d{2}:\d{2}$/, 'Invalid time format (HH:MM)')
     .refine(v => {
       const [hours] = v.split(':').map(Number);
-      return hours >= 9 && hours <= 20; // 9 AM to 8 PM
-    }, 'Booking hours: 9 AM - 8 PM'),
+      return hours >= 6 && hours <= 21; // 9 AM to 8 PM
+    }, 'Booking hours: 6 AM - 9 PM'),
   
   source: z.string().max(50).default('lets-talk'),
 });
@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
         slot_time: body.slotTime,
         source: body.source,
         // Coach assignment
-        coach_id: assignedCoach?.id || null,
+        assigned_coach_id: assignedCoach?.id || null,
         assignment_type: assignedCoach ? 'auto' : 'pending',
         assigned_at: assignedCoach ? new Date().toISOString() : null,
         assigned_by: assignedCoach ? 'system' : null,
