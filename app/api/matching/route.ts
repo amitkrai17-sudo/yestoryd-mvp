@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
       if (child?.learning_needs && child.learning_needs.length > 0) {
         // Combine provided needs with child's existing needs
-        effectiveNeeds = [...new Set([...learning_needs, ...child.learning_needs])];
+        effectiveNeeds = [...Array.from(new Set([...learning_needs, ...child.learning_needs]))];
       }
     }
 
@@ -229,10 +229,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get skill tag names for display
-    const allSkillSlugs = [...new Set([
+    const allSkillSlugs = [...Array.from(new Set([
       ...effectiveNeeds,
       ...matchedCoaches.flatMap(c => c.matched_skills),
-    ])];
+    ]))];
 
     const { data: tagNames } = await supabase
       .from('skill_tags_master')

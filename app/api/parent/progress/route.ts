@@ -257,7 +257,7 @@ function calculateProgressMetrics(sessions: any[], events: any[]) {
 
   // Skills need work = flagged in recent sessions
   const recentSessions = sessions.slice(-3);
-  const skillsNeedWork = [...new Set(recentSessions.flatMap(s => s.skills_need_work || []))];
+  const skillsNeedWork = Array.from(new Set(recentSessions.flatMap(s => s.skills_need_work || [])));
 
   // Calculate trends
   const engagementTrend = calculateTrend(engagementScores);

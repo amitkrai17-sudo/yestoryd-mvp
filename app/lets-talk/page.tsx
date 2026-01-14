@@ -123,6 +123,11 @@ function LetsTalkContent() {
 
       const data = await res.json();
 
+      if (data.code === 'ALREADY_BOOKED') {
+        setError('You already have a discovery call scheduled. Check your email for details!');
+        return;
+      }
+
       if (data.success && data.booking) {
         // Booking successful
         setBookingResult({

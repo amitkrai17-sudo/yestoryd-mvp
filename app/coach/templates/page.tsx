@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
@@ -186,7 +186,7 @@ export default function WhatsAppTemplatesPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
       </div>
     );
   }
@@ -217,7 +217,7 @@ export default function WhatsAppTemplatesPage() {
                   key={template.id}
                   onClick={() => setSelectedTemplate(template)}
                   className={`w-full p-4 text-left hover:bg-gray-700/50 transition-colors ${
-                    selectedTemplate?.id === template.id ? 'bg-gray-700/50 border-l-2 border-pink-500' : ''
+                    selectedTemplate?.id === template.id ? 'bg-gray-700/50 border-l-2 border-[#FF0099]' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -243,7 +243,7 @@ export default function WhatsAppTemplatesPage() {
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 pl-9 pr-4 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-pink-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 pl-9 pr-4 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099]"
                 />
               </div>
             </div>
@@ -259,11 +259,11 @@ export default function WhatsAppTemplatesPage() {
                     key={student.id}
                     onClick={() => setSelectedStudent(student)}
                     className={`w-full p-4 text-left hover:bg-gray-700/50 transition-colors ${
-                      selectedStudent?.id === student.id ? 'bg-gray-700/50 border-l-2 border-pink-500' : ''
+                      selectedStudent?.id === student.id ? 'bg-gray-700/50 border-l-2 border-[#FF0099]' : ''
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                      <div className="w-10 h-10 bg-[#FF0099] rounded-full flex items-center justify-center text-white font-bold">
                         {student.child_name.charAt(0)}
                       </div>
                       <div>

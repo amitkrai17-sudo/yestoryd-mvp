@@ -109,6 +109,7 @@ function checkRateLimit(email: string): { allowed: boolean; remaining: number } 
 // --- 4. IDEMPOTENCY CHECK ---
 async function checkExistingBooking(
   email: string,
+  childName: string,
   slotDate: string,
   slotTime: string,
   requestId: string
@@ -137,6 +138,7 @@ async function checkExistingBooking(
     .from('discovery_calls')
     .select('id, scheduled_at')
     .eq('parent_email', email)
+    .eq('child_name', childName)
     .in('status', ['scheduled', 'confirmed'])
     .gte('scheduled_at', new Date().toISOString())
     .order('scheduled_at', { ascending: true })
@@ -372,6 +374,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Idempotency Check
     const existingCheck = await checkExistingBooking(
+      body.childName,
       body.parentEmail,
       body.slotDate,
       body.slotTime,

@@ -262,7 +262,7 @@ export async function POST(
         .single();
 
       const currentNeeds = child?.learning_needs || [];
-      const updatedNeeds = [...new Set([...currentNeeds, ...feedback.skills_need_work])];
+      const updatedNeeds = Array.from(new Set([...currentNeeds, ...feedback.skills_need_work]));
 
       await supabase
         .from('children')

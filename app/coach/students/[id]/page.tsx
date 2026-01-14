@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -284,7 +284,7 @@ export default function StudentDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
       </div>
     );
   }
@@ -307,7 +307,7 @@ export default function StudentDetailPage() {
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+              <div className="w-16 h-16 bg-[#FF0099] rounded-full flex items-center justify-center text-white font-bold text-2xl">
                 {student.child_name.charAt(0)}
               </div>
               <div>
@@ -560,7 +560,7 @@ export default function StudentDetailPage() {
                   value={noteForm.notes}
                   onChange={(e) => setNoteForm({ ...noteForm, notes: e.target.value })}
                   rows={3}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099]"
                   placeholder="What happened in this session?"
                 />
               </div>
@@ -570,7 +570,7 @@ export default function StudentDetailPage() {
                   type="text"
                   value={noteForm.highlights}
                   onChange={(e) => setNoteForm({ ...noteForm, highlights: e.target.value })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099]"
                   placeholder="What went well?"
                 />
               </div>
@@ -580,7 +580,7 @@ export default function StudentDetailPage() {
                   type="text"
                   value={noteForm.areas_to_improve}
                   onChange={(e) => setNoteForm({ ...noteForm, areas_to_improve: e.target.value })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099]"
                   placeholder="What needs work?"
                 />
               </div>
@@ -590,14 +590,14 @@ export default function StudentDetailPage() {
                   type="text"
                   value={noteForm.homework_assigned}
                   onChange={(e) => setNoteForm({ ...noteForm, homework_assigned: e.target.value })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099]"
                   placeholder="Any homework for the student?"
                 />
               </div>
               <button
                 onClick={saveSessionNote}
                 disabled={savingNote || !noteForm.notes.trim()}
-                className="w-full bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full bg-[#FF0099] hover:bg-[#FF0099] text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {savingNote ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
                 Save Notes

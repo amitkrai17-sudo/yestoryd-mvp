@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -64,10 +64,10 @@ export default function CoachDiscoveryCallsPage() {
   };
 
   const getActionLabel = (call: DiscoveryCall) => {
-    if (call.converted_to_enrollment) return { text: 'Enrolled ✓', color: 'text-green-600' };
+    if (call.converted_to_enrollment) return { text: 'Enrolled ?', color: 'text-green-600' };
     if (call.followup_sent_at) return { text: 'Followed Up', color: 'text-purple-600' };
     if (call.payment_link_sent_at) return { text: 'Payment Sent', color: 'text-blue-600' };
-    if (call.status === 'completed') return { text: 'Fill Form', color: 'text-pink-600' };
+    if (call.status === 'completed') return { text: 'Fill Form', color: 'text-[#FF0099]' };
     if (call.status === 'scheduled') return { text: 'View', color: 'text-blue-600' };
     return { text: 'View', color: 'text-gray-400' };
   };
@@ -95,7 +95,7 @@ export default function CoachDiscoveryCallsPage() {
           { label: 'Total', value: calls.length, icon: Users, color: 'bg-blue-500' },
           { label: 'Scheduled', value: calls.filter(c => c.status === 'scheduled').length, icon: Calendar, color: 'bg-purple-500' },
           { label: 'Completed', value: calls.filter(c => c.status === 'completed').length, icon: Clock, color: 'bg-green-500' },
-          { label: 'Converted', value: calls.filter(c => c.converted_to_enrollment).length, icon: Users, color: 'bg-pink-500' },
+          { label: 'Converted', value: calls.filter(c => c.converted_to_enrollment).length, icon: Users, color: 'bg-[#FF0099]' },
         ].map((s, i) => (
           <div key={i} className="bg-gray-800 rounded-xl border p-3 sm:p-4 flex items-center gap-3">
             <div className={`w-8 h-8 sm:w-10 sm:h-10 ${s.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -121,7 +121,7 @@ export default function CoachDiscoveryCallsPage() {
             onClick={() => setFilter(tab.key)}
             className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap text-sm transition-colors ${
               filter === tab.key
-                ? 'bg-pink-600 text-white'
+                ? 'bg-[#FF0099] text-white'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
             }`}
           >
@@ -133,7 +133,7 @@ export default function CoachDiscoveryCallsPage() {
       {/* Loading */}
       {loading && (
         <div className="flex justify-center py-12">
-          <RefreshCw className="w-6 h-6 animate-spin text-pink-600" />
+          <RefreshCw className="w-6 h-6 animate-spin text-[#FF0099]" />
         </div>
       )}
 
@@ -158,7 +158,7 @@ export default function CoachDiscoveryCallsPage() {
                         call.converted_to_enrollment ? 'bg-green-100' : 'bg-pink-100'
                       }`}>
                         <span className={`text-lg font-bold ${
-                          call.converted_to_enrollment ? 'text-green-600' : 'text-pink-600'
+                          call.converted_to_enrollment ? 'text-green-600' : 'text-[#FF0099]'
                         }`}>
                           {call.assessment_score || '-'}
                         </span>
@@ -176,7 +176,7 @@ export default function CoachDiscoveryCallsPage() {
                           </span>
                           {call.converted_to_enrollment && (
                             <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                              ✓ Enrolled
+                              ? Enrolled
                             </span>
                           )}
                         </div>

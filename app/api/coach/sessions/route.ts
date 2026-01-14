@@ -145,7 +145,7 @@ async function getSessionsWithChildren(
       status,
       google_meet_link,
       coach_notes,
-      children (
+      children!scheduled_sessions_child_id_fkey (
         id,
         child_name,
         parent_name,
@@ -164,12 +164,13 @@ async function getSessionsWithChildren(
     .order('scheduled_date', { ascending: true })
     .order('scheduled_time', { ascending: true });
 
+
   if (error) {
     logError('getSessionsWithChildren', error);
     throw new Error(`Failed to fetch sessions: ${error.message}`);
   }
 
-  return (data || []) as SessionData[];
+  return (data || []) as unknown as SessionData[];
 }
 
 /**
@@ -295,13 +296,7 @@ export async function GET(request: NextRequest) {
     const sessionsData = await getSessionsWithChildren(supabase, coachId);
 
     // 5. Get unique child IDs
-    const childIds = [
-      ...new Set(
-        sessionsData
-          .map((s) => s.child_id)
-          .filter((id): id is string => typeof id === 'string' && id.length > 0)
-      ),
-    ];
+    const childIds = Array.from(new Set(sessionsData.map((s) => s.child_id).filter((id): id is string => typeof id === 'string' && id.length > 0)));
 
     // 6. Batch fetch session counts (single query, avoid N+1)
     const sessionCountsMap = await getSessionCountsBatch(supabase, childIds);

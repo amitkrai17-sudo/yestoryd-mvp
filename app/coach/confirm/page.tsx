@@ -117,7 +117,7 @@ export default function ConfirmSchedulePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
       </div>
     );
   }
@@ -155,7 +155,7 @@ export default function ConfirmSchedulePage() {
         {enrollment && (
           <div className="bg-gray-800 rounded-xl p-6 mb-6 border border-gray-700">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-pink-500" />
+              <User className="w-5 h-5 text-[#FF0099]" />
               Enrollment Details
             </h2>
             <div className="space-y-3 text-gray-300">
@@ -205,7 +205,7 @@ export default function ConfirmSchedulePage() {
                   onClick={() => setSelectedDay(day.value)}
                   className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                     selectedDay === day.value
-                      ? 'bg-pink-500 text-white'
+                      ? 'bg-[#FF0099] text-white'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
@@ -227,7 +227,7 @@ export default function ConfirmSchedulePage() {
                   onClick={() => setSelectedTime(time.value)}
                   className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                     selectedTime === time.value
-                      ? 'bg-pink-500 text-white'
+                      ? 'bg-[#FF0099] text-white'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
@@ -258,7 +258,7 @@ export default function ConfirmSchedulePage() {
         <button
           onClick={handleConfirm}
           disabled={confirming || selectedDay === null || !selectedTime}
-          className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+          className="w-full bg-[#FF0099] hover:bg-[#FF0099] disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           {confirming ? (
             <>

@@ -309,8 +309,8 @@ async function enrichMessagesWithSenders(messages: any[]): Promise<any[]> {
   if (messages.length === 0) return [];
 
   // Get unique sender IDs by type
-  const coachIds = [...new Set(messages.filter(m => m.sender_type === 'coach').map(m => m.sender_id))];
-  const parentIds = [...new Set(messages.filter(m => m.sender_type === 'parent').map(m => m.sender_id))];
+  const coachIds = Array.from(new Set(messages.filter(m => m.sender_type === 'coach').map(m => m.sender_id)));
+  const parentIds = Array.from(new Set(messages.filter(m => m.sender_type === 'parent').map(m => m.sender_id)));
 
   // Fetch coach names
   let coachNames: Record<string, string> = {};

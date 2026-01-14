@@ -190,7 +190,7 @@ export default function CoachProfilePage() {
                 className={`
                   flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors
                   ${activeTab === id 
-                    ? 'border-pink-500 text-[#FF0099]' 
+                    ? 'border-[#FF0099] text-[#FF0099]' 
                     : 'border-transparent text-gray-400 hover:text-white'
                   }
                 `}
@@ -233,7 +233,7 @@ export default function CoachProfilePage() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => updateField('name', e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                   />
                 </div>
 
@@ -245,7 +245,7 @@ export default function CoachProfilePage() {
                     onChange={(e) => updateField('bio', e.target.value)}
                     rows={4}
                     placeholder="Tell parents about your teaching experience and approach..."
-                    className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     {formData.bio.length}/500 characters
@@ -261,7 +261,7 @@ export default function CoachProfilePage() {
                         value={formData.whatsapp_number}
                         onChange={(e) => updateField('whatsapp_number', e.target.value)}
                       placeholder="+91 98765 43210"
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                     />
                   </div>
                   </div>
@@ -275,7 +275,7 @@ export default function CoachProfilePage() {
                       value={formData.city}
                       onChange={(e) => updateField('city', e.target.value)}
                       placeholder="Mumbai"
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                     />
                   </div>
                   <div>
@@ -286,7 +286,7 @@ export default function CoachProfilePage() {
                       onChange={(e) => updateField('years_experience', parseInt(e.target.value) || 0)}
                       min={0}
                       max={50}
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                     />
                   </div>
                 </div>

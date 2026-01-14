@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
       );
       durationMinutes = durationRule?.duration || 45;
     } else {
-      durationMinutes = CONFIG.SESSION_DURATIONS[sessionType] || 30;
+      durationMinutes = (CONFIG.SESSION_DURATIONS[sessionType] as number) || 30;
     }
     
     // ========================================================================
