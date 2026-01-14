@@ -355,3 +355,33 @@ export function CoachMatchList({
     </div>
   );
 }
+
+// Mini profile for displaying coach in progress page
+export function CoachMiniProfile({ 
+  coach, 
+  showRating = false 
+}: { 
+  coach: { name: string; photo_url?: string | null; avg_rating?: number }; 
+  showRating?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center text-white font-bold">
+        {coach.photo_url ? (
+          <Image src={coach.photo_url} alt={coach.name} width={40} height={40} className="rounded-full" />
+        ) : (
+          coach.name.charAt(0).toUpperCase()
+        )}
+      </div>
+      <div>
+        <p className="font-medium text-gray-900">{coach.name}</p>
+        {showRating && coach.avg_rating && (
+          <div className="flex items-center gap-1 text-sm text-gray-500">
+            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+            <span>{coach.avg_rating.toFixed(1)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
