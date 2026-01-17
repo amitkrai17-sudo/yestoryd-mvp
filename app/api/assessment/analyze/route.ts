@@ -20,6 +20,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
 import { z } from 'zod';
+import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
@@ -96,9 +97,7 @@ const AssessmentSchema = z.object({
     .max(255)
     .transform(val => val.toLowerCase()),
   
-  parentPhone: z.string()
-    .regex(/^(\+91)?[6-9]\d{9}$/, 'Invalid Indian phone number')
-    .optional(),
+  parentPhone: phoneSchemaOptional,
   
   lead_source: z.enum(['yestoryd', 'coach', 'referral', 'organic', 'ad'])
     .optional()
@@ -331,7 +330,7 @@ export async function POST(request: NextRequest) {
       childAge: age,
       passageWords: wordCount,
       email: maskEmail(parentEmail),
-      phone: maskPhone(parentPhone),
+      phone: maskPhone(parentPhone || undefined),
     }));
 
     // 5. Build AI prompt

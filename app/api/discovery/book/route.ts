@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bookDiscoveryCall, deleteCalendarEvent } from '@/lib/googleCalendar';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { phoneSchemaOptional, normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
 // --- CONFIGURATION ---

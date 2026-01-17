@@ -1,11 +1,11 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, CheckCircle, Wand2, Phone, MessageCircle } from 'lucide-react';
+import { Mail, ArrowRight, BookOpen, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,19 +14,17 @@ const supabase = createClient(
 
 export default function ParentLoginPage() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'magic' | 'phone' | 'phone-otp'>('login');
+  const [mode, setMode] = useState<'login' | 'phone' | 'phone-otp'>('login');
   const [message, setMessage] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const router = useRouter();
 
   // WhatsApp OTP states
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -71,41 +69,6 @@ export default function ParentLoginPage() {
     }
   }, [otp, mode]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setMessage('');
-
-    try {
-      if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        router.push('/parent/dashboard');
-      } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        setMessage('Check your email for a confirmation link!');
-      } else if (mode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/parent/reset-password`,
-        });
-        if (error) throw error;
-        setMessage('Password reset link sent to your email!');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     setError('');
@@ -125,14 +88,37 @@ export default function ParentLoginPage() {
 
   async function handleMagicLink() {
     if (!email) {
-      setError('Please enter your email first');
+      setError('Please enter your email');
       return;
     }
-    setMagicLinkLoading(true);
+    setLoading(true);
     setError('');
     setMessage('');
 
     try {
+      // Check if email exists in parents table or children table
+      const { data: parent } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('email', email.toLowerCase().trim())
+        .single();
+
+      if (!parent) {
+        // Check children table for parent_email
+        const { data: child } = await supabase
+          .from('children')
+          .select('id')
+          .eq('parent_email', email.toLowerCase().trim())
+          .limit(1)
+          .single();
+
+        if (!child) {
+          setError('This email is not registered. Please take a free assessment first.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -144,7 +130,7 @@ export default function ParentLoginPage() {
     } catch (err: any) {
       setError(err.message || 'Failed to send magic link');
     } finally {
-      setMagicLinkLoading(false);
+      setLoading(false);
     }
   }
 
@@ -205,14 +191,14 @@ export default function ParentLoginPage() {
       const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: `91${phone}`, method: 'whatsapp' }),
+        body: JSON.stringify({ phone: `${countryCode.replace("+", "")}${phone}`, method: 'whatsapp', userType: 'parent' }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         if (data.code === 'PHONE_NOT_FOUND') {
-          setError('This number is not registered. Please complete a reading assessment first.');
+          setError('This number is not registered. Please take a free assessment first.');
         } else {
           setError(data.error || 'Failed to send OTP');
         }
@@ -222,7 +208,7 @@ export default function ParentLoginPage() {
       setMode('phone-otp');
       setCountdown(300);
       setOtp(['', '', '', '', '', '']);
-      setActualOtpMethod(data.method || 'whatsapp'); // Use actual method from response
+      setActualOtpMethod(data.method || 'whatsapp');
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
 
     } catch (err) {
@@ -246,7 +232,7 @@ export default function ParentLoginPage() {
       const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: `91${phone}`, otp: otpString }),
+        body: JSON.stringify({ phone: `${countryCode.replace("+", "")}${phone}`, otp: otpString, userType: 'parent' }),
       });
 
       const data = await response.json();
@@ -277,7 +263,6 @@ export default function ParentLoginPage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
-            {/* Header */}
             <div className="text-center mb-8">
               <div className={`w-14 h-14 ${actualOtpMethod === 'whatsapp' ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600'} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${actualOtpMethod === 'whatsapp' ? 'shadow-green-500/30' : 'shadow-blue-500/30'}`}>
                 {actualOtpMethod === 'whatsapp' ? (
@@ -290,17 +275,15 @@ export default function ParentLoginPage() {
               <p className="text-gray-500 mt-2">
                 We sent a 6-digit code to your {actualOtpMethod === 'whatsapp' ? 'WhatsApp' : 'Email'}
               </p>
-              <p className="text-[#00abff] font-medium mt-1">+91 {formatPhoneDisplay(phone)}</p>
+              <p className="text-[#00abff] font-medium mt-1">{countryCode} {formatPhoneDisplay(phone)}</p>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                 {error}
               </div>
             )}
 
-            {/* OTP Input */}
             <div className="flex justify-center gap-2 mb-6" onPaste={handleOtpPaste}>
               {otp.map((digit, index) => (
                 <input
@@ -317,14 +300,12 @@ export default function ParentLoginPage() {
               ))}
             </div>
 
-            {/* Timer */}
             {countdown > 0 && (
               <p className="text-center text-sm text-gray-500 mb-4">
                 Code expires in {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
               </p>
             )}
 
-            {/* Verify Button */}
             <button
               onClick={verifyOtp}
               disabled={otpLoading || otp.some(d => d === '')}
@@ -340,7 +321,6 @@ export default function ParentLoginPage() {
               )}
             </button>
 
-            {/* Resend */}
             <div className="mt-6 text-center">
               {countdown === 0 ? (
                 <button
@@ -357,7 +337,6 @@ export default function ParentLoginPage() {
               )}
             </div>
 
-            {/* Change Number */}
             <button
               onClick={() => {
                 setMode('phone');
@@ -382,7 +361,6 @@ export default function ParentLoginPage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
-            {/* Header */}
             <div className="text-center mb-8">
               <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30">
                 <MessageCircle className="w-7 h-7 text-white" />
@@ -391,20 +369,27 @@ export default function ParentLoginPage() {
               <p className="text-gray-500 mt-2">Enter your registered mobile number</p>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                 {error}
               </div>
             )}
 
-            {/* Phone Input */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
               <div className="flex">
-                <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-500 text-lg font-medium">
-                  +91
-                </span>
+                <input
+                    type="text"
+                    value={countryCode}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      if (!val.startsWith('+')) val = '+' + val.replace(/\D/g, '');
+                      else val = '+' + val.slice(1).replace(/\D/g, '');
+                      if (val.length <= 5) setCountryCode(val || '+');
+                    }}
+                    className="w-[70px] px-2 py-3.5 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-700 text-center text-sm font-medium focus:ring-2 focus:ring-[#00abff] outline-none"
+                    placeholder="+91"
+                  />
                 <input
                   type="tel"
                   value={formatPhoneDisplay(phone)}
@@ -417,7 +402,6 @@ export default function ParentLoginPage() {
               </div>
             </div>
 
-            {/* Send OTP Button */}
             <button
               onClick={sendWhatsAppOtp}
               disabled={otpLoading || phone.length !== 10}
@@ -433,7 +417,6 @@ export default function ParentLoginPage() {
               )}
             </button>
 
-            {/* Back to Email */}
             <button
               onClick={() => {
                 setMode('login');
@@ -441,7 +424,7 @@ export default function ParentLoginPage() {
               }}
               className="w-full mt-4 text-gray-500 hover:text-gray-700 text-sm"
             >
-              ← Back to email login
+              ← Back to login options
             </button>
           </div>
         </div>
@@ -449,18 +432,19 @@ export default function ParentLoginPage() {
     );
   }
 
+  // ─────────────────────────────────────────────────────────
+  // RENDER: MAIN LOGIN PAGE
+  // ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex">
       {/* Left Side - Branding & rAI */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden">
-        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#7b008b] rounded-full blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00abff] rounded-full blur-3xl" />
         </div>
 
-        {/* Yestoryd Logo */}
         <div className="relative z-10">
           <Link href="/">
             <Image
@@ -473,10 +457,8 @@ export default function ParentLoginPage() {
           </Link>
         </div>
 
-        {/* rAI Introduction */}
         <div className="relative z-10 flex-1 flex flex-col justify-center">
           <div className="max-w-md">
-            {/* Video Section - Shows if video URL is configured */}
             {videoUrl && (
               <div className="mb-6">
                 <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10">
@@ -491,7 +473,6 @@ export default function ParentLoginPage() {
               </div>
             )}
 
-            {/* rAI Card - FIXED: "Reading Analyst" not "Coach" */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center shadow-lg shadow-[#ff0099]/30 overflow-hidden">
@@ -528,7 +509,6 @@ export default function ParentLoginPage() {
               </div>
             </div>
 
-            {/* Stats - FIXED: "100+ Families" for consistency */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">100+</p>
@@ -546,7 +526,6 @@ export default function ParentLoginPage() {
           </div>
         </div>
 
-        {/* Footer - FIXED: Encoding */}
         <div className="relative z-10 text-gray-500 text-sm">
           © 2025 Yestoryd. All rights reserved.
         </div>
@@ -555,7 +534,6 @@ export default function ParentLoginPage() {
       {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-6">
             <Link href="/">
               <Image
@@ -568,7 +546,6 @@ export default function ParentLoginPage() {
             </Link>
           </div>
 
-          {/* Mobile Video Section */}
           {videoUrl && (
             <div className="lg:hidden mb-6">
               <div className="relative aspect-video rounded-2xl overflow-hidden shadow-xl border border-white/10">
@@ -583,28 +560,15 @@ export default function ParentLoginPage() {
             </div>
           )}
 
-          {/* Form Card */}
           <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
-            {/* Header */}
             <div className="text-center mb-8">
               <div className="w-14 h-14 bg-gradient-to-br from-[#00abff] to-[#0066cc] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#00abff]/30">
                 <BookOpen className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {mode === 'login' ? 'Welcome Back!' : mode === 'signup' ? 'Create Account' : mode === 'magic' ? 'Magic Link' : 'Reset Password'}
-              </h1>
-              <p className="text-gray-500 mt-2">
-                {mode === 'login'
-                  ? 'Sign in to access your parent dashboard'
-                  : mode === 'signup'
-                    ? "Start your child's reading journey"
-                    : mode === 'magic'
-                      ? 'Sign in without a password'
-                      : 'Enter your email to reset password'}
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900">Welcome Back!</h1>
+              <p className="text-gray-500 mt-2">Sign in to access your parent dashboard</p>
             </div>
 
-            {/* Error/Success Messages */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                 {error}
@@ -637,7 +601,7 @@ export default function ParentLoginPage() {
               )}
             </button>
 
-            {/* WhatsApp OTP Button - NEW */}
+            {/* WhatsApp OTP Button */}
             <button
               onClick={() => { setMode('phone'); setError(''); setMessage(''); }}
               className="w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-medium text-white hover:from-green-600 hover:to-emerald-700 transition-all flex items-center justify-center gap-3 mb-4 shadow-lg shadow-green-500/20"
@@ -649,12 +613,12 @@ export default function ParentLoginPage() {
             {/* Divider */}
             <div className="flex items-center gap-4 mb-4">
               <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-sm text-gray-400">or</span>
+              <span className="text-sm text-gray-400">or use email</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email + Magic Link */}
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <div className="relative">
@@ -664,101 +628,25 @@ export default function ParentLoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="parent@email.com"
-                    required
                     className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00abff] focus:border-transparent transition-all"
                   />
                 </div>
               </div>
 
-              {(mode === 'login' || mode === 'signup') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      minLength={6}
-                      className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00abff] focus:border-transparent transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {mode === 'login' && (
-                <div className="flex justify-between items-center text-sm">
-                  <button
-                    type="button"
-                    onClick={handleMagicLink}
-                    disabled={magicLinkLoading}
-                    className="text-[#7b008b] hover:text-[#6a0078] font-medium flex items-center gap-1"
-                  >
-                    {magicLinkLoading ? (
-                      <div className="w-4 h-4 border-2 border-[#7b008b] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Wand2 className="w-4 h-4" />
-                    )}
-                    Send Magic Link
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode('forgot')}
-                    className="text-[#00abff] hover:text-[#0066cc] font-medium"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              )}
-
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-4 bg-gradient-to-r from-[#00abff] to-[#0066cc] text-white rounded-xl font-semibold hover:from-[#0099ee] hover:to-[#0055bb] transition-all shadow-lg shadow-[#00abff]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                onClick={handleMagicLink}
+                disabled={loading || !email}
+                className="w-full py-4 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-xl font-semibold hover:from-[#6a0078] hover:to-[#e6008a] transition-all shadow-lg shadow-[#ff0099]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
-                    <ArrowRight className="w-5 h-5" />
+                    <Wand2 className="w-5 h-5" />
+                    Send Magic Link
                   </>
                 )}
               </button>
-            </form>
-
-            {/* Toggle Mode */}
-            <div className="mt-6 text-center">
-              {mode === 'login' ? (
-                <p className="text-gray-600">
-                  Don&apos;t have an account?{' '}
-                  <button
-                    onClick={() => { setMode('signup'); setError(''); setMessage(''); }}
-                    className="text-[#00abff] hover:text-[#0066cc] font-semibold"
-                  >
-                    Sign up
-                  </button>
-                </p>
-              ) : (
-                <p className="text-gray-600">
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => { setMode('login'); setError(''); setMessage(''); }}
-                    className="text-[#00abff] hover:text-[#0066cc] font-semibold"
-                  >
-                    Sign in
-                  </button>
-                </p>
-              )}
             </div>
 
             {/* Divider */}
@@ -803,7 +691,6 @@ export default function ParentLoginPage() {
             </Link>
           </div>
 
-          {/* Help Link */}
           <p className="text-center mt-6 text-gray-400 text-sm">
             Need help?{' '}
             <a href="https://wa.me/918976287997" className="text-[#00abff] hover:underline">

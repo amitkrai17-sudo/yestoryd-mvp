@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
 // --- CONFIGURATION ---
@@ -42,7 +43,7 @@ const CreateOrderSchema = z.object({
   parentId: z.string().uuid().optional().nullable(),
   parentName: z.string().min(1, 'Parent name required').max(100),
   parentEmail: z.string().email('Invalid email').transform((v) => v.toLowerCase().trim()),
-  parentPhone: z.string().transform((v) => v ? v.replace(/[\s\-\(\)]/g, '') : v).refine((v) => !v || /^\+?\d{7,15}$/.test(v), 'Invalid phone number').optional().nullable(),
+  parentPhone: phoneSchemaOptional,
   
   // Coupon/Discount
   couponCode: z.string().max(20).optional().nullable(),

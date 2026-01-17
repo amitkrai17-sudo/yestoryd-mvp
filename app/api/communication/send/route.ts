@@ -19,6 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
+import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
 // --- CONFIGURATION ---
@@ -74,7 +75,7 @@ const CommunicationSchema = z.object({
   recipientId: z.string().uuid().optional(),
   
   recipientPhone: z.string()
-    .regex(/^(\+91)?[6-9]\d{9}$/, 'Invalid Indian phone number')
+    
     .optional(),
   
   recipientEmail: z.string()

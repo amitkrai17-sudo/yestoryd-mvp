@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireCoach, requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
+import { phoneSchemaOptional } from '@/lib/utils/phone';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,7 +25,7 @@ const ProfileUpdateSchema = z.object({
   certifications: z.array(z.string()).max(10).optional(),
   timezone: z.string().optional(),
   phone: z.string().optional().nullable(),
-  whatsapp_number: z.string().min(10, 'WhatsApp number is required').regex(/^\+?[\d\s\-\(\)]{10,20}$/, 'Enter valid WhatsApp number (10-20 digits)'),
+  whatsapp_number: phoneSchemaOptional,
   city: z.string().max(100).optional(),
   is_available: z.boolean().optional(),
   is_accepting_new: z.boolean().optional(),

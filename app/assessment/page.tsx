@@ -927,23 +927,19 @@ https://yestoryd.com/lets-talk
                       Phone Number
                     </label>
                     <div className="flex gap-2">
-                      <select
+                      <input
+                        type="text"
                         name="countryCode"
                         value={formData.countryCode}
-                        onChange={handleInputChange}
-                        className="w-[90px] flex-shrink-0 bg-gray-50 border border-gray-300 rounded-xl px-2 py-3 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      >
-                        <option value="+91">???? +91</option>
-                        <option value="+1">???? +1</option>
-                        <option value="+44">???? +44</option>
-                        <option value="+971">???? +971</option>
-                        <option value="+65">???? +65</option>
-                        <option value="+61">???? +61</option>
-                        <option value="+60">???? +60</option>
-                        <option value="+974">???? +974</option>
-                        <option value="+966">???? +966</option>
-                        <option value="+49">???? +49</option>
-                      </select>
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          if (!val.startsWith("+")) val = "+" + val.replace(/\D/g, "");
+                          else val = "+" + val.slice(1).replace(/\D/g, "");
+                          if (val.length <= 5) setFormData(prev => ({ ...prev, countryCode: val || "+" }));
+                        }}
+                        className="w-[70px] flex-shrink-0 bg-gray-50 border border-gray-300 rounded-xl px-2 py-3 text-gray-900 text-center text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        placeholder="+91"
+                      />
                       <input
                         type="tel"
                         name="parentPhone"

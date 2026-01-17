@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { phoneSchemaOptional } from '@/lib/utils/phone';
 import Razorpay from 'razorpay';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 
@@ -36,7 +37,7 @@ const VerifyPaymentSchema = z.object({
   childId: z.string().uuid().optional().nullable(),
   parentName: z.string().min(1).max(100),
   parentEmail: z.string().email().transform(v => v.toLowerCase().trim()),
-  parentPhone: z.string().transform((v) => v ? v.replace(/[\s\-\(\)]/g, '') : v).refine((v) => !v || /^\+?\d{7,15}$/.test(v), 'Invalid phone number').optional().nullable(),
+  parentPhone: phoneSchemaOptional,
   // Coach/Lead Data
   coachId: z.string().uuid().optional().nullable(),
   leadSource: z.enum(['yestoryd', 'coach']).default('yestoryd'),

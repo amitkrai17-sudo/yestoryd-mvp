@@ -15,6 +15,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidPhone, normalizePhone } from '@/lib/utils/phone';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
@@ -47,18 +48,9 @@ interface SendOTPResponse {
 // HELPER FUNCTIONS
 // ============================================================
 
-function normalizePhone(phone: string): string {
-  let digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('0')) digits = digits.substring(1);
-  if (digits.length === 10) digits = '91' + digits;
-  if (digits.startsWith('+')) digits = digits.substring(1);
-  return digits;
-}
+// Using central phone utility - normalizePhone imported from lib/utils/phone
 
-function isValidIndianPhone(phone: string): boolean {
-  const normalized = normalizePhone(phone);
-  return /^91[6-9]\d{9}$/.test(normalized);
-}
+// Using central phone utility
 
 function generateOTP(): string {
   const buffer = crypto.randomBytes(4);
@@ -199,7 +191,7 @@ export async function POST(request: NextRequest) {
     
     const normalizedPhone = normalizePhone(phone);
     
-    if (!isValidIndianPhone(normalizedPhone)) {
+    if (!isValidPhone(normalizedPhone)) {
       return NextResponse.json(
         { success: false, error: 'Please enter a valid 10-digit Indian mobile number' },
         { status: 400 }
