@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'tds_get_request', adminEmail: auth.email, financialYear, coachId: coachId || 'all' }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get quarterly summary
     const { data: quarterlyData, error: quarterlyError } = await supabase
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'tds_deposit_request', adminEmail: auth.email, quarter: validated.quarter, financialYear: validated.financial_year }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get pending entries
     let countQuery = supabase

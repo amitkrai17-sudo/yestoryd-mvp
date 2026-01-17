@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'group_classes_options_get_request', adminEmail: auth.email }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const [classTypesRes, coachesRes, booksRes] = await Promise.all([
       supabase
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'group_classes_options_post_request', adminEmail: auth.email, coachEmail: normalizedEmail }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Check if coach with this email already exists
     const { data: existing } = await supabase

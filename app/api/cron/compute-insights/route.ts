@@ -18,6 +18,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
 
@@ -90,7 +91,7 @@ async function computeInsights(requestId: string, source: string) {
   const errors: string[] = [];
 
   try {
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 7);
 

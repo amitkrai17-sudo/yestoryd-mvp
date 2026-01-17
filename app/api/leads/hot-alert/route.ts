@@ -15,16 +15,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from api-auth.ts
 
 const AISENSY_API_KEY = process.env.AISENSY_API_KEY;
 const ADMIN_PHONE = process.env.ADMIN_WHATSAPP_PHONE || '+919687606177';
@@ -132,9 +129,8 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // If not QStash, must be admin
-      const session = await getServerSession(authOptions);
-      
-      if (!session?.user?.email || (session.user as any).role !== 'admin') {
+      const auth = await requireAdmin();
+      if (!auth.authorized || auth.role !== 'admin') {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
@@ -154,7 +150,7 @@ export async function GET(request: NextRequest) {
       source: isQStash ? 'qstash' : 'admin',
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 2. Get hot leads that haven't been alerted yet
     const { data: hotLeads, error } = await supabase
@@ -289,9 +285,8 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // If not QStash, must be admin
-      const session = await getServerSession(authOptions);
-
-      if (!session?.user?.email || (session.user as any).role !== 'admin') {
+      const auth = await requireAdmin();
+      if (!auth.authorized || auth.role !== 'admin') {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
@@ -304,10 +299,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      adminEmail = session.user.email;
+      adminEmail = auth.email || null;
 
       // Rate limit manual triggers
-      if (!checkRateLimit(adminEmail)) {
+      if (adminEmail && !checkRateLimit(adminEmail)) {
         return NextResponse.json(
           { error: 'Too many manual alerts. Please wait.' },
           { status: 429 }
@@ -350,7 +345,7 @@ export async function POST(request: NextRequest) {
       childId,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 3. Fetch lead
     const { data: lead, error } = await supabase
@@ -419,21 +414,20 @@ export async function PUT(request: NextRequest) {
 
   try {
     // 1. Admin-only authentication
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    if ((session.user as any).role !== 'admin') {
+    if (auth.role !== 'admin') {
       console.log(JSON.stringify({
         requestId,
         event: 'auth_failed',
         error: 'Admin required for score recalculation',
-        userEmail: session.user.email,
+        userEmail: auth.email,
       }));
 
       return NextResponse.json(
@@ -450,11 +444,11 @@ export async function PUT(request: NextRequest) {
     console.log(JSON.stringify({
       requestId,
       event: 'lead_score_recalc_batch_start',
-      adminEmail: session.user.email,
+      adminEmail: auth.email,
       cursor: cursor || 'START',
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 3. Fetch batch of children (cursor-based pagination)
     let query = supabase
@@ -481,7 +475,7 @@ export async function PUT(request: NextRequest) {
       // Log completion only on first empty batch after processing
       if (cursor) {
         await supabase.from('activity_log').insert({
-          user_email: session.user.email,
+          user_email: auth.email,
           action: 'lead_scores_recalculation_complete',
           details: {
             request_id: requestId,
@@ -560,7 +554,7 @@ export async function PUT(request: NextRequest) {
     // 7. Audit log for first batch
     if (isFirstBatch) {
       await supabase.from('activity_log').insert({
-        user_email: session.user.email,
+        user_email: auth.email,
         action: 'lead_scores_recalculation_started',
         details: {
           request_id: requestId,

@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'testimonials_get_request', adminEmail: auth.email }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data: testimonials, error } = await supabase
       .from('testimonials')
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'testimonials_post_request', adminEmail: auth.email, parentName: testimonialData.parent_name }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data, error } = await supabase
       .from('testimonials')
@@ -198,7 +198,7 @@ export async function PUT(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'testimonials_put_request', adminEmail: auth.email, testimonialId: id, fields: Object.keys(updates) }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data, error } = await supabase
       .from('testimonials')
@@ -258,7 +258,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'testimonials_delete_request', adminEmail: auth.email, testimonialId: id }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get testimonial info before deletion for audit log
     const { data: existing } = await supabase

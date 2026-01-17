@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'agreements_upload_request', adminEmail: auth.email, version: validatedData.version, fileName: file.name }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Check if version already exists
     const { data: existingVersion } = await supabase

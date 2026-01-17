@@ -22,6 +22,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
 
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
       source: auth.source,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 2. Find discovery calls needing follow-up
     // Using the view: discovery_calls_need_followup

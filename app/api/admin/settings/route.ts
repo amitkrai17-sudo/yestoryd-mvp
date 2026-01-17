@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'settings_get_request', adminEmail: auth.email, categories }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     let query = supabase.from('site_settings').select('*');
 
@@ -153,7 +153,7 @@ export async function PATCH(request: NextRequest) {
       blockedKeys,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const updates = Object.entries(filteredSettings).map(([key, value]) => ({
       key,

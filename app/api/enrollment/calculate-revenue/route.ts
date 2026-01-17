@@ -14,16 +14,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import { z } from 'zod';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from api-auth.ts
 
 // Internal API key for webhook-to-API calls
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
@@ -67,13 +64,12 @@ export async function POST(request: NextRequest) {
 
     if (!isInternal) {
       // Check for admin session
-      const session = await getServerSession(authOptions);
-
-      if (!session?.user?.email) {
+      const auth = await requireAdmin();
+      if (!auth.authorized) {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
-          error: 'No session or internal key',
+          error: auth.error || 'No session or internal key',
         }));
 
         return NextResponse.json(
@@ -82,12 +78,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if ((session.user as any).role !== 'admin') {
+      if (auth.role !== 'admin') {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
           error: 'Non-admin tried to calculate revenue',
-          userEmail: session.user.email,
+          userEmail: auth.email,
         }));
 
         return NextResponse.json(
@@ -96,7 +92,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      adminEmail = session.user.email;
+      adminEmail = auth.email || null;
     }
 
     // =================================================================
@@ -145,7 +141,7 @@ export async function POST(request: NextRequest) {
       lead_source,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // =================================================================
     // 3. GET ACTIVE REVENUE CONFIG (Latest-wins pattern)

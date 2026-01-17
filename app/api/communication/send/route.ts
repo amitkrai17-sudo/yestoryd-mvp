@@ -16,16 +16,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendCommunication, SendCommunicationParams } from '@/lib/communication';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import { z } from 'zod';
 import crypto from 'crypto';
 
 // --- CONFIGURATION ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from api-auth.ts
 
 // Internal API key for server-to-server calls (webhooks, crons)
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
@@ -119,10 +116,10 @@ async function authenticateRequest(request: NextRequest): Promise<{
     return { authenticated: true, role: 'internal', identifier: 'internal' };
   }
 
-  // 2. Check for session (user-facing)
-  const session = await getServerSession(authOptions);
+  // 2. Check for session (user-facing) using api-auth
+  const auth = await requireAdminOrCoach();
   
-  if (!session?.user?.email) {
+  if (!auth.authorized || !auth.email) {
     return { 
       authenticated: false, 
       role: 'default', 
@@ -131,8 +128,8 @@ async function authenticateRequest(request: NextRequest): Promise<{
     };
   }
 
-  const userRole = (session.user as any).role;
-  const email = session.user.email;
+  const userRole = auth.role;
+  const email = auth.email!;
 
   if (userRole === 'admin') {
     return { authenticated: true, role: 'admin', identifier: email };
@@ -146,7 +143,7 @@ async function authenticateRequest(request: NextRequest): Promise<{
   return { 
     authenticated: false, 
     role: 'default', 
-    identifier: email,
+    identifier: auth.email || 'unknown',
     error: 'Insufficient permissions - admin or coach required' 
   };
 }
@@ -156,7 +153,7 @@ async function checkIdempotency(
   key: string,
   requestId: string
 ): Promise<{ isDuplicate: boolean; previousResult?: any }> {
-  const supabase = getSupabase();
+  const supabase = getServiceSupabase();
 
   // Check if this idempotency key was already used
   const { data: existing } = await supabase
@@ -188,7 +185,7 @@ async function logCommunicationAttempt(
   error?: string
 ) {
   try {
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
     await supabase.from('activity_log').insert({
       user_email: senderEmail,
       action: 'communication_send',

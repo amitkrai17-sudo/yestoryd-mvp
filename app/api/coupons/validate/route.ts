@@ -13,8 +13,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Get session (optional - for per-user checks)
-    const session = await getServerSession(authOptions);
-    const sessionParentId = (session?.user as any)?.parentId as string | undefined;
+    const session = await getOptionalAuth();
+    const sessionParentId = session?.parentId;
 
     // 3. Parse and validate body
     let body;

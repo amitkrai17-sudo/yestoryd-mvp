@@ -17,8 +17,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { chatRateLimiter, getClientIP, rateLimitResponse } from '@/lib/rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import {
   ChatResponse,
   UserRole,
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // 1. AUTHENTICATE - Try NextAuth first, then Supabase auth fallback
-    const session = await getServerSession(authOptions);
+    const session = await getOptionalAuth();
     const supabase = getSupabase();
     
     let userEmail: string;
@@ -138,12 +138,12 @@ export async function POST(request: NextRequest) {
     let coachId: string | undefined;
     let parentId: string | undefined;
 
-    if (session?.user?.email) {
+    if (session?.email) {
       // NextAuth session (admin)
-      userEmail = session.user.email;
-      const sessionRole = (session.user as any).role as string;
-      coachId = (session.user as any).coachId as string | undefined;
-      parentId = (session.user as any).parentId as string | undefined;
+      userEmail = session.email!;
+      const sessionRole = session.role as string;
+      coachId = session.coachId as string | undefined;
+      parentId = session.parentId as string | undefined;
 
       if (sessionRole === 'admin') {
         userRole = 'admin';

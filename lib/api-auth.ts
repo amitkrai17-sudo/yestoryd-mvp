@@ -226,3 +226,54 @@ export function isAdminEmail(email: string | null | undefined): boolean {
 export function getAdminEmails(): readonly string[] {
   return ADMIN_EMAILS;
 }
+
+/**
+ * Get authenticated user if available (optional auth)
+ * Returns user info if authenticated, null if not
+ * Use this for routes where auth enhances but isn't required
+ */
+export async function getOptionalAuth(): Promise<{
+  email?: string;
+  userId?: string;
+  parentId?: string;
+  coachId?: string;
+  role?: string;
+} | null> {
+  const { user, error } = await getAuthenticatedUser();
+  
+  if (error || !user) {
+    return null;
+  }
+
+  const email = user.email?.toLowerCase();
+  
+  // Check if admin
+  if (email && ADMIN_EMAILS.includes(email)) {
+    return { email, userId: user.id, role: 'admin' };
+  }
+
+  // Check if coach
+  const supabase = getServiceSupabase();
+  const { data: coach } = await supabase
+    .from('coaches')
+    .select('id')
+    .eq('email', email)
+    .single();
+
+  if (coach) {
+    return { email, userId: user.id, coachId: coach.id, role: 'coach' };
+  }
+
+  // Check if parent
+  const { data: parent } = await supabase
+    .from('parents')
+    .select('id')
+    .eq('email', email)
+    .single();
+
+  if (parent) {
+    return { email, userId: user.id, parentId: parent.id, role: 'parent' };
+  }
+
+  return { email, userId: user.id };
+}

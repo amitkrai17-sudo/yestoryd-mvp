@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'features_get_request', adminEmail: auth.email }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data: flags, error } = await supabase
       .from('feature_flags')
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'features_post_request', adminEmail: auth.email, flagKey: flag_key }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Check for duplicate
     const { data: existing } = await supabase
@@ -168,7 +168,7 @@ export async function PUT(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'features_put_request', adminEmail: auth.email, flagKey: flag_key, flagValue: flag_value }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get current value for audit
     const { data: currentFlag } = await supabase

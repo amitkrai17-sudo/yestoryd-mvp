@@ -11,7 +11,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'coach_applications_get_request', adminEmail: auth.email, status, search: search || 'none' }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Build query
     let query = supabase

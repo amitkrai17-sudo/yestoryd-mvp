@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { generateReferralCode, generateReferralLink } from '@/lib/referral';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'generate_referral_post_request', adminEmail: auth.email, coachId }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get coach
     const { data, error: coachError } = await supabase
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'generate_referral_bulk_request', adminEmail: auth.email }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get coaches without referral codes
     const { data, error } = await supabase

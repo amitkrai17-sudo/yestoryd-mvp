@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'send_final_assessment_request', adminEmail: auth.email, enrollmentId, parentEmail }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get enrollment details
     const { data: enrollment, error: enrollmentError } = await supabase

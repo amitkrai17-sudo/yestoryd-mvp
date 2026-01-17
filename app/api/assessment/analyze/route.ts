@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assessmentRateLimiter, getClientIP, rateLimitResponse } from '@/lib/rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -480,7 +481,7 @@ Respond ONLY with valid JSON. No additional text.`;
     );
 
     // 8. Save to database
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
     let childId: string | null = null;
 
     try {

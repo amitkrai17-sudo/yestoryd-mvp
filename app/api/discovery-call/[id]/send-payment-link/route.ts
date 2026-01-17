@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -138,7 +139,7 @@ export async function POST(
     }
     const { sendVia, customMessage } = validation.data;
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 4. Fetch discovery call with coach
     const { data: call, error: fetchError } = await supabase
@@ -456,7 +457,7 @@ export async function GET(
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data: call, error } = await supabase
       .from('discovery_calls')

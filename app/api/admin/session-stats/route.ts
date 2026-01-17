@@ -8,7 +8,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       daysBack,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 3. Calculate date range
     const startDate = new Date();

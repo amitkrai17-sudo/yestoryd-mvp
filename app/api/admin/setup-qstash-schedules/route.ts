@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { Client } from '@upstash/qstash';
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'qstash_schedules_post_request', adminEmail: auth.email, action }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     if (action === 'setup') {
       // Create schedule for 1-hour coach reminders

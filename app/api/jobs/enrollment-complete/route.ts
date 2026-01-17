@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { google } from 'googleapis';
 import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 import { z } from 'zod';
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     console.log(JSON.stringify({
       requestId,

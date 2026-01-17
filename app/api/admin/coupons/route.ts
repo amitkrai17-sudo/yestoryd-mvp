@@ -11,7 +11,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'coupons_get_request', adminEmail: auth.email, type, status }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     let query = supabase
       .from('coupons')
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'coupons_post_request', adminEmail: auth.email, code: normalizedCode, type: couponData.couponType }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Check for duplicate code
     const { data: existing } = await supabase
@@ -268,7 +268,7 @@ export async function PATCH(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'coupons_patch_request', adminEmail: auth.email, couponId: id }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Build safe update object
     const allowedFields = ['title', 'description', 'discount_value', 'max_discount', 'max_uses', 'per_user_limit', 'valid_until', 'is_active'];
@@ -335,7 +335,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'coupons_delete_request', adminEmail: auth.email, couponId: id }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Soft delete - just deactivate
     const { data: coupon, error } = await supabase

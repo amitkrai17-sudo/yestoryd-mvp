@@ -21,6 +21,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import crypto from 'crypto';
 
 export const runtime = 'nodejs';
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Calculate dates
     const now = new Date();

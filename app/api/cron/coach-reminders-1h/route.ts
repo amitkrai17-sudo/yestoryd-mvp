@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
 
@@ -74,7 +75,7 @@ async function processReminders(requestId: string, source: string) {
   };
 
   try {
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Calculate IST time
     const now = new Date();

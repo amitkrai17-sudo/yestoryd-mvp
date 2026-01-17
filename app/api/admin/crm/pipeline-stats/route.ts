@@ -8,7 +8,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'crm_pipeline_request', adminEmail: auth.email }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Try RPC function first
     const { data, error } = await supabase.rpc('get_lead_pipeline_stats');

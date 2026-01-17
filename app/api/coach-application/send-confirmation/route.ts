@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import sgMail from '@sendgrid/mail';
@@ -182,7 +182,7 @@ Review at: https://yestoryd.com/admin/coach-applications
     ]);
 
     // Audit log
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
     await supabase.from('activity_log').insert({
       user_email: auth.email,
       action: 'coach_application_confirmation_sent',

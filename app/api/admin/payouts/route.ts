@@ -15,37 +15,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import { z } from 'zod';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from api-auth.ts
 
-// --- AUTHENTICATION ---
-async function requireAdmin(): Promise<{
-  authorized: boolean;
-  email?: string;
-  error?: string;
-}> {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    return { authorized: false, error: 'Authentication required' };
-  }
-
-  const role = (session.user as any).role;
-
-  if (role !== 'admin') {
-    return { authorized: false, error: 'Admin access required', email: session.user.email };
-  }
-
-  return { authorized: true, email: session.user.email };
-}
+// --- AUTHENTICATION: Using requireAdmin() from lib/api-auth.ts ---
 
 // --- VALIDATION SCHEMAS ---
 const ProcessPayoutsSchema = z.object({
@@ -155,7 +133,7 @@ export async function GET(request: NextRequest) {
       filters: { status, month, coachId, summary, page, limit },
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 3. If summary requested, return aggregated stats
     if (summary) {
@@ -404,7 +382,7 @@ export async function POST(request: NextRequest) {
       payoutCount: payout_ids.length,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 3. Verify all payout IDs exist and are in processable state
     const { data: existingPayouts, error: checkError } = await supabase

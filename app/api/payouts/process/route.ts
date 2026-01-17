@@ -15,16 +15,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import { z } from 'zod';
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from api-auth.ts
 
 // --- CONSTANTS ---
 const BATCH_SIZE = 20; // Max coaches per request (prevents timeout)
@@ -82,9 +79,9 @@ async function verifyAuth(request: NextRequest): Promise<{
   }
 
   // 2. Check admin session (manual trigger)
-  const session = await getServerSession(authOptions);
-  if (session?.user?.email && (session.user as any).role === 'admin') {
-    return { isValid: true, source: 'admin', adminEmail: session.user.email };
+  const auth = await requireAdmin();
+  if (auth.authorized && auth.role === 'admin') {
+    return { isValid: true, source: 'admin', adminEmail: auth.email };
   }
 
   return { isValid: false, source: 'none' };
@@ -154,7 +151,7 @@ export async function POST(request: NextRequest) {
       triggeredBy: triggered_by,
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
     const today = new Date().toISOString().split('T')[0];
 
     // 3. FETCH DUE PAYOUTS (with batch limit)
@@ -590,7 +587,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
     const today = new Date().toISOString().split('T')[0];
 
     const { data: payouts, error } = await supabase

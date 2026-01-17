@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'pricing_get_request', adminEmail: auth.email }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data: plans, error } = await supabase
       .from('pricing_plans')
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'pricing_post_request', adminEmail: auth.email, planName: planData.name }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Check for duplicate slug
     const { data: existing } = await supabase
@@ -223,7 +223,7 @@ export async function PUT(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'pricing_put_request', adminEmail: auth.email, planId: id, fields: Object.keys(updates) }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data, error } = await supabase
       .from('pricing_plans')

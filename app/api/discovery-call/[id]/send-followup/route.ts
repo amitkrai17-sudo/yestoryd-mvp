@@ -15,15 +15,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+// Auth handled by api-auth.ts
 import crypto from 'crypto';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Using getServiceSupabase from api-auth.ts
 
 // --- HELPER: UUID validation ---
 function isValidUUID(str: string): boolean {
@@ -88,18 +85,17 @@ export async function POST(
     }
 
     // 2. Authenticate
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
       return NextResponse.json(
-        { error: 'Authentication required' },
+        { error: auth.error || 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const userEmail = session.user.email;
-    const userRole = (session.user as any).role as string;
-    const sessionCoachId = (session.user as any).coachId as string | undefined;
+    const userEmail = auth.email!;
+    const userRole = auth.role as string;
+    const authCoachId = auth.coachId as string | undefined;
 
     // 3. Authorize - Admin or Coach only
     if (!['admin', 'coach'].includes(userRole)) {
@@ -117,7 +113,7 @@ export async function POST(
       );
     }
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 5. Fetch discovery call with coach details
     const { data: call, error: fetchError } = await supabase
@@ -143,7 +139,7 @@ export async function POST(
 
     // 6. AUTHORIZATION: Coaches can only send follow-up for their assigned calls
     if (userRole === 'coach') {
-      if (call.coach_id !== sessionCoachId) {
+      if (call.coach_id !== authCoachId) {
         console.log(JSON.stringify({
           requestId,
           event: 'auth_failed',
@@ -151,7 +147,7 @@ export async function POST(
           userEmail,
           callId: id,
           assignedCoachId: call.coach_id,
-          sessionCoachId,
+          authCoachId,
         }));
 
         return NextResponse.json(

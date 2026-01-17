@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'generate_embeddings_request', adminEmail: auth.email, limit, dryRun }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     const { data: events, error: fetchError } = await supabase
       .from('learning_events')

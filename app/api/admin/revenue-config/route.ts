@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'revenue_config_get_request', adminEmail: auth.email }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Latest-wins pattern: Always fetch most recent config
     const { data, error } = await supabase
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       newConfig: { lead: validated.lead_cost_percent, coach: validated.coach_cost_percent, platform: platformFee },
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get current config for audit comparison
     const { data: currentConfig } = await supabase

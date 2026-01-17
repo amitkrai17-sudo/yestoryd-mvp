@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import crypto from 'crypto';
 
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
       filters: { status, coachId: effectiveCoachId, page, limit },
     }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 5. Build query
     const start = (page - 1) * limit;

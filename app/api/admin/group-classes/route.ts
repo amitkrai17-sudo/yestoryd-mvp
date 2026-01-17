@@ -9,7 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { google, calendar_v3 } from 'googleapis';
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'group_classes_get_request', adminEmail: auth.email, status: status || 'all', limit, offset }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     let query = supabase
       .from('group_sessions')
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'group_classes_post_request', adminEmail: auth.email, title: sessionData.title, date: sessionData.scheduledDate }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get class type
     const { data: classType } = await supabase

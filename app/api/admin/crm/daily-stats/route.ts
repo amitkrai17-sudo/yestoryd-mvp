@@ -8,7 +8,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'crm_daily_stats_request', adminEmail: auth.email, daysBack }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Try RPC function first
     const { data, error } = await supabase.rpc('get_crm_daily_stats', { days_back: daysBack });

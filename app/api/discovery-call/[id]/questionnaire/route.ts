@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -111,7 +112,7 @@ export async function POST(
 
     const { callStatus, questionnaire } = validationResult.data;
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // 5. Fetch discovery call and verify ownership
     const { data: existingCall, error: fetchError } = await supabase

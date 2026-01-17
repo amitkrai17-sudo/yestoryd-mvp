@@ -8,7 +8,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'crm_interactions_request', adminEmail: auth.email, childId, limit }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     let query = supabase
       .from('interactions')
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'crm_interaction_create_request', adminEmail: auth.email, childId: child_id, type }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Get parent_id from child
     const { data: child, error: childError } = await supabase

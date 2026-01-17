@@ -17,6 +17,7 @@ import sgMail from '@sendgrid/mail';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 
 // --- CONFIGURATION (Lazy initialization) ---
 const initSendGrid = () => {
@@ -454,7 +455,7 @@ export async function POST(request: NextRequest) {
 
     // 7. Audit log
     try {
-      const supabase = getSupabase();
+      const supabase = getServiceSupabase();
       await supabase.from('communication_logs').insert({
         template_code: 'assessment_certificate',
         recipient_email: email,

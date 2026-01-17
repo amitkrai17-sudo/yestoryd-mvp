@@ -11,7 +11,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getSupabase } from '@/lib/admin-auth';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'crm_export_request', adminEmail: auth.email, statusFilter: status || 'all' }));
 
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     // Fetch all leads
     let query = supabase

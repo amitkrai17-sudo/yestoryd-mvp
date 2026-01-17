@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // FILE: app/api/jobs/process-session/route.ts
 // ============================================================
 // Background Job: Session Processing
@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/api-auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -33,7 +34,7 @@ async function verifyQStashSignature(
 ): Promise<{ isValid: boolean; error?: string }> {
   // Skip verification in development
   if (process.env.NODE_ENV === 'development') {
-    console.log('⚠️ Skipping QStash signature verification in development');
+    console.log('?? Skipping QStash signature verification in development');
     return { isValid: true };
   }
 
@@ -157,7 +158,7 @@ async function getChildContext(childId: string): Promise<{
   sessionsCompleted: number;
   recentSessions: string;
 } | null> {
-  const supabase = getSupabase();
+  const supabase = getServiceSupabase();
   
   const { data: child } = await supabase
     .from('children')
@@ -318,7 +319,7 @@ async function saveSessionData(
   audioStoragePath?: string,
   requestId?: string
 ) {
-  const supabase = getSupabase();
+  const supabase = getServiceSupabase();
   const { sessionId, childId, coachId, transcriptText, recordingUrl, durationSeconds, attendance } = payload;
   const childName = analysis.child_name || 'Child';
 
@@ -461,7 +462,7 @@ async function queueParentSummary(
   summary: string,
   requestId: string
 ) {
-  const supabase = getSupabase();
+  const supabase = getServiceSupabase();
   
   await supabase.from('communication_queue').insert({
     template_code: 'session_summary_parent',
@@ -555,7 +556,7 @@ export async function POST(request: NextRequest) {
 
     // 6. Audio Download & Storage (10-30 seconds)
     let audioStoragePath: string | undefined;
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     if (payload.sessionId && payload.childId && payload.recordingUrl) {
       console.log(JSON.stringify({ requestId, event: 'starting_audio_download' }));
