@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, CheckCircle, Wand2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, BookOpen, CheckCircle, Wand2, Phone, MessageCircle } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,10 +20,18 @@ export default function ParentLoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'magic'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'magic' | 'phone' | 'phone-otp'>('login');
   const [message, setMessage] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const router = useRouter();
+
+  // WhatsApp OTP states
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [actualOtpMethod, setActualOtpMethod] = useState<'whatsapp' | 'email'>('whatsapp');
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Fetch video URL from site_settings
   useEffect(() => {
@@ -47,6 +55,21 @@ export default function ParentLoginPage() {
     }
     fetchVideoUrl();
   }, []);
+
+  // Countdown timer for OTP
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  // Auto-submit OTP when complete
+  useEffect(() => {
+    if (mode === 'phone-otp' && otp.every(d => d !== '') && !otpLoading) {
+      verifyOtp();
+    }
+  }, [otp, mode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,6 +146,307 @@ export default function ParentLoginPage() {
     } finally {
       setMagicLinkLoading(false);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // WHATSAPP OTP FUNCTIONS
+  // ─────────────────────────────────────────────────────────
+  const formatPhoneDisplay = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)} ${digits.slice(5, 10)}`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhone(digits);
+    setError('');
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newOtp = [...otp];
+    newOtp[index] = digit;
+    setOtp(newOtp);
+    setError('');
+    if (digit && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasteData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newOtp = [...otp];
+    for (let i = 0; i < pasteData.length; i++) {
+      newOtp[i] = pasteData[i];
+    }
+    setOtp(newOtp);
+    const focusIndex = Math.min(pasteData.length, 5);
+    otpRefs.current[focusIndex]?.focus();
+  };
+
+  async function sendWhatsAppOtp() {
+    if (phone.length !== 10) {
+      setError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    setOtpLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: `91${phone}`, method: 'whatsapp' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.code === 'PHONE_NOT_FOUND') {
+          setError('This number is not registered. Please complete a reading assessment first.');
+        } else {
+          setError(data.error || 'Failed to send OTP');
+        }
+        return;
+      }
+
+      setMode('phone-otp');
+      setCountdown(300);
+      setOtp(['', '', '', '', '', '']);
+      setActualOtpMethod(data.method || 'whatsapp'); // Use actual method from response
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+
+    } catch (err) {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function verifyOtp() {
+    const otpString = otp.join('');
+    if (otpString.length !== 6) {
+      setError('Please enter the complete 6-digit OTP');
+      return;
+    }
+
+    setOtpLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: `91${phone}`, otp: otpString }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Invalid OTP');
+        return;
+      }
+
+      if (data.accessToken) {
+        window.location.href = data.accessToken;
+      } else {
+        router.push('/parent/dashboard');
+      }
+
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // RENDER: OTP VERIFICATION STEP
+  // ─────────────────────────────────────────────────────────
+  if (mode === 'phone-otp') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className={`w-14 h-14 ${actualOtpMethod === 'whatsapp' ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600'} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${actualOtpMethod === 'whatsapp' ? 'shadow-green-500/30' : 'shadow-blue-500/30'}`}>
+                {actualOtpMethod === 'whatsapp' ? (
+                  <MessageCircle className="w-7 h-7 text-white" />
+                ) : (
+                  <Mail className="w-7 h-7 text-white" />
+                )}
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">Enter OTP</h1>
+              <p className="text-gray-500 mt-2">
+                We sent a 6-digit code to your {actualOtpMethod === 'whatsapp' ? 'WhatsApp' : 'Email'}
+              </p>
+              <p className="text-[#00abff] font-medium mt-1">+91 {formatPhoneDisplay(phone)}</p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* OTP Input */}
+            <div className="flex justify-center gap-2 mb-6" onPaste={handleOtpPaste}>
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => { otpRefs.current[index] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  className="w-12 h-14 text-center text-2xl font-bold text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none transition-all"
+                  maxLength={1}
+                />
+              ))}
+            </div>
+
+            {/* Timer */}
+            {countdown > 0 && (
+              <p className="text-center text-sm text-gray-500 mb-4">
+                Code expires in {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+              </p>
+            )}
+
+            {/* Verify Button */}
+            <button
+              onClick={verifyOtp}
+              disabled={otpLoading || otp.some(d => d === '')}
+              className="w-full py-4 bg-gradient-to-r from-[#00abff] to-[#0066cc] text-white rounded-xl font-semibold hover:from-[#0099ee] hover:to-[#0055bb] transition-all shadow-lg shadow-[#00abff]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {otpLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  Verify & Login
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+
+            {/* Resend */}
+            <div className="mt-6 text-center">
+              {countdown === 0 ? (
+                <button
+                  onClick={sendWhatsAppOtp}
+                  disabled={otpLoading}
+                  className="text-[#00abff] hover:text-[#0066cc] font-medium"
+                >
+                  Resend OTP
+                </button>
+              ) : (
+                <p className="text-gray-500 text-sm">
+                  Didn't receive? Wait {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')} to resend
+                </p>
+              )}
+            </div>
+
+            {/* Change Number */}
+            <button
+              onClick={() => {
+                setMode('phone');
+                setOtp(['', '', '', '', '', '']);
+                setError('');
+              }}
+              className="w-full mt-4 text-gray-500 hover:text-gray-700 text-sm"
+            >
+              ← Change phone number
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // RENDER: PHONE INPUT STEP
+  // ─────────────────────────────────────────────────────────
+  if (mode === 'phone') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30">
+                <MessageCircle className="w-7 h-7 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">WhatsApp Login</h1>
+              <p className="text-gray-500 mt-2">Enter your registered mobile number</p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Phone Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-500 text-lg font-medium">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  value={formatPhoneDisplay(phone)}
+                  onChange={handlePhoneChange}
+                  placeholder="98765 43210"
+                  className="flex-1 px-4 py-3.5 text-lg text-gray-900 bg-gray-50 border border-gray-200 rounded-r-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none"
+                  maxLength={11}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Send OTP Button */}
+            <button
+              onClick={sendWhatsAppOtp}
+              disabled={otpLoading || phone.length !== 10}
+              className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {otpLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <MessageCircle className="w-5 h-5" />
+                  Send OTP via WhatsApp
+                </>
+              )}
+            </button>
+
+            {/* Back to Email */}
+            <button
+              onClick={() => {
+                setMode('login');
+                setError('');
+              }}
+              className="w-full mt-4 text-gray-500 hover:text-gray-700 text-sm"
+            >
+              ← Back to email login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -296,7 +620,7 @@ export default function ParentLoginPage() {
             <button
               onClick={handleGoogleSignIn}
               disabled={googleLoading}
-              className="w-full py-3.5 bg-white border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-3 mb-4 disabled:opacity-50"
+              className="w-full py-3.5 bg-white border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-3 mb-3 disabled:opacity-50"
             >
               {googleLoading ? (
                 <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
@@ -311,6 +635,15 @@ export default function ParentLoginPage() {
                   Continue with Google
                 </>
               )}
+            </button>
+
+            {/* WhatsApp OTP Button - NEW */}
+            <button
+              onClick={() => { setMode('phone'); setError(''); setMessage(''); }}
+              className="w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-medium text-white hover:from-green-600 hover:to-emerald-700 transition-all flex items-center justify-center gap-3 mb-4 shadow-lg shadow-green-500/20"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Continue with WhatsApp
             </button>
 
             {/* Divider */}
