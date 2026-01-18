@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { CoachLayout } from '@/components/coach/CoachLayout';
+import SkillBoosterSection from '@/components/coach/SkillBoosterSection';
 import {
   ArrowLeft,
   User,
@@ -73,6 +74,14 @@ interface Assessment {
   created_at: string;
 }
 
+interface Enrollment {
+  id: string;
+  coach_id: string;
+  remedial_sessions_used: number;
+  remedial_sessions_max: number;
+  status: string;
+}
+
 export default function StudentDetailPage() {
   const params = useParams();
   const studentId = params.id as string;
@@ -83,6 +92,7 @@ export default function StudentDetailPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
 
   // AI Assistant State
   const [aiQuestion, setAiQuestion] = useState('');
@@ -107,7 +117,7 @@ export default function StudentDetailPage() {
   const loadStudentData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         window.location.href = '/coach/login';
         return;
@@ -149,6 +159,16 @@ export default function StudentDetailPage() {
         .order('scheduled_date', { ascending: true });
 
       setSessions(sessionsData || []);
+
+      // Get enrollment with Skill Booster data (DB columns still use 'remedial' naming)
+      const { data: enrollmentData } = await supabase
+        .from('enrollments')
+        .select('id, coach_id, remedial_sessions_used, remedial_sessions_max, status')
+        .eq('child_id', studentId)
+        .eq('status', 'active')
+        .single();
+
+      setEnrollment(enrollmentData);
 
       // Get session notes
       const { data: notesData } = await supabase
@@ -443,6 +463,21 @@ export default function StudentDetailPage() {
           </div>
         </div>
 
+        {/* ================================================================ */}
+        {/* SKILL BOOSTER SECTION */}
+        {/* ================================================================ */}
+        {enrollment && (
+          <SkillBoosterSection
+            childId={student.id}
+            childName={student.child_name}
+            enrollmentId={enrollment.id}
+            coachId={coach.id}
+            skillBoosterUsed={enrollment.remedial_sessions_used || 0}
+            skillBoosterMax={enrollment.remedial_sessions_max || 3}
+            onSuccess={loadStudentData}
+          />
+        )}
+
         {/* AI Assistant */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           <div className="p-4 border-b border-gray-700">
@@ -597,7 +632,7 @@ export default function StudentDetailPage() {
               <button
                 onClick={saveSessionNote}
                 disabled={savingNote || !noteForm.notes.trim()}
-                className="w-full bg-[#FF0099] hover:bg-[#FF0099] text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full bg-[#FF0099] hover:bg-[#FF0099]/90 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {savingNote ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
                 Save Notes

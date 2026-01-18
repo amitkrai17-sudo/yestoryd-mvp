@@ -1,22 +1,14 @@
 // ============================================================
 // FILE: app/parent/layout.tsx
+// VERSION: 3.1 - Fixed: All pages now get sidebar/hamburger menu
 // ============================================================
-// Parent Layout - Auth + Role Verification
+// Parent Layout - Auth + Role Verification + Child Selector
 // Yestoryd - AI-Powered Reading Intelligence Platform
-//
-// Works with existing structure - no folder changes needed!
-// Public routes: /parent/login
-// Protected routes: everything else
-//
-// Features:
-// - Auth verification with ID-based lookup
-// - React Context for state sharing (avoids redundant API calls)
-// - Automatic public/protected route detection
 // ============================================================
 
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,16 +17,16 @@ import {
   LayoutDashboard,
   TrendingUp,
   Calendar,
-  Settings,
   LogOut,
   Menu,
   X,
   ChevronRight,
   Shield,
-  FileText,
-  MessageCircle,
   BookOpen,
   HelpCircle,
+  Check,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 
 // ==================== SUPABASE CLIENT ====================
@@ -44,9 +36,7 @@ const supabase = createClient(
 );
 
 // ==================== ROUTE CONFIGURATION ====================
-const PUBLIC_ROUTES = [
-  '/parent/login',
-];
+const PUBLIC_ROUTES = ['/parent/login', '/parent/book-skill-booster'];
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
@@ -65,13 +55,18 @@ interface ChildData {
   name: string;
   child_name?: string;
   age?: number;
+  lead_status?: string;
 }
 
 interface ParentContextType {
   user: any;
   parent: ParentData | null;
   children: ChildData[];
+  selectedChildId: string | null;
+  selectedChild: ChildData | null;
+  setSelectedChildId: (id: string) => void;
   isLoading: boolean;
+  error: string | null;
   refetch: () => Promise<void>;
 }
 
@@ -120,6 +115,29 @@ const NAV_ITEMS = [
   },
 ];
 
+// ==================== SAFE LOCALSTORAGE ====================
+function safeGetItem(key: string): string | null {
+  try {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(key);
+    }
+  } catch (e) {
+    console.warn('localStorage not available:', e);
+  }
+  return null;
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  } catch (e) {
+    console.warn('localStorage not available:', e);
+  }
+}
+
+// ==================== MAIN COMPONENT ====================
 export default function ParentLayout({
   children,
 }: {
@@ -131,38 +149,170 @@ export default function ParentLayout({
   const [user, setUser] = useState<any>(null);
   const [parent, setParent] = useState<ParentData | null>(null);
   const [children_, setChildren] = useState<ChildData[]>([]);
+  const [selectedChildId, setSelectedChildIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+
+  // Get selected child object
+  const selectedChild = children_.find(c => c.id === selectedChildId) || null;
 
   // Close sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
 
+  // Close sidebar on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+
   // Setup authenticated fetch for parent API calls
   useEffect(() => {
     const originalFetch = window.fetch;
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      if (url.includes('/api/parent') || url.includes('/api/children')) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          const headers = new Headers(init?.headers);
-          headers.set('Authorization', 'Bearer ' + session.access_token);
-          return originalFetch(input, { ...init, headers });
+      try {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        if (url.includes('/api/parent') || url.includes('/api/children') || url.includes('/api/skill-booster')) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const headers = new Headers(init?.headers);
+            headers.set('Authorization', 'Bearer ' + session.access_token);
+            return originalFetch(input, { ...init, headers });
+          }
         }
+        return originalFetch(input, init);
+      } catch (e) {
+        return originalFetch(input, init);
       }
-      return originalFetch(input, init);
     };
     return () => {
       window.fetch = originalFetch;
     };
   }, []);
 
+  const validateParent = useCallback(async (authUser: any) => {
+    try {
+      const email = authUser.email?.toLowerCase();
+      const authId = authUser.id;
+
+      if (!email && !authId) {
+        setUser(authUser);
+        setIsAuthorized(false);
+        setLoading(false);
+        return;
+      }
+
+      let parentData = null;
+
+      // Try ID-based lookup first
+      if (authId) {
+        const result = await supabase
+          .from('parents')
+          .select('id, name, email, phone')
+          .eq('user_id', authId)
+          .maybeSingle();
+
+        if (!result.error && result.data) {
+          parentData = result.data;
+        }
+      }
+
+      // Fallback to email-based lookup
+      if (!parentData && email) {
+        const result = await supabase
+          .from('parents')
+          .select('id, name, email, phone')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (!result.error && result.data) {
+          parentData = result.data;
+        }
+      }
+
+      if (!parentData) {
+        console.log('Parent not found:', email);
+        setUser(authUser);
+        setIsAuthorized(false);
+        setLoading(false);
+        return;
+      }
+
+      // Get children
+      const { data: childrenData, error: childrenError } = await supabase
+        .from('children')
+        .select('id, name, child_name, age, lead_status')
+        .eq('parent_id', parentData.id)
+        .order('created_at', { ascending: false });
+
+      if (childrenError) {
+        console.error('Error fetching children:', childrenError);
+      }
+
+      const allChildren = childrenData || [];
+
+      setUser(authUser);
+      setParent(parentData);
+      setChildren(allChildren);
+      setError(null);
+
+      // Restore selected child from localStorage or select first enrolled child
+      const storedChildId = safeGetItem(`yestoryd_selected_child_${parentData.id}`);
+      if (storedChildId && allChildren.some(c => c.id === storedChildId)) {
+        setSelectedChildIdState(storedChildId);
+      } else {
+        // Auto-select first enrolled child, or first child if none enrolled
+        const enrolledChild = allChildren.find(c => c.lead_status === 'enrolled');
+        const firstChild = enrolledChild || allChildren[0];
+        if (firstChild) {
+          setSelectedChildIdState(firstChild.id);
+          safeSetItem(`yestoryd_selected_child_${parentData.id}`, firstChild.id);
+        }
+      }
+
+      setIsAuthorized(true);
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Validation error:', err);
+      setError('Failed to load your profile. Please try again.');
+      setLoading(false);
+    }
+  }, []);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        setError('Authentication failed. Please login again.');
+        setLoading(false);
+        router.push('/parent/login');
+        return;
+      }
+
+      if (!session) {
+        router.push('/parent/login');
+        setLoading(false);
+        return;
+      }
+
+      await validateParent(session.user);
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      setError('Authentication failed. Please try again.');
+      setLoading(false);
+      router.push('/parent/login');
+    }
+  }, [router, validateParent]);
 
   useEffect(() => {
-    // Skip auth check for public routes
     if (isPublicRoute(pathname)) {
       setLoading(false);
       return;
@@ -172,7 +322,7 @@ export default function ParentLayout({
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (isPublicRoute(pathname)) return;
-      
+
       if (session?.user) {
         validateParent(session.user);
       } else {
@@ -184,107 +334,49 @@ export default function ParentLayout({
     });
 
     return () => subscription.unsubscribe();
-  }, [pathname]);
+  }, [pathname, checkAuth, validateParent]);
 
-  const checkAuth = async () => {
+  // Handle child selection
+  const setSelectedChildId = useCallback((childId: string) => {
+    setSelectedChildIdState(childId);
+    if (parent?.id) {
+      safeSetItem(`yestoryd_selected_child_${parent.id}`, childId);
+    }
+    // Trigger page refresh by dispatching custom event
+    window.dispatchEvent(new CustomEvent('childChanged', { detail: { childId } }));
+  }, [parent?.id]);
+
+  const handleSignOut = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push('/parent/login');
-        setLoading(false);
-        return;
-      }
-
-      validateParent(session.user);
-    } catch (error) {
-      console.error('Auth error:', error);
-      setLoading(false);
+      await supabase.auth.signOut();
+      router.push('/parent/login');
+    } catch (err) {
+      console.error('Sign out error:', err);
+      // Force redirect anyway
       router.push('/parent/login');
     }
   };
 
-  const validateParent = async (authUser: any) => {
-    const email = authUser.email?.toLowerCase();
-    const authId = authUser.id;
-
-    if (!email && !authId) {
-      setUser(authUser);
-      setIsAuthorized(false);
-      setLoading(false);
-      return;
-    }
-
-    let parentData = null;
-    let error = null;
-
-    // Try ID-based lookup first
-    if (authId) {
-      const result = await supabase
-        .from('parents')
-        .select('id, name, email, phone')
-        .eq('user_id', authId)
-        .single();
-      
-      if (!result.error && result.data) {
-        parentData = result.data;
-      }
-    }
-
-    // Fallback to email-based lookup
-    if (!parentData && email) {
-      const result = await supabase
-        .from('parents')
-        .select('id, name, email, phone')
-        .eq('email', email)
-        .single();
-      
-      parentData = result.data;
-      error = result.error;
-    }
-
-    if (error || !parentData) {
-      console.log('Parent not found:', email);
-      setUser(authUser);
-      setIsAuthorized(false);
-      setLoading(false);
-      return;
-    }
-
-    // Get children
-    const { data: childrenData } = await supabase
-      .from('children')
-      .select('id, name, child_name, age')
-      .eq('parent_id', parentData.id);
-
-    setUser(authUser);
-    setParent(parentData);
-    setChildren(childrenData || []);
-    setIsAuthorized(true);
-    setLoading(false);
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/parent/login');
-  };
-
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     if (user) {
+      setLoading(true);
       await validateParent(user);
     }
-  };
+  }, [user, validateParent]);
 
   const contextValue: ParentContextType = {
     user,
     parent,
     children: children_,
+    selectedChildId,
+    selectedChild,
+    setSelectedChildId,
     isLoading: loading,
+    error,
     refetch,
   };
 
   // ==================== PUBLIC ROUTES ====================
-  // Render without sidebar/auth for login page
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
   }
@@ -292,12 +384,42 @@ export default function ParentLayout({
   // ==================== LOADING STATE ====================
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
           <p className="text-slate-500">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== ERROR STATE ====================
+  if (error && !isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 mb-2">Something went wrong</h1>
+          <p className="text-slate-500 mb-6 text-sm">{error}</p>
+          <div className="space-y-3">
+            <button
+              onClick={refetch}
+              className="w-full py-3 bg-[#7b008b] text-white rounded-xl font-medium hover:bg-[#6a0078] transition-colors flex items-center justify-center gap-2 min-h-[48px]"
+            >
+              <RefreshCw className="w-5 h-5" />
+              Try Again
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors min-h-[48px]"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -307,24 +429,24 @@ export default function ParentLayout({
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-6">
+          <h1 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h1>
+          <p className="text-slate-500 mb-6 text-sm">
             {user?.email || 'Your account'} is not registered as a parent.
           </p>
           <div className="space-y-3">
             <button
               onClick={handleSignOut}
-              className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
+              className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors min-h-[48px]"
             >
               Sign Out
             </button>
             <Link
               href="/assessment"
-              className="block w-full py-3 bg-pink-50 text-pink-600 rounded-xl font-medium hover:bg-pink-100 transition-colors"
+              className="block w-full py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-medium hover:opacity-90 transition-opacity min-h-[48px] flex items-center justify-center"
             >
               Take Free Assessment
             </Link>
@@ -334,14 +456,15 @@ export default function ParentLayout({
     );
   }
 
-  // ==================== AUTHORIZED - FULL LAYOUT ====================
+  // ==================== AUTHORIZED - FULL LAYOUT WITH SIDEBAR ====================
   return (
     <ParentContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex overflow-x-hidden">
         {/* Mobile Menu Button */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-xl shadow-lg border border-slate-200"
+          className="lg:hidden fixed top-4 left-4 z-40 p-3 bg-white rounded-xl shadow-lg border border-slate-200 min-w-[48px] min-h-[48px] flex items-center justify-center"
+          aria-label="Open menu"
         >
           <Menu className="w-6 h-6 text-slate-700" />
         </button>
@@ -349,20 +472,25 @@ export default function ParentLayout({
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
-            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+            className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
           />
         )}
 
         {/* Sidebar */}
-        <aside className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200
-          transform transition-transform duration-300 ease-in-out
-          lg:translate-x-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}>
+        <aside
+          className={`
+            fixed inset-y-0 left-0 z-50 w-[280px] bg-white border-r border-slate-200
+            transform transition-transform duration-300 ease-in-out
+            lg:translate-x-0
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          `}
+          role="navigation"
+          aria-label="Main navigation"
+        >
           {/* Header */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
             <Link href="/parent/dashboard" className="flex items-center gap-3">
               <Image
                 src="/images/logo.png"
@@ -375,38 +503,66 @@ export default function ParentLayout({
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 hover:bg-slate-100 rounded-lg"
+              className="lg:hidden p-2 hover:bg-slate-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Close menu"
             >
               <X className="w-5 h-5 text-slate-500" />
             </button>
           </div>
 
-          {/* Children Selector (if multiple) */}
-          {children_.length > 1 && (
+          {/* Children Selector */}
+          {children_.length > 0 && (
             <div className="p-4 border-b border-slate-100">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
                 Your Children
               </p>
-              <div className="space-y-1">
-                {children_.map((child) => (
-                  <div
-                    key={child.id}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg"
-                  >
-                    <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 text-sm font-medium">
-                      {(child.child_name || child.name)?.charAt(0)}
-                    </div>
-                    <span className="text-sm font-medium text-slate-700">
-                      {child.child_name || child.name}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-2 max-h-[180px] overflow-y-auto">
+                {children_.map((child) => {
+                  const isSelected = selectedChildId === child.id;
+                  const isEnrolled = child.lead_status === 'enrolled';
+                  const displayName = child.child_name || child.name || 'Child';
+
+                  return (
+                    <button
+                      key={child.id}
+                      onClick={() => setSelectedChildId(child.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all min-h-[52px] ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 border-2 border-[#ff0099]/40 shadow-sm'
+                          : 'bg-slate-50 hover:bg-slate-100 border-2 border-transparent active:scale-[0.98]'
+                      }`}
+                      aria-pressed={isSelected}
+                      aria-label={`Select ${displayName}${isEnrolled ? ' (enrolled)' : ''}`}
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-[#ff0099] to-[#7b008b] text-white shadow-md'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 text-left min-w-0">
+                        <p className={`font-medium text-sm truncate ${isSelected ? 'text-[#7b008b]' : 'text-slate-700'}`}>
+                          {displayName}
+                        </p>
+                        {isEnrolled && (
+                          <p className="text-[10px] text-green-600 font-medium">✓ Enrolled</p>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <div className="w-5 h-5 bg-[#ff0099] rounded-full flex items-center justify-center flex-shrink-0">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* Navigation */}
-          <nav className="p-4 space-y-1">
+          <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
@@ -415,22 +571,22 @@ export default function ParentLayout({
                   key={item.href}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all min-h-[52px] ${
                     isActive
-                      ? 'bg-pink-50 text-pink-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 text-[#7b008b]'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]'
                   }`}
+                  aria-current={isActive ? 'page' : undefined}
                 >
-                  <item.icon className={`w-5 h-5 ${
-                    isActive ? 'text-pink-600' : 'text-slate-400 group-hover:text-slate-600'
+                  <item.icon className={`w-5 h-5 flex-shrink-0 ${
+                    isActive ? 'text-[#ff0099]' : 'text-slate-400 group-hover:text-slate-600'
                   }`} />
-                  <div className="flex-1">
-                    <p className={`font-medium ${isActive ? 'text-pink-700' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium truncate ${isActive ? 'text-[#7b008b]' : ''}`}>
                       {item.label}
                     </p>
-                    <p className="text-xs text-slate-400">{item.description}</p>
                   </div>
-                  {isActive && <ChevronRight className="w-4 h-4 text-pink-400" />}
+                  {isActive && <ChevronRight className="w-4 h-4 text-[#ff0099] flex-shrink-0" />}
                 </Link>
               );
             })}
@@ -438,8 +594,8 @@ export default function ParentLayout({
 
           {/* User Profile */}
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 bg-white">
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+            <div className="flex items-center gap-3 px-2 py-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                 {parent?.name?.charAt(0).toUpperCase() || 'P'}
               </div>
               <div className="flex-1 min-w-0">
@@ -450,18 +606,19 @@ export default function ParentLayout({
               </div>
               <button
                 onClick={handleSignOut}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
                 title="Sign out"
+                aria-label="Sign out"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-72 min-h-screen">
-          <div className="pt-16 lg:pt-0">
+        <main className="flex-1 lg:ml-[280px] min-h-screen w-full">
+          <div className="pt-16 lg:pt-0 w-full">
             {children}
           </div>
         </main>
@@ -469,4 +626,3 @@ export default function ParentLayout({
     </ParentContext.Provider>
   );
 }
-

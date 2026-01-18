@@ -1,5 +1,5 @@
-﻿// file: app/coach/dashboard/page.tsx
-// Clean Coach Dashboard - No duplicate navigation, uses layout.tsx sidebar
+// file: app/coach/dashboard/page.tsx
+// Coach Dashboard with Pending Skill Boosters section
 
 'use client';
 
@@ -17,6 +17,9 @@ import {
   Loader2,
   ChevronRight,
   MessageCircle,
+  Zap,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -44,9 +47,31 @@ interface DashboardStats {
   total_earnings: number;
 }
 
+interface PendingSkillBooster {
+  id: string;
+  child_id: string;
+  child_name: string;
+  focus_area: string;
+  created_at: string;
+  days_pending: number;
+}
+
+// Focus area labels
+const FOCUS_AREA_LABELS: Record<string, string> = {
+  phonics_sounds: 'Phonics & Letter Sounds',
+  reading_fluency: 'Reading Fluency',
+  comprehension: 'Reading Comprehension',
+  vocabulary: 'Vocabulary Building',
+  grammar: 'Grammar & Sentence Structure',
+  confidence: 'Speaking Confidence',
+  specific_sounds: 'Specific Sound Practice',
+  other: 'Special Focus',
+};
+
 export default function CoachDashboardPage() {
   const [coach, setCoach] = useState<Coach | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [pendingSkillBoosters, setPendingSkillBoosters] = useState<PendingSkillBooster[]>([]);
   const [loading, setLoading] = useState(true);
 
   useActivityTracker({
@@ -62,7 +87,7 @@ export default function CoachDashboardPage() {
   const loadDashboard = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         window.location.href = '/coach/login';
         return;
@@ -81,6 +106,7 @@ export default function CoachDashboardPage() {
 
       setCoach(coachData);
       await fetchStats(coachData.id, coachData.email);
+      await fetchPendingSkillBoosters(coachData.id);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -137,6 +163,51 @@ export default function CoachDashboardPage() {
     }
   };
 
+  const fetchPendingSkillBoosters = async (coachId: string) => {
+    try {
+      // Get pending Skill Booster sessions (DB uses 'remedial' type)
+      const { data: pendingSessions, error } = await supabase
+        .from('scheduled_sessions')
+        .select(`
+          id,
+          child_id,
+          focus_area,
+          created_at,
+          children:child_id (
+            child_name,
+            name
+          )
+        `)
+        .eq('coach_id', coachId)
+        .eq('session_type', 'remedial')
+        .eq('status', 'pending_booking')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching pending Skill Boosters:', error);
+        return;
+      }
+
+      const formattedSessions: PendingSkillBooster[] = (pendingSessions || []).map((session: any) => {
+        const daysPending = Math.floor(
+          (Date.now() - new Date(session.created_at).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return {
+          id: session.id,
+          child_id: session.child_id,
+          child_name: session.children?.child_name || session.children?.name || 'Unknown',
+          focus_area: session.focus_area || 'general',
+          created_at: session.created_at,
+          days_pending: daysPending,
+        };
+      });
+
+      setPendingSkillBoosters(formattedSessions);
+    } catch (err) {
+      console.error('Error in fetchPendingSkillBoosters:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -161,6 +232,68 @@ export default function CoachDashboardPage() {
           Here&apos;s what&apos;s happening with your coaching today.
         </p>
       </div>
+
+      {/* Pending Skill Boosters Alert */}
+      {pendingSkillBoosters.length > 0 && (
+        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-2xl border-2 border-yellow-500/40 p-5">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                Pending Skill Boosters
+                <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                  {pendingSkillBoosters.length}
+                </span>
+              </h3>
+              <p className="text-gray-400 text-sm mt-1 mb-4">
+                These sessions are waiting for parents to book a time slot.
+              </p>
+
+              <div className="space-y-3">
+                {pendingSkillBoosters.map((session) => (
+                  <div
+                    key={session.id}
+                    className="bg-gray-800/60 rounded-xl p-4 flex items-center justify-between gap-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-white">{session.child_name}</span>
+                        {session.days_pending >= 3 && (
+                          <span className="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {session.days_pending}d
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {FOCUS_AREA_LABELS[session.focus_area] || session.focus_area}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {session.days_pending === 0 ? 'Today' : `${session.days_pending}d ago`}
+                      </span>
+                      <Link
+                        href={`/coach/students/${session.child_id}`}
+                        className="px-3 py-1.5 bg-[#FF0099] text-white text-sm rounded-lg hover:bg-[#FF0099]/90 transition-colors"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-500 mt-4">
+                💡 Tip: Follow up with parents via WhatsApp if booking is pending for 3+ days
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Coach Tier Card */}
       <CoachTierCard coachId={coach.id} coachEmail={coach.email} />

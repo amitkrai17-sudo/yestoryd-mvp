@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import ParentLayout from '@/components/parent/ParentLayout';
 import {
   Calendar,
   Clock,
@@ -14,6 +13,8 @@ import {
   AlertCircle,
   ChevronDown,
   ExternalLink,
+  Zap,
+  Loader2,
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -31,6 +32,7 @@ interface Session {
   status: string;
   duration_minutes: number;
   title: string;
+  focus_area?: string;
 }
 
 export default function ParentSessionsPage() {
@@ -71,7 +73,7 @@ export default function ParentSessionsPage() {
           .order('enrolled_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        
+
         if (childByParentId) {
           enrolledChild = childByParentId;
         }
@@ -165,6 +167,21 @@ export default function ParentSessionsPage() {
     }
   }
 
+  function getSessionTitle(session: Session): string {
+    if (session.title) return session.title;
+    
+    if (session.session_type === 'remedial') {
+      return '⚡ Skill Booster Session';
+    }
+    if (session.session_type === 'coaching') {
+      return '📚 Coaching Session';
+    }
+    if (session.session_type === 'parent_checkin') {
+      return '👨‍👩‍👧 Parent Check-in';
+    }
+    return '📚 Session';
+  }
+
   function isUpcoming(session: Session): boolean {
     const sessionDate = new Date(session.scheduled_date);
     const today = new Date();
@@ -193,17 +210,17 @@ export default function ParentSessionsPage() {
 
   if (loading) {
     return (
-      <ParentLayout>
+      <div className="p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#7b008b] animate-spin" />
         </div>
-      </ParentLayout>
+      </div>
     );
   }
 
   if (sessions.length === 0) {
     return (
-      <ParentLayout>
+      <div className="p-4 lg:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Sessions</h1>
@@ -221,12 +238,12 @@ export default function ParentSessionsPage() {
             </Link>
           </div>
         </div>
-      </ParentLayout>
+      </div>
     );
   }
 
   return (
-    <ParentLayout>
+    <div className="p-4 lg:p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
@@ -252,24 +269,33 @@ export default function ParentSessionsPage() {
           {filteredSessions().map((session, index) => {
             const upcoming = isUpcoming(session);
             const canJoin = canJoinSession(session);
+            const isSkillBooster = session.session_type === 'remedial';
 
             return (
               <div
                 key={session.id}
                 className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
-                  upcoming ? 'border-[#7b008b]/30' : 'border-gray-100'
+                  isSkillBooster
+                    ? 'border-yellow-400/50 ring-1 ring-yellow-400/20'
+                    : upcoming
+                      ? 'border-[#7b008b]/30'
+                      : 'border-gray-100'
                 }`}
               >
                 <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    session.status === 'completed' 
-                      ? 'bg-green-100' 
-                      : upcoming 
-                        ? 'bg-gradient-to-br from-[#7b008b]/10 to-[#ff0099]/10' 
-                        : 'bg-gray-100'
+                    session.status === 'completed'
+                      ? 'bg-green-100'
+                      : isSkillBooster
+                        ? 'bg-gradient-to-br from-yellow-100 to-orange-100'
+                        : upcoming
+                          ? 'bg-gradient-to-br from-[#7b008b]/10 to-[#ff0099]/10'
+                          : 'bg-gray-100'
                   }`}>
                     {session.status === 'completed' ? (
                       <Check className="w-7 h-7 text-green-600" />
+                    ) : isSkillBooster ? (
+                      <Zap className="w-7 h-7 text-yellow-600" />
                     ) : (
                       <span className={`text-xl font-bold ${upcoming ? 'text-[#7b008b]' : 'text-gray-400'}`}>
                         {session.session_number}
@@ -280,10 +306,21 @@ export default function ParentSessionsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800">
-                        {session.title || (session.session_type === 'coaching' ? '📚 Coaching Session' : '👨‍👩‍👧 Parent Check-in')}
+                        {getSessionTitle(session)}
                       </h3>
+                      {isSkillBooster && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                          <Zap className="w-3 h-3" />
+                          Bonus
+                        </span>
+                      )}
                       {getStatusBadge(session.status)}
                     </div>
+                    {isSkillBooster && session.focus_area && (
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Focus: {session.focus_area.replace(/_/g, ' ')}
+                      </p>
+                    )}
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
@@ -316,8 +353,12 @@ export default function ParentSessionsPage() {
                 </div>
 
                 {upcoming && index === 0 && session.status === 'scheduled' && (
-                  <div className="px-5 py-3 bg-[#7b008b]/5 border-t border-[#7b008b]/10">
-                    <p className="text-sm text-[#7b008b]">
+                  <div className={`px-5 py-3 border-t ${
+                    isSkillBooster
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-[#7b008b]/5 border-[#7b008b]/10'
+                  }`}>
+                    <p className={`text-sm ${isSkillBooster ? 'text-yellow-700' : 'text-[#7b008b]'}`}>
                       ✨ <strong>Next session!</strong> Join link will activate 10 minutes before the scheduled time.
                     </p>
                   </div>
@@ -337,18 +378,22 @@ export default function ParentSessionsPage() {
         {/* Session Types Info */}
         <div className="mt-8 p-4 bg-[#7b008b]/5 rounded-xl border border-[#7b008b]/10">
           <h3 className="font-medium text-[#7b008b] mb-3">Session Types</h3>
-          <div className="grid sm:grid-cols-2 gap-3 text-sm">
+          <div className="grid sm:grid-cols-3 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <span>📚</span>
-              <span><strong>Coaching Session</strong> - 45 min 1:1 with coach</span>
+              <span><strong>Coaching</strong> - 45 min 1:1</span>
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <span>👨‍👩‍👧</span>
-              <span><strong>Parent Check-in</strong> - 15 min progress review</span>
+              <span><strong>Parent Check-in</strong> - 15 min</span>
+            </div>
+            <div className="flex items-center gap-2 text-yellow-700">
+              <Zap className="w-4 h-4" />
+              <span><strong>Skill Booster</strong> - Bonus session</span>
             </div>
           </div>
         </div>
       </div>
-    </ParentLayout>
+    </div>
   );
 }
