@@ -419,6 +419,50 @@ export async function queueCalendarAttendeeUpdate(
 }
 
 // ============================================================
+// GOALS CAPTURE SCHEDULE
+// ============================================================
+
+/**
+ * Setup goals capture schedule (runs every 5 minutes)
+ * Sends P7 WhatsApp message 30 min after assessment if goals not captured
+ *
+ * Call this once during deployment or via admin endpoint
+ */
+export async function setupGoalsCaptureSchedule(): Promise<{ success: boolean; scheduleId?: string; error?: string }> {
+  return createQStashSchedule({
+    scheduleId: 'goals-capture-every-5min',
+    url: `${APP_URL}/api/jobs/goals-capture`,
+    cron: '*/5 * * * *', // Every 5 minutes
+  });
+}
+
+/**
+ * Manually trigger goals capture check (for testing)
+ */
+export async function triggerGoalsCaptureCheck(): Promise<QueueResult> {
+  if (!isQStashConfigured()) {
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/jobs/goals-capture`,
+      body: { manual: true, timestamp: new Date().toISOString() },
+      retries: 1,
+    });
+
+    console.log('📤 Triggered goals capture check:', {
+      messageId: response.messageId,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: any) {
+    console.error('❌ Failed to trigger goals capture:', error.message);
+    return { success: false, messageId: null, error: error.message };
+  }
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 

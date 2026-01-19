@@ -129,9 +129,10 @@ function buildEmailHtml(data: {
   feedback?: string;
   skillBreakdown?: any;
   phonicsAnalysis?: any;
+  errorClassification?: any;
   practiceRecommendations?: any;
 }): string {
-  const { childName, childAge, finalScore, finalFluencyScore, finalClarityScore, finalSpeedScore, finalWpm, feedback, skillBreakdown, phonicsAnalysis, practiceRecommendations } = data;
+  const { childName, childAge, finalScore, finalFluencyScore, finalClarityScore, finalSpeedScore, finalWpm, feedback, skillBreakdown, phonicsAnalysis, errorClassification, practiceRecommendations } = data;
   
   const { headline, subheadline } = getHeadline(finalScore, childName);
   const insight = getInsight(finalScore, parseInt(childAge) || 8);
@@ -202,6 +203,65 @@ function buildEmailHtml(data: {
             <p style="color: ${COLORS.mediumGray}; font-size: 11px; text-transform: uppercase; margin: 0 0 6px;">Strong</p>
             <div>${strong.map((p: string) => `<span style="display: inline-block; background: #f0fdf4; color: #16a34a; padding: 4px 10px; border-radius: 12px; font-size: 12px; margin: 2px;">${p}</span>`).join('')}</div>
           ` : ''}
+        </div>
+      `;
+    }
+  }
+
+  // Build reading errors section
+  let errorsHtml = '';
+  if (errorClassification) {
+    const substitutions = errorClassification.substitutions || [];
+    const omissions = errorClassification.omissions || [];
+    const mispronunciations = errorClassification.mispronunciations || [];
+    const totalErrors = substitutions.length + omissions.length + mispronunciations.length;
+
+    if (totalErrors > 0) {
+      let errorItems = '';
+
+      // Substitutions
+      if (substitutions.length > 0) {
+        const subList = substitutions.slice(0, 5).map((s: { original: string; read_as: string }) =>
+          `<span style="color: ${COLORS.red}; text-decoration: line-through;">${s.original}</span> → <span style="color: ${COLORS.blue};">${s.read_as}</span>`
+        ).join(', ');
+        errorItems += `
+          <div style="margin-bottom: 10px;">
+            <p style="color: ${COLORS.mediumGray}; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">Substitutions (${substitutions.length})</p>
+            <p style="color: ${COLORS.darkGray}; font-size: 13px; margin: 0; line-height: 1.6;">${subList}${substitutions.length > 5 ? ` <span style="color: ${COLORS.mediumGray};">+${substitutions.length - 5} more</span>` : ''}</p>
+          </div>
+        `;
+      }
+
+      // Omissions
+      if (omissions.length > 0) {
+        const omitList = omissions.slice(0, 8).map((w: string) =>
+          `<span style="display: inline-block; background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px;">${w}</span>`
+        ).join(' ');
+        errorItems += `
+          <div style="margin-bottom: 10px;">
+            <p style="color: ${COLORS.mediumGray}; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">Skipped Words (${omissions.length})</p>
+            <div>${omitList}${omissions.length > 8 ? ` <span style="color: ${COLORS.mediumGray}; font-size: 12px;">+${omissions.length - 8} more</span>` : ''}</div>
+          </div>
+        `;
+      }
+
+      // Mispronunciations
+      if (mispronunciations.length > 0) {
+        const misList = mispronunciations.slice(0, 5).map((m: { word: string; issue: string }) =>
+          `<strong style="color: ${COLORS.purple};">${m.word}</strong>: <span style="color: ${COLORS.mediumGray};">${m.issue}</span>`
+        ).join('<br>');
+        errorItems += `
+          <div>
+            <p style="color: ${COLORS.mediumGray}; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">Mispronunciations (${mispronunciations.length})</p>
+            <p style="color: ${COLORS.darkGray}; font-size: 13px; margin: 0; line-height: 1.6;">${misList}${mispronunciations.length > 5 ? `<br><span style="color: ${COLORS.mediumGray};">+${mispronunciations.length - 5} more</span>` : ''}</p>
+          </div>
+        `;
+      }
+
+      errorsHtml = `
+        <div style="background: white; border-radius: 16px; padding: 20px; margin: 16px 0; border: 1px solid #e5e7eb;">
+          <p style="color: ${COLORS.orange}; font-size: 14px; font-weight: bold; margin: 0 0 12px;">📝 Reading Errors (${totalErrors} found)</p>
+          ${errorItems}
         </div>
       `;
     }
@@ -319,6 +379,7 @@ function buildEmailHtml(data: {
       
       ${skillsHtml}
       ${phonicsHtml}
+      ${errorsHtml}
       ${practiceHtml}
       
       <p style="text-align: center; color: ${COLORS.mediumGray}; font-size: 13px; margin: 16px 0;">
@@ -437,6 +498,7 @@ export async function POST(request: NextRequest) {
       feedback: params.feedback,
       skillBreakdown: params.skillBreakdown,
       phonicsAnalysis: params.phonicsAnalysis,
+      errorClassification: params.errorClassification,
       practiceRecommendations: params.practiceRecommendations,
     });
 

@@ -64,6 +64,30 @@ export async function GET(
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // FETCH PARENT GOALS FROM CHILDREN TABLE
+    // Link via parent_email + child_name
+    // ═══════════════════════════════════════════════════════════════
+
+    let parentGoals: string[] = [];
+    let goalsCapturedAt: string | null = null;
+    let goalsCaptureMethod: string | null = null;
+
+    if (call.parent_email && call.child_name) {
+      const { data: childData } = await supabase
+        .from('children')
+        .select('parent_goals, goals_captured_at, goals_capture_method')
+        .eq('parent_email', call.parent_email)
+        .eq('name', call.child_name)
+        .maybeSingle();
+
+      if (childData) {
+        parentGoals = childData.parent_goals || [];
+        goalsCapturedAt = childData.goals_captured_at;
+        goalsCaptureMethod = childData.goals_capture_method;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // GENERATE AI QUESTIONS
     // Using data from discovery_calls table
     // ═══════════════════════════════════════════════════════════════
@@ -71,7 +95,12 @@ export async function GET(
     const aiQuestions = generateAIQuestions(call);
 
     return NextResponse.json({
-      call,
+      call: {
+        ...call,
+        parent_goals: parentGoals,
+        goals_captured_at: goalsCapturedAt,
+        goals_capture_method: goalsCaptureMethod,
+      },
       aiQuestions
     });
 

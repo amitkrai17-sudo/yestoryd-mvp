@@ -6,11 +6,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Loader2, MessageCircle, CheckCircle, AlertCircle,
-  ChevronDown, ChevronUp, Target, Volume2, Lightbulb, 
+  ChevronDown, ChevronUp, Target, Volume2, Lightbulb,
   BookOpenCheck, Sparkles, BookOpen, Zap, MessageSquare,
   TrendingUp, Download, Share2, AlertTriangle,
 } from 'lucide-react';
 import Confetti from '@/components/Confetti';
+import { GoalsCapture } from '@/components/assessment/GoalsCapture';
 
 // Types
 interface SkillScore { score: number; notes: string; }
@@ -279,10 +280,10 @@ export default function ResultsPage() {
             {data.feedback && (
               <div className="bg-gray-50 rounded-xl p-4 mb-4 text-left border-l-4 border-[#ff0099]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Image 
-                    src="/images/rai-mascot.png" 
-                    alt="rAI" 
-                    width={24} 
+                  <Image
+                    src="/images/rai-mascot.png"
+                    alt="rAI"
+                    width={24}
                     height={24}
                     className="w-6 h-6"
                   />
@@ -291,6 +292,14 @@ export default function ResultsPage() {
                 <p className="text-gray-700 text-sm leading-relaxed">{data.feedback}</p>
               </div>
             )}
+
+            {/* Goals Capture - Optional */}
+            <GoalsCapture
+              childId={childId}
+              childName={data.childName}
+              childAge={parseInt(data.childAge) || 8}
+              className="mb-4"
+            />
 
             {/* Yellow Daily Tip */}
             <div className="bg-[#ffde00] rounded-xl px-4 py-3 mb-4">

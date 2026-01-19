@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { 
-  Phone, MessageCircle, Mail, ArrowLeft, Send, CheckCircle, 
-  User, Clock, Target, Sparkles
+import {
+  Phone, MessageCircle, Mail, ArrowLeft, Send, CheckCircle,
+  User, Clock, Target, Sparkles, Heart
 } from 'lucide-react';
+import { LEARNING_GOALS, LearningGoalId } from '@/lib/constants/goals';
 
 interface DiscoveryCall {
   id: string;
@@ -30,6 +31,10 @@ interface DiscoveryCall {
     email: string;
     phone: string;
   };
+  // Parent goals from children table
+  parent_goals?: string[];
+  goals_captured_at?: string;
+  goals_capture_method?: string;
 }
 
 interface QuestionnaireForm {
@@ -297,6 +302,53 @@ export default function CoachDiscoveryCallDetailPage() {
               <p className="text-xs text-gray-500">Age</p>
             </div>
           </div>
+        </div>
+
+        {/* Parent Goals */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-white font-medium flex items-center gap-2">
+              <Heart className="w-4 h-4 text-pink-500" />
+              Parent Goals
+            </h3>
+            {call.goals_capture_method && (
+              <span className="text-xs text-gray-500 bg-gray-700 px-2 py-1 rounded">
+                via {call.goals_capture_method.replace('_', ' ')}
+              </span>
+            )}
+          </div>
+
+          {call.parent_goals && call.parent_goals.length > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {call.parent_goals.map((goalId) => {
+                  const goal = LEARNING_GOALS[goalId as LearningGoalId];
+                  if (!goal) return null;
+
+                  return (
+                    <span
+                      key={goalId}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5
+                                 bg-pink-900/30 border border-pink-600/30
+                                 rounded-full text-sm text-white"
+                    >
+                      <span>{goal.emoji}</span>
+                      <span>{goal.label}</span>
+                    </span>
+                  );
+                })}
+              </div>
+              {call.goals_captured_at && (
+                <p className="text-xs text-gray-500 mt-3">
+                  Captured {new Date(call.goals_captured_at).toLocaleDateString()}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-gray-500 text-sm italic">
+              Not captured yet — explore during call
+            </p>
+          )}
         </div>
 
         {/* AI Questions Tab */}
