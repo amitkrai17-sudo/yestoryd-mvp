@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next lint app/assessment/page.tsx)",
+      "Bash(npx eslint:*)",
+      "Bash(findstr:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: goals capture enhancement - GoalsCapture on lets-talk and enroll pages, duplicate email fix, two CTAs on results page\n\n- Results page: Add \"Talk to Coach\" CTA going to /lets-talk with goals\n- /lets-talk page: Add GoalsCapture fallback when goals not in URL\n- /enroll page: Add GoalsCapture fallback when goals not in URL\n- Certificate email: Two CTAs - /enroll and /lets-talk with goals\n- /api/children/[id]: New endpoint to fetch child age/goals\n- Duplicate email fix: Idempotency check using certificate_email_sent_at\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

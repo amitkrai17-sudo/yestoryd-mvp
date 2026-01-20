@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, Suspense, useCallback } from 'react';
 import { AudioRecorderCheck } from '@/components/assessment/AudioRecorderCheck';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -279,6 +279,7 @@ function getScoreContext(score: number, age: number) {
 function AssessmentPageContent() {
   // Referral tracking
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [referralData, setReferralData] = useState<{ code: string | null; coachId: string | null }>({ code: null, coachId: null });
 
   // Auth state
@@ -593,8 +594,6 @@ function AssessmentPageContent() {
       if (!response.ok) throw new Error('Analysis failed');
 
       const data = await response.json();
-      setResults(data);
-      setCurrentStep(3);
 
       trackEvent('assessment_completed', {
         child_name: formData.childName,
@@ -602,27 +601,34 @@ function AssessmentPageContent() {
         child_age: formData.childAge
       });
 
-      // Send certificate email
-      try {
-        await fetch('/api/certificate/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            childName: formData.childName,
-            childAge: formData.childAge,
-            parentName: formData.parentName,
-            email: formData.parentEmail,
-            score: data.overall_score,
-            clarity_score: data.clarity_score,
-            fluency_score: data.fluency_score,
-            speed_score: data.speed_score,
-            wpm: data.wpm,
-            feedback: data.feedback,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Certificate email error:', emailError);
+      // Send certificate email (fire and forget - don't block redirect)
+      fetch('/api/certificate/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          childName: formData.childName,
+          childAge: formData.childAge,
+          parentName: formData.parentName,
+          email: formData.parentEmail,
+          score: data.overall_score,
+          clarity_score: data.clarity_score,
+          fluency_score: data.fluency_score,
+          speed_score: data.speed_score,
+          wpm: data.wpm,
+          feedback: data.feedback,
+        }),
+      }).catch(emailError => console.error('Certificate email error:', emailError));
+
+      // Redirect to full results page with detailed analysis, GoalsCapture, etc.
+      if (data.childId) {
+        router.push(`/assessment/results/${data.childId}`);
+        return; // Exit early - redirect will handle the rest
       }
+
+      // Fallback: show inline results if no childId (shouldn't happen)
+      console.warn('No childId in response, falling back to inline results');
+      setResults(data);
+      setCurrentStep(3);
 
     } catch (error) {
       console.error('Analysis error:', error);
@@ -709,7 +715,7 @@ https://yestoryd.com/lets-talk
   // ==================== RENDER ====================
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+    <div className={`min-h-screen bg-gradient-to-b from-gray-50 to-white relative ${currentStep === 2 ? '' : 'overflow-hidden'}`}>
       {/* Subtle Background Accents */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-0 right-0 w-96 h-96 bg-pink-100/50 rounded-full blur-[120px]" />
@@ -1005,155 +1011,66 @@ https://yestoryd.com/lets-talk
               </div>
             )}
 
-            {/* STEP 2: RECORD - PAPER MODE PASSAGE */}
+            {/* STEP 2: RECORD - Content only (sticky bar rendered at root level) */}
             {currentStep === 2 && passage && (
-              <div className="space-y-6">
-                {/* PAPER MODE PASSAGE CARD */}
-                  {/* Browser Compatibility Check */}
-                  <AudioRecorderCheck onReady={handleAudioReady} />
+              <div className="space-y-4 pb-56">
+                {/* Browser Compatibility Check */}
+                <AudioRecorderCheck onReady={handleAudioReady} />
 
-                <div className="bg-white rounded-2xl p-6 shadow-2xl border-l-8 border-pink-500 relative overflow-hidden">
+                {/* Visual cue to scroll/record */}
+                <div className="flex items-center justify-center gap-2 text-pink-600 text-sm font-medium animate-pulse">
+                  <span>Read aloud, then tap the mic below</span>
+                  <ChevronDown className="w-4 h-4 animate-bounce" />
+                </div>
+
+                {/* PASSAGE CARD */}
+                <div className="bg-white rounded-2xl p-5 md:p-6 shadow-xl border-l-4 border-pink-500 relative overflow-hidden">
                   {/* Paper corner fold effect */}
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-gray-100 to-transparent -mr-8 -mt-8 rotate-45"></div>
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-gray-100 to-transparent -mr-6 -mt-6 rotate-45"></div>
 
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <div className="bg-pink-100 p-2 rounded-lg">
-                        <BookOpen className="w-5 h-5 text-pink-600" />
+                      <div className="bg-pink-100 p-1.5 rounded-lg">
+                        <BookOpen className="w-4 h-4 text-pink-600" />
                       </div>
-                      <span className="text-gray-600 text-sm font-bold uppercase tracking-wider">
+                      <span className="text-gray-600 text-xs font-bold uppercase tracking-wider">
                         Read Aloud
                       </span>
                     </div>
-                    <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
+                    <div className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
                       {passage.level}
                     </div>
                   </div>
 
                   {/* The Text - Optimized for Reading */}
-                  <p className="text-gray-900 text-xl md:text-2xl leading-[1.8] font-medium antialiased" style={{ fontFamily: 'Georgia, serif' }}>
+                  <p className="text-gray-900 text-lg md:text-xl leading-[1.9] font-medium antialiased" style={{ fontFamily: 'Georgia, serif' }}>
                     {passage.text}
                   </p>
 
-                  {/* Expected time */}
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-gray-400 text-sm">
-                    <Clock className="w-4 h-4" />
-                    <span>Expected time: {passage.readingTime}</span>
+                  {/* Expected time + tip */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-gray-400 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{passage.readingTime}</span>
+                    </div>
+                    <span>Accuracy &gt; Speed</span>
                   </div>
                 </div>
 
-                {/* Instructions */}
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                  <h4 className="text-gray-900 font-medium mb-2 flex items-center gap-2">
-                    <Volume2 className="w-4 h-4 text-pink-500" />
-                    Instructions for {formData.childName}
-                  </h4>
-                  <ol className="text-gray-600 text-sm space-y-1">
-                    <li>1. Read the entire passage aloud clearly</li>
-                    <li>2. Take your time - accuracy matters more than speed</li>
-                    <li>3. Click the red button when finished</li>
-                  </ol>
-                </div>
-
-                {/* IMPROVED Recording Controls */}
-                <div className="flex flex-col items-center gap-6">
-                  {/* Timer - Hero during recording */}
-                  <div className={`font-mono text-4xl font-bold tracking-widest transition-all duration-300 ${isRecording
-                    ? 'text-red-500 scale-110 drop-shadow-[0_0_15px_rgba(255,0,0,0.3)]'
-                    : 'text-gray-400'
-                    }`}>
-                    {formatTime(recordingTime)}
-                  </div>
-
-                  {!audioBlob ? (
-                    <div className="relative">
-                      {/* Pulse rings when recording */}
-                      {isRecording && (
-                        <>
-                          <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-50"></div>
-                          <div className="absolute inset-[-12px] rounded-full border-2 border-red-500/30 animate-pulse"></div>
-                        </>
-                      )}
-
-                      <button
-                        onClick={isRecording ? stopRecording : startRecording}
-                        className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xl z-10 border-4 ${isRecording
-                          ? 'bg-red-600 border-red-400 scale-95'
-                          : 'border-white hover:scale-105'
-                          }`}
-                        style={!isRecording ? { background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` } : {}}
-                      >
-                        {isRecording ? (
-                          <Square className="w-10 h-10 text-white fill-white" />
-                        ) : (
-                          <Mic className="w-10 h-10 text-white" />
-                        )}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={togglePlayback}
-                        className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center hover:bg-blue-600 transition-colors shadow-lg"
-                      >
-                        {isPlaying ? (
-                          <Pause className="w-8 h-8 text-white" />
-                        ) : (
-                          <Play className="w-8 h-8 text-white ml-1" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={resetRecording}
-                        className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
-                      >
-                        <RotateCcw className="w-7 h-7 text-gray-600" />
-                      </button>
-                    </div>
-                  )}
-
-                  {audioUrl && (
-                    <audio
-                      ref={audioRef}
-                      src={audioUrl}
-                      onEnded={() => setIsPlaying(false)}
-                    />
-                  )}
-
-                  {/* Clearer text states */}
-                  <p className={`text-sm font-medium ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
-                    {isRecording ? '?? RECORDING... Tap square to stop' :
-                      audioBlob ? '? Recording complete! Review or re-record' :
-                        '?? Tap microphone to start recording'}
+                {/* Condensed Instructions */}
+                <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+                  <p className="text-gray-600 text-sm flex items-center gap-2">
+                    <Volume2 className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                    <span>Let {formData.childName} read clearly. Tap <strong>stop</strong> when done.</span>
                   </p>
                 </div>
 
-                {audioBlob && (
-                  <button
-                    onClick={handleSubmitRecording}
-                    disabled={isAnalyzing}
-                    className="w-full font-bold py-4 px-6 rounded-2xl text-white transition-all duration-300 hover:scale-[1.02] shadow-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` }}
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        rAI is analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-5 h-5" />
-                        Get Results
-                      </>
-                    )}
-                  </button>
-                )}
-
+                {/* Back button - in scrollable area */}
                 <button
                   onClick={() => setCurrentStep(1)}
-                  className="w-full py-3 text-gray-500 hover:text-gray-900 transition-colors text-sm"
+                  className="w-full py-2 text-gray-400 hover:text-gray-600 transition-colors text-sm"
                 >
-                  ? Go back to details
+                  ← Edit details
                 </button>
               </div>
             )}
@@ -1371,6 +1288,122 @@ https://yestoryd.com/lets-talk
           ))}
         </div>
       </main>
+
+      {/* STICKY BOTTOM BAR - Recording Controls (rendered at ROOT level for proper fixed positioning) */}
+      {currentStep === 2 && passage && (
+        <div
+          className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-50"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+        >
+          <div className="max-w-lg mx-auto px-4 pt-4">
+            {/* Hidden audio element */}
+            {audioUrl && (
+              <audio
+                ref={audioRef}
+                src={audioUrl}
+                onEnded={() => setIsPlaying(false)}
+              />
+            )}
+
+            {/* Main controls row */}
+            <div className="flex items-center justify-between gap-4">
+              {/* Timer */}
+              <div className={`font-mono text-2xl font-bold tracking-wider transition-all duration-300 min-w-[70px] ${
+                isRecording
+                  ? 'text-red-500 drop-shadow-[0_0_10px_rgba(255,0,0,0.3)]'
+                  : audioBlob ? 'text-green-600' : 'text-gray-400'
+              }`}>
+                {formatTime(recordingTime)}
+              </div>
+
+              {/* Record/Playback Button */}
+              {!audioBlob ? (
+                <div className="relative">
+                  {/* Pulse rings when recording */}
+                  {isRecording && (
+                    <>
+                      <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-40"></div>
+                      <div className="absolute inset-[-8px] rounded-full border-2 border-red-500/30 animate-pulse"></div>
+                    </>
+                  )}
+                  <button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`relative w-16 h-16 min-w-[64px] min-h-[64px] rounded-full flex items-center justify-center transition-all duration-200 shadow-xl z-10 border-4 ${
+                      isRecording
+                        ? 'bg-red-600 border-red-400 scale-95'
+                        : 'border-white hover:scale-105 active:scale-95'
+                    }`}
+                    style={!isRecording ? { background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` } : {}}
+                  >
+                    {isRecording ? (
+                      <Square className="w-7 h-7 text-white fill-white" />
+                    ) : (
+                      <Mic className="w-7 h-7 text-white" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={togglePlayback}
+                    className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-blue-500 flex items-center justify-center hover:bg-blue-600 active:scale-95 transition-all shadow-lg"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-6 h-6 text-white" />
+                    ) : (
+                      <Play className="w-6 h-6 text-white ml-0.5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={resetRecording}
+                    className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"
+                  >
+                    <RotateCcw className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              )}
+
+              {/* Status text */}
+              <div className={`text-sm font-medium text-right min-w-[90px] ${
+                isRecording ? 'text-red-500' : audioBlob ? 'text-green-600' : 'text-gray-500'
+              }`}>
+                {isRecording ? (
+                  <span className="flex items-center gap-1 justify-end">
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    Recording...
+                  </span>
+                ) : audioBlob ? (
+                  <span>Done! ✓</span>
+                ) : (
+                  <span>Tap to start</span>
+                )}
+              </div>
+            </div>
+
+            {/* Submit button - appears after recording */}
+            {audioBlob && (
+              <button
+                onClick={handleSubmitRecording}
+                disabled={isAnalyzing}
+                className="w-full mt-4 font-bold py-4 px-6 rounded-2xl text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` }}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    rAI is analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Get Results
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

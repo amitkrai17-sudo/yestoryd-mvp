@@ -12,16 +12,18 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   CheckCircle, Clock, Video, Heart, Award, MessageCircle,
   ArrowRight, Loader2, Calendar, Sparkles, Shield, Users,
   User, Phone, Mail, Baby, Brain, Eye, PhoneCall,
-  ChevronLeft, Check,
+  ChevronLeft, Check, Target,
 } from 'lucide-react';
 import FlightStyleSlotPicker from '@/components/booking/FlightStyleSlotPicker';
+import { GoalsCapture } from '@/components/assessment/GoalsCapture';
+import { LEARNING_GOALS } from '@/lib/constants/goals';
 
 // ============================================================
 // TYPES
@@ -52,6 +54,36 @@ function LetsTalkContent() {
     childAge: searchParams.get('childAge') || '',
     childId: searchParams.get('childId') || '',
   });
+
+  // Goals state - for GoalsCapture fallback
+  const goalsParam = searchParams.get('goals') || '';
+  const [goals, setGoals] = useState<string[]>(
+    goalsParam ? goalsParam.split(',').filter(g => g in LEARNING_GOALS) : []
+  );
+
+  // Fetch child data if goals not in URL but childId exists
+  useEffect(() => {
+    const childId = formData.childId;
+    if (childId && goals.length === 0) {
+      fetch(`/api/children/${childId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.parent_goals?.length > 0) {
+            setGoals(data.parent_goals);
+          }
+          // Also update age if missing
+          if (data.age && !formData.childAge) {
+            setFormData(prev => ({ ...prev, childAge: data.age.toString() }));
+          }
+        })
+        .catch(console.error);
+    }
+  }, [formData.childId]);
+
+  // Display name for child
+  const displayChildName = formData.childName
+    ? formData.childName.charAt(0).toUpperCase() + formData.childName.slice(1).toLowerCase()
+    : 'Your Child';
 
   // Booking flow state
   const [step, setStep] = useState<'form' | 'slots' | 'success'>('form');
@@ -115,9 +147,11 @@ function LetsTalkContent() {
           parentPhone: formData.parentPhone,
           childName: formData.childName,
           childAge: formData.childAge,
+          childId: formData.childId || undefined,
           slotDate: selectedSlot.date,
           slotTime: selectedSlot.time,
           source: source || 'lets-talk',
+          goals: goals.length > 0 ? goals : undefined,
         }),
       });
 
@@ -327,6 +361,41 @@ function LetsTalkContent() {
                   </div>
 
                   <form onSubmit={handleFormSubmit} className="p-5 space-y-4">
+                    {/* GOALS SECTION - Show badges OR GoalsCapture fallback */}
+                    {goals.length > 0 ? (
+                      <div className="bg-gradient-to-r from-[#FF0099]/10 to-[#7b008b]/10 rounded-xl p-4 border border-pink-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-4 h-4 text-[#FF0099]" />
+                          <p className="text-gray-700 font-semibold text-sm">
+                            {displayChildName}&apos;s focus areas:
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {goals.map((goalId) => {
+                            const goal = LEARNING_GOALS[goalId];
+                            if (!goal) return null;
+                            return (
+                              <span
+                                key={goalId}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 border border-gray-200 shadow-sm"
+                              >
+                                {goal.emoji} {goal.shortLabel || goal.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : formData.childId ? (
+                      <div className="bg-gradient-to-r from-[#FF0099]/10 to-[#7b008b]/10 rounded-xl p-4 border border-pink-200">
+                        <GoalsCapture
+                          childId={formData.childId}
+                          childName={displayChildName}
+                          childAge={formData.childAge ? parseInt(formData.childAge) : 7}
+                          onGoalsSaved={(savedGoals) => setGoals(savedGoals)}
+                        />
+                      </div>
+                    ) : null}
+
                     {/* Parent Name */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Name</label>

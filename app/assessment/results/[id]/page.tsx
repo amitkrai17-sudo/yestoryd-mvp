@@ -27,13 +27,16 @@ interface AssessmentData {
 
 // Score-based messaging (matching email)
 function getScoreMessage(score: number, childName: string, age: string) {
+  // Use first name only for shorter CTA text
+  const firstName = childName.split(' ')[0];
+
   if (score >= 8) return {
     headline: `${childName} Is Doing Amazingly!`,
     subheadline: 'A true reading champion',
     emoji: '⭐',
     encouragement: `${score}/10 is excellent for age ${age}! Advanced coaching can take skills even higher.`,
     dailyTip: `Keep reading daily, ${childName.toLowerCase()}! Every page makes you stronger.`,
-    ctaText: `Unlock ${childName.toLowerCase()}'s Full Potential`,
+    ctaText: `Boost ${firstName}'s Reading`,
   };
   if (score >= 6) return {
     headline: `${childName} Shows Great Potential!`,
@@ -41,7 +44,7 @@ function getScoreMessage(score: number, childName: string, age: string) {
     emoji: '🌟',
     encouragement: `${score}/10 shows promise for age ${age}! A few sessions can unlock their full ability.`,
     dailyTip: `Practice makes perfect, ${childName.toLowerCase()}! You're getting better every day.`,
-    ctaText: `Unlock ${childName.toLowerCase()}'s Full Potential`,
+    ctaText: `Boost ${firstName}'s Reading`,
   };
   if (score >= 4) return {
     headline: `${childName} Is On The Right Track!`,
@@ -49,7 +52,7 @@ function getScoreMessage(score: number, childName: string, age: string) {
     emoji: '📖',
     encouragement: `${score}/10 is a great start for age ${age}! Targeted coaching will accelerate progress.`,
     dailyTip: `Every small step counts, ${childName.toLowerCase()}! Keep going!`,
-    ctaText: `Accelerate ${childName.toLowerCase()}'s Progress`,
+    ctaText: `Boost ${firstName}'s Reading`,
   };
   return {
     headline: `${childName} Has Taken The First Step!`,
@@ -57,7 +60,7 @@ function getScoreMessage(score: number, childName: string, age: string) {
     emoji: '🚀',
     encouragement: `Our coaches specialize in building strong foundations for age ${age}. Let's begin!`,
     dailyTip: `The journey of a thousand books begins with one page, ${childName.toLowerCase()}!`,
-    ctaText: `Get ${childName.toLowerCase()} Started`,
+    ctaText: `Start ${firstName}'s Journey`,
   };
 }
 
@@ -118,6 +121,7 @@ export default function ResultsPage() {
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -134,24 +138,25 @@ export default function ResultsPage() {
     fetchData();
   }, [childId]);
 
-  const sendCertificateEmail = useCallback(async () => {
+  const sendCertificateEmail = useCallback(async (goals?: string[]) => {
     if (!data?.parentEmail || emailSent || sendingEmail) return;
     setSendingEmail(true);
     try {
       const res = await fetch('/api/certificate/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: data.parentEmail, childName: data.childName, childAge: data.childAge,
+          email: data.parentEmail, childName: data.childName, childId, childAge: data.childAge,
           score: data.overall_score, wpm: data.wpm,
           clarityScore: data.clarity_score, fluencyScore: data.fluency_score, speedScore: data.speed_score,
           feedback: data.feedback, strengths: data.strengths, areasToImprove: data.areas_to_improve,
           phonicsAnalysis: data.phonics_analysis, skillBreakdown: data.skill_breakdown,
           errorClassification: data.error_classification, practiceRecommendations: data.practice_recommendations,
+          goals: goals || [],
         }),
       });
       if (res.ok) setEmailSent(true);
     } catch {} finally { setSendingEmail(false); }
-  }, [data, emailSent, sendingEmail]);
+  }, [data, childId, emailSent, sendingEmail]);
 
   useEffect(() => { if (data) sendCertificateEmail(); }, [data, sendCertificateEmail]);
 
@@ -184,7 +189,11 @@ export default function ResultsPage() {
   );
 
   const msg = getScoreMessage(data.overall_score, data.childName, data.childAge);
-  const checkoutUrl = `/checkout?childId=${childId}&childName=${encodeURIComponent(data.childName)}&parentEmail=${encodeURIComponent(data.parentEmail)}&parentPhone=${encodeURIComponent(data.parentPhone || '')}&source=assessment`;
+  const goalsParam = selectedGoals.length > 0 ? `&goals=${encodeURIComponent(selectedGoals.join(','))}` : '';
+  const baseParams = `childId=${childId}&childName=${encodeURIComponent(data.childName)}&childAge=${encodeURIComponent(data.childAge)}&parentEmail=${encodeURIComponent(data.parentEmail)}&parentPhone=${encodeURIComponent(data.parentPhone || '')}`;
+  const checkoutUrl = `/checkout?${baseParams}&source=assessment${goalsParam}`;
+  const enrollUrl = `/enroll?${baseParams}&source=results${goalsParam}`;
+  const bookCallUrl = `/lets-talk?${baseParams}&source=results${goalsParam}`;
 
   const totalErrors = data.error_classification ? 
     (data.error_classification.substitutions?.length || 0) + (data.error_classification.omissions?.length || 0) + 
@@ -299,6 +308,7 @@ export default function ResultsPage() {
               childName={data.childName}
               childAge={parseInt(data.childAge) || 8}
               className="mb-4"
+              onGoalsSaved={(goals) => setSelectedGoals(goals)}
             />
 
             {/* Yellow Daily Tip */}
@@ -309,17 +319,17 @@ export default function ResultsPage() {
             <p className="text-gray-500 text-sm mb-4">❤️ Join 100+ families already improving</p>
 
             {/* CTA Button */}
-            <Link href={checkoutUrl}>
-              <button className="w-full py-4 bg-gradient-to-r from-[#ff0099] to-[#ff6b6b] text-white font-bold rounded-xl text-lg hover:opacity-90 shadow-lg mb-3">
+            <Link href={enrollUrl}>
+              <button className="w-full py-4 bg-gradient-to-r from-[#ff0099] to-[#ff6b6b] text-white font-bold rounded-xl text-base hover:opacity-90 shadow-lg mb-3 whitespace-nowrap">
                 🚀 {msg.ctaText}
               </button>
             </Link>
 
             <p className="text-gray-400 text-xs">100% Refund Guarantee • Start within 3-5 days</p>
 
-            <Link href={`/lets-talk?source=assessment&childName=${encodeURIComponent(data.childName)}&parentEmail=${encodeURIComponent(data.parentEmail)}`}>
-              <button className="w-full mt-4 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50">
-                🎁 Have Questions? Talk to Coach First
+            <Link href={bookCallUrl}>
+              <button className="w-full mt-4 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50 whitespace-nowrap text-sm">
+                📅 Questions? Talk to Coach
               </button>
             </Link>
 

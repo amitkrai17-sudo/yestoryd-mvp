@@ -60,7 +60,8 @@ const CertificateSchema = z.object({
   childName: z.string().min(1, 'Child name required').max(100),
   childAge: z.union([z.string(), z.number()]).optional(),
   childId: z.string().uuid().optional(), // For audit trail
-  
+  goals: z.array(z.string()).optional(), // Learning goals from GoalsCapture
+
   // Scores
   score: z.number().min(0).max(10).optional().default(0),
   wpm: z.number().min(0).max(500).optional().default(0),
@@ -121,6 +122,8 @@ function getScoreColor(score: number): string {
 function buildEmailHtml(data: {
   childName: string;
   childAge: string;
+  childId?: string;
+  goals?: string[];
   finalScore: number;
   finalFluencyScore: number;
   finalClarityScore: number;
@@ -132,7 +135,14 @@ function buildEmailHtml(data: {
   errorClassification?: any;
   practiceRecommendations?: any;
 }): string {
-  const { childName, childAge, finalScore, finalFluencyScore, finalClarityScore, finalSpeedScore, finalWpm, feedback, skillBreakdown, phonicsAnalysis, errorClassification, practiceRecommendations } = data;
+  const { childName, childAge, childId, goals, finalScore, finalFluencyScore, finalClarityScore, finalSpeedScore, finalWpm, feedback, skillBreakdown, phonicsAnalysis, errorClassification, practiceRecommendations } = data;
+
+  // Build goals URL param for CTAs
+  const goalsParam = goals && goals.length > 0
+    ? `&goals=${encodeURIComponent(goals.join(','))}`
+    : '';
+  const childIdParam = childId ? `&childId=${childId}` : '';
+  const childNameParam = `&childName=${encodeURIComponent(childName)}`;
   
   const { headline, subheadline } = getHeadline(finalScore, childName);
   const insight = getInsight(finalScore, parseInt(childAge) || 8);
@@ -386,16 +396,16 @@ function buildEmailHtml(data: {
         ❤️ Join 100+ families already improving
       </p>
       
-      <a href="https://yestoryd.com/checkout?source=email" style="display: block; background: ${COLORS.pink}; color: white; padding: 16px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 16px; text-align: center; margin-bottom: 12px;">
-        🚀 Unlock ${childName}'s Full Potential
+      <a href="https://yestoryd.com/enroll?source=email${childIdParam}${childNameParam}${goalsParam}" style="display: block; background: ${COLORS.pink}; color: white; padding: 16px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 16px; text-align: center; margin-bottom: 12px;">
+        🚀 Boost ${childName}'s Reading
       </a>
-      
+
       <p style="text-align: center; color: ${COLORS.mediumGray}; font-size: 12px; margin: 0 0 16px;">
         100% Refund Guarantee • Start within 3-5 days
       </p>
-      
-      <a href="https://yestoryd.com/lets-talk?source=email" style="display: block; background: white; color: ${COLORS.darkGray}; padding: 14px; border-radius: 30px; text-decoration: none; font-weight: 600; font-size: 14px; text-align: center; border: 1px solid #e5e7eb;">
-        📅 Have Questions? Talk to Coach First
+
+      <a href="https://yestoryd.com/lets-talk?source=email${childIdParam}${childNameParam}${goalsParam}" style="display: block; background: white; color: ${COLORS.darkGray}; padding: 14px; border-radius: 30px; text-decoration: none; font-weight: 600; font-size: 14px; text-align: center; border: 1px solid #e5e7eb;">
+        📅 Questions? Talk to Coach
       </a>
       
       <p style="text-align: center; color: ${COLORS.mediumGray}; font-size: 11px; margin: 20px 0 0;">
@@ -450,7 +460,37 @@ export async function POST(request: NextRequest) {
     const params = validation.data;
     const { email, childName, childId } = params;
 
-    // 3. Rate limiting
+    // 3. IDEMPOTENCY CHECK - Prevent duplicate emails
+    if (childId) {
+      const { data: child } = await getSupabase()
+        .from('children')
+        .select('certificate_email_sent_at')
+        .eq('id', childId)
+        .single();
+
+      if (child?.certificate_email_sent_at) {
+        const lastSent = new Date(child.certificate_email_sent_at);
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+        if (lastSent > fiveMinutesAgo) {
+          console.log(JSON.stringify({
+            requestId,
+            event: 'certificate_skipped_duplicate',
+            childId,
+            lastSentAt: child.certificate_email_sent_at,
+          }));
+
+          return NextResponse.json({
+            success: true,
+            message: 'Email already sent recently',
+            skipped: true,
+            lastSentAt: child.certificate_email_sent_at,
+          });
+        }
+      }
+    }
+
+    // 5. Rate limiting
     const rateLimit = checkRateLimit(email);
     if (!rateLimit.success) {
       console.log(JSON.stringify({
@@ -478,7 +518,7 @@ export async function POST(request: NextRequest) {
       score: params.score,
     }));
 
-    // 4. Prepare scores
+    // 6. Prepare scores
     const finalScore = params.score || 0;
     const finalFluencyScore = params.fluencyScore ?? params.fluency_score ?? finalScore;
     const finalClarityScore = params.clarityScore ?? params.clarity_score ?? finalScore;
@@ -486,10 +526,12 @@ export async function POST(request: NextRequest) {
     const finalWpm = params.wpm || 0;
     const finalAge = params.childAge?.toString() || '';
 
-    // 5. Build email HTML
+    // 7. Build email HTML
     const emailHtml = buildEmailHtml({
       childName,
       childAge: finalAge,
+      childId,
+      goals: (body as any).goals,
       finalScore,
       finalFluencyScore,
       finalClarityScore,
@@ -502,20 +544,37 @@ export async function POST(request: NextRequest) {
       practiceRecommendations: params.practiceRecommendations,
     });
 
-    // 6. Send email
+    // 8. Send email
     initSendGrid();
-    
+
     await sgMail.send({
       to: email,
-      from: { 
-        email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com', 
-        name: 'Yestoryd - Reading Coach' 
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
+        name: 'Yestoryd - Reading Coach'
       },
       subject: `⭐ ${childName}'s Reading Assessment Report - Score: ${finalScore}/10`,
       html: emailHtml,
     });
 
-    // 7. Audit log
+    console.log(`[Certificate] Email sent to ${email} for child ${childId || 'unknown'}`);
+
+    // 9. MARK EMAIL AS SENT - For idempotency
+    if (childId) {
+      const { error: updateError } = await getSupabase()
+        .from('children')
+        .update({
+          certificate_email_sent_at: new Date().toISOString()
+        })
+        .eq('id', childId);
+
+      if (updateError) {
+        console.error('[Certificate] Failed to update sent timestamp:', updateError);
+        // Don't throw - email was still sent successfully
+      }
+    }
+
+    // 10. Audit log
     try {
       const supabase = getServiceSupabase();
       await supabase.from('communication_logs').insert({
@@ -537,7 +596,7 @@ export async function POST(request: NextRequest) {
       console.error('Audit log failed (non-blocking):', logError);
     }
 
-    // 8. Return success
+    // 11. Return success
     const duration = Date.now() - startTime;
 
     console.log(JSON.stringify({

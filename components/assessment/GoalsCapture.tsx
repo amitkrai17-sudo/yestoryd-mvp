@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { LEARNING_GOALS, getGoalsForAge, LearningGoalId } from '@/lib/constants/goals';
-import { Check } from 'lucide-react';
 
 interface GoalsCaptureProps {
   childId: string;
@@ -70,17 +69,19 @@ export function GoalsCapture({
   if (availableGoals.length === 0) return null;
 
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden ${className}`}>
-      <div className="p-4 border-b border-gray-100">
-        <p className="text-gray-800 font-semibold text-center">
+    <div className={`space-y-4 ${className}`}>
+      {/* Header */}
+      <div className="text-center px-2">
+        <p className="text-gray-800 text-base font-semibold">
           Beyond reading, what else would help {childName}?
         </p>
-        <p className="text-gray-500 text-sm text-center mt-1">
+        <p className="text-gray-500 text-xs mt-1">
           Optional — helps us prepare for your session
         </p>
       </div>
 
-      <div className="p-4 space-y-3">
+      {/* Goals Grid - 2 columns */}
+      <div className="grid grid-cols-2 gap-3">
         {availableGoals.map((goalId) => {
           const goal = LEARNING_GOALS[goalId];
           const isSelected = selectedGoals.has(goalId);
@@ -90,35 +91,31 @@ export function GoalsCapture({
               key={goalId}
               onClick={() => toggleGoal(goalId)}
               className={`
-                w-full flex items-center justify-between
+                relative flex flex-col items-center justify-center
                 p-4 rounded-xl border-2 transition-all
-                min-h-[56px] touch-manipulation
+                min-h-[90px] touch-manipulation
                 ${isSelected
-                  ? 'border-[#ff0099] bg-pink-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                  ? 'border-[#FF0099] bg-[#FF0099]/10'
+                  : 'border-gray-200 bg-white hover:border-gray-300 active:scale-[0.98]'
                 }
               `}
             >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{goal.emoji}</span>
-                <span className={`text-base ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
-                  {goal.label}
-                </span>
-              </div>
+              {/* Emoji */}
+              <span className="text-3xl mb-2">{goal.emoji}</span>
 
-              {/* Custom checkbox */}
-              <div className={`
-                w-6 h-6 rounded-md border-2 flex items-center justify-center
-                transition-all flex-shrink-0
-                ${isSelected
-                  ? 'border-[#ff0099] bg-[#ff0099]'
-                  : 'border-gray-300'
-                }
-              `}>
-                {isSelected && (
-                  <Check className="w-4 h-4 text-white" strokeWidth={3} />
-                )}
-              </div>
+              {/* Label - use shortLabel for mobile */}
+              <span className={`text-sm text-center leading-tight font-medium ${isSelected ? 'text-[#FF0099]' : 'text-gray-700'}`}>
+                {goal.shortLabel || goal.label}
+              </span>
+
+              {/* Checkmark indicator - top right corner */}
+              {isSelected && (
+                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#FF0099] flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
             </button>
           );
         })}
@@ -126,11 +123,9 @@ export function GoalsCapture({
 
       {/* Status indicator */}
       {(isSaving || hasSaved) && (
-        <div className="px-4 pb-4">
-          <p className={`text-xs text-center ${isSaving ? 'text-gray-400' : 'text-green-600'}`}>
-            {isSaving ? 'Saving...' : '✓ Preferences saved'}
-          </p>
-        </div>
+        <p className={`text-center text-xs ${isSaving ? 'text-gray-400' : 'text-green-600 font-medium'}`}>
+          {isSaving ? 'Saving...' : '✓ Preferences saved'}
+        </p>
       )}
     </div>
   );

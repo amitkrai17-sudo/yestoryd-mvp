@@ -63,8 +63,11 @@ const BookDiscoverySchema = z.object({
       const [hours] = v.split(':').map(Number);
       return hours >= 6 && hours <= 21; // 9 AM to 8 PM
     }, 'Booking hours: 6 AM - 9 PM'),
-  
+
   source: z.string().max(50).default('lets-talk'),
+
+  // Goals captured from assessment results page
+  goals: z.array(z.string()).optional(),
 });
 
 // --- 2. TYPES ---
@@ -460,6 +463,8 @@ export async function POST(request: NextRequest) {
         slot_date: body.slotDate,
         slot_time: body.slotTime,
         source: body.source,
+        // Goals from assessment
+        parent_goals: body.goals || [],
         // Coach assignment
         assigned_coach_id: assignedCoach?.id || null,
         assignment_type: assignedCoach ? 'auto' : 'pending',
@@ -510,6 +515,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // 9. Link to existing child if applicable
+    let linkedChildId = body.childId || null;
     if (!body.childId) {
       const { data: existingChild } = await supabase
         .from('children')
@@ -520,6 +526,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (existingChild) {
+        linkedChildId = existingChild.id;
         await supabase
           .from('discovery_calls')
           .update({ child_id: existingChild.id })
@@ -527,7 +534,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 10. Queue Notification (async, non-blocking)
+    // 10. Update children table with goals if provided
+    if (body.goals && body.goals.length > 0 && linkedChildId) {
+      await supabase
+        .from('children')
+        .update({
+          parent_goals: body.goals,
+          goals_captured_at: new Date().toISOString(),
+          goals_capture_method: 'discovery_booking',
+        })
+        .eq('id', linkedChildId);
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'goals_saved_to_child',
+        childId: linkedChildId,
+        goals: body.goals,
+      }));
+    }
+
+    // 11. Queue Notification (async, non-blocking)
     await sendBookingNotification(
       {
         phone: body.parentPhone,
@@ -541,7 +567,7 @@ export async function POST(request: NextRequest) {
       requestId
     );
 
-    // 11. Final Response
+    // 12. Final Response
     const duration = Date.now() - startTime;
     console.log(JSON.stringify({
       requestId,

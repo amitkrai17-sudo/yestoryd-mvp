@@ -35,7 +35,10 @@ import {
   Ticket,
   X,
   Check,
+  Target,
 } from 'lucide-react';
+import { LEARNING_GOALS, LearningGoalId } from '@/lib/constants/goals';
+import { GoalsCapture } from '@/components/assessment/GoalsCapture';
 
 declare global {
   interface Window {
@@ -153,6 +156,42 @@ function EnrollContent() {
 
   const source = searchParams.get('source') || 'direct';
   const discoveryCallId = searchParams.get('discoveryCallId') || '';
+  const childId = searchParams.get('childId') || '';
+
+  // Parse goals from URL params - convert to state for GoalsCapture fallback
+  const goalsParam = searchParams.get('goals') || '';
+  const [goals, setGoals] = useState<string[]>(
+    goalsParam ? goalsParam.split(',').filter(g => g in LEARNING_GOALS) : []
+  );
+
+  // Child age state - needed for GoalsCapture
+  const childAgeParam = searchParams.get('childAge');
+  const [childAgeForGoals, setChildAgeForGoals] = useState<number>(
+    childAgeParam ? parseInt(childAgeParam) : parseInt(formData.childAge) || 7
+  );
+
+  // Fetch child data if age not in URL but childId exists
+  useEffect(() => {
+    if (childId && !childAgeParam && !formData.childAge) {
+      fetch(`/api/children/${childId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.age) {
+            setChildAgeForGoals(data.age);
+            setFormData(prev => ({ ...prev, childAge: data.age.toString() }));
+          }
+          if (data.parent_goals?.length > 0 && goals.length === 0) {
+            setGoals(data.parent_goals);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [childId, childAgeParam, formData.childAge]);
+
+  // Capitalize childName for display
+  const displayChildName = formData.childName
+    ? formData.childName.charAt(0).toUpperCase() + formData.childName.slice(1).toLowerCase()
+    : 'your child';
 
   // WhatsApp - uses dynamic coach name
   const whatsappNumber = '918976287997';
@@ -528,6 +567,43 @@ function EnrollContent() {
                 <p className="text-amber-600 text-xs">Only 3 spots left for January batch</p>
               </div>
             </div>
+
+            {/* GOALS SECTION - Show badges OR GoalsCapture fallback */}
+            {goals.length > 0 ? (
+              // Show badges if goals captured
+              <div className="bg-gradient-to-r from-[#FF0099]/10 to-[#00ABFF]/10 rounded-xl p-4 border border-pink-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-[#FF0099]" />
+                  <p className="text-gray-700 font-semibold text-sm">
+                    {displayChildName}&apos;s focus areas:
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {goals.map((goalId) => {
+                    const goal = LEARNING_GOALS[goalId];
+                    if (!goal) return null;
+                    return (
+                      <span
+                        key={goalId}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 border border-gray-200 shadow-sm"
+                      >
+                        {goal.emoji} {goal.shortLabel || goal.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : childId ? (
+              // Show GoalsCapture if no goals yet but we have childId
+              <div className="bg-gradient-to-r from-[#FF0099]/10 to-[#00ABFF]/10 rounded-xl p-4 border border-pink-200">
+                <GoalsCapture
+                  childId={childId}
+                  childName={displayChildName}
+                  childAge={childAgeForGoals}
+                  onGoalsSaved={(savedGoals) => setGoals(savedGoals)}
+                />
+              </div>
+            ) : null}
 
             {/* Coach Card - DYNAMIC from site_settings */}
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
