@@ -36,7 +36,8 @@ import {
   Shield,
   Rocket,
   Heart,
-  Brain
+  Brain,
+  Lock,
 } from 'lucide-react';
 
 // ==================== ANALYTICS ====================
@@ -1005,8 +1006,9 @@ https://yestoryd.com/lets-talk
                   Start Free Assessment
                 </button>
 
-                <p className="text-center text-gray-400 text-xs">
-                  ?? Your information is secure and will never be shared
+                <p className="text-center text-gray-400 text-xs flex items-center justify-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5" />
+                  Your information is secure and will never be shared
                 </p>
               </div>
             )}
