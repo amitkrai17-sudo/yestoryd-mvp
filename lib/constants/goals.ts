@@ -27,7 +27,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     shortLabel: 'Grammar',
     emoji: '✏️',
     description: 'Sentence structure, tenses, parts of speech',
-    minAge: 6,
+    minAge: 4,
     maxAge: 12,
   },
   comprehension: {
@@ -36,7 +36,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     shortLabel: 'Comprehension',
     emoji: '🧠',
     description: 'Understanding, inference, analysis',
-    minAge: 6,
+    minAge: 4,
     maxAge: 12,
   },
   creative_writing: {
@@ -45,7 +45,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     shortLabel: 'Writing',
     emoji: '🎨',
     description: 'Storytelling, essays, expression',
-    minAge: 7,
+    minAge: 4,
     maxAge: 12,
   },
   olympiad: {
@@ -54,7 +54,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     shortLabel: 'Olympiad',
     emoji: '🏅',
     description: 'English Olympiad, Spell Bee preparation',
-    minAge: 6,
+    minAge: 4,
     maxAge: 12,
   },
   competition_prep: {
@@ -63,12 +63,21 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     shortLabel: 'Competitions',
     emoji: '🏆',
     description: 'Spell Bee, quiz competitions',
-    minAge: 8,
+    minAge: 4,
+    maxAge: 12,
+  },
+  speaking: {
+    id: 'speaking',
+    label: 'Speaking Confidence',
+    shortLabel: 'Speaking',
+    emoji: '🎤',
+    description: 'Public speaking, presentation skills',
+    minAge: 4,
     maxAge: 12,
   },
 };
 
-export type LearningGoalId = 'reading' | 'grammar' | 'comprehension' | 'creative_writing' | 'olympiad' | 'competition_prep';
+export type LearningGoalId = 'reading' | 'grammar' | 'comprehension' | 'creative_writing' | 'speaking' | 'olympiad' | 'competition_prep';
 
 /**
  * Get age-appropriate goals for a child

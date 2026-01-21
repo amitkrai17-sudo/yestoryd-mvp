@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { LEARNING_GOALS, getGoalsForAge, LearningGoalId } from '@/lib/constants/goals';
 
 interface GoalsCaptureProps {
@@ -21,9 +21,36 @@ export function GoalsCapture({
   const [selectedGoals, setSelectedGoals] = useState<Set<LearningGoalId>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get age-appropriate goals (excludes 'reading' since they just did reading assessment)
   const availableGoals = getGoalsForAge(childAge).filter(g => g !== 'reading');
+
+  // Debounced save function
+  const saveGoals = useCallback(async (goals: Set<LearningGoalId>) => {
+    setIsSaving(true);
+    setHasSaved(false);
+    try {
+      const response = await fetch('/api/children/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          childId,
+          goals: Array.from(goals),
+          captureMethod: 'results_page',
+        }),
+      });
+
+      if (response.ok) {
+        setHasSaved(true);
+        onGoalsSaved?.(Array.from(goals));
+      }
+    } catch (error) {
+      console.error('Failed to save goals:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [childId, onGoalsSaved]);
 
   const toggleGoal = (goalId: LearningGoalId) => {
     const newGoals = new Set(selectedGoals);
@@ -33,38 +60,31 @@ export function GoalsCapture({
       newGoals.add(goalId);
     }
     setSelectedGoals(newGoals);
+
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Reset hasSaved while user is selecting
+    setHasSaved(false);
+
+    // Set new debounced save (1.5 seconds after last selection)
+    if (newGoals.size > 0) {
+      saveTimeoutRef.current = setTimeout(() => {
+        saveGoals(newGoals);
+      }, 1500);
+    }
   };
 
-  // Auto-save when selection changes (with debounce)
+  // Cleanup timeout on unmount
   useEffect(() => {
-    if (selectedGoals.size === 0) return;
-
-    const timer = setTimeout(async () => {
-      setIsSaving(true);
-      try {
-        const response = await fetch('/api/children/goals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            childId,
-            goals: Array.from(selectedGoals),
-            captureMethod: 'results_page',
-          }),
-        });
-
-        if (response.ok) {
-          setHasSaved(true);
-          onGoalsSaved?.(Array.from(selectedGoals));
-        }
-      } catch (error) {
-        console.error('Failed to save goals:', error);
-      } finally {
-        setIsSaving(false);
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [selectedGoals, childId, onGoalsSaved]);
+    };
+  }, []);
 
   if (availableGoals.length === 0) return null;
 

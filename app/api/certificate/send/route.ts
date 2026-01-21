@@ -444,7 +444,7 @@ export async function POST(request: NextRequest) {
     const validation = CertificateSchema.safeParse(body);
     if (!validation.success) {
       const errors = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
-      
+
       console.log(JSON.stringify({
         requestId,
         event: 'validation_failed',
@@ -460,6 +460,9 @@ export async function POST(request: NextRequest) {
     const params = validation.data;
     const { email, childName, childId } = params;
 
+    // DEBUG: Log request details
+    console.log('[Certificate] Request:', { childId, email, childName, requestId });
+
     // 3. IDEMPOTENCY CHECK - Prevent duplicate emails
     if (childId) {
       const { data: child } = await getSupabase()
@@ -467,6 +470,13 @@ export async function POST(request: NextRequest) {
         .select('certificate_email_sent_at')
         .eq('id', childId)
         .single();
+
+      // DEBUG: Log idempotency check result
+      console.log('[Certificate] Idempotency check:', {
+        childId,
+        hasPreviousSend: !!child?.certificate_email_sent_at,
+        lastSentAt: child?.certificate_email_sent_at || null
+      });
 
       if (child?.certificate_email_sent_at) {
         const lastSent = new Date(child.certificate_email_sent_at);
@@ -488,6 +498,8 @@ export async function POST(request: NextRequest) {
           });
         }
       }
+    } else {
+      console.log('[Certificate] WARNING: No childId provided - idempotency check skipped');
     }
 
     // 5. Rate limiting
