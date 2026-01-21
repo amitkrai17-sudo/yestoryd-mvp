@@ -2,6 +2,18 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LEARNING_GOALS, getGoalsForAge, LearningGoalId } from '@/lib/constants/goals';
+import { BookOpen, Pencil, Brain, Palette, Award, Trophy, Mic, type LucideIcon } from 'lucide-react';
+
+// Icon mapping for goals (parent-facing, premium feel)
+const GOAL_ICONS: Record<string, LucideIcon> = {
+  reading: BookOpen,
+  grammar: Pencil,
+  comprehension: Brain,
+  creative_writing: Palette,
+  olympiad: Award,
+  competition_prep: Trophy,
+  speaking: Mic,
+};
 
 interface GoalsCaptureProps {
   childId: string;
@@ -105,6 +117,7 @@ export function GoalsCapture({
         {availableGoals.map((goalId) => {
           const goal = LEARNING_GOALS[goalId];
           const isSelected = selectedGoals.has(goalId);
+          const IconComponent = GOAL_ICONS[goalId];
 
           return (
             <button
@@ -120,8 +133,10 @@ export function GoalsCapture({
                 }
               `}
             >
-              {/* Emoji */}
-              <span className="text-3xl mb-2">{goal.emoji}</span>
+              {/* Icon */}
+              {IconComponent && (
+                <IconComponent className={`w-8 h-8 mb-2 ${isSelected ? 'text-[#FF0099]' : 'text-gray-500'}`} />
+              )}
 
               {/* Label - use shortLabel for mobile */}
               <span className={`text-sm text-center leading-tight font-medium ${isSelected ? 'text-[#FF0099]' : 'text-gray-700'}`}>
