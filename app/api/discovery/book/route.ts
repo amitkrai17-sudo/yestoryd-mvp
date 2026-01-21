@@ -567,6 +567,37 @@ export async function POST(request: NextRequest) {
       requestId
     );
 
+    // 11.5. Admin real-time WhatsApp alert (fire-and-forget, NEVER blocks main flow)
+    // Fetch child's assessment data if linked
+    let childAssessmentScore: number | undefined;
+    let childWpm: number | undefined;
+    if (linkedChildId) {
+      const { data: childData } = await supabase
+        .from('children')
+        .select('latest_assessment_score, latest_wpm')
+        .eq('id', linkedChildId)
+        .single();
+      if (childData) {
+        childAssessmentScore = childData.latest_assessment_score;
+        childWpm = childData.latest_wpm;
+      }
+    }
+
+    import('@/lib/notifications/admin-alerts').then(({ sendDiscoveryBookedAlert }) => {
+      sendDiscoveryBookedAlert({
+        discoveryCallId: discoveryCall.id,
+        childName: body.childName,
+        childAge: body.childAge,
+        parentName: body.parentName,
+        parentPhone: body.parentPhone,
+        scheduledAt: scheduledAt.toISOString(),
+        coachName: assignedCoach?.name,
+        assessmentScore: childAssessmentScore,
+        wpm: childWpm,
+        requestId,
+      }).catch(err => console.error('Admin alert failed (non-blocking):', err));
+    }).catch(err => console.error('Admin alert import failed:', err));
+
     // 12. Final Response
     const duration = Date.now() - startTime;
     console.log(JSON.stringify({

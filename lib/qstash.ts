@@ -463,6 +463,52 @@ export async function triggerGoalsCaptureCheck(): Promise<QueueResult> {
 }
 
 // ============================================================
+// DAILY LEAD DIGEST SCHEDULE
+// ============================================================
+
+/**
+ * Setup daily lead digest schedule (runs at 9:15 AM IST daily)
+ * Sends admin a summary of last 24 hours: new leads, discovery calls
+ *
+ * Call this once during deployment or via admin endpoint
+ *
+ * Note: 9:15 AM IST = 3:45 AM UTC
+ */
+export async function setupDailyLeadDigestSchedule(): Promise<{ success: boolean; scheduleId?: string; error?: string }> {
+  return createQStashSchedule({
+    scheduleId: 'daily-lead-digest-915am',
+    url: `${APP_URL}/api/cron/daily-lead-digest`,
+    cron: '45 3 * * *', // 9:15 AM IST (3:45 AM UTC)
+  });
+}
+
+/**
+ * Manually trigger daily lead digest (for testing)
+ */
+export async function triggerDailyLeadDigest(): Promise<QueueResult> {
+  if (!isQStashConfigured()) {
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/cron/daily-lead-digest`,
+      body: { manual: true, timestamp: new Date().toISOString() },
+      retries: 1,
+    });
+
+    console.log('📤 Triggered daily lead digest:', {
+      messageId: response.messageId,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: any) {
+    console.error('❌ Failed to trigger daily lead digest:', error.message);
+    return { success: false, messageId: null, error: error.message };
+  }
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 

@@ -633,7 +633,7 @@ Respond ONLY with valid JSON. No additional text.`;
         // Hot lead alert via QStash (async, non-blocking)
         if (leadStatus === 'hot') {
           console.log(JSON.stringify({ requestId, event: 'hot_lead_detected', childId }));
-          
+
           // Use QStash instead of self-HTTP call
           try {
             const { queueHotLeadAlert } = await import('@/lib/qstash');
@@ -642,6 +642,25 @@ Respond ONLY with valid JSON. No additional text.`;
             console.error(JSON.stringify({ requestId, event: 'hot_lead_queue_failed', error: (queueError as Error).message }));
           }
         }
+
+        // Admin real-time WhatsApp alert (fire-and-forget, NEVER blocks main flow)
+        if (parentPhone) {
+          import('@/lib/notifications/admin-alerts').then(({ sendNewLeadAlert }) => {
+            sendNewLeadAlert({
+              childId,
+              childName: name,
+              childAge: age,
+              parentName: parentName || 'Parent',
+              parentPhone: parentPhone,
+              parentEmail: parentEmail || undefined,
+              assessmentScore: overallScore,
+              wpm: analysisResult.wpm || 0,
+              leadStatus: leadStatus as 'hot' | 'warm' | 'cool',
+              requestId,
+            }).catch(err => console.error('Admin alert failed (non-blocking):', err));
+          }).catch(err => console.error('Admin alert import failed:', err));
+        }
+
       } catch (leadError) {
         console.error(JSON.stringify({ requestId, event: 'lead_scoring_failed', error: (leadError as Error).message }));
       }
