@@ -246,7 +246,7 @@ function SessionIntelligenceCard() {
               {stats.coachNoShows}
             </p>
             <p className={`text-xs mt-1 ${stats.coachNoShows > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-              {stats.coachNoShows > 0 ? '⚠️ Needs attention' : 'All good'}
+              {stats.coachNoShows > 0 ? 'Needs attention' : 'All good'}
             </p>
           </div>
         </div>

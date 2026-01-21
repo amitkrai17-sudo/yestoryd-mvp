@@ -20,6 +20,7 @@ import {
   Zap,
   Clock,
   AlertCircle,
+  Lightbulb,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -226,7 +227,7 @@ export default function CoachDashboardPage() {
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-2xl p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">
-          Welcome back, {coach.name.split(' ')[0]}! 👋
+          Welcome back, {coach.name.split(' ')[0]}!
         </h1>
         <p className="text-white/80">
           Here&apos;s what&apos;s happening with your coaching today.
@@ -287,8 +288,9 @@ export default function CoachDashboardPage() {
                 ))}
               </div>
 
-              <p className="text-xs text-gray-500 mt-4">
-                💡 Tip: Follow up with parents via WhatsApp if booking is pending for 3+ days
+              <p className="text-xs text-gray-500 mt-4 flex items-center gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 text-yellow-500" />
+                Tip: Follow up with parents via WhatsApp if booking is pending for 3+ days
               </p>
             </div>
           </div>

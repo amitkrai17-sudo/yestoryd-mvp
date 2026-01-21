@@ -444,16 +444,16 @@ function DiscoveryCallModal({
 
   // Outcome options
   const outcomeOptions = [
-    { value: 'enrolled', label: 'Enrolled ✅' },
-    { value: 'follow_up', label: 'Follow-up 📞' },
-    { value: 'not_interested', label: 'Not Interested ❌' },
-    { value: 'no_show', label: 'No Show 👻' },
+    { value: 'enrolled', label: 'Enrolled' },
+    { value: 'follow_up', label: 'Follow-up' },
+    { value: 'not_interested', label: 'Not Interested' },
+    { value: 'no_show', label: 'No Show' },
   ];
 
   const likelihoodOptions = [
-    { value: 'hot', label: '🔥 Hot', desc: 'Likely to enroll', color: 'bg-red-100 text-red-700 border-red-300' },
-    { value: 'warm', label: '☀️ Warm', desc: 'Needs nurturing', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-    { value: 'cold', label: '❄️ Cold', desc: 'Unlikely', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+    { value: 'hot', label: 'Hot', desc: 'Likely to enroll', color: 'bg-red-100 text-red-700 border-red-300' },
+    { value: 'warm', label: 'Warm', desc: 'Needs nurturing', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+    { value: 'cold', label: 'Cold', desc: 'Unlikely', color: 'bg-blue-100 text-blue-700 border-blue-300' },
   ];
 
   return (
@@ -1152,10 +1152,10 @@ export default function AdminCRMPage() {
                                     call.call_outcome === 'not_interested' ? 'bg-red-100 text-red-700' :
                                       'bg-gray-100 text-gray-700'
                                   }`}>
-                                  {call.call_outcome === 'enrolled' ? '✅ Enrolled' :
-                                    call.call_outcome === 'follow_up' ? '📞 Follow-up' :
-                                      call.call_outcome === 'not_interested' ? '❌ Not Interested' :
-                                        call.call_outcome === 'no_show' ? '👻 No Show' : call.call_outcome}
+                                  {call.call_outcome === 'enrolled' ? 'Enrolled' :
+                                    call.call_outcome === 'follow_up' ? 'Follow-up' :
+                                      call.call_outcome === 'not_interested' ? 'Not Interested' :
+                                        call.call_outcome === 'no_show' ? 'No Show' : call.call_outcome}
                                 </span>
                               )}
                             </div>
