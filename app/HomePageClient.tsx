@@ -382,63 +382,63 @@ const HeroValidation = ({
 // ==================== TRANSFORMATION VISUAL (Replaces Triangulation) ====================
 const TransformationVisual = () => {
   const beforeItems = [
-    { emoji: '😰', text: '"I hate reading"' },
-    { emoji: '📖', text: 'Avoids books' },
-    { emoji: '🐢', text: 'Reads slowly' },
-    { emoji: '😔', text: 'Losing confidence' },
+    '"I hate reading"',
+    'Avoids books',
+    'Reads slowly',
+    'Losing confidence',
   ];
-  
+
   const afterItems = [
-    { emoji: '😊', text: '"Can I read more?"' },
-    { emoji: '📚', text: 'Picks up books' },
-    { emoji: '⚡', text: 'Reads fluently' },
-    { emoji: '💪', text: 'Speaks confidently' },
+    '"Can I read more?"',
+    'Picks up books',
+    'Reads fluently',
+    'Speaks confidently',
   ];
 
   return (
     <div className="w-full max-w-[420px] mx-auto">
       <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white text-center py-3 px-4">
           <p className="font-bold text-sm sm:text-base">The 90-Day Transformation</p>
         </div>
-        
+
         {/* Before/After Grid */}
         <div className="grid grid-cols-2 divide-x divide-gray-100">
-          
+
           {/* BEFORE Column */}
           <div className="p-4 sm:p-5">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 text-center">Before</p>
             <div className="space-y-2.5">
               {beforeItems.map((item, index) => (
-                <div 
+                <div
                   key={index}
                   className="flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2 border border-red-100"
                 >
-                  <span className="text-base sm:text-lg">{item.emoji}</span>
-                  <span className="text-xs sm:text-sm text-gray-600 leading-tight">{item.text}</span>
+                  <span className="w-2 h-2 rounded-full bg-red-300 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm text-gray-500 leading-tight">{item}</span>
                 </div>
               ))}
             </div>
           </div>
-          
+
           {/* AFTER Column */}
           <div className="p-4 sm:p-5 bg-green-50/30">
             <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-3 text-center">After 90 Days</p>
             <div className="space-y-2.5">
               {afterItems.map((item, index) => (
-                <div 
+                <div
                   key={index}
                   className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2 border border-green-200"
                 >
-                  <span className="text-base sm:text-lg">{item.emoji}</span>
-                  <span className="text-xs sm:text-sm text-gray-700 font-medium leading-tight">{item.text}</span>
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm text-gray-700 font-medium leading-tight">{item}</span>
                 </div>
               ))}
             </div>
           </div>
-          
+
         </div>
         
         {/* Bottom CTA hint */}
@@ -828,18 +828,18 @@ export default function HomePageClient({
               </p>
               
               {[
-                { emoji: '🐢', text: 'Reads slowly, word by word' },
-                { emoji: '🎯', text: 'Guesses words instead of reading them' },
-                { emoji: '😕', text: 'Understands when YOU read, struggles when THEY read' },
-                { emoji: '📖', text: 'Avoids reading aloud' },
-                { emoji: '😤', text: 'Says "I hate reading"' },
-              ].map((item, index) => (
+                'Reads slowly, word by word',
+                'Guesses words instead of reading them',
+                'Understands when YOU read, struggles when THEY read',
+                'Avoids reading aloud',
+                'Says "I hate reading"',
+              ].map((text, index) => (
                 <div
                   key={index}
                   className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-[#ff0099]/30 hover:shadow-md transition-all"
                 >
-                  <span className="text-2xl">{item.emoji}</span>
-                  <p className="text-gray-700 font-medium">{item.text}</p>
+                  <span className="w-2 h-2 rounded-full bg-[#ff0099] flex-shrink-0" />
+                  <p className="text-gray-700 font-medium">{text}</p>
                 </div>
               ))}
 
@@ -1606,8 +1606,9 @@ export default function HomePageClient({
             {/* Coaching Program - COMING SOON (Grey with Blue Label) */}
             <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
               {/* Coming Soon Badge - Blue */}
-              <div className="absolute top-0 right-0 bg-[#00ABFF] text-white px-4 py-2 rounded-bl-2xl text-sm font-bold">
-                🚀 Launching March 2026
+              <div className="absolute top-0 right-0 bg-[#00ABFF] text-white px-4 py-2 rounded-bl-2xl text-sm font-bold flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                Launching March 2026
               </div>
 
               <div className="mb-6 mt-4">
@@ -1654,8 +1655,9 @@ export default function HomePageClient({
             </div>
           </div>
 
-          <p className="text-center text-gray-500 text-sm mt-8">
-            💡 Start with the free assessment to see your child's reading profile before March launch.
+          <p className="text-center text-gray-500 text-sm mt-8 flex items-center justify-center gap-1.5">
+            <Lightbulb className="w-4 h-4 text-yellow-500" />
+            Start with the free assessment to see your child's reading profile before March launch.
           </p>
         </div>
       </section>
@@ -1764,8 +1766,8 @@ export default function HomePageClient({
             <p className="text-gray-600 text-sm">
               © {new Date().getFullYear()} Yestoryd. All rights reserved.
             </p>
-            <p className="text-gray-600 text-sm">
-              Made with ❤️ for young readers in India
+            <p className="text-gray-600 text-sm flex items-center gap-1">
+              Made with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> for young readers in India
             </p>
           </div>
         </div>
