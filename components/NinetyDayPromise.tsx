@@ -1,24 +1,25 @@
 'use client';
 
-import { CheckCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle, ArrowRight, BookOpen, Hand, Library, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
+import { ReactNode } from 'react';
 
-const PROMISES = [
+const PROMISES: { text: string; icon: ReactNode }[] = [
   {
     text: 'Read a book one grade level higher — without pausing',
-    icon: '📖',
+    icon: <BookOpen className="w-7 h-7 text-[#ff0099]" />,
   },
   {
     text: 'Volunteer to read aloud in class',
-    icon: '🙋',
+    icon: <Hand className="w-7 h-7 text-[#00ABFF]" />,
   },
   {
     text: 'Pick up books for fun, not just homework',
-    icon: '📚',
+    icon: <Library className="w-7 h-7 text-[#7B008B]" />,
   },
   {
     text: 'Explain stories confidently in their own words',
-    icon: '💬',
+    icon: <MessageCircle className="w-7 h-7 text-[#ff0099]" />,
   },
 ];
 
@@ -92,7 +93,7 @@ export default function NinetyDayPromise({
               </div>
               
               <div className="flex items-start gap-4 ml-4">
-                <span className="text-3xl">{promise.icon}</span>
+                <div className="flex-shrink-0">{promise.icon}</div>
                 <div>
                   <p className="text-gray-800 font-medium text-lg">
                     {promise.text}

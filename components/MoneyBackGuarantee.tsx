@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldCheck, CheckCircle } from 'lucide-react';
+import { ShieldCheck, CheckCircle, Lock, Star } from 'lucide-react';
 
 interface MoneyBackGuaranteeProps {
   variant?: 'badge' | 'card' | 'inline';
@@ -53,8 +53,9 @@ export default function MoneyBackGuarantee({
             <ShieldCheck className="w-8 h-8 text-green-600" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-green-900">
-              💯 100% Satisfaction Guarantee
+            <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-500" />
+              100% Satisfaction Guarantee
             </h3>
             <p className="text-sm text-green-700">Risk-free investment in your child</p>
           </div>
@@ -100,11 +101,11 @@ export function TrustBadges() {
         <span>Money-back guarantee</span>
       </div>
       <div className="flex items-center gap-1">
-        <span>🔒</span>
+        <Lock className="w-4 h-4 text-emerald-500" />
         <span>Secure payment</span>
       </div>
       <div className="flex items-center gap-1">
-        <span>⭐</span>
+        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
         <span>500+ happy parents</span>
       </div>
     </div>
