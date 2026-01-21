@@ -8,7 +8,7 @@ import {
   Loader2, MessageCircle, CheckCircle, AlertCircle,
   ChevronDown, ChevronUp, Target, Volume2, Lightbulb,
   BookOpenCheck, Sparkles, BookOpen, Zap, MessageSquare,
-  TrendingUp, Download, Share2, AlertTriangle,
+  TrendingUp, Download, Share2, AlertTriangle, Calendar, FileText,
 } from 'lucide-react';
 import Confetti from '@/components/Confetti';
 import { GoalsCapture } from '@/components/assessment/GoalsCapture';
@@ -33,7 +33,6 @@ function getScoreMessage(score: number, childName: string, age: string) {
   if (score >= 8) return {
     headline: `${childName} Is Doing Amazingly!`,
     subheadline: 'A true reading champion',
-    emoji: '⭐',
     encouragement: `${score}/10 is excellent for age ${age}! Advanced coaching can take skills even higher.`,
     dailyTip: `Keep reading daily, ${childName.toLowerCase()}! Every page makes you stronger.`,
     ctaText: `Boost ${firstName}'s Reading`,
@@ -41,7 +40,6 @@ function getScoreMessage(score: number, childName: string, age: string) {
   if (score >= 6) return {
     headline: `${childName} Shows Great Potential!`,
     subheadline: 'A rising reading star',
-    emoji: '🌟',
     encouragement: `${score}/10 shows promise for age ${age}! A few sessions can unlock their full ability.`,
     dailyTip: `Practice makes perfect, ${childName.toLowerCase()}! You're getting better every day.`,
     ctaText: `Boost ${firstName}'s Reading`,
@@ -49,7 +47,6 @@ function getScoreMessage(score: number, childName: string, age: string) {
   if (score >= 4) return {
     headline: `${childName} Is On The Right Track!`,
     subheadline: 'Building reading confidence',
-    emoji: '📖',
     encouragement: `${score}/10 is a great start for age ${age}! Targeted coaching will accelerate progress.`,
     dailyTip: `Every small step counts, ${childName.toLowerCase()}! Keep going!`,
     ctaText: `Boost ${firstName}'s Reading`,
@@ -57,7 +54,6 @@ function getScoreMessage(score: number, childName: string, age: string) {
   return {
     headline: `${childName} Has Taken The First Step!`,
     subheadline: 'Every reader starts somewhere',
-    emoji: '🚀',
     encouragement: `Our coaches specialize in building strong foundations for age ${age}. Let's begin!`,
     dailyTip: `The journey of a thousand books begins with one page, ${childName.toLowerCase()}!`,
     ctaText: `Start ${firstName}'s Journey`,
@@ -163,7 +159,7 @@ export default function ResultsPage() {
   const getWhatsAppMessage = useCallback(() => {
     if (!data) return '';
     const msg = getScoreMessage(data.overall_score, data.childName, data.childAge);
-    return encodeURIComponent(`🎉 *${data.childName}'s Reading Assessment*\n\n${msg.emoji} *${msg.headline}*\n${msg.subheadline}\n\n📊 Score: ${data.overall_score}/10\n⚡ Speed: ${data.wpm} WPM\n\n💡 ${msg.encouragement}\n\n🚀 Get FREE Assessment: https://yestoryd.com/assessment`);
+    return encodeURIComponent(`🎉 *${data.childName}'s Reading Assessment*\n\n⭐ *${msg.headline}*\n${msg.subheadline}\n\n📊 Score: ${data.overall_score}/10\n⚡ Speed: ${data.wpm} WPM\n\n💡 ${msg.encouragement}\n\n🚀 Get FREE Assessment: https://yestoryd.com/assessment`);
   }, [data]);
 
   const shareOnWhatsApp = () => window.open(`https://wa.me/?text=${getWhatsAppMessage()}`, '_blank');
@@ -243,7 +239,9 @@ export default function ResultsPage() {
 
           {/* Body */}
           <div className="p-6 text-center">
-            <div className="text-5xl mb-3">{msg.emoji}</div>
+            <div className="flex justify-center mb-3">
+              <Sparkles className="w-12 h-12 text-[#ff0099]" />
+            </div>
             <h2 className="text-2xl font-bold text-gray-800">{msg.headline}</h2>
             <p className="text-gray-500 mt-1">{msg.subheadline}</p>
 
@@ -266,7 +264,10 @@ export default function ResultsPage() {
 
             {/* Yellow Encouragement */}
             <div className="bg-[#fff9e6] border border-[#ffde00] rounded-xl px-4 py-3 mb-5">
-              <p className="text-gray-700 text-sm">💡 {msg.encouragement}</p>
+              <p className="text-gray-700 text-sm flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                {msg.encouragement}
+              </p>
             </div>
 
             {/* Stats Row */}
@@ -313,23 +314,27 @@ export default function ResultsPage() {
 
             {/* Yellow Daily Tip */}
             <div className="bg-[#ffde00] rounded-xl px-4 py-3 mb-4">
-              <p className="text-[#7b008b] text-sm font-semibold">✨ {msg.dailyTip}</p>
+              <p className="text-[#7b008b] text-sm font-semibold flex items-center gap-2">
+                <Sparkles className="w-4 h-4 flex-shrink-0" />
+                {msg.dailyTip}
+              </p>
             </div>
 
-            <p className="text-gray-500 text-sm mb-4">❤️ Join 100+ families already improving</p>
+            <p className="text-gray-500 text-sm mb-4">Join 100+ families already improving</p>
 
             {/* CTA Button */}
             <Link href={enrollUrl}>
               <button className="w-full py-4 bg-gradient-to-r from-[#ff0099] to-[#ff6b6b] text-white font-bold rounded-xl text-base hover:opacity-90 shadow-lg mb-3 whitespace-nowrap">
-                🚀 {msg.ctaText}
+                {msg.ctaText}
               </button>
             </Link>
 
             <p className="text-gray-400 text-xs">100% Refund Guarantee • Start within 3-5 days</p>
 
             <Link href={bookCallUrl}>
-              <button className="w-full mt-4 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50 whitespace-nowrap text-sm">
-                📅 Questions? Talk to Coach
+              <button className="w-full mt-4 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50 whitespace-nowrap text-sm flex items-center justify-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Questions? Talk to Coach
               </button>
             </Link>
 
@@ -448,7 +453,9 @@ export default function ResultsPage() {
                 <div className="pt-4 space-y-4">
                   {data.practice_recommendations.daily_words?.length > 0 && (
                     <div>
-                      <p className="text-gray-500 text-xs uppercase mb-2">📝 Daily Words</p>
+                      <p className="text-gray-500 text-xs uppercase mb-2 flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> Daily Words
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {data.practice_recommendations.daily_words.map((w: string, i: number) => (
                           <span key={i} className="bg-blue-100 text-[#00abff] px-3 py-2 rounded-lg text-sm font-medium border border-blue-200">{w}</span>
@@ -458,13 +465,17 @@ export default function ResultsPage() {
                   )}
                   {data.practice_recommendations.phonics_focus && (
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                      <p className="text-[#7b008b] font-semibold text-sm mb-1">🔤 Phonics Focus</p>
+                      <p className="text-[#7b008b] font-semibold text-sm mb-1 flex items-center gap-1.5">
+                        <BookOpen className="w-4 h-4" /> Phonics Focus
+                      </p>
                       <p className="text-gray-800 text-sm">{data.practice_recommendations.phonics_focus}</p>
                     </div>
                   )}
                   {data.practice_recommendations.suggested_activity && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <p className="text-green-700 font-semibold text-sm mb-1">🎯 Activity</p>
+                      <p className="text-green-700 font-semibold text-sm mb-1 flex items-center gap-1.5">
+                        <Target className="w-4 h-4" /> Activity
+                      </p>
                       <p className="text-gray-800 text-sm">{data.practice_recommendations.suggested_activity}</p>
                     </div>
                   )}
