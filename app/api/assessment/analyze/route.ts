@@ -644,8 +644,19 @@ Respond ONLY with valid JSON. No additional text.`;
         }
 
         // Admin real-time WhatsApp alert (fire-and-forget, NEVER blocks main flow)
+        console.log(JSON.stringify({
+          requestId,
+          event: 'admin_alert_check',
+          parentPhone: parentPhone ? 'present' : 'MISSING',
+          leadStatus,
+        }));
+
         if (parentPhone) {
+          console.log(JSON.stringify({ requestId, event: 'admin_alert_triggering' }));
+
           import('@/lib/notifications/admin-alerts').then(({ sendNewLeadAlert }) => {
+            console.log(JSON.stringify({ requestId, event: 'admin_alert_imported' }));
+
             sendNewLeadAlert({
               childId,
               childName: name,
@@ -657,8 +668,16 @@ Respond ONLY with valid JSON. No additional text.`;
               wpm: analysisResult.wpm || 0,
               leadStatus: leadStatus as 'hot' | 'warm' | 'cool',
               requestId,
-            }).catch(err => console.error('Admin alert failed (non-blocking):', err));
-          }).catch(err => console.error('Admin alert import failed:', err));
+            }).then(success => {
+              console.log(JSON.stringify({ requestId, event: 'admin_alert_result', success }));
+            }).catch(err => {
+              console.error(JSON.stringify({ requestId, event: 'admin_alert_error', error: err.message }));
+            });
+          }).catch(err => {
+            console.error(JSON.stringify({ requestId, event: 'admin_alert_import_failed', error: err.message }));
+          });
+        } else {
+          console.log(JSON.stringify({ requestId, event: 'admin_alert_skipped', reason: 'no_parent_phone' }));
         }
 
       } catch (leadError) {

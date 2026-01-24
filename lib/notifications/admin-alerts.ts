@@ -116,35 +116,53 @@ function formatScheduledDateTime(date: Date): string {
 export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
   const startTime = Date.now();
 
+  // DETAILED LOGGING: Track full flow
+  console.log('[AdminAlert] ========== sendNewLeadAlert START ==========');
+  console.log('[AdminAlert] Child:', data.childName, 'Age:', data.childAge);
+  console.log('[AdminAlert] Parent:', data.parentName, 'Phone:', data.parentPhone);
+  console.log('[AdminAlert] Score:', data.assessmentScore, 'Lead Status:', data.leadStatus);
+  console.log('[AdminAlert] Admin phone target:', ADMIN_PHONE);
+  console.log('[AdminAlert] RequestId:', data.requestId);
+
   try {
     const timestamp = formatTimeOnly(new Date());
     const leadStatus = getLeadStatusLabel(data.leadStatus);
+
+    const templateVariables = [
+      data.childName,                   // {{1}} - Child name
+      String(data.childAge),            // {{2}} - Age
+      data.parentName,                  // {{3}} - Parent name
+      data.parentPhone,                 // {{4}} - Parent phone
+      data.location || 'India',         // {{5}} - Location
+      String(data.assessmentScore),     // {{6}} - Score
+      String(data.wpm || 0),            // {{7}} - WPM
+      leadStatus,                       // {{8}} - Lead status (HOT/WARM/COOL)
+      timestamp,                        // {{9}} - Timestamp (hh:mm AM/PM)
+    ];
+
+    console.log('[AdminAlert] Template: admin_new_lead');
+    console.log('[AdminAlert] Variables:', JSON.stringify(templateVariables));
+    console.log('[AdminAlert] Sending to AiSensy...');
 
     // Send WhatsApp alert using template
     const result = await sendWhatsAppMessage({
       to: ADMIN_PHONE,
       templateName: 'admin_new_lead',
-      variables: [
-        data.childName,                   // {{1}} - Child name
-        String(data.childAge),            // {{2}} - Age
-        data.parentName,                  // {{3}} - Parent name
-        data.parentPhone,                 // {{4}} - Parent phone
-        data.location || 'India',         // {{5}} - Location
-        String(data.assessmentScore),     // {{6}} - Score
-        String(data.wpm || 0),            // {{7}} - WPM
-        leadStatus,                       // {{8}} - Lead status (HOT/WARM/COOL)
-        timestamp,                        // {{9}} - Timestamp (hh:mm AM/PM)
-      ],
+      variables: templateVariables,
     });
+
+    console.log('[AdminAlert] AiSensy response:', JSON.stringify(result));
 
     const duration = Date.now() - startTime;
 
     // Log to communication_logs (non-blocking)
+    console.log('[AdminAlert] Logging to DB...');
     logAdminAlert({
       alertType: 'new_lead',
       relatedEntityType: 'child',
       relatedEntityId: data.childId,
       success: result.success,
+      errorMessage: result.error,
       variables: {
         child_name: data.childName,
         parent_name: data.parentName,
@@ -154,9 +172,10 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
         request_id: data.requestId,
       },
       duration,
-    }).catch(err => console.error('Failed to log alert:', err));
+    }).catch(err => console.error('[AdminAlert] DB log failed:', err));
 
     if (result.success) {
+      console.log('[AdminAlert] SUCCESS - Alert sent');
       console.log(JSON.stringify({
         event: 'admin_alert_sent',
         type: 'new_lead',
@@ -166,6 +185,7 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
         requestId: data.requestId,
       }));
     } else {
+      console.error('[AdminAlert] FAILED - AiSensy error:', result.error);
       console.error(JSON.stringify({
         event: 'admin_alert_failed',
         type: 'new_lead',
@@ -176,10 +196,13 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
       }));
     }
 
+    console.log('[AdminAlert] ========== sendNewLeadAlert END ==========');
     return result.success;
 
   } catch (error: any) {
     // CRITICAL: Never throw - just log and return false
+    console.error('[AdminAlert] EXCEPTION:', error.message);
+    console.error('[AdminAlert] Stack:', error.stack);
     console.error(JSON.stringify({
       event: 'admin_alert_error',
       type: 'new_lead',
@@ -351,28 +374,42 @@ async function logAdminAlert(params: {
   relatedEntityType: string;
   relatedEntityId: string;
   success: boolean;
+  errorMessage?: string;
   variables: Record<string, any>;
   duration: number;
 }): Promise<void> {
   try {
     const supabase = getServiceSupabase();
 
-    await supabase.from('communication_logs').insert({
+    const insertData = {
       recipient_type: 'admin',
       channel: 'whatsapp',
       template_code: `admin_${params.alertType}`,
-      variables: params.variables,
+      variables: {
+        ...params.variables,
+        _duration_ms: params.duration,
+        _admin_phone_last4: ADMIN_PHONE.slice(-4),
+      },
       related_entity_type: params.relatedEntityType,
       related_entity_id: params.relatedEntityId,
       status: params.success ? 'sent' : 'failed',
       sent_at: params.success ? new Date().toISOString() : null,
-      metadata: {
-        duration_ms: params.duration,
-        admin_phone: ADMIN_PHONE.slice(-4), // Last 4 digits for audit
-      },
-    });
+      error_message: params.errorMessage || null,
+    };
+
+    console.log('[AdminAlert] DB insert data:', JSON.stringify(insertData));
+
+    const { error: insertError } = await supabase.from('communication_logs').insert(insertData);
+
+    if (insertError) {
+      console.error('[AdminAlert] DB insert error:', insertError.message);
+      console.error('[AdminAlert] DB error details:', JSON.stringify(insertError));
+    } else {
+      console.log('[AdminAlert] DB log successful');
+    }
   } catch (error: any) {
     // Never throw from logging
-    console.error('Failed to log admin alert:', error.message);
+    console.error('[AdminAlert] DB log exception:', error.message);
+    console.error('[AdminAlert] DB exception stack:', error.stack);
   }
 }

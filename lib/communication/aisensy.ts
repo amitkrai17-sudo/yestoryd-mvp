@@ -25,11 +25,19 @@ interface AiSensyResponse {
  * Send WhatsApp message via AiSensy
  */
 export async function sendWhatsAppMessage(params: AiSensyMessageParams): Promise<AiSensyResponse> {
+  console.log('[AiSensy] ========== sendWhatsAppMessage START ==========');
+  console.log('[AiSensy] Template:', params.templateName);
+  console.log('[AiSensy] To:', params.to);
+  console.log('[AiSensy] Variables count:', params.variables?.length);
+
   const apiKey = process.env.AISENSY_API_KEY;
   const baseUrl = process.env.AISENSY_BASE_URL || 'https://backend.aisensy.com/campaign/t1/api/v2';
 
+  console.log('[AiSensy] API Key configured:', apiKey ? `Yes (${apiKey.substring(0, 8)}...)` : 'NO - MISSING!');
+  console.log('[AiSensy] Base URL:', baseUrl);
+
   if (!apiKey) {
-    console.error('[AiSensy] API key not configured');
+    console.error('[AiSensy] API key not configured - ABORTING');
     return { success: false, error: 'API key not configured' };
   }
 
@@ -41,6 +49,7 @@ export async function sendWhatsAppMessage(params: AiSensyMessageParams): Promise
 
   // Format phone for AiSensy (no + sign)
   const formattedPhone = formatForWhatsApp(params.to);
+  console.log('[AiSensy] Formatted phone:', formattedPhone);
 
   try {
     const payload: Record<string, unknown> = {
@@ -59,25 +68,39 @@ export async function sendWhatsAppMessage(params: AiSensyMessageParams): Promise
       };
     }
 
-    console.log(`[AiSensy] Sending to ${formattedPhone}, template: ${params.templateName}`);
+    // Log payload without API key for security
+    const logPayload = { ...payload, apiKey: '[REDACTED]' };
+    console.log('[AiSensy] Request payload:', JSON.stringify(logPayload));
 
+    console.log('[AiSensy] Sending HTTP request...');
     const response = await fetch(baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
+    console.log('[AiSensy] HTTP status:', response.status, response.statusText);
+
     const data = await response.json();
+    console.log('[AiSensy] Full response:', JSON.stringify(data));
 
     if (response.ok && data.status === 'success') {
-      console.log(`[AiSensy] Success: ${data.messageId || 'sent'}`);
+      console.log('[AiSensy] SUCCESS - messageId:', data.messageId || data.id || 'N/A');
+      console.log('[AiSensy] ========== sendWhatsAppMessage END ==========');
       return { success: true, messageId: data.messageId || data.id };
     } else {
-      console.error(`[AiSensy] Failed:`, data);
+      console.error('[AiSensy] FAILED - Status:', data.status);
+      console.error('[AiSensy] FAILED - Message:', data.message);
+      console.error('[AiSensy] FAILED - Error:', data.error);
+      console.error('[AiSensy] FAILED - Full data:', JSON.stringify(data));
+      console.log('[AiSensy] ========== sendWhatsAppMessage END ==========');
       return { success: false, error: data.message || data.error || 'Unknown error' };
     }
   } catch (error) {
-    console.error('[AiSensy] Exception:', error);
+    console.error('[AiSensy] EXCEPTION:', error);
+    console.error('[AiSensy] Exception message:', error instanceof Error ? error.message : 'Unknown');
+    console.error('[AiSensy] Exception stack:', error instanceof Error ? error.stack : 'N/A');
+    console.log('[AiSensy] ========== sendWhatsAppMessage END ==========');
     return { success: false, error: error instanceof Error ? error.message : 'Network error' };
   }
 }

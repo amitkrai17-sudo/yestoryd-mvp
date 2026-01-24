@@ -244,7 +244,7 @@ async function logCommunication(params: {
   relatedEntityId?: string;
 }): Promise<void> {
   try {
-    await supabase.from('communication_log').insert({
+    await supabase.from('communication_logs').insert({
       template_id: params.templateId,
       template_code: params.templateCode,
       channel: params.channel,
