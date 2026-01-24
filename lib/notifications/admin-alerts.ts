@@ -368,6 +368,18 @@ export async function sendDailyDigest(data: DailyDigestData): Promise<boolean> {
 // LOG ADMIN ALERT TO DB
 // ============================================================
 // Non-blocking logging to communication_logs table
+//
+// CORRECT COLUMNS (as of Jan 2026):
+// - template_code (text)
+// - recipient_type (text)
+// - recipient_phone (text)
+// - recipient_email (text)
+// - wa_sent (boolean)
+// - email_sent (boolean)
+// - sms_sent (boolean)
+// - context_data (jsonb)
+// - error_message (text)
+// - sent_at (timestamptz)
 
 async function logAdminAlert(params: {
   alertType: string;
@@ -381,20 +393,23 @@ async function logAdminAlert(params: {
   try {
     const supabase = getServiceSupabase();
 
+    // Use CORRECT column names for communication_logs table
     const insertData = {
-      recipient_type: 'admin',
-      channel: 'whatsapp',
       template_code: `admin_${params.alertType}`,
-      variables: {
+      recipient_type: 'admin',
+      recipient_phone: ADMIN_PHONE,
+      recipient_email: null,
+      wa_sent: params.success,
+      email_sent: false,
+      sms_sent: false,
+      context_data: {
         ...params.variables,
-        _duration_ms: params.duration,
-        _admin_phone_last4: ADMIN_PHONE.slice(-4),
+        related_entity_type: params.relatedEntityType,
+        related_entity_id: params.relatedEntityId,
+        duration_ms: params.duration,
       },
-      related_entity_type: params.relatedEntityType,
-      related_entity_id: params.relatedEntityId,
-      status: params.success ? 'sent' : 'failed',
+      error_message: params.success ? null : (params.errorMessage || 'Unknown error'),
       sent_at: params.success ? new Date().toISOString() : null,
-      error_message: params.errorMessage || null,
     };
 
     console.log('[AdminAlert] DB insert data:', JSON.stringify(insertData));
