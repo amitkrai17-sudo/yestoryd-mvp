@@ -48,6 +48,25 @@ interface PricingData {
   freeAssessmentWorth: string;
 }
 
+interface ProductData {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  originalPrice: number;
+  discountedPrice: number;
+  discountLabel: string | null;
+  sessionsIncluded: number;
+  coachingSessions: number;
+  skillBuildingSessions: number;
+  checkinSessions: number;
+  durationMonths: number;
+  features: string[];
+  isFeatured: boolean;
+  badgeText: string | null;
+  displayOrder: number;
+}
+
 interface ContactData {
   whatsappNumber: string;
 }
@@ -75,6 +94,7 @@ interface ABTestConfig {
 interface HomePageClientProps {
   stats: StatsData;
   pricing: PricingData;
+  products: ProductData[];
   contact: ContactData;
   videos: VideoData;
   testimonials: TestimonialData[];
@@ -515,11 +535,11 @@ const faqData = [
   },
   {
     question: "How long is each coaching session?",
-    answer: "Each 1:1 session is 30 minutes. Sessions are scheduled at times convenient for you — weekdays or weekends. Your child gets 6 sessions over 90 days."
+    answer: "Coaching sessions are 45 minutes each, with parent check-ins being 30 minutes. Sessions are scheduled at times convenient for you — weekdays or weekends. The Full Program includes 12 sessions over 3 months."
   },
   {
     question: "Is this a subscription? Will I be charged monthly?",
-    answer: "No subscriptions! It's a one-time payment of ₹5,999 for the complete 90-day program. No hidden fees, no recurring charges."
+    answer: "No subscriptions! It's a one-time payment. Choose from Starter Pack, Continuation, or Full Program based on your needs. No hidden fees, no recurring charges."
   },
   {
     question: "What if my child doesn't improve?",
@@ -611,6 +631,7 @@ const FAQSection = ({ whatsappNumber }: { whatsappNumber: string }) => {
 export default function HomePageClient({
   stats,
   pricing,
+  products,
   contact,
   videos,
   testimonials,
@@ -1554,12 +1575,12 @@ export default function HomePageClient({
               Simple, Transparent Pricing
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Start free. See your child's reading profile. Upgrade only when ready.
+              Start free. See your child's reading profile. Choose the program that fits your family.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Free Assessment */}
+          {/* Free Assessment Card */}
+          <div className="max-w-md mx-auto mb-8">
             <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-gray-200">
               <div className="mb-6">
                 <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
@@ -1602,62 +1623,136 @@ export default function HomePageClient({
                 See Why — 5 Min Test
               </Link>
             </div>
+          </div>
 
-            {/* Coaching Program - COMING SOON (Grey with Blue Label) */}
-            <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden">
-              {/* Coming Soon Badge - Blue */}
-              <div className="absolute top-0 right-0 bg-[#00ABFF] text-white px-4 py-2 rounded-bl-2xl text-sm font-bold flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4" />
-                Launching March 2026
+          {/* Step 2 Label */}
+          <div className="text-center mb-6">
+            <span className="inline-block bg-[#ff0099]/10 text-[#ff0099] px-4 py-2 rounded-full text-sm font-semibold">
+              Step 2 — Choose Your Program
+            </span>
+          </div>
+
+          {/* Pricing Cards - 3 columns on desktop, stack on mobile */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {products.length > 0 ? products.map((product) => {
+              const isFullProgram = product.slug === 'full';
+              const isContinuation = product.slug === 'continuation';
+              const savings = product.originalPrice - product.discountedPrice;
+
+              return (
+                <div
+                  key={product.id}
+                  className={`rounded-3xl p-6 relative overflow-hidden transition-all ${
+                    isFullProgram
+                      ? 'bg-gradient-to-br from-[#ff0099] to-[#7b008b] text-white ring-4 ring-[#ff0099]/30 scale-[1.02]'
+                      : 'bg-white border-2 border-gray-200'
+                  }`}
+                >
+                  {/* Badge */}
+                  {isFullProgram && (
+                    <div className="absolute top-0 right-0 bg-yellow-400 text-gray-900 px-3 py-1.5 rounded-bl-xl text-xs font-bold flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-current" />
+                      Best Value
+                    </div>
+                  )}
+                  {isContinuation && (
+                    <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1.5 rounded-bl-xl text-xs font-bold">
+                      After Starter
+                    </div>
+                  )}
+
+                  {/* Product Name */}
+                  <div className="mb-4 mt-2">
+                    <h3 className={`text-xl font-bold mb-1 ${isFullProgram ? 'text-white' : 'text-gray-900'}`}>
+                      {product.name}
+                    </h3>
+                    <p className={`text-sm ${isFullProgram ? 'text-white/80' : 'text-gray-500'}`}>
+                      {product.description || `${product.durationMonths} month${product.durationMonths > 1 ? 's' : ''} program`}
+                    </p>
+                  </div>
+
+                  {/* Price */}
+                  <div className="mb-4">
+                    <span className={`text-3xl font-bold ${isFullProgram ? 'text-white' : 'text-gray-900'}`}>
+                      ₹{product.discountedPrice.toLocaleString('en-IN')}
+                    </span>
+                    {savings > 0 && (
+                      <span className={`ml-2 line-through text-sm ${isFullProgram ? 'text-white/50' : 'text-gray-400'}`}>
+                        ₹{product.originalPrice.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                    {isFullProgram && savings > 0 && (
+                      <p className="text-yellow-300 text-sm font-semibold mt-1">
+                        Save ₹{savings.toLocaleString('en-IN')}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Sessions Breakdown */}
+                  <div className={`rounded-xl p-3 mb-4 ${isFullProgram ? 'bg-white/10' : 'bg-gray-50'}`}>
+                    <p className={`text-sm font-semibold mb-2 ${isFullProgram ? 'text-white' : 'text-gray-700'}`}>
+                      {product.sessionsIncluded} sessions included:
+                    </p>
+                    <ul className={`text-xs space-y-1 ${isFullProgram ? 'text-white/80' : 'text-gray-600'}`}>
+                      {product.coachingSessions > 0 && (
+                        <li>• {product.coachingSessions} Coaching sessions (45 min)</li>
+                      )}
+                      {product.skillBuildingSessions > 0 && (
+                        <li>• {product.skillBuildingSessions} Skill Building sessions (45 min)</li>
+                      )}
+                      {product.checkinSessions > 0 && (
+                        <li>• {product.checkinSessions} Parent Check-ins (30 min)</li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Features */}
+                  <ul className="space-y-2 mb-6">
+                    {(product.features.length > 0 ? product.features : [
+                      'Everything in Free Assessment',
+                      'Expert 1:1 coaching',
+                      'WhatsApp support',
+                      'Progress tracking',
+                    ]).slice(0, 4).map((feature, idx) => (
+                      <li key={idx} className={`flex items-center gap-2 text-sm ${isFullProgram ? 'text-white/90' : 'text-gray-600'}`}>
+                        <CheckCircle className={`w-4 h-4 flex-shrink-0 ${isFullProgram ? 'text-yellow-300' : 'text-green-500'}`} />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA Button */}
+                  <Link
+                    href={`/enroll?product=${product.slug}`}
+                    className={`block w-full text-center py-3 rounded-xl font-semibold transition-all ${
+                      isFullProgram
+                        ? 'bg-white text-[#ff0099] hover:bg-gray-100'
+                        : isContinuation
+                        ? 'bg-blue-500 text-white hover:bg-blue-600'
+                        : 'bg-[#ff0099] text-white hover:bg-[#e6008a]'
+                    }`}
+                  >
+                    {isContinuation ? 'Continue Journey' : 'Enroll Now'}
+                  </Link>
+
+                  {isContinuation && (
+                    <p className={`text-center text-xs mt-2 ${isFullProgram ? 'text-white/60' : 'text-gray-400'}`}>
+                      Requires completed Starter Pack
+                    </p>
+                  )}
+                </div>
+              );
+            }) : (
+              // Fallback if no products loaded
+              <div className="md:col-span-3 text-center py-8 text-gray-500">
+                <p>Programs loading...</p>
               </div>
-
-              <div className="mb-6 mt-4">
-                <span className="inline-block bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
-                  Step 2 — Complete Transformation
-                </span>
-                <h3 className="text-2xl font-bold mb-2">90-Day ARC Program</h3>
-                <p className="text-white/80">Full coaching journey with expert guidance</p>
-              </div>
-
-              <div className="mb-6">
-                <span className="text-4xl font-bold">₹{pricing.discountedPrice?.toLocaleString() || '5,999'}</span>
-                <span className="text-white/60 ml-2 line-through">₹{pricing.originalPrice?.toLocaleString() || '9,999'}</span>
-                <p className="text-white/70 text-sm mt-1">{pricing.discountLabel || '40% OFF'} Launch Price</p>
-              </div>
-
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Everything in Free Assessment',
-                  '6 expert 1:1 coaching sessions',
-                  '3 parent progress check-ins',
-                  'E-learning video modules',
-                  'WhatsApp progress updates',
-                  'Completion certificate',
-                  '100% satisfaction guarantee',
-                ].map((item, index) => (
-                  <li key={index} className="flex items-center gap-3 text-white/80">
-                    <CheckCircle className="w-5 h-5 text-white/50 flex-shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                disabled
-                className="block w-full text-center bg-white/20 text-white/80 py-4 rounded-xl font-semibold cursor-not-allowed"
-              >
-                Coming Soon — Get Notified
-              </button>
-              
-              <p className="text-center text-white/60 text-xs mt-4">
-                Take the free assessment now. We'll notify you when enrollment opens.
-              </p>
-            </div>
+            )}
           </div>
 
           <p className="text-center text-gray-500 text-sm mt-8 flex items-center justify-center gap-1.5">
-            <Lightbulb className="w-4 h-4 text-yellow-500" />
-            Start with the free assessment to see your child's reading profile before March launch.
+            <Shield className="w-4 h-4 text-green-500" />
+            100% satisfaction guarantee on all programs. Flexible scheduling included.
           </p>
         </div>
       </section>

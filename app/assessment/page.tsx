@@ -315,11 +315,11 @@ function AssessmentPageContent() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<any>(null);
 
-  // Dynamic pricing from database
-  const [pricing, setPricing] = useState({
-    displayPrice: '?5,999',
-    programPrice: 5999
-  });
+  // Dynamic pricing from database (no hardcoded defaults)
+  const [pricing, setPricing] = useState<{
+    displayPrice: string;
+    programPrice: number;
+  } | null>(null);
 
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -366,25 +366,27 @@ function AssessmentPageContent() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch pricing from database
+  // Fetch pricing from database (pricing_plans table)
   useEffect(() => {
     const fetchPricing = async () => {
       try {
         const { data } = await supabase
           .from('pricing_plans')
           .select('discounted_price')
-          .eq('slug', 'coaching-3month')
+          .eq('slug', 'full') // Main program product
           .eq('is_active', true)
           .single();
 
         if (data?.discounted_price) {
           setPricing({
-            displayPrice: '?' + data.discounted_price.toLocaleString('en-IN'),
+            displayPrice: '₹' + data.discounted_price.toLocaleString('en-IN'),
             programPrice: data.discounted_price
           });
+        } else {
+          console.warn('[Assessment] No pricing found in pricing_plans table');
         }
       } catch (error) {
-        console.log('Using default pricing');
+        console.error('[Assessment] Failed to fetch pricing:', error);
       }
     };
     fetchPricing();
@@ -694,7 +696,7 @@ https://yestoryd.com/lets-talk
       parentEmail: formData.parentEmail,
       parentPhone: formData.countryCode + formData.parentPhone,
       source: 'assessment',
-      score: results?.overall_score?.toString() || '',
+      assessmentScore: results?.overall_score?.toString() || '',
     });
     return `/lets-talk?${params.toString()}`;
   };
@@ -709,6 +711,7 @@ https://yestoryd.com/lets-talk
       parentEmail: formData.parentEmail,
       parentPhone: formData.countryCode + formData.parentPhone,
       source: 'assessment',
+      assessmentScore: results?.overall_score?.toString() || '',
     });
     return `/enroll?${params.toString()}`;
   };
@@ -1021,7 +1024,7 @@ https://yestoryd.com/lets-talk
 
                 {/* Visual cue to scroll/record */}
                 <div className="flex items-center justify-center gap-2 text-pink-600 text-sm font-medium animate-pulse">
-                  <span>Read aloud, then tap the mic below</span>
+                  <span>Tap the mic to start recording, then read aloud</span>
                   <ChevronDown className="w-4 h-4 animate-bounce" />
                 </div>
 
@@ -1194,7 +1197,7 @@ https://yestoryd.com/lets-talk
                               style={{ background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` }}
                             >
                               <Rocket className="w-5 h-5" />
-                              {ctaInfo.primaryCTA} — {pricing.displayPrice}
+                              {ctaInfo.primaryCTA}{pricing ? ` — ${pricing.displayPrice}` : ''}
                             </Link>
                             <p className="text-gray-400 text-xs">100% Refund Guarantee • Start within 3-5 days</p>
 

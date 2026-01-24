@@ -96,6 +96,32 @@ interface DiscountBreakdown {
   };
 }
 
+// Product interface for multi-product support
+interface Product {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  original_price: number;
+  discounted_price: number;
+  price_display: string;
+  savings_display: string | null;
+  sessions_included: number;
+  coaching_sessions: number;
+  parent_sessions: number;
+  // Session breakdown from pricing_plans
+  sessions_coaching?: number;
+  sessions_skill_building?: number;
+  sessions_checkin?: number;
+  duration_months: number;
+  features: string[];
+  is_featured: boolean;
+  badge_text: string | null;
+  display_order: number;
+  available: boolean;
+  eligibility_message: string | null;
+}
+
 function EnrollContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -105,16 +131,27 @@ function EnrollContent() {
   // Dynamic coach settings from database
   const [coach, setCoach] = useState<CoachSettings>(DEFAULT_COACH);
 
-  // Dynamic pricing from pricing_plans table
-  const [pricing, setPricing] = useState({
-    programPrice: 5999,
-    originalPrice: 9999,
-    displayPrice: '₹5,999',
-    displayOriginalPrice: '₹9,999',
-    discountLabel: 'SAVE 50% — Launch Offer',
-    sessionsIncluded: 9,
-    durationMonths: 3,
-  });
+  // Product selection state
+  const productParam = searchParams.get('product') || '';
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProductSlug, setSelectedProductSlug] = useState<string>(productParam || 'full');
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [starterCompleted, setStarterCompleted] = useState(false);
+
+  // Get selected product from products array
+  const selectedProduct = products.find(p => p.slug === selectedProductSlug) || products.find(p => p.slug === 'full');
+
+  // Dynamic pricing from selected product (fetched from pricing_plans table)
+  // No hardcoded defaults - show loading until data arrives
+  const [pricing, setPricing] = useState<{
+    programPrice: number;
+    originalPrice: number;
+    displayPrice: string;
+    displayOriginalPrice: string;
+    discountLabel: string;
+    sessionsIncluded: number;
+    durationMonths: number;
+  } | null>(null);
 
   // Pre-fill from URL params (supports both /enroll direct and redirects from /checkout)
   const [formData, setFormData] = useState({
@@ -157,6 +194,19 @@ function EnrollContent() {
   const source = searchParams.get('source') || 'direct';
   const discoveryCallId = searchParams.get('discoveryCallId') || '';
   const childId = searchParams.get('childId') || '';
+  const assessmentScore = searchParams.get('assessmentScore') ? parseInt(searchParams.get('assessmentScore')!) : null;
+
+  // Log enrollment page view for analytics
+  useEffect(() => {
+    console.log(JSON.stringify({
+      event: 'enroll_page_viewed',
+      source,
+      childId: childId || null,
+      assessmentScore,
+      hasParentName: !!formData.parentName,
+      timestamp: new Date().toISOString(),
+    }));
+  }, []);
 
   // Parse goals from URL params - convert to state for GoalsCapture fallback
   const goalsParam = searchParams.get('goals') || '';
@@ -203,6 +253,59 @@ function EnrollContent() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Fetch products from API
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        setProductsLoading(true);
+        const url = childId
+          ? `/api/products?childId=${childId}`
+          : '/api/products';
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.success && data.products) {
+          setProducts(data.products);
+
+          // Set starter completion status
+          if (data.starterStatus?.completed) {
+            setStarterCompleted(true);
+          }
+
+          // If product param is provided, select it
+          if (productParam && data.products.find((p: Product) => p.slug === productParam)) {
+            setSelectedProductSlug(productParam);
+          } else if (!productParam) {
+            // Default to 'full' if no param
+            setSelectedProductSlug('full');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+      } finally {
+        setProductsLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, [childId, productParam]);
+
+  // Update pricing when selected product changes
+  useEffect(() => {
+    if (selectedProduct) {
+      setPricing({
+        programPrice: selectedProduct.discounted_price,
+        originalPrice: selectedProduct.original_price,
+        displayPrice: selectedProduct.price_display,
+        displayOriginalPrice: `₹${selectedProduct.original_price.toLocaleString('en-IN')}`,
+        discountLabel: selectedProduct.savings_display || '',
+        sessionsIncluded: selectedProduct.sessions_included,
+        durationMonths: selectedProduct.duration_months,
+      });
+    }
+  }, [selectedProduct]);
+
   // Fetch coach settings from site_settings
   useEffect(() => {
     async function fetchCoachSettings() {
@@ -242,47 +345,14 @@ function EnrollContent() {
     }
 
     fetchCoachSettings();
-
-    // Fetch pricing from pricing_plans table
-    async function fetchPricingSettings() {
-      try {
-        const { data, error } = await supabase
-          .from('pricing_plans')
-          .select('*')
-          .eq('slug', 'coaching-3month')
-          .eq('is_active', true)
-          .single();
-
-        if (error) {
-          console.error('Error fetching pricing:', error);
-          return;
-        }
-
-        if (data) {
-          setPricing({
-            programPrice: data.discounted_price,
-            originalPrice: data.original_price,
-            displayPrice: `₹${data.discounted_price.toLocaleString('en-IN')}`,
-            displayOriginalPrice: `₹${data.original_price.toLocaleString('en-IN')}`,
-            discountLabel: data.discount_label || 'SAVE 50% — Launch Offer',
-            sessionsIncluded: data.sessions_included || 9,
-            durationMonths: data.duration_months || 3,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to fetch pricing:', err);
-      }
-    }
-
-    fetchPricingSettings();
   }, []);
 
-  // Auto-apply coupon from URL if present
+  // Auto-apply coupon from URL if present (after pricing loads)
   useEffect(() => {
-    if (couponCode && !couponApplied) {
+    if (pricing && couponCode && !couponApplied) {
       handleApplyCoupon();
     }
-  }, [pricing.programPrice]); // Run after pricing loads
+  }, [pricing?.programPrice]); // Run after pricing loads from API
 
   // Load Razorpay script
   useEffect(() => {
@@ -357,7 +427,7 @@ function EnrollContent() {
     if (discountBreakdown) {
       return discountBreakdown.finalAmount;
     }
-    return pricing.programPrice;
+    return pricing?.programPrice ?? 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -365,6 +435,11 @@ function EnrollContent() {
 
     if (!razorpayLoaded) {
       setError('Payment system is loading. Please try again.');
+      return;
+    }
+
+    if (!pricing) {
+      setError('Pricing is still loading. Please wait a moment.');
       return;
     }
 
@@ -380,22 +455,27 @@ function EnrollContent() {
     try {
       // Create Razorpay order with discounted amount
       const finalAmount = getFinalAmount();
-      
+
       const response = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          // Product selection
+          productCode: selectedProductSlug || 'full',
+          // Amount (server will validate from product)
           amount: finalAmount,
+          // Parent/Child info
           parentName: formData.parentName,
           parentEmail: formData.parentEmail,
           parentPhone: formData.parentPhone,
           childName: formData.childName,
           childAge: formData.childAge,
+          childId: childId || null,
           source,
-          // NEW: Coupon info
+          // Coupon info
           couponCode: couponApplied ? couponCode : null,
-                  discoveryCallId: discoveryCallId || null,
-                  originalAmount: pricing.programPrice,
+          discoveryCallId: discoveryCallId || null,
+          originalAmount: pricing?.programPrice ?? 0,
           discountAmount: discountBreakdown?.totalDiscount || 0,
         }),
       });
@@ -406,13 +486,23 @@ function EnrollContent() {
         throw new Error(data.error || 'Failed to create order');
       }
 
+      // [ORDER:1] Log order created
+      console.log('[ORDER:1] Order created successfully:', {
+        orderId: data.orderId,
+        amountRupees: data.amount,
+        amountPaise: data.amount * 100,
+        productCode: selectedProductSlug,
+        childName: formData.childName,
+      });
+
       // Open Razorpay checkout
+      // Note: amount should be in paise for Razorpay (though it uses order amount when order_id is present)
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: data.amount,
+        amount: data.amount * 100, // Convert to paise for Razorpay
         currency: 'INR',
         name: 'Yestoryd',
-        description: `${pricing.durationMonths}-Month Reading Coaching Program`,
+        description: `${pricing?.durationMonths ?? 3}-Month Reading Coaching Program`,
         order_id: data.orderId,
         prefill: {
           name: formData.parentName,
@@ -424,91 +514,246 @@ function EnrollContent() {
           childAge: formData.childAge,
           requestedStartDate: startOption === 'later' ? startDate : 'immediate',
           couponCode: couponApplied ? couponCode : '',
-          originalAmount: pricing.programPrice,
+          originalAmount: pricing?.programPrice ?? 0,
           discountAmount: discountBreakdown?.totalDiscount || 0,
         },
         theme: {
           color: '#ff0099',
         },
         handler: async function (response: any) {
-          // Verify payment
+          // STEP 1: All logging and processing inside try block for safety
           try {
-            const verifyRes = await fetch('/api/payment/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                childName: formData.childName,
-                childAge: formData.childAge,
-                parentEmail: formData.parentEmail,
-                parentPhone: formData.parentPhone,
-                parentName: formData.parentName,
-                // NEW: Pass start date info
-                requestedStartDate: startOption === 'later' ? startDate : null,
-                // NEW: Pass coupon info for recording
-                couponCode: couponApplied ? couponCode : null,
-                  discoveryCallId: discoveryCallId || null,
-                  originalAmount: pricing.programPrice,
-                discountAmount: discountBreakdown?.totalDiscount || 0,
-              }),
+            // [PAY:1] Log callback received
+            console.log('[PAY:1] Razorpay callback received:', {
+              order_id: response?.razorpay_order_id || 'MISSING',
+              payment_id: response?.razorpay_payment_id || 'MISSING',
+              signature_present: !!response?.razorpay_signature,
+              timestamp: new Date().toISOString(),
             });
 
-            const verifyData = await verifyRes.json();
+            // [PAY:2] Validate response has required fields
+            if (!response?.razorpay_order_id || !response?.razorpay_payment_id || !response?.razorpay_signature) {
+              console.error('[PAY:2] INVALID RESPONSE - Missing required fields');
+              setError('Payment response incomplete. Please contact support.');
+              setLoading(false);
+              return;
+            }
 
-            if (verifyRes.ok) {
-              // Build success URL with all relevant params
+            // [PAY:3] Build verify payload
+            const verifyPayload = {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              productCode: selectedProductSlug || 'full',
+              childName: formData.childName,
+              childAge: formData.childAge,
+              childId: childId || null,
+              parentEmail: formData.parentEmail,
+              parentPhone: formData.parentPhone,
+              parentName: formData.parentName,
+              requestedStartDate: startOption === 'later' ? startDate : null,
+              couponCode: couponApplied ? couponCode : null,
+              discoveryCallId: discoveryCallId || null,
+              originalAmount: pricing?.programPrice ?? 0,
+              discountAmount: discountBreakdown?.totalDiscount || 0,
+            };
+            console.log('[PAY:3] Verify payload prepared:', {
+              ...verifyPayload,
+              razorpay_signature: verifyPayload.razorpay_signature.substring(0, 10) + '...',
+            });
+
+            // [PAY:4] Call verify API with 60-second timeout
+            console.log('[PAY:4] Calling /api/payment/verify...');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+            let verifyRes: Response;
+            try {
+              verifyRes = await fetch('/api/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(verifyPayload),
+                signal: controller.signal,
+              });
+              clearTimeout(timeoutId);
+            } catch (fetchErr: any) {
+              clearTimeout(timeoutId);
+              if (fetchErr.name === 'AbortError') {
+                console.error('[PAY:4] TIMEOUT - Verify request took too long (60s)');
+                setError('Payment verification timed out. Your payment was received - please contact support with order ID: ' + response.razorpay_order_id);
+              } else {
+                console.error('[PAY:4] FETCH ERROR:', fetchErr.message);
+                setError('Network error during verification. Please contact support with order ID: ' + response.razorpay_order_id);
+              }
+              setLoading(false);
+              return;
+            }
+
+            // [PAY:5] Log response status
+            console.log('[PAY:5] Verify response status:', verifyRes.status, verifyRes.statusText);
+
+            // [PAY:6] Parse response body
+            let verifyData: any;
+            try {
+              const rawText = await verifyRes.clone().text();
+              console.log('[PAY:6] Raw response body length:', rawText.length);
+              if (rawText.length === 0) {
+                console.error('[PAY:6] EMPTY RESPONSE BODY');
+                setError('Empty response from server. Please contact support with order ID: ' + response.razorpay_order_id);
+                setLoading(false);
+                return;
+              }
+              verifyData = JSON.parse(rawText);
+              console.log('[PAY:7] Parsed response:', JSON.stringify(verifyData, null, 2));
+            } catch (parseErr: any) {
+              console.error('[PAY:6] JSON PARSE ERROR:', parseErr.message);
+              setError('Invalid response from server. Please contact support with order ID: ' + response.razorpay_order_id);
+              setLoading(false);
+              return;
+            }
+
+            // [PAY:8] Check for success with redirectUrl
+            if (verifyData.success && verifyData.redirectUrl) {
+              console.log('[PAY:8] SUCCESS! Redirecting to:', verifyData.redirectUrl);
+              window.location.href = verifyData.redirectUrl;
+              return;
+            }
+
+            // [PAY:9] Fallback: Build redirect URL if API didn't provide one but success is true
+            if (verifyData.success && verifyData.enrollmentId) {
+              console.log('[PAY:9] Building fallback redirect URL...');
               const successParams = new URLSearchParams({
-                  childName: formData.childName,
-                  enrollmentId: verifyData.enrollmentId || verifyData.data?.enrollmentId || '',
-                  coachName: verifyData.coachName || verifyData.data?.coachName || '',
-                });
+                childName: formData.childName,
+                enrollmentId: verifyData.enrollmentId || verifyData.data?.enrollmentId || '',
+                coachName: verifyData.data?.coachName || '',
+                sessions: String(verifyData.data?.product?.sessionsIncluded || pricing?.sessionsIncluded || 9),
+                product: selectedProduct?.name || 'Full Program',
+              });
 
-              // Add delayed start info if applicable
               if (startOption === 'later' && startDate) {
                 successParams.set('startDate', startDate);
                 successParams.set('delayed', 'true');
               }
 
-              // Add savings info if coupon was applied
               if (discountBreakdown?.totalDiscount) {
                 successParams.set('saved', discountBreakdown.totalDiscount.toString());
               }
 
-              window.location.href = `/enrollment/success?${successParams.toString()}`;
-            } else {
-              setError('Payment verification failed. Please contact support.');
-              setLoading(false);
+              const fallbackUrl = `/enrollment/success?${successParams.toString()}`;
+              console.log('[PAY:9] Fallback redirect to:', fallbackUrl);
+              window.location.href = fallbackUrl;
+              return;
             }
-          } catch (err) {
-            setError('Payment verification failed. Please contact support.');
+
+            // [PAY:10] Verification failed - show error
+            console.error('[PAY:10] Verification failed:', {
+              success: verifyData.success,
+              hasRedirectUrl: !!verifyData.redirectUrl,
+              hasEnrollmentId: !!verifyData.enrollmentId,
+              error: verifyData.error,
+            });
+            setError(verifyData.error || 'Payment verification failed. Please contact support with order ID: ' + response.razorpay_order_id);
+            setLoading(false);
+          } catch (err: any) {
+            console.error('[PAY:ERR] Unhandled exception in payment handler:', err);
+            console.error('[PAY:ERR] Stack:', err.stack);
+            setError('An unexpected error occurred. Please contact support.');
             setLoading(false);
           }
         },
         modal: {
           ondismiss: function () {
+            console.log('[ORDER:DISMISS] Razorpay modal dismissed by user');
             setLoading(false);
           },
         },
       };
 
+      // [ORDER:2] Log Razorpay options and open checkout
+      console.log('[ORDER:2] Opening Razorpay checkout:', {
+        orderId: options.order_id,
+        amountPaise: options.amount,
+        hasKey: !!options.key,
+        prefill: { name: options.prefill.name, email: options.prefill.email },
+      });
+
       const razorpay = new window.Razorpay(options);
       razorpay.open();
+      console.log('[ORDER:3] Razorpay checkout opened');
     } catch (err: any) {
+      console.error('[ORDER:ERR] Error in payment flow:', err.message);
       setError(err.message || 'Something went wrong');
       setLoading(false);
     }
   };
 
-  const features = [
-    { icon: Video, text: '6 One-on-One Sessions' },
-    { icon: Calendar, text: '3 Parent Meetings' },
-    { icon: BookOpen, text: 'FREE E-Learning Access' },
-    { icon: Sparkles, text: 'AI Progress Tracking' },
-    { icon: MessageCircle, text: 'WhatsApp Support' },
-    { icon: Award, text: 'Completion Certificate' },
-  ];
+  // Dynamic features based on selected product
+  const getFeatures = () => {
+    // Get session counts from selected product
+    const coachingSessions = selectedProduct?.sessions_coaching ?? selectedProduct?.coaching_sessions ?? 6;
+    const skillBuildingSessions = selectedProduct?.sessions_skill_building ?? 0;
+    const checkinSessions = selectedProduct?.sessions_checkin ?? selectedProduct?.parent_sessions ?? 3;
+    const isStarter = selectedProduct?.slug === 'starter';
+    const isFull = selectedProduct?.slug === 'full';
+
+    // Build features array dynamically
+    const featuresList: Array<{ icon: typeof Video; text: string }> = [];
+
+    // Coaching Sessions (always show)
+    featuresList.push({
+      icon: Video,
+      text: `${coachingSessions} Coaching Session${coachingSessions !== 1 ? 's' : ''} (45 min)`,
+    });
+
+    // Skill Building Sessions (only if > 0)
+    if (skillBuildingSessions > 0) {
+      featuresList.push({
+        icon: BookOpen,
+        text: `${skillBuildingSessions} Skill Building Session${skillBuildingSessions !== 1 ? 's' : ''} (45 min)`,
+      });
+    }
+
+    // Parent Check-ins (always show if > 0)
+    if (checkinSessions > 0) {
+      featuresList.push({
+        icon: Calendar,
+        text: `${checkinSessions} Parent Check-in${checkinSessions !== 1 ? 's' : ''} (30 min)`,
+      });
+    }
+
+    // AI Progress Report/Tracking
+    featuresList.push({
+      icon: Sparkles,
+      text: isStarter ? 'AI Progress Report' : 'AI Progress Tracking',
+    });
+
+    // WhatsApp Support
+    featuresList.push({
+      icon: MessageCircle,
+      text: 'WhatsApp Support',
+    });
+
+    // Completion Certificate (not for starter)
+    if (!isStarter) {
+      featuresList.push({
+        icon: Award,
+        text: 'Completion Certificate',
+      });
+    }
+
+    // FREE E-Learning Access (only for full program)
+    if (isFull) {
+      featuresList.push({
+        icon: Gift,
+        text: 'FREE E-Learning Access',
+      });
+    }
+
+    return featuresList;
+  };
+
+  // Re-calculate features when selected product changes
+  const features = getFeatures();
 
   // Personalized CTA with start date info
   const renderCtaText = () => {
@@ -529,7 +774,7 @@ function EnrollContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -553,178 +798,270 @@ function EnrollContent() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 lg:py-10">
-        <div className="grid lg:grid-cols-5 gap-6 lg:gap-10">
-          {/* Left Column - Info (2/5) */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* URGENCY BADGE */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-amber-800 font-semibold text-sm">Limited Slots Available</p>
-                <p className="text-amber-600 text-xs">Only 3 spots left for January batch</p>
-              </div>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 overflow-x-hidden">
+
+        {/* ========================================
+            ATTENTION: Program Selection (ALWAYS FIRST)
+            ======================================== */}
+        {products.length > 1 && (
+          <section className="mb-6 sm:mb-8 w-full max-w-md mx-auto lg:max-w-none">
+            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-[#FF0099]" />
+              Select Your Program
+            </h1>
+            <div className="space-y-3">
+              {products.map((product) => {
+                const isSelected = selectedProductSlug === product.slug;
+                const isAvailable = product.available;
+
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => isAvailable && setSelectedProductSlug(product.slug)}
+                    disabled={!isAvailable}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      isSelected
+                        ? 'border-[#FF0099] bg-[#FF0099]/5 shadow-sm'
+                        : isAvailable
+                        ? 'border-gray-200 hover:border-[#FF0099]/50 bg-white'
+                        : 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          isSelected ? 'border-[#FF0099] bg-[#FF0099]' : 'border-gray-300'
+                        }`}>
+                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`font-semibold text-sm sm:text-base leading-tight ${isSelected ? 'text-[#FF0099]' : 'text-gray-900'}`}>
+                            {product.name}
+                            {product.is_featured && (
+                              <span className="ml-2 px-2 py-0.5 bg-[#FF0099]/10 text-[#FF0099] text-[10px] rounded-full font-bold">
+                                BEST VALUE
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {product.sessions_included} sessions • {product.duration_months} month{product.duration_months > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className={`font-bold text-base sm:text-lg ${isSelected ? 'text-[#FF0099]' : 'text-gray-900'}`}>
+                          {product.price_display}
+                        </p>
+                        {product.savings_display && (
+                          <p className="text-xs text-green-600 font-medium">{product.savings_display}</p>
+                        )}
+                      </div>
+                    </div>
+                    {!isAvailable && product.eligibility_message && (
+                      <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                        <Info className="w-3 h-3 flex-shrink-0" />
+                        {product.eligibility_message}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* GOALS SECTION - Show badges OR GoalsCapture fallback */}
-            {goals.length > 0 ? (
-              // Show badges if goals captured
-              <div className="bg-gradient-to-r from-[#FF0099]/10 to-[#00ABFF]/10 rounded-xl p-4 border border-pink-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-4 h-4 text-[#FF0099]" />
-                  <p className="text-gray-700 font-semibold text-sm">
-                    {displayChildName}&apos;s focus areas:
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {goals.map((goalId) => {
-                    const goal = LEARNING_GOALS[goalId];
-                    if (!goal) return null;
-                    return (
-                      <span
-                        key={goalId}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 border border-gray-200 shadow-sm"
-                      >
-                        {goal.emoji} {goal.shortLabel || goal.label}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : childId ? (
-              // Show GoalsCapture if no goals yet but we have childId
-              <div className="bg-gradient-to-r from-[#FF0099]/10 to-[#00ABFF]/10 rounded-xl p-4 border border-pink-200">
-                <GoalsCapture
-                  childId={childId}
-                  childName={displayChildName}
-                  childAge={childAgeForGoals}
-                  onGoalsSaved={(savedGoals) => setGoals(savedGoals)}
-                />
-              </div>
-            ) : null}
-
-            {/* Coach Card - DYNAMIC from site_settings */}
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-              <div className="flex items-center gap-2 text-yellow-600 mb-3">
-                <Sparkles className="w-4 h-4" />
-                <span className="font-semibold text-xs">YOUR READING COACH</span>
-              </div>
-
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xl font-bold">
-                  {coach.initial}
-                </div>
+            {/* Continuation eligibility message */}
+            {selectedProductSlug === 'continuation' && !starterCompleted && childId && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
+                <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Coach {coach.name}</h3>
-                  <p className="text-green-600 font-medium text-sm">{coach.title}</p>
+                  <p className="text-amber-800 font-semibold text-sm">Starter Pack Required</p>
+                  <p className="text-amber-600 text-xs">Complete the Starter Pack first to enroll in the Continuation program.</p>
                 </div>
               </div>
+            )}
+          </section>
+        )}
 
-              <div className="flex items-center gap-3 text-xs text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                  <span className="font-semibold">{coach.rating}</span>
-                </div>
-                <span>{coach.experience}</span>
-                <span>{coach.families}</span>
-              </div>
-            </div>
+        {/* ========================================
+            DESKTOP: Two columns | MOBILE: Stacked (AIDA order)
+            ======================================== */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-10">
 
-            {/* What's Included */}
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3 text-sm">
-                <Gift className="w-4 h-4 text-pink-500" />
+          {/* LEFT COLUMN: INTEREST + DESIRE sections */}
+          <div className="order-1 lg:order-1 lg:col-span-2 space-y-5 w-full max-w-md mx-auto lg:max-w-none">
+
+            {/* INTEREST: What's Included */}
+            <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4 text-sm">
+                <Gift className="w-4 h-4 text-[#FF0099]" />
                 What&apos;s Included
-              </h3>
-
-              <div className="grid grid-cols-2 gap-2">
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
                 {features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-700 text-xs">{feature.text}</span>
+                  <div key={index} className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-gray-700 text-xs leading-tight">{feature.text}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
-            {/* WHAT HAPPENS AFTER PAYMENT - Dynamic based on start option */}
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-3 text-sm">
+            {/* INTEREST: Your Reading Coach */}
+            <section className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+              <h2 className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">
+                <Sparkles className="w-4 h-4 text-[#FF0099]" />
+                Your Reading Coach
+              </h2>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#FF0099] to-[#FF0099]/70 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                  {coach.initial}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Coach {coach.name}</h3>
+                  <p className="text-[#FF0099] font-medium text-sm">{coach.title}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                <span className="flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                  <span className="font-semibold">{coach.rating}</span>
+                </span>
+                <span>{coach.experience}</span>
+                <span>{coach.families}</span>
+              </div>
+            </section>
+
+            {/* DESIRE: Focus Areas (Goals) */}
+            {(goals.length > 0 || childId) && (
+              <section className="bg-gradient-to-br from-[#FF0099]/5 to-[#00ABFF]/5 rounded-2xl p-5 border border-[#FF0099]/10">
+                {goals.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Target className="w-4 h-4 text-[#FF0099]" />
+                      <p className="text-gray-900 font-semibold text-sm">
+                        {displayChildName}&apos;s Focus Areas
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {goals.map((goalId) => {
+                        const goal = LEARNING_GOALS[goalId];
+                        if (!goal) return null;
+                        return (
+                          <span
+                            key={goalId}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full text-xs font-medium text-gray-700 border border-gray-200"
+                          >
+                            <Check className="w-3 h-3 text-[#FF0099]" />
+                            {goal.shortLabel || goal.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : childId ? (
+                  <GoalsCapture
+                    childId={childId}
+                    childName={displayChildName}
+                    childAge={childAgeForGoals}
+                    onGoalsSaved={(savedGoals) => setGoals(savedGoals)}
+                  />
+                ) : null}
+              </section>
+            )}
+
+            {/* DESIRE: Testimonial */}
+            <section className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 border border-amber-100">
+              <div className="flex gap-0.5 mb-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className="w-4 h-4 text-amber-500 fill-amber-500" />
+                ))}
+              </div>
+              <blockquote className="text-gray-700 italic text-sm mb-3">
+                &quot;Amazing transformation! Aarav went from struggling to reading confidently in just 2 months.&quot;
+              </blockquote>
+              <cite className="text-sm font-semibold text-gray-900 not-italic">
+                — Priya S., Mumbai
+              </cite>
+            </section>
+
+            {/* After You Enroll - Desktop only */}
+            <section className="hidden lg:block bg-blue-50 rounded-2xl p-5 border border-blue-100">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-4 text-sm">
                 <ArrowRight className="w-4 h-4 text-blue-500" />
                 After You Enroll
               </h3>
-              <ol className="space-y-2 text-xs text-gray-600">
+              <ol className="space-y-2.5 text-xs text-gray-600">
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
-                    1
-                  </span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">1</span>
                   <span>Confirmation email with receipt (instant)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
-                    2
-                  </span>
-                  <span>Coach {coach.name} WhatsApps to introduce herself (within 24hrs)</span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">2</span>
+                  <span>Coach {coach.name} WhatsApps to introduce herself</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
-                    3
-                  </span>
-                  <span>
-                    {startOption === 'later' && startDate
-                      ? `Calendar invites sent 3 days before ${formatDateForDisplay(startDate)}`
-                      : `Calendar invites for all ${pricing.sessionsIncluded} sessions (within 24hrs)`}
-                  </span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">3</span>
+                  <span>Calendar invites for all sessions</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">
-                    4
-                  </span>
-                  <span>
-                    {startOption === 'later' && startDate
-                      ? `First session on ${formatDateForDisplay(startDate)}`
-                      : 'First session scheduled within 3-5 days'}
-                  </span>
+                  <span className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[10px]">4</span>
+                  <span>First session within 3-5 days</span>
                 </li>
               </ol>
-            </div>
+            </section>
 
-            {/* Testimonial */}
-            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
-              <div className="flex items-center gap-1 mb-2">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                ))}
-              </div>
-              <p className="text-gray-700 italic text-sm mb-3">
-                &quot;Amazing transformation! Aarav went from struggling to reading confidently in just 2 months.&quot;
-              </p>
-              <p className="font-bold text-green-700 text-sm">— Priya S., Mumbai</p>
-            </div>
           </div>
 
-          {/* Right Column - Form (3/5) */}
-          <div className="lg:col-span-3">
+          {/* RIGHT COLUMN: ACTION - Form & CTA */}
+          <div className="order-2 lg:order-2 lg:col-span-3 w-full max-w-md mx-auto lg:max-w-none">
             {/* Pricing Card */}
             <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-lg">
               {/* Header */}
               <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold">{pricing.durationMonths}-Month Reading Coaching</h2>
-                    <p className="text-white/80 text-xs">{pricing.sessionsIncluded} sessions • Everything included</p>
+                {!pricing ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    <span>Loading pricing...</span>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs line-through text-white/60">{pricing.displayOriginalPrice}</div>
-                    <div className="text-2xl font-black">{pricing.displayPrice}</div>
-                  </div>
-                </div>
-                <div className="mt-2 inline-block bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold">
-                  {pricing.discountLabel}
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-base sm:text-lg font-bold truncate">
+                          {selectedProduct?.name || `${pricing.durationMonths}-Month Reading Coaching`}
+                        </h2>
+                        <p className="text-white/80 text-xs">{pricing.sessionsIncluded} sessions • Everything included</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        {pricing.originalPrice > pricing.programPrice && (
+                          <div className="text-xs line-through text-white/60">{pricing.displayOriginalPrice}</div>
+                        )}
+                        <div className="text-xl sm:text-2xl font-black">{pricing.displayPrice}</div>
+                      </div>
+                    </div>
+                    {pricing.discountLabel && (
+                      <div className="mt-2 inline-block bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold">
+                        {pricing.discountLabel}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
+
+              {/* Personalized Welcome - if coming from assessment/lets-talk */}
+              {(formData.parentName || formData.childName) && source !== 'direct' && (
+                <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl border border-pink-100">
+                  <p className="text-sm text-gray-700 flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5" />
+                    <span className="break-words">
+                      {formData.parentName ? (
+                        <>Welcome back, <strong className="break-all">{formData.parentName.split(' ')[0]}</strong>! {formData.childName ? `Ready to start ${formData.childName}'s reading journey?` : 'Complete your enrollment below.'}</>
+                      ) : (
+                        <>Ready to start <strong className="break-all">{formData.childName}</strong>'s reading journey?</>
+                      )}
+                    </span>
+                  </p>
+                </div>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="p-4 space-y-3">
@@ -746,7 +1083,7 @@ function EnrollContent() {
                 </div>
 
                 {/* Email & Phone Row */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
                     <div className="relative">
@@ -780,7 +1117,7 @@ function EnrollContent() {
                 </div>
 
                 {/* Child Name & Age Row */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Child&apos;s Name *</label>
                     <div className="relative">
@@ -923,19 +1260,19 @@ function EnrollContent() {
                   </label>
 
                   {!couponApplied ? (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full">
                       <input
                         type="text"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                         placeholder="Enter code"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm uppercase"
+                        className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm uppercase"
                       />
                       <button
                         type="button"
                         onClick={handleApplyCoupon}
                         disabled={couponLoading || !couponCode.trim()}
-                        className="px-4 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        className="flex-shrink-0 px-3 sm:px-4 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       >
                         {couponLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -1026,18 +1363,18 @@ function EnrollContent() {
                 </button>
 
                 {/* Trust Signals */}
-                <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500 pt-2">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs text-gray-500 pt-2">
                   <span className="flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-green-500" />
-                    100% Refund Guarantee
+                    <Shield className="w-3 h-3 text-green-500 flex-shrink-0" />
+                    <span className="whitespace-nowrap">100% Refund</span>
                   </span>
                   <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-blue-500" />
-                    Flexible scheduling
+                    <Calendar className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                    <span className="whitespace-nowrap">Flexible</span>
                   </span>
                   <span className="flex items-center gap-1">
-                    <Award className="w-3 h-3 text-purple-500" />
-                    Certified coach
+                    <Award className="w-3 h-3 text-purple-500 flex-shrink-0" />
+                    <span className="whitespace-nowrap">Certified</span>
                   </span>
                 </div>
 

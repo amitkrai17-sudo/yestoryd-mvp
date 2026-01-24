@@ -23,11 +23,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Default price if not in settings (fallback)
-const DEFAULT_PROGRAM_PRICE = 5999;
+// NOTE: Pricing comes ONLY from pricing_plans table
+// No hardcoded fallbacks - if product not found, return error
 
 // --- 1. VALIDATION SCHEMA ---
 const CreateOrderSchema = z.object({
+  // Product Selection
+  productCode: z.enum(['starter', 'continuation', 'full']).default('full'),
+
   // Child Info
   childId: z.string().uuid().optional().nullable(),
   childName: z.string().min(1, 'Child name required').max(100),
@@ -38,25 +41,25 @@ const CreateOrderSchema = z.object({
     })
     .optional()
     .nullable(),
-  
+
   // Parent Info
   parentId: z.string().uuid().optional().nullable(),
   parentName: z.string().min(1, 'Parent name required').max(100),
   parentEmail: z.string().email('Invalid email').transform((v) => v.toLowerCase().trim()),
   parentPhone: phoneSchemaOptional,
-  
+
   // Coupon/Discount
   couponCode: z.string().max(20).optional().nullable(),
-  
+
   // Referral Credit
   useReferralCredit: z.boolean().default(false),
-  referralCreditAmount: z.number().min(0).max(5999).default(0),
-  
+  referralCreditAmount: z.number().min(0).max(10000).default(0),
+
   // Coach/Lead Source
   coachId: z.string().uuid().optional().nullable(),
   leadSource: z.enum(['yestoryd', 'coach']).default('yestoryd'),
   leadSourceCoachId: z.string().uuid().optional().nullable(),
-  
+
   // Scheduling
   requestedStartDate: z.string().optional().nullable(),
 });
@@ -78,35 +81,97 @@ interface PricingResult {
   finalAmount: number;
   couponCode?: string;
   couponId?: string;
+  productId?: string;
+  productCode?: string;
+  sessionsTotal?: number;
+}
+
+interface ProductInfo {
+  id: string;
+  slug: string;
+  name: string;
+  discounted_price: number;
+  sessions_included: number;
+  sessions_coaching: number;
+  sessions_skill_building: number;
+  sessions_checkin: number;
+  duration_months: number;
 }
 
 // --- 3. HELPER FUNCTIONS ---
 
 /**
- * Get Program Price from Database (Server-Controlled)
+ * Get Product by slug from pricing_plans (Server-Controlled)
  */
-async function getProgramPrice(requestId: string): Promise<number> {
-  const { data: priceSetting } = await supabase
-    .from('site_settings')
-    .select('value')
-    .eq('key', 'program_price')
+async function getProductBySlug(
+  productCode: string,
+  requestId: string
+): Promise<ProductInfo | null> {
+  const { data: product, error } = await supabase
+    .from('pricing_plans')
+    .select('id, slug, name, discounted_price, sessions_included, sessions_coaching, sessions_skill_building, sessions_checkin, duration_months')
+    .eq('slug', productCode)
+    .eq('is_active', true)
     .single();
 
-  if (priceSetting?.value) {
-    const price = parseInt(String(priceSetting.value).replace(/[^0-9]/g, ''));
-    if (price > 0) {
-      console.log(JSON.stringify({ requestId, event: 'price_fetched', price }));
-      return price;
-    }
+  if (error || !product) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'product_not_found',
+      productCode,
+      error: error?.message,
+    }));
+    return null;
   }
 
-  console.log(JSON.stringify({ 
-    requestId, 
-    event: 'price_fallback', 
-    price: DEFAULT_PROGRAM_PRICE 
+  console.log(JSON.stringify({
+    requestId,
+    event: 'product_fetched',
+    productCode,
+    productId: product.id,
+    price: product.discounted_price,
+    sessions: product.sessions_included,
   }));
-  return DEFAULT_PROGRAM_PRICE;
+
+  return product as ProductInfo;
 }
+
+/**
+ * Check if child has completed starter enrollment
+ */
+async function checkStarterCompleted(
+  childId: string,
+  requestId: string
+): Promise<{ completed: boolean; starterEnrollmentId: string | null }> {
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select('id, status, enrollment_type, starter_completed_at')
+    .eq('child_id', childId)
+    .eq('enrollment_type', 'starter')
+    .in('status', ['completed', 'active'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!enrollment) {
+    console.log(JSON.stringify({ requestId, event: 'no_starter_found', childId }));
+    return { completed: false, starterEnrollmentId: null };
+  }
+
+  const isCompleted = enrollment.status === 'completed' || enrollment.starter_completed_at !== null;
+
+  console.log(JSON.stringify({
+    requestId,
+    event: 'starter_check',
+    childId,
+    completed: isCompleted,
+    enrollmentId: enrollment.id,
+  }));
+
+  return { completed: isCompleted, starterEnrollmentId: enrollment.id };
+}
+
+// REMOVED: getProgramPrice() - was deprecated, pricing comes from pricing_plans table only
 
 /**
  * Validate Coupon and Calculate Discount (Server-Side)
@@ -115,6 +180,7 @@ async function validateCoupon(
   couponCode: string,
   basePrice: number,
   parentEmail: string,
+  productCode: string,
   requestId: string
 ): Promise<CouponValidationResult> {
   try {
@@ -124,7 +190,7 @@ async function validateCoupon(
       .select(`
         id, code, coupon_type, discount_type, discount_value,
         min_order_amount, max_discount_amount, max_uses, current_uses,
-        valid_from, valid_until, is_active, one_time_per_user
+        valid_from, valid_until, is_active, one_time_per_user, applicable_to
       `)
       .eq('code', couponCode.toUpperCase())
       .eq('is_active', true)
@@ -132,6 +198,19 @@ async function validateCoupon(
 
     if (error || !coupon) {
       return { valid: false, discountAmount: 0, discountPercent: 0, error: 'Invalid coupon code' };
+    }
+
+    // 1b. Check if coupon applies to this product
+    const applicableTo = coupon.applicable_to || [];
+    if (applicableTo.length > 0 && !applicableTo.includes(productCode)) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'coupon_not_applicable',
+        code: couponCode,
+        productCode,
+        applicableTo,
+      }));
+      return { valid: false, discountAmount: 0, discountPercent: 0, error: `Coupon not valid for ${productCode} product` };
     }
 
     // 2. Check validity period
@@ -176,13 +255,30 @@ async function validateCoupon(
     let discountAmount = 0;
     let discountPercent = 0;
 
-    if (coupon.discount_type === 'percent') {
+    // Debug: Log coupon details
+    console.log(JSON.stringify({
+      requestId,
+      event: 'coupon_details',
+      code: coupon.code,
+      discount_type: coupon.discount_type,
+      discount_value: coupon.discount_value,
+      applicable_to: coupon.applicable_to,
+      productCode,
+      basePrice,
+    }));
+
+    // Handle different discount types
+    if (coupon.discount_type === 'percentage' || coupon.discount_type === 'percent') {
       discountPercent = coupon.discount_value || 0;
       discountAmount = Math.round((basePrice * discountPercent) / 100);
-    } else {
-      // Fixed amount
+    } else if (coupon.discount_type === 'fixed' || coupon.discount_type === 'fixed_discount' || coupon.discount_type === 'amount') {
+      // Fixed amount discount (in rupees)
       discountAmount = coupon.discount_value || 0;
-      discountPercent = Math.round((discountAmount / basePrice) * 100);
+      discountPercent = basePrice > 0 ? Math.round((discountAmount / basePrice) * 100) : 0;
+    } else {
+      // Default: treat as fixed amount for backwards compatibility
+      discountAmount = coupon.discount_value || 0;
+      discountPercent = basePrice > 0 ? Math.round((discountAmount / basePrice) * 100) : 0;
     }
 
     // 7. Apply max discount cap
@@ -418,6 +514,7 @@ export async function POST(request: NextRequest) {
       event: 'create_order_start',
       childName: body.childName,
       parentEmail: body.parentEmail,
+      productCode: body.productCode,
       couponCode: body.couponCode || 'none',
     }));
 
@@ -434,8 +531,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Get Server-Side Price (NEVER trust client!)
-    const basePrice = await getProgramPrice(requestId);
+    // 4. Get Product from Database (Server-Controlled)
+    const product = await getProductBySlug(body.productCode, requestId);
+
+    if (!product) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid product selected', code: 'INVALID_PRODUCT' },
+        { status: 400 }
+      );
+    }
+
+    const basePrice = product.discounted_price;
+
+    // 4a. Validate Continuation Eligibility
+    if (body.productCode === 'continuation') {
+      if (!body.childId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Child ID required for continuation enrollment',
+            code: 'CHILD_ID_REQUIRED',
+          },
+          { status: 400 }
+        );
+      }
+
+      const starterCheck = await checkStarterCompleted(body.childId, requestId);
+
+      if (!starterCheck.completed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Starter program must be completed before enrolling in continuation',
+            code: 'STARTER_NOT_COMPLETED',
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // 5. Calculate Pricing with Discounts
     let pricing: PricingResult = {
@@ -443,35 +576,42 @@ export async function POST(request: NextRequest) {
       couponDiscount: 0,
       referralCreditUsed: 0,
       finalAmount: basePrice,
+      productId: product.id,
+      productCode: body.productCode,
+      sessionsTotal: product.sessions_included,
     };
 
-    // 5a. Apply Coupon Discount
-    if (body.couponCode) {
+    // 5a. Apply Coupon Discount (only if user manually provides a coupon code)
+    // Note: Full program discount (₹500 off) is already reflected in discounted_price
+    const couponToApply = body.couponCode;
+    if (couponToApply) {
       const couponResult = await validateCoupon(
-        body.couponCode,
+        couponToApply,
         basePrice,
         body.parentEmail,
+        body.productCode,
         requestId
       );
 
       if (couponResult.valid) {
         pricing.couponDiscount = couponResult.discountAmount;
-        pricing.couponCode = body.couponCode;
+        pricing.couponCode = couponToApply;
         pricing.couponId = couponResult.couponId;
-      } else {
-        // Return error for invalid coupon (don't silently ignore)
+      } else if (body.couponCode) {
+        // Only return error if user explicitly provided a coupon
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: couponResult.error || 'Invalid coupon',
-            code: 'INVALID_COUPON'
+            code: 'INVALID_COUPON',
           },
           { status: 400 }
         );
       }
+      // If auto-applied coupon fails, silently continue without discount
     }
 
-    // 5b. Apply Referral Credit
+    // 5c. Apply Referral Credit
     if (body.useReferralCredit && body.referralCreditAmount > 0) {
       const creditResult = await validateReferralCredit(
         body.parentEmail,
@@ -484,9 +624,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5c. Calculate Final Amount
+    // 5d. Calculate Final Amount
     pricing.finalAmount = basePrice - pricing.couponDiscount - pricing.referralCreditUsed;
-    
+
     // Ensure minimum amount (Razorpay requires at least ₹1)
     if (pricing.finalAmount < 1) {
       pricing.finalAmount = 1;
@@ -495,10 +635,15 @@ export async function POST(request: NextRequest) {
     console.log(JSON.stringify({
       requestId,
       event: 'pricing_calculated',
-      basePrice,
-      couponDiscount: pricing.couponDiscount,
-      referralCredit: pricing.referralCreditUsed,
-      finalAmount: pricing.finalAmount,
+      productCode: body.productCode,
+      productId: product.id,
+      basePriceRupees: basePrice,
+      couponCode: pricing.couponCode || 'none',
+      couponDiscountRupees: pricing.couponDiscount,
+      referralCreditRupees: pricing.referralCreditUsed,
+      finalAmountRupees: pricing.finalAmount,
+      finalAmountPaise: pricing.finalAmount * 100,
+      sessionsTotal: product.sessions_included,
     }));
 
     // 6. Get or Create Parent (Race-Safe)
@@ -532,10 +677,16 @@ export async function POST(request: NextRequest) {
         childName: body.childName,
         parentId,
         parentEmail: body.parentEmail,
+        // Product info
+        productCode: body.productCode,
+        productId: product.id,
+        sessionsTotal: String(product.sessions_included),
+        // Pricing info
+        basePrice: String(basePrice),
         couponCode: pricing.couponCode || '',
         couponDiscount: String(pricing.couponDiscount),
         referralCreditUsed: String(pricing.referralCreditUsed),
-        basePrice: String(basePrice),
+        // Lead source
         leadSource: body.leadSource,
         coachId: body.coachId || '',
       },
@@ -545,7 +696,8 @@ export async function POST(request: NextRequest) {
       requestId,
       event: 'razorpay_order_created',
       orderId: order.id,
-      amount: pricing.finalAmount,
+      amountRupees: pricing.finalAmount,
+      amountPaise: pricing.finalAmount * 100,
     }));
 
     // 9. Save Booking Record (for webhook to find)
@@ -557,16 +709,22 @@ export async function POST(request: NextRequest) {
           parent_id: parentId,
           amount: pricing.finalAmount,
           coach_id: body.coachId,
-          status: 'pending',
+          status: 'confirmed',
           metadata: {
             child_name: body.childName,
             parent_email: body.parentEmail,
             parent_name: body.parentName,
             parent_phone: body.parentPhone,
+            // Product info
+            product_code: body.productCode,
+            product_id: product.id,
+            sessions_total: product.sessions_included,
+            // Pricing info
             original_amount: basePrice,
             coupon_code: pricing.couponCode,
             coupon_discount: pricing.couponDiscount,
             referral_credit_used: pricing.referralCreditUsed,
+            // Lead source
             lead_source: body.leadSource,
             lead_source_coach_id: body.leadSourceCoachId,
             requested_start_date: body.requestedStartDate,
@@ -619,6 +777,14 @@ export async function POST(request: NextRequest) {
       orderId: order.id,
       amount: pricing.finalAmount,
       currency: order.currency,
+      // Product info
+      product: {
+        code: body.productCode,
+        id: product.id,
+        name: product.name,
+        sessionsIncluded: product.sessions_included,
+        durationMonths: product.duration_months,
+      },
       // Pricing breakdown (for UI display)
       pricing: {
         basePrice,

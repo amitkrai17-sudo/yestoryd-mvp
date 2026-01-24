@@ -44,6 +44,12 @@ interface Enrollment {
   program_start: string;
   program_end: string;
   coach_id: string;
+  // New fields for multi-product support
+  enrollment_type: 'starter' | 'continuation' | 'full' | null;
+  product_id: string | null;
+  sessions_purchased: number | null;
+  starter_completed_at: string | null;
+  continuation_deadline: string | null;
   coaches: {
     id: string;
     name: string;
@@ -215,6 +221,11 @@ export default function ParentDashboardPage() {
         .from('enrollments')
         .select(`
           *,
+          enrollment_type,
+          product_id,
+          sessions_purchased,
+          starter_completed_at,
+          continuation_deadline,
           coaches!coach_id (
             id,
             name,
@@ -680,13 +691,100 @@ function OverviewTab({
     return enrollment?.coaches?.name || 'Rucha';
   }
 
+  // Get enrollment type display info
+  const getEnrollmentTypeInfo = () => {
+    const type = enrollment?.enrollment_type;
+    switch (type) {
+      case 'starter':
+        return {
+          label: 'Starter Pack',
+          color: 'bg-blue-100 text-blue-700 border-blue-200',
+          icon: '🚀',
+        };
+      case 'continuation':
+        return {
+          label: 'Continuation',
+          color: 'bg-purple-100 text-purple-700 border-purple-200',
+          icon: '📈',
+        };
+      case 'full':
+        return {
+          label: 'Full Program',
+          color: 'bg-green-100 text-green-700 border-green-200',
+          icon: '⭐',
+        };
+      default:
+        return {
+          label: 'Program',
+          color: 'bg-gray-100 text-gray-700 border-gray-200',
+          icon: '📚',
+        };
+    }
+  };
+
+  const enrollmentTypeInfo = getEnrollmentTypeInfo();
+
+  // Check if starter is completed and can continue
+  const isStarterCompleted = enrollment?.enrollment_type === 'starter' &&
+    (enrollment?.starter_completed_at || completedSessions >= totalSessions);
+
+  // Check if continuation deadline is approaching (within 3 days)
+  const continuationDeadline = enrollment?.continuation_deadline
+    ? new Date(enrollment.continuation_deadline)
+    : null;
+  const daysUntilDeadline = continuationDeadline
+    ? Math.ceil((continuationDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
   return (
     <div className="space-y-4 w-full">
-      {/* Welcome Banner */}
+      {/* Welcome Banner with Enrollment Type Badge */}
       <div className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-xl p-4 text-white">
-        <h1 className="text-lg sm:text-2xl font-bold mb-1">Welcome back! 👋</h1>
-        <p className="text-pink-100 text-sm">Track {childName}&apos;s reading journey</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold mb-1">Welcome back! 👋</h1>
+            <p className="text-pink-100 text-sm">Track {childName}&apos;s reading journey</p>
+          </div>
+          {enrollment?.enrollment_type && (
+            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${enrollmentTypeInfo.color}`}>
+              {enrollmentTypeInfo.icon} {enrollmentTypeInfo.label}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* STARTER COMPLETION CTA - Show when starter is completed */}
+      {isStarterCompleted && (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900 mb-1">
+                🎉 Starter Pack Completed!
+              </h3>
+              <p className="text-gray-600 text-sm mb-3">
+                {childName} has made great progress! Continue the journey with 9 more sessions.
+              </p>
+              {daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
+                <p className="text-amber-600 text-xs mb-2 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Special continuation pricing expires in {daysUntilDeadline} day{daysUntilDeadline !== 1 ? 's' : ''}
+                </p>
+              )}
+              <Link
+                href={`/enroll?product=continuation&childId=${enrollment?.id ? enrollment.id.split('-')[0] : ''}`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all text-sm"
+              >
+                <Zap className="w-4 h-4" />
+                Continue Your Journey
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PENDING SKILL BOOSTER CARD */}
       {pendingSkillBooster && (
@@ -726,7 +824,9 @@ function OverviewTab({
               <CheckCircle className="w-4 h-4 text-green-600" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-green-600">{completedSessions}/{totalSessions}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600">
+            {completedSessions}/{enrollment?.sessions_purchased || totalSessions}
+          </p>
           <p className="text-xs text-gray-500">Sessions</p>
         </div>
 

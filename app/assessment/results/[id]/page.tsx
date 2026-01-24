@@ -186,7 +186,7 @@ export default function ResultsPage() {
 
   const msg = getScoreMessage(data.overall_score, data.childName, data.childAge);
   const goalsParam = selectedGoals.length > 0 ? `&goals=${encodeURIComponent(selectedGoals.join(','))}` : '';
-  const baseParams = `childId=${childId}&childName=${encodeURIComponent(data.childName)}&childAge=${encodeURIComponent(data.childAge)}&parentEmail=${encodeURIComponent(data.parentEmail)}&parentPhone=${encodeURIComponent(data.parentPhone || '')}`;
+  const baseParams = `childId=${childId}&childName=${encodeURIComponent(data.childName)}&childAge=${encodeURIComponent(data.childAge)}&parentName=${encodeURIComponent(data.parentName || '')}&parentEmail=${encodeURIComponent(data.parentEmail)}&parentPhone=${encodeURIComponent(data.parentPhone || '')}&assessmentScore=${data.overall_score}`;
   const checkoutUrl = `/checkout?${baseParams}&source=assessment${goalsParam}`;
   const enrollUrl = `/enroll?${baseParams}&source=results${goalsParam}`;
   const bookCallUrl = `/lets-talk?${baseParams}&source=results${goalsParam}`;

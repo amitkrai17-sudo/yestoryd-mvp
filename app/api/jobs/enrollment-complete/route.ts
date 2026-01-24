@@ -1,12 +1,17 @@
 // ============================================================
 // FILE: app/api/jobs/enrollment-complete/route.ts
 // ============================================================
-// HARDENED VERSION - Background Worker for Post-Payment Enrollment
+// ENTERPRISE REFACTOR v2 - Background Worker for Post-Payment Enrollment
 // Called by QStash after successful payment
 // Yestoryd - AI-Powered Reading Intelligence Platform
 //
+// ARCHITECTURE:
+// - Sessions are CREATED in payment/verify (single source of truth)
+// - This job SCHEDULES calendar events for existing sessions
+// - This job NEVER creates new sessions - only UPDATEs existing ones
+//
 // Security features:
-// - QStash signature verification (REMOVED direct-call bypass!)
+// - QStash signature verification
 // - Internal API key for admin testing
 // - Lazy initialization
 // - Request tracing
@@ -33,37 +38,19 @@ const getReceiver = () => new Receiver({
   nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
 });
 
-// --- SESSION CONFIGURATION ---
-const SESSION_CONFIG = {
-  totalSessions: 9,
-  coachingSessions: 6,
-  parentSessions: 3,
-  coachingDurationMinutes: 45,
-  parentDurationMinutes: 20,
-  defaultHour: 10,
-  schedule: [
-    { day: 0, type: 'coaching', number: 1, week: 1 },
-    { day: 5, type: 'coaching', number: 2, week: 1 },
-    { day: 10, type: 'parent', number: 1, week: 2 },
-    { day: 15, type: 'coaching', number: 3, week: 3 },
-    { day: 20, type: 'coaching', number: 4, week: 3 },
-    { day: 25, type: 'parent', number: 2, week: 4 },
-    { day: 30, type: 'coaching', number: 5, week: 5 },
-    { day: 35, type: 'coaching', number: 6, week: 5 },
-    { day: 40, type: 'parent', number: 3, week: 6 },
-  ],
-};
-
 // --- VALIDATION SCHEMA ---
 const enrollmentJobSchema = z.object({
   enrollmentId: z.string().uuid(),
   childId: z.string().uuid(),
   childName: z.string().min(1),
+  parentId: z.string().uuid().optional(),
   parentEmail: z.string().email(),
   parentName: z.string().min(1),
+  parentPhone: z.string().optional(),
   coachId: z.string().uuid(),
   coachEmail: z.string().email(),
   coachName: z.string().min(1),
+  source: z.enum(['verify', 'webhook']).optional(),
 });
 
 // --- VERIFICATION ---
@@ -90,7 +77,7 @@ async function verifyAuth(request: NextRequest, body: string): Promise<{ isValid
 
   // 3. Development bypass (ONLY in dev, not production!)
   if (process.env.NODE_ENV === 'development') {
-    console.warn('⚠️ Development mode - skipping signature verification');
+    console.warn('Development mode - skipping signature verification');
     return { isValid: true, source: 'dev_bypass' };
   }
 
@@ -107,7 +94,6 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
 
     // 2. Verify authorization
-    // SECURITY: Removed dangerous x-direct-call bypass!
     const auth = await verifyAuth(request, body);
 
     if (!auth.isValid) {
@@ -152,36 +138,37 @@ export async function POST(request: NextRequest) {
       coachName: data.coachName,
     }));
 
-    // 4. IDEMPOTENCY CHECK - Don't reprocess if already completed
-    const { data: enrollment } = await supabase
+    // 4. Get enrollment details
+    const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('schedule_confirmed, sessions_scheduled')
+      .select('id, schedule_confirmed, sessions_scheduled, program_start, preferred_start_date')
       .eq('id', data.enrollmentId)
       .single();
 
-    if (enrollment?.schedule_confirmed) {
-      console.log(JSON.stringify({
+    if (enrollmentError || !enrollment) {
+      console.error(JSON.stringify({
         requestId,
-        event: 'skipping_duplicate',
+        event: 'enrollment_not_found',
         enrollmentId: data.enrollmentId,
-        reason: 'Already processed',
+        error: enrollmentError?.message,
       }));
-
-      return NextResponse.json({
-        success: true,
-        message: 'Enrollment already processed',
-        sessionsScheduled: enrollment.sessions_scheduled,
-      });
+      return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
     }
 
-    // 5. Schedule Google Calendar sessions
+    // 5. Schedule Google Calendar events for EXISTING sessions
     console.log(JSON.stringify({ requestId, event: 'scheduling_calendar_sessions' }));
-    const calendarResult = await scheduleCalendarSessions(data, requestId, supabase);
+    const calendarResult = await scheduleCalendarForExistingSessions(
+      data.enrollmentId,
+      data,
+      enrollment,
+      requestId,
+      supabase
+    );
 
     console.log(JSON.stringify({
       requestId,
-      event: 'calendar_sessions_created',
-      count: calendarResult.sessionsCreated,
+      event: 'calendar_scheduling_complete',
+      sessionsUpdated: calendarResult.sessionsUpdated,
       errors: calendarResult.errors.length,
     }));
 
@@ -211,13 +198,13 @@ export async function POST(request: NextRequest) {
     console.log(JSON.stringify({ requestId, event: 'sending_confirmation_email' }));
     const emailResult = await sendConfirmationEmail(data, calendarResult.sessions);
 
-    // 8. Update enrollment status
+    // 8. Update enrollment with calendar confirmation timestamp
+    // Note: schedule_confirmed is already true (set by payment/verify)
     const { error: updateError } = await supabase
       .from('enrollments')
       .update({
-        schedule_confirmed: true,
         schedule_confirmed_at: new Date().toISOString(),
-        sessions_scheduled: calendarResult.sessionsCreated,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', data.enrollmentId);
 
@@ -239,7 +226,7 @@ export async function POST(request: NextRequest) {
         enrollment_id: data.enrollmentId,
         child_name: data.childName,
         coach_name: data.coachName,
-        sessions_scheduled: calendarResult.sessionsCreated,
+        sessions_with_calendar: calendarResult.sessionsUpdated,
         bots_scheduled: botsScheduled,
         email_sent: emailResult.success,
         calendar_errors: calendarResult.errors.length,
@@ -255,7 +242,7 @@ export async function POST(request: NextRequest) {
       requestId,
       event: 'enrollment_complete_finished',
       enrollmentId: data.enrollmentId,
-      sessionsScheduled: calendarResult.sessionsCreated,
+      sessionsWithCalendar: calendarResult.sessionsUpdated,
       botsScheduled,
       duration: `${duration}ms`,
     }));
@@ -264,7 +251,7 @@ export async function POST(request: NextRequest) {
       success: true,
       requestId,
       enrollmentId: data.enrollmentId,
-      sessionsScheduled: calendarResult.sessionsCreated,
+      sessionsWithCalendar: calendarResult.sessionsUpdated,
       botsScheduled,
       emailSent: emailResult.success,
       errors: calendarResult.errors.length > 0 ? calendarResult.errors : undefined,
@@ -290,28 +277,92 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Schedule all 9 sessions in Google Calendar
- * 
- * ⚠️ SCALING TODO (when >10 enrollments/minute):
- * Google Calendar API limits: ~60 requests/minute per user
- * 10 enrollments × 9 events = 90 requests → 429 errors
- * 
- * Fixes when hitting limits:
- * 1. Increase delay between events (currently 300ms → try 1000ms)
- * 2. Use Google Calendar batch endpoint (limited Node.js support)
- * 3. Service account pooling (multiple accounts for high volume)
- * 4. Queue enrollments and process sequentially via QStash
- */
-async function scheduleCalendarSessions(
+// ============================================================
+// REFACTORED: Schedule calendar events for EXISTING sessions
+// This function NEVER creates new sessions - only UPDATEs
+// ============================================================
+
+interface CalendarSession {
+  id: string;
+  sessionNumber: number;
+  type: string;
+  date: string;
+  meetLink: string;
+  eventId: string;
+}
+
+async function scheduleCalendarForExistingSessions(
+  enrollmentId: string,
   data: z.infer<typeof enrollmentJobSchema>,
+  enrollment: { program_start?: string; preferred_start_date?: string },
   requestId: string,
   supabase: ReturnType<typeof getSupabase>
-) {
-  const sessionsCreated: any[] = [];
+): Promise<{ sessionsUpdated: number; sessions: CalendarSession[]; errors: any[] }> {
+  const sessionsUpdated: CalendarSession[] = [];
   const errors: any[] = [];
 
-  // Initialize Google Calendar API
+  // 1. QUERY EXISTING SESSIONS (created by payment/verify)
+  const { data: existingSessions, error: fetchError } = await supabase
+    .from('scheduled_sessions')
+    .select('*')
+    .eq('enrollment_id', enrollmentId)
+    .order('session_number', { ascending: true });
+
+  if (fetchError) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'sessions_fetch_error',
+      enrollmentId,
+      error: fetchError.message,
+    }));
+    return { sessionsUpdated: 0, sessions: [], errors: [{ error: fetchError.message }] };
+  }
+
+  if (!existingSessions || existingSessions.length === 0) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'no_sessions_found',
+      enrollmentId,
+      message: 'No sessions exist - they should have been created by payment/verify',
+    }));
+    return { sessionsUpdated: 0, sessions: [], errors: [{ error: 'No sessions found' }] };
+  }
+
+  console.log(JSON.stringify({
+    requestId,
+    event: 'existing_sessions_fetched',
+    enrollmentId,
+    sessionCount: existingSessions.length,
+    sessionsWithCalendar: existingSessions.filter(s => s.google_event_id).length,
+  }));
+
+  // 2. CHECK IDEMPOTENCY - Skip if all calendar events already created
+  const sessionsNeedingCalendar = existingSessions.filter(s => !s.google_event_id);
+  if (sessionsNeedingCalendar.length === 0) {
+    console.log(JSON.stringify({
+      requestId,
+      event: 'calendar_events_already_exist',
+      enrollmentId,
+      totalSessions: existingSessions.length,
+      skipping: true,
+    }));
+
+    // Return existing sessions for email
+    return {
+      sessionsUpdated: existingSessions.length,
+      sessions: existingSessions.map(s => ({
+        id: s.id,
+        sessionNumber: s.session_number,
+        type: s.session_type,
+        date: s.scheduled_date,
+        meetLink: s.google_meet_link || '',
+        eventId: s.google_event_id || '',
+      })),
+      errors: [],
+    };
+  }
+
+  // 3. Initialize Google Calendar API
   const auth = new google.auth.JWT(
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     undefined,
@@ -319,35 +370,63 @@ async function scheduleCalendarSessions(
     ['https://www.googleapis.com/auth/calendar'],
     process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com'
   );
-
   const calendar = google.calendar({ version: 'v3', auth });
 
-  // Start from tomorrow
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() + 1);
-  startDate.setHours(SESSION_CONFIG.defaultHour, 0, 0, 0);
+  // 4. DETERMINE START DATE for scheduling
+  const startDate = enrollment.preferred_start_date
+    ? new Date(enrollment.preferred_start_date)
+    : enrollment.program_start
+      ? new Date(enrollment.program_start)
+      : getNextAvailableStartDate();
 
-  for (const session of SESSION_CONFIG.schedule) {
+  console.log(JSON.stringify({
+    requestId,
+    event: 'calendar_scheduling_start',
+    enrollmentId,
+    startDate: startDate.toISOString(),
+    sessionsToSchedule: sessionsNeedingCalendar.length,
+  }));
+
+  // 5. CREATE CALENDAR EVENTS FOR EACH EXISTING SESSION
+  for (const session of existingSessions) {
+    // Skip if already has calendar event
+    if (session.google_event_id) {
+      sessionsUpdated.push({
+        id: session.id,
+        sessionNumber: session.session_number,
+        type: session.session_type,
+        date: session.scheduled_date,
+        meetLink: session.google_meet_link || '',
+        eventId: session.google_event_id,
+      });
+      continue;
+    }
+
     try {
-      const sessionDate = new Date(startDate);
-      sessionDate.setDate(sessionDate.getDate() + session.day);
+      // Calculate session date based on session_number and week_number
+      const sessionDate = calculateSessionDate(
+        startDate,
+        session.session_number,
+        session.week_number,
+        session.session_type
+      );
 
-      const duration = session.type === 'coaching'
-        ? SESSION_CONFIG.coachingDurationMinutes
-        : SESSION_CONFIG.parentDurationMinutes;
+      const isCoaching = session.session_type === 'coaching';
+      const duration = isCoaching ? 45 : 30;
 
       const endDate = new Date(sessionDate);
       endDate.setMinutes(endDate.getMinutes() + duration);
 
-      const isCoaching = session.type === 'coaching';
+      // Build event title and description
       const eventTitle = isCoaching
-        ? `📚 Yestoryd: ${data.childName} - Coaching Session ${session.number}`
-        : `👨‍👩‍👧 Yestoryd: ${data.childName} - Parent Check-in ${session.number}`;
+        ? `Yestoryd: ${data.childName} - Coaching Session ${session.session_number}`
+        : `Yestoryd: ${data.childName} - Parent Check-in`;
 
       const eventDescription = isCoaching
-        ? `1:1 Reading Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`
+        ? `1:1 Reading Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`
         : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`;
 
+      // Create Google Calendar event
       const event = await calendar.events.insert({
         calendarId: process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com',
         conferenceDataVersion: 1,
@@ -364,7 +443,7 @@ async function scheduleCalendarSessions(
           ],
           conferenceData: {
             createRequest: {
-              requestId: `yestoryd-${data.enrollmentId}-session-${session.day}-${Date.now()}`,
+              requestId: `yestoryd-${enrollmentId}-session-${session.id}-${Date.now()}`,
               conferenceSolutionKey: { type: 'hangoutsMeet' },
             },
           },
@@ -384,65 +463,120 @@ async function scheduleCalendarSessions(
         (ep: any) => ep.entryPointType === 'video'
       )?.uri || '';
 
-      // Save to database
-      const { data: savedSession, error: dbError } = await supabase
+      // UPDATE existing session with calendar details (NOT INSERT!)
+      const { error: updateError } = await supabase
         .from('scheduled_sessions')
-        .insert({
-          child_id: data.childId,
-          coach_id: data.coachId,
-          enrollment_id: data.enrollmentId,
-          session_type: session.type,
-          session_number: session.number,
-          week_number: session.week,
-          scheduled_date: sessionDate.toISOString().split('T')[0],
-          scheduled_time: sessionDate.toTimeString().slice(0, 8),
-          duration_minutes: duration,
+        .update({
           google_event_id: event.data.id,
           google_meet_link: meetLink,
+          scheduled_date: sessionDate.toISOString().split('T')[0],
+          scheduled_time: sessionDate.toTimeString().slice(0, 8),
           status: 'scheduled',
+          updated_at: new Date().toISOString(),
         })
-        .select()
-        .single();
+        .eq('id', session.id);
 
-      if (dbError) {
+      if (updateError) {
         console.error(JSON.stringify({
           requestId,
-          event: 'session_db_error',
-          sessionNumber: session.number,
-          error: dbError.message,
+          event: 'session_update_failed',
+          sessionId: session.id,
+          error: updateError.message,
         }));
+        errors.push({
+          sessionId: session.id,
+          sessionNumber: session.session_number,
+          error: updateError.message,
+        });
+        continue;
       }
 
-      sessionsCreated.push({
-        sessionNumber: session.number,
-        type: session.type,
-        week: session.week,
+      sessionsUpdated.push({
+        id: session.id,
+        sessionNumber: session.session_number,
+        type: session.session_type,
         date: sessionDate.toISOString(),
         meetLink,
-        eventId: event.data.id,
-        dbId: savedSession?.id,
+        eventId: event.data.id || '',
       });
 
-      // Rate limiting delay
+      console.log(JSON.stringify({
+        requestId,
+        event: 'calendar_event_created',
+        sessionId: session.id,
+        sessionNumber: session.session_number,
+        sessionType: session.session_type,
+        googleEventId: event.data.id,
+      }));
+
+      // Rate limiting delay to avoid Google Calendar API limits
       await new Promise(resolve => setTimeout(resolve, 300));
 
-    } catch (calError: any) {
+    } catch (calendarError: any) {
       console.error(JSON.stringify({
         requestId,
-        event: 'calendar_error',
-        sessionNumber: session.number,
-        error: calError.message,
+        event: 'calendar_create_failed',
+        sessionId: session.id,
+        sessionNumber: session.session_number,
+        error: calendarError.message,
       }));
 
       errors.push({
-        session: session.number,
-        type: session.type,
-        error: calError.message,
+        sessionId: session.id,
+        sessionNumber: session.session_number,
+        type: session.session_type,
+        error: calendarError.message,
       });
+      // Continue with other sessions even if one fails
     }
   }
 
-  return { sessionsCreated: sessionsCreated.length, sessions: sessionsCreated, errors };
+  return { sessionsUpdated: sessionsUpdated.length, sessions: sessionsUpdated, errors };
+}
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+/**
+ * Get next available start date (tomorrow at 10 AM)
+ */
+function getNextAvailableStartDate(): Date {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(10, 0, 0, 0);
+  return date;
+}
+
+/**
+ * Calculate session date based on week number and session type
+ * Sessions are spaced ~5 days apart within the program
+ */
+function calculateSessionDate(
+  startDate: Date,
+  sessionNumber: number,
+  weekNumber: number,
+  sessionType: string
+): Date {
+  const date = new Date(startDate);
+
+  // Use week_number if available, otherwise calculate from session_number
+  if (weekNumber) {
+    // Add weeks based on week_number (1-indexed)
+    date.setDate(date.getDate() + (weekNumber - 1) * 7);
+  } else {
+    // Fallback: space sessions ~5 days apart
+    date.setDate(date.getDate() + (sessionNumber - 1) * 5);
+  }
+
+  // Set appropriate time based on session type
+  if (sessionType === 'coaching') {
+    date.setHours(17, 0, 0, 0); // 5 PM for coaching
+  } else {
+    date.setHours(18, 0, 0, 0); // 6 PM for parent check-ins
+  }
+
+  return date;
 }
 
 /**
@@ -450,7 +584,7 @@ async function scheduleCalendarSessions(
  */
 async function sendConfirmationEmail(
   data: z.infer<typeof enrollmentJobSchema>,
-  sessions: any[]
+  sessions: CalendarSession[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const sessionList = sessions
@@ -464,9 +598,9 @@ async function sendConfirmationEmail(
           hour: '2-digit',
           minute: '2-digit',
         });
-        const icon = s.type === 'coaching' ? '📚' : '👨‍👩‍👧';
+        const isCoaching = s.type === 'coaching';
         return `<tr>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${icon} ${s.type === 'coaching' ? 'Coaching' : 'Parent Check-in'} #${s.sessionNumber}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${isCoaching ? 'Coaching' : 'Parent Check-in'} #${s.sessionNumber}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${dateStr}</td>
         </tr>`;
       })
@@ -482,10 +616,10 @@ async function sendConfirmationEmail(
         personalizations: [{ to: [{ email: data.parentEmail, name: data.parentName }] }],
         from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
         reply_to: { email: 'support@yestoryd.com', name: 'Yestoryd Support' },
-        subject: `🎉 Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
+        subject: `Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
         content: [{
           type: 'text/html',
-          value: generateEmailHtml(data, sessionList),
+          value: generateEmailHtml(data, sessionList, sessions.length),
         }],
       }),
     });
@@ -504,9 +638,13 @@ async function sendConfirmationEmail(
 }
 
 /**
- * Generate email HTML (extracted for cleaner code)
+ * Generate email HTML
  */
-function generateEmailHtml(data: z.infer<typeof enrollmentJobSchema>, sessionList: string): string {
+function generateEmailHtml(
+  data: z.infer<typeof enrollmentJobSchema>,
+  sessionList: string,
+  sessionCount: number
+): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -517,7 +655,7 @@ function generateEmailHtml(data: z.infer<typeof enrollmentJobSchema>, sessionLis
 <body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9;">
   <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
     <div style="text-align: center; margin-bottom: 24px;">
-      <h1 style="color: #FF0099; margin: 0; font-size: 28px;">Welcome to Yestoryd! 🎉</h1>
+      <h1 style="color: #FF0099; margin: 0; font-size: 28px;">Welcome to Yestoryd!</h1>
       <p style="color: #666; margin-top: 8px;">Your child's reading transformation begins now</p>
     </div>
 
@@ -528,16 +666,16 @@ function generateEmailHtml(data: z.infer<typeof enrollmentJobSchema>, sessionLis
     </p>
 
     <div style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); color: white; padding: 24px; border-radius: 12px; margin: 24px 0;">
-      <h2 style="margin: 0 0 16px 0; font-size: 18px;">📋 Enrollment Summary</h2>
+      <h2 style="margin: 0 0 16px 0; font-size: 18px;">Enrollment Summary</h2>
       <table style="width: 100%; color: white;">
-        <tr><td>👧 Child:</td><td><strong>${data.childName}</strong></td></tr>
-        <tr><td>👩‍🏫 Coach:</td><td><strong>${data.coachName}</strong></td></tr>
-        <tr><td>📅 Sessions:</td><td><strong>9 sessions over 6 weeks</strong></td></tr>
-        <tr><td>⏱️ Duration:</td><td><strong>3-month program</strong></td></tr>
+        <tr><td>Child:</td><td><strong>${data.childName}</strong></td></tr>
+        <tr><td>Coach:</td><td><strong>${data.coachName}</strong></td></tr>
+        <tr><td>Sessions:</td><td><strong>${sessionCount} sessions</strong></td></tr>
+        <tr><td>Duration:</td><td><strong>3-month program</strong></td></tr>
       </table>
     </div>
 
-    <h2 style="color: #00ABFF; font-size: 18px; margin-top: 32px;">📅 Your Session Schedule</h2>
+    <h2 style="color: #00ABFF; font-size: 18px; margin-top: 32px;">Your Session Schedule</h2>
     <p style="color: #666; font-size: 14px;">Calendar invites have been sent to your email.</p>
 
     <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -555,21 +693,21 @@ function generateEmailHtml(data: z.infer<typeof enrollmentJobSchema>, sessionLis
     <div style="text-align: center; margin: 32px 0;">
       <a href="https://yestoryd.com/parent/dashboard"
          style="background: #FF0099; color: white; padding: 16px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
-        View Your Dashboard →
+        View Your Dashboard
       </a>
     </div>
 
     <div style="border-top: 1px solid #eee; padding-top: 24px; margin-top: 24px;">
       <p style="color: #666; font-size: 14px; margin: 0;">
         <strong>Questions?</strong><br>
-        📧 Email: support@yestoryd.com<br>
-        💬 WhatsApp: <a href="https://wa.me/918976287997" style="color: #25D366;">+91 89762 87997</a>
+        Email: support@yestoryd.com<br>
+        WhatsApp: <a href="https://wa.me/918976287997" style="color: #25D366;">+91 89762 87997</a>
       </p>
     </div>
 
     <div style="text-align: center; margin-top: 32px; color: #999; font-size: 12px;">
-      <p>Let's make reading fun! 📖✨</p>
-      <p>— Team Yestoryd</p>
+      <p>Let's make reading fun!</p>
+      <p>- Team Yestoryd</p>
     </div>
   </div>
 </body>
@@ -582,7 +720,8 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     service: 'Enrollment Complete Job',
-    description: 'Background worker for post-payment enrollment processing',
+    description: 'Background worker for calendar scheduling (sessions created by payment/verify)',
+    architecture: 'SINGLE_SOURCE_OF_TRUTH - sessions created in payment/verify, calendar scheduled here',
     timestamp: new Date().toISOString(),
   });
 }

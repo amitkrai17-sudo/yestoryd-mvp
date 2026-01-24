@@ -31,6 +31,8 @@ const VerifyPaymentSchema = z.object({
   razorpay_order_id: z.string().min(10, 'Invalid order ID'),
   razorpay_payment_id: z.string().min(10, 'Invalid payment ID'),
   razorpay_signature: z.string().min(64, 'Invalid signature'),
+  // Product Selection (read from order notes, but can be passed)
+  productCode: z.enum(['starter', 'continuation', 'full']).optional().nullable(),
   // Parent/Child Data
   childName: z.string().min(1).max(100),
   childAge: z.union([z.string(), z.number()]).transform((val) => Number(val)),
@@ -89,6 +91,128 @@ interface CreditAwardResult {
   error?: string;
 }
 
+interface ProductInfo {
+  productCode: 'starter' | 'continuation' | 'full';
+  productId: string;
+  sessionsTotal: number;
+}
+
+interface StarterEnrollmentInfo {
+  id: string;
+  status: string;
+  childId: string;
+}
+
+/**
+ * Extract product info from Razorpay order notes
+ */
+function extractProductInfo(
+  orderNotes: Record<string, string> | undefined,
+  fallbackProductCode: string | null | undefined
+): ProductInfo {
+  // Default to 'full' if no product code specified
+  const productCode = (orderNotes?.productCode || fallbackProductCode || 'full') as 'starter' | 'continuation' | 'full';
+  const productId = orderNotes?.productId || '';
+  const sessionsTotal = parseInt(orderNotes?.sessionsTotal || '9', 10);
+
+  return { productCode, productId, sessionsTotal };
+}
+
+/**
+ * Get starter enrollment for a child
+ */
+async function getStarterEnrollment(
+  childId: string,
+  requestId: string
+): Promise<StarterEnrollmentInfo | null> {
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select('id, status, child_id')
+    .eq('child_id', childId)
+    .eq('enrollment_type', 'starter')
+    .in('status', ['completed', 'active'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!enrollment) {
+    console.log(JSON.stringify({ requestId, event: 'no_starter_enrollment_found', childId }));
+    return null;
+  }
+
+  return {
+    id: enrollment.id,
+    status: enrollment.status,
+    childId: enrollment.child_id,
+  };
+}
+
+/**
+ * Mark starter enrollment as completed
+ */
+async function markStarterCompleted(
+  enrollmentId: string,
+  requestId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('enrollments')
+    .update({
+      status: 'completed',
+      starter_completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', enrollmentId);
+
+  if (error) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'starter_completion_error',
+      enrollmentId,
+      error: error.message,
+    }));
+  } else {
+    console.log(JSON.stringify({
+      requestId,
+      event: 'starter_marked_completed',
+      enrollmentId,
+    }));
+  }
+}
+
+/**
+ * Get product details from pricing_plans
+ */
+async function getProductDetails(
+  productCode: string,
+  requestId: string
+): Promise<{
+  id: string;
+  sessions_included: number;
+  duration_months: number;
+  sessions_coaching: number;
+  sessions_skill_building: number;
+  sessions_checkin: number;
+} | null> {
+  const { data: product, error } = await supabase
+    .from('pricing_plans')
+    .select('id, sessions_included, duration_months, sessions_coaching, sessions_skill_building, sessions_checkin')
+    .eq('slug', productCode)
+    .eq('is_active', true)
+    .single();
+
+  if (error || !product) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'product_fetch_error',
+      productCode,
+      error: error?.message,
+    }));
+    return null;
+  }
+
+  return product;
+}
+
 // --- 3. SECURITY HELPERS ---
 
 /**
@@ -115,7 +239,7 @@ async function verifyPaymentWithRazorpay(
   orderId: string,
   paymentId: string,
   requestId: string
-): Promise<{ success: boolean; amount: number; error?: string }> {
+): Promise<{ success: boolean; amount: number; orderNotes?: Record<string, string>; error?: string }> {
   try {
     // Fetch actual payment from Razorpay
     const payment = await razorpay.payments.fetch(paymentId);
@@ -123,38 +247,42 @@ async function verifyPaymentWithRazorpay(
 
     // Verify payment status
     if (payment.status !== 'captured') {
-      console.error(JSON.stringify({ 
-        requestId, 
-        event: 'payment_not_captured', 
-        status: payment.status 
+      console.error(JSON.stringify({
+        requestId,
+        event: 'payment_not_captured',
+        status: payment.status
       }));
       return { success: false, amount: 0, error: `Payment status: ${payment.status}` };
     }
 
     // Verify payment belongs to this order
     if (payment.order_id !== orderId) {
-      console.error(JSON.stringify({ 
-        requestId, 
+      console.error(JSON.stringify({
+        requestId,
         event: 'order_mismatch',
         expected: orderId,
-        got: payment.order_id 
+        got: payment.order_id
       }));
       return { success: false, amount: 0, error: 'Payment order mismatch' };
     }
 
     // Verify amounts match
     if (payment.amount !== order.amount) {
-      console.error(JSON.stringify({ 
-        requestId, 
+      console.error(JSON.stringify({
+        requestId,
         event: 'amount_mismatch',
         orderAmount: order.amount,
-        paymentAmount: payment.amount 
+        paymentAmount: payment.amount
       }));
       return { success: false, amount: 0, error: 'Amount mismatch' };
     }
 
-    // Return amount in rupees (Razorpay uses paise)
-    return { success: true, amount: Number(payment.amount) / 100 };
+    // Return amount in rupees (Razorpay uses paise) along with order notes
+    return {
+      success: true,
+      amount: Number(payment.amount) / 100,
+      orderNotes: order.notes as Record<string, string> | undefined,
+    };
 
   } catch (error: any) {
     console.error(JSON.stringify({ 
@@ -651,7 +779,119 @@ async function calculateRevenueSplit(
   }
 }
 
-// --- 5. MAIN HANDLER ---
+// --- 5. CONFLICT RESOLUTION HELPER ---
+
+/**
+ * Available time slots for coaching sessions (IST)
+ * These are the preferred times in order of priority
+ */
+const TIME_SLOTS = [
+  '10:00:00', // Morning slot 1
+  '11:00:00', // Morning slot 2
+  '14:00:00', // Afternoon slot 1
+  '15:00:00', // Afternoon slot 2
+  '16:00:00', // Afternoon slot 3
+  '17:00:00', // Evening slot 1
+  '18:00:00', // Evening slot 2
+];
+
+/**
+ * Find an available slot for a session, avoiding conflicts with existing bookings
+ * @param coachId - The coach's ID to check for conflicts
+ * @param baseDate - The preferred date for the session
+ * @param preferredTime - The preferred time slot
+ * @param requestId - Request ID for logging
+ * @returns { date: string, time: string } - The available slot
+ */
+async function findAvailableSlot(
+  coachId: string,
+  baseDate: Date,
+  preferredTime: string,
+  requestId: string
+): Promise<{ date: string; time: string }> {
+  const maxDaysToSearch = 7; // Look up to 7 days ahead if needed
+
+  for (let dayOffset = 0; dayOffset < maxDaysToSearch; dayOffset++) {
+    const checkDate = new Date(baseDate);
+    checkDate.setDate(checkDate.getDate() + dayOffset);
+    const dateStr = checkDate.toISOString().split('T')[0];
+
+    // Build time slots to try: preferred time first, then others
+    const timesToTry = [preferredTime, ...TIME_SLOTS.filter(t => t !== preferredTime)];
+
+    for (const timeSlot of timesToTry) {
+      // Check if this slot is already booked for this coach
+      const { data: existingSession, error } = await supabase
+        .from('scheduled_sessions')
+        .select('id')
+        .eq('coach_id', coachId)
+        .eq('scheduled_date', dateStr)
+        .eq('scheduled_time', timeSlot)
+        .limit(1)
+        .single();
+
+      // If no existing session found (error means no match), this slot is available
+      if (error && error.code === 'PGRST116') {
+        // PGRST116 = "JSON object requested, multiple (or no) rows returned"
+        // This means no conflict - slot is available
+        if (dayOffset > 0 || timeSlot !== preferredTime) {
+          console.log(JSON.stringify({
+            requestId,
+            event: 'slot_conflict_resolved',
+            originalDate: baseDate.toISOString().split('T')[0],
+            originalTime: preferredTime,
+            newDate: dateStr,
+            newTime: timeSlot,
+            dayOffset,
+          }));
+        }
+        return { date: dateStr, time: timeSlot };
+      }
+
+      if (!error && existingSession) {
+        // Conflict found, try next slot
+        console.log(JSON.stringify({
+          requestId,
+          event: 'slot_conflict_detected',
+          coachId,
+          date: dateStr,
+          time: timeSlot,
+          conflictingSessionId: existingSession.id,
+        }));
+        continue;
+      }
+
+      // If some other error, log it but assume slot is available
+      if (error && error.code !== 'PGRST116') {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'slot_check_error',
+          error: error.message,
+          code: error.code,
+        }));
+        // Assume available on error to avoid blocking enrollment
+        return { date: dateStr, time: timeSlot };
+      }
+    }
+  }
+
+  // If we exhausted all options, just return the original (will fail on insert but at least we tried)
+  console.error(JSON.stringify({
+    requestId,
+    event: 'no_available_slot_found',
+    coachId,
+    baseDate: baseDate.toISOString().split('T')[0],
+    searchedDays: maxDaysToSearch,
+    searchedSlotsPerDay: TIME_SLOTS.length,
+  }));
+
+  return {
+    date: baseDate.toISOString().split('T')[0],
+    time: preferredTime,
+  };
+}
+
+// --- 6. MAIN HANDLER ---
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
@@ -697,10 +937,19 @@ export async function POST(request: NextRequest) {
     );
 
     if (isDuplicate) {
+      // Build redirect URL for duplicate payments too
+      const duplicateRedirectUrl = `/enrollment/success?enrollmentId=${existingEnrollmentId || ''}&duplicate=true`;
+      console.log(JSON.stringify({
+        requestId,
+        event: 'duplicate_returning_redirect',
+        redirectUrl: duplicateRedirectUrl,
+        existingEnrollmentId,
+      }));
       return NextResponse.json({
         success: true,
         message: 'Payment already processed',
         enrollmentId: existingEnrollmentId,
+        redirectUrl: duplicateRedirectUrl,
         duplicate: true,
       });
     }
@@ -735,10 +984,20 @@ export async function POST(request: NextRequest) {
     }
 
     const verifiedAmount = paymentVerification.amount; // This is the REAL amount paid
-    console.log(JSON.stringify({ 
-      requestId, 
-      event: 'amount_verified', 
-      amount: verifiedAmount 
+
+    // 5a. Extract Product Info from order notes
+    const productInfo = extractProductInfo(paymentVerification.orderNotes, body.productCode);
+
+    // 5b. Get full product details from database
+    const productDetails = await getProductDetails(productInfo.productCode, requestId);
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'amount_verified',
+      amount: verifiedAmount,
+      productCode: productInfo.productCode,
+      productId: productInfo.productId || productDetails?.id,
+      sessionsTotal: productInfo.sessionsTotal || productDetails?.sessions_included,
     }));
 
     // 6. Get or Create Parent (Race-Safe)
@@ -799,9 +1058,41 @@ export async function POST(request: NextRequest) {
     const startImmediately = !body.requestedStartDate;
     const programStart = startImmediately ? new Date() : new Date(body.requestedStartDate!);
     const programEnd = new Date(programStart);
-    programEnd.setMonth(programEnd.getMonth() + 3);
 
-    const { data: enrollment, error: enrollError } = await supabase.from('enrollments').insert({
+    // Set duration based on product type
+    const durationMonths = productDetails?.duration_months ||
+      (productInfo.productCode === 'starter' ? 1 : 3);
+    programEnd.setMonth(programEnd.getMonth() + durationMonths);
+
+    // Get sessions count from product
+    const sessionsCount = productDetails?.sessions_included || productInfo.sessionsTotal || 9;
+
+    // 10a. Handle continuation-specific logic
+    let starterEnrollmentId: string | null = null;
+    if (productInfo.productCode === 'continuation') {
+      const starterEnrollment = await getStarterEnrollment(child.id, requestId);
+      if (starterEnrollment) {
+        starterEnrollmentId = starterEnrollment.id;
+        // Mark starter as completed
+        await markStarterCompleted(starterEnrollment.id, requestId);
+      }
+    }
+
+    // 10b. Calculate continuation deadline for starter enrollments (7 days after completion)
+    let continuationDeadline: string | null = null;
+    if (productInfo.productCode === 'starter') {
+      const deadline = new Date(programEnd);
+      deadline.setDate(deadline.getDate() + 7);
+      continuationDeadline = deadline.toISOString();
+    }
+
+    // 10c. Create enrollment with new columns
+    // sessions_purchased = total paid for (12: 6 coaching + 3 skill booster + 3 checkin)
+    // sessions_scheduled will be set to 9 (6 coaching + 3 checkin) - skill boosters are on-demand
+    // remedial_sessions_max = skill booster credits available (3)
+    const remedialSessionsMax = productDetails?.sessions_skill_building ?? 3;
+
+    const enrollmentData: Record<string, unknown> = {
       child_id: child.id,
       parent_id: parent.id,
       coach_id: coach.id,
@@ -817,7 +1108,30 @@ export async function POST(request: NextRequest) {
       referral_code_used: couponUsed,
       requested_start_date: body.requestedStartDate || null,
       actual_start_date: startImmediately ? new Date().toISOString().split('T')[0] : null,
-    }).select().single();
+      // New columns for multi-product support
+      enrollment_type: productInfo.productCode,
+      product_id: productInfo.productId || productDetails?.id || null,
+      sessions_purchased: sessionsCount, // Total paid for (includes skill booster credits)
+      // Skill booster (remedial) sessions - booked on-demand via /api/skill-booster/request
+      remedial_sessions_max: remedialSessionsMax,
+      remedial_sessions_used: 0,
+    };
+
+    // Add continuation-specific fields
+    if (productInfo.productCode === 'continuation' && starterEnrollmentId) {
+      enrollmentData.starter_enrollment_id = starterEnrollmentId;
+    }
+
+    // Add starter-specific fields
+    if (productInfo.productCode === 'starter' && continuationDeadline) {
+      enrollmentData.continuation_deadline = continuationDeadline;
+    }
+
+    const { data: enrollment, error: enrollError } = await supabase
+      .from('enrollments')
+      .insert(enrollmentData)
+      .select()
+      .single();
 
     if (enrollError) {
       console.error(JSON.stringify({ requestId, event: 'enrollment_create_error', error: enrollError.message }));
@@ -829,85 +1143,274 @@ export async function POST(request: NextRequest) {
       event: 'enrollment_created',
       enrollmentId: enrollment.id,
       status: enrollment.status,
+      enrollmentType: productInfo.productCode,
+      sessionsCount,
+      starterEnrollmentId: starterEnrollmentId || undefined,
+      continuationDeadline: continuationDeadline || undefined,
     }));
 
-    // 10b. Create Scheduled Sessions (9 total: 6 coaching + 3 parent check-ins)
-    const sessionsToCreate = [];
-    const sessionSchedule = [
-      { number: 1, type: 'coaching', week: 1, title: 'Session 1: Initial Assessment & Goals' },
-      { number: 2, type: 'coaching', week: 2, title: 'Session 2: Foundation Building' },
-      { number: 3, type: 'parent', week: 3, title: 'Parent Check-in 1: Progress Review' },
-      { number: 4, type: 'coaching', week: 4, title: 'Session 3: Skill Development' },
-      { number: 5, type: 'coaching', week: 5, title: 'Session 4: Practice & Reinforcement' },
-      { number: 6, type: 'parent', week: 6, title: 'Parent Check-in 2: Mid-Program Review' },
-      { number: 7, type: 'coaching', week: 7, title: 'Session 5: Advanced Techniques' },
-      { number: 8, type: 'coaching', week: 8, title: 'Session 6: Confidence Building' },
-      { number: 9, type: 'parent', week: 9, title: 'Parent Check-in 3: Final Review & Next Steps' },
+    // =====================================================
+    // POST-ENROLLMENT TASKS (all wrapped in try-catch)
+    // These should NEVER block the redirect response
+    // =====================================================
+
+    // Initialize results for optional tasks
+    let creditResult: CreditAwardResult = { success: false };
+    let revenueResult: RevenueResult = { success: false };
+    let queueResult = { success: false, messageId: null as string | null };
+    let sessionsCreatedCount = 0;
+
+    // 10d. Create Scheduled Sessions based on product session breakdown
+    // IMPORTANT: This must complete quickly - no external API calls here
+    try {
+      console.log(JSON.stringify({ requestId, event: 'sessions_creation_start' }));
+
+      const sessionsToCreate: Array<{
+      enrollment_id: string;
+      child_id: string;
+      coach_id: string;
+      session_number: number;
+      session_type: string;
+      session_title: string;
+      week_number: number;
+      scheduled_date: string;
+      scheduled_time: string;
+      status: string;
+      duration_minutes: number;
+    }> = [];
+
+    // Get session counts from pricing_plans table (with fallbacks if query failed)
+    const coachingSessions = productDetails?.sessions_coaching ?? 6;
+    const checkinSessions = productDetails?.sessions_checkin ?? 3;
+    // Skill building sessions are NOT auto-scheduled - they use on-demand booking via /api/skill-booster/request
+    // Track them as remedial_sessions_max for the enrollment
+    const skillBoosterCredits = productDetails?.sessions_skill_building ?? 3;
+    // Only auto-schedule coaching + checkin sessions
+    const totalSessionsToSchedule = coachingSessions + checkinSessions;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'sessions_counts_calculated',
+      source: productDetails ? 'pricing_plans_db' : 'fallback_defaults',
+      productSlug: productInfo.productCode,
+      coachingSessions,
+      checkinSessions,
+      skillBoosterCredits,
+      totalSessionsToSchedule,
+      note: 'skill_building_is_on_demand',
+    }));
+
+    // Session titles by type
+    const coachingTitles = [
+      'Initial Assessment & Goals',
+      'Foundation Building',
+      'Skill Development',
+      'Practice & Reinforcement',
+      'Advanced Techniques',
+      'Confidence Building',
+      'Mastery Building',
+      'Final Skills Assessment',
     ];
-    
-    for (const session of sessionSchedule) {
-      const sessionDate = new Date(programStart);
-      sessionDate.setDate(sessionDate.getDate() + (session.week - 1) * 7);
-      
+    const checkinTitles = [
+      'Progress Review',
+      'Mid-Program Review',
+      'Progress Assessment',
+      'Final Review & Next Steps',
+    ];
+
+    // Build session schedule - SIMPLE SEQUENTIAL APPROACH
+    // Previous interleaved logic had infinite loop bug when conditions didn't align
+    // Now uses simple for loops - guaranteed to terminate
+    let weekNumber = 1;
+
+    // 1. Add all coaching sessions with conflict resolution
+    for (let i = 0; i < coachingSessions; i++) {
+      const title = coachingTitles[i] || `Coaching Session ${i + 1}`;
+      const baseSessionDate = new Date(programStart);
+      baseSessionDate.setDate(baseSessionDate.getDate() + (weekNumber - 1) * 7);
+
+      // Find available slot to avoid double-booking conflicts
+      const availableSlot = await findAvailableSlot(
+        coach.id,
+        baseSessionDate,
+        '10:00:00', // Preferred time
+        requestId
+      );
+
       sessionsToCreate.push({
         enrollment_id: enrollment.id,
         child_id: child.id,
         coach_id: coach.id,
-        session_number: session.number,
-        session_type: session.type,
-        session_title: session.title,
-        week_number: session.week,
-        scheduled_date: sessionDate.toISOString().split('T')[0],
-          scheduled_time: '10:00:00',
-          status: 'pending',
-        duration_minutes: session.type === 'parent' ? 15 : 30,
+        session_number: i + 1,
+        session_type: 'coaching',
+        session_title: `Coaching ${i + 1}: ${title}`,
+        week_number: weekNumber,
+        scheduled_date: availableSlot.date,
+        scheduled_time: availableSlot.time,
+        status: 'pending',
+        duration_minutes: 45,
       });
+      weekNumber++;
     }
-    
-    const { error: sessionsError } = await supabase
+
+    // NOTE: Skill building sessions are NOT auto-scheduled
+    // They are booked on-demand via /api/skill-booster/request
+    // Credits tracked in enrollment.remedial_sessions_max
+
+    // 2. Add all parent check-in sessions with conflict resolution
+    for (let i = 0; i < checkinSessions; i++) {
+      const title = checkinTitles[i] || `Check-in ${i + 1}`;
+      const baseSessionDate = new Date(programStart);
+      baseSessionDate.setDate(baseSessionDate.getDate() + (weekNumber - 1) * 7);
+
+      // Find available slot to avoid double-booking conflicts
+      const availableSlot = await findAvailableSlot(
+        coach.id,
+        baseSessionDate,
+        '10:00:00', // Preferred time
+        requestId
+      );
+
+      sessionsToCreate.push({
+        enrollment_id: enrollment.id,
+        child_id: child.id,
+        coach_id: coach.id,
+        session_number: coachingSessions + i + 1,
+        session_type: 'parent_checkin',
+        session_title: `Parent Check-in ${i + 1}: ${title}`,
+        week_number: weekNumber,
+        scheduled_date: availableSlot.date,
+        scheduled_time: availableSlot.time,
+        status: 'pending',
+        duration_minutes: 30,
+      });
+      weekNumber++;
+    }
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'sessions_loops_done',
+      sessionsBuilt: sessionsToCreate.length,
+      coaching: coachingSessions,
+      checkin: checkinSessions,
+      skillBoosterCredits,
+    }));
+
+    // Sort sessions by week number and renumber
+    sessionsToCreate.sort((a, b) => a.week_number - b.week_number);
+    sessionsToCreate.forEach((session, idx) => {
+      session.session_number = idx + 1;
+    });
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'sessions_array_built',
+      count: sessionsToCreate.length,
+      expected: totalSessionsToSchedule,
+    }));
+
+    // Insert sessions with 15-second timeout
+    const insertPromise = supabase
       .from('scheduled_sessions')
       .insert(sessionsToCreate);
-    
+
+    const timeoutPromise = new Promise<{ error: { message: string } }>((_, reject) =>
+      setTimeout(() => reject({ error: { message: 'Sessions insert timed out after 15s' } }), 15000)
+    );
+
+    let sessionsError: { message: string } | null = null;
+    try {
+      const result = await Promise.race([insertPromise, timeoutPromise]);
+      sessionsError = (result as any).error || null;
+    } catch (raceErr: any) {
+      sessionsError = raceErr.error || { message: raceErr.message || 'Unknown insert error' };
+    }
+
+    console.log(JSON.stringify({ requestId, event: 'sessions_insert_done', hasError: !!sessionsError }));
+
     if (sessionsError) {
       console.error(JSON.stringify({ requestId, event: 'sessions_create_failed', error: sessionsError.message }));
     } else {
-      // Update enrollment with session count
-      await supabase
+      sessionsCreatedCount = sessionsToCreate.length;
+
+      // CRITICAL: Set schedule_confirmed = true to prevent QStash job from creating duplicate sessions
+      // This is the SINGLE SOURCE OF TRUTH for session creation
+      const { error: confirmError } = await supabase
         .from('enrollments')
-        .update({ sessions_scheduled: 9 })
+        .update({
+          schedule_confirmed: true,
+          sessions_scheduled: sessionsToCreate.length,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', enrollment.id);
-      console.log(JSON.stringify({ requestId, event: 'sessions_created', count: 9, enrollmentId: enrollment.id }));
+
+      if (confirmError) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'schedule_confirm_failed',
+          error: confirmError.message
+        }));
+        // Don't throw - sessions are created, this is non-critical
+      }
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'sessions_created_and_confirmed',
+        count: sessionsToCreate.length,
+        enrollmentId: enrollment.id,
+        schedule_confirmed: true,
+        productCode: productInfo.productCode,
+        breakdown: {
+          coaching: coachingSessions,
+          checkin: checkinSessions,
+          skillBoosterCredits: skillBoosterCredits,
+        },
+        note: 'skill_boosters_are_on_demand_not_auto_scheduled',
+      }));
+    }
+    } catch (sessionsErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'sessions_block_error', error: sessionsErr.message, stack: sessionsErr.stack }));
     }
 
-    // 11. Award Referral Credit (if applicable)
-    let creditResult: CreditAwardResult = { success: false };
-    if (couponUsed) {
-      creditResult = await awardReferralCredit(
-        couponUsed,
+    // 11. Award Referral Credit (if applicable) - wrapped in try-catch
+    try {
+      console.log(JSON.stringify({ requestId, event: 'referral_credit_start', couponUsed }));
+      if (couponUsed) {
+        creditResult = await awardReferralCredit(
+          couponUsed,
+          enrollment.id,
+          parent.id,
+          verifiedAmount,
+          requestId
+        );
+      }
+      console.log(JSON.stringify({ requestId, event: 'referral_credit_done', success: creditResult.success }));
+    } catch (creditErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'referral_credit_error', error: creditErr.message }));
+    }
+
+    // 12. Calculate Revenue Split - wrapped in try-catch
+    try {
+      console.log(JSON.stringify({ requestId, event: 'revenue_split_start' }));
+      revenueResult = await calculateRevenueSplit(
         enrollment.id,
-        parent.id,
         verifiedAmount,
+        coach,
+        body.leadSource,
+        body.leadSourceCoachId || null,
+        child.id,
+        body.childName,
         requestId
       );
+      console.log(JSON.stringify({ requestId, event: 'revenue_split_done', success: revenueResult.success }));
+    } catch (revenueErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'revenue_split_error', error: revenueErr.message }));
     }
 
-    // 12. Calculate Revenue Split
-    const revenueResult = await calculateRevenueSplit(
-      enrollment.id,
-      verifiedAmount,
-      coach,
-      body.leadSource,
-      body.leadSourceCoachId || null,
-      child.id,
-      body.childName,
-      requestId
-    );
-
-    // 13. Queue Background Jobs
-    let queueResult = { success: false, messageId: null as string | null };
-
-    if (startImmediately) {
-      try {
+    // 13. Queue Background Jobs - wrapped in try-catch
+    try {
+      console.log(JSON.stringify({ requestId, event: 'background_jobs_start', startImmediately }));
+      if (startImmediately) {
         queueResult = await queueEnrollmentComplete({
           enrollmentId: enrollment.id,
           childId: child.id,
@@ -920,38 +1423,33 @@ export async function POST(request: NextRequest) {
           coachEmail: coach.email,
           coachName: coach.name,
         });
-
-        console.log(JSON.stringify({ 
-          requestId, 
-          event: 'background_job_queued', 
-          messageId: queueResult.messageId 
+        console.log(JSON.stringify({
+          requestId,
+          event: 'background_job_queued',
+          success: queueResult.success,
+          messageId: queueResult.messageId
         }));
-      } catch (queueError: any) {
-        console.error(JSON.stringify({ 
-          requestId, 
-          event: 'queue_error', 
-          error: queueError.message 
+      } else {
+        // Log delayed start event
+        await supabase.from('enrollment_events').insert({
+          enrollment_id: enrollment.id,
+          event_type: 'payment_received_delayed_start',
+          event_data: {
+            requested_start_date: body.requestedStartDate,
+            payment_id: body.razorpay_payment_id,
+            child_name: body.childName,
+            coach_name: coach.name,
+          },
+          triggered_by: 'system',
+        });
+        console.log(JSON.stringify({
+          requestId,
+          event: 'delayed_start_scheduled',
+          startDate: body.requestedStartDate,
         }));
       }
-    } else {
-      // Log delayed start event
-      await supabase.from('enrollment_events').insert({
-        enrollment_id: enrollment.id,
-        event_type: 'payment_received_delayed_start',
-        event_data: {
-          requested_start_date: body.requestedStartDate,
-          payment_id: body.razorpay_payment_id,
-          child_name: body.childName,
-          coach_name: coach.name,
-        },
-        triggered_by: 'system',
-      });
-
-      console.log(JSON.stringify({
-        requestId,
-        event: 'delayed_start_scheduled',
-        startDate: body.requestedStartDate,
-      }));
+    } catch (bgJobErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'background_jobs_error', error: bgJobErr.message }));
     }
 
     // 14. Final Response
@@ -963,10 +1461,44 @@ export async function POST(request: NextRequest) {
       duration: `${duration}ms`,
     }));
 
+    // Build redirect URL with enrollment details
+    const redirectParams = new URLSearchParams({
+      enrollmentId: enrollment.id,
+      childName: body.childName,
+      coachName: coach.name,
+      sessions: String(sessionsCount),
+      product: productInfo.productCode,
+    });
+    const redirectUrl = `/enrollment/success?${redirectParams.toString()}`;
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'redirect_url_built',
+      redirectUrl,
+    }));
+
+    // [VERIFY:FINAL] Log complete response structure before returning
+    const responsePayload = {
+      success: true,
+      message: 'Payment verified successfully',
+      enrollmentId: enrollment.id,
+      redirectUrl,
+    };
+    console.log(JSON.stringify({
+      requestId,
+      event: 'VERIFY_FINAL_RESPONSE',
+      responseKeys: Object.keys(responsePayload),
+      success: responsePayload.success,
+      hasRedirectUrl: !!responsePayload.redirectUrl,
+      hasEnrollmentId: !!responsePayload.enrollmentId,
+      redirectUrl: responsePayload.redirectUrl,
+    }));
+
     return NextResponse.json({
       success: true,
       message: 'Payment verified successfully',
       enrollmentId: enrollment.id,
+      redirectUrl,
       data: {
         enrollmentId: enrollment.id,
         childId: child.id,
@@ -974,6 +1506,15 @@ export async function POST(request: NextRequest) {
         coachId: coach.id,
         coachName: coach.name,
         amountPaid: verifiedAmount,
+        // Product info
+        product: {
+          code: productInfo.productCode,
+          id: productInfo.productId || productDetails?.id,
+          sessionsIncluded: sessionsCount,
+        },
+        enrollmentType: productInfo.productCode,
+        starterEnrollmentId: starterEnrollmentId || undefined,
+        continuationDeadline: continuationDeadline || undefined,
       },
       revenue: revenueResult.success
         ? {

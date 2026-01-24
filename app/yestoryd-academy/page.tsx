@@ -41,8 +41,10 @@ import {
   TrendingUp,
   UserCheck,
   Play,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
+import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -103,6 +105,9 @@ export default function YestorydAcademyPage() {
   const [childrenCount, setChildrenCount] = useState(10);
   const [videoUrl, setVideoUrl] = useState('');
 
+  // Dynamic earnings data from database
+  const { data: earningsData, isLoading: earningsLoading } = useEarningsCalculator();
+
   // Fetch video URL from site_settings
   useEffect(() => {
     async function fetchVideoUrl() {
@@ -131,9 +136,30 @@ export default function YestorydAcademyPage() {
   };
 
   const calculateEarnings = () => {
-    const perChild = earningsMode === 'assigned' ? 3000 : 4200;
+    // Get earnings from database or use fallback
+    const fullProgram = earningsData?.products.find(p => p.slug === 'full');
+    const ownLeadEarnings = fullProgram?.coach_earnings_own_lead || 4200;
+    const platformLeadEarnings = fullProgram?.coach_earnings_platform_lead || 3000;
+
+    const perChild = earningsMode === 'assigned' ? platformLeadEarnings : ownLeadEarnings;
     return childrenCount * perChild;
   };
+
+  // Get dynamic values from earnings data
+  const splitConfig = earningsData?.split_config;
+  const fullProgram = earningsData?.products.find(p => p.slug === 'full');
+  const programPrice = fullProgram?.price || 5999;
+  const leadCostPercent = splitConfig?.lead_cost_percent || 20;
+  const coachCostPercent = splitConfig?.coach_cost_percent || 50;
+  const platformFeePercent = splitConfig?.platform_fee_percent || 30;
+  const ownLeadTotalPercent = splitConfig?.own_lead_total_percent || 70;
+
+  // Calculate amounts from percentages
+  const leadCostAmount = Math.round(programPrice * leadCostPercent / 100);
+  const coachCostAmount = Math.round(programPrice * coachCostPercent / 100);
+  const platformFeeAmount = Math.round(programPrice * platformFeePercent / 100);
+  const ownLeadTotal = fullProgram?.coach_earnings_own_lead || Math.round(programPrice * ownLeadTotalPercent / 100);
+  const platformLeadTotal = fullProgram?.coach_earnings_platform_lead || coachCostAmount;
 
   return (
     <div className="min-h-screen bg-white">
@@ -474,31 +500,33 @@ export default function YestorydAcademyPage() {
             {[
               {
                 icon: Sprout,
-                emoji: "🌱",
                 title: "Rising Coach",
                 description: "New coaches, first 3 months",
                 perk: "Full training, mentorship support",
-                bg: "from-green-900/50 to-green-800/30"
+                bg: "from-green-900/50 to-green-800/30",
+                iconColor: "text-green-400"
               },
               {
                 icon: Star,
-                emoji: "⭐",
                 title: "Expert Coach",
                 description: "30+ children coached, strong NPS",
                 perk: "Priority assignments, featured profile",
-                bg: "from-yellow-900/50 to-yellow-800/30"
+                bg: "from-yellow-900/50 to-yellow-800/30",
+                iconColor: "text-yellow-400"
               },
               {
                 icon: Crown,
-                emoji: "👑",
                 title: "Master Coach",
                 description: "75+ children, exceptional results",
                 perk: "Train new coaches, leadership role",
-                bg: "from-purple-900/50 to-purple-800/30"
+                bg: "from-purple-900/50 to-purple-800/30",
+                iconColor: "text-purple-400"
               }
             ].map((tier, i) => (
               <div key={i} className={`bg-gradient-to-br ${tier.bg} rounded-2xl p-6 border border-white/10`}>
-                <div className="text-4xl mb-4">{tier.emoji}</div>
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4">
+                  <tier.icon className={`w-6 h-6 ${tier.iconColor}`} />
+                </div>
                 <h3 className="text-xl font-bold mb-2">{tier.title}</h3>
                 <p className="text-sm text-slate-400 mb-4">{tier.description}</p>
                 <p className="text-sm text-[#ff0099]">{tier.perk}</p>
@@ -525,26 +553,33 @@ export default function YestorydAcademyPage() {
           </div>
 
           {/* 3-Component Split */}
-          <div className="grid md:grid-cols-3 gap-4 mb-10">
-            <div className="bg-gradient-to-br from-purple-600/30 to-purple-500/20 rounded-2xl p-6 text-center border border-purple-500/30">
-              <div className="text-3xl font-bold text-purple-400 mb-2">20%</div>
-              <div className="font-semibold mb-1">Lead Cost</div>
-              <div className="text-sm text-slate-400 mb-2">₹1,200</div>
-              <div className="text-xs text-slate-500">Goes to whoever<br />brought the student</div>
+          {earningsLoading ? (
+            <div className="flex items-center justify-center gap-3 py-12">
+              <Loader2 className="w-6 h-6 text-[#ff0099] animate-spin" />
+              <span className="text-slate-400">Loading earnings data...</span>
             </div>
-            <div className="bg-gradient-to-br from-green-600/30 to-green-500/20 rounded-2xl p-6 text-center border border-green-500/30">
-              <div className="text-3xl font-bold text-green-400 mb-2">50%</div>
-              <div className="font-semibold mb-1">Coach Cost</div>
-              <div className="text-sm text-slate-400 mb-2">₹3,000</div>
-              <div className="text-xs text-slate-500">Goes to coach<br />who teaches</div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-4 mb-10">
+              <div className="bg-gradient-to-br from-purple-600/30 to-purple-500/20 rounded-2xl p-6 text-center border border-purple-500/30">
+                <div className="text-3xl font-bold text-purple-400 mb-2">{leadCostPercent}%</div>
+                <div className="font-semibold mb-1">Lead Cost</div>
+                <div className="text-sm text-slate-400 mb-2">₹{leadCostAmount.toLocaleString()}</div>
+                <div className="text-xs text-slate-500">Goes to whoever<br />brought the student</div>
+              </div>
+              <div className="bg-gradient-to-br from-green-600/30 to-green-500/20 rounded-2xl p-6 text-center border border-green-500/30">
+                <div className="text-3xl font-bold text-green-400 mb-2">{coachCostPercent}%</div>
+                <div className="font-semibold mb-1">Coach Cost</div>
+                <div className="text-sm text-slate-400 mb-2">₹{coachCostAmount.toLocaleString()}</div>
+                <div className="text-xs text-slate-500">Goes to coach<br />who teaches</div>
+              </div>
+              <div className="bg-gradient-to-br from-blue-600/30 to-blue-500/20 rounded-2xl p-6 text-center border border-blue-500/30">
+                <div className="text-3xl font-bold text-blue-400 mb-2">{platformFeePercent}%</div>
+                <div className="font-semibold mb-1">Platform Fee</div>
+                <div className="text-sm text-slate-400 mb-2">₹{platformFeeAmount.toLocaleString()}</div>
+                <div className="text-xs text-slate-500">Yestoryd<br />(tech, content, support)</div>
+              </div>
             </div>
-            <div className="bg-gradient-to-br from-blue-600/30 to-blue-500/20 rounded-2xl p-6 text-center border border-blue-500/30">
-              <div className="text-3xl font-bold text-blue-400 mb-2">30%</div>
-              <div className="font-semibold mb-1">Platform Fee</div>
-              <div className="text-sm text-slate-400 mb-2">₹1,799</div>
-              <div className="text-xs text-slate-500">Yestoryd<br />(tech, content, support)</div>
-            </div>
-          </div>
+          )}
 
           {/* Scenarios */}
           <div className="space-y-4 mb-10">
@@ -558,14 +593,14 @@ export default function YestorydAcademyPage() {
               <div className="flex justify-between items-center">
                 <div>
                   <span className="text-slate-400">You earn:</span>
-                  <span className="text-2xl font-bold text-white ml-2">₹3,000</span>
+                  <span className="text-2xl font-bold text-white ml-2">₹{platformLeadTotal.toLocaleString()}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-slate-500">Yestoryd:</span>
-                  <span className="text-slate-400 ml-2">₹2,999</span>
+                  <span className="text-slate-400 ml-2">₹{(programPrice - platformLeadTotal).toLocaleString()}</span>
                 </div>
               </div>
-              <div className="text-center mt-4 text-2xl font-bold text-blue-400">50%</div>
+              <div className="text-center mt-4 text-2xl font-bold text-blue-400">{coachCostPercent}%</div>
             </div>
 
             {/* You Bring & Coach */}
@@ -578,14 +613,14 @@ export default function YestorydAcademyPage() {
               <div className="flex justify-between items-center">
                 <div>
                   <span className="text-slate-400">You earn:</span>
-                  <span className="text-2xl font-bold text-white ml-2">₹4,200</span>
+                  <span className="text-2xl font-bold text-white ml-2">₹{ownLeadTotal.toLocaleString()}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-slate-500">Yestoryd:</span>
-                  <span className="text-slate-400 ml-2">₹1,799</span>
+                  <span className="text-slate-400 ml-2">₹{platformFeeAmount.toLocaleString()}</span>
                 </div>
               </div>
-              <div className="text-center mt-4 text-2xl font-bold text-orange-400">70%</div>
+              <div className="text-center mt-4 text-2xl font-bold text-orange-400">{ownLeadTotalPercent}%</div>
             </div>
 
             {/* You Refer Only */}
@@ -598,23 +633,23 @@ export default function YestorydAcademyPage() {
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-slate-500">Referral bonus:</span>
-                  <div className="font-bold text-yellow-400">₹1,200</div>
+                  <div className="font-bold text-yellow-400">₹{leadCostAmount.toLocaleString()}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Teaching coach:</span>
-                  <div className="text-slate-400">₹3,000</div>
+                  <div className="text-slate-400">₹{coachCostAmount.toLocaleString()}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Yestoryd:</span>
-                  <div className="text-slate-400">₹1,799</div>
+                  <div className="text-slate-400">₹{platformFeeAmount.toLocaleString()}</div>
                 </div>
               </div>
-              <div className="text-center mt-4 text-2xl font-bold text-yellow-400">20%</div>
+              <div className="text-center mt-4 text-2xl font-bold text-yellow-400">{leadCostPercent}%</div>
             </div>
           </div>
 
           <p className="text-center text-sm text-[#ff0099]">
-            Even at full capacity, keep referring — you earn ₹1,200 for every student you bring!
+            Even at full capacity, keep referring — you earn ₹{leadCostAmount.toLocaleString()} for every student you bring!
           </p>
 
           {/* Earnings Calculator */}
@@ -630,7 +665,7 @@ export default function YestorydAcademyPage() {
                     : 'bg-white/10 text-slate-400 hover:bg-white/20'
                 }`}
               >
-                Yestoryd assigns (50%)
+                Yestoryd assigns ({coachCostPercent}%)
               </button>
               <button
                 onClick={() => setEarningsMode('bring')}
@@ -640,7 +675,7 @@ export default function YestorydAcademyPage() {
                     : 'bg-white/10 text-slate-400 hover:bg-white/20'
                 }`}
               >
-                You bring students (70%)
+                You bring students ({ownLeadTotalPercent}%)
               </button>
             </div>
 
@@ -665,7 +700,7 @@ export default function YestorydAcademyPage() {
                 ₹{calculateEarnings().toLocaleString()}
               </div>
               <p className="text-slate-500 text-sm mt-2">
-                ({earningsMode === 'assigned' ? '50%' : '70%'} share)
+                ({earningsMode === 'assigned' ? `${coachCostPercent}%` : `${ownLeadTotalPercent}%`} share)
               </p>
             </div>
           </div>
@@ -721,8 +756,9 @@ export default function YestorydAcademyPage() {
           </p>
           
           {/* Urgency reminder */}
-          <p className="text-white/60 text-sm mb-8">
-            ⏰ January 2026 batch applications closing soon
+          <p className="text-white/60 text-sm mb-8 flex items-center justify-center gap-2">
+            <Clock className="w-4 h-4" />
+            January 2026 batch applications closing soon
           </p>
           
           <Link

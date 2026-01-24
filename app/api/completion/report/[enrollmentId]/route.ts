@@ -49,7 +49,7 @@ interface ReportData {
   sessionSummaries: Array<{
     sessionNumber: number;
     date: string;
-    type: 'coaching' | 'parent';
+    type: 'coaching' | 'parent_checkin';
     summary: string;
     highlights: string[];
     focusAreas: string[];
@@ -158,7 +158,7 @@ export async function POST(
       sessionSummaries: sessions?.map((s, i) => ({
         sessionNumber: s.session_number || i + 1,
         date: s.scheduled_date,
-        type: s.session_type as 'coaching' | 'parent',
+        type: s.session_type as 'coaching' | 'parent_checkin',
         summary: s.session_summary || s.coach_notes || '',
         highlights: [],
         focusAreas: [],
@@ -334,7 +334,7 @@ Make the report warm, encouraging, specific to ${reportData.child.name}'s journe
         program_start_date: reportData.program.startDate,
         program_end_date: reportData.program.endDate,
         coaching_sessions_completed: reportData.sessionSummaries.filter(s => s.type === 'coaching').length,
-        parent_checkins_completed: reportData.sessionSummaries.filter(s => s.type === 'parent').length,
+        parent_checkins_completed: reportData.sessionSummaries.filter(s => s.type === 'parent_checkin').length,
         issued_at: new Date().toISOString(),
       }, {
         onConflict: 'enrollment_id',

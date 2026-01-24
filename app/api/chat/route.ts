@@ -228,6 +228,12 @@ export async function POST(request: NextRequest) {
 
     const { message, childId, chatHistory } = body;
 
+    // Debug: Log received childId
+    console.log('=== CHAT API REQUEST ===');
+    console.log('Received childId:', childId);
+    console.log('User role:', userRole);
+    console.log('Coach ID from session:', coachId);
+
     // 5. VALIDATE MESSAGE
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return NextResponse.json(
@@ -444,23 +450,34 @@ async function handleLearning(
       coach = coachData as Coach | null;
     }
   } else if (userRole === 'coach') {
+    console.log('=== COACH CHILD LOOKUP ===');
+    console.log('childId provided:', childId);
+    console.log('sessionCoachId:', sessionCoachId);
+
     if (childId) {
+      // SECURITY: Verify coach has access via active enrollment (single source of truth)
+      const hasAccess = await validateCoachChildAccess(supabase, sessionCoachId || '', childId);
+      console.log('Coach has access:', hasAccess);
+
+      if (!hasAccess) {
+        console.log('Coach access denied:', { coachId: sessionCoachId, childId });
+        return {
+          response: "I can only provide information about students enrolled with you. Please select one of your students.",
+          intent: 'LEARNING',
+          source: 'redirect',
+        };
+      }
+
       const { data: childData } = await supabase
         .from('children')
         .select('id, name, child_name, age, parent_email, coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
         .eq('id', childId)
         .single();
 
-      // SECURITY: Verify coach owns this child
-      if (childData?.coach_id !== sessionCoachId) {
-        return {
-          response: "I can only provide information about students assigned to you.",
-          intent: 'LEARNING',
-          source: 'redirect',
-        };
-      }
-
+      console.log('Fetched child:', childData?.child_name || childData?.name);
       child = childData as ChildWithCache;
+    } else {
+      console.log('No childId provided - will return generic response');
     }
   }
 
@@ -482,6 +499,12 @@ async function handleLearning(
   }
 
   // Hybrid search for context
+  console.log('=== HYBRID SEARCH PARAMS ===');
+  console.log('Child set?', !!child);
+  console.log('Child ID for search:', child?.id);
+  console.log('Original childId from request:', childId);
+  console.log('Child name:', childName);
+
   const searchResult = await hybridSearch({
     query: message,
     childId: child?.id,
@@ -833,6 +856,28 @@ function handleOffLimits(userRole: UserRole): ChatResponse {
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================
+
+/**
+ * Validate coach has access to child via active enrollment
+ * Uses enrollments.coach_id as single source of truth (NOT children.coach_id)
+ */
+async function validateCoachChildAccess(
+  supabase: ReturnType<typeof getSupabase>,
+  coachId: string,
+  childId: string
+): Promise<boolean> {
+  if (!coachId || !childId) return false;
+
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('coach_id', coachId)
+    .eq('child_id', childId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  return !!enrollment;
+}
 
 async function getCoachId(email: string): Promise<string | null> {
   const supabase = getSupabase();

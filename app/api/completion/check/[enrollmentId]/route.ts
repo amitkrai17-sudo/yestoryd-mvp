@@ -69,7 +69,7 @@ export async function GET(
     ).length || 0;
 
     const parentCompleted = sessions?.filter(
-      s => s.session_type === 'parent' && s.status === 'completed'
+      s => s.session_type === 'parent_checkin' && s.status === 'completed'
     ).length || 0;
 
     // Session 9 = 6 coaching + 3 parent check-ins

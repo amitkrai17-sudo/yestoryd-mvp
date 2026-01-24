@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
     const sessionType = (searchParams.get('sessionType') || 'discovery') as 'discovery' | 'coaching' | 'parent_checkin' | 'group';
     const childAge = searchParams.get('childAge') ? parseInt(searchParams.get('childAge')!) : undefined;
     
-    console.log(`[Slots API] Request: coachId=${coachId || 'ALL'}, days=${days}, type=${sessionType}, age=${childAge || 'undefined'}`);
+    console.log(`[Slots API] Request: coachId=${coachId || 'ALL'}, days=${days}, type=${sessionType}, age=${childAge ?? 'undefined'}`);
     
     // ========================================================================
     // STEP 1: Determine which coaches to fetch slots for
@@ -215,20 +215,29 @@ export async function GET(request: NextRequest) {
       .gt('expires_at', new Date().toISOString());
     
     // Create blocked slots map: Map<coachId-date-time, true>
+    // Normalize time to HH:MM format (database may store HH:MM:SS)
+    const normalizeTime = (time: string): string => {
+      if (!time) return '';
+      return time.substring(0, 5); // Take only HH:MM
+    };
+
     const blockedSlots = new Map<string, boolean>();
-    
+
     existingBookings?.forEach(b => {
-      blockedSlots.set(`${b.coach_id}-${b.scheduled_date}-${b.scheduled_time}`, true);
+      const normalizedTime = normalizeTime(b.scheduled_time);
+      blockedSlots.set(`${b.coach_id}-${b.scheduled_date}-${normalizedTime}`, true);
     });
-    
+
     discoveryBookings?.forEach(b => {
       if (b.assigned_coach_id && b.slot_date && b.slot_time) {
-        blockedSlots.set(`${b.assigned_coach_id}-${b.slot_date}-${b.slot_time}`, true);
+        const normalizedTime = normalizeTime(b.slot_time);
+        blockedSlots.set(`${b.assigned_coach_id}-${b.slot_date}-${normalizedTime}`, true);
       }
     });
-    
+
     activeHolds?.forEach(h => {
-      blockedSlots.set(`${h.coach_id}-${h.slot_date}-${h.slot_time}`, true);
+      const normalizedTime = normalizeTime(h.slot_time);
+      blockedSlots.set(`${h.coach_id}-${h.slot_date}-${normalizedTime}`, true);
     });
     
     // ========================================================================
@@ -236,25 +245,57 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     
     let durationMinutes: number;
-    
-    if (sessionType === 'coaching' && childAge) {
-      const durationRule = CONFIG.SESSION_DURATIONS.coaching.find(
-        r => childAge >= r.minAge && childAge <= r.maxAge
-      );
-      durationMinutes = durationRule?.duration || 45;
+
+    if (sessionType === 'coaching') {
+      if (childAge) {
+        // Age-based duration for coaching
+        const durationRule = CONFIG.SESSION_DURATIONS.coaching.find(
+          r => childAge >= r.minAge && childAge <= r.maxAge
+        );
+        durationMinutes = durationRule?.duration || 45;
+      } else {
+        // Default coaching duration when age not provided (e.g., reschedule)
+        durationMinutes = 45;
+      }
     } else {
-      durationMinutes = (CONFIG.SESSION_DURATIONS[sessionType] as number) || 30;
+      // Non-coaching session types have fixed durations
+      const duration = CONFIG.SESSION_DURATIONS[sessionType];
+      durationMinutes = typeof duration === 'number' ? duration : 30;
     }
     
     // ========================================================================
     // STEP 5: Generate slots for each coach, then aggregate
     // ========================================================================
-    
+
+    // DEBUG: Log rules breakdown
+    console.log('=== SLOT GENERATION DEBUG ===');
+    console.log('Date range:', startDate.toISOString().split('T')[0], 'to', new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    console.log('Duration minutes:', durationMinutes);
+    console.log('Total rules fetched:', rules?.length || 0);
+
+    if (rules && rules.length > 0) {
+      const weeklyAvailable = rules.filter(r => r.scope === 'weekly' && r.rule_type === 'available');
+      const dateUnavailable = rules.filter(r => r.scope === 'date_specific' && r.rule_type === 'unavailable');
+      console.log('Weekly available rules:', weeklyAvailable.length);
+      console.log('Date-specific unavailable:', dateUnavailable.length);
+
+      // Show which days have rules
+      const daysCovered = new Set(weeklyAvailable.map(r => r.day_of_week));
+      console.log('Days with availability rules (0=Sun, 1=Mon...):', Array.from(daysCovered).sort());
+
+      // Sample rules
+      weeklyAvailable.slice(0, 3).forEach((r, i) => {
+        console.log(`  Rule ${i}: day=${r.day_of_week}, ${r.start_time}-${r.end_time}, active=${r.is_active}`);
+      });
+    }
+
     // Map to track slots: Map<datetime, { slot, coachIds[] }>
     const slotMap = new Map<string, { slot: TimeSlot; coachIds: string[] }>();
-    
+
     for (const coach of coaches) {
       const coachRules = (rules || []).filter(r => r.coach_id === coach.id);
+      console.log(`Coach ${coach.id}: ${coachRules.length} rules`);
+
       const coachSlots = generateSlotsForCoach(
         coach.id,
         coachRules,
@@ -263,11 +304,13 @@ export async function GET(request: NextRequest) {
         durationMinutes,
         blockedSlots
       );
-      
+
+      console.log(`Coach ${coach.id}: generated ${coachSlots.length} total slots, ${coachSlots.filter(s => s.available).length} available`);
+
       // Merge into aggregate map
       for (const slot of coachSlots) {
         if (!slot.available) continue;
-        
+
         const key = slot.datetime;
         if (slotMap.has(key)) {
           slotMap.get(key)!.coachIds.push(coach.id);
@@ -279,6 +322,8 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+
+    console.log('=== END DEBUG ===')
     
     // Convert to array
     const aggregatedSlots: TimeSlot[] = Array.from(slotMap.values())
@@ -316,7 +361,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     
     const execTime = Date.now() - startTime;
-    console.log(`[Slots API] Generated ${aggregatedSlots.length} slots from ${coaches.length} coach(es), ${execTime}ms`);
+    console.log(`[Slots API] Generated ${aggregatedSlots.length} slots from ${coaches.length} coach(es), rules=${rules?.length || 0}, blocked=${blockedSlots.size}, ${execTime}ms`);
     
     return NextResponse.json({
       success: true,
@@ -356,42 +401,106 @@ function generateSlotsForCoach(
   blockedSlots: Map<string, boolean>
 ): TimeSlot[] {
   const slots: TimeSlot[] = [];
-  
+
   // Separate rules by type
   const weeklyRules = rules.filter(r => r.scope === 'weekly' && r.rule_type === 'available');
   const dateSpecificUnavailable = rules.filter(r => r.scope === 'date_specific' && r.rule_type === 'unavailable');
-  
+
+  // Check if coach has ANY weekly rules configured
+  const hasConfiguredSchedule = weeklyRules.length > 0;
+
+  // DEBUG: Log day_of_week values in rules
+  const ruleDays = weeklyRules.map(r => r.day_of_week).filter((d): d is number => d !== undefined);
+  const uniqueDays = Array.from(new Set(ruleDays)).sort((a, b) => a - b);
+  console.log(`[generateSlots] Coach has ${weeklyRules.length} weekly rules for days: ${uniqueDays.join(', ')}`);
+
+  let daysProcessed = 0;
+  let daysSkippedSunday = 0;
+  let daysSkippedBlocked = 0;
+  let daysSkippedNoRules = 0;
+  let daysWithRules = 0;
+
   // Generate for each day
   for (let dayOffset = 0; dayOffset < days; dayOffset++) {
     const currentDate = new Date(startDate);
     currentDate.setDate(currentDate.getDate() + dayOffset);
-    
+
     const dateStr = currentDate.toISOString().split('T')[0];
-    const dayOfWeek = currentDate.getDay();
-    
+    const dayOfWeek = currentDate.getDay(); // JS: 0=Sunday, 1=Monday, etc.
+
+    daysProcessed++;
+
     // Check if this date is specifically blocked
     const isDateBlocked = dateSpecificUnavailable.some(r => r.specific_date === dateStr);
-    if (isDateBlocked) continue;
-    
-    // Get rules for this day
-    const dayRules = weeklyRules.filter(r => r.day_of_week === dayOfWeek);
-    
-    // If no rules for this day, skip (coach is off)
-    if (dayRules.length === 0) continue;
-    
-    // Generate slots from each rule
-    for (const rule of dayRules) {
-      const ruleSlots = generateSlotsFromRule(
+    if (isDateBlocked) {
+      daysSkippedBlocked++;
+      continue;
+    }
+
+    // Skip Sundays if config says so
+    if (CONFIG.SUNDAY_OFF && dayOfWeek === 0) {
+      daysSkippedSunday++;
+      continue;
+    }
+
+    // Get rules for this day - try both JS format (0=Sun) and ISO format (1=Mon, 7=Sun)
+    let dayRules = weeklyRules.filter(r => r.day_of_week === dayOfWeek);
+
+    // If no match, try ISO-8601 format where Monday=1, Sunday=7
+    if (dayRules.length === 0 && hasConfiguredSchedule) {
+      const isoDayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert: Sun=0->7, Mon=1->1, etc.
+      dayRules = weeklyRules.filter(r => r.day_of_week === isoDayOfWeek);
+      if (dayRules.length > 0) {
+        console.log(`[generateSlots] Using ISO day format: JS day ${dayOfWeek} -> ISO day ${isoDayOfWeek}, found ${dayRules.length} rules`);
+      }
+    }
+
+    // If coach has configured schedule but no rules for this day, skip (coach is off)
+    // If coach has NO configured schedule, use default availability
+    if (hasConfiguredSchedule && dayRules.length === 0) {
+      daysSkippedNoRules++;
+      continue;
+    }
+
+    if (dayRules.length > 0) {
+      daysWithRules++;
+      // Generate slots from each configured rule
+      for (const rule of dayRules) {
+        const ruleSlots = generateSlotsFromRule(
+          coachId,
+          rule,
+          dateStr,
+          durationMinutes,
+          blockedSlots
+        );
+        slots.push(...ruleSlots);
+      }
+    } else {
+      // No rules configured - use default availability (9 AM - 7 PM)
+      const defaultRule: ScheduleRule = {
+        id: 'default',
+        coach_id: coachId,
+        rule_type: 'available',
+        scope: 'weekly',
+        day_of_week: dayOfWeek,
+        start_time: `${String(CONFIG.DEFAULT_START_HOUR).padStart(2, '0')}:00`,
+        end_time: `${String(CONFIG.DEFAULT_END_HOUR).padStart(2, '0')}:00`,
+        is_active: true,
+      };
+
+      const defaultSlots = generateSlotsFromRule(
         coachId,
-        rule,
+        defaultRule,
         dateStr,
         durationMinutes,
         blockedSlots
       );
-      slots.push(...ruleSlots);
+      slots.push(...defaultSlots);
     }
   }
-  
+
+  console.log(`[generateSlots] Days: processed=${daysProcessed}, withRules=${daysWithRules}, skipped(sun=${daysSkippedSunday}, blocked=${daysSkippedBlocked}, noRules=${daysSkippedNoRules})`);
+
   return slots;
 }
 
@@ -407,44 +516,56 @@ function generateSlotsFromRule(
   blockedSlots: Map<string, boolean>
 ): TimeSlot[] {
   const slots: TimeSlot[] = [];
-  
-  const [startHour, startMin] = rule.start_time.split(':').map(Number);
-  const [endHour, endMin] = rule.end_time.split(':').map(Number);
-  
+
+  // Parse time - handle both "HH:MM" and "HH:MM:SS" formats
+  const parseTime = (timeStr: string): [number, number] => {
+    const parts = timeStr.split(':').map(Number);
+    return [parts[0] || 0, parts[1] || 0];
+  };
+
+  const [startHour, startMin] = parseTime(rule.start_time);
+  const [endHour, endMin] = parseTime(rule.end_time);
+
   const ruleStartMinutes = startHour * 60 + startMin;
   const ruleEndMinutes = endHour * 60 + endMin;
-  
+
   // Snap start time to grid
   let currentMinutes = Math.ceil(ruleStartMinutes / CONFIG.SNAP_TO_GRID_MINUTES) * CONFIG.SNAP_TO_GRID_MINUTES;
-  
+
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
   const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-  
+
+  let slotsGenerated = 0;
+  let slotsSkippedPast = 0;
+  let slotsBlocked = 0;
+
   while (currentMinutes + durationMinutes <= ruleEndMinutes) {
     const slotHour = Math.floor(currentMinutes / 60);
     const slotMin = currentMinutes % 60;
     const timeStr = `${String(slotHour).padStart(2, '0')}:${String(slotMin).padStart(2, '0')}`;
-    
+
     // Skip if in the past (with 30 min buffer)
     if (dateStr === todayStr && currentMinutes <= currentTimeMinutes + 30) {
+      slotsSkippedPast++;
       currentMinutes += CONFIG.SNAP_TO_GRID_MINUTES;
       continue;
     }
-    
+
     // Check if blocked
     const blockKey = `${coachId}-${dateStr}-${timeStr}`;
     const isBlocked = blockedSlots.has(blockKey);
-    
+    if (isBlocked) slotsBlocked++;
+
     // Calculate end time
     const endMinutes = currentMinutes + durationMinutes;
     const endHourCalc = Math.floor(endMinutes / 60);
     const endMinCalc = endMinutes % 60;
     const endTimeStr = `${String(endHourCalc).padStart(2, '0')}:${String(endMinCalc).padStart(2, '0')}`;
-    
+
     // Determine bucket
     const bucketName = getBucketName(slotHour);
-    
+
     slots.push({
       date: dateStr,
       time: timeStr,
@@ -453,11 +574,18 @@ function generateSlotsFromRule(
       available: !isBlocked,
       bucketName,
     });
-    
+
+    slotsGenerated++;
+
     // Move to next slot (with buffer)
     currentMinutes += CONFIG.SNAP_TO_GRID_MINUTES;
   }
-  
+
+  // Debug output for first rule only to avoid spam
+  if (slots.length === 0 || rule.id === 'default') {
+    console.log(`[generateSlotsFromRule] ${dateStr}: rule ${rule.start_time}-${rule.end_time}, generated=${slotsGenerated}, skippedPast=${slotsSkippedPast}, blocked=${slotsBlocked}`);
+  }
+
   return slots;
 }
 

@@ -349,6 +349,15 @@ export async function PATCH(request: NextRequest) {
 
     if (updateError) {
       logError('PATCH update session', updateError);
+
+      // Check for double-booking constraint violation
+      if (updateError.code === '23505' && updateError.message?.includes('no_double_booking')) {
+        return NextResponse.json(
+          { error: 'This time slot is already booked. Please choose a different time.' },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         { error: 'Failed to update session' },
         { status: 500 }

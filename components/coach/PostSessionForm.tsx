@@ -11,7 +11,8 @@ import {
   X, CheckCircle, AlertCircle, Sparkles, TrendingUp, Target,
   BookOpen, Star, Zap, Award, ArrowRight, ArrowLeft, Clock,
   Calendar, Bell, MessageSquare, ThumbsUp, AlertTriangle,
-  Brain, Heart, Trophy, Save, Loader2, FileText
+  Brain, Heart, Trophy, Save, Loader2, FileText, Type, Mic,
+  Search, PenTool, LayoutGrid, Lightbulb, LucideIcon
 } from 'lucide-react';
 
 // YESTORYD BRAND COLORS
@@ -56,15 +57,15 @@ interface FormData {
 }
 
 // COMPREHENSIVE FOCUS AREAS (All Ages 4-12)
-const FOCUS_AREAS = [
-  { value: 'phonics', label: 'Phonics & Letter Sounds', icon: '🔤', ages: '4-12' },
-  { value: 'reading_fluency', label: 'Reading Fluency', icon: '📖', ages: '6-12' },
-  { value: 'comprehension', label: 'Reading Comprehension', icon: '🧠', ages: '7-12' },
-  { value: 'vocabulary', label: 'Vocabulary Building', icon: '📚', ages: '6-12' },
-  { value: 'grammar', label: 'Grammar & Syntax', icon: '✍️', ages: '8-12' },
-  { value: 'creative_writing', label: 'Creative Writing', icon: '🎨', ages: '9-12' },
-  { value: 'pronunciation', label: 'Pronunciation', icon: '🗣️', ages: '4-12' },
-  { value: 'story_analysis', label: 'Story Analysis', icon: '🔍', ages: '10-12' },
+const FOCUS_AREAS: { value: string; label: string; Icon: LucideIcon; ages: string }[] = [
+  { value: 'phonics', label: 'Phonics & Letter Sounds', Icon: Type, ages: '4-12' },
+  { value: 'reading_fluency', label: 'Reading Fluency', Icon: BookOpen, ages: '6-12' },
+  { value: 'comprehension', label: 'Reading Comprehension', Icon: Brain, ages: '7-12' },
+  { value: 'vocabulary', label: 'Vocabulary Building', Icon: LayoutGrid, ages: '6-12' },
+  { value: 'grammar', label: 'Grammar & Syntax', Icon: PenTool, ages: '8-12' },
+  { value: 'creative_writing', label: 'Creative Writing', Icon: Lightbulb, ages: '9-12' },
+  { value: 'pronunciation', label: 'Pronunciation', Icon: Mic, ages: '4-12' },
+  { value: 'story_analysis', label: 'Story Analysis', Icon: Search, ages: '10-12' },
 ];
 
 // COMPREHENSIVE SKILLS (Ages 4-12, Organized by Level)
@@ -112,6 +113,150 @@ const SKILLS_OPTIONS = [
   { skill: 'Descriptive Writing', level: 'Writing', ages: '10-12' },
   { skill: 'Essay Writing', level: 'Writing', ages: '11-12' },
 ];
+
+// FOCUS-SPECIFIC QUICK PICKS FOR "WHAT WENT WELL"
+const FOCUS_HIGHLIGHTS: Record<string, { placeholder: string; quickPicks: string[] }> = {
+  'phonics': {
+    placeholder: "e.g., Mastered 'th' digraph sounds perfectly",
+    quickPicks: [
+      'Digraph sounds (th, sh, ch, wh)',
+      'CVC blending improved',
+      'Letter-sound recognition',
+      'Phoneme segmentation',
+      'Beginning/ending sounds',
+      'Vowel sounds (short/long)',
+    ]
+  },
+  'reading_fluency': {
+    placeholder: "e.g., Reading speed improved, fewer pauses",
+    quickPicks: [
+      'Reading speed improved',
+      'Fewer pauses/hesitations',
+      'Better expression/prosody',
+      'Self-correction improved',
+      'Sight word recognition',
+      'Smoother phrasing',
+    ]
+  },
+  'comprehension': {
+    placeholder: "e.g., Understood main idea, made predictions",
+    quickPicks: [
+      'Identified main idea',
+      'Made predictions',
+      'Answered questions accurately',
+      'Made text connections',
+      'Understood sequence of events',
+      'Drew inferences',
+    ]
+  },
+  'vocabulary': {
+    placeholder: "e.g., Learned 5 new words, used context clues",
+    quickPicks: [
+      'Learned new words',
+      'Used context clues',
+      'Word families understood',
+      'Synonyms/antonyms',
+      'Applied words in sentences',
+      'Dictionary skills improved',
+    ]
+  },
+  'grammar': {
+    placeholder: "e.g., Subject-verb agreement, punctuation rules",
+    quickPicks: [
+      'Subject-verb agreement',
+      'Punctuation improved',
+      'Sentence structure',
+      'Tense consistency',
+      'Parts of speech',
+      'Capitalization rules',
+    ]
+  },
+  'creative_writing': {
+    placeholder: "e.g., Wrote complete story with beginning, middle, end",
+    quickPicks: [
+      'Story structure improved',
+      'Descriptive language used',
+      'Character development',
+      'Creative ideas expressed',
+      'Organized paragraphs',
+      'Dialogue writing',
+    ]
+  },
+  'pronunciation': {
+    placeholder: "e.g., Clear articulation of difficult sounds",
+    quickPicks: [
+      'Clear articulation',
+      'Difficult sounds improved',
+      'Word stress patterns',
+      'Intonation improved',
+      'Blending sounds smoothly',
+      'Self-monitoring speech',
+    ]
+  },
+  'story_analysis': {
+    placeholder: "e.g., Identified theme, analyzed characters",
+    quickPicks: [
+      'Identified theme/moral',
+      'Character analysis',
+      'Plot understanding',
+      'Setting description',
+      'Problem/solution identified',
+      "Author's purpose understood",
+    ]
+  }
+};
+
+// FOCUS-SPECIFIC QUICK PICKS FOR "CHALLENGES"
+const FOCUS_CHALLENGES: Record<string, string[]> = {
+  'phonics': [
+    'Confused similar sounds (b/d, p/q)',
+    'Struggling with blends',
+    'Vowel sound confusion',
+    'Difficulty with digraphs',
+  ],
+  'reading_fluency': [
+    'Reading too fast/slow',
+    'Frequent pauses',
+    'Monotone reading',
+    'Skipping words',
+  ],
+  'comprehension': [
+    'Difficulty recalling details',
+    'Struggled with inference',
+    'Lost track of story',
+    'Trouble summarizing',
+  ],
+  'vocabulary': [
+    'Limited word recognition',
+    'Difficulty with context clues',
+    'Forgetting new words',
+    'Trouble with word meanings',
+  ],
+  'grammar': [
+    'Tense confusion',
+    'Subject-verb errors',
+    'Run-on sentences',
+    'Punctuation mistakes',
+  ],
+  'creative_writing': [
+    'Difficulty starting',
+    'Lacking story structure',
+    'Limited vocabulary use',
+    'Trouble with paragraphs',
+  ],
+  'pronunciation': [
+    'Unclear articulation',
+    'Mispronouncing words',
+    'Stress pattern errors',
+    'Speaking too fast/slow',
+  ],
+  'story_analysis': [
+    'Difficulty finding theme',
+    'Trouble with character traits',
+    'Confused about plot',
+    'Missed key details',
+  ],
+};
 
 // NEXT SESSION FOCUS OPTIONS (Age-Appropriate)
 const NEXT_FOCUS_OPTIONS = [
@@ -359,25 +504,40 @@ export default function PostSessionForm({
                   What was the main focus today?
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  {FOCUS_AREAS.map((area) => (
-                    <button
-                      key={area.value}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, focusArea: area.value }))}
-                      className="p-4 rounded-xl border-2 transition-all text-left"
-                      style={{
-                        borderColor: formData.focusArea === area.value ? COLORS.hotPink : COLORS.mediumGray,
-                        background: formData.focusArea === area.value ? `${COLORS.hotPink}15` : `${COLORS.darkGray}80`,
-                        boxShadow: formData.focusArea === area.value ? `0 8px 20px ${COLORS.hotPink}30` : 'none'
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-2xl">{area.icon}</span>
-                        <span className="text-xs text-gray-500">{area.ages}</span>
-                      </div>
-                      <span className="text-sm font-medium text-white block">{area.label}</span>
-                    </button>
-                  ))}
+                  {FOCUS_AREAS.map((area) => {
+                    const isSelected = formData.focusArea === area.value;
+                    return (
+                      <button
+                        key={area.value}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, focusArea: area.value }))}
+                        className="p-4 rounded-xl border transition-all text-left"
+                        style={{
+                          borderColor: isSelected ? COLORS.hotPink : COLORS.mediumGray,
+                          background: isSelected ? `${COLORS.hotPink}15` : `${COLORS.darkGray}50`,
+                          boxShadow: isSelected ? `0 4px 12px ${COLORS.hotPink}25` : 'none'
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{
+                              background: isSelected ? `${COLORS.hotPink}20` : `${COLORS.lightGray}50`
+                            }}
+                          >
+                            <area.Icon
+                              className="w-5 h-5"
+                              style={{ color: isSelected ? COLORS.hotPink : '#9CA3AF' }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-white block leading-tight">{area.label}</span>
+                            <span className="text-xs text-gray-500 mt-0.5 block">{area.ages} years</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -498,15 +658,91 @@ export default function PostSessionForm({
                   <ThumbsUp className="w-4 h-4" style={{ color: COLORS.successGreen }} />
                   What went well? <span style={{ color: COLORS.successGreen }}>*</span>
                 </label>
+
+                {/* Quick Pick Tags - Only show if focus is selected */}
+                {formData.focusArea && FOCUS_HIGHLIGHTS[formData.focusArea] && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {FOCUS_HIGHLIGHTS[formData.focusArea].quickPicks.map((skill) => (
+                      <button
+                        key={skill}
+                        type="button"
+                        onClick={() => {
+                          if (!formData.whatWentWell.includes(skill) && formData.whatWentWell.length < 5) {
+                            setFormData(prev => ({
+                              ...prev,
+                              whatWentWell: [...prev.whatWentWell, skill]
+                            }));
+                          }
+                        }}
+                        disabled={formData.whatWentWell.includes(skill) || formData.whatWentWell.length >= 5}
+                        className="px-3 py-1.5 text-xs rounded-full border transition-all"
+                        style={{
+                          background: formData.whatWentWell.includes(skill)
+                            ? `${COLORS.successGreen}20`
+                            : COLORS.darkGray,
+                          borderColor: formData.whatWentWell.includes(skill)
+                            ? `${COLORS.successGreen}50`
+                            : COLORS.mediumGray,
+                          color: formData.whatWentWell.includes(skill)
+                            ? COLORS.successGreen
+                            : '#D1D5DB',
+                          cursor: formData.whatWentWell.includes(skill) || formData.whatWentWell.length >= 5
+                            ? 'not-allowed'
+                            : 'pointer',
+                          opacity: formData.whatWentWell.length >= 5 && !formData.whatWentWell.includes(skill) ? 0.5 : 1
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!formData.whatWentWell.includes(skill) && formData.whatWentWell.length < 5) {
+                            e.currentTarget.style.borderColor = COLORS.hotPink;
+                            e.currentTarget.style.color = 'white';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!formData.whatWentWell.includes(skill)) {
+                            e.currentTarget.style.borderColor = COLORS.mediumGray;
+                            e.currentTarget.style.color = '#D1D5DB';
+                          }
+                        }}
+                      >
+                        {formData.whatWentWell.includes(skill) ? (
+                          <span className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> {skill}
+                          </span>
+                        ) : (
+                          `+ ${skill}`
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* No Focus Selected State */}
+                {!formData.focusArea && (
+                  <div
+                    className="text-center py-3 mb-3 rounded-xl"
+                    style={{
+                      background: `${COLORS.darkGray}50`,
+                      border: `1px dashed ${COLORS.mediumGray}`
+                    }}
+                  >
+                    <AlertCircle className="w-5 h-5 mx-auto mb-2 text-gray-500" />
+                    <p className="text-sm text-gray-500">Select a focus area above to see relevant suggestions</p>
+                  </div>
+                )}
+
                 <div className="flex gap-2 mb-3">
                   <input
                     type="text"
                     value={wellInput}
                     onChange={(e) => setWellInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddWell()}
-                    placeholder="e.g., Mastered 'th' digraph sounds perfectly"
+                    placeholder={
+                      formData.focusArea && FOCUS_HIGHLIGHTS[formData.focusArea]
+                        ? FOCUS_HIGHLIGHTS[formData.focusArea].placeholder
+                        : "Add a highlight..."
+                    }
                     className="flex-1 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all"
-                    style={{ 
+                    style={{
                       background: COLORS.darkGray,
                       border: `1px solid ${COLORS.mediumGray}`,
                       ...(wellInput ? { borderColor: COLORS.electricBlue } : {})
@@ -528,7 +764,7 @@ export default function PostSessionForm({
                     <div
                       key={index}
                       className="flex items-center gap-3 p-3 rounded-xl group"
-                      style={{ 
+                      style={{
                         background: `${COLORS.successGreen}10`,
                         border: `1px solid ${COLORS.successGreen}30`
                       }}
@@ -557,15 +793,77 @@ export default function PostSessionForm({
                   <AlertTriangle className="w-4 h-4" style={{ color: COLORS.warningOrange }} />
                   Any challenges? <span className="text-gray-500 text-xs">(Optional)</span>
                 </label>
+
+                {/* Quick Pick Tags - Only show if focus is selected */}
+                {formData.focusArea && FOCUS_CHALLENGES[formData.focusArea] && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {FOCUS_CHALLENGES[formData.focusArea].map((challenge) => (
+                      <button
+                        key={challenge}
+                        type="button"
+                        onClick={() => {
+                          if (!formData.struggles.includes(challenge) && formData.struggles.length < 5) {
+                            setFormData(prev => ({
+                              ...prev,
+                              struggles: [...prev.struggles, challenge]
+                            }));
+                          }
+                        }}
+                        disabled={formData.struggles.includes(challenge) || formData.struggles.length >= 5}
+                        className="px-3 py-1.5 text-xs rounded-full border transition-all"
+                        style={{
+                          background: formData.struggles.includes(challenge)
+                            ? `${COLORS.warningOrange}20`
+                            : COLORS.darkGray,
+                          borderColor: formData.struggles.includes(challenge)
+                            ? `${COLORS.warningOrange}50`
+                            : COLORS.mediumGray,
+                          color: formData.struggles.includes(challenge)
+                            ? COLORS.warningOrange
+                            : '#D1D5DB',
+                          cursor: formData.struggles.includes(challenge) || formData.struggles.length >= 5
+                            ? 'not-allowed'
+                            : 'pointer',
+                          opacity: formData.struggles.length >= 5 && !formData.struggles.includes(challenge) ? 0.5 : 1
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!formData.struggles.includes(challenge) && formData.struggles.length < 5) {
+                            e.currentTarget.style.borderColor = COLORS.hotPink;
+                            e.currentTarget.style.color = 'white';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!formData.struggles.includes(challenge)) {
+                            e.currentTarget.style.borderColor = COLORS.mediumGray;
+                            e.currentTarget.style.color = '#D1D5DB';
+                          }
+                        }}
+                      >
+                        {formData.struggles.includes(challenge) ? (
+                          <span className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> {challenge}
+                          </span>
+                        ) : (
+                          `+ ${challenge}`
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex gap-2 mb-3">
                   <input
                     type="text"
                     value={struggleInput}
                     onChange={(e) => setStruggleInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddStruggle()}
-                    placeholder="e.g., Confused with silent 'e' rules"
+                    placeholder={
+                      formData.focusArea
+                        ? "Add a specific challenge..."
+                        : "e.g., Confused with silent 'e' rules"
+                    }
                     className="flex-1 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all"
-                    style={{ 
+                    style={{
                       background: COLORS.darkGray,
                       border: `1px solid ${COLORS.mediumGray}`,
                       ...(struggleInput ? { borderColor: COLORS.warningOrange } : {})
@@ -587,7 +885,7 @@ export default function PostSessionForm({
                     <div
                       key={index}
                       className="flex items-center gap-3 p-3 rounded-xl group"
-                      style={{ 
+                      style={{
                         background: `${COLORS.warningOrange}10`,
                         border: `1px solid ${COLORS.warningOrange}30`
                       }}

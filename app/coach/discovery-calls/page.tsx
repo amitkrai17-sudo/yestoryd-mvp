@@ -1,8 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Phone, MessageCircle, Calendar, Clock, Users, ChevronRight, RefreshCw } from 'lucide-react';
+import CoachLayout from '@/components/layouts/CoachLayout';
 
 interface DiscoveryCall {
   id: string;
@@ -73,7 +74,8 @@ export default function CoachDiscoveryCallsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <CoachLayout>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
@@ -200,7 +202,8 @@ export default function CoachDiscoveryCallsPage() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </CoachLayout>
   );
 }
 

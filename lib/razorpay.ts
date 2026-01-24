@@ -7,20 +7,24 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
-// Package pricing
+/**
+ * @deprecated LEGACY CODE - DO NOT USE
+ * Actual pricing comes from pricing_plans table via /api/payment/create
+ * This constant is kept for backwards compatibility but is not used in the payment flow
+ */
 export const PACKAGES = {
   'coaching-6': {
     name: '3-Month Coaching Program',
     sessions: 6,
     parentCheckins: 3,
-    price: 5999,
+    price: 0, // DEPRECATED: Price comes from pricing_plans table
     description: '6 coaching sessions + 3 parent check-ins + FREE access to all services',
   },
   'coaching-trial': {
     name: 'Trial Session',
     sessions: 1,
     parentCheckins: 0,
-    price: 999,
+    price: 0, // DEPRECATED: Price comes from pricing_plans table
     description: '1 trial coaching session',
   },
 } as const;

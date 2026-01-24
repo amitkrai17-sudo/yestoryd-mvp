@@ -14,6 +14,17 @@ import {
   Sparkles,
   Square,
   X,
+  Rocket,
+  ArrowRight,
+  RefreshCw,
+  AlertTriangle,
+  Star,
+  Smile,
+  Meh,
+  Frown,
+  Moon,
+  FileText,
+  LucideIcon,
 } from 'lucide-react';
 
 interface SessionCompleteFormProps {
@@ -42,20 +53,20 @@ const FOCUS_AREAS = [
   'Writing Practice',
 ];
 
-const PROGRESS_RATINGS = [
-  { value: 'significant_improvement', label: 'Significant Improvement', emoji: '🚀' },
-  { value: 'good_progress', label: 'Good Progress', emoji: '📈' },
-  { value: 'steady', label: 'Steady / As Expected', emoji: '➡️' },
-  { value: 'needs_more_practice', label: 'Needs More Practice', emoji: '🔄' },
-  { value: 'struggling', label: 'Struggling - Attention Needed', emoji: '⚠️' },
+const PROGRESS_RATINGS: { value: string; label: string; Icon: LucideIcon; color: string }[] = [
+  { value: 'significant_improvement', label: 'Significant Improvement', Icon: Rocket, color: '#10B981' },
+  { value: 'good_progress', label: 'Good Progress', Icon: TrendingUp, color: '#00ABFF' },
+  { value: 'steady', label: 'Steady / As Expected', Icon: ArrowRight, color: '#9CA3AF' },
+  { value: 'needs_more_practice', label: 'Needs More Practice', Icon: RefreshCw, color: '#F59E0B' },
+  { value: 'struggling', label: 'Struggling - Attention Needed', Icon: AlertTriangle, color: '#EF4444' },
 ];
 
-const ENGAGEMENT_LEVELS = [
-  { value: 'highly_engaged', label: 'Highly Engaged', emoji: '🌟' },
-  { value: 'engaged', label: 'Engaged', emoji: '😊' },
-  { value: 'moderate', label: 'Moderate', emoji: '😐' },
-  { value: 'distracted', label: 'Distracted', emoji: '😕' },
-  { value: 'disengaged', label: 'Disengaged', emoji: '😴' },
+const ENGAGEMENT_LEVELS: { value: string; label: string; Icon: LucideIcon; color: string }[] = [
+  { value: 'highly_engaged', label: 'Highly Engaged', Icon: Star, color: '#FFDE00' },
+  { value: 'engaged', label: 'Engaged', Icon: Smile, color: '#10B981' },
+  { value: 'moderate', label: 'Moderate', Icon: Meh, color: '#9CA3AF' },
+  { value: 'distracted', label: 'Distracted', Icon: Frown, color: '#F59E0B' },
+  { value: 'disengaged', label: 'Disengaged', Icon: Moon, color: '#6B7280' },
 ];
 
 const QUIZ_TOPICS = [
@@ -232,8 +243,9 @@ export default function SessionCompleteForm({
           {childName}'s progress has been recorded and saved.
         </p>
         {quizTopic && (
-          <p className="text-sm text-purple-400 mb-4">
-            📝 Quiz on "{quizTopic}" will be sent to the parent.
+          <p className="text-sm text-purple-400 mb-4 flex items-center justify-center gap-2">
+            <FileText className="w-4 h-4" />
+            Quiz on "{quizTopic}" will be sent to the parent.
           </p>
         )}
         <button
@@ -268,15 +280,15 @@ export default function SessionCompleteForm({
           <button
             key={s}
             onClick={() => setStep(s)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
               step === s
                 ? 'text-purple-400 border-b-2 border-purple-500 bg-purple-500/10'
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            {s === 1 && '📊 Progress'}
-            {s === 2 && '🎤 Voice'}
-            {s === 3 && '📝 Quiz'}
+            {s === 1 && <><TrendingUp className="w-4 h-4" /> Progress</>}
+            {s === 2 && <><Mic className="w-4 h-4" /> Voice</>}
+            {s === 3 && <><FileText className="w-4 h-4" /> Quiz</>}
           </button>
         ))}
       </div>
@@ -317,21 +329,34 @@ export default function SessionCompleteForm({
                 Progress *
               </label>
               <div className="grid grid-cols-1 gap-2">
-                {PROGRESS_RATINGS.map((rating) => (
-                  <button
-                    key={rating.value}
-                    type="button"
-                    onClick={() => setProgressRating(rating.value)}
-                    className={`p-3 rounded-xl text-left transition-all ${
-                      progressRating === rating.value
-                        ? 'bg-purple-500/30 border-2 border-purple-500 text-white'
-                        : 'bg-gray-700 border-2 border-transparent text-gray-300 hover:bg-gray-600'
-                    }`}
-                  >
-                    <span className="mr-2">{rating.emoji}</span>
-                    {rating.label}
-                  </button>
-                ))}
+                {PROGRESS_RATINGS.map((rating) => {
+                  const isSelected = progressRating === rating.value;
+                  return (
+                    <button
+                      key={rating.value}
+                      type="button"
+                      onClick={() => setProgressRating(rating.value)}
+                      className={`p-3 rounded-xl text-left transition-all flex items-center gap-3 ${
+                        isSelected
+                          ? 'bg-purple-500/20 border border-purple-500 text-white'
+                          : 'bg-gray-700 border border-transparent text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: isSelected ? `${rating.color}20` : 'rgba(107, 114, 128, 0.3)'
+                        }}
+                      >
+                        <rating.Icon
+                          className="w-4 h-4"
+                          style={{ color: isSelected ? rating.color : '#9CA3AF' }}
+                        />
+                      </div>
+                      <span className="font-medium">{rating.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -342,20 +367,27 @@ export default function SessionCompleteForm({
                 Engagement *
               </label>
               <div className="flex flex-wrap gap-2">
-                {ENGAGEMENT_LEVELS.map((level) => (
-                  <button
-                    key={level.value}
-                    type="button"
-                    onClick={() => setEngagementLevel(level.value)}
-                    className={`px-3 py-2 rounded-full text-sm transition-all ${
-                      engagementLevel === level.value
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
-                  >
-                    {level.emoji} {level.label}
-                  </button>
-                ))}
+                {ENGAGEMENT_LEVELS.map((level) => {
+                  const isSelected = engagementLevel === level.value;
+                  return (
+                    <button
+                      key={level.value}
+                      type="button"
+                      onClick={() => setEngagementLevel(level.value)}
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${
+                        isSelected
+                          ? 'bg-purple-500/20 border border-purple-500 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-transparent'
+                      }`}
+                    >
+                      <level.Icon
+                        className="w-4 h-4"
+                        style={{ color: isSelected ? level.color : '#9CA3AF' }}
+                      />
+                      <span>{level.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -500,11 +532,27 @@ export default function SessionCompleteForm({
 
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-sm">
               <p className="font-medium text-purple-400 mb-2">What happens next?</p>
-              <ul className="space-y-1 text-gray-400">
-                <li>✓ Session progress saved to {childName}'s history</li>
-                {audioBlob && <li>✓ Voice note will be transcribed</li>}
-                {quizTopic && <li>✓ Quiz link sent to parent via WhatsApp</li>}
-                <li>✓ Parent can ask AI about this session</li>
+              <ul className="space-y-2 text-gray-400">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  Session progress saved to {childName}'s history
+                </li>
+                {audioBlob && (
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    Voice note will be transcribed
+                  </li>
+                )}
+                {quizTopic && (
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    Quiz link sent to parent via WhatsApp
+                  </li>
+                )}
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  Parent can ask AI about this session
+                </li>
               </ul>
             </div>
 

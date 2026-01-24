@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { CoachLayout } from '@/components/coach/CoachLayout';
+import CoachLayout from '@/components/layouts/CoachLayout';
 import {
   MessageSquare,
   Send,
@@ -88,14 +88,28 @@ export default function WhatsAppTemplatesPage() {
 
       setTemplates(templatesData || []);
 
-      // Get students
-      const { data: studentsData } = await supabase
-        .from('children')
-        .select('id, child_name, parent_name, parent_phone, latest_assessment_score')
+      // Get students through ENROLLMENTS (single source of truth)
+      const { data: enrollmentsData } = await supabase
+        .from('enrollments')
+        .select(`
+          child:children (
+            id,
+            child_name,
+            parent_name,
+            parent_phone,
+            latest_assessment_score
+          )
+        `)
         .eq('coach_id', coachData.id)
-        .order('child_name');
+        .in('status', ['active', 'pending_start'])
+        .order('created_at', { ascending: false });
 
-      setStudents(studentsData || []);
+      // Extract unique children from enrollments
+      const studentsData = (enrollmentsData || [])
+        .map(e => e.child)
+        .filter(Boolean);
+
+      setStudents(studentsData as any[]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -185,16 +199,18 @@ export default function WhatsAppTemplatesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
-      </div>
+      <CoachLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+        </div>
+      </CoachLayout>
     );
   }
 
   if (!coach) return null;
 
   return (
-    <CoachLayout coach={coach}>
+    <CoachLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>

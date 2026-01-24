@@ -1,16 +1,20 @@
-﻿'use client';
+// app/coach/students/page.tsx
+// Coach Students Page - Mobile-First Compact Design
+'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import {
   Users,
   Search,
-  Filter,
-  MessageCircle,
-  ArrowRight,
   Loader2,
+  UserCheck,
+  Clock,
+  Award,
 } from 'lucide-react';
+import CoachLayout from '@/components/layouts/CoachLayout';
+import StudentCard from '@/components/coach/StudentCard';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,19 +25,15 @@ interface Student {
   id: string;
   child_name: string;
   age: number;
-  parent_name: string;
-  parent_email: string;
-  parent_phone: string;
-  latest_assessment_score: number | null;
-  subscription_status: string;
-  program_start_date: string;
-  program_end_date: string;
+  assessment_score: number | null;
   sessions_completed: number;
   total_sessions: number;
-  lead_source: string;
+  status: string;
+  is_coach_lead: boolean;
 }
 
 export default function CoachStudentsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [coach, setCoach] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -49,7 +49,7 @@ export default function CoachStudentsPage() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        window.location.href = '/coach/login';
+        router.push('/coach/login');
         return;
       }
 
@@ -60,37 +60,57 @@ export default function CoachStudentsPage() {
         .single();
 
       if (!coachData) {
-        window.location.href = '/coach/login';
+        router.push('/coach/login');
         return;
       }
 
       setCoach(coachData);
 
-      // Get all students assigned to this coach
-      const { data: studentsData } = await supabase
-        .from('children')
-        .select('*')
+      // Get all students through ENROLLMENTS (single source of truth)
+      const { data: enrollmentsData } = await supabase
+        .from('enrollments')
+        .select(`
+          id,
+          status,
+          sessions_scheduled,
+          lead_source,
+          child:children (
+            id,
+            child_name,
+            age,
+            latest_assessment_score
+          )
+        `)
         .eq('coach_id', coachData.id)
+        .in('status', ['active', 'pending_start', 'completed'])
         .order('created_at', { ascending: false });
 
-      // Get session counts for each student
+      // Get session counts for each enrollment
       const studentsWithSessions = await Promise.all(
-        (studentsData || []).map(async (student) => {
+        (enrollmentsData || []).map(async (enrollment) => {
+          const child = enrollment.child as any;
+          if (!child) return null;
+
           const { count } = await supabase
             .from('scheduled_sessions')
-            .select('*', { count: 'exact' })
-            .eq('child_id', student.id)
+            .select('*', { count: 'exact', head: true })
+            .eq('enrollment_id', enrollment.id)
             .eq('status', 'completed');
 
           return {
-            ...student,
+            id: child.id,
+            child_name: child.child_name,
+            age: child.age,
+            assessment_score: child.latest_assessment_score,
             sessions_completed: count || 0,
-            total_sessions: 6,
+            total_sessions: enrollment.sessions_scheduled || 9,
+            status: enrollment.status === 'pending_start' ? 'active' : enrollment.status,
+            is_coach_lead: enrollment.lead_source === 'coach',
           };
         })
       );
 
-      setStudents(studentsWithSessions);
+      setStudents(studentsWithSessions.filter(Boolean) as Student[]);
     } catch (error) {
       console.error('Error loading students:', error);
     } finally {
@@ -98,177 +118,110 @@ export default function CoachStudentsPage() {
     }
   };
 
-  const getScoreColor = (score: number | null) => {
-    if (score === null) return 'text-gray-500';
-    if (score >= 8) return 'text-green-400';
-    if (score >= 5) return 'text-yellow-400';
-    return 'text-orange-400';
-  };
+  // Stats computation
+  const stats = useMemo(() => ({
+    total: students.length,
+    active: students.filter(s => s.status === 'active').length,
+    completed: students.filter(s => s.status === 'completed').length,
+    leads: students.filter(s => s.is_coach_lead).length,
+  }), [students]);
 
-  const getScoreLabel = (score: number | null) => {
-    if (score === null) return 'No assessment';
-    if (score >= 8) return 'Reading Wizard';
-    if (score >= 5) return 'Reading Star';
-    return 'Budding Reader';
-  };
+  // Filter students
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      const matchesSearch = !searchTerm ||
+        student.child_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <span className="bg-green-500/20 text-green-400 px-2.5 py-1 rounded-full text-xs font-medium">Active</span>;
-      case 'completed':
-        return <span className="bg-[#00ABFF]/20 text-[#00ABFF] px-2.5 py-1 rounded-full text-xs font-medium">Completed</span>;
-      case 'paused':
-        return <span className="bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded-full text-xs font-medium">Paused</span>;
-      default:
-        return <span className="bg-gray-500/20 text-gray-400 px-2.5 py-1 rounded-full text-xs font-medium">Pending</span>;
-    }
-  };
+      const matchesFilter =
+        filterStatus === 'all' ||
+        (filterStatus === 'active' && student.status === 'active') ||
+        (filterStatus === 'completed' && student.status === 'completed') ||
+        (filterStatus === 'leads' && student.is_coach_lead);
 
-  const openWhatsApp = (phone: string, childName: string) => {
-    const message = `Hi! This is regarding ${childName}'s reading coaching sessions.`;
-    const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
-
-  const filteredStudents = students.filter((student) => {
-    const matchesSearch =
-      student.child_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.parent_name?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesFilter =
-      filterStatus === 'all' || student.subscription_status === filterStatus;
-
-    return matchesSearch && matchesFilter;
-  });
+      return matchesSearch && matchesFilter;
+    });
+  }, [students, searchTerm, filterStatus]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
-      </div>
+      <CoachLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        </div>
+      </CoachLayout>
     );
   }
 
   if (!coach) return null;
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#00ABFF]/20 rounded-xl flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#00ABFF]" />
-              </div>
-              My Students
-            </h1>
-            <p className="text-gray-400 mt-1">{students.length} students enrolled</p>
-          </div>
+    <CoachLayout>
+      <div className="px-3 py-4 lg:px-6 lg:py-6 max-w-4xl mx-auto">
+        {/* Header - Compact */}
+        <div className="mb-4">
+          <h1 className="text-lg lg:text-xl font-bold text-white flex items-center gap-2">
+            <Users className="w-5 h-5 text-[#00ABFF]" />
+            My Students
+          </h1>
+          <p className="text-xs lg:text-sm text-gray-400">Manage your enrolled students</p>
         </div>
 
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+        {/* Stats Row - Compact Grid */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          {[
+            { icon: Users, value: stats.total, label: 'Total', color: 'text-white', bg: 'bg-gray-700' },
+            { icon: UserCheck, value: stats.active, label: 'Active', color: 'text-green-400', bg: 'bg-green-500/20' },
+            { icon: Clock, value: stats.completed, label: 'Done', color: 'text-blue-400', bg: 'bg-blue-500/20' },
+            { icon: Award, value: stats.leads, label: '70%', color: 'text-[#FF0099]', bg: 'bg-[#FF0099]/20' },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-[#1a1a1a] rounded-lg p-2 lg:p-3 text-center border border-gray-800">
+              <div className={`w-6 h-6 lg:w-8 lg:h-8 ${stat.bg} rounded-md flex items-center justify-center mx-auto mb-1`}>
+                <stat.icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 ${stat.color}`} />
+              </div>
+              <div className={`text-base lg:text-lg font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-[9px] lg:text-[10px] text-gray-500">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Search & Filter - Single Row */}
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
-              placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50 transition-all"
+              placeholder="Search..."
+              className="w-full h-10 pl-9 pr-3 bg-[#1a1a1a] border border-gray-800 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#FF0099]"
             />
           </div>
-          <div className="flex items-center gap-3">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50 transition-all"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="paused">Paused</option>
-            </select>
-          </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="h-10 px-3 bg-[#1a1a1a] border border-gray-800 rounded-lg text-sm text-white focus:outline-none focus:border-[#FF0099] appearance-none cursor-pointer"
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="completed">Done</option>
+            <option value="leads">70%</option>
+          </select>
         </div>
 
-        {/* Students List */}
-        <div className="bg-gray-800/50 rounded-2xl border border-gray-700 overflow-hidden">
+        {/* Student Cards */}
+        <div className="space-y-2">
           {filteredStudents.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="w-16 h-16 bg-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-gray-500" />
-              </div>
-              <p className="text-gray-400 text-lg">No students found</p>
-              <p className="text-gray-500 text-sm mt-1">Try adjusting your search or filters</p>
+            <div className="text-center py-12 text-gray-500">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No students found</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-700/50">
-              {filteredStudents.map((student) => (
-                <div
-                  key={student.id}
-                  className="p-5 hover:bg-gray-700/30 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    {/* Student Info */}
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#FF0099] to-[#FF0099]/60 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                        {student.child_name.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-white text-lg">{student.child_name}</h3>
-                          {getStatusBadge(student.subscription_status)}
-                          {student.lead_source === 'coach' && (
-                            <span className="bg-purple-500/20 text-purple-400 px-2.5 py-1 rounded-full text-xs font-medium">
-                              Your Lead
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-gray-400 text-sm mt-1">
-                          Age {student.age} • Parent: {student.parent_name}
-                        </p>
-                        <div className="flex items-center gap-6 mt-3">
-                          <div className={`text-sm ${getScoreColor(student.latest_assessment_score)}`}>
-                            <span className="text-gray-500">Score:</span>{' '}
-                            <span className="font-medium">{student.latest_assessment_score ?? '-'}/10</span>
-                            <span className="text-gray-500 ml-1">({getScoreLabel(student.latest_assessment_score)})</span>
-                          </div>
-                          <div className="text-sm text-gray-400">
-                            <span className="text-gray-500">Sessions:</span>{' '}
-                            <span className="font-medium text-white">{student.sessions_completed}</span>
-                            <span className="text-gray-500">/{student.total_sessions}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => openWhatsApp(student.parent_phone, student.child_name)}
-                        className="p-2.5 bg-[#25D366]/20 text-[#25D366] rounded-xl hover:bg-[#25D366]/30 transition-colors"
-                        title="WhatsApp Parent"
-                      >
-                        <MessageCircle className="w-5 h-5" />
-                      </button>
-                      <Link
-                        href={`/coach/students/${student.id}`}
-                        className="flex items-center gap-2 bg-[#FF0099] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#FF0099]/90 transition-colors"
-                      >
-                        View <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            filteredStudents.map((student) => (
+              <StudentCard key={student.id} student={student} />
+            ))
           )}
         </div>
       </div>
-    </div>
+    </CoachLayout>
   );
 }

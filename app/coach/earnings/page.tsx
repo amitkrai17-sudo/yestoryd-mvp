@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { CoachLayout } from '@/components/coach/CoachLayout';
+import CoachLayout from '@/components/layouts/CoachLayout';
 import {
   IndianRupee,
   TrendingUp,
@@ -84,29 +84,36 @@ export default function CoachEarningsPage() {
 
       setCoach(coachData);
 
-      // Get all enrolled children for this coach
-      const { data: children } = await supabase
-        .from('children')
-        .select('*')
+      // Get all enrolled children through ENROLLMENTS (single source of truth)
+      const { data: enrollments } = await supabase
+        .from('enrollments')
+        .select(`
+          id,
+          status,
+          amount,
+          lead_source,
+          created_at,
+          child:children (
+            id,
+            child_name,
+            parent_name,
+            custom_coach_split
+          )
+        `)
         .eq('coach_id', coachData.id)
+        .in('status', ['active', 'pending_start', 'completed'])
         .order('created_at', { ascending: false });
 
-      // Get program price from site_settings (single source of truth)
-      const { data: priceSetting } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'program_price')
-        .single();
-      
-      const programFee = priceSetting?.value 
-        ? parseInt(String(priceSetting.value).replace(/[^0-9]/g, '')) 
-        : 5999; // Fallback only if not set
       const defaultCoachSplit = coachData.coach_split_percentage / 100;
       const coachLeadSplit = 0.70; // 70% for coach leads
 
-      // Calculate earnings for each child
-      const earningsData: Earning[] = (children || []).map((child) => {
-        const isCoachLead = child.lead_source === 'coach';
+      // Calculate earnings for each enrollment
+      const earningsData: Earning[] = (enrollments || []).map((enrollment) => {
+        const child = enrollment.child as any;
+        if (!child) return null;
+
+        const programFee = enrollment.amount || 5999;
+        const isCoachLead = enrollment.lead_source === 'coach';
         const splitPercentage = child.custom_coach_split
           ? child.custom_coach_split / 100
           : isCoachLead
@@ -120,15 +127,15 @@ export default function CoachEarningsPage() {
           id: child.id,
           child_name: child.child_name,
           parent_name: child.parent_name,
-          enrollment_date: child.created_at,
+          enrollment_date: enrollment.created_at,
           program_fee: programFee,
           coach_amount: coachAmount,
           yestoryd_amount: yestorydAmount,
           split_type: child.custom_coach_split ? 'custom' : isCoachLead ? 'coach_lead' : 'default',
-          lead_source: child.lead_source || 'yestoryd',
-          status: child.subscription_status === 'active' ? 'paid' : 'pending',
+          lead_source: enrollment.lead_source || 'yestoryd',
+          status: enrollment.status === 'active' ? 'paid' : 'pending',
         };
-      });
+      }).filter(Boolean) as Earning[];
 
       setEarnings(earningsData);
 
@@ -221,16 +228,18 @@ export default function CoachEarningsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
-      </div>
+      <CoachLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+        </div>
+      </CoachLayout>
     );
   }
 
   if (!coach) return null;
 
   return (
-    <CoachLayout coach={coach}>
+    <CoachLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

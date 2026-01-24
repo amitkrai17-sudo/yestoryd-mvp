@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
+import CoachLayout from '@/components/layouts/CoachLayout';
 import {
   Users,
   Calendar,
@@ -117,16 +118,18 @@ export default function CoachDashboardPage() {
 
   const fetchStats = async (coachId: string, coachEmail: string) => {
     try {
+      // Query through ENROLLMENTS (single source of truth for coach assignment)
       const { count: studentsCount } = await supabase
-        .from('children')
-        .select('*', { count: 'exact', head: true })
-        .eq('coach_id', coachId);
-
-      const { count: activeCount } = await supabase
-        .from('children')
+        .from('enrollments')
         .select('*', { count: 'exact', head: true })
         .eq('coach_id', coachId)
-        .in('lead_status', ['enrolled', 'active']);
+        .in('status', ['active', 'pending_start', 'completed']);
+
+      const { count: activeCount } = await supabase
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('coach_id', coachId)
+        .in('status', ['active', 'pending_start']);
 
       let sessionsCount = 0;
       try {
@@ -211,19 +214,22 @@ export default function CoachDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading your dashboard...</p>
+      <CoachLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin mx-auto mb-4" />
+            <p className="text-gray-400">Loading your dashboard...</p>
+          </div>
         </div>
-      </div>
+      </CoachLayout>
     );
   }
 
   if (!coach) return null;
 
   return (
-    <div className="space-y-6">
+    <CoachLayout>
+      <div className="space-y-6">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-2xl p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">
@@ -405,6 +411,7 @@ export default function CoachDashboardPage() {
 
       {/* Floating rAI Chat Widget */}
       <ChatWidget userRole="coach" userEmail={coach.email} />
-    </div>
+      </div>
+    </CoachLayout>
   );
 }

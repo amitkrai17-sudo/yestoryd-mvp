@@ -8,8 +8,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Save, Loader2, User, BookOpen, Calendar, 
+import CoachLayout from '@/components/layouts/CoachLayout';
+import {
+  Save, Loader2, User, BookOpen, Calendar,
   Award, CheckCircle, AlertCircle, Camera
 } from 'lucide-react';
 import SkillTagSelector from '@/components/shared/SkillTagSelector';
@@ -153,27 +154,39 @@ export default function CoachProfilePage() {
   };
 
   if (isLoading) {
-    return (<div className="flex items-center justify-center py-20"><div className="text-center"><Loader2 className="w-10 h-10 animate-spin text-[#FF0099] mx-auto mb-4" />
-          <p className="text-gray-400">Loading profile...</p>
+    return (
+      <CoachLayout>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <Loader2 className="w-10 h-10 animate-spin text-[#FF0099] mx-auto mb-4" />
+            <p className="text-gray-400">Loading profile...</p>
+          </div>
         </div>
-      </div>
+      </CoachLayout>
     );
   }
 
   if (!profile) {
-    return (<div className="flex items-center justify-center py-20"><div className="text-center"><p className="text-red-400 mb-4">{error || 'Failed to load profile'}</p>
-          <button
-            onClick={fetchProfile}
-            className="px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/90"
-          >
-            Retry
-          </button>
+    return (
+      <CoachLayout>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <p className="text-red-400 mb-4">{error || 'Failed to load profile'}</p>
+            <button
+              onClick={fetchProfile}
+              className="px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/90"
+            >
+              Retry
+            </button>
+          </div>
         </div>
-      </div>
+      </CoachLayout>
     );
   }
 
-  return (<div className="p-6 text-white">
+  return (
+    <CoachLayout noPadding>
+      <div className="p-6 text-white">
 
       {/* Tabs */}
       <div className="border-b border-gray-800 bg-[#12121a]">
@@ -456,6 +469,7 @@ export default function CoachProfilePage() {
           </div>
         )}
       </main>
-    </div>
+      </div>
+    </CoachLayout>
   );
 }

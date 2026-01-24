@@ -1,82 +1,208 @@
 // =============================================================================
-// FILE: app/api/discovery-call/[id]/route.ts
-// CORRECT APPROACH: Use discovery_calls table ONLY (no unnecessary joins)
+// FILE: app/api/coach/sessions/[id]/complete/route.ts
+// PURPOSE: Complete a coaching session and create learning event
+// CRITICAL: Single source of truth for rAI queries
 // =============================================================================
 
+import { supabaseAdmin } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { requireAdminOrCoach } from '@/lib/api-auth';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-export async function GET(
+/**
+ * Complete a coaching session
+ * - Updates scheduled_sessions status
+ * - Inserts learning_event with full JSONB data
+ * - Updates children cache for quick parent queries
+ */
+export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
-    // Authentication
-    const authResult = await requireAdminOrCoach();
-    if (!authResult.authorized) {
+    const supabase = supabaseAdmin;
+    const { id: sessionId } = await params;
+    const payload = await request.json();
+
+    console.log('=== SESSION COMPLETE API ===');
+    console.log('Session ID:', sessionId);
+    console.log('Focus:', payload.primaryFocus || payload.focusArea);
+    console.log('Progress:', payload.focusProgress || payload.progressRating);
+
+    // Extract fields (support both new form and legacy formats)
+    const primaryFocus = payload.primaryFocus || payload.focusArea;
+    const focusProgress = payload.focusProgress || payload.progressRating;
+    const overallRating = payload.overallRating || 4;
+    const highlights = payload.highlights || payload.sessionHighlights || [];
+    const challenges = payload.challenges || payload.sessionStruggles || [];
+    const skillsPracticed = payload.skillsPracticed || payload.skillsWorkedOn || [];
+    const engagementLevel = payload.engagementLevel || 'medium';
+    const nextSessionFocus = payload.nextSessionFocus || (payload.nextSessionFocus?.[0]) || null;
+
+    // Validate required fields
+    if (!primaryFocus || !focusProgress) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'Missing required fields: primaryFocus/focusArea and focusProgress/progressRating' },
+        { status: 400 }
       );
     }
 
-    const callId = params.id;
-
-    // ═══════════════════════════════════════════════════════════════
-    // FETCH FROM discovery_calls ONLY (has all data we need!)
-    // Only join: assigned coach (for coach name/contact)
-    // ═══════════════════════════════════════════════════════════════
-
-    const { data: call, error } = await supabase
-      .from('discovery_calls')
-      .select(`
-        *,
-        assigned_coach:coaches!assigned_coach_id(
-          id,
-          name,
-          email,
-          phone,
-          photo_url
-        )
-      `)
-      .eq('id', callId)
+    // 1. Get session details first
+    const { data: session, error: fetchError } = await supabase
+      .from('scheduled_sessions')
+      .select('id, child_id, coach_id, session_number, status')
+      .eq('id', sessionId)
       .single();
 
-    if (error) {
-      console.error('Discovery call fetch error:', error);
-      return NextResponse.json(
-        { error: 'Discovery call not found' },
-        { status: 404 }
-      );
+    if (fetchError || !session) {
+      console.error('Session fetch error:', fetchError);
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    if (!call) {
-      return NextResponse.json(
-        { error: 'Discovery call not found' },
-        { status: 404 }
-      );
+    if (session.status === 'completed') {
+      return NextResponse.json({ error: 'Session already completed' }, { status: 409 });
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // GENERATE AI QUESTIONS
-    // Using data from discovery_calls table
-    // ═══════════════════════════════════════════════════════════════
+    // 2. Update scheduled_sessions status
+    const { error: sessionError } = await supabase
+      .from('scheduled_sessions')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', sessionId);
 
-    const aiQuestions = generateAIQuestions(call);
+    if (sessionError) {
+      console.error('Session update error:', sessionError);
+      return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
+    }
+
+    // 3. Build event_data for learning_events (SINGLE SOURCE OF TRUTH)
+    const eventData = {
+      // Identifiers
+      session_id: sessionId,
+      session_number: session.session_number || payload.sessionNumber || 1,
+      session_type: 'coaching',
+
+      // Step 1: Quick Pulse
+      overall_rating: overallRating,
+      focus_area: primaryFocus,
+
+      // Step 2: Deep Dive
+      skills_worked_on: skillsPracticed,
+      progress_rating: focusProgress,
+      engagement_level: engagementLevel,
+      highlights: highlights,
+      challenges: challenges,
+
+      // Step 3: Planning
+      next_session_focus: nextSessionFocus,
+      next_session_activities: payload.nextSessionActivities || [],
+      homework_assigned: payload.homeworkAssigned || false,
+      homework_items: payload.homeworkItems || [],
+      parent_update_needed: payload.parentUpdateNeeded || false,
+      parent_update_type: payload.parentUpdateType || null,
+
+      // Meta
+      coach_notes: payload.additionalNotes || payload.coachNotes || '',
+      breakthrough_moment: payload.breakthroughMoment || '',
+      completed_at: new Date().toISOString(),
+      form_version: '2.0',
+    };
+
+    // 4. Build content for embedding (RAG search)
+    const contentParts = [
+      `Coaching session #${eventData.session_number}`,
+      `Focus: ${eventData.focus_area?.replace(/_/g, ' ')}`,
+    ];
+
+    if (eventData.skills_worked_on.length > 0) {
+      contentParts.push(`Skills: ${eventData.skills_worked_on.join(', ')}`);
+    }
+
+    contentParts.push(`Progress: ${eventData.progress_rating?.replace(/_/g, ' ')}`);
+    contentParts.push(`Engagement: ${eventData.engagement_level}`);
+
+    if (eventData.highlights.length > 0) {
+      contentParts.push(`Highlights: ${eventData.highlights.join(', ')}`);
+    }
+
+    if (eventData.challenges.length > 0) {
+      contentParts.push(`Challenges: ${eventData.challenges.join(', ')}`);
+    }
+
+    if (eventData.next_session_focus) {
+      contentParts.push(`Next focus: ${eventData.next_session_focus}`);
+    }
+
+    if (eventData.homework_assigned && eventData.homework_items.length > 0) {
+      contentParts.push(`Homework: ${eventData.homework_items.join(', ')}`);
+    }
+
+    if (eventData.coach_notes) {
+      contentParts.push(`Notes: ${eventData.coach_notes}`);
+    }
+
+    const contentForEmbedding = contentParts.join('\n').trim();
+
+    // 5. Insert learning_event
+    const { error: eventError } = await supabase
+      .from('learning_events')
+      .insert({
+        child_id: session.child_id,
+        coach_id: session.coach_id,
+        session_id: sessionId,
+        event_type: 'session',
+        event_date: new Date().toISOString(),
+        event_data: eventData,
+        content_for_embedding: contentForEmbedding,
+        // embedding will be generated by trigger or background job
+      });
+
+    if (eventError) {
+      console.error('Learning event insert error:', eventError);
+      // Log but don't fail - session is marked complete
+    }
+
+    // 6. Update children cache (for quick parent queries)
+    const childSummary = {
+      date: new Date().toISOString(),
+      focus: primaryFocus,
+      progress: focusProgress,
+      highlights: highlights,
+      next_focus: nextSessionFocus,
+      homework: payload.homeworkItems || [],
+    };
+
+    const { error: childError } = await supabase
+      .from('children')
+      .update({
+        last_session_summary: childSummary,
+        last_session_date: new Date().toISOString(),
+        last_session_focus: primaryFocus,
+      })
+      .eq('id', session.child_id);
+
+    if (childError) {
+      console.error('Children cache update error:', childError);
+      // Log but don't fail
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`=== SESSION COMPLETE SUCCESS (${duration}ms) ===`);
 
     return NextResponse.json({
-      call,
-      aiQuestions
+      success: true,
+      message: 'Session completed successfully',
+      data: {
+        sessionId,
+        childId: session.child_id,
+        focusArea: primaryFocus,
+        progress: focusProgress,
+      },
     });
-
   } catch (error) {
-    console.error('Discovery call API error:', error);
+    console.error('Session complete error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -84,197 +210,38 @@ export async function GET(
   }
 }
 
-// =============================================================================
-// AI QUESTION GENERATION
-// Using discovery_calls table columns only
-// =============================================================================
+/**
+ * GET - Return session completion status
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = supabaseAdmin;
+    const { id: sessionId } = await params;
 
-function generateAIQuestions(call: any) {
-  const questions = [];
+    const { data: session, error } = await supabase
+      .from('scheduled_sessions')
+      .select('id, status, completed_at')
+      .eq('id', sessionId)
+      .single();
 
-  // ═══════════════════════════════════════════════════════════════
-  // BASELINE QUESTIONS (Always ask)
-  // ═══════════════════════════════════════════════════════════════
-
-  questions.push({
-    category: 'Reading Habits',
-    question: 'How often does your child currently read at home?',
-    priority: 'high'
-  });
-
-  questions.push({
-    category: 'Learning Goals',
-    question: 'What are your primary goals for your child\'s reading development?',
-    priority: 'high'
-  });
-
-  questions.push({
-    category: 'Learning Environment',
-    question: 'What time of day does your child seem most focused for learning?',
-    priority: 'medium'
-  });
-
-  // ═══════════════════════════════════════════════════════════════
-  // ASSESSMENT-BASED QUESTIONS
-  // Using: assessment_score, assessment_wpm, assessment_feedback
-  // ═══════════════════════════════════════════════════════════════
-
-  // Score-based questions
-  if (call.assessment_score !== null && call.assessment_score !== undefined) {
-    const score = parseFloat(call.assessment_score);
-    
-    if (score < 50) {
-      questions.push({
-        category: 'Reading Challenges',
-        question: `Your child's assessment shows they're building foundational skills (score: ${score}/100). What specific reading challenges have you noticed at home?`,
-        priority: 'high'
-      });
-    } else if (score >= 50 && score < 70) {
-      questions.push({
-        category: 'Progress Areas',
-        question: `Your child is developing their reading skills (score: ${score}/100). Which areas would you like to see the most improvement in?`,
-        priority: 'high'
-      });
-    } else if (score >= 70 && score < 85) {
-      questions.push({
-        category: 'Skill Building',
-        question: `Your child shows good reading ability (score: ${score}/100). Are you looking to build fluency, comprehension, or both?`,
-        priority: 'medium'
-      });
-    } else {
-      questions.push({
-        category: 'Advanced Reading',
-        question: `Your child demonstrates strong reading skills (score: ${score}/100)! Would you like to focus on advanced comprehension or creative expression?`,
-        priority: 'medium'
-      });
+    if (error || !session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
-  }
 
-  // WPM-based questions
-  if (call.assessment_wpm) {
-    const wpm = call.assessment_wpm;
-    const expectedWPM = getExpectedWPMByAge(call.child_age);
-    const wpmRatio = wpm / expectedWPM;
-
-    if (wpmRatio < 0.7) {
-      questions.push({
-        category: 'Reading Fluency',
-        question: `Your child's reading speed is ${wpm} words per minute. Do they struggle with word recognition, or do they prefer reading slowly for comprehension?`,
-        priority: 'high'
-      });
-    } else if (wpmRatio > 1.3) {
-      questions.push({
-        category: 'Reading Comprehension',
-        question: `Your child reads quite fast at ${wpm} WPM! How is their comprehension when reading at this speed?`,
-        priority: 'medium'
-      });
-    } else {
-      questions.push({
-        category: 'Reading Speed',
-        question: `Your child reads at ${wpm} words per minute, which is age-appropriate. Would you like us to work on increasing speed while maintaining comprehension?`,
-        priority: 'low'
-      });
-    }
-  }
-
-  // Assessment feedback-based questions
-  if (call.assessment_feedback) {
-    questions.push({
-      category: 'AI Assessment Insights',
-      question: `Based on the reading assessment, our AI noticed: "${call.assessment_feedback.substring(0, 100)}...". Does this match what you observe at home?`,
-      priority: 'medium'
+    return NextResponse.json({
+      sessionId: session.id,
+      status: session.status,
+      completedAt: session.completed_at,
+      isCompleted: session.status === 'completed',
     });
+  } catch (error) {
+    console.error('Session status error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-
-  // ═══════════════════════════════════════════════════════════════
-  // QUESTIONNAIRE-BASED QUESTIONS
-  // Using: questionnaire JSONB field (if filled during booking)
-  // ═══════════════════════════════════════════════════════════════
-
-  if (call.questionnaire) {
-    // Extract any pre-filled questionnaire data
-    const q = call.questionnaire;
-
-    if (q.reading_challenges) {
-      questions.push({
-        category: 'Specific Challenges',
-        question: `You mentioned challenges with ${q.reading_challenges}. Can you tell me more about when this is most noticeable?`,
-        priority: 'high'
-      });
-    }
-
-    if (q.favorite_subjects) {
-      questions.push({
-        category: 'Child\'s Interests',
-        question: `Your child enjoys ${q.favorite_subjects}. Would you like us to incorporate these topics into reading materials?`,
-        priority: 'medium'
-      });
-    }
-
-    if (q.parent_concerns) {
-      questions.push({
-        category: 'Your Concerns',
-        question: `You've expressed concern about: "${q.parent_concerns}". What outcome would make you feel this concern is addressed?`,
-        priority: 'high'
-      });
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // AGE-BASED QUESTIONS
-  // Using: child_age
-  // ═══════════════════════════════════════════════════════════════
-
-  if (call.child_age) {
-    const age = call.child_age;
-    
-    if (age >= 4 && age <= 6) {
-      questions.push({
-        category: 'Early Learning',
-        question: 'Is your child familiar with letter sounds and basic phonics?',
-        priority: 'high'
-      });
-    } else if (age >= 7 && age <= 9) {
-      questions.push({
-        category: 'Reading Independence',
-        question: 'Can your child read simple sentences and short stories independently?',
-        priority: 'high'
-      });
-    } else if (age >= 10) {
-      questions.push({
-        category: 'Advanced Reading',
-        question: 'What types of books does your child enjoy reading? Fiction, non-fiction, graphic novels?',
-        priority: 'medium'
-      });
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // SORT BY PRIORITY
-  // ═══════════════════════════════════════════════════════════════
-
-  return questions.sort((a, b) => {
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    return priorityOrder[a.priority as keyof typeof priorityOrder] - 
-           priorityOrder[b.priority as keyof typeof priorityOrder];
-  });
-}
-
-// =============================================================================
-// HELPER: Expected WPM by Age
-// =============================================================================
-
-function getExpectedWPMByAge(age: number): number {
-  const wpmByAge: { [key: number]: number } = {
-    4: 30,
-    5: 40,
-    6: 60,
-    7: 80,
-    8: 100,
-    9: 120,
-    10: 140,
-    11: 150,
-    12: 160,
-  };
-  return wpmByAge[age] || 100;
 }

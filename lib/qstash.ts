@@ -11,10 +11,10 @@
 
 import { Client } from '@upstash/qstash';
 
-// Initialize QStash client
-export const qstash = new Client({
-  token: process.env.QSTASH_TOKEN!,
-});
+// Initialize QStash client (conditionally - only if token is set)
+export const qstash = process.env.QSTASH_TOKEN
+  ? new Client({ token: process.env.QSTASH_TOKEN })
+  : null;
 
 // App URL - supports Vercel preview deployments
 // Priority: NEXT_PUBLIC_APP_URL > VERCEL_URL > fallback to production
@@ -82,11 +82,20 @@ interface QueueResult {
 
 /**
  * Queue enrollment completion job via QStash
- * 
+ *
  * This is the ONLY way to process enrollments.
  * DO NOT add direct/synchronous fallback - it will break at scale!
  */
 export async function queueEnrollmentComplete(data: EnrollmentJobData): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping enrollment-complete job');
+    return {
+      success: false,
+      messageId: null,
+      error: 'QStash not configured',
+    };
+  }
+
   try {
     const response = await qstash.publishJSON({
       url: `${APP_URL}/api/jobs/enrollment-complete`,
@@ -121,17 +130,22 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData): Promise<
 
 /**
  * Queue session processing job via QStash
- * 
+ *
  * Offloads heavy processing from Recall webhook:
  * - AI transcript analysis (5-15 seconds)
  * - Audio download & storage (10-30 seconds)
  * - Embedding generation (1-3 seconds)
  * - Database updates
  * - Notification queueing
- * 
+ *
  * This allows the webhook to return in < 2 seconds
  */
 export async function queueSessionProcessing(data: SessionProcessingData): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping session-processing job');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
   try {
     // Truncate transcript for queue payload size limits (max ~500KB)
     const truncatedData = {
@@ -184,6 +198,11 @@ export async function queueDelayedNotification(data: {
   payload: any;
   delaySeconds?: number;
 }): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping delayed notification');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
   try {
     const response = await qstash.publishJSON({
       url: `${APP_URL}/api/jobs/send-notification`,
@@ -209,6 +228,11 @@ export async function queueDelayedNotification(data: {
  * Used by the communication queue processor cron job
  */
 export async function queueCommunicationSend(data: CommunicationJobData): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping communication send');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
   try {
     const response = await qstash.publishJSON({
       url: `${APP_URL}/api/jobs/send-communication`,
@@ -249,6 +273,11 @@ export async function queueDiscoveryNotification(data: {
   meetLink: string;
   assignedCoachName?: string;
 }): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping discovery notification');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
   try {
     const response = await qstash.publishJSON({
       url: `${APP_URL}/api/jobs/send-discovery-notification`,
@@ -284,6 +313,11 @@ export async function createQStashSchedule(config: {
   cron: string;
   body?: any;
 }) {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping schedule creation');
+    return { success: false, error: 'QStash not configured' };
+  }
+
   try {
     const schedule = await qstash.schedules.create({
       scheduleId: config.scheduleId,
@@ -309,6 +343,11 @@ export async function createQStashSchedule(config: {
  * List all QStash schedules
  */
 export async function listQStashSchedules() {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, cannot list schedules');
+    return { success: false, error: 'QStash not configured', schedules: [] };
+  }
+
   try {
     const schedules = await qstash.schedules.list();
     return { success: true, schedules };
@@ -321,6 +360,11 @@ export async function listQStashSchedules() {
  * Delete a QStash schedule
  */
 export async function deleteQStashSchedule(scheduleId: string) {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, cannot delete schedule');
+    return { success: false, error: 'QStash not configured' };
+  }
+
   try {
     await qstash.schedules.delete(scheduleId);
     console.log('🗑️ Deleted QStash schedule:', scheduleId);
@@ -342,8 +386,8 @@ export async function queueHotLeadAlert(
   childId: string,
   requestId: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  if (!isQStashConfigured()) {
-    console.log('⚠️ QStash not configured, skipping hot lead alert');
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping hot lead alert');
     return { success: false, error: 'QStash not configured' };
   }
 
@@ -389,8 +433,8 @@ interface CalendarAttendeeUpdateData {
 export async function queueCalendarAttendeeUpdate(
   data: CalendarAttendeeUpdateData
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  if (!isQStashConfigured()) {
-    console.log('⚠️ QStash not configured, skipping calendar update');
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping calendar update');
     return { success: false, error: 'QStash not configured' };
   }
 
@@ -440,7 +484,8 @@ export async function setupGoalsCaptureSchedule(): Promise<{ success: boolean; s
  * Manually trigger goals capture check (for testing)
  */
 export async function triggerGoalsCaptureCheck(): Promise<QueueResult> {
-  if (!isQStashConfigured()) {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, cannot trigger goals capture');
     return { success: false, messageId: null, error: 'QStash not configured' };
   }
 
@@ -486,7 +531,8 @@ export async function setupDailyLeadDigestSchedule(): Promise<{ success: boolean
  * Manually trigger daily lead digest (for testing)
  */
 export async function triggerDailyLeadDigest(): Promise<QueueResult> {
-  if (!isQStashConfigured()) {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, cannot trigger daily digest');
     return { success: false, messageId: null, error: 'QStash not configured' };
   }
 

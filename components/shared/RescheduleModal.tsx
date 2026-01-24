@@ -1,18 +1,20 @@
 // components/shared/RescheduleModal.tsx
-// Shared reschedule modal for Coach, Admin, and Parent portals
-// HARDENED: Full TypeScript, validation, error handling, accessible
+// Progressive 3-step reschedule modal: Month → Date → Time
+// Shows only available slots from coach's schedule
 
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, Calendar, Clock, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-
-// ============================================================
-// CONSTANTS
-// ============================================================
-
-const MIN_RESCHEDULE_HOURS = 1; // Minimum hours in future for rescheduling
-const DEFAULT_TIME = '10:00';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Check,
+  ArrowRight,
+} from 'lucide-react';
 
 // ============================================================
 // TYPES
@@ -31,97 +33,142 @@ export interface RescheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /** Coach ID for fetching available slots */
+  coachId?: string;
   /** Custom API endpoint (default: /api/sessions) */
   apiEndpoint?: string;
   /** Custom title prefix */
   titlePrefix?: string;
 }
 
-interface ValidationResult {
-  valid: boolean;
+interface TimeSlot {
+  date: string;
+  time: string;
+  datetime: string;
+  endTime: string;
+  available: boolean;
+  bucketName: string;
+}
+
+interface SlotsResponse {
+  success: boolean;
+  slots: TimeSlot[];
+  slotsByDate: Record<string, TimeSlot[]>;
   error?: string;
 }
 
+type Step = 1 | 2 | 3;
 type SubmitState = 'idle' | 'loading' | 'success' | 'error';
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+] as const;
+
+const TIME_BUCKETS = [
+  { name: 'morning', label: 'Morning', startHour: 6, endHour: 12 },
+  { name: 'afternoon', label: 'Afternoon', startHour: 12, endHour: 17 },
+  { name: 'evening', label: 'Evening', startHour: 17, endHour: 22 },
+] as const;
 
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================
 
-function formatDateForInput(dateStr: string): string {
-  if (!dateStr) return '';
+function formatCurrentDateTime(dateStr: string, timeStr: string): string {
   try {
     const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '';
-    return date.toISOString().split('T')[0];
+    const day = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayNum = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+
+    // Format time
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    const timeFormatted = `${hour12}:${minutes} ${ampm}`;
+
+    return `${day}, ${dayNum} ${month} ${year} at ${timeFormatted}`;
   } catch {
-    return '';
+    return `${dateStr} at ${timeStr}`;
   }
 }
 
-function formatTimeForInput(timeStr: string): string {
-  if (!timeStr) return DEFAULT_TIME;
-  // Handle HH:MM:SS or HH:MM format
-  const parts = timeStr.split(':');
-  if (parts.length >= 2) {
-    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
-  }
-  return DEFAULT_TIME;
+function formatTime12(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
 }
 
-function getMinDate(): string {
+function formatSelectedDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+  const dayNum = date.getDate();
+  const suffix = getDaySuffix(dayNum);
+  return `${day}, ${dayNum}${suffix}`;
+}
+
+function getDaySuffix(day: number): string {
+  if (day > 3 && day < 21) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+function getTimeHour(timeStr: string): number {
+  const [hours] = timeStr.split(':');
+  return parseInt(hours);
+}
+
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getDate() === date2.getDate() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getFullYear() === date2.getFullYear()
+  );
+}
+
+function isPastDate(dateStr: string): boolean {
+  const date = new Date(dateStr);
   const today = new Date();
-  return today.toISOString().split('T')[0];
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return date < today;
 }
 
-function validateReschedule(date: string, time: string): ValidationResult {
-  // Check required fields
-  if (!date || date.trim() === '') {
-    return { valid: false, error: 'Please select a date' };
+function isTodayDate(dateStr: string): boolean {
+  const date = new Date(dateStr);
+  return isSameDay(date, new Date());
+}
+
+function getMonthDays(year: number, month: number): { day: number; dateStr: string }[] {
+  const days: { day: number; dateStr: string }[] = [];
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    days.push({ day, dateStr });
   }
 
-  if (!time || time.trim() === '') {
-    return { valid: false, error: 'Please select a time' };
-  }
+  return days;
+}
 
-  // Validate date format
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(date)) {
-    return { valid: false, error: 'Invalid date format' };
-  }
-
-  // Validate time format
-  const timeRegex = /^\d{2}:\d{2}$/;
-  if (!timeRegex.test(time)) {
-    return { valid: false, error: 'Invalid time format' };
-  }
-
-  // Create datetime and validate
-  const newDateTime = new Date(`${date}T${time}:00`);
-  if (isNaN(newDateTime.getTime())) {
-    return { valid: false, error: 'Invalid date/time combination' };
-  }
-
-  // Check if in the future (with buffer)
-  const minDateTime = new Date();
-  minDateTime.setHours(minDateTime.getHours() + MIN_RESCHEDULE_HOURS);
-
-  if (newDateTime < minDateTime) {
-    return { 
-      valid: false, 
-      error: `Please select a time at least ${MIN_RESCHEDULE_HOURS} hour(s) from now` 
-    };
-  }
-
-  // Check reasonable future limit (1 year)
-  const maxDateTime = new Date();
-  maxDateTime.setFullYear(maxDateTime.getFullYear() + 1);
-
-  if (newDateTime > maxDateTime) {
-    return { valid: false, error: 'Date cannot be more than 1 year in the future' };
-  }
-
-  return { valid: true };
+function getFirstDayOfMonth(year: number, month: number): number {
+  // Returns 0-6 (Mon-Sun) for CSS grid alignment
+  const dayOfWeek = new Date(year, month, 1).getDay();
+  return dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sun=0 to Sun=6
 }
 
 // ============================================================
@@ -133,35 +180,82 @@ export default function RescheduleModal({
   isOpen,
   onClose,
   onSuccess,
+  coachId,
   apiEndpoint = '/api/sessions',
   titlePrefix = 'Reschedule',
 }: RescheduleModalProps) {
-  // State
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  // Step state
+  const [step, setStep] = useState<Step>(1);
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  // Data state
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [slotsByDate, setSlotsByDate] = useState<Record<string, TimeSlot[]>>({});
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+
+  // Submit state
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [validationError, setValidationError] = useState('');
 
   // Refs
   const modalRef = useRef<HTMLDivElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize form with session data
+  // ============================================================
+  // FETCH AVAILABLE SLOTS
+  // ============================================================
+  const fetchSlots = useCallback(async () => {
+    if (!coachId) {
+      setSlotsError('Coach ID not available');
+      return;
+    }
+
+    setLoadingSlots(true);
+    setSlotsError(null);
+
+    try {
+      const response = await fetch(
+        `/api/scheduling/slots?coachId=${coachId}&days=30&sessionType=coaching`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch available slots');
+      }
+
+      const data: SlotsResponse = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch slots');
+      }
+
+      setSlots(data.slots || []);
+      setSlotsByDate(data.slotsByDate || {});
+    } catch (err) {
+      console.error('Error fetching slots:', err);
+      setSlotsError(err instanceof Error ? err.message : 'Failed to load available slots');
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [coachId]);
+
+  // ============================================================
+  // EFFECTS
+  // ============================================================
+
+  // Initialize on open
   useEffect(() => {
-    if (isOpen && session) {
-      setDate(formatDateForInput(session.scheduled_date));
-      setTime(formatTimeForInput(session.scheduled_time));
+    if (isOpen) {
+      setStep(1);
+      setSelectedMonth(new Date());
+      setSelectedDate(null);
+      setSelectedTime(null);
       setSubmitState('idle');
       setErrorMessage('');
-      setValidationError('');
-
-      // Focus date input after render
-      setTimeout(() => {
-        dateInputRef.current?.focus();
-      }, 100);
+      fetchSlots();
     }
-  }, [isOpen, session]);
+  }, [isOpen, fetchSlots]);
 
   // Handle escape key
   useEffect(() => {
@@ -170,12 +264,59 @@ export default function RescheduleModal({
         onClose();
       }
     };
-
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose, submitState]);
 
-  // Handle click outside
+  // ============================================================
+  // COMPUTED VALUES
+  // ============================================================
+
+  // Dates that have available slots in selected month
+  const datesWithSlots = useMemo(() => {
+    const set = new Set<string>();
+    Object.keys(slotsByDate).forEach((date) => {
+      if (slotsByDate[date]?.length > 0) {
+        set.add(date);
+      }
+    });
+    return set;
+  }, [slotsByDate]);
+
+  // Time slots for selected date, grouped by bucket
+  const timeSlotsForDate = useMemo(() => {
+    if (!selectedDate) return { morning: [], afternoon: [], evening: [] };
+
+    const dateSlots = slotsByDate[selectedDate] || [];
+    const grouped = {
+      morning: [] as TimeSlot[],
+      afternoon: [] as TimeSlot[],
+      evening: [] as TimeSlot[],
+    };
+
+    dateSlots.forEach((slot) => {
+      const hour = getTimeHour(slot.time);
+      if (hour >= 6 && hour < 12) {
+        grouped.morning.push(slot);
+      } else if (hour >= 12 && hour < 17) {
+        grouped.afternoon.push(slot);
+      } else if (hour >= 17 && hour < 22) {
+        grouped.evening.push(slot);
+      }
+    });
+
+    return grouped;
+  }, [selectedDate, slotsByDate]);
+
+  const hasNoSlotsForDate = selectedDate &&
+    timeSlotsForDate.morning.length === 0 &&
+    timeSlotsForDate.afternoon.length === 0 &&
+    timeSlotsForDate.evening.length === 0;
+
+  // ============================================================
+  // HANDLERS
+  // ============================================================
+
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
       if (e.target === e.currentTarget && submitState !== 'loading') {
@@ -185,48 +326,99 @@ export default function RescheduleModal({
     [onClose, submitState]
   );
 
-  // Validate on input change
-  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = e.target.value;
-    setDate(newDate);
-    setValidationError('');
-    
-    if (newDate && time) {
-      const validation = validateReschedule(newDate, time);
-      if (!validation.valid) {
-        setValidationError(validation.error || '');
-      }
+  const handleClose = useCallback(() => {
+    if (submitState !== 'loading') {
+      onClose();
     }
-  }, [time]);
+  }, [onClose, submitState]);
 
-  const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = e.target.value;
-    setTime(newTime);
-    setValidationError('');
-    
-    if (date && newTime) {
-      const validation = validateReschedule(date, newTime);
-      if (!validation.valid) {
-        setValidationError(validation.error || '');
-      }
-    }
-  }, [date]);
+  const handlePrevMonth = useCallback(() => {
+    const newMonth = new Date(selectedMonth);
+    newMonth.setMonth(newMonth.getMonth() - 1);
 
-  // Handle form submission
-  const handleSubmit = useCallback(async () => {
-    // Validate
-    const validation = validateReschedule(date, time);
-    if (!validation.valid) {
-      setValidationError(validation.error || 'Invalid input');
+    // Don't go before current month
+    const today = new Date();
+    if (newMonth.getFullYear() < today.getFullYear() ||
+        (newMonth.getFullYear() === today.getFullYear() && newMonth.getMonth() < today.getMonth())) {
       return;
     }
 
+    setSelectedMonth(newMonth);
+  }, [selectedMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    const newMonth = new Date(selectedMonth);
+    newMonth.setMonth(newMonth.getMonth() + 1);
+    setSelectedMonth(newMonth);
+  }, [selectedMonth]);
+
+  const handleDateSelect = useCallback((dateStr: string) => {
+    if (isPastDate(dateStr)) return;
+
+    setSelectedDate(dateStr);
+    setSelectedTime(null);
+    setStep(3);
+  }, []);
+
+  const handleTimeSelect = useCallback((time: string) => {
+    setSelectedTime(time);
+  }, []);
+
+  const handleChangeMonth = useCallback(() => {
+    setStep(1);
+    setSelectedDate(null);
+    setSelectedTime(null);
+  }, []);
+
+  const handleChangeDate = useCallback(() => {
+    setStep(2);
+    setSelectedTime(null);
+  }, []);
+
+  const handleQuickSelect = useCallback((option: 'thisWeek' | 'nextWeek') => {
+    const today = new Date();
+
+    if (option === 'thisWeek') {
+      // Find next available date this week
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        if (datesWithSlots.has(dateStr)) {
+          setSelectedDate(dateStr);
+          setStep(3);
+          return;
+        }
+      }
+    } else if (option === 'nextWeek') {
+      // Find first available date next week
+      const nextWeekStart = new Date(today);
+      nextWeekStart.setDate(today.getDate() + (7 - today.getDay() + 1)); // Next Monday
+
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(nextWeekStart);
+        date.setDate(nextWeekStart.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        if (datesWithSlots.has(dateStr)) {
+          setSelectedDate(dateStr);
+          setStep(3);
+          return;
+        }
+      }
+    }
+
+    // If no slots found, just go to step 2
+    setStep(2);
+  }, [datesWithSlots]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!selectedDate || !selectedTime) return;
+
     setSubmitState('loading');
     setErrorMessage('');
-    setValidationError('');
 
     try {
-      const newDateTime = new Date(`${date}T${time}:00`);
+      const newDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
 
       const response = await fetch(apiEndpoint, {
         method: 'PATCH',
@@ -252,34 +444,30 @@ export default function RescheduleModal({
         onSuccess();
         onClose();
       }, 1000);
-
     } catch (error) {
       console.error('Reschedule error:', error);
       setSubmitState('error');
       setErrorMessage('Network error. Please try again.');
     }
-  }, [date, time, session.id, apiEndpoint, onSuccess, onClose]);
+  }, [selectedDate, selectedTime, session.id, apiEndpoint, onSuccess, onClose]);
 
-  // Handle close
-  const handleClose = useCallback(() => {
-    if (submitState !== 'loading') {
-      onClose();
-    }
-  }, [onClose, submitState]);
+  // ============================================================
+  // RENDER
+  // ============================================================
 
-  // Don't render if not open
   if (!isOpen) return null;
 
   const sessionLabel = session.session_number
     ? `Session #${session.session_number}`
     : 'Session';
 
-  const isSubmitDisabled = 
-    submitState === 'loading' || 
-    submitState === 'success' ||
-    !date || 
-    !time || 
-    !!validationError;
+  const canSubmit = selectedDate && selectedTime && submitState !== 'loading' && submitState !== 'success';
+
+  // Check if prev month is disabled
+  const today = new Date();
+  const isPrevMonthDisabled =
+    selectedMonth.getFullYear() === today.getFullYear() &&
+    selectedMonth.getMonth() === today.getMonth();
 
   return (
     <div
@@ -291,133 +479,354 @@ export default function RescheduleModal({
     >
       <div
         ref={modalRef}
-        className="bg-[#1a1f2e] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+        className="bg-[#1a1a1a] rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl border border-gray-800 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+        {/* Header - fixed */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-800 flex-shrink-0">
           <h2 id="reschedule-modal-title" className="text-xl font-bold text-white">
             {titlePrefix} {sessionLabel}
           </h2>
           <button
             onClick={handleClose}
             disabled={submitState === 'loading'}
-            className="p-2 hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-gray-800 rounded-xl transition-colors disabled:opacity-50"
             aria-label="Close modal"
           >
             <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-5">
+        {/* Body - scrollable */}
+        <div className="p-5 overflow-y-auto flex-1 min-h-0">
           {/* Session Info */}
           <div className="bg-gray-800/50 rounded-xl p-4 mb-5 border border-gray-700">
             <p className="text-white font-medium">{session.child_name}</p>
             <p className="text-gray-400 text-sm mt-1">
-              Current: {session.scheduled_date} at {formatTimeForInput(session.scheduled_time)}
+              Current: {formatCurrentDateTime(session.scheduled_date, session.scheduled_time)}
             </p>
           </div>
 
-          {/* Date Input */}
-          <div className="mb-4">
-            <label htmlFor="reschedule-date" className="block text-sm text-gray-400 mb-2">
-              <Calendar className="w-4 h-4 inline-block mr-2" />
-              New Date
-            </label>
-            <input
-              ref={dateInputRef}
-              id="reschedule-date"
-              type="date"
-              value={date}
-              onChange={handleDateChange}
-              min={getMinDate()}
-              disabled={submitState === 'loading' || submitState === 'success'}
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-describedby={validationError ? 'reschedule-error' : undefined}
-            />
-          </div>
-
-          {/* Time Input */}
-          <div className="mb-4">
-            <label htmlFor="reschedule-time" className="block text-sm text-gray-400 mb-2">
-              <Clock className="w-4 h-4 inline-block mr-2" />
-              New Time
-            </label>
-            <input
-              id="reschedule-time"
-              type="time"
-              value={time}
-              onChange={handleTimeChange}
-              disabled={submitState === 'loading' || submitState === 'success'}
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-
-          {/* Validation Error */}
-          {validationError && (
-            <div
-              id="reschedule-error"
-              className="flex items-center gap-2 text-yellow-400 text-sm mb-4 p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/30"
-              role="alert"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {validationError}
+          {/* Loading State */}
+          {loadingSlots && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[#FF0099] mb-4" />
+              <p className="text-gray-400">Loading available slots...</p>
             </div>
           )}
 
-          {/* API Error */}
-          {submitState === 'error' && errorMessage && (
-            <div
-              className="flex items-center gap-2 text-red-400 text-sm mb-4 p-3 bg-red-500/10 rounded-xl border border-red-500/30"
-              role="alert"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {errorMessage}
+          {/* Error State */}
+          {slotsError && !loadingSlots && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+              <p className="text-white mb-2">Failed to load slots</p>
+              <p className="text-gray-400 text-sm mb-4">{slotsError}</p>
+              <button
+                onClick={fetchSlots}
+                className="px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/90 transition-colors"
+              >
+                Retry
+              </button>
             </div>
           )}
 
-          {/* Success Message */}
-          {submitState === 'success' && (
-            <div
-              className="flex items-center gap-2 text-emerald-400 text-sm mb-4 p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30"
-              role="status"
-            >
-              <CheckCircle className="w-4 h-4 flex-shrink-0" />
-              Session rescheduled successfully!
-            </div>
+          {/* Step Content */}
+          {!loadingSlots && !slotsError && (
+            <>
+              {/* Completed Steps Summary */}
+              {step >= 2 && (
+                <div className="mb-4 space-y-2">
+                  <div className="flex items-center justify-between bg-gray-800/30 rounded-lg px-3 py-2 border border-gray-700/50">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-400" />
+                      <span className="text-white text-sm">
+                        {MONTHS[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleChangeMonth}
+                      className="text-[#00ABFF] text-sm hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {step >= 3 && selectedDate && (
+                <div className="mb-4">
+                  <div className="flex items-center justify-between bg-gray-800/30 rounded-lg px-3 py-2 border border-gray-700/50">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-400" />
+                      <span className="text-white text-sm">{formatSelectedDate(selectedDate)}</span>
+                    </div>
+                    <button
+                      onClick={handleChangeDate}
+                      className="text-[#00ABFF] text-sm hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 1: Select Month */}
+              {step === 1 && (
+                <div>
+                  <p className="text-gray-400 text-sm mb-4">Step 1 of 3: Select Month</p>
+
+                  {/* Month Navigation */}
+                  <div className="flex items-center justify-between mb-6">
+                    <button
+                      onClick={handlePrevMonth}
+                      disabled={isPrevMonthDisabled}
+                      className="p-2 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-400" />
+                    </button>
+                    <h3 className="text-white font-semibold text-lg">
+                      {MONTHS[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+                    </h3>
+                    <button
+                      onClick={handleNextMonth}
+                      className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </button>
+                  </div>
+
+                  {/* Continue Button */}
+                  <button
+                    onClick={() => setStep(2)}
+                    className="w-full py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#FF0099]/90 transition-colors flex items-center justify-center gap-2"
+                  >
+                    Continue
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  {/* Quick Select */}
+                  <div className="mt-4">
+                    <p className="text-gray-500 text-sm mb-2">or quick select:</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleQuickSelect('thisWeek')}
+                        className="flex-1 py-2 bg-gray-800 text-gray-300 rounded-lg text-sm hover:bg-gray-700 transition-colors border border-gray-700"
+                      >
+                        This Week
+                      </button>
+                      <button
+                        onClick={() => handleQuickSelect('nextWeek')}
+                        className="flex-1 py-2 bg-gray-800 text-gray-300 rounded-lg text-sm hover:bg-gray-700 transition-colors border border-gray-700"
+                      >
+                        Next Week
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: Select Date (Calendar) */}
+              {step === 2 && (
+                <div>
+                  <p className="text-gray-400 text-sm mb-4">Step 2 of 3: Select Date</p>
+
+                  {/* Mini Month Navigation */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={handlePrevMonth}
+                      disabled={isPrevMonthDisabled}
+                      className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-400" />
+                    </button>
+                    <span className="text-white text-sm font-medium">
+                      {MONTHS[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+                    </span>
+                    <button
+                      onClick={handleNextMonth}
+                      className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+
+                  {/* Calendar Grid */}
+                  <div className="bg-gray-800/30 rounded-xl p-3 border border-gray-700">
+                    {/* Day Headers */}
+                    <div className="grid grid-cols-7 gap-1 mb-2">
+                      {DAYS_OF_WEEK.map((day) => (
+                        <div key={day} className="text-center text-gray-500 text-xs font-medium py-1">
+                          {day}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Days */}
+                    <div className="grid grid-cols-7 gap-1">
+                      {/* Empty cells */}
+                      {Array.from({ length: getFirstDayOfMonth(selectedMonth.getFullYear(), selectedMonth.getMonth()) }).map((_, i) => (
+                        <div key={`empty-${i}`} className="aspect-square" />
+                      ))}
+
+                      {/* Days of month */}
+                      {getMonthDays(selectedMonth.getFullYear(), selectedMonth.getMonth()).map(({ day, dateStr }) => {
+                        const hasSlots = datesWithSlots.has(dateStr);
+                        const isPast = isPastDate(dateStr);
+                        const isToday = isTodayDate(dateStr);
+                        const isSunday = new Date(dateStr).getDay() === 0;
+
+                        const isDisabled = isPast || !hasSlots;
+                        const isClickable = !isPast && hasSlots;
+
+                        return (
+                          <button
+                            key={day}
+                            onClick={() => isClickable && handleDateSelect(dateStr)}
+                            disabled={isDisabled}
+                            className={`
+                              aspect-square rounded-lg text-sm font-medium transition-all
+                              flex items-center justify-center
+                              ${isToday ? 'ring-2 ring-[#00ABFF]' : ''}
+                              ${isClickable ? 'hover:bg-[#FF0099]/20 hover:border-[#FF0099] cursor-pointer' : ''}
+                              ${hasSlots && !isPast ? 'text-white font-semibold' : ''}
+                              ${isPast || isSunday ? 'text-gray-700 cursor-not-allowed' : ''}
+                              ${!hasSlots && !isPast ? 'text-gray-600' : ''}
+                            `}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-white/20" />
+                      <span>Available</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded border-2 border-[#00ABFF]" />
+                      <span>Today</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: Select Time */}
+              {step === 3 && (
+                <div>
+                  <p className="text-gray-400 text-sm mb-4">Step 3 of 3: Select Time</p>
+
+                  {hasNoSlotsForDate ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                      <p className="text-white mb-2">No slots available</p>
+                      <p className="text-gray-400 text-sm mb-4">
+                        No available times on this date
+                      </p>
+                      <button
+                        onClick={handleChangeDate}
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        Choose Another Date
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-h-64 overflow-y-auto">
+                      {TIME_BUCKETS.map((bucket) => {
+                        const bucketSlots = timeSlotsForDate[bucket.name as keyof typeof timeSlotsForDate];
+                        if (bucketSlots.length === 0) return null;
+
+                        return (
+                          <div key={bucket.name}>
+                            <p className="text-gray-400 text-sm mb-2">{bucket.label}</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                              {bucketSlots.map((slot) => (
+                                <button
+                                  key={slot.time}
+                                  onClick={() => handleTimeSelect(slot.time)}
+                                  className={`
+                                    py-2.5 px-3 rounded-lg text-sm font-medium transition-all
+                                    min-h-[44px]
+                                    ${selectedTime === slot.time
+                                      ? 'bg-[#FF0099] text-white'
+                                      : 'bg-gray-800 text-gray-300 border border-gray-700 hover:border-[#FF0099]'
+                                    }
+                                  `}
+                                >
+                                  {formatTime12(slot.time)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* API Error */}
+              {submitState === 'error' && errorMessage && (
+                <div
+                  className="flex items-center gap-2 text-red-400 text-sm mt-4 p-3 bg-red-500/10 rounded-xl border border-red-500/30"
+                  role="alert"
+                >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {errorMessage}
+                </div>
+              )}
+
+              {/* Success Message */}
+              {submitState === 'success' && (
+                <div
+                  className="flex items-center gap-2 text-emerald-400 text-sm mt-4 p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30"
+                  role="status"
+                >
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                  Session rescheduled successfully!
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3 p-5 border-t border-gray-700">
-          <button
-            onClick={handleClose}
-            disabled={submitState === 'loading'}
-            className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitDisabled}
-            className="flex-1 py-3 bg-yellow-500 text-black rounded-xl font-medium hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {submitState === 'loading' ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Rescheduling...
-              </>
-            ) : submitState === 'success' ? (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                Done!
-              </>
-            ) : (
-              'Reschedule'
-            )}
-          </button>
-        </div>
+        {/* Footer - fixed */}
+        {step === 3 && !loadingSlots && !slotsError && (
+          <div className="flex gap-3 p-5 border-t border-gray-800 flex-shrink-0">
+            <button
+              onClick={handleClose}
+              disabled={submitState === 'loading'}
+              className="flex-1 py-3 bg-gray-800 text-gray-300 rounded-xl font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="flex-1 py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#FF0099]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {submitState === 'loading' ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Rescheduling...
+                </>
+              ) : submitState === 'success' ? (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  Done!
+                </>
+              ) : (
+                <>
+                  Reschedule
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -98,6 +98,24 @@ function LetsTalkContent() {
   } | null>(null);
 
   const source = searchParams.get('source') || 'direct';
+  const assessmentScore = searchParams.get('assessmentScore') ? parseInt(searchParams.get('assessmentScore')!) : null;
+
+  // Build enroll URL with all context params
+  const buildEnrollUrl = () => {
+    const params = new URLSearchParams();
+
+    if (formData.childId) params.set('childId', formData.childId);
+    if (formData.childName) params.set('childName', formData.childName);
+    if (formData.childAge) params.set('childAge', formData.childAge);
+    if (formData.parentName) params.set('parentName', formData.parentName);
+    if (formData.parentEmail) params.set('parentEmail', formData.parentEmail);
+    if (formData.parentPhone) params.set('parentPhone', formData.parentPhone);
+    if (assessmentScore) params.set('assessmentScore', assessmentScore.toString());
+    if (goals.length > 0) params.set('goals', goals.join(','));
+    params.set('source', 'lets-talk-skip');
+
+    return `/enroll?${params.toString()}`;
+  };
 
   // WhatsApp config
   const whatsappNumber = '918976287997';
@@ -510,6 +528,29 @@ function LetsTalkContent() {
                         <Heart className="w-3 h-3 text-[#ff0099]" />
                         No obligation
                       </span>
+                    </div>
+
+                    {/* Secondary Option - Skip Discovery */}
+                    <div className="mt-6 pt-6 border-t border-gray-100">
+                      <p className="text-sm text-gray-500 text-center mb-3">
+                        Already decided? Skip the call.
+                      </p>
+                      <Link
+                        href={buildEnrollUrl()}
+                        onClick={() => {
+                          console.log(JSON.stringify({
+                            event: 'skip_discovery_clicked',
+                            childId: formData.childId,
+                            assessmentScore,
+                            source: 'lets-talk',
+                            timestamp: new Date().toISOString(),
+                          }));
+                        }}
+                        className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-[#FF0099]/10 to-[#00ABFF]/10 text-[#FF0099] font-medium hover:from-[#FF0099]/20 hover:to-[#00ABFF]/20 rounded-xl border border-[#FF0099]/30 transition-all duration-200"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                        <span>View Programs & Enroll</span>
+                      </Link>
                     </div>
                   </form>
                 </>

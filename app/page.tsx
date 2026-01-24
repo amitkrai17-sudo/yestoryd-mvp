@@ -27,9 +27,11 @@ const DEFAULTS = {
     avgImprovement: '2x',
   },
   pricing: {
-    originalPrice: 9999,
-    discountedPrice: 5999,
-    discountLabel: 'SAVE 40%',
+    // NOTE: These are last-resort fallbacks only used if pricing_plans DB fetch fails
+    // Actual pricing comes from pricing_plans table via getHomePageData()
+    originalPrice: 0,
+    discountedPrice: 0,
+    discountLabel: '',
     freeAssessmentWorth: '999',
   },
   contact: {
@@ -74,9 +76,9 @@ const DEFAULTS = {
 async function getHomePageData() {
   try {
     // Fetch all data in parallel
-    const [settingsResult, pricingResult, testimonialsResult, flagsResult] = await Promise.all([
+    const [settingsResult, productsResult, testimonialsResult, flagsResult] = await Promise.all([
       supabase.from('site_settings').select('key, value'),
-      supabase.from('pricing_plans').select('*').eq('is_active', true).eq('is_featured', true).limit(1).single(),
+      supabase.from('pricing_plans').select('*').eq('is_active', true).order('display_order', { ascending: true }),
       supabase.from('testimonials').select('*').eq('is_active', true).order('display_order').limit(6),
       supabase.from('feature_flags').select('flag_key, flag_value'),
     ]);
@@ -105,15 +107,42 @@ async function getHomePageData() {
       avgImprovement: settings.average_improvement || DEFAULTS.stats.avgImprovement,
     };
 
-    // Build pricing object
-    const pricing = pricingResult.data ? {
-      originalPrice: pricingResult.data.original_price || DEFAULTS.pricing.originalPrice,
-      discountedPrice: pricingResult.data.discounted_price || DEFAULTS.pricing.discountedPrice,
-      discountLabel: pricingResult.data.discount_label || DEFAULTS.pricing.discountLabel,
-      freeAssessmentWorth: settings.free_assessment_worth || DEFAULTS.pricing.freeAssessmentWorth,
+    // Build products array from pricing_plans
+    const products = (productsResult.data || []).map(plan => ({
+      id: plan.id,
+      slug: plan.slug,
+      name: plan.name,
+      description: plan.description,
+      originalPrice: plan.original_price,
+      discountedPrice: plan.discounted_price,
+      discountLabel: plan.discount_label,
+      sessionsIncluded: plan.sessions_included,
+      coachingSessions: plan.sessions_coaching || 0,
+      skillBuildingSessions: plan.sessions_skill_building || 0,
+      checkinSessions: plan.sessions_checkin || 0,
+      durationMonths: plan.duration_months,
+      features: typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []),
+      isFeatured: plan.is_featured || false,
+      badgeText: plan.badge_text,
+      displayOrder: plan.display_order,
+    }));
+
+    // Build pricing object from pricing_plans table (full product)
+    const fullProduct = products.find(p => p.slug === 'full') || products[products.length - 1];
+    if (!fullProduct) {
+      console.warn('[Homepage] No pricing_plans found in database - pricing will show loading');
+    }
+    const pricing = fullProduct ? {
+      originalPrice: fullProduct.originalPrice,
+      discountedPrice: fullProduct.discountedPrice,
+      discountLabel: fullProduct.discountLabel || '',
+      freeAssessmentWorth: settings.free_assessment_worth || '999',
     } : {
-      ...DEFAULTS.pricing,
-      freeAssessmentWorth: settings.free_assessment_worth || DEFAULTS.pricing.freeAssessmentWorth,
+      // Fallback: shows 0 which will trigger "Contact us for pricing" in UI
+      originalPrice: 0,
+      discountedPrice: 0,
+      discountLabel: '',
+      freeAssessmentWorth: settings.free_assessment_worth || '999',
     };
 
     // Build contact
@@ -137,6 +166,7 @@ async function getHomePageData() {
     return {
       stats,
       pricing,
+      products,
       contact,
       videos,
       testimonials,
@@ -147,6 +177,7 @@ async function getHomePageData() {
     return {
       stats: DEFAULTS.stats,
       pricing: DEFAULTS.pricing,
+      products: [],
       contact: DEFAULTS.contact,
       videos: DEFAULTS.videos,
       testimonials: DEFAULTS.testimonials,
@@ -163,6 +194,7 @@ export default async function HomePage() {
     <HomePageClient
       stats={data.stats}
       pricing={data.pricing}
+      products={data.products}
       contact={data.contact}
       videos={data.videos}
       testimonials={data.testimonials}

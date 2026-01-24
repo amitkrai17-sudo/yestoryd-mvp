@@ -150,14 +150,19 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   cal_discovery_slug: 'discovery',
 };
 
+/**
+ * @deprecated DO NOT USE - Pricing comes from pricing_plans database table
+ * This constant is kept for type compatibility but should not be used for actual pricing
+ * To get pricing, use /api/products or query pricing_plans table directly
+ */
 export const DEFAULT_PRICING: PricingPlan = {
   id: 'default',
   name: '3-Month Reading Coaching',
-  slug: 'coaching-3month',
+  slug: 'full', // Standard slug
   description: 'Complete reading transformation program',
-  original_price: 9999,
-  discounted_price: 5999,
-  discount_label: 'SAVE 40%',
+  original_price: 0, // DEPRECATED: Always fetch from DB
+  discounted_price: 0, // DEPRECATED: Always fetch from DB
+  discount_label: '',
   duration_months: 3,
   sessions_included: 9,
   features: [
@@ -170,7 +175,7 @@ export const DEFAULT_PRICING: PricingPlan = {
   ],
   is_active: true,
   is_featured: true,
-  offer_valid_until: '2025-03-31',
+  offer_valid_until: '',
 };
 
 export const DEFAULT_FLAGS: FeatureFlags = {

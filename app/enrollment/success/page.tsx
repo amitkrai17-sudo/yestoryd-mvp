@@ -29,7 +29,9 @@ function SuccessContent() {
   const enrollmentId = searchParams.get('enrollmentId') || '';
   const childName = searchParams.get('childName') || '';
   const coachName = searchParams.get('coachName') || 'Your assigned coach'; // Dynamic coach name
-  
+  const sessionsCount = parseInt(searchParams.get('sessions') || '12', 10);
+  const productName = searchParams.get('product') || 'Full Program';
+
   const [showContent, setShowContent] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -117,8 +119,8 @@ function SuccessContent() {
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">Sessions</span>
-                <span className="font-semibold text-gray-800">9 Sessions (6 Coaching + 3 Parent)</span>
+                <span className="text-gray-500">Program</span>
+                <span className="font-semibold text-gray-800">{productName} ({sessionsCount} Sessions)</span>
               </div>
             </div>
           </div>
@@ -147,7 +149,7 @@ function SuccessContent() {
                 {
                   icon: Calendar,
                   title: 'Sessions Scheduled',
-                  desc: 'Calendar invites for all 9 sessions sent automatically',
+                  desc: `Calendar invites for all ${sessionsCount} sessions sent automatically`,
                   time: 'Within 24 hours',
                 },
               ].map((item, idx) => (
