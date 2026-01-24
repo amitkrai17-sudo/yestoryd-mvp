@@ -604,23 +604,8 @@ function AssessmentPageContent() {
         child_age: formData.childAge
       });
 
-      // Send certificate email (fire and forget - don't block redirect)
-      fetch('/api/certificate/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          childName: formData.childName,
-          childAge: formData.childAge,
-          parentName: formData.parentName,
-          email: formData.parentEmail,
-          score: data.overall_score,
-          clarity_score: data.clarity_score,
-          fluency_score: data.fluency_score,
-          speed_score: data.speed_score,
-          wpm: data.wpm,
-          feedback: data.feedback,
-        }),
-      }).catch(emailError => console.error('Certificate email error:', emailError));
+      // NOTE: Certificate email is sent from /assessment/results/[id] page
+      // which has childId for idempotency + full detailed report data
 
       // Redirect to full results page with detailed analysis, GoalsCapture, etc.
       if (data.childId) {
