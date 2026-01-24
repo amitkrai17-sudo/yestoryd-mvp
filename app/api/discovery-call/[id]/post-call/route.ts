@@ -13,8 +13,8 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
+import { conditionalUpdate } from '@/lib/db-utils';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -161,41 +161,49 @@ export async function POST(
       updateData.status = 'completed';
     }
 
-    // 8. Update discovery call
-    const { data, error: updateError } = await supabase
-      .from('discovery_calls')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    // 8. Update discovery call (with ghost write prevention)
+    const { updated, data, error: updateError } = await conditionalUpdate(
+      'discovery_calls',
+      id,
+      updateData,
+      ['call_outcome', 'likelihood', 'status'] // Key fields that indicate real change
+    );
 
     if (updateError) {
-      console.error('Post-call update error:', updateError);
+      console.error('[POST_CALL] Update error:', updateError);
       return NextResponse.json(
         { success: false, error: 'Failed to save post-call notes' },
         { status: 500 }
       );
     }
 
+    console.log(JSON.stringify({
+      requestId,
+      event: updated ? 'post_call_updated' : 'post_call_skipped_no_changes',
+      callId: id,
+      outcome: validated.call_outcome,
+    }));
 
     // 9. Children sync handled by database trigger: trigger_sync_discovery_to_children
 
-    // 10. Audit log
-    await supabase.from('activity_log').insert({
-      user_email: userEmail,
-      action: 'discovery_post_call_saved',
-      details: {
-        request_id: requestId,
-        discovery_call_id: id,
-        child_name: existingCall.child_name,
-        outcome: validated.call_outcome,
-        likelihood: validated.likelihood,
-        has_objections: !!validated.objections,
-        has_follow_up: !!validated.follow_up_date,
-        timestamp: new Date().toISOString(),
-      },
-      created_at: new Date().toISOString(),
-    });
+    // 10. Audit log - only create if actual update happened
+    if (updated) {
+      await supabase.from('activity_log').insert({
+        user_email: userEmail,
+        action: 'discovery_post_call_saved',
+        details: {
+          request_id: requestId,
+          discovery_call_id: id,
+          child_name: existingCall.child_name,
+          outcome: validated.call_outcome,
+          likelihood: validated.likelihood,
+          has_objections: !!validated.objections,
+          has_follow_up: !!validated.follow_up_date,
+          timestamp: new Date().toISOString(),
+        },
+        created_at: new Date().toISOString(),
+      });
+    }
 
     const duration = Date.now() - startTime;
 
@@ -211,12 +219,12 @@ export async function POST(
       success: true,
       requestId,
       data: {
-        id: data.id,
-        call_outcome: data.call_outcome,
-        likelihood: data.likelihood,
-        completed_at: data.completed_at,
+        id: id,
+        call_outcome: validated.call_outcome,
+        likelihood: validated.likelihood,
+        completed_at: data?.completed_at || new Date().toISOString(),
       },
-      message: 'Post-call notes saved successfully',
+      message: updated ? 'Post-call notes saved successfully' : 'No changes detected',
     });
 
   } catch (error) {

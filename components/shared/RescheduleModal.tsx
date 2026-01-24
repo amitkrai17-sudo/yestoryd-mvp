@@ -257,6 +257,16 @@ export default function RescheduleModal({
     }
   }, [isOpen, fetchSlots]);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -471,38 +481,45 @@ export default function RescheduleModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50"
       role="dialog"
       aria-modal="true"
       aria-labelledby="reschedule-modal-title"
     >
+      {/* Backdrop */}
       <div
-        ref={modalRef}
-        className="bg-[#1a1a1a] rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl border border-gray-800 flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header - fixed */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-800 flex-shrink-0">
-          <h2 id="reschedule-modal-title" className="text-xl font-bold text-white">
-            {titlePrefix} {sessionLabel}
-          </h2>
-          <button
-            onClick={handleClose}
-            disabled={submitState === 'loading'}
-            className="p-2 hover:bg-gray-800 rounded-xl transition-colors disabled:opacity-50"
-            aria-label="Close modal"
-          >
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={handleBackdropClick}
+      />
 
-        {/* Body - scrollable */}
-        <div className="p-5 overflow-y-auto flex-1 min-h-0">
+      {/* Modal - Bottom sheet on mobile, centered on desktop */}
+      <div className="absolute inset-x-0 bottom-0 lg:inset-0 lg:flex lg:items-center lg:justify-center lg:p-4">
+        <div
+          ref={modalRef}
+          className="bg-[#1a1a1a] rounded-t-2xl lg:rounded-2xl w-full lg:max-w-md max-h-[85vh] lg:max-h-[90vh] overflow-hidden shadow-2xl border border-gray-800 flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header - fixed */}
+          <div className="flex items-center justify-between p-4 lg:p-5 border-b border-gray-800 flex-shrink-0">
+            <h2 id="reschedule-modal-title" className="text-lg lg:text-xl font-bold text-white">
+              {titlePrefix} {sessionLabel}
+            </h2>
+            <button
+              onClick={handleClose}
+              disabled={submitState === 'loading'}
+              className="p-1.5 lg:p-2 hover:bg-gray-800 rounded-lg lg:rounded-xl transition-colors disabled:opacity-50"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
+
+          {/* Body - scrollable */}
+          <div className="p-4 lg:p-5 overflow-y-auto flex-1 min-h-0">
           {/* Session Info */}
-          <div className="bg-gray-800/50 rounded-xl p-4 mb-5 border border-gray-700">
-            <p className="text-white font-medium">{session.child_name}</p>
-            <p className="text-gray-400 text-sm mt-1">
+          <div className="bg-gray-800/50 rounded-xl p-3 lg:p-4 mb-4 lg:mb-5 border border-gray-700">
+            <p className="text-white font-medium text-sm lg:text-base">{session.child_name}</p>
+            <p className="text-gray-400 text-xs lg:text-sm mt-1">
               Current: {formatCurrentDateTime(session.scheduled_date, session.scheduled_time)}
             </p>
           </div>
@@ -535,17 +552,17 @@ export default function RescheduleModal({
             <>
               {/* Completed Steps Summary */}
               {step >= 2 && (
-                <div className="mb-4 space-y-2">
+                <div className="mb-3 lg:mb-4 space-y-2">
                   <div className="flex items-center justify-between bg-gray-800/30 rounded-lg px-3 py-2 border border-gray-700/50">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-400" />
-                      <span className="text-white text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span className="text-white text-xs lg:text-sm truncate">
                         {MONTHS[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
                       </span>
                     </div>
                     <button
                       onClick={handleChangeMonth}
-                      className="text-[#00ABFF] text-sm hover:underline"
+                      className="text-[#00ABFF] text-xs lg:text-sm hover:underline flex-shrink-0 ml-2"
                     >
                       Change
                     </button>
@@ -554,15 +571,15 @@ export default function RescheduleModal({
               )}
 
               {step >= 3 && selectedDate && (
-                <div className="mb-4">
+                <div className="mb-3 lg:mb-4">
                   <div className="flex items-center justify-between bg-gray-800/30 rounded-lg px-3 py-2 border border-gray-700/50">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-400" />
-                      <span className="text-white text-sm">{formatSelectedDate(selectedDate)}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span className="text-white text-xs lg:text-sm truncate">{formatSelectedDate(selectedDate)}</span>
                     </div>
                     <button
                       onClick={handleChangeDate}
-                      className="text-[#00ABFF] text-sm hover:underline"
+                      className="text-[#00ABFF] text-xs lg:text-sm hover:underline flex-shrink-0 ml-2"
                     >
                       Change
                     </button>
@@ -717,38 +734,38 @@ export default function RescheduleModal({
               {/* STEP 3: Select Time */}
               {step === 3 && (
                 <div>
-                  <p className="text-gray-400 text-sm mb-4">Step 3 of 3: Select Time</p>
+                  <p className="text-gray-400 text-xs lg:text-sm mb-3 lg:mb-4">Step 3 of 3: Select Time</p>
 
                   {hasNoSlotsForDate ? (
-                    <div className="text-center py-8">
-                      <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                      <p className="text-white mb-2">No slots available</p>
-                      <p className="text-gray-400 text-sm mb-4">
+                    <div className="text-center py-6 lg:py-8">
+                      <AlertCircle className="w-10 h-10 lg:w-12 lg:h-12 text-gray-600 mx-auto mb-3" />
+                      <p className="text-white text-sm lg:text-base mb-2">No slots available</p>
+                      <p className="text-gray-400 text-xs lg:text-sm mb-4">
                         No available times on this date
                       </p>
                       <button
                         onClick={handleChangeDate}
-                        className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                        className="px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
                       >
                         Choose Another Date
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-4 max-h-64 overflow-y-auto">
+                    <div className="space-y-4">
                       {TIME_BUCKETS.map((bucket) => {
                         const bucketSlots = timeSlotsForDate[bucket.name as keyof typeof timeSlotsForDate];
                         if (bucketSlots.length === 0) return null;
 
                         return (
                           <div key={bucket.name}>
-                            <p className="text-gray-400 text-sm mb-2">{bucket.label}</p>
-                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            <p className="text-gray-500 text-xs mb-2">{bucket.label}</p>
+                            <div className="grid grid-cols-3 gap-2">
                               {bucketSlots.map((slot) => (
                                 <button
                                   key={slot.time}
                                   onClick={() => handleTimeSelect(slot.time)}
                                   className={`
-                                    py-2.5 px-3 rounded-lg text-sm font-medium transition-all
+                                    py-2.5 px-2 rounded-lg text-xs lg:text-sm font-medium transition-all
                                     min-h-[44px]
                                     ${selectedTime === slot.time
                                       ? 'bg-[#FF0099] text-white'
@@ -793,29 +810,30 @@ export default function RescheduleModal({
           )}
         </div>
 
-        {/* Footer - fixed */}
+        {/* Footer - FIXED, always visible */}
         {step === 3 && !loadingSlots && !slotsError && (
-          <div className="flex gap-3 p-5 border-t border-gray-800 flex-shrink-0">
+          <div className="flex gap-2 lg:gap-3 p-4 lg:p-5 border-t border-gray-800 flex-shrink-0 bg-[#1a1a1a]">
             <button
               onClick={handleClose}
               disabled={submitState === 'loading'}
-              className="flex-1 py-3 bg-gray-800 text-gray-300 rounded-xl font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 bg-gray-800 text-gray-300 text-sm lg:text-base rounded-xl font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="flex-1 py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#FF0099]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-[#FF0099] text-white text-sm lg:text-base rounded-xl font-medium hover:bg-[#FF0099]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitState === 'loading' ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Rescheduling...
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="hidden sm:inline">Rescheduling...</span>
+                  <span className="sm:hidden">...</span>
                 </>
               ) : submitState === 'success' ? (
                 <>
-                  <CheckCircle className="w-5 h-5" />
+                  <CheckCircle className="w-4 h-4" />
                   Done!
                 </>
               ) : (
@@ -827,6 +845,7 @@ export default function RescheduleModal({
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

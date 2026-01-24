@@ -94,11 +94,11 @@ export function SessionCard({
           href={session.google_meet_link!}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-[#00ABFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
+          className="flex items-center gap-1.5 lg:gap-2 bg-[#00ABFF] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
         >
-          <Video className="w-4 h-4" />
-          Join
-          <ArrowRight className="w-4 h-4" />
+          <Video className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span className="hidden sm:inline">Join</span>
+          <ArrowRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 sm:hidden" />
         </a>
       );
     }
@@ -107,10 +107,10 @@ export function SessionCard({
       return (
         <button
           onClick={onParentUpdate}
-          className="flex items-center gap-2 bg-[#FF0099] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#FF0099]/90 transition-colors"
+          className="flex items-center gap-1.5 lg:gap-2 bg-[#FF0099] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-[#FF0099]/90 transition-colors"
         >
-          <MessageSquare className="w-4 h-4" />
-          Update Parent
+          <MessageSquare className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span className="hidden sm:inline">Update</span>
         </button>
       );
     }
@@ -119,9 +119,9 @@ export function SessionCard({
       return (
         <button
           onClick={onPrep}
-          className="flex items-center gap-2 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors"
+          className="flex items-center gap-1.5 lg:gap-2 border border-gray-600 text-gray-300 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors"
         >
-          <FileText className="w-4 h-4" />
+          <FileText className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           Prep
         </button>
       );
@@ -130,7 +130,7 @@ export function SessionCard({
     if (isCompleted) {
       return (
         <div className="flex items-center gap-2 text-green-400">
-          <CheckCircle className="w-5 h-5" />
+          <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5" />
         </div>
       );
     }
@@ -150,8 +150,8 @@ export function SessionCard({
     });
   }
 
-  // Mark as Complete - show for today or past sessions that aren't completed/cancelled
-  if (canTakeAction && (isPast || isToday)) {
+  // Mark as Complete - show for all pending/scheduled sessions (not completed/cancelled)
+  if (canTakeAction) {
     dropdownActions.push({
       label: 'Mark as Complete',
       icon: ActionIcons.complete,
@@ -200,46 +200,40 @@ export function SessionCard({
   });
 
   return (
-    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
-      <div className="flex items-center gap-4">
-        {/* Avatar */}
-        <div className="w-11 h-11 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
+    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-3 hover:border-gray-700 transition-colors w-full overflow-hidden">
+      <div className="flex items-center gap-2.5 w-full">
+        {/* Avatar - smaller on mobile */}
+        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0">
           {session.child_name.charAt(0).toUpperCase()}
         </div>
 
-        {/* Content */}
+        {/* Content - compact single line on mobile */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-white truncate">
+          <div className="flex items-center gap-1.5">
+            <h3 className="font-medium text-sm text-white truncate max-w-[100px] sm:max-w-[140px] lg:max-w-none">
               {session.child_name}
             </h3>
-            <StatusBadge status={session.status} />
+            <StatusBadge status={session.status} size="sm" />
           </div>
-          <p className="text-gray-400 text-sm mt-0.5">
+          <p className="text-gray-500 text-[11px] lg:text-xs mt-0.5 truncate">
             {getSessionTypeLabel(session.session_type)}
-            {session.session_number && ` \u2022 Session #${session.session_number}`}
+            {session.session_number && ` #${session.session_number}`}
+            <span className="sm:hidden"> • {formatTime(session.scheduled_time)}</span>
           </p>
         </div>
 
         {/* Time - visible on larger screens */}
-        <div className="hidden sm:block text-right">
-          <p className="text-white font-medium">{formatTime(session.scheduled_time)}</p>
+        <div className="hidden sm:block text-right flex-shrink-0">
+          <p className="text-gray-400 text-xs lg:text-sm">{formatTime(session.scheduled_time)}</p>
         </div>
 
         {/* Primary Action */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {getPrimaryAction()}
           {dropdownActions.length > 0 && (
             <ActionDropdown actions={dropdownActions} />
           )}
         </div>
-      </div>
-
-      {/* Time - visible on mobile */}
-      <div className="sm:hidden mt-3 pt-3 border-t border-gray-800">
-        <p className="text-gray-400 text-sm">
-          {formatTime(session.scheduled_time)}
-        </p>
       </div>
     </div>
   );

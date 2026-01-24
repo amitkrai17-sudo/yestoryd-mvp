@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { timedQuery } from '@/lib/db-utils';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -47,12 +48,21 @@ export async function POST(
       );
     }
 
-    // 1. Get session details first
-    const { data: session, error: fetchError } = await supabase
-      .from('scheduled_sessions')
-      .select('id, child_id, coach_id, session_number, status')
-      .eq('id', sessionId)
-      .single();
+    // 1. Get session details first (with timing for performance monitoring)
+    const { data: session, error: fetchError, durationMs } = await timedQuery(
+      async () => {
+        const result = await supabase
+          .from('scheduled_sessions')
+          .select('id, child_id, coach_id, session_number, status')
+          .eq('id', sessionId)
+          .single();
+        return result;
+      },
+      `session-complete-fetch:${sessionId}`,
+      800 // Warn if > 800ms
+    );
+
+    console.log(`[SESSION_COMPLETE] Fetch took ${durationMs}ms`);
 
     if (fetchError || !session) {
       console.error('Session fetch error:', fetchError);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { timedQuery } from '@/lib/db-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,20 +22,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: child, error: childError } = await supabase
-      .from('children')
-      .select(`
-        *,
-        coaches (
-          id,
-          name,
-          email,
-          bio
-        )
-      `)
-      .eq('parent_email', user.email)
-      .eq('enrollment_status', 'active')
-      .single();
+    // Main child query with performance monitoring
+    const { data: child, error: childError, durationMs } = await timedQuery(
+      async () => {
+        const result = await supabase
+          .from('children')
+          .select(`
+            *,
+            coaches (
+              id,
+              name,
+              email,
+              bio
+            )
+          `)
+          .eq('parent_email', user.email)
+          .eq('enrollment_status', 'active')
+          .single();
+        return result;
+      },
+      `parent-dashboard-child:${user.email}`,
+      500 // Warn if > 500ms
+    );
+
+    console.log(`[PARENT_DASHBOARD] Child query took ${durationMs}ms`);
 
     if (childError || !child) {
       return NextResponse.json({

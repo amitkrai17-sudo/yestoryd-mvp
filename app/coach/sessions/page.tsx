@@ -567,17 +567,19 @@ export default function CoachSessionsPage() {
               .map(([date, daySessions]) => (
                 <div key={date}>
                   {/* Date Header */}
-                  <div className="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3 sticky top-0 bg-[#0a0a0a] py-2 z-10">
-                    <h2 className="text-white text-sm lg:text-base font-semibold">{formatDate(date)}</h2>
-                    <span className="text-gray-500 text-xs lg:text-sm">
-                      ({daySessions.length})
-                    </span>
-                    {isToday(date) && (
-                      <span className="bg-[#00ABFF]/20 text-[#00ABFF] text-[10px] lg:text-xs px-1.5 lg:px-2 py-0.5 rounded-full border border-[#00ABFF]/30">
-                        Today
+                  <div className="sticky top-0 z-10 bg-[#0a0a0a] py-2 mb-2 lg:mb-3">
+                    <div className="flex items-center gap-2 lg:gap-3">
+                      <h2 className="text-white text-sm lg:text-base font-semibold">{formatDate(date)}</h2>
+                      <span className="text-gray-500 text-xs lg:text-sm">
+                        ({daySessions.length})
                       </span>
-                    )}
-                    <div className="flex-1 h-px bg-gray-800" />
+                      {isToday(date) && (
+                        <span className="bg-[#00ABFF]/20 text-[#00ABFF] text-[10px] lg:text-xs px-1.5 lg:px-2 py-0.5 rounded-full border border-[#00ABFF]/30">
+                          Today
+                        </span>
+                      )}
+                      <div className="flex-1 h-px bg-gray-800" />
+                    </div>
                   </div>
 
                   {/* Sessions */}

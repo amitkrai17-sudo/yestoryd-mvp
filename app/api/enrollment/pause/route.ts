@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { conditionalUpdate } from '@/lib/db-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -169,9 +170,11 @@ export async function POST(request: NextRequest) {
         .order('scheduled_date', { ascending: true });
 
       // Update enrollment - NOTE: pause_count was already incremented when pause started
-      const { error: updateError } = await supabase
-        .from('enrollments')
-        .update({
+      // Using conditionalUpdate to prevent ghost writes from double-clicks
+      const { updated, error: updateError } = await conditionalUpdate(
+        'enrollments',
+        enrollmentId,
+        {
           is_paused: false,
           status: 'active',
           pause_start_date: null,
@@ -180,15 +183,25 @@ export async function POST(request: NextRequest) {
           total_pause_days: (enrollment.total_pause_days || 0) + actualPauseDays,
           program_end: newEndDate.toISOString(),
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', enrollmentId);
+        },
+        ['is_paused', 'status'] // Key fields to check for change
+      );
 
       if (updateError) {
         console.error('Error resuming enrollment:', updateError);
         return NextResponse.json({ error: 'Failed to resume' }, { status: 500 });
       }
 
-      // Log event
+      // Log event only if actual update occurred
+      if (!updated) {
+        console.log(`[ENROLLMENT_PAUSE] Resume skipped - no changes needed for ${enrollmentId}`);
+        return NextResponse.json({
+          success: true,
+          message: 'Program already resumed',
+          data: { alreadyResumed: true },
+        });
+      }
+
       await logEnrollmentEvent(enrollmentId, 'pause_ended', {
         original_pause_end: enrollment.pause_end_date,
         actual_pause_end: actualPauseEnd.toISOString().split('T')[0],

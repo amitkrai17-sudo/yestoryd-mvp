@@ -14,25 +14,11 @@
 
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
 import { createClient } from '@supabase/supabase-js';
-import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  Wallet,
-  LogOut,
-  Menu,
-  X,
-  ChevronRight,
-  Shield,
-  PhoneCall,
-  FileText,
-  Bot,
-} from 'lucide-react';
+import { Shield } from 'lucide-react';
+import { CoachContext, CoachData, CoachContextType } from './context';
 
 // ==================== SUPABASE CLIENT ====================
 const supabase = createClient(
@@ -69,86 +55,6 @@ function isPublicRoute(pathname: string): boolean {
          isPublicLandingPage(pathname);
 }
 
-// ==================== TYPES ====================
-interface CoachData {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  is_active: boolean;
-  photo_url?: string;
-}
-
-interface CoachContextType {
-  user: any;
-  coach: CoachData | null;
-  isLoading: boolean;
-  refetch: () => Promise<void>;
-}
-
-// ==================== CONTEXT ====================
-const CoachContext = createContext<CoachContextType | null>(null);
-
-export function useCoachContext() {
-  const context = useContext(CoachContext);
-  if (!context) {
-    throw new Error('useCoachContext must be used within CoachLayout');
-  }
-  return context;
-}
-
-// ==================== NAVIGATION ITEMS ====================
-const NAV_ITEMS = [
-  {
-    label: 'Dashboard',
-    href: '/coach/dashboard',
-    icon: LayoutDashboard,
-    description: 'Overview & metrics',
-  },
-  {
-    label: 'My Students',
-    href: '/coach/students',
-    icon: Users,
-    description: 'Manage students',
-  },
-  {
-    label: 'Sessions',
-    href: '/coach/sessions',
-    icon: Calendar,
-    description: 'Upcoming & past sessions',
-  },
-  {
-    label: 'Discovery Calls',
-    href: '/coach/discovery-calls',
-    icon: PhoneCall,
-    description: 'Manage discovery calls',
-  },
-  {
-    label: 'Earnings',
-    href: '/coach/earnings',
-    icon: Wallet,
-    description: 'Payouts & revenue',
-  },
-  {
-    label: 'Templates',
-    href: '/coach/templates',
-    icon: FileText,
-    description: 'Message templates',
-  },
-  {
-    label: 'AI Assistant',
-    href: '/coach/ai-assistant',
-    icon: Bot,
-    description: 'rAI coaching helper',
-  },
-  {
-    label: 'Profile',
-    href: '/coach/profile',
-    icon: Shield,
-    description: 'Skills & availability',
-  },
-];
-
 export default function CoachLayout({
   children,
 }: {
@@ -160,13 +66,7 @@ export default function CoachLayout({
   const [user, setUser] = useState<any>(null);
   const [coach, setCoach] = useState<CoachData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
-
-  // Close sidebar on route change
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
 
   // Setup authenticated fetch for coach API calls
   useEffect(() => {
@@ -353,112 +253,12 @@ export default function CoachLayout({
   }
 
   // ==================== AUTHORIZED - FULL LAYOUT ====================
+  // NOTE: Navigation is handled by PortalLayout (via CoachLayout component in pages)
+  // This layout only handles auth context - no duplicate sidebar/navigation
   return (
     <CoachContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-[#0f1419] flex">
-        {/* Desktop Sidebar Toggle Button - hidden on mobile (bottom nav handles navigation) */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="hidden lg:flex fixed top-4 left-4 z-40 p-2 bg-gray-800 rounded-xl shadow-lg border border-gray-700"
-        >
-          <Menu className="w-6 h-6 text-gray-300" />
-        </button>
-
-        {/* Mobile Overlay */}
-        {sidebarOpen && (
-          <div
-            className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar */}
-        <aside className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-[#0a0d10] border-r border-gray-800
-          transform transition-transform duration-300 ease-in-out
-          flex flex-col
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}>
-          {/* Header */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
-            <Link href="/coach/dashboard" className="flex items-center gap-3">
-              <Image
-                src="/images/logo.png"
-                alt="Yestoryd"
-                width={32}
-                height={32}
-                className="rounded-lg"
-              />
-              <span className="font-bold text-white">Coach Portal</span>
-            </Link>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 hover:bg-gray-800 rounded-lg"
-            >
-              <X className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                    isActive
-                      ? 'bg-[#FF0099]/10 text-[#FF0099]'
-                      : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
-                  }`}
-                >
-                  <item.icon className={`w-5 h-5 ${
-                    isActive ? 'text-[#FF0099]' : 'text-gray-500 group-hover:text-gray-300'
-                  }`} />
-                  <div className="flex-1">
-                    <p className={`font-medium ${isActive ? 'text-[#FF0099]' : ''}`}>
-                      {item.label}
-                    </p>
-                    <p className="text-xs text-gray-500">{item.description}</p>
-                  </div>
-                  {isActive && <ChevronRight className="w-4 h-4 text-[#FF0099]" />}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* User Profile */}
-          <div className="p-4 border-t border-gray-800 bg-[#0a0d10]">
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#FF0099] to-[#00ABFF] rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {coach?.name?.charAt(0).toUpperCase() || 'C'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-white truncate text-sm">
-                  {coach?.name || 'Coach'}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                title="Sign out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 lg:ml-72 min-h-screen bg-[#0f1419]">
-          <div className="p-4 lg:p-6 pt-16 lg:pt-6">
-            {children}
-          </div>
-        </main>
+      <div className="min-h-screen bg-[#0a0a0a]">
+        {children}
       </div>
     </CoachContext.Provider>
   );
