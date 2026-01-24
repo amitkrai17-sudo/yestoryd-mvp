@@ -229,63 +229,63 @@ export default function CoachDashboardPage() {
 
   return (
     <CoachLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 lg:space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-2xl p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">
+      <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white">
+        <h1 className="text-lg lg:text-2xl font-bold mb-1 lg:mb-2">
           Welcome back, {coach.name.split(' ')[0]}!
         </h1>
-        <p className="text-white/80">
+        <p className="text-sm lg:text-base text-white/80">
           Here&apos;s what&apos;s happening with your coaching today.
         </p>
       </div>
 
       {/* Pending Skill Boosters Alert */}
       {pendingSkillBoosters.length > 0 && (
-        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-2xl border-2 border-yellow-500/40 p-5">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-              <Zap className="w-6 h-6 text-white" />
+        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-xl lg:rounded-2xl border-2 border-yellow-500/40 p-3 lg:p-5">
+          <div className="flex items-start gap-3 lg:gap-4">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+              <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-white text-base lg:text-lg flex items-center gap-2">
                 Pending Skill Boosters
                 <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
                   {pendingSkillBoosters.length}
                 </span>
               </h3>
-              <p className="text-gray-400 text-sm mt-1 mb-4">
-                These sessions are waiting for parents to book a time slot.
+              <p className="text-gray-400 text-xs lg:text-sm mt-1 mb-3 lg:mb-4">
+                Waiting for parents to book a time slot.
               </p>
 
-              <div className="space-y-3">
+              <div className="space-y-2 lg:space-y-3">
                 {pendingSkillBoosters.map((session) => (
                   <div
                     key={session.id}
-                    className="bg-gray-800/60 rounded-xl p-4 flex items-center justify-between gap-4"
+                    className="bg-gray-800/60 rounded-lg lg:rounded-xl p-2.5 lg:p-4 flex items-center justify-between gap-2 lg:gap-4"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-white">{session.child_name}</span>
+                      <div className="flex items-center gap-2 mb-0.5 lg:mb-1">
+                        <span className="font-semibold text-white text-sm lg:text-base truncate">{session.child_name}</span>
                         {session.days_pending >= 3 && (
-                          <span className="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0">
                             <AlertCircle className="w-3 h-3" />
                             {session.days_pending}d
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-xs lg:text-sm text-gray-400 truncate">
                         {FOCUS_AREA_LABELS[session.focus_area] || session.focus_area}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="hidden sm:flex text-xs text-gray-500 items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {session.days_pending === 0 ? 'Today' : `${session.days_pending}d ago`}
                       </span>
                       <Link
                         href={`/coach/students/${session.child_id}`}
-                        className="px-3 py-1.5 bg-[#FF0099] text-white text-sm rounded-lg hover:bg-[#FF0099]/90 transition-colors"
+                        className="px-3 py-1.5 bg-[#FF0099] text-white text-xs lg:text-sm rounded-lg hover:bg-[#FF0099]/90 transition-colors"
                       >
                         View
                       </Link>
@@ -294,9 +294,10 @@ export default function CoachDashboardPage() {
                 ))}
               </div>
 
-              <p className="text-xs text-gray-500 mt-4 flex items-center gap-1.5">
-                <Lightbulb className="w-3.5 h-3.5 text-yellow-500" />
-                Tip: Follow up with parents via WhatsApp if booking is pending for 3+ days
+              <p className="text-xs text-gray-500 mt-3 lg:mt-4 flex items-center gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+                <span className="hidden sm:inline">Tip: Follow up with parents via WhatsApp if booking is pending for 3+ days</span>
+                <span className="sm:hidden">Follow up if pending 3+ days</span>
               </p>
             </div>
           </div>
@@ -310,99 +311,99 @@ export default function CoachDashboardPage() {
       <CoachAvailabilityCard coachId={coach.id} coachEmail={coach.email} />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <div className="w-10 h-10 bg-[#00ABFF]/20 rounded-xl flex items-center justify-center mb-3">
-            <Users className="w-5 h-5 text-[#00ABFF]" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
+        <div className="bg-gray-800/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-gray-700">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
+            <Users className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
           </div>
-          <p className="text-3xl font-bold text-[#00ABFF]">{stats?.total_students || 0}</p>
-          <p className="text-sm text-gray-400 mt-1">Total Students</p>
+          <p className="text-xl lg:text-3xl font-bold text-[#00ABFF]">{stats?.total_students || 0}</p>
+          <p className="text-xs lg:text-sm text-gray-400 mt-0.5 lg:mt-1">Total Students</p>
         </div>
 
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-3">
-            <CheckCircle className="w-5 h-5 text-emerald-400" />
+        <div className="bg-gray-800/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-gray-700">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-emerald-500/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
+            <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-400" />
           </div>
-          <p className="text-3xl font-bold text-emerald-400">{stats?.active_students || 0}</p>
-          <p className="text-sm text-gray-400 mt-1">Active Students</p>
+          <p className="text-xl lg:text-3xl font-bold text-emerald-400">{stats?.active_students || 0}</p>
+          <p className="text-xs lg:text-sm text-gray-400 mt-0.5 lg:mt-1">Active Students</p>
         </div>
 
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
-            <Calendar className="w-5 h-5 text-purple-400" />
+        <div className="bg-gray-800/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-gray-700">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-purple-500/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
+            <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
           </div>
-          <p className="text-3xl font-bold text-purple-400">{stats?.upcoming_sessions || 0}</p>
-          <p className="text-sm text-gray-400 mt-1">Upcoming Sessions</p>
+          <p className="text-xl lg:text-3xl font-bold text-purple-400">{stats?.upcoming_sessions || 0}</p>
+          <p className="text-xs lg:text-sm text-gray-400 mt-0.5 lg:mt-1">Upcoming</p>
         </div>
 
-        <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700">
-          <div className="w-10 h-10 bg-[#FF0099]/20 rounded-xl flex items-center justify-center mb-3">
-            <Wallet className="w-5 h-5 text-[#FF0099]" />
+        <div className="bg-gray-800/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-gray-700">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#FF0099]/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
+            <Wallet className="w-4 h-4 lg:w-5 lg:h-5 text-[#FF0099]" />
           </div>
-          <p className="text-3xl font-bold text-[#FF0099]">
+          <p className="text-xl lg:text-3xl font-bold text-[#FF0099]">
             ₹{Math.round(stats?.total_earnings || 0).toLocaleString('en-IN')}
           </p>
-          <p className="text-sm text-gray-400 mt-1">Total Earnings</p>
+          <p className="text-xs lg:text-sm text-gray-400 mt-0.5 lg:mt-1">Earnings</p>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
-        <h2 className="font-bold text-white text-lg mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-gray-800/50 rounded-xl lg:rounded-2xl border border-gray-700 p-3 lg:p-6">
+        <h2 className="font-bold text-white text-base lg:text-lg mb-3 lg:mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
           <Link
             href="/coach/students"
-            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-3 lg:p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
-            <Users className="w-7 h-7 text-[#00ABFF] mx-auto mb-2 group-hover:scale-110 transition-transform" />
-            <span className="text-sm text-gray-300">View Students</span>
+            <Users className="w-6 h-6 lg:w-7 lg:h-7 text-[#00ABFF] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-xs lg:text-sm text-gray-300">Students</span>
           </Link>
           <Link
             href="/coach/sessions"
-            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-3 lg:p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
-            <Calendar className="w-7 h-7 text-purple-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-            <span className="text-sm text-gray-300">Check Schedule</span>
+            <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-purple-400 mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-xs lg:text-sm text-gray-300">Schedule</span>
           </Link>
           <Link
             href="/coach/templates"
-            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-3 lg:p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
-            <Gift className="w-7 h-7 text-[#7B008B] mx-auto mb-2 group-hover:scale-110 transition-transform" />
-            <span className="text-sm text-gray-300">Share Referral</span>
+            <Gift className="w-6 h-6 lg:w-7 lg:h-7 text-[#7B008B] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-xs lg:text-sm text-gray-300">Referral</span>
           </Link>
           <Link
             href="/coach/earnings"
-            className="p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
+            className="p-3 lg:p-4 bg-gray-900 rounded-xl hover:bg-gray-700/50 transition-all group text-center border border-gray-700/50"
           >
-            <Wallet className="w-7 h-7 text-[#FF0099] mx-auto mb-2 group-hover:scale-110 transition-transform" />
-            <span className="text-sm text-gray-300">View Earnings</span>
+            <Wallet className="w-6 h-6 lg:w-7 lg:h-7 text-[#FF0099] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-xs lg:text-sm text-gray-300">Earnings</span>
           </Link>
         </div>
       </div>
 
       {/* Need Help Card */}
-      <div className="bg-gradient-to-r from-gray-800 to-gray-800/50 rounded-2xl p-6 border border-gray-700">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-[#00ABFF]/20 rounded-xl flex items-center justify-center flex-shrink-0">
-            <HelpCircle className="w-6 h-6 text-[#00ABFF]" />
+      <div className="bg-gradient-to-r from-gray-800 to-gray-800/50 rounded-xl lg:rounded-2xl p-3 lg:p-6 border border-gray-700">
+        <div className="flex items-start gap-3 lg:gap-4">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-[#00ABFF]/20 rounded-xl flex items-center justify-center flex-shrink-0">
+            <HelpCircle className="w-5 h-5 lg:w-6 lg:h-6 text-[#00ABFF]" />
           </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-white mb-1">Need Help?</h3>
-            <p className="text-gray-400 text-sm mb-4">
-              Have a question or facing an issue? We&apos;re here to help!
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-white text-sm lg:text-base mb-0.5 lg:mb-1">Need Help?</h3>
+            <p className="text-gray-400 text-xs lg:text-sm mb-3 lg:mb-4">
+              Have a question? We&apos;re here to help!
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 lg:gap-3">
               <Link
                 href="/coach/ai-assistant"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF0099] text-white rounded-xl text-sm font-medium hover:bg-[#FF0099]/90 transition-colors"
+                className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-[#FF0099] text-white rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-[#FF0099]/90 transition-colors"
               >
-                <TrendingUp className="w-4 h-4" />
-                Ask rAI First
+                <TrendingUp className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                Ask rAI
               </Link>
-              <button className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-600 transition-colors">
-                <MessageCircle className="w-4 h-4" />
-                Submit Request
+              <button className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-gray-700 text-gray-300 rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-gray-600 transition-colors">
+                <MessageCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                Request
               </button>
             </div>
           </div>

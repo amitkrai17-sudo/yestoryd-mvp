@@ -75,44 +75,49 @@ export default function CoachDiscoveryCallsPage() {
 
   return (
     <CoachLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl font-bold text-white">My Discovery Calls</h1>
-          <p className="text-sm text-gray-500">Manage your assigned calls</p>
+          <h1 className="text-lg lg:text-xl font-bold text-white flex items-center gap-2">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#FF0099]/20 rounded-lg lg:rounded-xl flex items-center justify-center">
+              <Phone className="w-4 h-4 lg:w-5 lg:h-5 text-[#FF0099]" />
+            </div>
+            Discovery Calls
+          </h1>
+          <p className="text-xs lg:text-sm text-gray-500 mt-0.5">Manage your assigned calls</p>
         </div>
-        <button 
-          onClick={fetchCalls} 
+        <button
+          onClick={fetchCalls}
           disabled={loading}
-          className="p-2 hover:bg-gray-700 rounded-lg"
+          className="p-1.5 lg:p-2 hover:bg-gray-700 rounded-lg"
         >
-          <RefreshCw className={`w-5 h-5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 lg:w-5 lg:h-5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Stats - Mobile optimized */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4 mb-4">
         {[
           { label: 'Total', value: calls.length, icon: Users, color: 'bg-blue-500' },
           { label: 'Scheduled', value: calls.filter(c => c.status === 'scheduled').length, icon: Calendar, color: 'bg-purple-500' },
           { label: 'Completed', value: calls.filter(c => c.status === 'completed').length, icon: Clock, color: 'bg-green-500' },
           { label: 'Converted', value: calls.filter(c => c.converted_to_enrollment).length, icon: Users, color: 'bg-[#FF0099]' },
         ].map((s, i) => (
-          <div key={i} className="bg-gray-800 rounded-xl border p-3 sm:p-4 flex items-center gap-3">
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 ${s.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
-              <s.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          <div key={i} className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-2.5 lg:p-4 flex items-center gap-2 lg:gap-3">
+            <div className={`w-8 h-8 lg:w-10 lg:h-10 ${s.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+              <s.icon className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
             </div>
-            <div>
-              <p className="text-lg sm:text-xl font-bold text-white">{s.value}</p>
-              <p className="text-xs text-gray-500">{s.label}</p>
+            <div className="min-w-0">
+              <p className="text-lg lg:text-xl font-bold text-white">{s.value}</p>
+              <p className="text-[10px] lg:text-xs text-gray-500">{s.label}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filter Tabs - Scrollable on mobile */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex gap-1.5 lg:gap-2 mb-4 overflow-x-auto pb-1 -mx-4 px-4 lg:mx-0 lg:px-0">
         {[
           { key: 'all', label: 'All' },
           { key: 'scheduled', label: 'Scheduled' },
@@ -121,7 +126,7 @@ export default function CoachDiscoveryCallsPage() {
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap text-sm transition-colors ${
+            className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg font-medium whitespace-nowrap text-xs lg:text-sm transition-colors flex-shrink-0 ${
               filter === tab.key
                 ? 'bg-[#FF0099] text-white'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
@@ -134,70 +139,70 @@ export default function CoachDiscoveryCallsPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="flex justify-center py-12">
-          <RefreshCw className="w-6 h-6 animate-spin text-[#FF0099]" />
+        <div className="flex justify-center py-8 lg:py-12">
+          <RefreshCw className="w-5 h-5 lg:w-6 lg:h-6 animate-spin text-[#FF0099]" />
         </div>
       )}
 
       {/* Calls List */}
       {!loading && (
-        <div className="space-y-3">
+        <div className="space-y-2 lg:space-y-3">
           {calls.length > 0 ? (
             calls.map((call) => {
               const statusCfg = STATUS_CONFIG[call.status] || STATUS_CONFIG.pending;
               const action = getActionLabel(call);
-              
+
               return (
                 <Link
                   key={call.id}
                   href={`/coach/discovery-calls/${call.id}`}
-                  className="block bg-gray-800 rounded-xl border p-4 hover:shadow-md transition-shadow active:bg-gray-900"
+                  className="block bg-[#1a1a1a] rounded-xl border border-gray-800 p-3 lg:p-4 hover:bg-gray-800/50 transition-colors active:bg-gray-900"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    {/* Left: Score + Info */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        call.converted_to_enrollment ? 'bg-green-100' : 'bg-pink-100'
+                  <div className="flex items-center gap-2.5 lg:gap-3">
+                    {/* Left: Score */}
+                    <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      call.converted_to_enrollment ? 'bg-green-500/20' : 'bg-[#FF0099]/20'
+                    }`}>
+                      <span className={`text-sm lg:text-lg font-bold ${
+                        call.converted_to_enrollment ? 'text-green-400' : 'text-[#FF0099]'
                       }`}>
-                        <span className={`text-lg font-bold ${
-                          call.converted_to_enrollment ? 'text-green-600' : 'text-[#FF0099]'
-                        }`}>
-                          {call.assessment_score || '-'}
-                        </span>
+                        {call.assessment_score || '-'}
+                      </span>
+                    </div>
+
+                    {/* Middle: Info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 lg:gap-2">
+                        <p className="font-semibold text-sm lg:text-base text-white truncate">{call.child_name}</p>
+                        <span className="text-[10px] lg:text-xs text-gray-500">({call.child_age}y)</span>
                       </div>
-                      
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-white truncate">{call.child_name}</p>
-                          <span className="text-xs text-gray-400">({call.child_age}y)</span>
-                        </div>
-                        <p className="text-sm text-gray-500 truncate">{call.parent_name}</p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusCfg.bg} ${statusCfg.color}`}>
-                            {statusCfg.label}
+                      <p className="text-xs lg:text-sm text-gray-500 truncate">{call.parent_name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`px-1.5 lg:px-2 py-0.5 rounded text-[10px] lg:text-xs font-medium ${statusCfg.bg} ${statusCfg.color}`}>
+                          {statusCfg.label}
+                        </span>
+                        {call.converted_to_enrollment && (
+                          <span className="px-1.5 lg:px-2 py-0.5 rounded text-[10px] lg:text-xs font-medium bg-green-500/20 text-green-400">
+                            Enrolled
                           </span>
-                          {call.converted_to_enrollment && (
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                              ? Enrolled
-                            </span>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
-                    
+
                     {/* Right: Action */}
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className={`text-sm font-medium ${action.color} hidden sm:block`}>{action.text}</span>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                      <span className={`text-xs lg:text-sm font-medium ${action.color} hidden sm:block`}>{action.text}</span>
+                      <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />
                     </div>
                   </div>
                 </Link>
               );
             })
           ) : (
-            <div className="bg-gray-800 rounded-xl border p-12 text-center">
-              <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p className="text-gray-500">No discovery calls found</p>
+            <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-8 lg:p-12 text-center">
+              <Phone className="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-600" />
+              <p className="text-sm lg:text-base text-gray-400">No discovery calls found</p>
+              <p className="text-xs text-gray-500 mt-1">Check back later for new assignments</p>
             </div>
           )}
         </div>

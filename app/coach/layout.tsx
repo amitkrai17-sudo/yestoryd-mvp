@@ -160,7 +160,7 @@ export default function CoachLayout({
   const [user, setUser] = useState<any>(null);
   const [coach, setCoach] = useState<CoachData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   // Close sidebar on route change
@@ -356,10 +356,10 @@ export default function CoachLayout({
   return (
     <CoachContext.Provider value={contextValue}>
       <div className="min-h-screen bg-[#0f1419] flex">
-        {/* Mobile Menu Button */}
+        {/* Desktop Sidebar Toggle Button - hidden on mobile (bottom nav handles navigation) */}
         <button
-          onClick={() => setSidebarOpen(true)}
-          className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-gray-800 rounded-xl shadow-lg border border-gray-700"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="hidden lg:flex fixed top-4 left-4 z-40 p-2 bg-gray-800 rounded-xl shadow-lg border border-gray-700"
         >
           <Menu className="w-6 h-6 text-gray-300" />
         </button>
@@ -376,7 +376,7 @@ export default function CoachLayout({
         <aside className={`
           fixed inset-y-0 left-0 z-50 w-72 bg-[#0a0d10] border-r border-gray-800
           transform transition-transform duration-300 ease-in-out
-          lg:translate-x-0 flex flex-col
+          flex flex-col
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
           {/* Header */}

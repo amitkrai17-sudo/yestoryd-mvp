@@ -186,120 +186,116 @@ export default function CoachProfilePage() {
 
   return (
     <CoachLayout noPadding>
-      <div className="p-6 text-white">
+      <div className="p-3 lg:p-6 text-white">
 
-      {/* Tabs */}
-      <div className="border-b border-gray-800 bg-[#12121a]">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex gap-1">
-            {[
-              { id: 'profile', label: 'Profile', icon: User },
-              { id: 'skills', label: 'Skills & Expertise', icon: BookOpen },
-              { id: 'availability', label: 'Availability', icon: Calendar },
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id as any)}
-                className={`
-                  flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors
-                  ${activeTab === id 
-                    ? 'border-[#FF0099] text-[#FF0099]' 
-                    : 'border-transparent text-gray-400 hover:text-white'
-                  }
-                `}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            ))}
-          </div>
+      {/* Tabs - Compact on mobile */}
+      <div className="bg-gray-800/50 rounded-lg p-1 mb-4 overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
+          {[
+            { id: 'profile', label: 'Profile', icon: User },
+            { id: 'skills', label: 'Skills', icon: BookOpen },
+            { id: 'availability', label: 'Schedule', icon: Calendar },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id as any)}
+              className={`
+                flex-1 flex items-center justify-center gap-1.5 px-3 lg:px-4 py-2 lg:py-2.5 rounded-md text-xs lg:text-sm font-medium whitespace-nowrap transition-colors
+                ${activeTab === id
+                  ? 'bg-[#FF0099] text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                }
+              `}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto">
         {/* Messages */}
         {error && (
-          <div className="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="mb-4 p-3 lg:p-4 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-6 p-4 bg-green-900/30 border border-green-800 rounded-lg flex items-center gap-2 text-green-400">
-            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="mb-4 p-3 lg:p-4 bg-green-900/30 border border-green-800 rounded-lg flex items-center gap-2 text-green-400 text-sm">
+            <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
             {success}
           </div>
         )}
 
         {/* PROFILE TAB */}
         {activeTab === 'profile' && (
-          <div className="space-y-6">
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-[#FF0099]">Basic Information</h2>
-              
+          <div className="space-y-4 lg:space-y-6">
+            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
+              <h2 className="text-sm lg:text-lg font-semibold mb-3 lg:mb-4 text-[#FF0099]">Basic Information</h2>
+
               <div className="space-y-4">
                 {/* Name */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Full Name</label>
+                  <label className="block text-xs lg:text-sm text-gray-400 mb-1.5">Full Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => updateField('name', e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                   />
                 </div>
 
                 {/* Bio */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Bio</label>
+                  <label className="block text-xs lg:text-sm text-gray-400 mb-1.5">Bio</label>
                   <textarea
                     value={formData.bio}
                     onChange={(e) => updateField('bio', e.target.value)}
-                    rows={4}
-                    placeholder="Tell parents about your teaching experience and approach..."
-                    className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                    rows={3}
+                    placeholder="Tell parents about your teaching experience..."
+                    className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099] resize-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-[10px] lg:text-xs text-gray-500 mt-1">
                     {formData.bio.length}/500 characters
                   </p>
                 </div>
 
                 {/* Phone */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">WhatsApp Number *</label>
-                      <input
-                        type="tel"
-                        value={formData.whatsapp_number}
-                        onChange={(e) => updateField('whatsapp_number', e.target.value)}
-                      placeholder="+91 98765 43210"
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
-                    />
-                  </div>
-                  </div>
+                <div>
+                  <label className="block text-xs lg:text-sm text-gray-400 mb-1.5">WhatsApp Number *</label>
+                  <input
+                    type="tel"
+                    value={formData.whatsapp_number}
+                    onChange={(e) => updateField('whatsapp_number', e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                  />
+                </div>
 
-                {/* City and Experience */}
-                <div className="grid md:grid-cols-2 gap-4">
+                {/* City and Experience - Stack on mobile */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">City</label>
+                    <label className="block text-xs lg:text-sm text-gray-400 mb-1.5">City</label>
                     <input
                       type="text"
                       value={formData.city}
                       onChange={(e) => updateField('city', e.target.value)}
                       placeholder="Mumbai"
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                      className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Years of Experience</label>
+                    <label className="block text-xs lg:text-sm text-gray-400 mb-1.5">Years of Experience</label>
                     <input
                       type="number"
                       value={formData.years_experience}
                       onChange={(e) => updateField('years_experience', parseInt(e.target.value) || 0)}
                       min={0}
                       max={50}
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                      className="w-full sm:w-32 px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                     />
                   </div>
                 </div>
@@ -307,51 +303,51 @@ export default function CoachProfilePage() {
             </div>
 
             {/* Availability Status */}
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-[#FF0099]">Availability Status</h2>
-              
-              <div className="space-y-4">
+            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
+              <h2 className="text-sm lg:text-lg font-semibold mb-3 lg:mb-4 text-[#FF0099]">Availability Status</h2>
+
+              <div className="space-y-3 lg:space-y-4">
                 {/* Is Available */}
-                <div className="flex items-center justify-between p-4 bg-gray-900 rounded-lg">
-                  <div>
-                    <p className="font-medium">Available for Sessions</p>
-                    <p className="text-sm text-gray-400">Toggle off if you're temporarily unavailable</p>
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-gray-900 rounded-lg gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm lg:text-base">Available for Sessions</p>
+                    <p className="text-xs lg:text-sm text-gray-400">Toggle off if temporarily unavailable</p>
                   </div>
                   <button
                     onClick={() => updateField('is_available', !formData.is_available)}
                     className={`
-                      relative w-14 h-7 rounded-full transition-colors
+                      relative w-12 h-6 lg:w-14 lg:h-7 rounded-full transition-colors flex-shrink-0
                       ${formData.is_available ? 'bg-green-500' : 'bg-gray-700'}
                     `}
                   >
                     <span
                       className={`
-                        absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-transform
-                        ${formData.is_available ? 'translate-x-7' : ''}
+                        absolute top-0.5 left-0.5 w-5 h-5 lg:w-6 lg:h-6 bg-white rounded-full transition-transform
+                        ${formData.is_available ? 'translate-x-6 lg:translate-x-7' : ''}
                       `}
                     />
                   </button>
                 </div>
 
                 {/* Accepting New Students */}
-                <div className="flex items-center justify-between p-4 bg-gray-900 rounded-lg">
-                  <div>
-                    <p className="font-medium">Accepting New Students</p>
-                    <p className="text-sm text-gray-400">
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-gray-900 rounded-lg gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm lg:text-base">Accepting New Students</p>
+                    <p className="text-xs lg:text-sm text-gray-400">
                       Current: {profile.current_children}/{profile.max_children} students
                     </p>
                   </div>
                   <button
                     onClick={() => updateField('is_accepting_new', !formData.is_accepting_new)}
                     className={`
-                      relative w-14 h-7 rounded-full transition-colors
+                      relative w-12 h-6 lg:w-14 lg:h-7 rounded-full transition-colors flex-shrink-0
                       ${formData.is_accepting_new ? 'bg-green-500' : 'bg-gray-700'}
                     `}
                   >
                     <span
                       className={`
-                        absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-transform
-                        ${formData.is_accepting_new ? 'translate-x-7' : ''}
+                        absolute top-0.5 left-0.5 w-5 h-5 lg:w-6 lg:h-6 bg-white rounded-full transition-transform
+                        ${formData.is_accepting_new ? 'translate-x-6 lg:translate-x-7' : ''}
                       `}
                     />
                   </button>
@@ -363,15 +359,15 @@ export default function CoachProfilePage() {
 
         {/* SKILLS TAB */}
         {activeTab === 'skills' && (
-          <div className="space-y-6">
+          <div className="space-y-4 lg:space-y-6">
             {/* Skill Tags */}
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-6">
-              <h2 className="text-lg font-semibold mb-2 text-[#FF0099]">Teaching Skills</h2>
-              <p className="text-sm text-gray-400 mb-4">
-                Select the skills you can teach. This helps match you with students who need your expertise.
+            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
+              <h2 className="text-sm lg:text-lg font-semibold mb-1 lg:mb-2 text-[#FF0099]">Teaching Skills</h2>
+              <p className="text-xs lg:text-sm text-gray-400 mb-3 lg:mb-4">
+                Select skills to match with students who need your expertise.
               </p>
-              
-              <div className="bg-gray-900 rounded-lg p-4">
+
+              <div className="bg-gray-900 rounded-lg p-3 lg:p-4">
                 <SkillTagSelector
                   selectedTags={formData.skill_tags}
                   onChange={(tags) => updateField('skill_tags', tags)}
@@ -381,42 +377,42 @@ export default function CoachProfilePage() {
               </div>
 
               {!profile.verified_at && formData.skill_tags.length > 0 && (
-                <p className="text-sm text-yellow-500 mt-3 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  Skills will be verified by admin before appearing on your profile
+                <p className="text-xs lg:text-sm text-yellow-500 mt-3 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                  Skills will be verified by admin
                 </p>
               )}
             </div>
 
             {/* Certifications */}
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-[#FF0099]">Certifications</h2>
-                  <p className="text-sm text-gray-400">Add your teaching certifications</p>
+            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-3 lg:mb-4 gap-2">
+                <div className="min-w-0">
+                  <h2 className="text-sm lg:text-lg font-semibold text-[#FF0099]">Certifications</h2>
+                  <p className="text-xs lg:text-sm text-gray-400">Add your teaching certifications</p>
                 </div>
                 <button
                   onClick={addCertification}
-                  className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm"
+                  className="px-2.5 lg:px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs lg:text-sm flex-shrink-0"
                 >
                   + Add
                 </button>
               </div>
 
               {formData.certifications.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No certifications added yet</p>
+                <p className="text-gray-500 text-center py-6 lg:py-8 text-sm">No certifications added yet</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {formData.certifications.map((cert, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-800 rounded-full text-sm"
+                      className="inline-flex items-center gap-1.5 lg:gap-2 px-2.5 lg:px-3 py-1.5 bg-gray-800 rounded-full text-xs lg:text-sm"
                     >
-                      <Award className="w-4 h-4 text-yellow-400" />
+                      <Award className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-yellow-400" />
                       {cert}
                       <button
                         onClick={() => removeCertification(cert)}
-                        className="text-gray-400 hover:text-red-400"
+                        className="text-gray-400 hover:text-red-400 ml-0.5"
                       >
                         ×
                       </button>
@@ -430,7 +426,7 @@ export default function CoachProfilePage() {
 
         {/* AVAILABILITY TAB */}
         {activeTab === 'availability' && (
-          <div className="space-y-6">
+          <div className="space-y-4 lg:space-y-6">
             {/* Weekly Schedule */}
             <div className="bg-[#1a1a24] rounded-xl border border-gray-800 overflow-hidden">
               <AvailabilityCalendar
@@ -438,7 +434,7 @@ export default function CoachProfilePage() {
                 readOnly={false}
               />
             </div>
-            
+
             {/* Mark Time Off */}
             <div className="bg-white rounded-xl overflow-hidden">
               <CoachAvailabilityCard coachId={profile.id} coachEmail={profile.email} />
@@ -446,22 +442,22 @@ export default function CoachProfilePage() {
           </div>
         )}
 
-        {/* Save Button */}
+        {/* Save Button - Sticky on mobile */}
         {activeTab !== 'availability' && (
-          <div className="flex justify-end mt-8">
+          <div className="sticky bottom-20 lg:bottom-4 mt-4 lg:mt-8 bg-[#0a0a0a] pt-3 pb-1 -mx-3 px-3 lg:mx-0 lg:px-0 lg:bg-transparent lg:pt-0 lg:pb-0">
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-3 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/90 disabled:bg-pink-800 disabled:cursor-not-allowed transition-colors"
+              className="w-full lg:w-auto lg:ml-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#FF0099] text-white text-sm lg:text-base font-medium rounded-xl hover:bg-[#FF0099]/90 disabled:bg-pink-800 disabled:cursor-not-allowed transition-colors"
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
+                  <Save className="w-4 h-4 lg:w-5 lg:h-5" />
                   Save Changes
                 </>
               )}
