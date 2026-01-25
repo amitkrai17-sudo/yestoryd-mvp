@@ -19,6 +19,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Shield } from 'lucide-react';
 import { CoachContext, CoachData, CoachContextType } from './context';
+import BottomNav from '@/components/navigation/BottomNav';
+import { coachNavItems } from '@/lib/config/navigation';
 
 // ==================== SUPABASE CLIENT ====================
 const supabase = createClient(
@@ -255,11 +257,18 @@ export default function CoachLayout({
   // ==================== AUTHORIZED - FULL LAYOUT ====================
   // NOTE: Navigation is handled by PortalLayout (via CoachLayout component in pages)
   // This layout only handles auth context - no duplicate sidebar/navigation
+  // Mobile bottom nav added for PWA experience
   return (
     <CoachContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-[#0a0a0a]">
+      <div className="min-h-screen bg-[#0a0a0a] pb-20 lg:pb-0">
         {children}
       </div>
+      {/* Mobile Bottom Navigation */}
+      <BottomNav
+        items={coachNavItems}
+        baseRoute="/coach"
+        theme="dark"
+      />
     </CoachContext.Provider>
   );
 }

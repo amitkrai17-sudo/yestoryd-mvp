@@ -28,6 +28,8 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
+import BottomNav from '@/components/navigation/BottomNav';
+import { parentNavItems } from '@/lib/config/navigation';
 
 // ==================== SUPABASE CLIENT ====================
 const supabase = createClient(
@@ -460,10 +462,10 @@ export default function ParentLayout({
   return (
     <ParentContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex overflow-x-hidden">
-        {/* Mobile Menu Button */}
+        {/* Mobile Menu Button - Hidden on mobile (use bottom nav), visible on tablet for sidebar */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="lg:hidden fixed top-4 left-4 z-40 p-3 bg-white rounded-xl shadow-lg border border-slate-200 min-w-[48px] min-h-[48px] flex items-center justify-center"
+          className="hidden md:flex lg:hidden fixed top-4 left-4 z-40 p-3 bg-white rounded-xl shadow-lg border border-slate-200 min-w-[48px] min-h-[48px] items-center justify-center"
           aria-label="Open menu"
         >
           <Menu className="w-6 h-6 text-slate-700" />
@@ -618,10 +620,17 @@ export default function ParentLayout({
 
         {/* Main Content */}
         <main className="flex-1 lg:ml-[280px] min-h-screen w-full">
-          <div className="pt-16 lg:pt-0 w-full">
+          <div className="pt-4 lg:pt-0 pb-20 lg:pb-0 w-full">
             {children}
           </div>
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <BottomNav
+          items={parentNavItems}
+          baseRoute="/parent"
+          theme="light"
+        />
       </div>
     </ParentContext.Provider>
   );

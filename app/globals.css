@@ -45,6 +45,22 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Safe area padding for notched devices (iPhone X+) */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Ensure bottom nav doesn't overlap content on notched devices */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .pb-safe {
+      padding-bottom: max(env(safe-area-inset-bottom), 0px);
+    }
+  }
 }
 
 /* Custom scrollbar */
