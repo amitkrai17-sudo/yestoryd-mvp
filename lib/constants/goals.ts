@@ -5,7 +5,8 @@ export interface LearningGoal {
   id: string;
   label: string;
   shortLabel: string;
-  emoji: string;
+  emoji: string; // Keep for backward compatibility (WhatsApp messages)
+  icon: string;  // Lucide icon name for UI display
   description: string;
   minAge: number;
   maxAge: number;
@@ -17,6 +18,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     label: 'Reading & Phonics',
     shortLabel: 'Reading',
     emoji: '📖',
+    icon: 'BookOpen',
     description: 'Decoding, fluency, phonemic awareness',
     minAge: 4,
     maxAge: 12,
@@ -26,6 +28,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     label: 'Grammar & Sentences',
     shortLabel: 'Grammar',
     emoji: '✏️',
+    icon: 'PenTool',
     description: 'Sentence structure, tenses, parts of speech',
     minAge: 4,
     maxAge: 12,
@@ -35,6 +38,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     label: 'Reading Comprehension',
     shortLabel: 'Comprehension',
     emoji: '🧠',
+    icon: 'Brain',
     description: 'Understanding, inference, analysis',
     minAge: 4,
     maxAge: 12,
@@ -44,6 +48,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     label: 'Creative Writing',
     shortLabel: 'Writing',
     emoji: '🎨',
+    icon: 'Palette',
     description: 'Storytelling, essays, expression',
     minAge: 4,
     maxAge: 12,
@@ -53,6 +58,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     label: 'Olympiad Prep',
     shortLabel: 'Olympiad',
     emoji: '🏅',
+    icon: 'Medal',
     description: 'English Olympiad, Spell Bee preparation',
     minAge: 4,
     maxAge: 12,
@@ -62,6 +68,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     label: 'Competition Prep',
     shortLabel: 'Competitions',
     emoji: '🏆',
+    icon: 'Trophy',
     description: 'Spell Bee, quiz competitions',
     minAge: 4,
     maxAge: 12,
@@ -71,6 +78,7 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     label: 'Speaking Confidence',
     shortLabel: 'Speaking',
     emoji: '🎤',
+    icon: 'Mic',
     description: 'Public speaking, presentation skills',
     minAge: 4,
     maxAge: 12,

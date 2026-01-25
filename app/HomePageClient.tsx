@@ -236,13 +236,13 @@ const HeroCuriosity = ({
       <Link
         href="/assessment"
         onClick={onCTAClick}
-        className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold px-8 rounded-full hover:bg-[#d10080] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
+        className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-8 rounded-full hover:bg-[#e6008a] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
       >
         <Zap className="w-5 h-5" />
         See Why — 5 Minutes
       </Link>
-      <a 
-        href="#rucha-story" 
+      <a
+        href="#rucha-story"
         className="flex items-center gap-2 text-gray-700 font-semibold hover:text-[#ff0099] transition-colors"
       >
         <Play className="w-5 h-5" />
@@ -295,12 +295,12 @@ const HeroCuriosity = ({
 );
 
 // Design 4: Validation-Led Hero (Hybrid - includes "not laziness" reframe)
-const HeroValidation = ({ 
-  testimonial, 
-  stats, 
-  onCTAClick 
-}: { 
-  testimonial: TestimonialData; 
+const HeroValidation = ({
+  testimonial,
+  stats,
+  onCTAClick
+}: {
+  testimonial: TestimonialData;
   stats: StatsData;
   onCTAClick: () => void;
 }) => (
@@ -336,7 +336,7 @@ const HeroValidation = ({
       <Link
         href="/assessment"
         onClick={onCTAClick}
-        className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold px-8 rounded-full hover:bg-[#d10080] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
+        className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-8 rounded-full hover:bg-[#e6008a] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
       >
         <Zap className="w-5 h-5" />
         See Why — 5 Minutes
@@ -736,13 +736,17 @@ export default function HomePageClient({
               <Link
                 href="/assessment"
                 onClick={handleCTAClick}
-                className="h-11 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white px-6 rounded-full font-bold hover:bg-[#d10080] hover:shadow-lg hover:shadow-[#ff0099]/20 hover:-translate-y-0.5 transition-all duration-200 text-sm"
+                className="h-11 inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 rounded-full font-bold hover:bg-[#e6008a] hover:shadow-lg hover:shadow-[#ff0099]/20 hover:-translate-y-0.5 transition-all duration-200 text-sm"
               >
                 See Why — Free
               </Link>
             </nav>
 
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-gray-900">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-900"
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
@@ -757,7 +761,7 @@ export default function HomePageClient({
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-800 font-semibold py-2">Pricing</a>
               <hr className="border-gray-100" />
               <Link href="/parent/login" onClick={() => setMobileMenuOpen(false)} className="block text-gray-600 py-2">Parent Login</Link>
-              <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); handleCTAClick(); }} className="h-12 flex items-center justify-center gap-2 bg-[#e6008a] text-white rounded-full font-bold w-full mt-4">
+              <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); handleCTAClick(); }} className="h-12 flex items-center justify-center gap-2 bg-[#FF0099] text-white rounded-full font-bold w-full mt-4 hover:bg-[#e6008a]">
                 See Why — Free 5 Min Test
               </Link>
             </div>
@@ -1888,7 +1892,7 @@ export default function HomePageClient({
         <Link
           href="/assessment"
           onClick={handleCTAClick}
-          className="block w-full text-center bg-[#e6008a] text-white py-3 rounded-xl font-bold shadow-lg text-sm"
+          className="block w-full text-center bg-[#FF0099] text-white py-3 rounded-xl font-bold shadow-lg text-sm hover:bg-[#e6008a]"
         >
           See Why — Free 5 Min Test
         </Link>

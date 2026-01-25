@@ -24,6 +24,7 @@ import {
 import FlightStyleSlotPicker from '@/components/booking/FlightStyleSlotPicker';
 import { GoalsCapture } from '@/components/assessment/GoalsCapture';
 import { LEARNING_GOALS } from '@/lib/constants/goals';
+import { GoalIcon } from '@/components/shared/GoalIcon';
 
 // ============================================================
 // TYPES
@@ -395,9 +396,10 @@ function LetsTalkContent() {
                             return (
                               <span
                                 key={goalId}
-                                className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 border border-gray-200 shadow-sm"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full text-sm font-medium text-gray-700 border border-gray-200 shadow-sm"
                               >
-                                {goal.emoji} {goal.shortLabel || goal.label}
+                                <GoalIcon goal={goal} className="w-4 h-4 text-[#FF0099]" />
+                                {goal.shortLabel || goal.label}
                               </span>
                             );
                           })}
@@ -507,7 +509,7 @@ function LetsTalkContent() {
                     {/* Submit */}
                     <button
                       type="submit"
-                      className="w-full h-14 flex items-center justify-center gap-2 bg-[#e6008a] hover:bg-[#d10080] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-2"
+                      className="w-full h-14 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-2"
                     >
                       <Calendar className="w-5 h-5" />
                       Choose a Time Slot
@@ -594,7 +596,7 @@ function LetsTalkContent() {
                       <button
                         onClick={handleBooking}
                         disabled={loading}
-                        className="w-full h-14 flex items-center justify-center gap-2 bg-[#e6008a] hover:bg-[#d10080] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full h-14 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loading ? (
                           <><Loader2 className="w-5 h-5 animate-spin" /> Booking...</>
@@ -685,7 +687,7 @@ function LetsTalkContent() {
           </a>
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex-1 h-12 flex items-center justify-center gap-2 bg-[#e6008a] text-white font-bold rounded-xl text-sm"
+            className="flex-1 h-12 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl text-sm"
           >
             <Calendar className="w-4 h-4" />
             Book Free Call

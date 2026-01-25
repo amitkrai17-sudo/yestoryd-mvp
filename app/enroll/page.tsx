@@ -1067,7 +1067,7 @@ function EnrollContent() {
               <form onSubmit={handleSubmit} className="p-4 space-y-3">
                 {/* Parent Name */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Your Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Name *</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
@@ -1085,7 +1085,7 @@ function EnrollContent() {
                 {/* Email & Phone Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -1100,7 +1100,7 @@ function EnrollContent() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Phone *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -1119,7 +1119,7 @@ function EnrollContent() {
                 {/* Child Name & Age Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Child&apos;s Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Child&apos;s Name *</label>
                     <div className="relative">
                       <Baby className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -1134,7 +1134,7 @@ function EnrollContent() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Child&apos;s Age *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Child&apos;s Age *</label>
                     <select
                       name="childAge"
                       value={formData.childAge}
@@ -1154,7 +1154,7 @@ function EnrollContent() {
 
                 {/* ==================== When to Start Section ==================== */}
                 <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
-                  <label className="block text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-purple-500" />
                     When would you like to start?
                   </label>
@@ -1254,7 +1254,7 @@ function EnrollContent() {
 
                 {/* ==================== NEW: Coupon/Referral Section ==================== */}
                 <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-3">
-                  <label className="block text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-1.5">
                     <Ticket className="w-4 h-4 text-pink-500" />
                     Have a coupon or referral code?
                   </label>

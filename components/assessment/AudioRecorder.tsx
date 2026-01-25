@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Play, Pause, Trash2, RotateCcw } from 'lucide-react';
+import { Mic, Square, Play, Pause, Trash2, RotateCcw, Lightbulb } from 'lucide-react';
 
 interface AudioRecorderProps {
   onRecordingComplete: (blob: Blob | null) => void;
@@ -247,7 +247,10 @@ export function AudioRecorder({
           {/* Recording tips */}
           {!isRecording && (
             <div className="text-sm text-gray-500 text-center max-w-md">
-              <p>💡 Tips for a good recording:</p>
+              <p className="flex items-center justify-center gap-2">
+                <Lightbulb className="w-4 h-4 text-amber-500" />
+                <span>Tips for a good recording:</span>
+              </p>
               <ul className="mt-2 text-left list-disc list-inside">
                 <li>Find a quiet space</li>
                 <li>Hold the device steady</li>

@@ -817,7 +817,7 @@ https://yestoryd.com/lets-talk
                 {/* Google Sign-In */}
                 {authLoading ? (
                   <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+                    <Loader2 className="w-6 h-6 animate-spin text-[#FF0099]" />
                   </div>
                 ) : user ? (
                   <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
@@ -1403,7 +1403,7 @@ export default function AssessmentPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#FF0099]"></div>
       </div>
     }>
       <AssessmentPageContent />
