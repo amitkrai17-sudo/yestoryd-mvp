@@ -200,7 +200,7 @@ export default function ParentProgressPage() {
             href="/assessment"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#7b008b] text-white rounded-xl font-semibold hover:bg-[#6a0078] transition-all"
           >
-            Take Free Assessment
+            Reading Test - Free
           </Link>
         </div>
       </ParentLayout>

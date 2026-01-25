@@ -31,7 +31,7 @@ interface NinetyDayPromiseProps {
 
 export default function NinetyDayPromise({
   ctaHref = '/assessment',
-  ctaText = 'Start Free Assessment',
+  ctaText = 'Reading Test - Free',
   variant = 'default',
 }: NinetyDayPromiseProps) {
   if (variant === 'compact') {

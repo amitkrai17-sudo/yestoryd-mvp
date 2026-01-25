@@ -24,7 +24,7 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
 
   const coachNavLinks = [
     { href: `/${coachSubdomain}`, label: 'Home' },
-    { href: `/${coachSubdomain}/assessment`, label: 'Take Assessment' },
+    { href: `/${coachSubdomain}/assessment`, label: 'Reading Test - Free' },
     { href: `/${coachSubdomain}/book`, label: 'Book Session' },
   ];
 
@@ -73,14 +73,14 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
             {variant === 'coach' ? (
               <Link href={`/${coachSubdomain}/assessment`}>
                 <Button className="bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl px-6">
-                  Take Free Assessment
+                  Reading Test - Free
                 </Button>
               </Link>
             ) : (
               <>
                 <Link href="/assessment">
                   <Button variant="outline" className="border-2 border-gray-700 text-white hover:bg-gray-800 rounded-xl px-6">
-                    Free Assessment
+                    Reading Test - Free
                   </Button>
                 </Link>
                 <Link href="/partner">
@@ -123,14 +123,14 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
                 {variant === 'coach' ? (
                   <Link href={`/${coachSubdomain}/assessment`}>
                     <Button className="w-full bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl">
-                      Take Free Assessment
+                      Reading Test - Free
                     </Button>
                   </Link>
                 ) : (
                   <>
                     <Link href="/assessment">
                       <Button variant="outline" className="w-full border-2 border-gray-700 text-white rounded-xl">
-                        Free Assessment
+                        Reading Test - Free
                       </Button>
                     </Link>
                     <Link href="/partner">

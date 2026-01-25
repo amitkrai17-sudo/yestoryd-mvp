@@ -33,7 +33,7 @@ export default function NotFound() {
             href="/assessment"
             className="block w-full bg-white text-purple-600 font-medium py-3 px-6 rounded-xl border-2 border-purple-200 hover:border-purple-400 transition-colors"
           >
-            Take Free Assessment
+            Reading Test - Free
           </Link>
         </div>
 

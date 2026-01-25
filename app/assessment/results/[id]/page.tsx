@@ -207,7 +207,7 @@ _Assessed by rAI | yestoryd.com_`);
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <p className="text-gray-800 text-lg mb-2">Something went wrong</p>
         <p className="text-gray-500 mb-4">{error}</p>
-        <Link href="/assessment"><button className="px-6 py-3 bg-[#ff0099] text-white rounded-full font-semibold">Take New Assessment</button></Link>
+        <Link href="/assessment"><button className="px-6 py-3 bg-[#ff0099] text-white rounded-full font-semibold">Reading Test - Free</button></Link>
       </div>
     </div>
   );

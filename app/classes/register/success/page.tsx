@@ -168,7 +168,7 @@ function SuccessContent() {
                   href="/assessment"
                   className="inline-flex items-center gap-2 text-[#ff0099] font-semibold hover:underline"
                 >
-                  Take Free Assessment
+                  Reading Test - Free
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

@@ -103,7 +103,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
               </li>
               <li className="pt-3">
                 <Link href="/assessment" className="text-[#FF2D92] hover:text-[#FF1A85] font-semibold inline-flex items-center gap-2">
-                  Take Free Assessment →
+                  Reading Test - Free
                 </Link>
               </li>
             </ul>

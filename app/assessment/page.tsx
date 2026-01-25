@@ -991,7 +991,7 @@ https://yestoryd.com/lets-talk
                   style={{ background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` }}
                 >
                   <BookOpen className="w-5 h-5" />
-                  Start Free Assessment
+                  Reading Test - Free
                 </button>
 
                 <p className="text-center text-gray-400 text-xs flex items-center justify-center gap-1.5">

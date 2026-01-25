@@ -404,7 +404,7 @@ function EmptyState({ selectedType, onClearFilter }: { selectedType: string | nu
           className="px-8 py-4 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-bold hover:shadow-lg hover:shadow-pink-300/50 transition-all flex items-center justify-center gap-2"
         >
           <Play className="w-5 h-5" />
-          Take Free Assessment
+          Reading Test - Free
         </Link>
         {selectedType && (
           <button 

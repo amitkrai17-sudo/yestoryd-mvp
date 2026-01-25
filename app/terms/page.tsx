@@ -38,7 +38,7 @@ export default function TermsOfServicePage() {
               <Link href="/#pricing" className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors">Pricing</Link>
               <div className="h-6 w-px bg-gray-200 mx-2"></div>
               <Link href="/assessment" className="h-11 inline-flex items-center justify-center gap-2 bg-[#e6008a] text-white px-6 rounded-full font-bold hover:bg-[#d10080] hover:shadow-lg hover:shadow-[#ff0099]/20 hover:-translate-y-0.5 transition-all duration-200 text-sm">
-                Free Assessment
+                Reading Test - Free
               </Link>
             </nav>
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-gray-900">
@@ -52,7 +52,7 @@ export default function TermsOfServicePage() {
               <Link href="/#how-it-works" className="text-gray-600 hover:text-gray-900 font-medium">How It Works</Link>
               <Link href="/#rucha-story" className="text-gray-600 hover:text-gray-900 font-medium">Our Story</Link>
               <Link href="/#pricing" className="text-gray-600 hover:text-gray-900 font-medium">Pricing</Link>
-              <Link href="/assessment" className="bg-[#e6008a] text-white px-6 py-3 rounded-full font-bold text-center">Free Assessment</Link>
+              <Link href="/assessment" className="bg-[#e6008a] text-white px-6 py-3 rounded-full font-bold text-center">Reading Test - Free</Link>
             </nav>
           </div>
         )}
@@ -276,7 +276,7 @@ export default function TermsOfServicePage() {
             <div>
               <h4 className="font-bold text-sm mb-4 text-gray-300">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li><Link href="/assessment" className="hover:text-[#ff0099] transition-colors">Free Assessment</Link></li>
+                <li><Link href="/assessment" className="hover:text-[#ff0099] transition-colors">Reading Test - Free</Link></li>
                 <li><Link href="/#how-it-works" className="hover:text-[#ff0099] transition-colors">How It Works</Link></li>
                 <li><Link href="/#pricing" className="hover:text-[#ff0099] transition-colors">Pricing</Link></li>
                 <li><Link href="/lets-talk" className="hover:text-[#ff0099] transition-colors">Talk to Us</Link></li>

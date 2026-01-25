@@ -124,7 +124,7 @@ export default async function CoachPage({ params }: Props) {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                   <Link href="/assessment">
                     <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8">
-                      Take Free Assessment
+                      Reading Test - Free
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </Link>
@@ -212,7 +212,7 @@ export default async function CoachPage({ params }: Props) {
                 <div className="mt-8 text-center">
                   <Link href="/assessment">
                     <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-10">
-                      Start with Free Assessment
+                      Reading Test - Free
                     </Button>
                   </Link>
                   <p className="text-sm text-gray-500 mt-3">
@@ -264,7 +264,7 @@ export default async function CoachPage({ params }: Props) {
             </p>
             <Link href="/assessment">
               <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 rounded-full px-10">
-                Take Free Assessment
+                Reading Test - Free
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>

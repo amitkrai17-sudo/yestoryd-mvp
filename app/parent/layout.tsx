@@ -450,7 +450,7 @@ export default function ParentLayout({
               href="/assessment"
               className="block w-full py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-medium hover:opacity-90 transition-opacity min-h-[48px] flex items-center justify-center"
             >
-              Take Free Assessment
+              Reading Test - Free
             </Link>
           </div>
         </div>

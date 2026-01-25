@@ -680,7 +680,7 @@ export default function ParentLoginPage() {
               href="/assessment"
               className="w-full py-3.5 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              Free Assessment
+              Reading Test - Free
               <Image
                 src="/images/rai-mascot.png"
                 alt="rAI"

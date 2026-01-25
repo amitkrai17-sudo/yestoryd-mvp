@@ -425,7 +425,7 @@ export default function ParentDashboardPage() {
             href="/assessment"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all min-h-[48px]"
           >
-            Take Free Assessment
+            Reading Test - Free
             <ChevronRight className="w-5 h-5" />
           </a>
         </div>
