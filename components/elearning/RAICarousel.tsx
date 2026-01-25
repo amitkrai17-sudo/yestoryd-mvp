@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Play, Lock, CheckCircle, Clock, Trophy, Zap,
   ChevronLeft, ChevronRight, Mic, Gamepad2, Sparkles,
-  RefreshCw, MessageCircle, Brain
+  RefreshCw, MessageCircle, Brain, Sun, Sunrise, Moon
 } from 'lucide-react';
 
 // Types matching API response
@@ -157,6 +157,7 @@ export default function RAICarousel({
 
   const firstName = childName.split(' ')[0];
   const greeting = getGreeting();
+  const GreetingIcon = getGreetingIcon();
 
   return (
     <div className="space-y-3 md:space-y-4">
@@ -164,8 +165,9 @@ export default function RAICarousel({
       <div className="bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 rounded-xl md:rounded-2xl p-4 md:p-5 border border-[#7b008b]/20">
         <div className="flex items-start justify-between mb-3 md:mb-4">
           <div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">
-              👋 {greeting}, {firstName}!
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
+              <GreetingIcon className="w-5 h-5 md:w-6 md:h-6" />
+              {greeting}, {firstName}!
             </h2>
             <p className="text-gray-600 mt-1 text-xs md:text-sm flex items-center gap-1">
               <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-[#7b008b]" />
@@ -414,4 +416,11 @@ function getGreeting(): string {
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
+}
+
+function getGreetingIcon() {
+  const hour = new Date().getHours();
+  if (hour < 12) return Sunrise;
+  if (hour < 17) return Sun;
+  return Moon;
 }

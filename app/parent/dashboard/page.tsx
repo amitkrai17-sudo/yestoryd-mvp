@@ -732,7 +732,7 @@ function OverviewTab({
           <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center mb-3">
             <Target className="w-5 h-5 text-[#FF0099]" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{getProgressPercentage()}%</p>
+          <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
           <p className="text-sm text-gray-500 mt-1">Progress</p>
           <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
@@ -747,7 +747,7 @@ function OverviewTab({
           <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-3">
             <CheckCircle className="w-5 h-5 text-green-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-2xl font-bold text-gray-900">
             {completedSessions}/{enrollment?.sessions_purchased || totalSessions}
           </p>
           <p className="text-sm text-gray-500 mt-1">Sessions</p>
@@ -758,7 +758,7 @@ function OverviewTab({
           <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
             <TrendingUp className="w-5 h-5 text-blue-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{latestScore ?? '--'}/10</p>
+          <p className="text-2xl font-bold text-gray-900">{latestScore ?? '--'}/10</p>
           <p className="text-sm text-gray-500 mt-1">Latest Score</p>
         </div>
 
@@ -767,7 +767,7 @@ function OverviewTab({
           <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
             <Clock className="w-5 h-5 text-amber-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{getDaysRemaining()}</p>
+          <p className="text-2xl font-bold text-gray-900">{getDaysRemaining()}</p>
           <p className="text-sm text-gray-500 mt-1">Days Left</p>
         </div>
       </div>
