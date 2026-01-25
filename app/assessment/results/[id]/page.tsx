@@ -158,9 +158,37 @@ export default function ResultsPage() {
 
   const getWhatsAppMessage = useCallback(() => {
     if (!data) return '';
-    const msg = getScoreMessage(data.overall_score, data.childName, data.childAge);
-    return encodeURIComponent(`🎉 *${data.childName}'s Reading Assessment*\n\n⭐ *${msg.headline}*\n${msg.subheadline}\n\n📊 Score: ${data.overall_score}/10\n⚡ Speed: ${data.wpm} WPM\n\n💡 ${msg.encouragement}\n\n🚀 Get FREE Assessment: https://yestoryd.com/assessment`);
-  }, [data]);
+
+    // Extract top 3 errors (if available)
+    const topErrors = data.errors?.slice(0, 3) || [];
+    const errorsText = topErrors.length > 0
+      ? `\n*Words to practice:* ${topErrors.join(', ')}`
+      : '';
+
+    // Extract key strength (if available)
+    const strength = data.strengths?.[0] || '';
+    const strengthText = strength
+      ? `\n*Strength:* ${strength}`
+      : '';
+
+    // Build the share message with link to results page
+    const reportLink = `https://yestoryd.com/assessment/results/${childId}`;
+
+    return encodeURIComponent(`📊 *${data.childName}'s Reading Assessment Results*
+
+*Scores:*
+Overall: ${data.overall_score}/10 | Clarity: ${data.clarity_score}/10
+Fluency: ${data.fluency_score}/10 | Speed: ${data.speed_score}/10
+
+*Key Observations:*${errorsText}${strengthText}
+
+*What's Next?*
+View the full report and book a FREE 15-min call with our reading coach.
+
+👉 ${reportLink}
+
+_Assessed by rAI | yestoryd.com_`);
+  }, [data, childId]);
 
   const shareOnWhatsApp = () => window.open(`https://wa.me/?text=${getWhatsAppMessage()}`, '_blank');
 
@@ -485,8 +513,27 @@ export default function ResultsPage() {
           </div>
         )}
 
+        {/* Let's Talk CTA Section */}
+        <div className="mt-6 p-5 bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 rounded-2xl border border-[#ff0099]/20 print:hidden">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Want to improve {data.childName}&apos;s reading?
+            </h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Book a FREE 15-minute call with our reading coach to discuss these results and create a personalized improvement plan.
+            </p>
+            <Link
+              href={`/lets-talk?childId=${childId}&childName=${encodeURIComponent(data.childName)}&score=${data.overall_score}&source=results_cta`}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#ff0099] hover:bg-[#ff0099]/90 text-white font-semibold rounded-xl transition-colors"
+            >
+              <Calendar className="w-5 h-5" />
+              Book FREE Call
+            </Link>
+          </div>
+        </div>
+
         {/* WhatsApp Share */}
-        <button onClick={shareOnWhatsApp} className="w-full mt-6 py-3 bg-green-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 print:hidden">
+        <button onClick={shareOnWhatsApp} className="w-full mt-4 py-3 bg-green-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 print:hidden">
           <MessageCircle className="w-5 h-5" /> Share Results on WhatsApp
         </button>
 

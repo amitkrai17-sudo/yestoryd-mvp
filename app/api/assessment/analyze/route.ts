@@ -121,29 +121,33 @@ function maskEmail(email: string): string {
   return local.slice(0, 2) + '***@' + domain;
 }
 
-function getStrictnessForAge(age: number) {
+function getStrictnessForAge(age: number): { level: string; guidance: string; minScore: number; minCompleteness: number } {
   if (age <= 5) {
     return {
-      level: "ENCOURAGING",
-      guidance: "Be warm and encouraging. Focus on effort over perfection. Allow developmental speech patterns. Minimum score 5 if 60%+ completed.",
+      level: 'FOUNDATIONAL',
+      guidance: `Assessment context: ${age}-year-old (early reader). Expected skills: letter recognition, simple CVC words, basic sight words. Benchmark: Reading 60%+ of age-appropriate passage with support is typical.`,
+      minScore: 3,
       minCompleteness: 60
     };
   } else if (age <= 8) {
     return {
-      level: "BALANCED",
-      guidance: "Balance encouragement with constructive feedback. Allow age-appropriate pauses. Minimum score 5 if 70%+ completed.",
+      level: 'DEVELOPING',
+      guidance: `Assessment context: ${age}-year-old (developing reader). Expected skills: Blending sounds, common sight words, simple sentences. Benchmark: Reading 70%+ of passage with developing fluency is typical.`,
+      minScore: 4,
       minCompleteness: 70
     };
   } else if (age <= 11) {
     return {
-      level: "MODERATELY STRICT",
-      guidance: "Expect good fluency and clear pronunciation. Be fair but firm. Minimum score 6 if 75%+ completed.",
+      level: 'INTERMEDIATE',
+      guidance: `Assessment context: ${age}-year-old (intermediate reader). Expected skills: Multi-syllable words, expression, self-correction. Benchmark: Reading 75%+ of passage with reasonable fluency is expected.`,
+      minScore: 4,
       minCompleteness: 75
     };
   } else {
     return {
-      level: "STRICT",
-      guidance: "Expect excellent fluency, expression, and accuracy. High scores (8+) reserved for exceptional reading. Maximum score 4 for incomplete passages.",
+      level: 'ADVANCED',
+      guidance: `Assessment context: ${age}-year-old (advancing reader). Expected skills: Complex vocabulary, expression, comprehension. Benchmark: Reading 80%+ of passage fluently is expected.`,
+      minScore: 4,
       minCompleteness: 80
     };
   }
@@ -333,50 +337,61 @@ export async function POST(request: NextRequest) {
       phone: maskPhone(parentPhone || undefined),
     }));
 
-    // 5. Build AI prompt
+    // 5. Build AI prompt (Accuracy-focused v3.0)
     const analysisPrompt = `
-Role: Expert Phonics & Reading Specialist with deep knowledge of systematic phonics instruction.
-Task: Analyze audio of a ${age}-year-old child named "${name}" reading the passage below.
+You are a reading assessment specialist. Your task is to ACCURATELY analyze a ${age}-year-old child named ${name} reading aloud.
 
-IMPORTANT: The child's name is "${name}". You MUST use exactly "${name}" (not any other name) in your feedback.
-
-PASSAGE CONTEXT:
+PASSAGE THE CHILD WAS ASKED TO READ:
 "${passage}"
-(Word Count: ${wordCount} words)
+(Word count: ${wordCount} words)
 
-CRITICAL SCORING RULES:
-1. COMPLETENESS CHECK: If the child reads less than ${strictness.minCompleteness}% of the text, ALL scores MUST be 4 or lower.
-2. EVIDENCE REQUIRED: Do not be generic. You must quote specific misread words heard in the audio.
-3. STRICTNESS LEVEL: ${strictness.level}
-   ${strictness.guidance}
-4. NAME REQUIREMENT: Always refer to the child as "${name}" - never use any other name.
+PRIMARY OBJECTIVE: ACCURACY
+Your analysis must be precise. Parents rely on this assessment to understand their child's actual reading level. Do not inflate or deflate scores - report what you observe.
 
-Generate a JSON response with this EXACT structure:
+LISTEN CAREFULLY FOR:
+1. Which specific words were read correctly
+2. Which specific words were mispronounced (note exactly how they were said)
+3. Which words were skipped entirely
+4. Which words were substituted with other words
+5. Any self-corrections the child made
+
+AGE CONTEXT:
+${strictness.guidance}
+
+SCORING SCALE (1-10):
+- 9-10: Reads fluently with minimal errors, appropriate for age or above
+- 7-8: Reads well with occasional errors, meeting age expectations
+- 5-6: Developing reader, noticeable errors but shows understanding
+- 3-4: Struggling reader, frequent errors, needs significant support
+- 1-2: Early emergent reader, unable to decode most words
+
+Score based on ACTUAL PERFORMANCE, not effort or age alone.
+
+RESPONSE FORMAT - Provide ONLY valid JSON:
 {
-    "clarity_score": (integer 1-10, pronunciation clarity),
-    "fluency_score": (integer 1-10, reading flow and smoothness),
-    "speed_score": (integer 1-10, appropriate pace for age),
-    "wpm": (integer, words per minute),
-    "completeness_percentage": (integer 0-100),
-    
+    "clarity_score": <integer 1-10, how clearly words were pronounced>,
+    "fluency_score": <integer 1-10, smoothness of reading>,
+    "speed_score": <integer 1-10, appropriate pace for age>,
+    "wpm": <integer, actual words per minute calculated from audio>,
+    "completeness_percentage": <integer 0-100, portion of passage actually read>,
+
     "error_classification": {
         "substitutions": [{"original": "actual_word", "read_as": "what_child_said"}],
-        "omissions": ["list of skipped words"],
-        "insertions": ["list of added words not in passage"],
+        "omissions": ["words skipped entirely"],
+        "insertions": ["words added that were not in passage"],
         "reversals": [{"original": "was", "read_as": "saw"}],
-        "mispronunciations": [{"word": "word", "issue": "specific description of how it was mispronounced"}]
+        "mispronunciations": [{"word": "word", "issue": "read as 'wurd'"}]
     },
-    
+
     "phonics_analysis": {
-        "struggling_phonemes": ["list specific phonemes the child struggles with"],
+        "struggling_phonemes": ["specific phonemes: th, ch, silent e, long vowels"],
         "phoneme_details": [
-            {"phoneme": "th", "examples": ["the->da", "this->dis"], "frequency": "frequent"},
-            {"phoneme": "soft_g", "examples": ["giant->gant"], "frequency": "occasional"}
+            {"phoneme": "th", "examples": ["the->da", "this->dis"], "frequency": "frequent"}
         ],
-        "strong_phonemes": ["list phonemes the child pronounces well"],
+        "strong_phonemes": ["phonemes handled well"],
         "recommended_focus": "Primary phonics area to practice with specific examples"
     },
-    
+
     "skill_breakdown": {
         "decoding": {"score": 1-10, "notes": "ability to sound out unfamiliar words"},
         "sight_words": {"score": 1-10, "notes": "recognition of common high-frequency words"},
@@ -385,28 +400,36 @@ Generate a JSON response with this EXACT structure:
         "expression": {"score": 1-10, "notes": "reading with appropriate intonation"},
         "comprehension_indicators": {"score": 1-10, "notes": "pausing at punctuation, emphasis on key words"}
     },
-    
+
     "practice_recommendations": {
-        "daily_words": ["5 specific words from the passage to practice daily"],
-        "phonics_focus": "Specific phoneme pattern to work on with examples",
-        "suggested_activity": "One specific activity for home practice"
+        "daily_words": ["5 specific words from errors to practice daily"],
+        "phonics_focus": "Primary skill needing work with examples",
+        "suggested_activity": "One specific practice activity for home"
     },
-    
-    "feedback": "100-120 words, 5 sentences. MUST use name '${name}'. Include specific phonics observations and quote actual errors heard.",
-    
-    "errors": ["simple list of all error words for quick reference"],
+
+    "feedback": "4 sentences following structure below",
+
+    "errors": ["PRECISE list: read 'house' as 'horse', skipped 'the', struggled with 'through'"],
     "strengths": ["2-3 specific things done well with evidence"],
     "areas_to_improve": ["2-3 specific areas with actionable advice"]
 }
 
-SCORING CONSISTENCY RULES:
-- If completeness_percentage < ${strictness.minCompleteness}%, ALL scores must be 4 or lower
-- If completeness_percentage < 50%, ALL scores must be 2 or lower
-- Speed score should reflect WPM for age ${age}: <30 WPM = 1-3, 30-60 WPM = 4-6, 60-100 WPM = 7-8, >100 WPM = 9-10
-- Be realistic: a choppy reader with many errors should NOT get 7+ in fluency
-- Skill scores should be consistent with overall performance
+FEEDBACK STRUCTURE (4 sentences, factual tone):
+- Sentence 1: State what ${name} accomplished factually (e.g., "${name} read 75% of the passage at a steady pace.")
+- Sentence 2: Note specific observations with examples (e.g., "Words with 'th' sounds like 'through' and 'the' were challenging.")
+- Sentence 3: Provide one clear, actionable recommendation (e.g., "Practice 'th' words daily: the, this, that, through, three.")
+- Sentence 4: State the path forward neutrally (e.g., "Consistent practice with these sounds will build reading accuracy.")
 
-Respond ONLY with valid JSON. No additional text.`;
+CRITICAL ACCURACY RULES:
+1. QUOTE EXACT WORDS - If the child said "hospe" instead of "hospital", write exactly that
+2. DO NOT GUESS - If audio is unclear, note "unclear pronunciation of [word]"
+3. COUNT ACCURATELY - Completeness % must reflect actual words read vs total words
+4. BE SPECIFIC - Never say "some words were mispronounced" - list which ones
+5. USE THE NAME "${name}" - Never use "the child" or "the reader"
+
+If the passage was incomplete, state it factually: "${name} read X out of ${wordCount} words (Y%)."
+
+Respond ONLY with valid JSON. No markdown, no explanation.`;
 
     // 6. Call Gemini AI
     const genAI = getGenAI();
@@ -676,6 +699,43 @@ Respond ONLY with valid JSON. No additional text.`;
           }).catch(err => {
             console.error(JSON.stringify({ requestId, event: 'admin_alert_import_failed', error: err.message }));
           });
+
+          // ═══════════════════════════════════════════════════════════════════════════
+          // PARENT WHATSAPP - Assessment Results with Let's Talk CTA (fire-and-forget)
+          // Template: assessment_results_v2 (pending Meta approval)
+          // Variables: parent_name, child_name, overall_score, clarity_score,
+          //            fluency_score, speed_score, booking_link
+          // ═══════════════════════════════════════════════════════════════════════════
+          const bookingLink = `https://yestoryd.com/lets-talk?childId=${childId}&childName=${encodeURIComponent(name)}&source=assessment_whatsapp`;
+
+          import('@/lib/communication/aisensy').then(({ sendWhatsAppMessage }) => {
+            console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_triggering' }));
+
+            sendWhatsAppMessage({
+              to: parentPhone,
+              templateName: 'assessment_results_v2',
+              variables: [
+                parentName || 'Parent',       // {{1}} parent_name
+                name,                          // {{2}} child_name
+                String(overallScore),          // {{3}} overall_score
+                String(clarityScore),          // {{4}} clarity_score
+                String(fluencyScore),          // {{5}} fluency_score
+                String(speedScore),            // {{6}} speed_score
+                bookingLink,                   // {{7}} booking_link (CTA URL)
+              ],
+            }).then(result => {
+              if (result.success) {
+                console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_sent', childId, messageId: result.messageId }));
+              } else {
+                console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_failed', childId, error: result.error }));
+              }
+            }).catch(err => {
+              console.error(JSON.stringify({ requestId, event: 'parent_whatsapp_error', childId, error: err.message }));
+            });
+          }).catch(err => {
+            console.error(JSON.stringify({ requestId, event: 'parent_whatsapp_import_failed', error: err.message }));
+          });
+
         } else {
           console.log(JSON.stringify({ requestId, event: 'admin_alert_skipped', reason: 'no_parent_phone' }));
         }

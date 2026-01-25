@@ -50,21 +50,51 @@ export function AudioRecorder({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Get supported audio mimeType with fallbacks for cross-browser compatibility
+  const getSupportedMimeType = (): string => {
+    const types = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+    ];
+
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return ''; // Browser default
+  };
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           sampleRate: 44100,
-        } 
+        }
       });
-      
+
       streamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      });
-      
+
+      // Configure MediaRecorder with explicit bitrate for reliable Gemini analysis
+      const mimeType = getSupportedMimeType();
+      const options: MediaRecorderOptions = {
+        audioBitsPerSecond: 128000, // 128kbps for reliable transcription
+      };
+
+      if (mimeType) {
+        options.mimeType = mimeType;
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, options);
+
+      // Log settings for debugging
+      console.log('[AudioRecorder] Using mimeType:', mediaRecorder.mimeType);
+      console.log('[AudioRecorder] audioBitsPerSecond:', 128000);
+
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -75,7 +105,9 @@ export function AudioRecorder({
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        // Use the actual mimeType from the recorder for the blob
+        const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: actualMimeType });
         const url = URL.createObjectURL(blob);
         setAudioURL(url);
         onRecordingComplete(blob);
