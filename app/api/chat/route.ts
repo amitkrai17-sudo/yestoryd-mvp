@@ -524,7 +524,7 @@ async function handleLearning(
 
   // Generate AI response
   const genAI = getGenAI();
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
   const conversationContext = chatHistory?.slice(-6).map(msg =>
     `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`

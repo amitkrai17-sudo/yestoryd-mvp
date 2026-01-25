@@ -25,13 +25,13 @@ interface AIProviderConfig {
 const AI_PROVIDERS: AIProviderConfig[] = [
   {
     name: 'gemini-flash-lite',
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     apiKey: process.env.GEMINI_API_KEY,
     enabled: true,
   },
   {
     name: 'gemini-flash',
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     apiKey: process.env.GEMINI_API_KEY,
     enabled: true,
   },

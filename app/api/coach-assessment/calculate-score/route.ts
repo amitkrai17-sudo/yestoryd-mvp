@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
           const audioBase64 = Buffer.from(audioBuffer).toString('base64');
           const contentType = audioResponse.headers.get('content-type') || 'audio/webm';
           
-          const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
           
           const voicePrompt = `You are evaluating a voice statement from someone applying to be a children's reading coach at Yestoryd.
 
@@ -244,7 +244,7 @@ Return ONLY valid JSON (no markdown, no explanation):
 
           console.log('💬 Conversation length:', conversationText.length, 'chars');
 
-          const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
           
           const chatPrompt = `You are evaluating a coaching applicant's responses. They want to become a children's reading coach at Yestoryd.
 
@@ -379,7 +379,7 @@ Return ONLY this JSON structure (no other text):
         combinedScore,
         isQualified,
         calculatedAt: new Date().toISOString(),
-        model: 'gemini-2.0-flash-exp'
+        model: 'gemini-2.5-flash'
       },
       updated_at: new Date().toISOString()
     };

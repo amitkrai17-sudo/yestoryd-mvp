@@ -451,7 +451,7 @@ async function generateGeminiFeedback(data: {
   recommendation: string;
 }> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const prompt = `You are a reading coach writing a certificate feedback for a child who completed a 3-month reading program.
 

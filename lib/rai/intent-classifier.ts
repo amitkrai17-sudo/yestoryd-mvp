@@ -114,7 +114,7 @@ export async function tier1Classifier(
   userRole: UserRole
 ): Promise<IntentClassification> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     
     const prompt = INTENT_CLASSIFICATION_PROMPT
       .replace('{role}', userRole)

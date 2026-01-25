@@ -346,7 +346,7 @@ async function getGeminiRecommendations(
   quizPendingCount: number
 ): Promise<{ videoIds: string[]; focusArea: string; focusReason: string } | null> {
   
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
   // Determine focus area from sessions
   const focusFromSession = sessions[0]?.focusArea?.toLowerCase() || '';

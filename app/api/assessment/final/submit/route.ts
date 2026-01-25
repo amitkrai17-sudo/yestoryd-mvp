@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze with Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const analysisPrompt = `You are an expert reading assessment specialist. Analyze this audio recording of a child reading.
 

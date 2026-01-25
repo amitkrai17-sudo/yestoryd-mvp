@@ -30,7 +30,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 // Generate AI summary for the event
 async function generateAISummary(eventType: EventType, data: Record<string, any>): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     let prompt = '';
     switch (eventType) {
