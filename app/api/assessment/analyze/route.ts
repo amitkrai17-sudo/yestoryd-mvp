@@ -333,6 +333,7 @@ export async function POST(request: NextRequest) {
       event: 'assessment_started',
       childAge: age,
       passageWords: wordCount,
+      passagePreview: passage.substring(0, 80) + '...',
       email: maskEmail(parentEmail),
       phone: maskPhone(parentPhone || undefined),
     }));
