@@ -268,7 +268,7 @@ export default function ParentSessionsPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filteredSessions().map((session, index) => {
             const upcoming = isUpcoming(session);
             const canJoin = canJoinSession(session);
@@ -277,93 +277,99 @@ export default function ParentSessionsPage() {
             return (
               <div
                 key={session.id}
-                className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
+                className={`bg-white rounded-xl border shadow-sm transition-all ${
                   isSkillBooster
-                    ? 'border-yellow-400/50 ring-1 ring-yellow-400/20'
-                    : upcoming
-                      ? 'border-[#7b008b]/30'
-                      : 'border-gray-100'
+                    ? 'border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50'
+                    : session.status === 'completed'
+                      ? 'border-gray-100'
+                      : upcoming && index === 0
+                        ? 'border-[#FF0099]/40 ring-1 ring-[#FF0099]/20'
+                        : 'border-gray-100'
                 }`}
               >
-                <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                <div className="p-4 flex items-center gap-4">
+                  {/* Left: Status Icon */}
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${
                     session.status === 'completed'
                       ? 'bg-green-100'
-                      : isSkillBooster
-                        ? 'bg-gradient-to-br from-yellow-100 to-orange-100'
-                        : upcoming
-                          ? 'bg-gradient-to-br from-[#7b008b]/10 to-[#ff0099]/10'
-                          : 'bg-gray-100'
+                      : session.status === 'cancelled'
+                        ? 'bg-red-100'
+                        : isSkillBooster
+                          ? 'bg-amber-200'
+                          : upcoming
+                            ? 'bg-[#FF0099]/10'
+                            : 'bg-gray-100'
                   }`}>
                     {session.status === 'completed' ? (
-                      <Check className="w-7 h-7 text-green-600" />
+                      <Check className="w-5 h-5 text-green-600" />
+                    ) : session.status === 'cancelled' ? (
+                      <X className="w-5 h-5 text-red-600" />
                     ) : isSkillBooster ? (
-                      <Zap className="w-7 h-7 text-yellow-600" />
+                      <Zap className="w-5 h-5 text-amber-700" />
                     ) : (
-                      <span className={`text-xl font-bold ${upcoming ? 'text-[#7b008b]' : 'text-gray-400'}`}>
+                      <span className={`text-sm font-bold ${upcoming ? 'text-[#FF0099]' : 'text-gray-400'}`}>
                         {session.session_number}
                       </span>
                     )}
                   </div>
 
+                  {/* Middle: Session Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-gray-800">
+                      <span className="font-semibold text-gray-900 truncate">
                         {getSessionTitle(session)}
-                      </h3>
+                      </span>
                       {isSkillBooster && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                          <Zap className="w-3 h-3" />
+                        <span className="px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full text-xs font-medium">
                           Bonus
                         </span>
                       )}
-                      {getStatusBadge(session.status)}
-                    </div>
-                    {isSkillBooster && session.focus_area && (
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Focus: {session.focus_area.replace(/_/g, ' ')}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(session.scheduled_date)}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
+                        session.status === 'completed' ? 'bg-green-100 text-green-700' :
+                        session.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                        session.status === 'rescheduled' ? 'bg-amber-100 text-amber-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {session.status === 'completed' ? 'Done' :
+                         session.status === 'cancelled' ? 'Cancelled' :
+                         session.status === 'rescheduled' ? 'Rescheduled' :
+                         'Upcoming'}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {formatTime(session.scheduled_time)}
-                      </span>
-                      <span>{session.duration_minutes || 45} min</span>
                     </div>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {formatDate(session.scheduled_date)} · {formatTime(session.scheduled_time)} · {session.duration_minutes || 45} min
+                      {isSkillBooster && session.focus_area && ` · ${session.focus_area.replace(/_/g, ' ')}`}
+                    </p>
                   </div>
 
+                  {/* Right: Action */}
                   {session.google_meet_link && session.status !== 'cancelled' && session.status !== 'completed' && (
                     <a
                       href={session.google_meet_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium transition-all min-h-[40px] flex-shrink-0 ${
                         canJoin
-                          ? 'bg-[#7b008b] text-white hover:bg-[#6a0078] shadow-lg shadow-[#7b008b]/30'
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          ? 'bg-[#FF0099] text-white hover:bg-[#CC007A] shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
-                      <Video className="w-5 h-5" />
-                      {canJoin ? 'Join Now' : 'Join'}
-                      <ExternalLink className="w-4 h-4" />
+                      <Video className="w-4 h-4" />
+                      <span className="text-sm">{canJoin ? 'Join Now' : 'Join'}</span>
                     </a>
                   )}
                 </div>
 
+                {/* Next Session Highlight */}
                 {upcoming && index === 0 && session.status === 'scheduled' && (
-                  <div className={`px-5 py-3 border-t ${
+                  <div className={`px-4 py-2.5 border-t ${
                     isSkillBooster
-                      ? 'bg-yellow-50 border-yellow-200'
-                      : 'bg-[#7b008b]/5 border-[#7b008b]/10'
+                      ? 'bg-amber-100/50 border-amber-200'
+                      : 'bg-[#FF0099]/5 border-[#FF0099]/10'
                   }`}>
-                    <p className={`text-sm flex items-center gap-2 ${isSkillBooster ? 'text-yellow-700' : 'text-[#7b008b]'}`}>
+                    <p className={`text-sm flex items-center gap-2 ${isSkillBooster ? 'text-amber-700' : 'text-[#FF0099]'}`}>
                       <Sparkles className="w-4 h-4 flex-shrink-0" />
-                      <span><strong>Next session!</strong> Join link will activate 10 minutes before the scheduled time.</span>
+                      <span><strong>Next session!</strong> Join link activates 10 min before.</span>
                     </p>
                   </div>
                 )}

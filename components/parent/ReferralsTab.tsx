@@ -255,9 +255,9 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
           <div className="w-12 h-12 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-xl flex items-center justify-center">
             <Gift className="w-6 h-6 text-white" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm text-gray-500">Your Referral Code</p>
-            <p className="text-2xl font-bold text-gray-900">{data.referralCode}</p>
+            <p className="text-lg sm:text-xl font-bold text-gray-900 font-mono tracking-wider break-all">{data.referralCode}</p>
           </div>
         </div>
 
@@ -368,9 +368,10 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
       </div>
 
       {/* Share Prompt */}
-      <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4">
-        <p className="text-sm text-yellow-800">
-          <strong>💡 Tip:</strong> The more you share, the more you earn! 
+      <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 flex items-start gap-3">
+        <Sparkles className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+        <p className="text-base text-yellow-800">
+          <strong>Tip:</strong> The more you share, the more you earn!
           Each successful referral = {formatCredit(config.creditAmount)} credit.
         </p>
       </div>
