@@ -17,6 +17,7 @@ import {
   Loader2,
   BookOpen,
   Users,
+  Sparkles,
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -360,8 +361,9 @@ export default function ParentSessionsPage() {
                       ? 'bg-yellow-50 border-yellow-200'
                       : 'bg-[#7b008b]/5 border-[#7b008b]/10'
                   }`}>
-                    <p className={`text-sm ${isSkillBooster ? 'text-yellow-700' : 'text-[#7b008b]'}`}>
-                      ✨ <strong>Next session!</strong> Join link will activate 10 minutes before the scheduled time.
+                    <p className={`text-sm flex items-center gap-2 ${isSkillBooster ? 'text-yellow-700' : 'text-[#7b008b]'}`}>
+                      <Sparkles className="w-4 h-4 flex-shrink-0" />
+                      <span><strong>Next session!</strong> Join link will activate 10 minutes before the scheduled time.</span>
                     </p>
                   </div>
                 )}

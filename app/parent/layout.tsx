@@ -623,7 +623,7 @@ export default function ParentLayout({
 
         {/* Main Content */}
         <main className="flex-1 lg:ml-[280px] min-h-screen w-full">
-          <div className="pt-4 lg:pt-0 pb-20 lg:pb-0 w-full">
+          <div className="pt-4 lg:pt-0 pb-24 lg:pb-0 w-full">
             {children}
           </div>
         </main>

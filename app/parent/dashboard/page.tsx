@@ -480,49 +480,49 @@ function PendingSkillBoosterCard({
   return (
     <div
       className="bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-50
-                 border-2 border-yellow-400/60 rounded-2xl p-4
+                 border-2 border-yellow-400/60 rounded-2xl p-5
                  shadow-lg shadow-yellow-200/30 w-full"
       role="alert"
       aria-label="Skill Booster session recommended"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {/* Header Row */}
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-4">
           {/* Icon */}
-          <div className="w-11 h-11 sm:w-14 sm:h-14 bg-gradient-to-br from-yellow-400 to-orange-500
+          <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500
                           rounded-xl flex items-center justify-center flex-shrink-0
                           shadow-lg shadow-orange-200/50">
-            <Zap className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+            <Zap className="w-7 h-7 text-white" />
           </div>
 
           {/* Title & Description */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">
+            <h3 className="text-lg font-bold text-gray-900 leading-tight">
               Skill Booster Session
             </h3>
-            <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
-              Coach <span className="font-semibold text-[#7b008b]">{session.coach_name}</span> recommends
+            <p className="text-sm text-gray-600 mt-1">
+              Coach <span className="font-semibold text-[#7B008B]">{session.coach_name}</span> recommends
               extra practice for <span className="font-semibold">{childName}</span>
             </p>
           </div>
         </div>
 
         {/* Focus Area Highlight */}
-        <div className="bg-white/70 rounded-xl p-3 border border-yellow-200">
-          <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide font-medium mb-0.5">Focus Area</p>
-          <p className="text-sm sm:text-lg font-bold text-[#ff0099]">{focusAreaLabel}</p>
+        <div className="bg-white/70 rounded-xl p-4 border border-yellow-200">
+          <p className="text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Focus Area</p>
+          <p className="text-lg font-bold text-[#FF0099]">{focusAreaLabel}</p>
         </div>
 
         {/* Info Badges */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700
-                         rounded-full text-[10px] sm:text-sm font-semibold border border-green-200">
-            <CheckCircle className="w-3 h-3" />
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700
+                         rounded-full text-sm font-semibold border border-green-200">
+            <CheckCircle className="w-4 h-4" />
             FREE - Included
           </span>
           {daysSince > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] sm:text-sm text-gray-500">
-              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
+              <Clock className="w-4 h-4" />
               {daysSince}d ago
             </span>
           )}
@@ -531,15 +531,15 @@ function PendingSkillBoosterCard({
         {/* CTA Button - Full Width */}
         <Link
           href={`/parent/book-skill-booster/${session.id}`}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3
-                   bg-gradient-to-r from-[#ff0099] to-[#7b008b]
+          className="flex items-center justify-center gap-2 w-full px-5 py-3
+                   bg-gradient-to-r from-[#FF0099] to-[#7B008B]
                    text-white font-semibold rounded-xl hover:opacity-90
-                   transition-all shadow-lg shadow-[#ff0099]/30
-                   text-sm min-h-[48px] active:scale-[0.98]"
+                   transition-all shadow-lg shadow-[#FF0099]/30
+                   text-base min-h-[48px] active:scale-[0.98]"
         >
-          <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+          <Calendar className="w-5 h-5" />
           <span>Book Time Slot</span>
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-5 h-5" />
         </Link>
       </div>
     </div>
@@ -657,20 +657,20 @@ function OverviewTab({
     : null;
 
   return (
-    <div className="space-y-4 w-full">
+    <div className="space-y-6 w-full">
       {/* Welcome Banner with Enrollment Type Badge */}
-      <div className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-xl p-4 text-white">
-        <div className="flex items-start justify-between">
+      <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-2xl p-5 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-lg sm:text-2xl font-bold mb-1 flex items-center gap-2">
+            <h1 className="text-xl font-bold flex items-center gap-2">
               Welcome back!
               <Sparkles className="w-5 h-5 text-yellow-300" />
             </h1>
-            <p className="text-pink-100 text-sm">Track {childName}&apos;s reading journey</p>
+            <p className="text-white/80 mt-1">Track {childName}&apos;s reading journey</p>
           </div>
           {enrollment?.enrollment_type && (
-            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${enrollmentTypeInfo.color}`}>
-              <enrollmentTypeInfo.Icon className="w-3 h-3" />
+            <span className={`px-4 py-2 rounded-xl text-sm font-semibold border flex items-center justify-center gap-2 whitespace-nowrap ${enrollmentTypeInfo.color}`}>
+              <enrollmentTypeInfo.Icon className="w-4 h-4 flex-shrink-0" />
               {enrollmentTypeInfo.label}
             </span>
           )}
@@ -679,32 +679,32 @@ function OverviewTab({
 
       {/* STARTER COMPLETION CTA - Show when starter is completed */}
       {isStarterCompleted && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-6 h-6 text-white" />
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-5">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2 text-lg">
                 <Trophy className="w-5 h-5 text-amber-500" />
                 Starter Pack Completed!
               </h3>
-              <p className="text-gray-600 text-sm mb-3">
+              <p className="text-gray-600 text-base mb-4">
                 {childName} has made great progress! Continue the journey with 9 more sessions.
               </p>
               {daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
-                <p className="text-amber-600 text-xs mb-2 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
+                <p className="text-amber-600 text-sm mb-3 flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
                   Special continuation pricing expires in {daysUntilDeadline} day{daysUntilDeadline !== 1 ? 's' : ''}
                 </p>
               )}
               <Link
                 href={`/enroll?product=continuation&childId=${enrollment?.id ? enrollment.id.split('-')[0] : ''}`}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all text-sm"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white rounded-xl font-semibold hover:shadow-lg transition-all text-base min-h-[48px]"
               >
-                <Zap className="w-4 h-4" />
+                <Zap className="w-5 h-5" />
                 Continue Your Journey
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </Link>
             </div>
           </div>
@@ -726,68 +726,64 @@ function OverviewTab({
       )}
 
       {/* Stats Grid - 2x2 on mobile */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-[#7b008b]/10 rounded-lg">
-              <Target className="w-4 h-4 text-[#7b008b]" />
-            </div>
+      <div className="grid grid-cols-2 gap-4">
+        {/* Progress Card */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center mb-3">
+            <Target className="w-5 h-5 text-[#FF0099]" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
-          <p className="text-xs text-gray-500">Progress</p>
-          <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <p className="text-3xl font-bold text-gray-900">{getProgressPercentage()}%</p>
+          <p className="text-sm text-gray-500 mt-1">Progress</p>
+          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-green-100 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-            </div>
+        {/* Sessions Card */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-3">
+            <CheckCircle className="w-5 h-5 text-green-600" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-green-600">
+          <p className="text-3xl font-bold text-gray-900">
             {completedSessions}/{enrollment?.sessions_purchased || totalSessions}
           </p>
-          <p className="text-xs text-gray-500">Sessions</p>
+          <p className="text-sm text-gray-500 mt-1">Sessions</p>
         </div>
 
-        <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-blue-100 rounded-lg">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-            </div>
+        {/* Score Card */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-blue-600">{latestScore ?? '--'}/10</p>
-          <p className="text-xs text-gray-500">Latest Score</p>
+          <p className="text-3xl font-bold text-gray-900">{latestScore ?? '--'}/10</p>
+          <p className="text-sm text-gray-500 mt-1">Latest Score</p>
         </div>
 
-        <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-[#ff0099]/10 rounded-lg">
-              <Clock className="w-4 h-4 text-[#ff0099]" />
-            </div>
+        {/* Days Left Card */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
+            <Clock className="w-5 h-5 text-amber-600" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-[#ff0099]">{getDaysRemaining()}</p>
-          <p className="text-xs text-gray-500">Days Left</p>
+          <p className="text-3xl font-bold text-gray-900">{getDaysRemaining()}</p>
+          <p className="text-sm text-gray-500 mt-1">Days Left</p>
         </div>
       </div>
 
       {/* Sessions & Coach - Stack on mobile */}
       <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
         {/* Upcoming Sessions */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-[#7b008b]" />
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
+              <Calendar className="w-5 h-5 text-[#FF0099]" />
               Upcoming Sessions
             </h2>
             <Link
               href="/parent/sessions"
-              className="text-xs text-[#7b008b] hover:text-[#6a0078] font-medium flex items-center gap-1 min-h-[44px] px-2 -mr-2"
+              className="text-sm text-[#FF0099] hover:text-[#CC007A] font-medium flex items-center gap-1 min-h-[44px] px-2 -mr-2"
             >
               View All <ChevronRight className="w-4 h-4" />
             </Link>
@@ -795,16 +791,16 @@ function OverviewTab({
           {upcomingSessions.length > 0 ? (
             <div className="divide-y divide-gray-50">
               {upcomingSessions.slice(0, 3).map((session) => (
-                <div key={session.id} className="p-3 flex items-center justify-between hover:bg-gray-50 transition-colors gap-2">
+                <div key={session.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors gap-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 bg-gradient-to-br from-[#7b008b]/10 to-[#ff0099]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Video className="w-5 h-5 text-[#7b008b]" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#FF0099]/10 to-[#7B008B]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Video className="w-6 h-6 text-[#FF0099]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 text-sm truncate">
+                      <p className="font-medium text-gray-900 text-base truncate">
                         {session.title || (session.session_type === 'coaching' ? 'Coaching Session' : 'Parent Check-in')}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm text-gray-500">
                         {formatDate(session.scheduled_date)} • {formatTime(session.scheduled_time)}
                       </p>
                     </div>
@@ -814,7 +810,7 @@ function OverviewTab({
                       href={session.google_meet_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-2 bg-[#7b008b] text-white rounded-lg text-xs font-medium hover:bg-[#6a0078] transition-all flex-shrink-0 min-h-[36px] flex items-center"
+                      className="px-4 py-2.5 bg-[#FF0099] text-white rounded-xl text-sm font-semibold hover:bg-[#CC007A] transition-all flex-shrink-0 min-h-[44px] flex items-center"
                     >
                       Join
                     </a>
@@ -823,44 +819,44 @@ function OverviewTab({
               ))}
             </div>
           ) : (
-            <div className="p-6 text-center">
-              <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">No upcoming sessions</p>
-              <p className="text-xs text-gray-400 mt-1">Sessions will appear here once scheduled</p>
+            <div className="p-8 text-center">
+              <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+              <p className="text-gray-600 text-base">No upcoming sessions</p>
+              <p className="text-sm text-gray-400 mt-1">Sessions will appear here once scheduled</p>
             </div>
           )}
         </div>
 
         {/* Coach Card */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
-              <User className="w-4 h-4 text-[#7b008b]" />
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
+              <User className="w-5 h-5 text-[#FF0099]" />
               Your Coach
             </h2>
           </div>
-          <div className="p-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
-                <span className="text-xl text-white font-bold">
+          <div className="p-5">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
+                <span className="text-2xl text-white font-bold">
                   {getCoachName().charAt(0)}
                 </span>
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-gray-800 truncate">{getCoachName()}</p>
-                <p className="text-xs text-[#7b008b]">Reading Coach</p>
+                <p className="font-semibold text-gray-900 text-base truncate">{getCoachName()}</p>
+                <p className="text-sm text-[#FF0099]">Reading Coach</p>
               </div>
             </div>
             {enrollment?.coaches?.bio && (
-              <p className="text-xs text-gray-500 mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
+              <p className="text-sm text-gray-500 mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
             )}
             <a
               href={`https://wa.me/${getCoachPhone()}?text=Hi ${getCoachName()}, I'm ${childName}'s parent.`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#25D366] text-white rounded-xl font-medium hover:bg-[#1da851] transition-colors min-h-[44px] text-sm"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#25D366] text-white rounded-xl font-semibold hover:bg-[#1da851] transition-colors min-h-[48px] text-base"
             >
-              <MessageCircle className="w-4 h-4" />
+              <MessageCircle className="w-5 h-5" />
               Message on WhatsApp
             </a>
           </div>
@@ -878,13 +874,13 @@ function OverviewTab({
 
       {/* Referrals Card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
-            <Gift className="w-4 h-4 text-[#FF0099]" />
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
+            <Gift className="w-5 h-5 text-[#FF0099]" />
             Refer Friends & Earn
           </h2>
         </div>
-        <div className="p-4">
+        <div className="p-5">
           <ReferralsTab
             parentEmail={parentEmail}
             parentName={parentName}
@@ -894,14 +890,14 @@ function OverviewTab({
       </div>
 
       {/* rAI Tip */}
-      <div className="bg-gradient-to-r from-[#7b008b] to-[#ff0099] rounded-xl p-4 text-white">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Zap className="w-5 h-5" />
+      <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Zap className="w-6 h-6" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-semibold text-sm sm:text-base">rAI says</h3>
-            <p className="text-white/90 text-xs sm:text-sm mt-1">
+            <h3 className="font-semibold text-lg">rAI says</h3>
+            <p className="text-white/90 text-base mt-1">
               Set aside 15-20 minutes of quiet reading time daily. Consistency matters more than duration!
             </p>
           </div>
