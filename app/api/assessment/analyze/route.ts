@@ -449,6 +449,15 @@ DO NOT MAKE THESE COMMON MISTAKES:
 - Counting the same error multiple times
 - Marking words as skipped when audio was just unclear
 
+ABSOLUTELY DO NOT HALLUCINATE:
+- Only report errors for words that ACTUALLY appear in the passage above
+- Do NOT invent words that aren't in the passage text
+- Do NOT create fictional mispronunciations or errors
+- Every word you mention in errors MUST exist in the provided passage
+- If you're unsure about what you heard, mark it as "unclear" not as an error
+- Base ALL analysis strictly on the audio and passage provided - nothing else
+- Cross-check every error against the passage text before including it
+
 CRITICAL ACCURACY RULES:
 1. QUOTE EXACT WORDS - If the child said "hospe" instead of "hospital", write exactly that
 2. DO NOT GUESS - If audio is unclear, assume the word was read correctly
