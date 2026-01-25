@@ -104,11 +104,11 @@ export async function POST(request: NextRequest) {
     // 4. Find children needing goals capture message
     const { data: children, error: queryError } = await supabase
       .from('children')
-      .select('id, name, parent_name, parent_phone, parent_goals, goals_message_sent, assessment_completed_at, created_at, overall_score')
+      .select('id, name, parent_name, parent_phone, parent_goals, goals_message_sent, assessment_completed_at, created_at, latest_assessment_score')
       .or('parent_goals.is.null,parent_goals.eq.{}')
       .or('goals_message_sent.is.null,goals_message_sent.eq.false')
       .not('parent_phone', 'is', null)
-      .not('overall_score', 'is', null)  // Must have completed assessment
+      .not('latest_assessment_score', 'is', null)  // Must have completed assessment
       .order('created_at', { ascending: true });
 
     if (queryError) {
