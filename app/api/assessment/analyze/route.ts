@@ -574,6 +574,8 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
       try {
         const eventData = {
           score: overallScore,
+          child_age: age,  // Store age at time of assessment
+          passage_preview: passage.substring(0, 80),  // Store passage for debugging
           wpm: analysisResult.wpm,
           completeness: analysisResult.completeness_percentage,
           feedback: analysisResult.feedback,

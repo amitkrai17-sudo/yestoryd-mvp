@@ -50,23 +50,38 @@ export async function GET(
 
     const eventData = learningEvent?.event_data || {};
 
+    // Debug logging
+    console.log(JSON.stringify({
+      event: 'results_fetch',
+      childId,
+      hasLearningEvent: !!learningEvent,
+      learningEventDate: learningEvent?.created_at || null,
+      eventDataScore: eventData.score,
+      childLatestScore: child.latest_assessment_score,
+      eventDataAge: eventData.child_age,
+      childAge: child.age,
+    }));
+
     // Build response combining child data and learning event data
+    // Priority: learning_event data (most recent assessment) > child table (may be stale)
     const response = {
       // Basic info
       childId: child.id,
       childName: child.child_name || child.name,
-      childAge: child.age?.toString() || '',
+      // Use age from learning event if available (age at assessment time), else current age
+      childAge: eventData.child_age?.toString() || child.age?.toString() || '',
       parentName: child.parent_name || '',
       parentEmail: child.parent_email || '',
       parentPhone: child.parent_phone || '',
 
-      // Scores - prefer eventData, fallback to child table
-      overall_score: eventData.score || child.latest_assessment_score || 0,
-      clarity_score: eventData.clarity_score || 5,
-      fluency_score: eventData.fluency_score || 5,
-      speed_score: eventData.speed_score || 5,
-      wpm: eventData.wpm || 0,
-      completeness: eventData.completeness || eventData.completeness_percentage || 0,
+      // Scores - prefer eventData from learning_event (has full details)
+      // If no learning_event, fallback to child.latest_assessment_score
+      overall_score: eventData.score ?? child.latest_assessment_score ?? 0,
+      clarity_score: eventData.clarity_score ?? 5,
+      fluency_score: eventData.fluency_score ?? 5,
+      speed_score: eventData.speed_score ?? 5,
+      wpm: eventData.wpm ?? 0,
+      completeness: eventData.completeness ?? eventData.completeness_percentage ?? 0,
 
       // Feedback
       feedback: eventData.feedback || '',
