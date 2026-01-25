@@ -1841,7 +1841,7 @@ export default function HomePageClient({
             <div>
               <h4 className="font-bold text-sm mb-4 text-gray-300">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li><Link href="/assessment" className="hover:text-[#ff0099] transition-colors">Free 5-Min Test</Link></li>
+                <li><Link href="/assessment" className="hover:text-[#ff0099] transition-colors">Reading Test - Free</Link></li>
                 <li><a href="#how-it-works" className="hover:text-[#ff0099] transition-colors">The ARC Method</a></li>
                 <li><a href="#pricing" className="hover:text-[#ff0099] transition-colors">Pricing</a></li>
                 <li><Link href="/lets-talk" className="hover:text-[#ff0099] transition-colors">Talk to Us</Link></li>
@@ -1894,7 +1894,7 @@ export default function HomePageClient({
           onClick={handleCTAClick}
           className="block w-full text-center bg-[#FF0099] text-white py-3 rounded-xl font-bold shadow-lg text-sm hover:bg-[#e6008a]"
         >
-          Reading Test - Free 5 Min Test
+          Reading Test - Free
         </Link>
       </div>
     </div>

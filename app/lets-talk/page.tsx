@@ -242,8 +242,8 @@ function LetsTalkContent() {
             className="text-sm font-semibold text-[#ff0099] hover:text-[#e6008a] transition-colors flex items-center gap-1"
           >
             <Sparkles className="w-4 h-4" />
-            <span className="hidden sm:inline">Take Free Assessment</span>
-            <span className="sm:hidden">Free Test</span>
+            <span className="hidden sm:inline">Reading Test - Free</span>
+            <span className="sm:hidden">Reading Test</span>
           </Link>
         </div>
       </header>
