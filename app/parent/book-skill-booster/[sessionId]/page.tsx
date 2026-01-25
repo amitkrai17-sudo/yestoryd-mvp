@@ -255,7 +255,10 @@ export default function BookSkillBoosterPage() {
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Session Booked! 🎉</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
+            Session Booked!
+            <Sparkles className="w-6 h-6 text-amber-500" />
+          </h2>
           <p className="text-gray-500 mb-6">
             Your Skill Booster session for {sessionData?.childName} has been confirmed.
             You'll receive a confirmation on WhatsApp.

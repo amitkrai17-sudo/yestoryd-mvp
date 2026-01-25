@@ -15,6 +15,8 @@ import {
   ExternalLink,
   Zap,
   Loader2,
+  BookOpen,
+  Users,
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -169,17 +171,17 @@ export default function ParentSessionsPage() {
 
   function getSessionTitle(session: Session): string {
     if (session.title) return session.title;
-    
+
     if (session.session_type === 'remedial') {
-      return '⚡ Skill Booster Session';
+      return 'Skill Booster Session';
     }
     if (session.session_type === 'coaching') {
-      return '📚 Coaching Session';
+      return 'Coaching Session';
     }
     if (session.session_type === 'parent_checkin') {
-      return '👨‍👩‍👧 Parent Check-in';
+      return 'Parent Check-in';
     }
-    return '📚 Session';
+    return 'Session';
   }
 
   function isUpcoming(session: Session): boolean {
@@ -380,11 +382,11 @@ export default function ParentSessionsPage() {
           <h3 className="font-medium text-[#7b008b] mb-3">Session Types</h3>
           <div className="grid sm:grid-cols-3 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-600">
-              <span>📚</span>
+              <BookOpen className="w-4 h-4 text-[#7b008b]" />
               <span><strong>Coaching</strong> - 45 min 1:1</span>
             </div>
             <div className="flex items-center gap-2 text-gray-600">
-              <span>👨‍👩‍👧</span>
+              <Users className="w-4 h-4 text-[#7b008b]" />
               <span><strong>Parent Check-in</strong> - 15 min</span>
             </div>
             <div className="flex items-center gap-2 text-yellow-700">

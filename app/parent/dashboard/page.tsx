@@ -11,14 +11,14 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import {
-  LayoutDashboard, Calendar, TrendingUp, HelpCircle,
-  LogOut, ChevronRight, Bell, Video,
+  Calendar, TrendingUp, HelpCircle,
+  ChevronRight, Video,
   Clock, CheckCircle, Target, User, MessageCircle,
-  BookOpen, Zap, Play, Gift, AlertCircle, RefreshCw
+  BookOpen, Zap, Gift, AlertCircle, RefreshCw,
+  Sparkles, Star, Rocket, Trophy
 } from 'lucide-react';
 import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
 import SupportWidget from '@/components/support/SupportWidget';
-import SupportForm from '@/components/support/SupportForm';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ReferralsTab from '@/components/parent/ReferralsTab';
 
@@ -67,15 +67,6 @@ interface PendingSkillBoosterSession {
   coach_name: string;
 }
 
-// Tab configuration
-const TABS = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'elearning', label: 'E-Learning', icon: BookOpen },
-  { id: 'sessions', label: 'Sessions', icon: Calendar },
-  { id: 'progress', label: 'Progress', icon: TrendingUp },
-  { id: 'referrals', label: 'Referrals', icon: Gift },
-  { id: 'support', label: 'Support', icon: HelpCircle },
-];
 
 // Focus area labels
 const FOCUS_AREA_LABELS: Record<string, string> = {
@@ -103,7 +94,6 @@ function safeGetItem(key: string): string | null {
 
 export default function ParentDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -448,92 +438,21 @@ export default function ParentDashboardPage() {
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       {/* Main Content - No separate header, uses layout's navigation */}
       <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        {/* Mobile Tab Pills - Horizontal Scroll with proper containment */}
-        <div className="mb-4 sm:mb-6 -mx-3 sm:-mx-4 lg:mx-0">
-          <div className="overflow-x-auto scrollbar-hide px-3 sm:px-4 lg:px-0">
-            <div className="flex gap-2 pb-2 min-w-min" role="tablist">
-              {TABS.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    role="tab"
-                    aria-selected={activeTab === tab.id}
-                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[40px] sm:min-h-[44px] flex-shrink-0 ${
-                      activeTab === tab.id
-                        ? 'bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white shadow-md'
-                        : 'bg-white text-gray-600 border border-gray-200 active:scale-95'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div role="tabpanel" className="w-full">
-          {activeTab === 'overview' && (
-            <OverviewTab
-              childName={childName}
-              enrollment={enrollment}
-              upcomingSessions={upcomingSessions}
-              completedSessions={completedSessions}
-              totalSessions={totalSessions}
-              latestScore={latestScore}
-              getDaysRemaining={getDaysRemaining}
-              getProgressPercentage={getProgressPercentage}
-              onRefresh={fetchData}
-              parentEmail={parentEmail}
-              parentName={parentName}
-              pendingSkillBooster={pendingSkillBooster}
-            />
-          )}
-
-          {activeTab === 'elearning' && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
-              <BookOpen className="w-16 h-16 text-[#7b008b]/30 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Learning Library</h2>
-              <p className="text-gray-500 mb-6">Watch educational videos and complete quizzes</p>
-              <a
-                href="/parent/elearning"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all min-h-[48px]"
-              >
-                <Play className="w-5 h-5" />
-                Start Learning
-              </a>
-            </div>
-          )}
-
-          {activeTab === 'sessions' && (
-            <SessionsTab childId={childId} upcomingSessions={upcomingSessions} />
-          )}
-
-          {activeTab === 'progress' && (
-            <ProgressTab
-              completedSessions={completedSessions}
-              totalSessions={totalSessions}
-              latestScore={latestScore}
-              getProgressPercentage={getProgressPercentage}
-            />
-          )}
-
-          {activeTab === 'referrals' && (
-            <ReferralsTab
-              parentEmail={parentEmail}
-              parentName={parentName}
-              childName={childName}
-            />
-          )}
-
-          {activeTab === 'support' && (
-            <SupportTab parentEmail={parentEmail} parentName={parentName} childName={childName} />
-          )}
-        </div>
+        {/* Overview Content - Navigation handled by BottomNav and Sidebar */}
+        <OverviewTab
+          childName={childName}
+          enrollment={enrollment}
+          upcomingSessions={upcomingSessions}
+          completedSessions={completedSessions}
+          totalSessions={totalSessions}
+          latestScore={latestScore}
+          getDaysRemaining={getDaysRemaining}
+          getProgressPercentage={getProgressPercentage}
+          onRefresh={fetchData}
+          parentEmail={parentEmail}
+          parentName={parentName}
+          pendingSkillBooster={pendingSkillBooster}
+        />
       </main>
 
       {/* Floating rAI Chat Widget */}
@@ -579,7 +498,7 @@ function PendingSkillBoosterCard({
           {/* Title & Description */}
           <div className="flex-1 min-w-0">
             <h3 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">
-              ⚡ Skill Booster Session
+              Skill Booster Session
             </h3>
             <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
               Coach <span className="font-semibold text-[#7b008b]">{session.coach_name}</span> recommends
@@ -596,9 +515,10 @@ function PendingSkillBoosterCard({
 
         {/* Info Badges */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700
                          rounded-full text-[10px] sm:text-sm font-semibold border border-green-200">
-            ✓ FREE - Included
+            <CheckCircle className="w-3 h-3" />
+            FREE - Included
           </span>
           {daysSince > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] sm:text-sm text-gray-500">
@@ -691,7 +611,7 @@ function OverviewTab({
     return enrollment?.coaches?.name || 'Rucha';
   }
 
-  // Get enrollment type display info
+  // Get enrollment type display info - uses Lucide icons
   const getEnrollmentTypeInfo = () => {
     const type = enrollment?.enrollment_type;
     switch (type) {
@@ -699,25 +619,25 @@ function OverviewTab({
         return {
           label: 'Starter Pack',
           color: 'bg-blue-100 text-blue-700 border-blue-200',
-          icon: '🚀',
+          Icon: Rocket,
         };
       case 'continuation':
         return {
           label: 'Continuation',
           color: 'bg-purple-100 text-purple-700 border-purple-200',
-          icon: '📈',
+          Icon: TrendingUp,
         };
       case 'full':
         return {
           label: 'Full Program',
           color: 'bg-green-100 text-green-700 border-green-200',
-          icon: '⭐',
+          Icon: Star,
         };
       default:
         return {
           label: 'Program',
           color: 'bg-gray-100 text-gray-700 border-gray-200',
-          icon: '📚',
+          Icon: BookOpen,
         };
     }
   };
@@ -742,12 +662,16 @@ function OverviewTab({
       <div className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-xl p-4 text-white">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-lg sm:text-2xl font-bold mb-1">Welcome back! 👋</h1>
+            <h1 className="text-lg sm:text-2xl font-bold mb-1 flex items-center gap-2">
+              Welcome back!
+              <Sparkles className="w-5 h-5 text-yellow-300" />
+            </h1>
             <p className="text-pink-100 text-sm">Track {childName}&apos;s reading journey</p>
           </div>
           {enrollment?.enrollment_type && (
-            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${enrollmentTypeInfo.color}`}>
-              {enrollmentTypeInfo.icon} {enrollmentTypeInfo.label}
+            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${enrollmentTypeInfo.color}`}>
+              <enrollmentTypeInfo.Icon className="w-3 h-3" />
+              {enrollmentTypeInfo.label}
             </span>
           )}
         </div>
@@ -761,8 +685,9 @@ function OverviewTab({
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-1">
-                🎉 Starter Pack Completed!
+              <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                Starter Pack Completed!
               </h3>
               <p className="text-gray-600 text-sm mb-3">
                 {childName} has made great progress! Continue the journey with 9 more sessions.
@@ -877,7 +802,7 @@ function OverviewTab({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-900 text-sm truncate">
-                        {session.title || (session.session_type === 'coaching' ? '📚 Coaching' : '👩‍👧‍👦 Check-in')}
+                        {session.title || (session.session_type === 'coaching' ? 'Coaching Session' : 'Parent Check-in')}
                       </p>
                       <p className="text-xs text-gray-500">
                         {formatDate(session.scheduled_date)} • {formatTime(session.scheduled_time)}
@@ -951,6 +876,23 @@ function OverviewTab({
         variant="card"
       />
 
+      {/* Referrals Card */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
+            <Gift className="w-4 h-4 text-[#FF0099]" />
+            Refer Friends & Earn
+          </h2>
+        </div>
+        <div className="p-4">
+          <ReferralsTab
+            parentEmail={parentEmail}
+            parentName={parentName}
+            childName={childName}
+          />
+        </div>
+      </div>
+
       {/* rAI Tip */}
       <div className="bg-gradient-to-r from-[#7b008b] to-[#ff0099] rounded-xl p-4 text-white">
         <div className="flex items-start gap-3">
@@ -960,7 +902,7 @@ function OverviewTab({
           <div className="min-w-0">
             <h3 className="font-semibold text-sm sm:text-base">rAI says</h3>
             <p className="text-white/90 text-xs sm:text-sm mt-1">
-              Set aside 15-20 minutes of quiet reading time daily. Consistency matters more than duration! 📚
+              Set aside 15-20 minutes of quiet reading time daily. Consistency matters more than duration!
             </p>
           </div>
         </div>
@@ -969,372 +911,3 @@ function OverviewTab({
   );
 }
 
-// ============================================================
-// SESSIONS TAB
-// ============================================================
-function SessionsTab({ childId, upcomingSessions }: { childId: string; upcomingSessions: Session[] }) {
-  const [allSessions, setAllSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAllSessions();
-  }, [childId]);
-
-  async function fetchAllSessions() {
-    try {
-      const { data } = await supabase
-        .from('scheduled_sessions')
-        .select('*')
-        .eq('child_id', childId)
-        .order('scheduled_date', { ascending: false })
-        .limit(20);
-
-      setAllSessions(data || []);
-    } catch (err) {
-      console.error('Error fetching sessions:', err);
-    }
-    setLoading(false);
-  }
-
-  function formatDate(dateStr: string): string {
-    try {
-      return new Date(dateStr).toLocaleDateString('en-IN', {
-        weekday: 'short', day: 'numeric', month: 'short'
-      });
-    } catch {
-      return dateStr;
-    }
-  }
-
-  function formatTime(time: string): string {
-    if (!time) return '';
-    try {
-      const [hours, minutes] = time.split(':').map(Number);
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const hour12 = hours % 12 || 12;
-      return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
-    } catch {
-      return time;
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        Loading sessions...
-      </div>
-    );
-  }
-
-  const upcoming = allSessions.filter(s => s.status === 'scheduled' || s.status === 'rescheduled');
-  const completed = allSessions.filter(s => s.status === 'completed');
-
-  return (
-    <div className="space-y-4">
-      {/* Upcoming */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b bg-gray-50">
-          <h2 className="font-bold text-gray-900 text-sm">Upcoming ({upcoming.length})</h2>
-        </div>
-        {upcoming.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            <Calendar className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm">No upcoming sessions</p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {upcoming.map((session) => (
-              <div key={session.id} className="p-3 hover:bg-gray-50 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 bg-[#7b008b]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Video className="w-5 h-5 text-[#7b008b]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm truncate">{session.title || 'Coaching'}</p>
-                    <p className="text-xs text-gray-500">{formatDate(session.scheduled_date)} • {formatTime(session.scheduled_time)}</p>
-                  </div>
-                </div>
-                {session.google_meet_link && (
-                  <a
-                    href={session.google_meet_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-2 bg-[#7b008b] text-white rounded-lg text-xs font-medium flex-shrink-0 min-h-[36px] flex items-center"
-                  >
-                    Join
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Completed */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b bg-gray-50">
-          <h2 className="font-bold text-gray-900 text-sm">Completed ({completed.length})</h2>
-        </div>
-        {completed.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            <CheckCircle className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm">No completed sessions yet</p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {completed.map((session) => (
-              <div key={session.id} className="p-3 hover:bg-gray-50 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm truncate">{session.title || 'Coaching'}</p>
-                    <p className="text-xs text-gray-500">{formatDate(session.scheduled_date)}</p>
-                  </div>
-                </div>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium flex-shrink-0">
-                  Done
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// PROGRESS TAB
-// ============================================================
-function ProgressTab({
-  completedSessions,
-  totalSessions,
-  latestScore,
-  getProgressPercentage,
-}: {
-  completedSessions: number;
-  totalSessions: number;
-  latestScore: number | null;
-  getProgressPercentage: () => number;
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Progress Overview */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm">Reading Progress</h2>
-
-        <div className="space-y-4">
-          {/* Progress Bar */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <span className="text-gray-600 text-sm">Overall Progress</span>
-              <span className="font-bold text-[#7b008b] text-sm">{getProgressPercentage()}%</span>
-            </div>
-            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-full transition-all duration-500"
-                style={{ width: `${getProgressPercentage()}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="text-center p-3 bg-gray-50 rounded-xl">
-              <p className="text-2xl font-bold text-[#7b008b]">{completedSessions}</p>
-              <p className="text-xs text-gray-500">Done</p>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-xl">
-              <p className="text-2xl font-bold text-gray-400">{totalSessions - completedSessions}</p>
-              <p className="text-xs text-gray-500">Left</p>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-xl">
-              <p className="text-2xl font-bold text-blue-600">{latestScore ?? '--'}/10</p>
-              <p className="text-xs text-gray-500">Score</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Info Card */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
-        <h3 className="font-bold text-gray-900 mb-2 text-sm">📈 How Progress Works</h3>
-        <ul className="space-y-1 text-xs text-gray-600">
-          <li>• Complete coaching sessions to increase progress</li>
-          <li>• Practice daily reading for best results</li>
-          <li>• Coach provides personalized feedback</li>
-          <li>• Assessment scores track improvement</li>
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// SUPPORT TAB
-// ============================================================
-function SupportTab({ parentEmail, parentName, childName }: { parentEmail: string; parentName: string; childName: string }) {
-  const [tickets, setTickets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-
-  useEffect(() => {
-    fetchTickets();
-  }, [parentEmail]);
-
-  async function fetchTickets() {
-    try {
-      const res = await fetch(`/api/support/tickets?email=${encodeURIComponent(parentEmail)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTickets(data.tickets || []);
-      }
-    } catch (error) {
-      console.error('Error fetching tickets:', error);
-    }
-    setLoading(false);
-  }
-
-  function handleTicketCreated() {
-    setShowForm(false);
-    fetchTickets();
-  }
-
-  const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    open: { label: 'Open', color: 'bg-yellow-100 text-yellow-700' },
-    in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
-    resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700' },
-    closed: { label: 'Closed', color: 'bg-gray-100 text-gray-700' },
-  };
-
-  const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress');
-  const resolvedTickets = tickets.filter(t => t.status === 'resolved' || t.status === 'closed');
-
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">Support Center</h2>
-          <p className="text-gray-500 text-xs">Get help with questions and concerns</p>
-        </div>
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-3 py-2 bg-[#7b008b] text-white rounded-lg font-medium hover:bg-[#6a0078] transition-all flex items-center gap-1.5 min-h-[40px] text-sm flex-shrink-0"
-          >
-            <HelpCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Submit Request</span>
-            <span className="sm:hidden">Help</span>
-          </button>
-        )}
-      </div>
-
-      {/* Support Form */}
-      {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-800 text-sm">New Support Request</h3>
-            <button
-              onClick={() => setShowForm(false)}
-              className="text-sm text-gray-500 hover:text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2"
-            >
-              Cancel
-            </button>
-          </div>
-          <SupportForm
-            userType="parent"
-            userEmail={parentEmail}
-            userName={parentName}
-            childName={childName}
-            onClose={handleTicketCreated}
-            isModal={false}
-          />
-        </div>
-      )}
-
-      {/* Tickets List */}
-      {!showForm && (
-        <>
-          {openTickets.length > 0 && (
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
-                <Clock className="w-4 h-4 text-yellow-600" />
-                Active ({openTickets.length})
-              </h3>
-              <div className="space-y-3">
-                {openTickets.map((ticket) => {
-                  const statusConfig = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.open;
-                  return (
-                    <div key={ticket.id} className="bg-white rounded-xl border border-gray-200 p-3">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-[10px] font-mono text-gray-400">{ticket.ticket_number}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusConfig.color}`}>
-                          {statusConfig.label}
-                        </span>
-                      </div>
-                      <p className="font-medium text-gray-800 text-sm">{ticket.subject || ticket.category}</p>
-                      <p className="text-[10px] text-gray-400 mt-2">
-                        {new Date(ticket.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {resolvedTickets.length > 0 && (
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Resolved ({resolvedTickets.length})
-              </h3>
-              <div className="space-y-3">
-                {resolvedTickets.slice(0, 5).map((ticket) => {
-                  const statusConfig = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.resolved;
-                  return (
-                    <div key={ticket.id} className="bg-white rounded-xl border border-gray-200 p-3 opacity-75">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-[10px] font-mono text-gray-400">{ticket.ticket_number}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusConfig.color}`}>
-                          {statusConfig.label}
-                        </span>
-                      </div>
-                      <p className="font-medium text-gray-800 text-sm">{ticket.subject || ticket.category}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {!loading && tickets.length === 0 && (
-            <div className="text-center py-8 bg-white rounded-xl border border-gray-200">
-              <HelpCircle className="w-12 h-12 text-[#7b008b]/30 mx-auto mb-4" />
-              <h3 className="text-base font-semibold text-gray-800 mb-2">No Support Requests</h3>
-              <p className="text-gray-500 mb-6 text-sm">You haven&apos;t submitted any requests yet.</p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#7b008b] text-white rounded-xl font-semibold hover:bg-[#6a0078] transition-all min-h-[48px] text-sm"
-              >
-                Submit Your First Request
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-
-          {loading && (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-500 text-sm">Loading your requests...</p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}

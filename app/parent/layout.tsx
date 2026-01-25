@@ -548,7 +548,10 @@ export default function ParentLayout({
                           {displayName}
                         </p>
                         {isEnrolled && (
-                          <p className="text-[10px] text-green-600 font-medium">✓ Enrolled</p>
+                          <p className="text-[10px] text-green-600 font-medium flex items-center gap-0.5">
+                            <Check className="w-3 h-3" />
+                            Enrolled
+                          </p>
                         )}
                       </div>
                       {isSelected && (

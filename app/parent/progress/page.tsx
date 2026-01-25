@@ -13,6 +13,9 @@ import {
   Award,
   Calendar,
   CheckCircle,
+  Lock,
+  GraduationCap,
+  Trophy,
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -335,17 +338,35 @@ export default function ParentProgressPage() {
           </h3>
           <div className="grid sm:grid-cols-3 gap-4">
             <div className={`p-4 rounded-xl ${sessionsCompleted >= 1 ? 'bg-white/20' : 'bg-white/10'}`}>
-              <div className="text-2xl mb-1">{sessionsCompleted >= 1 ? '🏆' : '🔒'}</div>
+              <div className="mb-1">
+                {sessionsCompleted >= 1 ? (
+                  <Trophy className="w-8 h-8 text-amber-300" />
+                ) : (
+                  <Lock className="w-8 h-8 text-white/50" />
+                )}
+              </div>
               <p className="font-medium">First Session</p>
               <p className="text-sm text-white/70">Complete 1 session</p>
             </div>
             <div className={`p-4 rounded-xl ${sessionsCompleted >= 5 ? 'bg-white/20' : 'bg-white/10'}`}>
-              <div className="text-2xl mb-1">{sessionsCompleted >= 5 ? '⭐' : '🔒'}</div>
+              <div className="mb-1">
+                {sessionsCompleted >= 5 ? (
+                  <Star className="w-8 h-8 text-yellow-300" />
+                ) : (
+                  <Lock className="w-8 h-8 text-white/50" />
+                )}
+              </div>
               <p className="font-medium">Halfway There</p>
               <p className="text-sm text-white/70">Complete 5 sessions</p>
             </div>
             <div className={`p-4 rounded-xl ${sessionsCompleted >= 9 ? 'bg-white/20' : 'bg-white/10'}`}>
-              <div className="text-2xl mb-1">{sessionsCompleted >= 9 ? '🎓' : '🔒'}</div>
+              <div className="mb-1">
+                {sessionsCompleted >= 9 ? (
+                  <GraduationCap className="w-8 h-8 text-yellow-200" />
+                ) : (
+                  <Lock className="w-8 h-8 text-white/50" />
+                )}
+              </div>
               <p className="font-medium">Graduate</p>
               <p className="text-sm text-white/70">Complete all 9 sessions</p>
             </div>

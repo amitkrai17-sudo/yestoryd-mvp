@@ -32,12 +32,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  session_issue: '📅 Session Issue',
-  technical_problem: '🔧 Technical Problem',
-  payment_billing: '💳 Payment & Billing',
-  coach_feedback: '👨‍🏫 Coach Feedback',
-  general_question: '❓ General Question',
-  other: '📝 Other',
+  session_issue: 'Session Issue',
+  technical_problem: 'Technical Problem',
+  payment_billing: 'Payment & Billing',
+  coach_feedback: 'Coach Feedback',
+  general_question: 'General Question',
+  other: 'Other',
 };
 
 export default function ParentSupportPage() {

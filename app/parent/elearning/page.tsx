@@ -275,8 +275,8 @@ export default function ELearningPage() {
             <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2">
               {gamification.badges.earned.slice(0, 5).map((badge: any) => (
                 <div key={badge.id} className="flex-shrink-0 w-16 md:w-24 text-center">
-                  <div className="w-12 h-12 md:w-16 md:h-16 mx-auto bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-lg md:rounded-xl flex items-center justify-center text-xl md:text-2xl mb-1.5 md:mb-2">
-                    {badge.icon || '🏆'}
+                  <div className="w-12 h-12 md:w-16 md:h-16 mx-auto bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-lg md:rounded-xl flex items-center justify-center mb-1.5 md:mb-2">
+                    <Trophy className="w-6 h-6 md:w-8 md:h-8 text-amber-600" />
                   </div>
                   <p className="text-xs md:text-sm font-medium text-gray-900 truncate">{badge.name}</p>
                 </div>
