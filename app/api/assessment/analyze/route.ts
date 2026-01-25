@@ -523,6 +523,7 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
             parent_name: parentName,
             parent_phone: parentPhone,
             latest_assessment_score: overallScore,
+            assessment_completed_at: new Date().toISOString(),
             phonics_focus: analysisResult.phonics_analysis?.recommended_focus || null,
             struggling_phonemes: analysisResult.phonics_analysis?.struggling_phonemes || [],
             ...(params.lead_source === 'coach' && params.lead_source_coach_id ? {
@@ -546,6 +547,7 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
             parent_phone: parentPhone,
             lead_status: 'assessed',
             latest_assessment_score: overallScore,
+            assessment_completed_at: new Date().toISOString(),
             phonics_focus: analysisResult.phonics_analysis?.recommended_focus || null,
             struggling_phonemes: analysisResult.phonics_analysis?.struggling_phonemes || [],
             lead_source: params.lead_source || 'yestoryd',
