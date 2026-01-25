@@ -421,12 +421,41 @@ FEEDBACK STRUCTURE (4 sentences, factual tone):
 - Sentence 3: Provide one clear, actionable recommendation (e.g., "Practice 'th' words daily: the, this, that, through, three.")
 - Sentence 4: State the path forward neutrally (e.g., "Consistent practice with these sounds will build reading accuracy.")
 
+CRITICAL RULES TO PREVENT FALSE ERRORS:
+
+MISPRONUNCIATIONS - BE VERY CAREFUL:
+- ONLY mark a word as mispronounced if it sounds SIGNIFICANTLY different from the target
+- Do NOT mark a word as mispronounced if the child said it correctly (e.g., "stories" read as "stories" is NOT an error)
+- Syllable-by-syllable reading is ACCEPTABLE (e.g., "vill-age" for "village" is correct, NOT an error)
+- Minor accent variations, regional pronunciations, and slight imperfections are NOT errors
+- If the word is recognizable as the target word, it is CORRECT
+
+SKIPPED/OMITTED WORDS:
+- ONLY mark as "omitted" if the word was COMPLETELY ABSENT from the audio
+- If you hear ANY attempt at the word (even partial), it is NOT skipped
+- Self-corrections count as reading the word (not as skipped)
+- When in doubt, do NOT mark as omitted
+
+COMPLETENESS PERCENTAGE:
+- If child read continuously through the entire passage, completeness should be 90-100%
+- Audio quality issues should NOT lower completeness score
+- Background noise is NOT the child's fault - give benefit of doubt
+- Only reduce completeness if large sections were clearly not read
+
+DO NOT MAKE THESE COMMON MISTAKES:
+- Marking "stories" as mispronounced when child said "stories" correctly
+- Marking natural syllable breaks or pauses as errors
+- Being overly strict with young children (ages 4-7 especially)
+- Counting the same error multiple times
+- Marking words as skipped when audio was just unclear
+
 CRITICAL ACCURACY RULES:
 1. QUOTE EXACT WORDS - If the child said "hospe" instead of "hospital", write exactly that
-2. DO NOT GUESS - If audio is unclear, note "unclear pronunciation of [word]"
+2. DO NOT GUESS - If audio is unclear, assume the word was read correctly
 3. COUNT ACCURATELY - Completeness % must reflect actual words read vs total words
 4. BE SPECIFIC - Never say "some words were mispronounced" - list which ones
 5. USE THE NAME "${name}" - Never use "the child" or "the reader"
+6. GIVE BENEFIT OF DOUBT - When uncertain, assume correct pronunciation
 
 If the passage was incomplete, state it factually: "${name} read X out of ${wordCount} words (Y%)."
 
