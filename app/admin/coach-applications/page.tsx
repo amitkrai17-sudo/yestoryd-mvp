@@ -43,15 +43,15 @@ interface CoachApplication {
 
 // ==================== STATUS CONFIG ====================
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-  started: { label: 'Started', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-  applied: { label: 'Applied', color: 'text-blue-700', bgColor: 'bg-blue-100' },
-  ai_assessment_complete: { label: 'Assessment Done', color: 'text-purple-700', bgColor: 'bg-purple-100' },
-  qualified: { label: 'Qualified ✓', color: 'text-green-700', bgColor: 'bg-green-100' },
-  not_qualified: { label: 'Not Qualified', color: 'text-red-700', bgColor: 'bg-red-100' },
-  interview_scheduled: { label: 'Interview Set', color: 'text-indigo-700', bgColor: 'bg-indigo-100' },
-  approved: { label: 'Approved', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
-  rejected: { label: 'Rejected', color: 'text-red-700', bgColor: 'bg-red-100' },
-  on_hold: { label: 'On Hold', color: 'text-amber-700', bgColor: 'bg-amber-100' },
+  started: { label: 'Started', color: 'text-gray-400', bgColor: 'bg-gray-500/20' },
+  applied: { label: 'Applied', color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
+  ai_assessment_complete: { label: 'Assessment Done', color: 'text-purple-400', bgColor: 'bg-purple-500/20' },
+  qualified: { label: 'Qualified ✓', color: 'text-green-400', bgColor: 'bg-green-500/20' },
+  not_qualified: { label: 'Not Qualified', color: 'text-red-400', bgColor: 'bg-red-500/20' },
+  interview_scheduled: { label: 'Interview Set', color: 'text-indigo-400', bgColor: 'bg-indigo-500/20' },
+  approved: { label: 'Approved', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20' },
+  rejected: { label: 'Rejected', color: 'text-red-400', bgColor: 'bg-red-500/20' },
+  on_hold: { label: 'On Hold', color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
 };
 
 // ==================== AUDIO PLAYER ====================
@@ -72,10 +72,10 @@ function AudioPlayer({ url, duration }: { url: string; duration?: number }) {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 
-  if (!url) return <div className="text-gray-400 text-sm">No voice recording</div>;
+  if (!url) return <div className="text-text-tertiary text-sm">No voice recording</div>;
 
   return (
-    <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-2">
+    <div className="flex items-center gap-2 bg-surface-2 rounded-lg p-2">
       <audio ref={audioRef} src={url} onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
         onEnded={() => setIsPlaying(false)} onError={() => setError(true)}
         onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || duration || 0)} preload="metadata" />
@@ -87,8 +87,8 @@ function AudioPlayer({ url, duration }: { url: string; duration?: number }) {
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
           <div className="flex-1">
-            <div className="h-1.5 bg-gray-300 rounded-full"><div className="h-full bg-pink-500 rounded-full" style={{ width: `${audioDuration ? (currentTime / audioDuration) * 100 : 0}%` }} /></div>
-            <div className="text-xs text-gray-500 mt-0.5">{formatTime(currentTime)} / {formatTime(audioDuration)}</div>
+            <div className="h-1.5 bg-surface-3 rounded-full"><div className="h-full bg-pink-500 rounded-full" style={{ width: `${audioDuration ? (currentTime / audioDuration) * 100 : 0}%` }} /></div>
+            <div className="text-xs text-text-tertiary mt-0.5">{formatTime(currentTime)} / {formatTime(audioDuration)}</div>
           </div>
         </>
       )}
@@ -134,14 +134,14 @@ function ScheduleModal({ app, onClose, onDone }: { app: CoachApplication; onClos
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-        <h3 className="font-bold text-gray-900 mb-4">Schedule Interview</h3>
+      <div className="bg-surface-1 rounded-xl p-6 w-full max-w-sm">
+        <h3 className="font-bold text-white mb-4">Schedule Interview</h3>
         <div className="space-y-3">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2 border rounded text-gray-900 bg-white" />
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full p-2 border rounded text-gray-900 bg-white" />
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted" />
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted" />
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2 border rounded-lg text-gray-700">Cancel</button>
+          <button onClick={onClose} className="flex-1 py-2 border border-border rounded-lg text-text-secondary">Cancel</button>
           <button onClick={handleSchedule} disabled={loading || !date || !time} className="flex-1 py-2 bg-indigo-500 text-white rounded-lg disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Schedule'}
           </button>
@@ -191,19 +191,19 @@ function FeedbackModal({ app, onClose, onDone }: { app: CoachApplication; onClos
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-        <h3 className="font-bold text-gray-900 mb-4">Interview Feedback</h3>
+      <div className="bg-surface-1 rounded-xl p-6 w-full max-w-sm">
+        <h3 className="font-bold text-white mb-4">Interview Feedback</h3>
         <div className="space-y-3">
-          <select value={outcome} onChange={(e) => setOutcome(e.target.value)} className="w-full p-2 border rounded text-gray-900 bg-white">
+          <select value={outcome} onChange={(e) => setOutcome(e.target.value)} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted">
             <option value="">Select outcome...</option>
-            <option value="pass">✅ Pass - Approve</option>
-            <option value="hold">⏸️ Hold - Need more info</option>
-            <option value="fail">❌ Fail - Reject</option>
+            <option value="pass">Pass - Approve</option>
+            <option value="hold">Hold - Need more info</option>
+            <option value="fail">Fail - Reject</option>
           </select>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)..." rows={3} className="w-full p-2 border rounded text-gray-900 bg-white" />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)..." rows={3} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted" />
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2 border rounded-lg text-gray-700">Cancel</button>
+          <button onClick={onClose} className="flex-1 py-2 border border-border rounded-lg text-text-secondary">Cancel</button>
           <button onClick={handleSubmit} disabled={loading || !outcome} className="flex-1 py-2 bg-purple-500 text-white rounded-lg disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save'}
           </button>
@@ -342,9 +342,9 @@ function DetailModal({
   return (
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="bg-surface-1 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="p-4 border-b bg-gradient-to-r from-pink-500 to-purple-600 text-white">
+          <div className="p-4 border-b border-border bg-gradient-to-r from-pink-500 to-purple-600 text-white">
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-xl font-bold">{app.name}</h2>
@@ -359,7 +359,7 @@ function DetailModal({
                 {statusConfig.label}
               </span>
               {app.ai_total_score !== null && (
-                <span className={`px-3 py-1 rounded-full text-sm font-bold ${isQualified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <span className={`px-3 py-1 rounded-full text-sm font-bold ${isQualified ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                   Score: {app.ai_total_score}/10 {isQualified ? '✓' : '✗'}
                 </span>
               )}
@@ -370,13 +370,13 @@ function DetailModal({
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* Contact + Score Cards */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-gray-500 mb-2">CONTACT</h4>
+              <div className="bg-surface-0 rounded-lg p-3">
+                <h4 className="text-xs font-semibold text-text-tertiary mb-2">CONTACT</h4>
                 <div className="space-y-1 text-sm">
-                  <div className="flex items-center gap-2 text-gray-700">
+                  <div className="flex items-center gap-2 text-text-secondary">
                     <Phone className="w-4 h-4" />{app.phone}
                   </div>
-                  <div className="flex items-center gap-2 text-gray-700">
+                  <div className="flex items-center gap-2 text-text-secondary">
                     <MapPin className="w-4 h-4" />{app.city || 'Not specified'}
                   </div>
                 </div>
@@ -386,39 +386,39 @@ function DetailModal({
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-gray-500 mb-2">AI SCORE</h4>
+              <div className="bg-surface-0 rounded-lg p-3">
+                <h4 className="text-xs font-semibold text-text-tertiary mb-2">AI SCORE</h4>
                 {app.ai_total_score !== null ? (
                   <div>
-                    <div className="text-2xl font-bold text-gray-900">{app.ai_total_score}/10</div>
-                    <div className={`text-xs ${isQualified ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="text-2xl font-bold text-white">{app.ai_total_score}/10</div>
+                    <div className={`text-xs ${isQualified ? 'text-green-400' : 'text-red-400'}`}>
                       {isQualified ? '✓ Qualified' : '✗ Not Qualified'}
                     </div>
                     {app.ai_score_breakdown && (
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-text-tertiary mt-1">
                         Voice: {app.ai_score_breakdown.voiceScore}/5 | Chat: {app.ai_score_breakdown.raiScore}/5
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-gray-400 text-sm">Not calculated</div>
+                  <div className="text-text-tertiary text-sm">Not calculated</div>
                 )}
               </div>
             </div>
 
             {/* Voice Recording */}
             <div>
-              <h4 className="text-xs font-semibold text-gray-500 mb-2">VOICE INTRO ({app.audio_duration_seconds || 0}s)</h4>
+              <h4 className="text-xs font-semibold text-text-tertiary mb-2">VOICE INTRO ({app.audio_duration_seconds || 0}s)</h4>
               <AudioPlayer url={app.audio_statement_url || ''} duration={app.audio_duration_seconds || undefined} />
             </div>
 
             {/* AI Chat */}
             {aiConversation.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-gray-500 mb-2">AI ASSESSMENT ({aiConversation.length} messages)</h4>
-                <div className="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                <h4 className="text-xs font-semibold text-text-tertiary mb-2">AI ASSESSMENT ({aiConversation.length} messages)</h4>
+                <div className="bg-surface-0 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                   {aiConversation.map((msg: any, i: number) => (
-                    <div key={i} className={`text-sm ${msg.role === 'assistant' ? 'text-purple-700' : 'text-gray-700'}`}>
+                    <div key={i} className={`text-sm ${msg.role === 'assistant' ? 'text-purple-400' : 'text-text-secondary'}`}>
                       <span className="font-semibold">{msg.role === 'assistant' ? 'rAI: ' : 'Applicant: '}</span>
                       {msg.content}
                     </div>
@@ -429,13 +429,13 @@ function DetailModal({
 
             {/* Interview Info */}
             {hasInterview && (
-              <div className="bg-indigo-50 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-indigo-600 mb-2">INTERVIEW</h4>
-                <div className="text-sm text-gray-700">
-                  📅 {new Date(app.interview_scheduled_at!).toLocaleString()}
+              <div className="bg-indigo-500/20 rounded-lg p-3">
+                <h4 className="text-xs font-semibold text-indigo-400 mb-2">INTERVIEW</h4>
+                <div className="text-sm text-text-secondary">
+                  {new Date(app.interview_scheduled_at!).toLocaleString()}
                 </div>
                 {app.google_meet_link && (
-                  <a href={app.google_meet_link} target="_blank" className="inline-flex items-center gap-1 mt-2 text-sm text-indigo-600 hover:underline">
+                  <a href={app.google_meet_link} target="_blank" className="inline-flex items-center gap-1 mt-2 text-sm text-indigo-400 hover:underline">
                     <Video className="w-4 h-4" /> Join Google Meet
                   </a>
                 )}
@@ -443,8 +443,8 @@ function DetailModal({
             )}
 
             {/* Quick Actions */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <h4 className="text-xs font-semibold text-gray-500 mb-3">⚡ QUICK ACTIONS</h4>
+            <div className="bg-surface-0 rounded-lg p-3">
+              <h4 className="text-xs font-semibold text-text-tertiary mb-3">QUICK ACTIONS</h4>
               <div className="grid grid-cols-2 gap-2">
                 {/* Calculate Score */}
                 <button onClick={handleCalculate} disabled={calculating || !app.audio_statement_url}
@@ -631,51 +631,51 @@ export default function AdminCoachApplicationsPage() {
   const hasActiveFilters = statusFilter !== 'all' || scoreFilter !== 'all' || dateFrom || dateTo || search;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Coach Applications</h1>
-            <p className="text-sm text-gray-500">Quick review dashboard</p>
+            <h1 className="text-xl font-bold text-white">Coach Applications</h1>
+            <p className="text-sm text-text-tertiary">Quick review dashboard</p>
           </div>
-          <button onClick={fetchApplications} className="p-2 bg-white border rounded-lg hover:bg-gray-50" title="Refresh">
-            <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          <button onClick={fetchApplications} className="p-2 bg-surface-1 border border-border rounded-lg hover:bg-surface-2" title="Refresh">
+            <RefreshCw className={`w-5 h-5 text-text-secondary ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
-            { label: 'Total', value: stats.total, color: 'border-gray-300' },
+            { label: 'Total', value: stats.total, color: 'border-border' },
             { label: 'Pending', value: stats.pending, color: 'border-yellow-400' },
             { label: 'Qualified', value: stats.qualified, color: 'border-green-400' },
             { label: 'Approved', value: stats.approved, color: 'border-blue-400' },
           ].map(s => (
-            <div key={s.label} className={`bg-white rounded-lg p-3 border-l-4 ${s.color}`}>
-              <div className="text-2xl font-bold text-gray-900">{s.value}</div>
-              <div className="text-xs text-gray-500">{s.label}</div>
+            <div key={s.label} className={`bg-surface-1 rounded-lg p-3 border-l-4 ${s.color}`}>
+              <div className="text-2xl font-bold text-white">{s.value}</div>
+              <div className="text-xs text-text-tertiary">{s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-white rounded-lg p-3 mb-4 space-y-3">
+        <div className="bg-surface-1 rounded-lg p-3 mb-4 space-y-3">
           {/* Main Search Row */}
           <div className="flex gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input
                 type="text"
                 placeholder="Search name, email, phone, city, score, date..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 border rounded-lg text-sm flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-pink-50 border-pink-300 text-pink-700' : 'text-gray-700 hover:bg-gray-50'}`}
+              className={`px-4 py-2 border rounded-lg text-sm flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-pink-500/20 border-pink-500 text-pink-400' : 'text-text-secondary border-border hover:bg-surface-2'}`}
             >
               <Filter className="w-4 h-4" />
               Filters
@@ -685,14 +685,14 @@ export default function AdminCoachApplicationsPage() {
 
           {/* Advanced Filters (Collapsible) */}
           {showFilters && (
-            <div className="pt-3 border-t grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="pt-3 border-t border-border grid grid-cols-2 md:grid-cols-4 gap-3">
               {/* Status */}
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
+                <label className="text-xs font-medium text-text-tertiary mb-1 block">Status</label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2"
                 >
                   <option value="all">All Status</option>
                   {Object.entries(STATUS_CONFIG).map(([k, v]) => (
@@ -703,38 +703,38 @@ export default function AdminCoachApplicationsPage() {
 
               {/* Score */}
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Score</label>
+                <label className="text-xs font-medium text-text-tertiary mb-1 block">Score</label>
                 <select
                   value={scoreFilter}
                   onChange={(e) => setScoreFilter(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2"
                 >
                   <option value="all">All Scores</option>
-                  <option value="qualified">✓ Qualified (6+)</option>
-                  <option value="not_qualified">✗ Not Qualified (&lt;6)</option>
+                  <option value="qualified">Qualified (6+)</option>
+                  <option value="not_qualified">Not Qualified (&lt;6)</option>
                   <option value="no_score">No Score Yet</option>
                 </select>
               </div>
 
               {/* Date From */}
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">From Date</label>
+                <label className="text-xs font-medium text-text-tertiary mb-1 block">From Date</label>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2"
                 />
               </div>
 
               {/* Date To */}
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">To Date</label>
+                <label className="text-xs font-medium text-text-tertiary mb-1 block">To Date</label>
                 <input
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2"
                 />
               </div>
 
@@ -743,7 +743,7 @@ export default function AdminCoachApplicationsPage() {
                 <div className="col-span-2 md:col-span-4">
                   <button
                     onClick={clearFilters}
-                    className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
+                    className="text-sm text-pink-400 hover:text-pink-300 flex items-center gap-1"
                   >
                     <X className="w-4 h-4" /> Clear all filters
                   </button>
@@ -755,21 +755,21 @@ export default function AdminCoachApplicationsPage() {
 
         {/* Results Count */}
         {hasActiveFilters && (
-          <div className="text-sm text-gray-500 mb-3">
+          <div className="text-sm text-text-tertiary mb-3">
             Showing {filtered.length} of {applications.length} applications
           </div>
         )}
 
         {/* List */}
-        <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+        <div className="bg-surface-1 rounded-lg overflow-hidden shadow-sm">
           {loading ? (
             <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-pink-500" /></div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-text-tertiary">
               {hasActiveFilters ? 'No applications match your filters' : 'No applications found'}
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-border">
               {filtered.map(app => {
                 const sc = STATUS_CONFIG[app.status] || STATUS_CONFIG.applied;
                 const isQ = (app.ai_total_score || 0) >= 6;
@@ -777,31 +777,31 @@ export default function AdminCoachApplicationsPage() {
                   <div
                     key={app.id}
                     onClick={() => setSelectedAppId(app.id)}
-                    className="p-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3"
+                    className="p-3 hover:bg-surface-2 cursor-pointer flex items-center gap-3"
                   >
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold">
                       {app.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900 truncate">{app.name}</span>
+                        <span className="font-medium text-white truncate">{app.name}</span>
                         {app.ai_total_score !== null && (
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${isQ ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${isQ ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                             {app.ai_total_score}
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">{app.email}</div>
+                      <div className="text-xs text-text-tertiary truncate">{app.email}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sc.bgColor} ${sc.color}`}>
                         {sc.label}
                       </span>
                       {app.city && (
-                        <span className="text-xs text-gray-400 hidden md:inline">{app.city}</span>
+                        <span className="text-xs text-text-tertiary hidden md:inline">{app.city}</span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-400 w-20 text-right">
+                    <div className="text-xs text-text-tertiary w-20 text-right">
                       {new Date(app.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                     </div>
                   </div>

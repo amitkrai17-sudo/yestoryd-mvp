@@ -310,12 +310,12 @@ export default function CoachingSessionForm({
   if (success) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full">
+        <div className="bg-surface-1 rounded-2xl p-8 text-center max-w-md w-full">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Session Completed!</h2>
-          <p className="text-gray-600 mb-4">
+          <h2 className="text-xl font-bold text-white mb-2">Session Completed!</h2>
+          <p className="text-text-secondary mb-4">
             {childName}'s progress has been recorded.
           </p>
           
@@ -350,24 +350,24 @@ export default function CoachingSessionForm({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface-1 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 p-4 rounded-t-2xl">
+        <div className="sticky top-0 bg-surface-1 border-b border-border p-4 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-[#FF0099]" />
                 Complete Session
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-text-tertiary">
                 {childName} (Age {childAge}) • {sessionType === 'remedial' ? 'Remedial' : 'Coaching'}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 hover:bg-surface-2 rounded-lg transition"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5 text-text-tertiary" />
             </button>
           </div>
 
@@ -382,7 +382,7 @@ export default function CoachingSessionForm({
               />
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2">Step {step} of {totalSteps}</p>
+          <p className="text-xs text-text-tertiary mt-2">Step {step} of {totalSteps}</p>
         </div>
 
         {/* Form Content */}
@@ -399,7 +399,7 @@ export default function CoachingSessionForm({
             <div className="space-y-5">
               {/* Focus Area */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   What did you focus on today?
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -411,12 +411,12 @@ export default function CoachingSessionForm({
                       className={`p-3 rounded-xl border-2 text-left transition ${
                         focusArea === area.value
                           ? 'border-[#FF0099] bg-[#FF0099]/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <span className="text-lg">{area.icon}</span>
-                      <p className="font-medium text-gray-900 text-sm">{area.label}</p>
-                      <p className="text-xs text-gray-500">{area.description}</p>
+                      <p className="font-medium text-white text-sm">{area.label}</p>
+                      <p className="text-xs text-text-tertiary">{area.description}</p>
                     </button>
                   ))}
                 </div>
@@ -424,7 +424,7 @@ export default function CoachingSessionForm({
 
               {/* Progress Rating */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Progress vs. last session:
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -436,7 +436,7 @@ export default function CoachingSessionForm({
                       className={`p-4 rounded-xl border-2 text-center transition ${
                         progressRating === option.value
                           ? option.bgColor
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <span className="text-lg">{option.label}</span>
@@ -447,7 +447,7 @@ export default function CoachingSessionForm({
 
               {/* Engagement Level */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Engagement level:
                 </label>
                 <div className="space-y-2">
@@ -459,11 +459,11 @@ export default function CoachingSessionForm({
                       className={`w-full p-3 rounded-xl border-2 text-left transition ${
                         engagementLevel === level.value
                           ? 'border-[#FF0099] bg-[#FF0099]/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
-                      <span className="font-medium text-gray-900">{level.label}</span>
-                      <span className="text-sm text-gray-500 ml-2">{level.description}</span>
+                      <span className="font-medium text-white">{level.label}</span>
+                      <span className="text-sm text-text-tertiary ml-2">{level.description}</span>
                     </button>
                   ))}
                 </div>
@@ -471,7 +471,7 @@ export default function CoachingSessionForm({
 
               {/* Confidence Level */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   {childName}'s confidence today:
                 </label>
                 <div className="flex justify-between gap-2">
@@ -483,11 +483,11 @@ export default function CoachingSessionForm({
                       className={`flex-1 p-3 rounded-xl border-2 text-center transition ${
                         confidenceLevel === level
                           ? 'border-[#FF0099] bg-[#FF0099]/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <Star className={`w-5 h-5 mx-auto ${confidenceLevel >= level ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-                      <p className="text-xs text-gray-500 mt-1">{level === 1 ? 'Low' : level === 5 ? 'High' : ''}</p>
+                      <p className="text-xs text-text-tertiary mt-1">{level === 1 ? 'Low' : level === 5 ? 'High' : ''}</p>
                     </button>
                   ))}
                 </div>
@@ -499,14 +499,14 @@ export default function CoachingSessionForm({
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   <Zap className="w-4 h-4 inline mr-1" />
                   Skills worked on (optional):
                 </label>
                 
                 {focusArea && relevantSkills.length > 0 && (
                   <div className="mb-4">
-                    <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">
+                    <p className="text-xs text-text-tertiary mb-2 uppercase tracking-wider">
                       {focusArea.charAt(0).toUpperCase() + focusArea.slice(1)} Skills
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -518,7 +518,7 @@ export default function CoachingSessionForm({
                           className={`px-4 py-2 rounded-full border transition ${
                             skillsWorkedOn.includes(skill.code)
                               ? 'bg-[#FF0099] text-white border-[#FF0099]'
-                              : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300'
+                              : 'bg-surface-2 text-text-secondary border-border hover:border-border'
                           }`}
                         >
                           {skill.name}
@@ -533,7 +533,7 @@ export default function CoachingSessionForm({
                   .filter(([cat]) => cat !== focusArea)
                   .map(([category, skills]) => (
                     <div key={category} className="mb-4">
-                      <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">
+                      <p className="text-xs text-text-tertiary mb-2 uppercase tracking-wider">
                         {category.charAt(0).toUpperCase() + category.slice(1)}
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -545,7 +545,7 @@ export default function CoachingSessionForm({
                             className={`px-3 py-1.5 rounded-full border text-sm transition ${
                               skillsWorkedOn.includes(skill.code)
                                 ? 'bg-[#00ABFF] text-white border-[#00ABFF]'
-                                : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                                : 'bg-surface-2 text-text-secondary border-border hover:border-border'
                             }`}
                           >
                             {skill.name}
@@ -569,12 +569,12 @@ export default function CoachingSessionForm({
             <div className="space-y-5">
               <div className="text-center">
                 <Volume2 className="w-8 h-8 text-[#FF0099] mx-auto mb-3" />
-                <h3 className="font-medium text-gray-900 mb-2">Quick Voice Note</h3>
-                <p className="text-sm text-gray-500 mb-6">
+                <h3 className="font-medium text-white mb-2">Quick Voice Note</h3>
+                <p className="text-sm text-text-tertiary mb-6">
                   What went well? Any concerns? What to focus on next?
                 </p>
 
-                <div className="bg-gray-50 rounded-xl p-6">
+                <div className="bg-surface-2 rounded-xl p-6">
                   {!audioBlob ? (
                     <div className="space-y-4">
                       <button
@@ -591,7 +591,7 @@ export default function CoachingSessionForm({
                           <Mic className="w-8 h-8 text-white" />
                         )}
                       </button>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-text-tertiary">
                         {isRecording
                           ? `Recording... ${formatTime(recordingTime)}`
                           : 'Tap to record (optional)'
@@ -605,8 +605,8 @@ export default function CoachingSessionForm({
                           <CheckCircle className="w-6 h-6 text-green-600" />
                         </div>
                         <div className="text-left">
-                          <p className="font-medium text-gray-900">Recording saved</p>
-                          <p className="text-sm text-gray-500">{formatTime(recordingTime)}</p>
+                          <p className="font-medium text-white">Recording saved</p>
+                          <p className="text-sm text-text-tertiary">{formatTime(recordingTime)}</p>
                         </div>
                       </div>
                       <button
@@ -621,7 +621,7 @@ export default function CoachingSessionForm({
 
                 <button
                   onClick={() => setStep(4)}
-                  className="text-sm text-gray-400 hover:text-gray-600 mt-4"
+                  className="text-sm text-text-tertiary hover:text-text-secondary mt-4"
                 >
                   Skip voice note →
                 </button>
@@ -633,17 +633,17 @@ export default function CoachingSessionForm({
           {step === 4 && (
             <div className="space-y-5">
               {/* Homework */}
-              <div className="border border-gray-200 rounded-xl p-4">
+              <div className="border border-border rounded-xl p-4">
                 <label className="flex items-center justify-between cursor-pointer">
                   <div className="flex items-center gap-3">
-                    <ClipboardList className="w-5 h-5 text-gray-400" />
-                    <span className="font-medium text-gray-700">Assign Homework</span>
+                    <ClipboardList className="w-5 h-5 text-text-tertiary" />
+                    <span className="font-medium text-text-secondary">Assign Homework</span>
                   </div>
                   <input
                     type="checkbox"
                     checked={homeworkAssigned}
                     onChange={(e) => setHomeworkAssigned(e.target.checked)}
-                    className="w-5 h-5 rounded border-gray-300 text-[#FF0099] focus:ring-[#FF0099]"
+                    className="w-5 h-5 rounded border-border text-[#FF0099] focus:ring-[#FF0099]"
                   />
                 </label>
 
@@ -652,7 +652,7 @@ export default function CoachingSessionForm({
                     <select
                       value={homeworkTopic}
                       onChange={(e) => setHomeworkTopic(e.target.value)}
-                      className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                      className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                     >
                       <option value="">Select topic...</option>
                       {HOMEWORK_TOPICS.map((topic) => (
@@ -663,7 +663,7 @@ export default function CoachingSessionForm({
                       value={homeworkDescription}
                       onChange={(e) => setHomeworkDescription(e.target.value)}
                       placeholder="Describe the homework..."
-                      className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                      className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                       rows={2}
                     />
                   </div>
@@ -671,17 +671,17 @@ export default function CoachingSessionForm({
               </div>
 
               {/* Quiz */}
-              <div className="border border-gray-200 rounded-xl p-4">
+              <div className="border border-border rounded-xl p-4">
                 <label className="flex items-center justify-between cursor-pointer">
                   <div className="flex items-center gap-3">
-                    <Sparkles className="w-5 h-5 text-gray-400" />
-                    <span className="font-medium text-gray-700">Send Quiz to Child</span>
+                    <Sparkles className="w-5 h-5 text-text-tertiary" />
+                    <span className="font-medium text-text-secondary">Send Quiz to Child</span>
                   </div>
                   <input
                     type="checkbox"
                     checked={quizAssigned}
                     onChange={(e) => setQuizAssigned(e.target.checked)}
-                    className="w-5 h-5 rounded border-gray-300 text-[#FF0099] focus:ring-[#FF0099]"
+                    className="w-5 h-5 rounded border-border text-[#FF0099] focus:ring-[#FF0099]"
                   />
                 </label>
 
@@ -690,7 +690,7 @@ export default function CoachingSessionForm({
                     <select
                       value={quizTopic}
                       onChange={(e) => setQuizTopic(e.target.value)}
-                      className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                      className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                     >
                       <option value="">Select quiz topic...</option>
                       {QUIZ_TOPICS.map((topic) => (
@@ -721,7 +721,7 @@ export default function CoachingSessionForm({
                     <select
                       value={flagReason}
                       onChange={(e) => setFlagReason(e.target.value)}
-                      className="w-full p-3 border border-orange-200 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                      className="w-full p-3 border border-orange-200 rounded-xl text-white bg-surface-1 focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
                     >
                       <option value="">Select reason...</option>
                       {FLAG_REASONS.map((reason) => (
@@ -734,7 +734,7 @@ export default function CoachingSessionForm({
 
               {/* Breakthrough Moment */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-text-secondary mb-2">
                   🌟 Breakthrough moment? (optional)
                 </label>
                 <input
@@ -742,20 +742,20 @@ export default function CoachingSessionForm({
                   value={breakthroughMoment}
                   onChange={(e) => setBreakthroughMoment(e.target.value)}
                   placeholder="E.g., Read a full sentence without help!"
-                  className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                 />
               </div>
 
               {/* Concerns */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-text-secondary mb-2">
                   Any concerns? (optional)
                 </label>
                 <textarea
                   value={concerns}
                   onChange={(e) => setConcerns(e.target.value)}
                   placeholder="Note any concerns for follow-up..."
-                  className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                   rows={2}
                 />
               </div>
@@ -764,12 +764,12 @@ export default function CoachingSessionForm({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 rounded-b-2xl">
+        <div className="sticky bottom-0 bg-surface-1 border-t border-border p-4 rounded-b-2xl">
           <div className="flex gap-3">
             {step > 1 && (
               <button
                 onClick={() => setStep(step - 1)}
-                className="flex-1 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                className="flex-1 py-3 border border-border text-text-secondary rounded-xl font-medium hover:bg-surface-2 transition flex items-center justify-center gap-2"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Back

@@ -218,22 +218,22 @@ export default function WhatsAppTemplatesPage() {
             <MessageSquare className="w-7 h-7 text-green-400" />
             WhatsApp Templates
           </h1>
-          <p className="text-gray-400">Send pre-built messages to parents with one click</p>
+          <p className="text-text-tertiary">Send pre-built messages to parents with one click</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Templates List */}
-          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-700">
+          <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+            <div className="p-4 border-b border-border">
               <h2 className="font-semibold text-white">Select Template</h2>
             </div>
-            <div className="divide-y divide-gray-700 max-h-[500px] overflow-y-auto">
+            <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
               {templates.map((template) => (
                 <button
                   key={template.id}
                   onClick={() => setSelectedTemplate(template)}
-                  className={`w-full p-4 text-left hover:bg-gray-700/50 transition-colors ${
-                    selectedTemplate?.id === template.id ? 'bg-gray-700/50 border-l-2 border-[#FF0099]' : ''
+                  className={`w-full p-4 text-left hover:bg-surface-2/50 transition-colors ${
+                    selectedTemplate?.id === template.id ? 'bg-surface-2/50 border-l-2 border-[#FF0099]' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -242,30 +242,30 @@ export default function WhatsAppTemplatesPage() {
                       {getCategoryLabel(template.category)}
                     </span>
                   </div>
-                  <p className="text-gray-400 text-sm line-clamp-2">{template.template}</p>
+                  <p className="text-text-tertiary text-sm line-clamp-2">{template.template}</p>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Student Selection */}
-          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-700">
+          <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+            <div className="p-4 border-b border-border">
               <h2 className="font-semibold text-white mb-3">Select Student</h2>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                 <input
                   type="text"
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 pl-9 pr-4 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099]"
+                  className="w-full bg-surface-2 border border-border rounded-lg py-2 pl-9 pr-4 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:border-[#FF0099]"
                 />
               </div>
             </div>
-            <div className="divide-y divide-gray-700 max-h-[420px] overflow-y-auto">
+            <div className="divide-y divide-border max-h-[420px] overflow-y-auto">
               {filteredStudents.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
+                <div className="p-6 text-center text-text-tertiary">
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   No students found
                 </div>
@@ -274,8 +274,8 @@ export default function WhatsAppTemplatesPage() {
                   <button
                     key={student.id}
                     onClick={() => setSelectedStudent(student)}
-                    className={`w-full p-4 text-left hover:bg-gray-700/50 transition-colors ${
-                      selectedStudent?.id === student.id ? 'bg-gray-700/50 border-l-2 border-[#FF0099]' : ''
+                    className={`w-full p-4 text-left hover:bg-surface-2/50 transition-colors ${
+                      selectedStudent?.id === student.id ? 'bg-surface-2/50 border-l-2 border-[#FF0099]' : ''
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -284,7 +284,7 @@ export default function WhatsAppTemplatesPage() {
                       </div>
                       <div>
                         <p className="font-medium text-white">{student.child_name}</p>
-                        <p className="text-gray-400 text-sm">{student.parent_name}</p>
+                        <p className="text-text-tertiary text-sm">{student.parent_name}</p>
                       </div>
                     </div>
                   </button>
@@ -294,28 +294,28 @@ export default function WhatsAppTemplatesPage() {
           </div>
 
           {/* Preview & Send */}
-          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-700">
+          <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+            <div className="p-4 border-b border-border">
               <h2 className="font-semibold text-white">Preview & Send</h2>
             </div>
             <div className="p-4">
               {!selectedTemplate || !selectedStudent ? (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-text-tertiary">
                   <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>Select a template and student to preview the message</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {/* Selected Info */}
-                  <div className="bg-gray-700/50 rounded-lg p-3">
-                    <p className="text-gray-400 text-xs mb-1">Sending to</p>
+                  <div className="bg-surface-2/50 rounded-lg p-3">
+                    <p className="text-text-tertiary text-xs mb-1">Sending to</p>
                     <p className="text-white font-medium">{selectedStudent.parent_name}</p>
-                    <p className="text-gray-400 text-sm">{selectedStudent.parent_phone}</p>
+                    <p className="text-text-tertiary text-sm">{selectedStudent.parent_phone}</p>
                   </div>
 
                   {/* Message Preview */}
                   <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap text-sm leading-relaxed">
+                    <p className="text-text-secondary whitespace-pre-wrap text-sm leading-relaxed">
                       {previewMessage}
                     </p>
                   </div>
@@ -324,7 +324,7 @@ export default function WhatsAppTemplatesPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={copyToClipboard}
-                      className="flex-1 flex items-center justify-center gap-2 bg-gray-700 text-white py-3 rounded-xl font-medium hover:bg-gray-600 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 bg-surface-2 text-white py-3 rounded-xl font-medium hover:bg-surface-3 transition-colors"
                     >
                       {copied ? (
                         <>
@@ -347,7 +347,7 @@ export default function WhatsAppTemplatesPage() {
                     </button>
                   </div>
 
-                  <p className="text-gray-500 text-xs text-center">
+                  <p className="text-text-tertiary text-xs text-center">
                     Opens WhatsApp with pre-filled message
                   </p>
                 </div>

@@ -258,7 +258,7 @@ export default function StudentDetailPage() {
   };
 
   const getScoreColor = (score: number | null) => {
-    if (score === null) return 'text-gray-400';
+    if (score === null) return 'text-text-tertiary';
     if (score >= 8) return 'text-green-400';
     if (score >= 5) return 'text-yellow-400';
     return 'text-orange-400';
@@ -289,7 +289,7 @@ export default function StudentDetailPage() {
       <div className="px-3 py-3 lg:px-6 lg:py-6 max-w-7xl mx-auto">
 
         {/* Profile Card - COMPACT */}
-        <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-2.5 lg:p-4 mb-3 lg:mb-6">
+        <div className="bg-surface-1 rounded-xl border border-border p-2.5 lg:p-4 mb-3 lg:mb-6">
           <div className="flex items-center gap-2.5 lg:gap-4">
             {/* Avatar */}
             <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center text-white text-base lg:text-xl font-bold flex-shrink-0">
@@ -301,7 +301,7 @@ export default function StudentDetailPage() {
               <h1 className="text-sm lg:text-xl font-bold text-white truncate">
                 {student.child_name}
               </h1>
-              <p className="text-xs lg:text-sm text-gray-400">
+              <p className="text-xs lg:text-sm text-text-tertiary">
                 Age {student.age} • <span className={getScoreColor(student.latest_assessment_score)}>
                   {student.latest_assessment_score ?? '-'}/10
                 </span>
@@ -324,7 +324,7 @@ export default function StudentDetailPage() {
               </button>
               <a
                 href={`tel:${student.parent_phone}`}
-                className="w-9 h-9 lg:w-auto lg:px-3 lg:py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg flex items-center justify-center gap-1.5"
+                className="w-9 h-9 lg:w-auto lg:px-3 lg:py-2 bg-surface-2 hover:bg-surface-3 text-white rounded-lg flex items-center justify-center gap-1.5"
               >
                 <Phone className="w-4 h-4" />
                 <span className="hidden lg:inline text-sm">Call</span>
@@ -334,11 +334,11 @@ export default function StudentDetailPage() {
         </div>
 
         {/* Mobile Tabs - Short text, no truncation */}
-        <div className="lg:hidden flex mb-3 bg-gray-800/50 p-1 rounded-lg">
+        <div className="lg:hidden flex mb-3 bg-surface-1/50 p-1 rounded-lg">
           <button
             onClick={() => setActiveTab('sessions')}
             className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'sessions' ? 'bg-[#FF0099] text-white' : 'text-gray-400'
+              activeTab === 'sessions' ? 'bg-[#FF0099] text-white' : 'text-text-tertiary'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -347,7 +347,7 @@ export default function StudentDetailPage() {
           <button
             onClick={() => setActiveTab('ai')}
             className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'ai' ? 'bg-[#FF0099] text-white' : 'text-gray-400'
+              activeTab === 'ai' ? 'bg-[#FF0099] text-white' : 'text-text-tertiary'
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
@@ -356,7 +356,7 @@ export default function StudentDetailPage() {
           <button
             onClick={() => setActiveTab('history')}
             className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'history' ? 'bg-[#FF0099] text-white' : 'text-gray-400'
+              activeTab === 'history' ? 'bg-[#FF0099] text-white' : 'text-text-tertiary'
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -373,22 +373,22 @@ export default function StudentDetailPage() {
           }`}>
 
             {/* AI Chat */}
-            <section className={`bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden ${
+            <section className={`bg-surface-1 rounded-xl border border-border overflow-hidden ${
               activeTab !== 'ai' ? 'hidden lg:block' : ''
             }`}>
-              <div className="p-2.5 lg:p-3 border-b border-gray-800 flex items-center gap-2">
+              <div className="p-2.5 lg:p-3 border-b border-border flex items-center gap-2">
                 <Bot className="w-4 h-4 text-[#FF0099]" />
                 <span className="text-xs lg:text-sm font-semibold text-white">AI Assistant</span>
                 <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded">RAG</span>
               </div>
 
               {/* Quick Prompts */}
-              <div className="p-2 border-b border-gray-800 flex flex-wrap gap-1">
+              <div className="p-2 border-b border-border flex flex-wrap gap-1">
                 {quickPrompts.map((p) => (
                   <button
                     key={p}
                     onClick={() => setChatInput(p)}
-                    className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] rounded-full"
+                    className="px-2 py-1 bg-surface-2 hover:bg-surface-3 text-text-secondary text-[10px] rounded-full"
                   >
                     {p}
                   </button>
@@ -398,7 +398,7 @@ export default function StudentDetailPage() {
               {/* Chat Messages */}
               <div className="h-44 lg:h-56 overflow-y-auto p-2.5 space-y-2">
                 {chatMessages.length === 0 ? (
-                  <div className="text-center text-gray-500 py-6">
+                  <div className="text-center text-text-tertiary py-6">
                     <Bot className="w-6 h-6 mx-auto mb-1 opacity-50" />
                     <p className="text-[10px]">Ask about {student.child_name}</p>
                   </div>
@@ -406,7 +406,7 @@ export default function StudentDetailPage() {
                   chatMessages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs ${
-                        msg.role === 'user' ? 'bg-[#FF0099] text-white' : 'bg-gray-800 text-gray-200'
+                        msg.role === 'user' ? 'bg-[#FF0099] text-white' : 'bg-surface-2 text-text-secondary'
                       }`}>
                         {msg.content}
                       </div>
@@ -415,7 +415,7 @@ export default function StudentDetailPage() {
                 )}
                 {chatLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-gray-800 rounded-lg px-2.5 py-1.5">
+                    <div className="bg-surface-2 rounded-lg px-2.5 py-1.5">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FF0099]" />
                     </div>
                   </div>
@@ -424,14 +424,14 @@ export default function StudentDetailPage() {
               </div>
 
               {/* Chat Input */}
-              <div className="p-2 border-t border-gray-800 flex gap-1.5">
+              <div className="p-2 border-t border-border flex gap-1.5">
                 <input
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
                   placeholder="Ask..."
-                  className="flex-1 px-2.5 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-[#FF0099]"
+                  className="flex-1 px-2.5 py-2 bg-surface-2 border border-border rounded-lg text-white text-xs placeholder-text-tertiary focus:outline-none focus:border-[#FF0099]"
                 />
                 <button
                   onClick={handleSendChat}
@@ -444,10 +444,10 @@ export default function StudentDetailPage() {
             </section>
 
             {/* Assessment History */}
-            <section className={`bg-[#1a1a1a] rounded-xl border border-gray-800 ${
+            <section className={`bg-surface-1 rounded-xl border border-border ${
               activeTab !== 'history' ? 'hidden lg:block' : ''
             }`}>
-              <div className="p-2.5 lg:p-3 border-b border-gray-800">
+              <div className="p-2.5 lg:p-3 border-b border-border">
                 <h2 className="flex items-center gap-2 text-xs lg:text-sm font-semibold text-white">
                   <BookOpen className="w-4 h-4 text-green-400" />
                   Assessment History
@@ -455,19 +455,19 @@ export default function StudentDetailPage() {
               </div>
               <div className="max-h-48 overflow-y-auto">
                 {assessments.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
+                  <div className="p-6 text-center text-text-tertiary">
                     <BookOpen className="w-6 h-6 mx-auto mb-1 opacity-50" />
                     <p className="text-[10px]">No assessments yet</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-800">
+                  <div className="divide-y divide-border">
                     {assessments.map((a) => (
                       <div key={a.id} className="p-2.5 flex items-center justify-between">
                         <div>
                           <span className={`text-base font-bold ${getScoreColor(a.score)}`}>{a.score}/10</span>
-                          <span className="text-[10px] text-gray-400 ml-2">{a.wpm} WPM</span>
+                          <span className="text-[10px] text-text-tertiary ml-2">{a.wpm} WPM</span>
                         </div>
-                        <span className="text-[10px] text-gray-500">{formatDate(a.created_at)}</span>
+                        <span className="text-[10px] text-text-tertiary">{formatDate(a.created_at)}</span>
                       </div>
                     ))}
                   </div>
@@ -482,8 +482,8 @@ export default function StudentDetailPage() {
           }`}>
 
             {/* Sessions List */}
-            <section className="bg-[#1a1a1a] rounded-xl border border-gray-800 overflow-hidden">
-              <div className="p-2.5 lg:p-3 border-b border-gray-800">
+            <section className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+              <div className="p-2.5 lg:p-3 border-b border-border">
                 <h2 className="flex items-center gap-2 text-xs lg:text-sm font-semibold text-white">
                   <Calendar className="w-4 h-4 text-[#00ABFF]" />
                   Sessions ({sessions.length})
@@ -491,9 +491,9 @@ export default function StudentDetailPage() {
               </div>
 
               {/* COMPACT Session Cards */}
-              <div className="max-h-[350px] lg:max-h-[450px] overflow-y-auto divide-y divide-gray-800">
+              <div className="max-h-[350px] lg:max-h-[450px] overflow-y-auto divide-y divide-border">
                 {sessions.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
+                  <div className="p-6 text-center text-text-tertiary">
                     <Calendar className="w-6 h-6 mx-auto mb-1 opacity-50" />
                     <p className="text-[10px]">No sessions scheduled</p>
                   </div>
@@ -503,7 +503,7 @@ export default function StudentDetailPage() {
                     const isExpanded = expandedSession === session.id;
 
                     return (
-                      <div key={session.id} className="p-2 lg:p-3 hover:bg-gray-800/30">
+                      <div key={session.id} className="p-2 lg:p-3 hover:bg-surface-2/30">
                         {/* SINGLE ROW layout */}
                         <div className="flex items-center gap-2">
                           {/* Status icon */}
@@ -524,7 +524,7 @@ export default function StudentDetailPage() {
                             <span className="text-xs lg:text-sm font-medium text-white">
                               #{index + 1}
                             </span>
-                            <span className="text-[10px] lg:text-xs text-gray-400 truncate">
+                            <span className="text-[10px] lg:text-xs text-text-tertiary truncate">
                               {formatDate(session.scheduled_date)}
                             </span>
                             <span className={`px-1.5 py-0.5 text-[9px] lg:text-[10px] rounded ${
@@ -553,24 +553,24 @@ export default function StudentDetailPage() {
 
                         {/* Expanded Details */}
                         {isExpanded && details && (
-                          <div className="mt-2 p-2 lg:p-3 bg-gray-800/50 rounded-lg text-[10px] lg:text-xs space-y-1.5">
+                          <div className="mt-2 p-2 lg:p-3 bg-surface-2/50 rounded-lg text-[10px] lg:text-xs space-y-1.5">
                             <div className="flex justify-between">
-                              <span className="text-gray-400">Focus</span>
+                              <span className="text-text-tertiary">Focus</span>
                               <span className="text-white capitalize">{details.focus_area?.replace(/_/g, ' ') || '-'}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-400">Progress</span>
+                              <span className="text-text-tertiary">Progress</span>
                               <span className={`capitalize ${
                                 details.progress_rating?.includes('improve') || details.progress_rating === 'breakthrough'
-                                  ? 'text-green-400' : 'text-gray-300'
+                                  ? 'text-green-400' : 'text-text-secondary'
                               }`}>
                                 {details.progress_rating?.replace(/_/g, ' ') || '-'}
                               </span>
                             </div>
 
                             {details.highlights && details.highlights.length > 0 && (
-                              <div className="pt-1 border-t border-gray-700">
-                                <span className="text-gray-400">Highlights:</span>
+                              <div className="pt-1 border-t border-border">
+                                <span className="text-text-tertiary">Highlights:</span>
                                 {details.highlights.map((h: string, i: number) => (
                                   <div key={i} className="flex items-center gap-1 text-green-400 mt-0.5">
                                     <CheckCircle className="w-3 h-3 flex-shrink-0" />
@@ -581,8 +581,8 @@ export default function StudentDetailPage() {
                             )}
 
                             {details.challenges && details.challenges.length > 0 && (
-                              <div className="pt-1 border-t border-gray-700">
-                                <span className="text-gray-400">Challenges:</span>
+                              <div className="pt-1 border-t border-border">
+                                <span className="text-text-tertiary">Challenges:</span>
                                 {details.challenges.map((c: string, i: number) => (
                                   <div key={i} className="flex items-center gap-1 text-orange-400 mt-0.5">
                                     <AlertCircle className="w-3 h-3 flex-shrink-0" />
@@ -593,8 +593,8 @@ export default function StudentDetailPage() {
                             )}
 
                             {details.homework_assigned && details.homework_items && details.homework_items.length > 0 && (
-                              <div className="pt-1 border-t border-gray-700">
-                                <span className="text-gray-400">Homework:</span>
+                              <div className="pt-1 border-t border-border">
+                                <span className="text-text-tertiary">Homework:</span>
                                 {details.homework_items.map((hw: string, i: number) => (
                                   <div key={i} className="flex items-center gap-1 text-[#FFDE00] mt-0.5">
                                     <Home className="w-3 h-3 flex-shrink-0" />
@@ -605,8 +605,8 @@ export default function StudentDetailPage() {
                             )}
 
                             {details.next_session_focus && (
-                              <div className="flex justify-between pt-1 border-t border-gray-700">
-                                <span className="text-gray-400">Next</span>
+                              <div className="flex justify-between pt-1 border-t border-border">
+                                <span className="text-text-tertiary">Next</span>
                                 <span className="text-[#FF0099]">{details.next_session_focus}</span>
                               </div>
                             )}

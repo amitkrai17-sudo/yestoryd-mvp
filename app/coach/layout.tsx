@@ -219,12 +219,12 @@ export default function CoachLayout({
   // ==================== LOADING STATE ====================
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-to-br from-[#FF0099] to-[#00ABFF] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <p className="text-gray-400">Verifying access...</p>
+          <p className="text-text-tertiary">Verifying access...</p>
         </div>
       </div>
     );
@@ -233,13 +233,13 @@ export default function CoachLayout({
   // ==================== UNAUTHORIZED ====================
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-4">
-        <div className="bg-gray-800 border border-gray-700 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="bg-surface-1 border border-border rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-400" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
-          <p className="text-gray-400 mb-6">
+          <p className="text-text-tertiary mb-6">
             {user?.email || 'Your account'} is not authorized as a coach.
             {coach && !coach.is_active && ' Your account has been deactivated.'}
           </p>
@@ -260,7 +260,7 @@ export default function CoachLayout({
   // Mobile bottom nav added for PWA experience
   return (
     <CoachContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-[#0a0a0a] pb-20 lg:pb-0">
+      <div className="min-h-screen bg-surface-0 pb-20 lg:pb-0">
         {children}
       </div>
       {/* Mobile Bottom Navigation */}

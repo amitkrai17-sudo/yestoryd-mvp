@@ -1,6 +1,7 @@
 // file: app/coach/dashboard/MyReferralsTab.tsx
 // Coach Referrals Tab - FIXED to use database values
 // Shows referral code, link, stats, and earnings
+// TODO: Move referral amount (₹1,200) to site_settings
 
 'use client';
 
@@ -120,7 +121,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="w-6 h-6 text-[#00abff] animate-spin" />
-        <span className="ml-2 text-gray-500">Loading your referrals...</span>
+        <span className="ml-2 text-text-tertiary">Loading your referrals...</span>
       </div>
     );
   }
@@ -153,14 +154,14 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
           </div>
           <button
             onClick={fetchReferrals}
-            className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
+            className="p-2 bg-surface-1/20 rounded-lg hover:bg-surface-1/30 transition"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
         </div>
 
         {/* Referral Code - FROM DATABASE */}
-        <div className="bg-white/10 rounded-xl p-4 mb-4">
+        <div className="bg-surface-1/10 rounded-xl p-4 mb-4">
           <p className="text-pink-200 text-xs uppercase tracking-wide mb-2">Your Referral Code</p>
           <div className="flex items-center justify-between">
             <span className="text-2xl font-mono font-bold tracking-wider">
@@ -169,14 +170,14 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
             <div className="flex items-center gap-2">
               <button
                 onClick={copyCode}
-                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
+                className="p-2 bg-surface-1/20 rounded-lg hover:bg-surface-1/30 transition"
                 title="Copy code"
               >
                 {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
               </button>
               <button
                 onClick={shareOnWhatsApp}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-[#ff0099] rounded-lg font-medium hover:bg-pink-50 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-surface-1 text-[#ff0099] rounded-lg font-medium hover:bg-pink-50 transition"
               >
                 <Share2 className="w-4 h-4" />
                 Share on WhatsApp
@@ -186,15 +187,15 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
         </div>
 
         {/* Referral Link - FROM DATABASE */}
-        <div className="bg-white/10 rounded-xl p-4">
+        <div className="bg-surface-1/10 rounded-xl p-4">
           <p className="text-pink-200 text-xs uppercase tracking-wide mb-2">Your Referral Link</p>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-white/10 rounded-lg px-4 py-2 font-mono text-sm truncate">
+            <div className="flex-1 bg-surface-1/10 rounded-lg px-4 py-2 font-mono text-sm truncate">
               {coach?.referral_link || 'Loading...'}
             </div>
             <button
               onClick={copyLink}
-              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition flex-shrink-0"
+              className="p-2 bg-surface-1/20 rounded-lg hover:bg-surface-1/30 transition flex-shrink-0"
               title="Copy link"
             >
               {copiedLink ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
@@ -205,58 +206,58 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-surface-1 rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Users className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{stats?.total_referrals || 0}</p>
-          <p className="text-sm text-gray-500">Total</p>
-          <p className="text-xs text-gray-400">Referrals</p>
+          <p className="text-2xl font-bold text-white">{stats?.total_referrals || 0}</p>
+          <p className="text-sm text-text-tertiary">Total</p>
+          <p className="text-xs text-text-tertiary">Referrals</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-surface-1 rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-green-100 rounded-lg">
               <CheckCircle className="w-4 h-4 text-green-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-green-600">{stats?.enrolled || 0}</p>
-          <p className="text-sm text-gray-500">Enrolled</p>
-          <p className="text-xs text-gray-400">Converted</p>
+          <p className="text-sm text-text-tertiary">Enrolled</p>
+          <p className="text-xs text-text-tertiary">Converted</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-surface-1 rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-amber-100 rounded-lg">
               <Clock className="w-4 h-4 text-amber-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-amber-600">{stats?.in_progress || 0}</p>
-          <p className="text-sm text-gray-500">In Progress</p>
-          <p className="text-xs text-gray-400">Following up</p>
+          <p className="text-sm text-text-tertiary">In Progress</p>
+          <p className="text-xs text-text-tertiary">Following up</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="bg-surface-1 rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-purple-100 rounded-lg">
               <Target className="w-4 h-4 text-purple-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-purple-600">{stats?.conversion_rate || 0}%</p>
-          <p className="text-sm text-gray-500">Conversion</p>
-          <p className="text-xs text-gray-400">Success rate</p>
+          <p className="text-sm text-text-tertiary">Conversion</p>
+          <p className="text-xs text-text-tertiary">Success rate</p>
         </div>
       </div>
 
       {/* Earnings Card */}
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
+      <div className="bg-surface-1 rounded-xl border border-border p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-emerald-100 rounded-lg">
             <Wallet className="w-5 h-5 text-emerald-600" />
           </div>
-          <h3 className="font-bold text-gray-900">Your Referral Earnings</h3>
+          <h3 className="font-bold text-white">Your Referral Earnings</h3>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-4">
@@ -280,7 +281,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm text-text-tertiary bg-surface-2 rounded-lg p-3">
           <span className="text-amber-500">✨</span>
           <span>₹1,200 (20% lead bonus) per enrollment • Paid monthly on 7th</span>
         </div>
@@ -288,18 +289,18 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
       {/* Referrals List */}
       {referrals.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h3 className="font-bold text-gray-900">Your Referred Leads</h3>
+        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b bg-surface-2">
+            <h3 className="font-bold text-white">Your Referred Leads</h3>
           </div>
           <div className="divide-y">
             {referrals.map((referral) => (
-              <div key={referral.id} className="p-4 hover:bg-gray-50">
+              <div key={referral.id} className="p-4 hover:bg-surface-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">{referral.name}</p>
-                    <p className="text-sm text-gray-500">{referral.parent_name}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="font-medium text-white">{referral.name}</p>
+                    <p className="text-sm text-text-tertiary">{referral.parent_name}</p>
+                    <p className="text-xs text-text-tertiary">
                       {new Date(referral.created_at).toLocaleDateString('en-IN')}
                     </p>
                   </div>
@@ -328,10 +329,10 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
       {/* Empty State */}
       {referrals.length === 0 && !loading && (
-        <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+        <div className="bg-surface-1 rounded-xl border border-border p-8 text-center">
           <Gift className="w-12 h-12 text-pink-300 mx-auto mb-3" />
-          <h3 className="font-bold text-gray-900 mb-2">No Referrals Yet</h3>
-          <p className="text-gray-500 mb-4">
+          <h3 className="font-bold text-white mb-2">No Referrals Yet</h3>
+          <p className="text-text-tertiary mb-4">
             Share your referral link to start earning ₹1,200 per enrollment!
           </p>
           <button
@@ -346,8 +347,8 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
       {/* How It Works */}
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
-        <h3 className="font-bold text-gray-900 mb-3">💡 How Referral Earnings Work</h3>
-        <ul className="space-y-2 text-sm text-gray-600">
+        <h3 className="font-bold text-white mb-3">💡 How Referral Earnings Work</h3>
+        <ul className="space-y-2 text-sm text-text-secondary">
           <li className="flex items-start gap-2">
             <span className="text-blue-500">1.</span>
             <span>Share your unique referral link with parents</span>

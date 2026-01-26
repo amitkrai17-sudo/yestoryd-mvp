@@ -173,14 +173,14 @@ export default function PayoutsPage() {
 
   if (loading && !summary) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-emerald-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+    <div className="min-h-screen bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -189,15 +189,15 @@ export default function PayoutsPage() {
               <Wallet className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Coach Payouts</h1>
-              <p className="text-slate-500">
+              <h1 className="text-2xl font-bold text-white">Coach Payouts</h1>
+              <p className="text-text-tertiary">
                 {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
               </p>
             </div>
           </div>
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-xl text-text-secondary hover:bg-surface-2 transition-colors"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -207,62 +207,62 @@ export default function PayoutsPage() {
         {/* Summary Cards */}
         {summary && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-amber-400" />
                 </div>
-                <span className="text-sm text-slate-500">Due This Month</span>
+                <span className="text-sm text-text-tertiary">Due This Month</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900">₹{summary.due_this_month.amount.toLocaleString()}</p>
-              <p className="text-xs text-slate-400 mt-1">{summary.due_this_month.count} payouts</p>
+              <p className="text-2xl font-bold text-white">₹{summary.due_this_month.amount.toLocaleString()}</p>
+              <p className="text-xs text-text-muted mt-1">{summary.due_this_month.count} payouts</p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-blue-400" />
                 </div>
-                <span className="text-sm text-slate-500">Pending Approval</span>
+                <span className="text-sm text-text-tertiary">Pending Approval</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900">₹{summary.pending_approval.amount.toLocaleString()}</p>
-              <p className="text-xs text-slate-400 mt-1">{summary.pending_approval.count} payouts</p>
+              <p className="text-2xl font-bold text-white">₹{summary.pending_approval.amount.toLocaleString()}</p>
+              <p className="text-xs text-text-muted mt-1">{summary.pending_approval.count} payouts</p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-emerald-400" />
                 </div>
-                <span className="text-sm text-slate-500">Paid This Month</span>
+                <span className="text-sm text-text-tertiary">Paid This Month</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900">₹{summary.paid_this_month.amount.toLocaleString()}</p>
-              <p className="text-xs text-slate-400 mt-1">{summary.paid_this_month.count} payouts</p>
+              <p className="text-2xl font-bold text-white">₹{summary.paid_this_month.amount.toLocaleString()}</p>
+              <p className="text-xs text-text-muted mt-1">{summary.paid_this_month.count} payouts</p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-violet-600" />
+                <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-violet-400" />
                 </div>
-                <span className="text-sm text-slate-500">TDS to Deposit</span>
+                <span className="text-sm text-text-tertiary">TDS to Deposit</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900">₹{summary.tds_to_deposit.amount.toLocaleString()}</p>
-              <p className="text-xs text-slate-400 mt-1">{summary.tds_to_deposit.quarter} FY{summary.tds_to_deposit.fy}</p>
+              <p className="text-2xl font-bold text-white">₹{summary.tds_to_deposit.amount.toLocaleString()}</p>
+              <p className="text-xs text-text-muted mt-1">{summary.tds_to_deposit.quarter} FY{summary.tds_to_deposit.fy}</p>
             </div>
           </div>
         )}
 
         {/* Tabs & Actions */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-b border-slate-100">
+        <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-b border-border">
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab('pending')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeTab === 'pending'
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'text-slate-500 hover:bg-slate-100'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'text-text-tertiary hover:bg-surface-2'
                 }`}
               >
                 Pending Payouts
@@ -271,8 +271,8 @@ export default function PayoutsPage() {
                 onClick={() => setActiveTab('history')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeTab === 'history'
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'text-slate-500 hover:bg-slate-100'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'text-text-tertiary hover:bg-surface-2'
                 }`}
               >
                 Payout History
@@ -282,13 +282,13 @@ export default function PayoutsPage() {
             <div className="flex items-center gap-3 w-full sm:w-auto">
               {/* Search */}
               <div className="relative flex-1 sm:flex-initial">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                 <input
                   type="text"
                   placeholder="Search coach or child..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full sm:w-64 pl-10 pr-4 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -309,16 +309,16 @@ export default function PayoutsPage() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+                <RefreshCw className="w-6 h-6 animate-spin text-text-tertiary" />
               </div>
             ) : filteredPayouts.length === 0 ? (
               <div className="text-center py-12">
-                <Wallet className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500">No payouts found</p>
+                <Wallet className="w-12 h-12 text-text-tertiary mx-auto mb-3" />
+                <p className="text-text-secondary">No payouts found</p>
               </div>
             ) : (
               <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-100">
+                <thead className="bg-surface-2 border-b border-border">
                   <tr>
                     {activeTab === 'pending' && (
                       <th className="px-4 py-3 text-left">
@@ -326,33 +326,33 @@ export default function PayoutsPage() {
                           type="checkbox"
                           checked={selectedPayouts.length === filteredPayouts.length && filteredPayouts.length > 0}
                           onChange={toggleSelectAll}
-                          className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                          className="rounded border-border text-emerald-500 focus:ring-emerald-500"
                         />
                       </th>
                     )}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Coach</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Child</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Month</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Gross</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">TDS</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Net</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Due</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Coach</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Child</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Month</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">Gross</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">TDS</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">Net</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Due</th>
                     {activeTab === 'history' && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">UTR</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">UTR</th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {filteredPayouts.map((payout) => (
-                    <tr key={payout.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={payout.id} className="hover:bg-surface-2 transition-colors">
                       {activeTab === 'pending' && (
                         <td className="px-4 py-4">
                           <input
                             type="checkbox"
                             checked={selectedPayouts.includes(payout.id)}
                             onChange={() => toggleSelection(payout.id)}
-                            className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                            className="rounded border-border text-emerald-500 focus:ring-emerald-500"
                           />
                         </td>
                       )}
@@ -362,9 +362,9 @@ export default function PayoutsPage() {
                             {payout.coaches?.name?.charAt(0) || '?'}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium text-slate-900 truncate">{payout.coaches?.name || 'Unknown'}</p>
+                            <p className="font-medium text-white truncate">{payout.coaches?.name || 'Unknown'}</p>
                             {!payout.coaches?.pan_number && (
-                              <span className="text-xs text-amber-600 flex items-center gap-1">
+                              <span className="text-xs text-amber-400 flex items-center gap-1">
                                 <AlertCircle className="w-3 h-3" />
                                 PAN missing
                               </span>
@@ -372,38 +372,38 @@ export default function PayoutsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-slate-700">{payout.child_name || '-'}</td>
+                      <td className="px-4 py-4 text-text-secondary">{payout.child_name || '-'}</td>
                       <td className="px-4 py-4">
-                        <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded">
+                        <span className="px-2 py-1 bg-surface-2 text-text-secondary text-xs font-medium rounded">
                           {payout.payout_month}/3
                         </span>
                       </td>
                       <td className="px-4 py-4">
                         <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          payout.payout_type === 'lead_bonus' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : 'bg-pink-100 text-pink-700'
+                          payout.payout_type === 'lead_bonus'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : 'bg-pink-500/20 text-pink-400'
                         }`}>
                           {payout.payout_type === 'lead_bonus' ? 'Lead' : 'Coach'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-right font-medium text-slate-700">
+                      <td className="px-4 py-4 text-right font-medium text-text-secondary">
                         ₹{payout.gross_amount.toLocaleString()}
                       </td>
-                      <td className="px-4 py-4 text-right text-slate-500">
+                      <td className="px-4 py-4 text-right text-text-tertiary">
                         {payout.tds_amount > 0 ? `₹${payout.tds_amount.toLocaleString()}` : '-'}
                       </td>
-                      <td className="px-4 py-4 text-right font-bold text-emerald-600">
+                      <td className="px-4 py-4 text-right font-bold text-emerald-400">
                         ₹{payout.net_amount.toLocaleString()}
                       </td>
-                      <td className="px-4 py-4 text-slate-500 text-sm">
+                      <td className="px-4 py-4 text-text-tertiary text-sm">
                         {new Date(payout.scheduled_date).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'short',
                         })}
                       </td>
                       {activeTab === 'history' && (
-                        <td className="px-4 py-4 text-slate-500 text-sm font-mono">
+                        <td className="px-4 py-4 text-text-tertiary text-sm font-mono">
                           {payout.payment_reference || '-'}
                         </td>
                       )}
@@ -411,24 +411,24 @@ export default function PayoutsPage() {
                   ))}
                 </tbody>
                 {activeTab === 'pending' && selectedPayouts.length > 0 && (
-                  <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                  <tfoot className="bg-surface-2 border-t-2 border-border">
                     <tr>
-                      <td colSpan={5} className="px-4 py-4 text-right font-semibold text-slate-700">
+                      <td colSpan={5} className="px-4 py-4 text-right font-semibold text-text-secondary">
                         Total Selected ({selectedPayouts.length}):
                       </td>
-                      <td className="px-4 py-4 text-right font-bold text-slate-900">
+                      <td className="px-4 py-4 text-right font-bold text-white">
                         ₹{filteredPayouts
                           .filter(p => selectedPayouts.includes(p.id))
                           .reduce((sum, p) => sum + p.gross_amount, 0)
                           .toLocaleString()}
                       </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
+                      <td className="px-4 py-4 text-right text-text-secondary">
                         ₹{filteredPayouts
                           .filter(p => selectedPayouts.includes(p.id))
                           .reduce((sum, p) => sum + p.tds_amount, 0)
                           .toLocaleString()}
                       </td>
-                      <td className="px-4 py-4 text-right font-bold text-emerald-600">
+                      <td className="px-4 py-4 text-right font-bold text-emerald-400">
                         ₹{filteredPayouts
                           .filter(p => selectedPayouts.includes(p.id))
                           .reduce((sum, p) => sum + p.net_amount, 0)
@@ -445,18 +445,18 @@ export default function PayoutsPage() {
 
         {/* Payment Modal */}
         {showPayModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-              <div className="p-6 border-b border-slate-100">
-                <h3 className="text-lg font-semibold text-slate-900">Process Payouts</h3>
-                <p className="text-sm text-slate-500 mt-1">
+          <div className="fixed inset-0 bg-surface-0/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-surface-1 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-border">
+              <div className="p-6 border-b border-border">
+                <h3 className="text-lg font-semibold text-white">Process Payouts</h3>
+                <p className="text-sm text-text-tertiary mt-1">
                   Marking {selectedPayouts.length} payouts as paid
                 </p>
               </div>
               <div className="p-6">
-                <div className="bg-emerald-50 rounded-xl p-4 mb-6 border border-emerald-100">
-                  <p className="text-sm text-emerald-600 mb-1">Total Amount</p>
-                  <p className="text-3xl font-bold text-emerald-700">
+                <div className="bg-emerald-500/20 rounded-xl p-4 mb-6 border border-emerald-500/30">
+                  <p className="text-sm text-emerald-400 mb-1">Total Amount</p>
+                  <p className="text-3xl font-bold text-emerald-400">
                     ₹{filteredPayouts
                       .filter(p => selectedPayouts.includes(p.id))
                       .reduce((sum, p) => sum + p.net_amount, 0)
@@ -465,7 +465,7 @@ export default function PayoutsPage() {
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
                     Payment Reference (UTR/Transaction ID)
                   </label>
                   <input
@@ -473,14 +473,14 @@ export default function PayoutsPage() {
                     value={paymentRef}
                     onChange={(e) => setPaymentRef(e.target.value)}
                     placeholder="e.g., UTR123456789"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
 
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowPayModal(false)}
-                    className="flex-1 px-4 py-3 border border-slate-200 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                    className="flex-1 px-4 py-3 border border-border rounded-xl text-text-secondary font-medium hover:bg-surface-2 transition-colors"
                   >
                     Cancel
                   </button>

@@ -271,12 +271,12 @@ export default function SessionNotesForm({
   if (success) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+        <div className="bg-surface-1 rounded-2xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Session Notes Saved!</h2>
-          <p className="text-gray-600 mb-4">
+          <h2 className="text-xl font-bold text-white mb-2">Session Notes Saved!</h2>
+          <p className="text-text-secondary mb-4">
             Great job coaching {childName} today. The parent will receive a summary shortly.
           </p>
           <button
@@ -292,12 +292,12 @@ export default function SessionNotesForm({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-surface-1 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-[#ff0099] to-[#7B008B] p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-bold">Session Notes</h2>
-            <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg transition">
+            <button onClick={onClose} className="p-1 hover:bg-surface-1/20 rounded-lg transition">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -310,7 +310,7 @@ export default function SessionNotesForm({
               <div
                 key={s}
                 className={`h-1 flex-1 rounded-full transition ${
-                  s <= step ? 'bg-white' : 'bg-white/30'
+                  s <= step ? 'bg-surface-1' : 'bg-surface-1/30'
                 }`}
               />
             ))}
@@ -330,7 +330,7 @@ export default function SessionNotesForm({
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   What did you focus on today? <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -342,7 +342,7 @@ export default function SessionNotesForm({
                       className={`p-3 rounded-xl border-2 text-left transition ${
                         focusArea === area.code
                           ? 'border-[#00abff] bg-[#00abff]/10'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <span className="text-lg">{area.icon}</span>
@@ -356,7 +356,7 @@ export default function SessionNotesForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   How was {childName}'s progress today? <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
@@ -368,7 +368,7 @@ export default function SessionNotesForm({
                       className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition ${
                         progress === option.value
                           ? option.color + ' border-2'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <span className="text-2xl">{option.emoji}</span>
@@ -387,7 +387,7 @@ export default function SessionNotesForm({
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   How engaged was {childName}? <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
@@ -399,14 +399,14 @@ export default function SessionNotesForm({
                       className={`w-full p-3 rounded-xl border-2 text-left transition ${
                         engagement === option.value
                           ? 'border-[#00abff] bg-[#00abff]/10'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{option.emoji}</span>
                         <div>
                           <span className="font-medium">{option.label}</span>
-                          <p className="text-xs text-gray-500">{option.description}</p>
+                          <p className="text-xs text-text-tertiary">{option.description}</p>
                         </div>
                       </div>
                     </button>
@@ -418,7 +418,7 @@ export default function SessionNotesForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Skills worked on <span className="text-red-500">*</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -436,7 +436,7 @@ export default function SessionNotesForm({
                       className={`px-3 py-2 rounded-full text-sm border transition ${
                         skillsWorkedOn.includes(skill.code)
                           ? 'bg-[#00abff] text-white border-[#00abff]'
-                          : 'bg-gray-100 text-gray-700 border-gray-200 hover:border-gray-300'
+                          : 'bg-surface-2 text-text-secondary border-border hover:border-border'
                       }`}
                     >
                       {skill.label}
@@ -449,7 +449,7 @@ export default function SessionNotesForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Confidence Level: {confidenceLevel}/5
                 </label>
                 <div className="flex gap-2">
@@ -461,12 +461,12 @@ export default function SessionNotesForm({
                       className={`flex-1 py-3 rounded-xl border-2 transition ${
                         confidenceLevel >= level
                           ? 'bg-yellow-100 border-yellow-400'
-                          : 'border-gray-200'
+                          : 'border-border'
                       }`}
                     >
                       <Star
                         className={`w-6 h-6 mx-auto ${
-                          confidenceLevel >= level ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'
+                          confidenceLevel >= level ? 'text-yellow-500 fill-yellow-500' : 'text-text-tertiary'
                         }`}
                       />
                     </button>
@@ -481,10 +481,10 @@ export default function SessionNotesForm({
             <div className="space-y-6">
               {/* Voice Note */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Voice Note (optional - up to 2 min)
                 </label>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-2 rounded-xl p-4">
                   {!audioUrl ? (
                     <div className="flex justify-center">
                       {isRecording ? (
@@ -505,12 +505,12 @@ export default function SessionNotesForm({
                         <button
                           type="button"
                           onClick={startRecording}
-                          className="flex flex-col items-center gap-2 p-4 hover:bg-gray-100 rounded-xl transition"
+                          className="flex flex-col items-center gap-2 p-4 hover:bg-surface-2 rounded-xl transition"
                         >
                           <div className="w-14 h-14 bg-[#ff0099] rounded-full flex items-center justify-center">
                             <Mic className="w-7 h-7 text-white" />
                           </div>
-                          <span className="text-sm text-gray-600">Tap to record</span>
+                          <span className="text-sm text-text-secondary">Tap to record</span>
                         </button>
                       )}
                     </div>
@@ -536,9 +536,9 @@ export default function SessionNotesForm({
                     type="checkbox"
                     checked={homeworkAssigned}
                     onChange={(e) => setHomeworkAssigned(e.target.checked)}
-                    className="w-5 h-5 rounded border-gray-300 text-[#00abff] focus:ring-[#00abff]"
+                    className="w-5 h-5 rounded border-border text-[#00abff] focus:ring-[#00abff]"
                   />
-                  <span className="text-sm font-medium text-gray-700">Homework assigned</span>
+                  <span className="text-sm font-medium text-text-secondary">Homework assigned</span>
                 </label>
                 {homeworkAssigned && (
                   <textarea
@@ -546,7 +546,7 @@ export default function SessionNotesForm({
                     onChange={(e) => setHomeworkDescription(e.target.value)}
                     placeholder="What should they practice at home?"
                     rows={2}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent"
+                    className="w-full p-3 border border-border rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent"
                   />
                 )}
                 {errors.homework && (
@@ -556,7 +556,7 @@ export default function SessionNotesForm({
 
               {/* Breakthrough moment */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-text-secondary mb-2">
                   <Sparkles className="w-4 h-4 inline mr-1 text-yellow-500" />
                   Breakthrough moment (optional)
                 </label>
@@ -565,7 +565,7 @@ export default function SessionNotesForm({
                   value={breakthroughMoment}
                   onChange={(e) => setBreakthroughMoment(e.target.value)}
                   placeholder="Any exciting progress or 'aha' moment?"
-                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent"
+                  className="w-full p-3 border border-border rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent"
                 />
               </div>
 
@@ -576,7 +576,7 @@ export default function SessionNotesForm({
                     type="checkbox"
                     checked={flagForAttention}
                     onChange={(e) => setFlagForAttention(e.target.checked)}
-                    className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                    className="w-5 h-5 rounded border-border text-orange-500 focus:ring-orange-500"
                   />
                   <span className="text-sm font-medium text-orange-700">
                     <Flag className="w-4 h-4 inline mr-1" />
@@ -589,7 +589,7 @@ export default function SessionNotesForm({
                     onChange={(e) => setFlagReason(e.target.value)}
                     placeholder="What's the concern? (Admin will be notified)"
                     rows={2}
-                    className="w-full p-3 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                    className="w-full p-3 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-surface-1"
                   />
                 )}
                 {errors.flag && (
@@ -601,12 +601,12 @@ export default function SessionNotesForm({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 flex gap-3">
+        <div className="p-4 border-t border-border flex gap-3">
           {step > 1 && (
             <button
               type="button"
               onClick={prevStep}
-              className="px-4 py-3 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition"
+              className="px-4 py-3 border border-border rounded-xl font-medium text-text-secondary hover:bg-surface-2 transition"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>

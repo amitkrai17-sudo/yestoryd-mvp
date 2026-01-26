@@ -60,6 +60,9 @@ export default function CoachOnboardingPage() {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('agreement');
   const [error, setError] = useState<string | null>(null);
   
+  // WhatsApp number from site_settings
+  const [whatsappNumber, setWhatsappNumber] = useState('918976287997');
+
   // Bank details form
   const [bankForm, setBankForm] = useState({
     accountNumber: '',
@@ -71,9 +74,21 @@ export default function CoachOnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Fetch coach data on mount
+  // Fetch coach data and WhatsApp number on mount
   useEffect(() => {
     fetchCoachData();
+    // Fetch WhatsApp number from site_settings
+    const fetchWhatsApp = async () => {
+      const { data } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'whatsapp_number')
+        .single();
+      if (data?.value) {
+        setWhatsappNumber(data.value.replace('+', ''));
+      }
+    };
+    fetchWhatsApp();
   }, []);
 
   const fetchCoachData = async () => {
@@ -197,10 +212,10 @@ export default function CoachOnboardingPage() {
   if (!coach) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 max-w-md text-center">
+        <div className="bg-surface-1 rounded-2xl p-8 max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
-          <p className="text-gray-600 mb-6">{error || 'Unable to load your coach profile.'}</p>
+          <h2 className="text-xl font-bold text-white mb-2">Profile Not Found</h2>
+          <p className="text-text-secondary mb-6">{error || 'Unable to load your coach profile.'}</p>
           <Link href="/coach/login" className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF0099] text-white rounded-xl hover:bg-[#FF0099] transition-colors">
             Go to Login
           </Link>
@@ -241,10 +256,10 @@ export default function CoachOnboardingPage() {
             
             <div className="w-12 h-0.5 bg-gray-700" />
             
-            <div className={`flex items-center gap-2 ${currentStep === 'bank_details' ? 'text-pink-400' : currentStep === 'complete' ? 'text-green-400' : 'text-gray-500'}`}>
+            <div className={`flex items-center gap-2 ${currentStep === 'bank_details' ? 'text-pink-400' : currentStep === 'complete' ? 'text-green-400' : 'text-text-tertiary'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                 currentStep === 'bank_details' ? 'bg-[#FF0099] text-white' : 
-                currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'
+                currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-gray-700 text-text-tertiary'
               }`}>
                 {currentStep === 'complete' ? <CheckCircle className="w-5 h-5" /> : '2'}
               </div>
@@ -253,9 +268,9 @@ export default function CoachOnboardingPage() {
             
             <div className="w-12 h-0.5 bg-gray-700" />
             
-            <div className={`flex items-center gap-2 ${currentStep === 'complete' ? 'text-green-400' : 'text-gray-500'}`}>
+            <div className={`flex items-center gap-2 ${currentStep === 'complete' ? 'text-green-400' : 'text-text-tertiary'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'
+                currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-gray-700 text-text-tertiary'
               }`}>
                 {currentStep === 'complete' ? <CheckCircle className="w-5 h-5" /> : '3'}
               </div>
@@ -265,7 +280,7 @@ export default function CoachOnboardingPage() {
         </div>
 
         {/* Step Content */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-surface-1 rounded-2xl shadow-xl overflow-hidden">
           {/* STEP 1: Agreement */}
           {currentStep === 'agreement' && (
             <div className="p-6 sm:p-8">
@@ -285,8 +300,8 @@ export default function CoachOnboardingPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
                   <Building2 className="w-8 h-8 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">Bank Account Details</h2>
-                <p className="text-gray-500 mt-1">For receiving your coaching payouts</p>
+                <h2 className="text-2xl font-bold text-white">Bank Account Details</h2>
+                <p className="text-text-tertiary mt-1">For receiving your coaching payouts</p>
               </div>
 
               {coach.agreement_signed_at && (
@@ -303,40 +318,40 @@ export default function CoachOnboardingPage() {
 
               <form onSubmit={handleBankSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Bank Name</label>
                   <input
                     type="text"
                     value={bankForm.bankName}
                     onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
                     placeholder="e.g., HDFC Bank"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-[#FF0099]"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-1 focus:ring-2 focus:ring-[#FF0099]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Account Number</label>
                   <input
                     type="text"
                     value={bankForm.accountNumber}
                     onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value.replace(/\D/g, '') })}
                     placeholder="Enter account number"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-[#FF0099]"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-1 focus:ring-2 focus:ring-[#FF0099]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Account Number</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Confirm Account Number</label>
                   <input
                     type="text"
                     value={bankForm.confirmAccountNumber}
                     onChange={(e) => setBankForm({ ...bankForm, confirmAccountNumber: e.target.value.replace(/\D/g, '') })}
                     placeholder="Re-enter account number"
                     required
-                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-[#FF0099] ${
+                    className={`w-full px-4 py-3 border rounded-xl text-white bg-surface-1 focus:ring-2 focus:ring-[#FF0099] ${
                       bankForm.confirmAccountNumber && bankForm.accountNumber !== bankForm.confirmAccountNumber
-                        ? 'border-red-300' : 'border-gray-300'
+                        ? 'border-red-300' : 'border-border'
                     }`}
                   />
                   {bankForm.confirmAccountNumber && bankForm.accountNumber !== bankForm.confirmAccountNumber && (
@@ -345,7 +360,7 @@ export default function CoachOnboardingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">IFSC Code</label>
                   <input
                     type="text"
                     value={bankForm.ifsc}
@@ -353,13 +368,13 @@ export default function CoachOnboardingPage() {
                     placeholder="e.g., HDFC0001234"
                     required
                     maxLength={11}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-[#FF0099]"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-1 focus:ring-2 focus:ring-[#FF0099]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    PAN Number <span className="text-gray-400">(Optional if Aadhaar provided)</span>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    PAN Number <span className="text-text-tertiary">(Optional if Aadhaar provided)</span>
                   </label>
                   <input
                     type="text"
@@ -367,15 +382,15 @@ export default function CoachOnboardingPage() {
                     onChange={(e) => setBankForm({ ...bankForm, panNumber: e.target.value.toUpperCase().slice(0, 10) })}
                     placeholder="e.g., ABCDE1234F"
                     maxLength={10}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-[#FF0099]"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-1 focus:ring-2 focus:ring-[#FF0099]"
                   />
                 </div>
 
                 <div className="flex items-start gap-3 p-4 bg-slate-100 rounded-xl">
                   <Shield className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm text-gray-700">Your bank details are encrypted and securely stored.</p>
-                    <p className="text-xs text-gray-500 mt-1">Payouts are processed on the 7th of every month.</p>
+                    <p className="text-sm text-text-secondary">Your bank details are encrypted and securely stored.</p>
+                    <p className="text-xs text-text-tertiary mt-1">Payouts are processed on the 7th of every month.</p>
                   </div>
                 </div>
 
@@ -408,8 +423,8 @@ export default function CoachOnboardingPage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mb-4">
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900">You're All Set, {coach.name?.split(' ')[0]}! 🎉</h2>
-                <p className="text-gray-500 mt-2">Your onboarding is complete. Here's what's next.</p>
+                <h2 className="text-3xl font-bold text-white">You're All Set, {coach.name?.split(' ')[0]}! 🎉</h2>
+                <p className="text-text-tertiary mt-2">Your onboarding is complete. Here's what's next.</p>
               </div>
 
               {coach.referral_code && (
@@ -422,14 +437,14 @@ export default function CoachOnboardingPage() {
                       </div>
                       <p className="text-sm text-pink-100">Share this link to earn 70% on every enrollment!</p>
                     </div>
-                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">70% Earnings</span>
+                    <span className="bg-surface-1/20 px-3 py-1 rounded-full text-sm font-bold">70% Earnings</span>
                   </div>
                   
-                  <div className="bg-white/10 rounded-xl p-3 flex items-center gap-3">
+                  <div className="bg-surface-1/10 rounded-xl p-3 flex items-center gap-3">
                     <code className="flex-1 text-sm truncate">yestoryd.com/assessment?ref={coach.referral_code}</code>
                     <button
                       onClick={copyReferralLink}
-                      className="px-4 py-2 bg-white text-[#FF0099] rounded-lg font-medium text-sm hover:bg-[#FF0099]/10 transition-colors flex items-center gap-1"
+                      className="px-4 py-2 bg-surface-1 text-[#FF0099] rounded-lg font-medium text-sm hover:bg-[#FF0099]/10 transition-colors flex items-center gap-1"
                     >
                       {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       {copied ? 'Copied!' : 'Copy'}
@@ -439,28 +454,28 @@ export default function CoachOnboardingPage() {
               )}
 
               <div className="grid sm:grid-cols-2 gap-4 mb-6">
-                <Link href="/coach/dashboard" className="p-5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                <Link href="/coach/dashboard" className="p-5 bg-surface-2 rounded-xl hover:bg-surface-3 transition-colors group">
                   <LayoutDashboard className="w-8 h-8 text-purple-600 mb-3" />
-                  <h3 className="font-semibold text-gray-900 group-hover:text-purple-600">Go to Dashboard</h3>
-                  <p className="text-sm text-gray-500 mt-1">View your students, sessions & earnings</p>
+                  <h3 className="font-semibold text-white group-hover:text-purple-600">Go to Dashboard</h3>
+                  <p className="text-sm text-text-tertiary mt-1">View your students, sessions & earnings</p>
                 </Link>
 
-                <a href={`https://wa.me/918976287997?text=Hi, I completed onboarding. Code: ${coach.referral_code}`} target="_blank" rel="noopener noreferrer" className="p-5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group">
+                <a href={`https://wa.me/${whatsappNumber}?text=Hi, I completed onboarding. Code: ${coach.referral_code}`} target="_blank" rel="noopener noreferrer" className="p-5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group">
                   <MessageCircle className="w-8 h-8 text-green-600 mb-3" />
-                  <h3 className="font-semibold text-gray-900 group-hover:text-green-600">Join WhatsApp Group</h3>
-                  <p className="text-sm text-gray-500 mt-1">Connect with other coaches</p>
+                  <h3 className="font-semibold text-white group-hover:text-green-600">Join WhatsApp Group</h3>
+                  <p className="text-sm text-text-tertiary mt-1">Connect with other coaches</p>
                 </a>
 
                 <div className="p-5 bg-blue-50 rounded-xl">
                   <Users className="w-8 h-8 text-blue-600 mb-3" />
-                  <h3 className="font-semibold text-gray-900">Student Assignments</h3>
-                  <p className="text-sm text-gray-500 mt-1">We'll notify you when students are assigned</p>
+                  <h3 className="font-semibold text-white">Student Assignments</h3>
+                  <p className="text-sm text-text-tertiary mt-1">We'll notify you when students are assigned</p>
                 </div>
 
                 <div className="p-5 bg-amber-50 rounded-xl">
                   <GraduationCap className="w-8 h-8 text-amber-600 mb-3" />
-                  <h3 className="font-semibold text-gray-900">Training Materials</h3>
-                  <p className="text-sm text-gray-500 mt-1">Access curriculum & teaching resources</p>
+                  <h3 className="font-semibold text-white">Training Materials</h3>
+                  <p className="text-sm text-text-tertiary mt-1">Access curriculum & teaching resources</p>
                 </div>
               </div>
 
@@ -469,15 +484,15 @@ export default function CoachOnboardingPage() {
                   <IndianRupee className="w-5 h-5" /> Your Earnings Structure
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Platform-sourced Students</p>
+                  <div className="bg-surface-1 rounded-lg p-4">
+                    <p className="text-sm text-text-tertiary">Platform-sourced Students</p>
                     <p className="text-2xl font-bold text-purple-600">50%</p>
-                    <p className="text-xs text-gray-400">≈ ₹2,500 per student</p>
+                    <p className="text-xs text-text-tertiary">≈ ₹2,500 per student</p>
                   </div>
-                  <div className="bg-white rounded-lg p-4 ring-2 ring-pink-400">
-                    <p className="text-sm text-gray-500">Your Referral Students</p>
+                  <div className="bg-surface-1 rounded-lg p-4 ring-2 ring-pink-400">
+                    <p className="text-sm text-text-tertiary">Your Referral Students</p>
                     <p className="text-2xl font-bold text-[#FF0099]">70%</p>
-                    <p className="text-xs text-gray-400">≈ ₹3,500 per student</p>
+                    <p className="text-xs text-text-tertiary">≈ ₹3,500 per student</p>
                   </div>
                 </div>
                 <p className="text-xs text-purple-700 mt-3 flex items-center gap-1">
@@ -486,7 +501,7 @@ export default function CoachOnboardingPage() {
               </div>
 
               <div className="text-center">
-                <button onClick={() => setCurrentStep('bank_details')} className="text-sm text-gray-500 hover:text-[#FF0099] transition-colors inline-flex items-center gap-1">
+                <button onClick={() => setCurrentStep('bank_details')} className="text-sm text-text-tertiary hover:text-[#FF0099] transition-colors inline-flex items-center gap-1">
                   <CreditCard className="w-4 h-4" /> Edit Bank Details
                 </button>
               </div>
@@ -495,7 +510,7 @@ export default function CoachOnboardingPage() {
         </div>
 
         <div className="text-center mt-6">
-          <a href="https://wa.me/918976287997?text=I need help with coach onboarding" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-400 text-sm inline-flex items-center gap-2">
+          <a href="https://wa.me/${whatsappNumber}?text=I need help with coach onboarding" target="_blank" rel="noopener noreferrer" className="text-text-tertiary hover:text-pink-400 text-sm inline-flex items-center gap-2">
             Need help? Contact support <ExternalLink className="w-4 h-4" />
           </a>
         </div>

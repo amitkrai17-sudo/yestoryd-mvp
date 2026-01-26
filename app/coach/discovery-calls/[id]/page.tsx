@@ -208,7 +208,7 @@ export default function CoachDiscoveryCallDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">Discovery call not found</p>
+          <p className="text-text-tertiary mb-4">Discovery call not found</p>
           <button onClick={() => router.back()} className="text-pink-600 font-medium">
             ← Go Back
           </button>
@@ -218,23 +218,23 @@ export default function CoachDiscoveryCallDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1419] pb-24">
+    <div className="min-h-screen bg-surface-0 pb-24">
       {/* Fixed Header */}
-      <div className="sticky top-0 z-10 bg-gray-800 border-b">
+      <div className="sticky top-0 z-10 bg-surface-1 border-b">
         <div className="p-4 flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="p-2 -ml-2 hover:bg-gray-700 rounded-lg"
+            className="p-2 -ml-2 hover:bg-surface-2 rounded-lg"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-400" />
+            <ArrowLeft className="w-5 h-5 text-text-tertiary" />
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-white truncate">{call.child_name}</h1>
-            <p className="text-sm text-gray-500 truncate">{call.parent_name}</p>
+            <p className="text-sm text-text-tertiary truncate">{call.parent_name}</p>
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-pink-600">{call.assessment_score || '-'}</p>
-            <p className="text-xs text-gray-400">Score</p>
+            <p className="text-xs text-text-tertiary">Score</p>
           </div>
         </div>
 
@@ -258,13 +258,13 @@ export default function CoachDiscoveryCallDetailPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-t border-gray-700">
+        <div className="flex border-t border-border">
           <button
             onClick={() => setActiveTab('questions')}
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'questions' 
-                ? 'border-pink-600 text-pink-600 bg-gray-900' 
-                : 'border-transparent text-gray-500 bg-gray-800'
+                ? 'border-pink-600 text-pink-600 bg-surface-2' 
+                : 'border-transparent text-text-tertiary bg-surface-1'
             }`}
           >
             <Sparkles className="w-4 h-4 inline-block mr-1" />
@@ -274,8 +274,8 @@ export default function CoachDiscoveryCallDetailPage() {
             onClick={() => setActiveTab('questionnaire')}
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'questionnaire' 
-                ? 'border-pink-600 text-pink-600 bg-gray-900' 
-                : 'border-transparent text-gray-500 bg-gray-800'
+                ? 'border-pink-600 text-pink-600 bg-surface-2' 
+                : 'border-transparent text-text-tertiary bg-surface-1'
             }`}
           >
             <Target className="w-4 h-4 inline-block mr-1" />
@@ -287,32 +287,32 @@ export default function CoachDiscoveryCallDetailPage() {
       {/* Content */}
       <div className="p-4">
         {/* Child Info Card */}
-        <div className="bg-gray-800 rounded-xl border p-4 mb-4">
+        <div className="bg-surface-1 rounded-xl border p-4 mb-4">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold text-pink-600">{call.assessment_score || '-'}</p>
-              <p className="text-xs text-gray-500">Score</p>
+              <p className="text-xs text-text-tertiary">Score</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-blue-600">{call.assessment_wpm || '-'}</p>
-              <p className="text-xs text-gray-500">WPM</p>
+              <p className="text-xs text-text-tertiary">WPM</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-white">{call.child_age}</p>
-              <p className="text-xs text-gray-500">Age</p>
+              <p className="text-xs text-text-tertiary">Age</p>
             </div>
           </div>
         </div>
 
         {/* Parent Goals */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 mb-4">
+        <div className="bg-surface-1 rounded-xl border border-border p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white font-medium flex items-center gap-2">
               <Heart className="w-4 h-4 text-pink-500" />
               Parent Goals
             </h3>
             {call.goals_capture_method && (
-              <span className="text-xs text-gray-500 bg-gray-700 px-2 py-1 rounded">
+              <span className="text-xs text-text-tertiary bg-gray-700 px-2 py-1 rounded">
                 via {call.goals_capture_method.replace('_', ' ')}
               </span>
             )}
@@ -339,13 +339,13 @@ export default function CoachDiscoveryCallDetailPage() {
                 })}
               </div>
               {call.goals_captured_at && (
-                <p className="text-xs text-gray-500 mt-3">
+                <p className="text-xs text-text-tertiary mt-3">
                   Captured {new Date(call.goals_captured_at).toLocaleDateString()}
                 </p>
               )}
             </>
           ) : (
-            <p className="text-gray-500 text-sm italic">
+            <p className="text-text-tertiary text-sm italic">
               Not captured yet — explore during call
             </p>
           )}
@@ -355,29 +355,29 @@ export default function CoachDiscoveryCallDetailPage() {
         {activeTab === 'questions' && (
           <div className="space-y-4">
             {aiQuestions.length > 0 ? (
-              <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+              <div className="bg-surface-1 rounded-xl border border-border p-4">
                 <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-pink-600" />
                   AI-Generated Questions
                 </h2>
                 <div className="space-y-2">
                   {aiQuestions.map((q, i) => (
-                    <div key={i} className="flex items-start gap-3 bg-gray-900 rounded-lg p-3 border border-gray-700">
+                    <div key={i} className="flex items-start gap-3 bg-surface-2 rounded-lg p-3 border border-border">
                       <span className="w-6 h-6 bg-pink-600 text-white rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
                         {i + 1}
                       </span>
                       <div className="flex-1">
                         <p className="text-xs text-pink-500 font-medium mb-1">{q.category}</p>
-                        <p className="text-gray-300 text-sm">{q.question}</p>
+                        <p className="text-text-secondary text-sm">{q.question}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center">
-                <Sparkles className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-400">No AI questions available yet</p>
+              <div className="bg-surface-1 rounded-xl border border-border p-6 text-center">
+                <Sparkles className="w-12 h-12 text-text-tertiary mx-auto mb-3" />
+                <p className="text-text-tertiary">No AI questions available yet</p>
               </div>
             )}
 
@@ -395,8 +395,8 @@ export default function CoachDiscoveryCallDetailPage() {
         {activeTab === 'questionnaire' && (
           <div className="space-y-4">
             {/* Call Status - Radio Buttons */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-              <label className="block text-sm font-medium text-gray-300 mb-3">Call Status *</label>
+            <div className="bg-surface-1 rounded-xl border border-border p-4">
+              <label className="block text-sm font-medium text-text-secondary mb-3">Call Status *</label>
               <div className="space-y-2">
                 {[
                   { value: 'completed', label: '✅ Completed', desc: 'Call finished successfully' },
@@ -409,14 +409,14 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => setCallStatus(status.value)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
                       callStatus === status.value
-                        ? 'border-pink-500 bg-gray-900'
-                        : 'border-gray-700 bg-gray-800'
+                        ? 'border-pink-500 bg-surface-2'
+                        : 'border-border bg-surface-1'
                     }`}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                       callStatus === status.value
                         ? 'border-pink-500 bg-pink-500'
-                        : 'border-gray-600'
+                        : 'border-border'
                     }`}>
                       {callStatus === status.value && (
                         <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -424,7 +424,7 @@ export default function CoachDiscoveryCallDetailPage() {
                     </div>
                     <div>
                       <p className="font-medium text-white">{status.label}</p>
-                      <p className="text-xs text-gray-500">{status.desc}</p>
+                      <p className="text-xs text-text-tertiary">{status.desc}</p>
                     </div>
                   </button>
                 ))}
@@ -432,8 +432,8 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Reading Frequency - Radio */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+            <div className="bg-surface-1 rounded-xl border border-border p-4">
+              <label className="block text-sm font-medium text-text-secondary mb-3">
                 How often does {call.child_name} read?
               </label>
               <div className="space-y-2">
@@ -448,14 +448,14 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => setQuestionnaire({ ...questionnaire, reading_frequency: opt.value })}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
                       questionnaire.reading_frequency === opt.value
-                        ? 'border-pink-500 bg-gray-900'
-                        : 'border-gray-700 bg-gray-800'
+                        ? 'border-pink-500 bg-surface-2'
+                        : 'border-border bg-surface-1'
                     }`}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                       questionnaire.reading_frequency === opt.value
                         ? 'border-pink-500 bg-pink-500'
-                        : 'border-gray-600'
+                        : 'border-border'
                     }`}>
                       {questionnaire.reading_frequency === opt.value && (
                         <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -463,7 +463,7 @@ export default function CoachDiscoveryCallDetailPage() {
                     </div>
                     <div>
                       <p className="font-medium text-white">{opt.label}</p>
-                      <p className="text-xs text-gray-500">{opt.desc}</p>
+                      <p className="text-xs text-text-tertiary">{opt.desc}</p>
                     </div>
                   </button>
                 ))}
@@ -471,8 +471,8 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Child Attitude - Radio */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+            <div className="bg-surface-1 rounded-xl border border-border p-4">
+              <label className="block text-sm font-medium text-text-secondary mb-3">
                 Child's attitude toward reading
               </label>
               <div className="space-y-2">
@@ -487,14 +487,14 @@ export default function CoachDiscoveryCallDetailPage() {
                     onClick={() => setQuestionnaire({ ...questionnaire, child_attitude: opt.value })}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
                       questionnaire.child_attitude === opt.value
-                        ? 'border-pink-500 bg-gray-900'
-                        : 'border-gray-700 bg-gray-800'
+                        ? 'border-pink-500 bg-surface-2'
+                        : 'border-border bg-surface-1'
                     }`}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                       questionnaire.child_attitude === opt.value
                         ? 'border-pink-500 bg-pink-500'
-                        : 'border-gray-600'
+                        : 'border-border'
                     }`}>
                       {questionnaire.child_attitude === opt.value && (
                         <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -502,7 +502,7 @@ export default function CoachDiscoveryCallDetailPage() {
                     </div>
                     <div>
                       <p className="font-medium text-white">{opt.label}</p>
-                      <p className="text-xs text-gray-500">{opt.desc}</p>
+                      <p className="text-xs text-text-tertiary">{opt.desc}</p>
                     </div>
                   </button>
                 ))}
@@ -510,8 +510,8 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Likelihood to Enroll - Radio */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+            <div className="bg-surface-1 rounded-xl border border-border p-4">
+              <label className="block text-sm font-medium text-text-secondary mb-3">
                 Likelihood to enroll
               </label>
               <div className="flex gap-2">
@@ -529,7 +529,7 @@ export default function CoachDiscoveryCallDetailPage() {
                         ? opt.color === 'green' ? 'border-green-500 bg-green-900' :
                           opt.color === 'yellow' ? 'border-yellow-500 bg-yellow-900' :
                           'border-red-500 bg-red-900'
-                        : 'border-gray-700 bg-gray-800'
+                        : 'border-border bg-surface-1'
                     }`}
                   >
                     <p className="font-medium text-white">{opt.label}</p>
@@ -539,8 +539,8 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Parent Goal */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+            <div className="bg-surface-1 rounded-xl border border-border p-4">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
                 Parent's goal for {call.child_name}
               </label>
               <input
@@ -548,13 +548,13 @@ export default function CoachDiscoveryCallDetailPage() {
                 value={questionnaire.parent_goal}
                 onChange={(e) => setQuestionnaire({ ...questionnaire, parent_goal: e.target.value })}
                 placeholder="e.g., improve reading speed, build confidence..."
-                className="w-full border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white bg-gray-900 placeholder-gray-500"
+                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm text-white bg-surface-2 placeholder-text-tertiary"
               />
             </div>
 
             {/* Objections - Checkboxes */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-              <label className="block text-sm font-medium text-gray-300 mb-3">
+            <div className="bg-surface-1 rounded-xl border border-border p-4">
+              <label className="block text-sm font-medium text-text-secondary mb-3">
                 Objections raised (select all that apply)
               </label>
               <div className="flex flex-wrap gap-2">
@@ -572,7 +572,7 @@ export default function CoachDiscoveryCallDetailPage() {
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       questionnaire.objections.includes(obj.value)
                         ? 'bg-pink-600 text-white border-2 border-pink-500'
-                        : 'bg-gray-900 text-gray-400 border-2 border-gray-700'
+                        : 'bg-surface-2 text-text-tertiary border-2 border-border'
                     }`}
                   >
                     {obj.label}
@@ -582,8 +582,8 @@ export default function CoachDiscoveryCallDetailPage() {
             </div>
 
             {/* Coach Notes */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+            <div className="bg-surface-1 rounded-xl border border-border p-4">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
                 Your notes
               </label>
               <textarea
@@ -591,7 +591,7 @@ export default function CoachDiscoveryCallDetailPage() {
                 onChange={(e) => setQuestionnaire({ ...questionnaire, coach_notes: e.target.value })}
                 rows={3}
                 placeholder="Your observations and notes..."
-                className="w-full border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white bg-gray-900 placeholder-gray-500"
+                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm text-white bg-surface-2 placeholder-text-tertiary"
               />
             </div>
           </div>
@@ -599,7 +599,7 @@ export default function CoachDiscoveryCallDetailPage() {
       </div>
 
       {/* Fixed Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t p-4 space-y-2">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface-1 border-t p-4 space-y-2">
         {activeTab === 'questionnaire' && (
           <button
             onClick={saveQuestionnaire}
@@ -643,7 +643,7 @@ export default function CoachDiscoveryCallDetailPage() {
         )}
 
         {call.converted_to_enrollment && (
-          <div className="w-full py-3 bg-green-100 text-green-700 rounded-xl font-medium text-center flex items-center justify-center gap-2">
+          <div className="w-full py-3 bg-green-500/20 text-green-400 rounded-xl font-medium text-center flex items-center justify-center gap-2 border border-green-500/30">
             <CheckCircle className="w-4 h-4" />
             Enrolled Successfully!
           </div>

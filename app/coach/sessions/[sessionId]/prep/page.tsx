@@ -144,10 +144,10 @@ export default function SessionPrepHub() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-pink-500 mx-auto mb-4" />
-          <p className="text-gray-400">Loading session data...</p>
+          <p className="text-text-tertiary">Loading session data...</p>
         </div>
       </div>
     );
@@ -155,7 +155,7 @@ export default function SessionPrepHub() {
 
   if (error || !session) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error || 'Session not found'}</p>
           <button
@@ -174,21 +174,21 @@ export default function SessionPrepHub() {
   const isToday = new Date(session.scheduled_date).toDateString() === new Date().toDateString();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="min-h-screen bg-surface-0 text-white">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-[#12121a] sticky top-0 z-10">
+      <header className="border-b border-border bg-surface-1 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.back()}
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-surface-2 rounded-lg transition-colors"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
+                <ArrowLeft className="w-5 h-5 text-text-tertiary" />
               </button>
               <div>
                 <h1 className="text-lg font-bold">Session #{session.session_number} Prep</h1>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-text-tertiary">
                   {child.child_name} • {new Date(session.scheduled_date).toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'short',
@@ -229,27 +229,27 @@ export default function SessionPrepHub() {
           {/* Main Content - 2 columns */}
           <div className="lg:col-span-2 space-y-6">
             {/* Child Overview */}
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-6">
+            <div className="bg-surface-1 rounded-xl border border-border p-6">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-2xl font-bold">
                   {child.child_name.charAt(0)}
                 </div>
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{child.child_name}</h2>
-                  <p className="text-gray-400">Age {child.age} • Parent: {child.parent_name}</p>
+                  <p className="text-text-tertiary">Age {child.age} • Parent: {child.parent_name}</p>
                   
                   {/* Quick Stats */}
                   <div className="flex gap-6 mt-3">
                     {child.latest_assessment_score && (
                       <div>
                         <p className="text-2xl font-bold text-pink-400">{child.latest_assessment_score}</p>
-                        <p className="text-xs text-gray-500">Assessment Score</p>
+                        <p className="text-xs text-text-tertiary">Assessment Score</p>
                       </div>
                     )}
                     {child.assessment_wpm && (
                       <div>
                         <p className="text-2xl font-bold text-blue-400">{child.assessment_wpm}</p>
-                        <p className="text-xs text-gray-500">WPM</p>
+                        <p className="text-xs text-text-tertiary">WPM</p>
                       </div>
                     )}
                   </div>
@@ -258,8 +258,8 @@ export default function SessionPrepHub() {
 
               {/* Learning Needs */}
               {child.learning_needs && child.learning_needs.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-800">
-                  <p className="text-sm text-gray-400 mb-2">Learning Needs</p>
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-sm text-text-tertiary mb-2">Learning Needs</p>
                   <SkillTagDisplay tags={child.learning_needs} maxVisible={10} />
                 </div>
               )}
@@ -277,10 +277,10 @@ export default function SessionPrepHub() {
 
             {/* AI Patterns & Insights */}
             {history?.patterns && (
-              <div className="bg-[#1a1a24] rounded-xl border border-gray-800 overflow-hidden">
+              <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
                 <button
                   onClick={() => toggleSection('patterns')}
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50"
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-2/50"
                 >
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-yellow-400" />
@@ -298,7 +298,7 @@ export default function SessionPrepHub() {
                         ? 'bg-green-900/20 border-green-800/30' 
                         : history.patterns.engagement_trend === 'declining'
                           ? 'bg-red-900/20 border-red-800/30'
-                          : 'bg-gray-800/50 border-gray-700'
+                          : 'bg-surface-2/50 border-border'
                       }
                     `}>
                       <p className="text-sm">
@@ -306,7 +306,7 @@ export default function SessionPrepHub() {
                         <span className={
                           history.patterns.engagement_trend === 'improving' ? 'text-green-400' :
                           history.patterns.engagement_trend === 'declining' ? 'text-red-400' :
-                          'text-gray-400'
+                          'text-text-tertiary'
                         }>
                           {history.patterns.engagement_trend === 'improving' ? '📈 Improving' :
                            history.patterns.engagement_trend === 'declining' ? '📉 Declining' :
@@ -318,7 +318,7 @@ export default function SessionPrepHub() {
                     {/* Suggested Focus */}
                     {history.patterns.suggested_focus.length > 0 && (
                       <div>
-                        <p className="text-sm text-gray-400 mb-2 flex items-center gap-1">
+                        <p className="text-sm text-text-tertiary mb-2 flex items-center gap-1">
                           <Target className="w-4 h-4" />
                           Suggested Focus Areas
                         </p>
@@ -335,7 +335,7 @@ export default function SessionPrepHub() {
                     {/* Common Struggles */}
                     {history.patterns.common_struggles.length > 0 && (
                       <div>
-                        <p className="text-sm text-gray-400 mb-2 flex items-center gap-1">
+                        <p className="text-sm text-text-tertiary mb-2 flex items-center gap-1">
                           <AlertTriangle className="w-4 h-4 text-orange-400" />
                           Common Struggles
                         </p>
@@ -352,7 +352,7 @@ export default function SessionPrepHub() {
                     {/* Improved Skills */}
                     {history.patterns.improved_skills.length > 0 && (
                       <div>
-                        <p className="text-sm text-gray-400 mb-2 flex items-center gap-1">
+                        <p className="text-sm text-text-tertiary mb-2 flex items-center gap-1">
                           <CheckCircle className="w-4 h-4 text-green-400" />
                           Improved Skills
                         </p>
@@ -372,10 +372,10 @@ export default function SessionPrepHub() {
 
             {/* Recent Sessions History */}
             {history?.recent_sessions && history.recent_sessions.length > 0 && (
-              <div className="bg-[#1a1a24] rounded-xl border border-gray-800 overflow-hidden">
+              <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
                 <button
                   onClick={() => toggleSection('history')}
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50"
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-2/50"
                 >
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5 text-blue-400" />
@@ -387,12 +387,12 @@ export default function SessionPrepHub() {
                 {expandedSections.history && (
                   <div className="px-6 pb-6 space-y-3">
                     {history.recent_sessions.map((sess, index) => (
-                      <div key={sess.id} className="p-4 bg-gray-800/50 rounded-lg">
+                      <div key={sess.id} className="p-4 bg-surface-2/50 rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium">
                             Session #{sess.session_number || index + 1}
                           </span>
-                          <span className="text-sm text-gray-400">
+                          <span className="text-sm text-text-tertiary">
                             {new Date(sess.scheduled_date).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -401,7 +401,7 @@ export default function SessionPrepHub() {
                         </div>
 
                         {sess.focus_area && (
-                          <p className="text-sm text-gray-300 mb-2">Focus: {sess.focus_area}</p>
+                          <p className="text-sm text-text-secondary mb-2">Focus: {sess.focus_area}</p>
                         )}
 
                         <div className="flex items-center gap-3 text-sm">
@@ -410,7 +410,7 @@ export default function SessionPrepHub() {
                               px-2 py-0.5 rounded-full
                               ${sess.progress_rating === 'improved' ? 'bg-green-900/30 text-green-400' :
                                 sess.progress_rating === 'struggled' ? 'bg-red-900/30 text-red-400' :
-                                'bg-gray-700 text-gray-300'}
+                                'bg-surface-2 text-text-secondary'}
                             `}>
                               {sess.progress_rating === 'improved' ? '📈' : 
                                sess.progress_rating === 'struggled' ? '📉' : '➡️'} {sess.progress_rating}
@@ -445,10 +445,10 @@ export default function SessionPrepHub() {
           {/* Sidebar - 1 column */}
           <div className="space-y-6">
             {/* Prep Notes */}
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 overflow-hidden">
+            <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
               <button
                 onClick={() => toggleSection('notes')}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50"
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-1/50"
               >
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-pink-400" />
@@ -464,12 +464,12 @@ export default function SessionPrepHub() {
                     onChange={(e) => setPrepNotes(e.target.value)}
                     placeholder="Add your notes for this session..."
                     rows={6}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"
+                    className="w-full px-4 py-3 bg-surface-0 border border-border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"
                   />
                   <button
                     onClick={saveNotes}
                     disabled={isSavingNotes}
-                    className="mt-3 w-full py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm disabled:opacity-50"
+                    className="mt-3 w-full py-2 bg-surface-2 hover:bg-surface-3 rounded-lg text-sm disabled:opacity-50"
                   >
                     {isSavingNotes ? 'Saving...' : 'Save Notes'}
                   </button>
@@ -478,19 +478,19 @@ export default function SessionPrepHub() {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-6">
+            <div className="bg-surface-1 rounded-xl border border-border p-6">
               <h3 className="font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
                 <button
                   onClick={() => router.push(`/coach/chat/${child.id}`)}
-                  className="w-full flex items-center gap-3 p-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-left"
+                  className="w-full flex items-center gap-3 p-3 bg-surface-2 hover:bg-surface-3 rounded-lg text-left"
                 >
                   <MessageSquare className="w-5 h-5 text-blue-400" />
                   <span>Message Parent</span>
                 </button>
                 <button
                   onClick={() => router.push(`/coach/students/${child.id}`)}
-                  className="w-full flex items-center gap-3 p-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-left"
+                  className="w-full flex items-center gap-3 p-3 bg-surface-2 hover:bg-surface-3 rounded-lg text-left"
                 >
                   <User className="w-5 h-5 text-purple-400" />
                   <span>View Student Profile</span>
@@ -499,29 +499,29 @@ export default function SessionPrepHub() {
             </div>
 
             {/* Session Info */}
-            <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-6">
+            <div className="bg-surface-1 rounded-xl border border-border p-6">
               <h3 className="font-semibold mb-4">Session Info</h3>
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-gray-400">Status</dt>
+                  <dt className="text-text-tertiary">Status</dt>
                   <dd className={`font-medium ${
                     session.status === 'completed' ? 'text-green-400' :
                     session.status === 'scheduled' ? 'text-blue-400' :
-                    'text-gray-400'
+                    'text-text-tertiary'
                   }`}>
                     {session.status}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-gray-400">Session #</dt>
+                  <dt className="text-text-tertiary">Session #</dt>
                   <dd className="font-medium">{session.session_number}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-gray-400">Date</dt>
+                  <dt className="text-text-tertiary">Date</dt>
                   <dd className="font-medium">{session.scheduled_date}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-gray-400">Time</dt>
+                  <dt className="text-text-tertiary">Time</dt>
                   <dd className="font-medium">{session.scheduled_time}</dd>
                 </div>
               </dl>

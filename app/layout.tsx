@@ -1,14 +1,29 @@
 import './globals.css';
-import { Poppins } from 'next/font/google';
+import { Plus_Jakarta_Sans, Inter, Lexend } from 'next/font/google';
 import type { Metadata, Viewport } from 'next';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import TrackingPixels from '@/components/TrackingPixels';
 import PWAProvider from '@/components/shared/pwa/PWAProvider';
 
-const poppins = Poppins({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-poppins',
+  variable: '--font-jakarta',
+  weight: ['600', '700', '800'],
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  weight: ['400', '500', '600'],
+  display: 'swap',
+});
+
+const lexend = Lexend({
+  subsets: ['latin'],
+  variable: '--font-reading',
+  weight: ['400', '500'],
+  display: 'swap',
 });
 
 export const viewport: Viewport = {
@@ -57,11 +72,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${jakarta.variable} ${inter.variable} ${lexend.variable}`}>
       <head>
         <link rel="icon" href="/favicon.ico" />
       </head>
-      <body className={poppins.variable}>
+      <body className="font-body bg-surface-0 text-white antialiased">
         <GoogleAnalytics />
         <TrackingPixels />
         <PWAProvider>

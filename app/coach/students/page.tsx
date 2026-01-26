@@ -163,23 +163,23 @@ export default function CoachStudentsPage() {
             <Users className="w-5 h-5 text-[#00ABFF]" />
             My Students
           </h1>
-          <p className="text-xs lg:text-sm text-gray-400">Manage your enrolled students</p>
+          <p className="text-xs lg:text-sm text-text-tertiary">Manage your enrolled students</p>
         </div>
 
         {/* Stats Row - Compact Grid */}
         <div className="grid grid-cols-4 gap-2 mb-4">
           {[
-            { icon: Users, value: stats.total, label: 'Total', color: 'text-white', bg: 'bg-gray-700' },
+            { icon: Users, value: stats.total, label: 'Total', color: 'text-white', bg: 'bg-surface-2' },
             { icon: UserCheck, value: stats.active, label: 'Active', color: 'text-green-400', bg: 'bg-green-500/20' },
             { icon: Clock, value: stats.completed, label: 'Done', color: 'text-blue-400', bg: 'bg-blue-500/20' },
             { icon: Award, value: stats.leads, label: '70%', color: 'text-[#FF0099]', bg: 'bg-[#FF0099]/20' },
           ].map((stat) => (
-            <div key={stat.label} className="bg-[#1a1a1a] rounded-lg p-2 lg:p-3 text-center border border-gray-800">
+            <div key={stat.label} className="bg-surface-1 rounded-lg p-2 lg:p-3 text-center border border-border">
               <div className={`w-6 h-6 lg:w-8 lg:h-8 ${stat.bg} rounded-md flex items-center justify-center mx-auto mb-1`}>
                 <stat.icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 ${stat.color}`} />
               </div>
               <div className={`text-base lg:text-lg font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-[9px] lg:text-[10px] text-gray-500">{stat.label}</div>
+              <div className="text-[9px] lg:text-[10px] text-text-tertiary">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -187,19 +187,19 @@ export default function CoachStudentsPage() {
         {/* Search & Filter - Single Row */}
         <div className="flex gap-2 mb-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search..."
-              className="w-full h-10 pl-9 pr-3 bg-[#1a1a1a] border border-gray-800 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#FF0099]"
+              className="w-full h-10 pl-9 pr-3 bg-surface-1 border border-border rounded-lg text-sm text-white placeholder-text-tertiary focus:outline-none focus:border-[#FF0099]"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="h-10 px-3 bg-[#1a1a1a] border border-gray-800 rounded-lg text-sm text-white focus:outline-none focus:border-[#FF0099] appearance-none cursor-pointer"
+            className="h-10 px-3 bg-surface-1 border border-border rounded-lg text-sm text-white focus:outline-none focus:border-[#FF0099] appearance-none cursor-pointer"
           >
             <option value="all">All</option>
             <option value="active">Active</option>
@@ -211,7 +211,7 @@ export default function CoachStudentsPage() {
         {/* Student Cards */}
         <div className="space-y-2">
           {filteredStudents.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-text-tertiary">
               <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No students found</p>
             </div>

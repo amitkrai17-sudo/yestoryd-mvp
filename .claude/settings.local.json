@@ -15,7 +15,13 @@
       "Bash(node scripts/generate-icons.js:*)",
       "Bash(node -e:*)",
       "Bash(grep:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(wc:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(npx supabase --version)",
+      "Bash(xxd:*)"
     ]
   }
 }

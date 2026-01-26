@@ -14,6 +14,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { Database } from './database.types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -28,7 +29,7 @@ if (!supabaseServiceKey) {
 
 // Admin client with service role - bypasses RLS
 // Use this in API routes for admin operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -38,7 +39,7 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 // Helper to create a client with user's auth context (for future use with auth)
 export function createServerClient(accessToken?: string) {
   if (accessToken) {
-    return createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    return createClient<Database>(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
       global: {
         headers: {
           Authorization: `Bearer ${accessToken}`,

@@ -198,14 +198,14 @@ export default function AIAssistantPage() {
       <div
         className={`
           fixed lg:relative inset-y-0 left-0 z-50 lg:z-0
-          w-72 bg-gray-800/50 rounded-none lg:rounded-2xl border-r lg:border border-gray-700
+          w-72 bg-surface-1/50 rounded-none lg:rounded-2xl border-r lg:border border-border
           flex flex-col overflow-hidden
           transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           lg:transform-none
         `}
       >
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-[#00ABFF]" />
@@ -213,19 +213,19 @@ export default function AIAssistantPage() {
             </h2>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 text-gray-400 hover:text-white"
+              className="lg:hidden p-1 text-text-tertiary hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input
               type="text"
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 pl-9 pr-3 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50"
+              className="w-full bg-surface-2 border border-border rounded-xl py-2.5 pl-9 pr-3 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50"
             />
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function AIAssistantPage() {
           {/* General Chat Option */}
           <button
             onClick={() => handleStudentSelect(null)}
-            className={`w-full p-3 text-left hover:bg-gray-700/50 transition-colors border-b border-gray-700/50 ${
+            className={`w-full p-3 text-left hover:bg-surface-2/50 transition-colors border-b border-border/50 ${
               !selectedStudent ? 'bg-[#FF0099]/10 border-l-2 border-l-[#FF0099]' : ''
             }`}
           >
@@ -250,7 +250,7 @@ export default function AIAssistantPage() {
               </div>
               <div>
                 <p className="font-medium text-white">General Assistant</p>
-                <p className="text-gray-400 text-sm">Ask anything</p>
+                <p className="text-text-tertiary text-sm">Ask anything</p>
               </div>
             </div>
           </button>
@@ -260,7 +260,7 @@ export default function AIAssistantPage() {
             <button
               key={student.id}
               onClick={() => handleStudentSelect(student)}
-              className={`w-full p-3 text-left hover:bg-gray-700/50 transition-colors ${
+              className={`w-full p-3 text-left hover:bg-surface-2/50 transition-colors ${
                 selectedStudent?.id === student.id ? 'bg-[#FF0099]/10 border-l-2 border-l-[#FF0099]' : ''
               }`}
             >
@@ -281,14 +281,14 @@ export default function AIAssistantPage() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 bg-gray-800/50 rounded-2xl border border-gray-700 flex flex-col overflow-hidden">
+      <div className="flex-1 bg-surface-1/50 rounded-2xl border border-border flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
             {/* Mobile: Student selector button */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden flex items-center gap-2 bg-gray-700 px-3 py-2 rounded-xl text-gray-300 hover:bg-gray-600 transition-colors"
+              className="lg:hidden flex items-center gap-2 bg-surface-2 px-3 py-2 rounded-xl text-text-secondary hover:bg-surface-3 transition-colors"
             >
               <Users className="w-4 h-4" />
               <span className="text-sm">
@@ -308,7 +308,7 @@ export default function AIAssistantPage() {
             </div>
             <div className="hidden lg:block">
               <h1 className="font-semibold text-white text-lg">rAI Assistant</h1>
-              <p className="text-gray-400 text-sm">
+              <p className="text-text-tertiary text-sm">
                 {selectedStudent
                   ? `Asking about ${selectedStudent.child_name}`
                   : 'General coaching assistant'}
@@ -344,7 +344,7 @@ export default function AIAssistantPage() {
                   ? `Ask me about ${selectedStudent.child_name}`
                   : 'How can I help you today?'}
               </h3>
-              <p className="text-gray-400 text-sm max-w-md mb-6">
+              <p className="text-text-tertiary text-sm max-w-md mb-6">
                 {selectedStudent
                   ? `I have access to ${selectedStudent.child_name}'s assessments, session notes, and progress data.`
                   : 'Select a student for personalized insights, or ask general coaching questions.'}
@@ -356,7 +356,7 @@ export default function AIAssistantPage() {
                   <button
                     key={prompt}
                     onClick={() => setInput(prompt)}
-                    className="text-xs sm:text-sm bg-gray-700/50 text-gray-300 px-3 sm:px-4 py-2 rounded-full hover:bg-gray-700 border border-gray-600 hover:border-[#FF0099]/50 transition-colors"
+                    className="text-xs sm:text-sm bg-surface-2/50 text-text-secondary px-3 sm:px-4 py-2 rounded-full hover:bg-surface-2 border border-border hover:border-[#FF0099]/50 transition-colors"
                   >
                     {prompt}
                   </button>
@@ -384,13 +384,13 @@ export default function AIAssistantPage() {
                   className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
                     message.role === 'user'
                       ? 'bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white'
-                      : 'bg-gray-700/50 text-gray-200 border border-gray-600'
+                      : 'bg-surface-2/50 text-text-secondary border border-border'
                   }`}
                 >
                   <p className="whitespace-pre-wrap text-sm sm:text-base">{message.content}</p>
                 </div>
                 {message.role === 'user' && (
-                  <div className="w-8 h-8 bg-gray-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-surface-2 rounded-xl flex items-center justify-center flex-shrink-0">
                     <User className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -409,7 +409,7 @@ export default function AIAssistantPage() {
                   className="object-contain"
                 />
               </div>
-              <div className="bg-gray-700/50 rounded-2xl px-4 py-3 border border-gray-600">
+              <div className="bg-surface-2/50 rounded-2xl px-4 py-3 border border-border">
                 <Loader2 className="w-5 h-5 animate-spin text-[#FF0099]" />
               </div>
             </div>
@@ -417,7 +417,7 @@ export default function AIAssistantPage() {
         </div>
 
         {/* Input */}
-        <div className="p-3 sm:p-4 border-t border-gray-700">
+        <div className="p-3 sm:p-4 border-t border-border">
           <div className="flex gap-2 sm:gap-3">
             <input
               type="text"
@@ -429,7 +429,7 @@ export default function AIAssistantPage() {
                   ? `Ask about ${selectedStudent.child_name}...`
                   : 'Ask me anything about coaching...'
               }
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-white text-sm sm:text-base placeholder:text-gray-500 focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50 transition-all"
+              className="flex-1 bg-surface-2 border border-border rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-white text-sm sm:text-base placeholder:text-text-tertiary focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50 transition-all"
             />
             <button
               onClick={sendMessage}

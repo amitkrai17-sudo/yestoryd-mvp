@@ -25,10 +25,10 @@ interface DiscoveryCall {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: 'Pending', color: 'text-yellow-700', bg: 'bg-yellow-50' },
-  scheduled: { label: 'Scheduled', color: 'text-blue-700', bg: 'bg-blue-50' },
-  completed: { label: 'Completed', color: 'text-green-700', bg: 'bg-green-50' },
-  no_show: { label: 'No Show', color: 'text-red-700', bg: 'bg-red-50' },
+  pending: { label: 'Pending', color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+  scheduled: { label: 'Scheduled', color: 'text-blue-400', bg: 'bg-blue-500/20' },
+  completed: { label: 'Completed', color: 'text-green-400', bg: 'bg-green-500/20' },
+  no_show: { label: 'No Show', color: 'text-red-400', bg: 'bg-red-500/20' },
 };
 
 export default function CoachDiscoveryCallsPage() {
@@ -85,7 +85,7 @@ export default function CoachDiscoveryCallsPage() {
             </div>
             Discovery Calls
           </h1>
-          <p className="text-xs lg:text-sm text-gray-500 mt-0.5">Manage your assigned calls</p>
+          <p className="text-xs lg:text-sm text-text-tertiary mt-0.5">Manage your assigned calls</p>
         </div>
         <button
           onClick={fetchCalls}
@@ -104,13 +104,13 @@ export default function CoachDiscoveryCallsPage() {
           { label: 'Completed', value: calls.filter(c => c.status === 'completed').length, icon: Clock, color: 'bg-green-500' },
           { label: 'Converted', value: calls.filter(c => c.converted_to_enrollment).length, icon: Users, color: 'bg-[#FF0099]' },
         ].map((s, i) => (
-          <div key={i} className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-2.5 lg:p-4 flex items-center gap-2 lg:gap-3">
+          <div key={i} className="bg-surface-1 rounded-xl border border-border p-2.5 lg:p-4 flex items-center gap-2 lg:gap-3">
             <div className={`w-8 h-8 lg:w-10 lg:h-10 ${s.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
               <s.icon className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-lg lg:text-xl font-bold text-white">{s.value}</p>
-              <p className="text-[10px] lg:text-xs text-gray-500">{s.label}</p>
+              <p className="text-[10px] lg:text-xs text-text-tertiary">{s.label}</p>
             </div>
           </div>
         ))}
@@ -129,7 +129,7 @@ export default function CoachDiscoveryCallsPage() {
             className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg font-medium whitespace-nowrap text-xs lg:text-sm transition-colors flex-shrink-0 ${
               filter === tab.key
                 ? 'bg-[#FF0099] text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
+                : 'bg-surface-1 text-text-tertiary hover:bg-surface-2 border border-border'
             }`}
           >
             {tab.label}
@@ -156,7 +156,7 @@ export default function CoachDiscoveryCallsPage() {
                 <Link
                   key={call.id}
                   href={`/coach/discovery-calls/${call.id}`}
-                  className="block bg-[#1a1a1a] rounded-xl border border-gray-800 p-3 lg:p-4 hover:bg-gray-800/50 transition-colors active:bg-gray-900"
+                  className="block bg-surface-1 rounded-xl border border-border p-3 lg:p-4 hover:bg-surface-2/50 transition-colors active:bg-surface-0"
                 >
                   <div className="flex items-center gap-2.5 lg:gap-3">
                     {/* Left: Score */}
@@ -174,9 +174,9 @@ export default function CoachDiscoveryCallsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 lg:gap-2">
                         <p className="font-semibold text-sm lg:text-base text-white truncate">{call.child_name}</p>
-                        <span className="text-[10px] lg:text-xs text-gray-500">({call.child_age}y)</span>
+                        <span className="text-[10px] lg:text-xs text-text-tertiary">({call.child_age}y)</span>
                       </div>
-                      <p className="text-xs lg:text-sm text-gray-500 truncate">{call.parent_name}</p>
+                      <p className="text-xs lg:text-sm text-text-tertiary truncate">{call.parent_name}</p>
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className={`px-1.5 lg:px-2 py-0.5 rounded text-[10px] lg:text-xs font-medium ${statusCfg.bg} ${statusCfg.color}`}>
                           {statusCfg.label}
@@ -192,17 +192,17 @@ export default function CoachDiscoveryCallsPage() {
                     {/* Right: Action */}
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className={`text-xs lg:text-sm font-medium ${action.color} hidden sm:block`}>{action.text}</span>
-                      <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />
+                      <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5 text-text-tertiary" />
                     </div>
                   </div>
                 </Link>
               );
             })
           ) : (
-            <div className="bg-[#1a1a1a] rounded-xl border border-gray-800 p-8 lg:p-12 text-center">
-              <Phone className="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-600" />
-              <p className="text-sm lg:text-base text-gray-400">No discovery calls found</p>
-              <p className="text-xs text-gray-500 mt-1">Check back later for new assignments</p>
+            <div className="bg-surface-1 rounded-xl border border-border p-8 lg:p-12 text-center">
+              <Phone className="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-3 text-text-tertiary" />
+              <p className="text-sm lg:text-base text-text-tertiary">No discovery calls found</p>
+              <p className="text-xs text-text-tertiary mt-1">Check back later for new assignments</p>
             </div>
           )}
         </div>

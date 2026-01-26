@@ -1,6 +1,6 @@
 // ============================================================
 // FILE: app/parent/layout.tsx
-// VERSION: 3.1 - Fixed: All pages now get sidebar/hamburger menu
+// VERSION: 3.2 - Premium Dark UI Theme
 // ============================================================
 // Parent Layout - Auth + Role Verification + Child Selector
 // Yestoryd - AI-Powered Reading Intelligence Platform
@@ -386,12 +386,12 @@ export default function ParentLayout({
   // ==================== LOADING STATE ====================
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <p className="text-slate-500">Verifying access...</p>
+          <p className="text-text-tertiary">Verifying access...</p>
         </div>
       </div>
     );
@@ -400,13 +400,13 @@ export default function ParentLayout({
   // ==================== ERROR STATE ====================
   if (error && !isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="bg-surface-1 rounded-2xl shadow-xl shadow-black/30 p-6 max-w-md w-full text-center border border-border">
+          <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-400" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 mb-2">Something went wrong</h1>
-          <p className="text-slate-500 mb-6 text-sm">{error}</p>
+          <h1 className="text-xl font-bold text-white mb-2">Something went wrong</h1>
+          <p className="text-text-tertiary mb-6 text-sm">{error}</p>
           <div className="space-y-3">
             <button
               onClick={refetch}
@@ -417,7 +417,7 @@ export default function ParentLayout({
             </button>
             <button
               onClick={handleSignOut}
-              className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors min-h-[48px]"
+              className="w-full py-3 bg-surface-2 text-text-secondary rounded-xl font-medium hover:bg-surface-3 transition-colors min-h-[48px]"
             >
               Sign Out
             </button>
@@ -430,19 +430,19 @@ export default function ParentLayout({
   // ==================== UNAUTHORIZED ====================
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="bg-surface-1 rounded-2xl shadow-xl shadow-black/30 p-6 max-w-md w-full text-center border border-border">
+          <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-400" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-6 text-sm">
+          <h1 className="text-xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-text-tertiary mb-6 text-sm">
             {user?.email || 'Your account'} is not registered as a parent.
           </p>
           <div className="space-y-3">
             <button
               onClick={handleSignOut}
-              className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors min-h-[48px]"
+              className="w-full py-3 bg-surface-2 text-white rounded-xl font-medium hover:bg-surface-3 transition-colors min-h-[48px]"
             >
               Sign Out
             </button>
@@ -461,14 +461,14 @@ export default function ParentLayout({
   // ==================== AUTHORIZED - FULL LAYOUT WITH SIDEBAR ====================
   return (
     <ParentContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex overflow-x-hidden">
+      <div className="min-h-screen bg-surface-0 flex overflow-x-hidden">
         {/* Mobile Menu Button - Hidden on mobile (use bottom nav), visible on tablet for sidebar */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="hidden md:flex lg:hidden fixed top-4 left-4 z-40 p-3 bg-white rounded-xl shadow-lg border border-slate-200 min-w-[48px] min-h-[48px] items-center justify-center"
+          className="hidden md:flex lg:hidden fixed top-4 left-4 z-40 p-3 bg-surface-1 rounded-xl shadow-lg shadow-black/20 border border-border min-w-[48px] min-h-[48px] items-center justify-center"
           aria-label="Open menu"
         >
-          <Menu className="w-6 h-6 text-slate-700" />
+          <Menu className="w-6 h-6 text-text-secondary" />
         </button>
 
         {/* Mobile Overlay */}
@@ -483,7 +483,7 @@ export default function ParentLayout({
         {/* Sidebar */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-50 w-[280px] bg-white border-r border-slate-200
+            fixed inset-y-0 left-0 z-50 w-[280px] bg-surface-1 border-r border-border
             transform transition-transform duration-300 ease-in-out
             lg:translate-x-0
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -492,7 +492,7 @@ export default function ParentLayout({
           aria-label="Main navigation"
         >
           {/* Header */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-border">
             <Link href="/parent/dashboard" className="flex items-center gap-3">
               <Image
                 src="/images/logo.png"
@@ -501,21 +501,21 @@ export default function ParentLayout({
                 height={32}
                 className="rounded-lg"
               />
-              <span className="font-bold text-slate-900">Parent Portal</span>
+              <span className="font-bold text-white">Parent Portal</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 hover:bg-slate-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="lg:hidden p-2 hover:bg-surface-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Close menu"
             >
-              <X className="w-5 h-5 text-slate-500" />
+              <X className="w-5 h-5 text-text-tertiary" />
             </button>
           </div>
 
           {/* Children Selector */}
           {children_.length > 0 && (
-            <div className="p-4 border-b border-slate-100">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
+            <div className="p-4 border-b border-border">
+              <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-3">
                 Your Children
               </p>
               <div className="space-y-2 max-h-[180px] overflow-y-auto">
@@ -531,7 +531,7 @@ export default function ParentLayout({
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all min-h-[52px] ${
                         isSelected
                           ? 'bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 border-2 border-[#ff0099]/40 shadow-sm'
-                          : 'bg-slate-50 hover:bg-slate-100 border-2 border-transparent active:scale-[0.98]'
+                          : 'bg-surface-2 hover:bg-surface-3 border-2 border-transparent active:scale-[0.98]'
                       }`}
                       aria-pressed={isSelected}
                       aria-label={`Select ${displayName}${isEnrolled ? ' (enrolled)' : ''}`}
@@ -539,16 +539,16 @@ export default function ParentLayout({
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${
                         isSelected
                           ? 'bg-gradient-to-br from-[#ff0099] to-[#7b008b] text-white shadow-md'
-                          : 'bg-slate-200 text-slate-600'
+                          : 'bg-surface-3 text-text-secondary'
                       }`}>
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 text-left min-w-0">
-                        <p className={`font-medium text-sm truncate ${isSelected ? 'text-[#7b008b]' : 'text-slate-700'}`}>
+                        <p className={`font-medium text-sm truncate ${isSelected ? 'text-[#ff0099]' : 'text-text-secondary'}`}>
                           {displayName}
                         </p>
                         {isEnrolled && (
-                          <p className="text-[10px] text-green-600 font-medium flex items-center gap-0.5">
+                          <p className="text-[10px] text-green-400 font-medium flex items-center gap-0.5">
                             <Check className="w-3 h-3" />
                             Enrolled
                           </p>
@@ -578,16 +578,16 @@ export default function ParentLayout({
                   onClick={() => setSidebarOpen(false)}
                   className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all min-h-[52px] ${
                     isActive
-                      ? 'bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 text-[#7b008b]'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]'
+                      ? 'bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 text-[#ff0099]'
+                      : 'text-text-secondary hover:bg-surface-2 hover:text-white active:scale-[0.98]'
                   }`}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <item.icon className={`w-5 h-5 flex-shrink-0 ${
-                    isActive ? 'text-[#ff0099]' : 'text-slate-400 group-hover:text-slate-600'
+                    isActive ? 'text-[#ff0099]' : 'text-text-tertiary group-hover:text-text-secondary'
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className={`font-medium truncate ${isActive ? 'text-[#7b008b]' : ''}`}>
+                    <p className={`font-medium truncate ${isActive ? 'text-[#ff0099]' : ''}`}>
                       {item.label}
                     </p>
                   </div>
@@ -598,20 +598,20 @@ export default function ParentLayout({
           </nav>
 
           {/* User Profile */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 bg-white">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-surface-1">
             <div className="flex items-center gap-3 px-2 py-2">
               <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                 {parent?.name?.charAt(0).toUpperCase() || 'P'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 truncate text-sm">
+                <p className="font-medium text-white truncate text-sm">
                   {parent?.name || 'Parent'}
                 </p>
-                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <p className="text-xs text-text-tertiary truncate">{user?.email}</p>
               </div>
               <button
                 onClick={handleSignOut}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                className="p-2 text-text-tertiary hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
                 title="Sign out"
                 aria-label="Sign out"
               >
@@ -632,7 +632,7 @@ export default function ParentLayout({
         <BottomNav
           items={parentNavItems}
           baseRoute="/parent"
-          theme="light"
+          theme="dark"
         />
       </div>
     </ParentContext.Provider>

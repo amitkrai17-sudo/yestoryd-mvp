@@ -112,6 +112,7 @@ export default function CoachEarningsPage() {
         const child = enrollment.child as any;
         if (!child) return null;
 
+        // TODO: Fetch from pricing_plans table instead of hardcoding
         const programFee = enrollment.amount || 5999;
         const isCoachLead = enrollment.lead_source === 'coach';
         const splitPercentage = child.custom_coach_split
@@ -248,10 +249,10 @@ export default function CoachEarningsPage() {
               <IndianRupee className="w-7 h-7 text-yellow-400" />
               Earnings
             </h1>
-            <p className="text-gray-400">Track your coaching income</p>
+            <p className="text-text-tertiary">Track your coaching income</p>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-400">Your split:</span>
+            <span className="text-text-tertiary">Your split:</span>
             <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full font-medium">
               {coach.coach_split_percentage}% (Yestoryd leads)
             </span>
@@ -263,22 +264,22 @@ export default function CoachEarningsPage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="bg-surface-1 rounded-xl p-5 border border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
                 <IndianRupee className="w-5 h-5 text-yellow-400" />
               </div>
-              <span className="text-gray-400 text-sm">Total Earned</span>
+              <span className="text-text-tertiary text-sm">Total Earned</span>
             </div>
             <p className="text-3xl font-bold text-white">{formatCurrency(summary.totalEarnings)}</p>
           </div>
 
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="bg-surface-1 rounded-xl p-5 border border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-green-400" />
               </div>
-              <span className="text-gray-400 text-sm">This Month</span>
+              <span className="text-text-tertiary text-sm">This Month</span>
             </div>
             <p className="text-3xl font-bold text-white">{formatCurrency(summary.thisMonthEarnings)}</p>
             {monthChange !== null && (
@@ -289,25 +290,25 @@ export default function CoachEarningsPage() {
             )}
           </div>
 
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="bg-surface-1 rounded-xl p-5 border border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                 <Users className="w-5 h-5 text-blue-400" />
               </div>
-              <span className="text-gray-400 text-sm">Total Students</span>
+              <span className="text-text-tertiary text-sm">Total Students</span>
             </div>
             <p className="text-3xl font-bold text-white">{summary.totalStudents}</p>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-text-tertiary text-sm mt-1">
               {summary.yestorydLeads} platform • {summary.coachLeads} yours
             </p>
           </div>
 
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+          <div className="bg-surface-1 rounded-xl p-5 border border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-orange-400" />
               </div>
-              <span className="text-gray-400 text-sm">Avg per Student</span>
+              <span className="text-text-tertiary text-sm">Avg per Student</span>
             </div>
             <p className="text-3xl font-bold text-white">
               {summary.totalStudents > 0
@@ -318,16 +319,16 @@ export default function CoachEarningsPage() {
         </div>
 
         {/* Earnings Table */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+          <div className="p-4 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold text-white">Earnings Breakdown</h2>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-400" />
+                <Filter className="w-4 h-4 text-text-tertiary" />
                 <select
                   value={filterPeriod}
                   onChange={(e) => setFilterPeriod(e.target.value)}
-                  className="bg-gray-700 border border-gray-600 rounded-lg py-1.5 px-3 text-white text-sm focus:outline-none focus:border-pink-500"
+                  className="bg-surface-2 border border-border rounded-lg py-1.5 px-3 text-white text-sm focus:outline-none focus:border-pink-500"
                 >
                   <option value="all">All Time</option>
                   <option value="this_month">This Month</option>
@@ -340,34 +341,34 @@ export default function CoachEarningsPage() {
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-700/50">
+              <thead className="bg-surface-2/50">
                 <tr>
-                  <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Student</th>
-                  <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Enrolled</th>
-                  <th className="text-left text-gray-400 text-sm font-medium px-4 py-3">Split</th>
-                  <th className="text-right text-gray-400 text-sm font-medium px-4 py-3">Program Fee</th>
-                  <th className="text-right text-gray-400 text-sm font-medium px-4 py-3">Your Earnings</th>
+                  <th className="text-left text-text-tertiary text-sm font-medium px-4 py-3">Student</th>
+                  <th className="text-left text-text-tertiary text-sm font-medium px-4 py-3">Enrolled</th>
+                  <th className="text-left text-text-tertiary text-sm font-medium px-4 py-3">Split</th>
+                  <th className="text-right text-text-tertiary text-sm font-medium px-4 py-3">Program Fee</th>
+                  <th className="text-right text-text-tertiary text-sm font-medium px-4 py-3">Your Earnings</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-border">
                 {filteredEarnings.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">
                       No earnings found for this period
                     </td>
                   </tr>
                 ) : (
                   filteredEarnings.map((earning) => (
-                    <tr key={earning.id} className="hover:bg-gray-700/50">
+                    <tr key={earning.id} className="hover:bg-surface-2/50">
                       <td className="px-4 py-3">
                         <div>
                           <p className="text-white font-medium">{earning.child_name}</p>
-                          <p className="text-gray-500 text-sm">{earning.parent_name}</p>
+                          <p className="text-text-tertiary text-sm">{earning.parent_name}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-400">{formatDate(earning.enrollment_date)}</td>
+                      <td className="px-4 py-3 text-text-tertiary">{formatDate(earning.enrollment_date)}</td>
                       <td className="px-4 py-3">{getSplitBadge(earning.split_type, earning.lead_source)}</td>
-                      <td className="px-4 py-3 text-right text-gray-400">{formatCurrency(earning.program_fee)}</td>
+                      <td className="px-4 py-3 text-right text-text-tertiary">{formatCurrency(earning.program_fee)}</td>
                       <td className="px-4 py-3 text-right">
                         <span className="text-green-400 font-semibold">{formatCurrency(earning.coach_amount)}</span>
                       </td>
@@ -376,9 +377,9 @@ export default function CoachEarningsPage() {
                 )}
               </tbody>
               {filteredEarnings.length > 0 && (
-                <tfoot className="bg-gray-700/30">
+                <tfoot className="bg-surface-2/30">
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 text-right text-gray-400 font-medium">
+                    <td colSpan={4} className="px-4 py-3 text-right text-text-tertiary font-medium">
                       Total
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -393,21 +394,21 @@ export default function CoachEarningsPage() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="md:hidden divide-y divide-gray-700">
+          <div className="md:hidden divide-y divide-border">
             {filteredEarnings.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No earnings found</div>
+              <div className="p-8 text-center text-text-tertiary">No earnings found</div>
             ) : (
               filteredEarnings.map((earning) => (
                 <div key={earning.id} className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <p className="text-white font-medium">{earning.child_name}</p>
-                      <p className="text-gray-500 text-sm">{earning.parent_name}</p>
+                      <p className="text-text-tertiary text-sm">{earning.parent_name}</p>
                     </div>
                     <span className="text-green-400 font-bold">{formatCurrency(earning.coach_amount)}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <span className="text-gray-500">{formatDate(earning.enrollment_date)}</span>
+                    <span className="text-text-tertiary">{formatDate(earning.enrollment_date)}</span>
                     {getSplitBadge(earning.split_type, earning.lead_source)}
                   </div>
                 </div>

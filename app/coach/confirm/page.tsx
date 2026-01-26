@@ -116,7 +116,7 @@ export default function ConfirmSchedulePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
       </div>
     );
@@ -124,16 +124,16 @@ export default function ConfirmSchedulePage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full text-center border border-gray-700">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="bg-surface-1 rounded-2xl p-8 max-w-md w-full text-center border border-border">
           <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Schedule Confirmed!</h1>
-          <p className="text-gray-400 mb-6">
+          <p className="text-text-tertiary mb-6">
             All 9 sessions have been created. Calendar invites sent to parent and you.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-text-tertiary">
             {DAY_OPTIONS.find(d => d.value === selectedDay)?.label}s at{' '}
             {TIME_OPTIONS.find(t => t.value === selectedTime)?.label}
           </p>
@@ -143,41 +143,41 @@ export default function ConfirmSchedulePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-4">
+    <div className="min-h-screen bg-surface-0 p-4">
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="text-center mb-8 pt-8">
           <h1 className="text-2xl font-bold text-white mb-2">Confirm Schedule</h1>
-          <p className="text-gray-400">New enrollment needs your confirmation</p>
+          <p className="text-text-tertiary">New enrollment needs your confirmation</p>
         </div>
 
         {/* Enrollment Details */}
         {enrollment && (
-          <div className="bg-gray-800 rounded-xl p-6 mb-6 border border-gray-700">
+          <div className="bg-surface-1 rounded-xl p-6 mb-6 border border-border">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <User className="w-5 h-5 text-[#FF0099]" />
               Enrollment Details
             </h2>
-            <div className="space-y-3 text-gray-300">
+            <div className="space-y-3 text-text-secondary">
               <div className="flex justify-between">
-                <span className="text-gray-500">Child</span>
+                <span className="text-text-tertiary">Child</span>
                 <span className="font-medium">{enrollment.childName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Parent</span>
+                <span className="text-text-tertiary">Parent</span>
                 <span>{enrollment.parentName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Email</span>
+                <span className="text-text-tertiary">Email</span>
                 <span className="text-sm">{enrollment.parentEmail}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Phone</span>
+                <span className="text-text-tertiary">Phone</span>
                 <span>{enrollment.parentPhone}</span>
               </div>
               {enrollment.preferredDay !== null && (
-                <div className="flex justify-between pt-2 border-t border-gray-700">
-                  <span className="text-gray-500">Parent's Preference</span>
+                <div className="flex justify-between pt-2 border-t border-border">
+                  <span className="text-text-tertiary">Parent's Preference</span>
                   <span className="text-pink-400">
                     {DAY_OPTIONS.find(d => d.value === enrollment.preferredDay)?.label}{' '}
                     {TIME_OPTIONS.find(t => t.value === enrollment.preferredTime)?.label}
@@ -189,7 +189,7 @@ export default function ConfirmSchedulePage() {
         )}
 
         {/* Schedule Selection */}
-        <div className="bg-gray-800 rounded-xl p-6 mb-6 border border-gray-700">
+        <div className="bg-surface-1 rounded-xl p-6 mb-6 border border-border">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-500" />
             Select Weekly Slot
@@ -197,7 +197,7 @@ export default function ConfirmSchedulePage() {
 
           {/* Day Selection */}
           <div className="mb-4">
-            <label className="text-sm text-gray-400 mb-2 block">Day</label>
+            <label className="text-sm text-text-tertiary mb-2 block">Day</label>
             <div className="grid grid-cols-4 gap-2">
               {DAY_OPTIONS.map((day) => (
                 <button
@@ -206,7 +206,7 @@ export default function ConfirmSchedulePage() {
                   className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                     selectedDay === day.value
                       ? 'bg-[#FF0099] text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-surface-2 text-text-secondary hover:bg-surface-3'
                   }`}
                 >
                   {day.label.slice(0, 3)}
@@ -217,7 +217,7 @@ export default function ConfirmSchedulePage() {
 
           {/* Time Selection */}
           <div>
-            <label className="text-sm text-gray-400 mb-2 block flex items-center gap-1">
+            <label className="text-sm text-text-tertiary mb-2 block flex items-center gap-1">
               <Clock className="w-4 h-4" /> Time
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -228,7 +228,7 @@ export default function ConfirmSchedulePage() {
                   className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                     selectedTime === time.value
                       ? 'bg-[#FF0099] text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-surface-2 text-text-secondary hover:bg-surface-3'
                   }`}
                 >
                   {time.label}

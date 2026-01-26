@@ -1,35 +1,67 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils/helpers';
+import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center gap-1.5 font-medium border transition-colors',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary-600 text-white',
-        secondary: 'border-transparent bg-gray-100 text-gray-900',
-        destructive: 'border-transparent bg-red-500 text-white',
-        outline: 'text-gray-900 border-gray-300',
-        success: 'border-transparent bg-green-100 text-green-800',
-        warning: 'border-transparent bg-yellow-100 text-yellow-800',
-        info: 'border-transparent bg-blue-100 text-blue-800',
+        default: 'bg-surface-2 text-text-secondary border-border',
+        primary: 'bg-brand-primary/20 text-brand-primary border-brand-primary/30',
+        secondary: 'bg-brand-secondary/20 text-brand-secondary border-brand-secondary/30',
+        success: 'bg-semantic-success/20 text-semantic-success border-semantic-success/30',
+        warning: 'bg-semantic-warning/20 text-semantic-warning border-semantic-warning/30',
+        error: 'bg-semantic-error/20 text-semantic-error border-semantic-error/30',
+        accent: 'bg-brand-accent/20 text-brand-accent border-brand-accent/30',
+      },
+      size: {
+        sm: 'text-xs px-2 py-0.5 rounded-md',
+        md: 'text-sm px-2.5 py-1 rounded-lg',
+        lg: 'text-base px-3 py-1.5 rounded-xl',
       },
     },
     defaultVariants: {
       variant: 'default',
+      size: 'md',
     },
   }
 );
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  );
+  extends React.HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof badgeVariants> {
+  dot?: boolean;
 }
+
+const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
+  ({ className, variant, size, dot, children, ...props }, ref) => {
+    return (
+      <span
+        ref={ref}
+        className={cn(badgeVariants({ variant, size }), className)}
+        {...props}
+      >
+        {dot && (
+          <span
+            className={cn(
+              'w-1.5 h-1.5 rounded-full',
+              variant === 'primary' && 'bg-brand-primary',
+              variant === 'secondary' && 'bg-brand-secondary',
+              variant === 'success' && 'bg-semantic-success',
+              variant === 'warning' && 'bg-semantic-warning',
+              variant === 'error' && 'bg-semantic-error',
+              variant === 'accent' && 'bg-brand-accent',
+              variant === 'default' && 'bg-text-secondary'
+            )}
+          />
+        )}
+        {children}
+      </span>
+    );
+  }
+);
+
+Badge.displayName = 'Badge';
 
 export { Badge, badgeVariants };

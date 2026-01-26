@@ -5,7 +5,7 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0a",
+  "background_color": "#0a0a0f",
   "theme_color": "#FF0099",
   "categories": ["education", "kids"],
   "icons": [

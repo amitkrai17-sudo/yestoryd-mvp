@@ -173,15 +173,15 @@ export default function AdminElearningPage() {
   }
 
   function getStatusBadge(status: string) {
-    const config: Record<string, { bg: string; text: string }> = {
-      draft: { bg: 'bg-gray-100', text: 'text-gray-600' },
-      review: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-      approved: { bg: 'bg-blue-100', text: 'text-blue-700' },
-      published: { bg: 'bg-green-100', text: 'text-green-700' },
+    const config: Record<string, string> = {
+      draft: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+      review: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+      approved: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+      published: 'bg-green-500/20 text-green-400 border border-green-500/30',
     };
     const c = config[status] || config.draft;
     return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>
+      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c}`}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
@@ -196,17 +196,17 @@ export default function AdminElearningPage() {
   const totalModules = levels.reduce((sum, l) => sum + (l.modules?.length || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-0">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-surface-1 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-7 h-7 text-[#7b008b]" />
                 E-Learning Management
               </h1>
-              <p className="text-gray-500 mt-1">Manage video content, modules, and quizzes</p>
+              <p className="text-text-tertiary mt-1">Manage video content, modules, and quizzes</p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -214,7 +214,7 @@ export default function AdminElearningPage() {
                   setEditingModule(null);
                   setShowModuleModal(true);
                 }}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 flex items-center gap-2"
+                className="px-4 py-2 bg-surface-2 border border-border rounded-lg text-text-secondary font-medium hover:bg-surface-3 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add Module
@@ -245,7 +245,7 @@ export default function AdminElearningPage() {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
                   activeTab === tab.id
                     ? 'bg-[#7b008b]/10 text-[#7b008b]'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    : 'text-text-secondary hover:bg-surface-2'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -262,34 +262,34 @@ export default function AdminElearningPage() {
           <>
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <p className="text-sm text-gray-500">Total Levels</p>
-                <p className="text-2xl font-bold text-gray-900">{levels.length}</p>
+              <div className="bg-surface-1 rounded-xl p-4 border border-border">
+                <p className="text-sm text-text-tertiary">Total Levels</p>
+                <p className="text-2xl font-bold text-white">{levels.length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <p className="text-sm text-gray-500">Total Modules</p>
-                <p className="text-2xl font-bold text-gray-900">{totalModules}</p>
+              <div className="bg-surface-1 rounded-xl p-4 border border-border">
+                <p className="text-sm text-text-tertiary">Total Modules</p>
+                <p className="text-2xl font-bold text-white">{totalModules}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <p className="text-sm text-gray-500">Total Videos</p>
-                <p className="text-2xl font-bold text-gray-900">{totalVideos}</p>
+              <div className="bg-surface-1 rounded-xl p-4 border border-border">
+                <p className="text-sm text-text-tertiary">Total Videos</p>
+                <p className="text-2xl font-bold text-white">{totalVideos}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <p className="text-sm text-gray-500">Published</p>
-                <p className="text-2xl font-bold text-green-600">{publishedVideos}</p>
+              <div className="bg-surface-1 rounded-xl p-4 border border-border">
+                <p className="text-sm text-text-tertiary">Published</p>
+                <p className="text-2xl font-bold text-green-400">{publishedVideos}</p>
               </div>
             </div>
 
             {/* Search */}
             <div className="mb-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-tertiary" />
                 <input
                   type="text"
                   placeholder="Search videos, modules..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b]"
+                  className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                 />
               </div>
             </div>
@@ -298,47 +298,47 @@ export default function AdminElearningPage() {
             {loading ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-500">Loading content...</p>
+                <p className="text-text-tertiary">Loading content...</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {levels.map(level => (
-                  <div key={level.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div key={level.id} className="bg-surface-1 rounded-xl border border-border overflow-hidden">
                     {/* Level Header */}
                     <div
-                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-2"
                       onClick={() => toggleLevel(level.id)}
                     >
                       <div className="flex items-center gap-3">
                         {expandedLevels.has(level.id) ? (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                          <ChevronDown className="w-5 h-5 text-text-tertiary" />
                         ) : (
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                          <ChevronRight className="w-5 h-5 text-text-tertiary" />
                         )}
                         <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-lg flex items-center justify-center">
                           <BookOpen className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900">{level.name}</h3>
-                          <p className="text-sm text-gray-500">{level.age_range} • {level.modules?.length || 0} modules</p>
+                          <h3 className="font-semibold text-white">{level.name}</h3>
+                          <p className="text-sm text-text-tertiary">{level.age_range} • {level.modules?.length || 0} modules</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {level.is_active ? (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Active</span>
+                          <span className="px-2 py-1 bg-green-500/20 text-green-400 border border-green-500/30 rounded-full text-xs font-medium">Active</span>
                         ) : (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">Inactive</span>
+                          <span className="px-2 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded-full text-xs font-medium">Inactive</span>
                         )}
                       </div>
                     </div>
 
                     {/* Modules */}
                     {expandedLevels.has(level.id) && level.modules && (
-                      <div className="border-t border-gray-100">
+                      <div className="border-t border-border/50">
                         {level.modules.length === 0 ? (
-                          <div className="p-6 text-center text-gray-500">
-                            No modules yet. 
-                            <button 
+                          <div className="p-6 text-center text-text-tertiary">
+                            No modules yet.
+                            <button
                               onClick={() => {
                                 setSelectedModuleId('');
                                 setEditingModule(null);
@@ -351,29 +351,29 @@ export default function AdminElearningPage() {
                           </div>
                         ) : (
                           level.modules.map(module => (
-                            <div key={module.id} className="border-b border-gray-100 last:border-b-0">
+                            <div key={module.id} className="border-b border-border/50 last:border-b-0">
                               {/* Module Header */}
                               <div
-                                className="flex items-center justify-between px-6 py-3 cursor-pointer hover:bg-gray-50"
+                                className="flex items-center justify-between px-6 py-3 cursor-pointer hover:bg-surface-2"
                                 onClick={() => toggleModule(module.id)}
                               >
                                 <div className="flex items-center gap-3">
                                   {expandedModules.has(module.id) ? (
-                                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                                    <ChevronDown className="w-4 h-4 text-text-tertiary" />
                                   ) : (
-                                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                                    <ChevronRight className="w-4 h-4 text-text-tertiary" />
                                   )}
-                                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <Video className="w-4 h-4 text-blue-600" />
+                                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                    <Video className="w-4 h-4 text-blue-400" />
                                   </div>
                                   <div>
                                     <div className="flex items-center gap-2">
-                                      <span className="font-medium text-gray-800">{module.name}</span>
+                                      <span className="font-medium text-white">{module.name}</span>
                                       {module.is_free && (
-                                        <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs">Free</span>
+                                        <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-xs">Free</span>
                                       )}
                                     </div>
-                                    <p className="text-xs text-gray-500">{module.video_count || 0} videos</p>
+                                    <p className="text-xs text-text-tertiary">{module.video_count || 0} videos</p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -383,7 +383,7 @@ export default function AdminElearningPage() {
                                       setEditingModule(module);
                                       setShowModuleModal(true);
                                     }}
-                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                                    className="p-1.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-3 rounded"
                                   >
                                     <Edit className="w-4 h-4" />
                                   </button>
@@ -403,9 +403,9 @@ export default function AdminElearningPage() {
 
                               {/* Videos */}
                               {expandedModules.has(module.id) && module.videos && (
-                                <div className="bg-gray-50 px-6 py-2">
+                                <div className="bg-surface-0 px-6 py-2">
                                   {module.videos.length === 0 ? (
-                                    <p className="text-sm text-gray-500 py-3 text-center">
+                                    <p className="text-sm text-text-tertiary py-3 text-center">
                                       No videos yet
                                     </p>
                                   ) : (
@@ -413,37 +413,37 @@ export default function AdminElearningPage() {
                                       {module.videos.map((video, idx) => (
                                         <div
                                           key={video.id}
-                                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                          className="flex items-center justify-between p-3 bg-surface-1 rounded-lg border border-border"
                                         >
                                           <div className="flex items-center gap-3">
-                                            <GripVertical className="w-4 h-4 text-gray-300 cursor-grab" />
-                                            <div className="w-16 h-10 bg-gray-200 rounded overflow-hidden">
+                                            <GripVertical className="w-4 h-4 text-text-muted cursor-grab" />
+                                            <div className="w-16 h-10 bg-surface-3 rounded overflow-hidden">
                                               {video.thumbnail_url ? (
-                                                <img 
-                                                  src={video.thumbnail_url} 
-                                                  alt="" 
+                                                <img
+                                                  src={video.thumbnail_url}
+                                                  alt=""
                                                   className="w-full h-full object-cover"
                                                 />
                                               ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
-                                                  <Play className="w-4 h-4 text-gray-400" />
+                                                  <Play className="w-4 h-4 text-text-tertiary" />
                                                 </div>
                                               )}
                                             </div>
                                             <div>
                                               <div className="flex items-center gap-2">
-                                                <span className="font-medium text-gray-800 text-sm">{video.title}</span>
+                                                <span className="font-medium text-white text-sm">{video.title}</span>
                                                 {video.is_free && (
-                                                  <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs">Free</span>
+                                                  <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-xs">Free</span>
                                                 )}
                                               </div>
                                               <div className="flex items-center gap-3 mt-0.5">
-                                                <span className="text-xs text-gray-500 flex items-center gap-1">
+                                                <span className="text-xs text-text-tertiary flex items-center gap-1">
                                                   <Clock className="w-3 h-3" />
                                                   {formatDuration(video.duration_seconds)}
                                                 </span>
                                                 {video.has_quiz && (
-                                                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                                                  <span className="text-xs text-text-tertiary flex items-center gap-1">
                                                     <FileQuestion className="w-3 h-3" />
                                                     {video.quiz_count} questions
                                                   </span>
@@ -458,7 +458,7 @@ export default function AdminElearningPage() {
                                                 setSelectedVideoId(video.id);
                                                 setShowQuizModal(true);
                                               }}
-                                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                                              className="p-1.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-3 rounded"
                                               title="Manage Quiz"
                                             >
                                               <FileQuestion className="w-4 h-4" />
@@ -469,13 +469,13 @@ export default function AdminElearningPage() {
                                                 setSelectedModuleId(video.module_id);
                                                 setShowVideoModal(true);
                                               }}
-                                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                                              className="p-1.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-3 rounded"
                                             >
                                               <Edit className="w-4 h-4" />
                                             </button>
                                             <button
                                               onClick={() => window.open(`https://youtube.com/watch?v=${video.video_id}`, '_blank')}
-                                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                                              className="p-1.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-3 rounded"
                                               title="Preview"
                                             >
                                               <Eye className="w-4 h-4" />
@@ -621,21 +621,21 @@ function VideoModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="bg-surface-1 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-border">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-xl font-bold text-white">
             {video ? 'Edit Video' : 'Add New Video'}
           </h2>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Module Select */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Module *</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Module *</label>
             <select
               value={form.module_id}
               onChange={(e) => setForm({ ...form, module_id: e.target.value })}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
             >
               <option value="">Select Module</option>
               {levels.map(level => (
@@ -650,37 +650,37 @@ function VideoModal({
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Video Title *</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Video Title *</label>
             <input
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
               placeholder="e.g., Introduction to Phonics"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
               placeholder="What will children learn?"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
             />
           </div>
 
           {/* Video Source */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Video Source</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Video Source</label>
               <select
                 value={form.video_source}
                 onChange={(e) => setForm({ ...form, video_source: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
               >
                 <option value="youtube">YouTube</option>
                 <option value="bunny">Bunny.net</option>
@@ -688,14 +688,14 @@ function VideoModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Video ID *</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Video ID *</label>
               <input
                 type="text"
                 value={form.video_id}
                 onChange={(e) => setForm({ ...form, video_id: e.target.value })}
                 required
                 placeholder="dQw4w9WgXcQ"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
               />
             </div>
           </div>
@@ -703,21 +703,21 @@ function VideoModal({
           {/* Duration & Status */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Duration (seconds)</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Duration (seconds)</label>
               <input
                 type="number"
                 value={form.duration_seconds}
                 onChange={(e) => setForm({ ...form, duration_seconds: parseInt(e.target.value) || 0 })}
                 placeholder="300"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Status</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
               >
                 <option value="draft">Draft</option>
                 <option value="review">In Review</option>
@@ -736,7 +736,7 @@ function VideoModal({
                 onChange={(e) => setForm({ ...form, has_quiz: e.target.checked })}
                 className="w-4 h-4 text-[#7b008b] rounded"
               />
-              <span className="text-sm text-gray-700">Has Quiz</span>
+              <span className="text-sm text-text-secondary">Has Quiz</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -745,7 +745,7 @@ function VideoModal({
                 onChange={(e) => setForm({ ...form, is_free: e.target.checked })}
                 className="w-4 h-4 text-[#7b008b] rounded"
               />
-              <span className="text-sm text-gray-700">Free Preview</span>
+              <span className="text-sm text-text-secondary">Free Preview</span>
             </label>
           </div>
 
@@ -754,7 +754,7 @@ function VideoModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="px-4 py-2 text-text-secondary hover:bg-surface-2 rounded-lg"
             >
               Cancel
             </button>
@@ -818,20 +818,20 @@ function ModuleModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="bg-surface-1 rounded-2xl w-full max-w-md border border-border">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-xl font-bold text-white">
             {module ? 'Edit Module' : 'Add New Module'}
           </h2>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Level *</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Level *</label>
             <select
               value={form.level_id}
               onChange={(e) => setForm({ ...form, level_id: e.target.value })}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
             >
               <option value="">Select Level</option>
               {levels.map(l => (
@@ -841,24 +841,24 @@ function ModuleModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Module Name *</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Module Name *</label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
               placeholder="e.g., Phonics Basics"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7b008b] text-gray-900 bg-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
             />
           </div>
 
@@ -870,7 +870,7 @@ function ModuleModal({
                 onChange={(e) => setForm({ ...form, is_free: e.target.checked })}
                 className="w-4 h-4 text-[#7b008b] rounded"
               />
-              <span className="text-sm text-gray-700">Free Preview</span>
+              <span className="text-sm text-text-secondary">Free Preview</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -879,12 +879,12 @@ function ModuleModal({
                 onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
                 className="w-4 h-4 text-[#7b008b] rounded"
               />
-              <span className="text-sm text-gray-700">Active</span>
+              <span className="text-sm text-text-secondary">Active</span>
             </label>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-text-secondary hover:bg-surface-2 rounded-lg">
               Cancel
             </button>
             <button
@@ -979,31 +979,31 @@ function QuizModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">Manage Quiz Questions</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-surface-1 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-border">
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white">Manage Quiz Questions</h2>
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-secondary">
             ✕
           </button>
         </div>
-        
+
         <div className="p-6">
           {/* Existing Questions */}
           {questions.length > 0 && (
             <div className="mb-6 space-y-3">
-              <h3 className="font-medium text-gray-900">Existing Questions ({questions.length})</h3>
+              <h3 className="font-medium text-white">Existing Questions ({questions.length})</h3>
               {questions.map((q, idx) => (
-                <div key={q.id} className="p-3 bg-gray-50 rounded-lg">
+                <div key={q.id} className="p-3 bg-surface-2 rounded-lg">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium text-gray-800">Q{idx + 1}: {q.question_text}</p>
-                      <p className="text-sm text-green-600 mt-1">
+                      <p className="font-medium text-white">Q{idx + 1}: {q.question_text}</p>
+                      <p className="text-sm text-green-400 mt-1">
                         Correct: {q.options.find((o: any) => o.id === q.correct_option_id)?.text}
                       </p>
                     </div>
                     <button
                       onClick={() => deleteQuestion(q.id)}
-                      className="p-1 text-red-500 hover:bg-red-50 rounded"
+                      className="p-1 text-red-400 hover:bg-red-500/20 rounded"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1014,18 +1014,18 @@ function QuizModal({
           )}
 
           {/* Add New Question */}
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="font-medium text-gray-900 mb-4">Add New Question</h3>
-            
+          <div className="border-t border-border pt-6">
+            <h3 className="font-medium text-white mb-4">Add New Question</h3>
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Question</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Question</label>
                 <input
                   type="text"
                   value={newQuestion.question_text}
                   onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
                   placeholder="What sound does 'ph' make?"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                  className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white placeholder:text-text-muted"
                 />
               </div>
 
@@ -1048,20 +1048,20 @@ function QuizModal({
                         setNewQuestion({ ...newQuestion, options });
                       }}
                       placeholder={`Option ${opt.id.toUpperCase()}`}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm"
+                      className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-white placeholder:text-text-muted text-sm"
                     />
                   </div>
                 ))}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Explanation (shown after answer)</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Explanation (shown after answer)</label>
                 <input
                   type="text"
                   value={newQuestion.explanation}
                   onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
                   placeholder="'ph' makes the /f/ sound, like in 'phone'"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                  className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white placeholder:text-text-muted"
                 />
               </div>
 
@@ -1085,10 +1085,10 @@ function QuizModal({
 // =============================================================================
 function AnalyticsTab() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-      <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-      <h3 className="text-lg font-semibold text-gray-800 mb-2">Analytics Coming Soon</h3>
-      <p className="text-gray-500">Track video engagement, completion rates, and quiz performance</p>
+    <div className="bg-surface-1 rounded-xl border border-border p-8 text-center">
+      <BarChart3 className="w-16 h-16 text-text-muted mx-auto mb-4" />
+      <h3 className="text-lg font-semibold text-white mb-2">Analytics Coming Soon</h3>
+      <p className="text-text-tertiary">Track video engagement, completion rates, and quiz performance</p>
     </div>
   );
 }
@@ -1098,10 +1098,10 @@ function AnalyticsTab() {
 // =============================================================================
 function AssignmentsTab() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-      <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-      <h3 className="text-lg font-semibold text-gray-800 mb-2">Video Assignments</h3>
-      <p className="text-gray-500">Coaches can assign specific videos to students from here</p>
+    <div className="bg-surface-1 rounded-xl border border-border p-8 text-center">
+      <Users className="w-16 h-16 text-text-muted mx-auto mb-4" />
+      <h3 className="text-lg font-semibold text-white mb-2">Video Assignments</h3>
+      <p className="text-text-tertiary">Coaches can assign specific videos to students from here</p>
     </div>
   );
 }

@@ -188,7 +188,7 @@ export function AudioRecorder({
           {!isRecording ? (
             <Button
               onClick={startRecording}
-              size="xl"
+              size="lg"
               className="flex items-center gap-3 bg-red-500 hover:bg-red-600"
             >
               <Mic className="w-6 h-6" />
@@ -233,7 +233,7 @@ export function AudioRecorder({
                 
                 <Button
                   onClick={stopRecording}
-                  variant="destructive"
+                  variant="danger"
                   size="lg"
                   className="flex items-center gap-2"
                 >

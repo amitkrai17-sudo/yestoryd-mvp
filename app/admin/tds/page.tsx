@@ -141,14 +141,14 @@ export default function TdsPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-violet-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -157,15 +157,15 @@ export default function TdsPage() {
               <FileText className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">TDS Compliance</h1>
-              <p className="text-slate-500">Section 194J - Professional Fees</p>
+              <h1 className="text-2xl font-bold text-white">TDS Compliance</h1>
+              <p className="text-text-tertiary">Section 194J - Professional Fees</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <select
               value={selectedFY}
               onChange={(e) => setSelectedFY(e.target.value)}
-              className="px-4 py-2 border border-slate-200 rounded-xl text-slate-700 bg-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="px-4 py-2 border border-border rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             >
               {fyOptions().map(fy => (
                 <option key={fy} value={fy}>FY {fy}</option>
@@ -173,7 +173,7 @@ export default function TdsPage() {
             </select>
             <button
               onClick={() => window.open('https://www.incometax.gov.in/iec/foportal/', '_blank')}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-xl text-text-secondary hover:bg-surface-2 transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
               TRACES Portal
@@ -183,13 +183,13 @@ export default function TdsPage() {
 
         {/* Alerts */}
         {data?.alerts.coaches_needing_pan && data.alerts.coaches_needing_pan.length > 0 && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+          <div className="mb-6 p-4 bg-amber-500/20 border border-amber-500/30 rounded-2xl">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-amber-800">PAN Required</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  {data.alerts.coaches_needing_pan.map(c => c.name).join(', ')} - 
+                <p className="font-medium text-amber-400">PAN Required</p>
+                <p className="text-sm text-amber-400/80 mt-1">
+                  {data.alerts.coaches_needing_pan.map(c => c.name).join(', ')} -
                   Please collect PAN before next payout to ensure TDS compliance.
                 </p>
               </div>
@@ -198,36 +198,36 @@ export default function TdsPage() {
         )}
 
         {/* Quarterly Summary */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-          <div className="p-6 border-b border-slate-100">
-            <h2 className="text-lg font-semibold text-slate-900">Quarterly Summary</h2>
-            <p className="text-sm text-slate-500 mt-1">TDS deducted and deposit status by quarter</p>
+        <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden mb-8">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-semibold text-white">Quarterly Summary</h2>
+            <p className="text-sm text-text-tertiary mt-1">TDS deducted and deposit status by quarter</p>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-100">
+              <thead className="bg-surface-2 border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Quarter</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">TDS Deducted</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Deposited</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Due Date</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Quarter</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">TDS Deducted</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">Deposited</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">Pending</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Due Date</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-text-tertiary uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {data?.quarterly_summary.map((q) => {
                   const status = getQuarterStatus(q);
                   return (
-                    <tr key={q.quarter} className="hover:bg-slate-50 transition-colors">
+                    <tr key={q.quarter} className="hover:bg-surface-2 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">
                             {q.quarter}
                           </div>
-                          <span className="font-medium text-slate-900">
+                          <span className="font-medium text-white">
                             {q.quarter === 'Q1' && 'Apr - Jun'}
                             {q.quarter === 'Q2' && 'Jul - Sep'}
                             {q.quarter === 'Q3' && 'Oct - Dec'}
@@ -235,27 +235,27 @@ export default function TdsPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right font-medium text-slate-900">
+                      <td className="px-6 py-4 text-right font-medium text-white">
                         ₹{q.deducted.toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-right text-emerald-600 font-medium">
+                      <td className="px-6 py-4 text-right text-emerald-400 font-medium">
                         ₹{q.deposited.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-right">
                         {q.pending > 0 ? (
-                          <span className="font-bold text-amber-600">₹{q.pending.toLocaleString()}</span>
+                          <span className="font-bold text-amber-400">₹{q.pending.toLocaleString()}</span>
                         ) : (
-                          <span className="text-slate-400">₹0</span>
+                          <span className="text-text-muted">₹0</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-slate-500 text-sm">
+                      <td className="px-6 py-4 text-text-tertiary text-sm">
                         {q.due_date}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-                          status.color === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
-                          status.color === 'amber' ? 'bg-amber-100 text-amber-700' :
-                          'bg-slate-100 text-slate-500'
+                          status.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-400' :
+                          status.color === 'amber' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-surface-2 text-text-tertiary'
                         }`}>
                           {status.icon && <status.icon className="w-3.5 h-3.5" />}
                           {status.text}
@@ -268,7 +268,7 @@ export default function TdsPage() {
                               setDepositQuarter(q.quarter);
                               setShowDepositModal(true);
                             }}
-                            className="px-3 py-1.5 bg-violet-100 text-violet-700 rounded-lg text-sm font-medium hover:bg-violet-200 transition-colors"
+                            className="px-3 py-1.5 bg-violet-500/20 text-violet-400 rounded-lg text-sm font-medium hover:bg-violet-500/30 transition-colors"
                           >
                             Mark Deposited
                           </button>
@@ -278,16 +278,16 @@ export default function TdsPage() {
                   );
                 })}
               </tbody>
-              <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+              <tfoot className="bg-surface-2 border-t-2 border-border">
                 <tr>
-                  <td className="px-6 py-4 font-semibold text-slate-700">Total FY {selectedFY}</td>
-                  <td className="px-6 py-4 text-right font-bold text-slate-900">
+                  <td className="px-6 py-4 font-semibold text-text-secondary">Total FY {selectedFY}</td>
+                  <td className="px-6 py-4 text-right font-bold text-white">
                     ₹{data?.totals.total_deducted.toLocaleString() || 0}
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-emerald-600">
+                  <td className="px-6 py-4 text-right font-bold text-emerald-400">
                     ₹{data?.totals.total_deposited.toLocaleString() || 0}
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-amber-600">
+                  <td className="px-6 py-4 text-right font-bold text-amber-400">
                     ₹{data?.totals.total_pending.toLocaleString() || 0}
                   </td>
                   <td colSpan={3}></td>
@@ -298,11 +298,11 @@ export default function TdsPage() {
         </div>
 
         {/* Coach-wise TDS */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
+          <div className="p-6 border-b border-border flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Coach-wise TDS</h2>
-              <p className="text-sm text-slate-500 mt-1">Individual coach TDS deductions for Form 26Q</p>
+              <h2 className="text-lg font-semibold text-white">Coach-wise TDS</h2>
+              <p className="text-sm text-text-tertiary mt-1">Individual coach TDS deductions for Form 26Q</p>
             </div>
             <button
               onClick={() => {
@@ -325,7 +325,7 @@ export default function TdsPage() {
                 a.download = `26Q-${selectedFY}.csv`;
                 a.click();
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-2 border border-border rounded-xl text-text-secondary hover:bg-surface-3 transition-colors"
             >
               <Download className="w-4 h-4" />
               Download 26Q Data
@@ -334,50 +334,50 @@ export default function TdsPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-100">
+              <thead className="bg-surface-2 border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Coach</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">PAN</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Paid</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">TDS Deducted</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">TDS Rate</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">Coach</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-text-tertiary uppercase tracking-wider">PAN</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">Total Paid</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">TDS Deducted</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-text-tertiary uppercase tracking-wider">TDS Rate</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {data?.coach_wise.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                      <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <td colSpan={5} className="px-6 py-12 text-center text-text-secondary">
+                      <FileText className="w-12 h-12 text-text-tertiary mx-auto mb-3" />
                       No TDS deductions recorded yet
                     </td>
                   </tr>
                 ) : (
                   data?.coach_wise.map((coach) => (
-                    <tr key={coach.coach_id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={coach.coach_id} className="hover:bg-surface-2 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center text-white font-bold">
                             {coach.coach_name.charAt(0)}
                           </div>
-                          <span className="font-medium text-slate-900">{coach.coach_name}</span>
+                          <span className="font-medium text-white">{coach.coach_name}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         {coach.coach_pan ? (
-                          <span className="font-mono text-slate-700">{coach.coach_pan}</span>
+                          <span className="font-mono text-text-secondary">{coach.coach_pan}</span>
                         ) : (
-                          <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                          <span className="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded">
                             PENDING
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right font-medium text-slate-900">
+                      <td className="px-6 py-4 text-right font-medium text-white">
                         ₹{coach.total_paid.toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-right font-bold text-violet-600">
+                      <td className="px-6 py-4 text-right font-bold text-violet-400">
                         ₹{coach.tds_deducted.toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-right text-slate-500">
+                      <td className="px-6 py-4 text-right text-text-tertiary">
                         {coach.tds_rate}%
                       </td>
                     </tr>
@@ -389,14 +389,15 @@ export default function TdsPage() {
         </div>
 
         {/* Info Card */}
-        <div className="mt-8 p-6 bg-violet-50 rounded-2xl border border-violet-100">
+        {/* TODO: Move TDS threshold (₹30,000/year) to site_settings */}
+        <div className="mt-8 p-6 bg-violet-500/20 rounded-2xl border border-violet-500/30">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Info className="w-5 h-5 text-violet-600" />
+            <div className="w-10 h-10 bg-violet-500/30 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Info className="w-5 h-5 text-violet-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-violet-900">TDS Compliance Reminder</h3>
-              <ul className="mt-2 text-sm text-violet-700 space-y-1">
+              <h3 className="font-semibold text-violet-400">TDS Compliance Reminder</h3>
+              <ul className="mt-2 text-sm text-violet-400/80 space-y-1">
                 <li>• TDS must be deposited by 7th of following month (30th April for Q4)</li>
                 <li>• Form 26Q must be filed quarterly on TRACES portal</li>
                 <li>• Issue Form 16A to coaches after filing 26Q</li>
@@ -408,17 +409,17 @@ export default function TdsPage() {
 
         {/* Deposit Modal */}
         {showDepositModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-              <div className="p-6 border-b border-slate-100">
-                <h3 className="text-lg font-semibold text-slate-900">Mark TDS Deposited</h3>
-                <p className="text-sm text-slate-500 mt-1">
+          <div className="fixed inset-0 bg-surface-0/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-surface-1 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-border">
+              <div className="p-6 border-b border-border">
+                <h3 className="text-lg font-semibold text-white">Mark TDS Deposited</h3>
+                <p className="text-sm text-text-tertiary mt-1">
                   Recording deposit for {depositQuarter} FY {selectedFY}
                 </p>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
                     Challan Number *
                   </label>
                   <input
@@ -426,25 +427,25 @@ export default function TdsPage() {
                     value={challanNumber}
                     onChange={(e) => setChallanNumber(e.target.value)}
                     placeholder="e.g., 12345678901"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
                     Deposit Date
                   </label>
                   <input
                     type="date"
                     value={depositDate}
                     onChange={(e) => setDepositDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
 
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => setShowDepositModal(false)}
-                    className="flex-1 px-4 py-3 border border-slate-200 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                    className="flex-1 px-4 py-3 border border-border rounded-xl text-text-secondary font-medium hover:bg-surface-2 transition-colors"
                   >
                     Cancel
                   </button>

@@ -1,6 +1,6 @@
 // =============================================================================
 // FILE: app/parent/dashboard/page.tsx
-// VERSION: 3.1 - Skill Booster Terminology Update
+// VERSION: 3.2 - Premium Dark UI + Dynamic WhatsApp
 // PURPOSE: Parent Dashboard with Skill Booster Session Support
 // =============================================================================
 
@@ -26,6 +26,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+// Default WhatsApp number (fetched from site_settings)
+const DEFAULT_WHATSAPP = '918976287997';
 
 interface Session {
   id: string;
@@ -379,10 +382,10 @@ export default function ParentDashboardPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <p className="text-text-secondary">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -391,11 +394,11 @@ export default function ParentDashboardPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md bg-white rounded-2xl p-6 shadow-lg">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="text-center max-w-md bg-surface-1 rounded-2xl p-6 shadow-xl shadow-black/30 border border-border">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Something went wrong</h2>
-          <p className="text-gray-500 mb-6 text-sm">{error}</p>
+          <h2 className="text-xl font-semibold text-white mb-2">Something went wrong</h2>
+          <p className="text-text-tertiary mb-6 text-sm">{error}</p>
           <button
             onClick={() => {
               setLoading(true);
@@ -415,12 +418,12 @@ export default function ParentDashboardPage() {
   // No enrollment state
   if (!childId) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md bg-white rounded-2xl p-6 shadow-lg">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="text-center max-w-md bg-surface-1 rounded-2xl p-6 shadow-xl shadow-black/30 border border-border">
           <BookOpen className="w-16 h-16 text-[#7b008b]/30 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">No Active Enrollment</h2>
-          <p className="text-gray-500 mb-2 text-sm">Logged in as: <span className="text-[#7b008b]">{parentEmail}</span></p>
-          <p className="text-gray-500 mb-6 text-sm">You don&apos;t have an active enrollment yet.</p>
+          <h2 className="text-xl font-semibold text-white mb-2">No Active Enrollment</h2>
+          <p className="text-text-tertiary mb-2 text-sm">Logged in as: <span className="text-[#7b008b]">{parentEmail}</span></p>
+          <p className="text-text-tertiary mb-6 text-sm">You don&apos;t have an active enrollment yet.</p>
           <a
             href="/assessment"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all min-h-[48px]"
@@ -435,7 +438,7 @@ export default function ParentDashboardPage() {
 
   return (
     // CRITICAL: overflow-x-hidden prevents horizontal scroll
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="min-h-screen bg-surface-0 overflow-x-hidden">
       {/* Main Content - No separate header, uses layout's navigation */}
       <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         {/* Overview Content - Navigation handled by BottomNav and Sidebar */}
@@ -479,9 +482,9 @@ function PendingSkillBoosterCard({
 
   return (
     <div
-      className="bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-50
-                 border-2 border-yellow-400/60 rounded-2xl p-5
-                 shadow-lg shadow-yellow-200/30 w-full"
+      className="bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-amber-500/20
+                 border-2 border-yellow-400/40 rounded-2xl p-5
+                 shadow-lg shadow-black/20 w-full"
       role="alert"
       aria-label="Skill Booster session recommended"
     >
@@ -491,37 +494,37 @@ function PendingSkillBoosterCard({
           {/* Icon */}
           <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500
                           rounded-xl flex items-center justify-center flex-shrink-0
-                          shadow-lg shadow-orange-200/50">
+                          shadow-lg shadow-orange-500/30">
             <Zap className="w-7 h-7 text-white" />
           </div>
 
           {/* Title & Description */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-gray-900 leading-tight">
+            <h3 className="text-lg font-bold text-white leading-tight">
               Skill Booster Session
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-text-secondary mt-1">
               Coach <span className="font-semibold text-[#7B008B]">{session.coach_name}</span> recommends
-              extra practice for <span className="font-semibold">{childName}</span>
+              extra practice for <span className="font-semibold text-white">{childName}</span>
             </p>
           </div>
         </div>
 
         {/* Focus Area Highlight */}
-        <div className="bg-white/70 rounded-xl p-4 border border-yellow-200">
-          <p className="text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Focus Area</p>
+        <div className="bg-surface-1/70 rounded-xl p-4 border border-yellow-500/30">
+          <p className="text-sm text-text-tertiary uppercase tracking-wide font-medium mb-1">Focus Area</p>
           <p className="text-lg font-bold text-[#FF0099]">{focusAreaLabel}</p>
         </div>
 
         {/* Info Badges */}
         <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700
-                         rounded-full text-sm font-semibold border border-green-200">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-400
+                         rounded-full text-sm font-semibold border border-green-500/30">
             <CheckCircle className="w-4 h-4" />
             FREE - Included
           </span>
           {daysSince > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
+            <span className="inline-flex items-center gap-1.5 text-sm text-text-tertiary">
               <Clock className="w-4 h-4" />
               {daysSince}d ago
             </span>
@@ -604,7 +607,7 @@ function OverviewTab({
   }
 
   function getCoachPhone(): string {
-    return enrollment?.coaches?.phone || '918976287997';
+    return enrollment?.coaches?.phone || DEFAULT_WHATSAPP;
   }
 
   function getCoachName(): string {
@@ -618,25 +621,25 @@ function OverviewTab({
       case 'starter':
         return {
           label: 'Starter Pack',
-          color: 'bg-blue-100 text-blue-700 border-blue-200',
+          color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
           Icon: Rocket,
         };
       case 'continuation':
         return {
           label: 'Continuation',
-          color: 'bg-purple-100 text-purple-700 border-purple-200',
+          color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
           Icon: TrendingUp,
         };
       case 'full':
         return {
           label: 'Full Program',
-          color: 'bg-green-100 text-green-700 border-green-200',
+          color: 'bg-green-500/20 text-green-400 border-green-500/30',
           Icon: Star,
         };
       default:
         return {
           label: 'Program',
-          color: 'bg-gray-100 text-gray-700 border-gray-200',
+          color: 'bg-surface-2 text-text-secondary border-border',
           Icon: BookOpen,
         };
     }
@@ -679,21 +682,21 @@ function OverviewTab({
 
       {/* STARTER COMPLETION CTA - Show when starter is completed */}
       {isStarterCompleted && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-5">
+        <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-2 border-purple-500/30 rounded-2xl p-5">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2 text-lg">
-                <Trophy className="w-5 h-5 text-amber-500" />
+              <h3 className="font-bold text-white mb-2 flex items-center gap-2 text-lg">
+                <Trophy className="w-5 h-5 text-amber-400" />
                 Starter Pack Completed!
               </h3>
-              <p className="text-gray-600 text-base mb-4">
+              <p className="text-text-secondary text-base mb-4">
                 {childName} has made great progress! Continue the journey with 9 more sessions.
               </p>
               {daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
-                <p className="text-amber-600 text-sm mb-3 flex items-center gap-1">
+                <p className="text-amber-400 text-sm mb-3 flex items-center gap-1">
                   <Clock className="w-4 h-4" />
                   Special continuation pricing expires in {daysUntilDeadline} day{daysUntilDeadline !== 1 ? 's' : ''}
                 </p>
@@ -728,13 +731,13 @@ function OverviewTab({
       {/* Stats Grid - 2x2 on mobile */}
       <div className="grid grid-cols-2 gap-4">
         {/* Progress Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center mb-3">
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+          <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center mb-3">
             <Target className="w-5 h-5 text-[#FF0099]" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
-          <p className="text-sm text-gray-500 mt-1">Progress</p>
-          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <p className="text-2xl font-bold text-white">{getProgressPercentage()}%</p>
+          <p className="text-sm text-text-tertiary mt-1">Progress</p>
+          <div className="mt-3 h-2 bg-surface-2 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
               style={{ width: `${getProgressPercentage()}%` }}
@@ -743,41 +746,41 @@ function OverviewTab({
         </div>
 
         {/* Sessions Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+          <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center mb-3">
+            <CheckCircle className="w-5 h-5 text-green-400" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">
+          <p className="text-2xl font-bold text-white">
             {completedSessions}/{enrollment?.sessions_purchased || totalSessions}
           </p>
-          <p className="text-sm text-gray-500 mt-1">Sessions</p>
+          <p className="text-sm text-text-tertiary mt-1">Sessions</p>
         </div>
 
         {/* Score Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center mb-3">
+            <TrendingUp className="w-5 h-5 text-blue-400" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{latestScore ?? '--'}/10</p>
-          <p className="text-sm text-gray-500 mt-1">Latest Score</p>
+          <p className="text-2xl font-bold text-white">{latestScore ?? '--'}/10</p>
+          <p className="text-sm text-text-tertiary mt-1">Latest Score</p>
         </div>
 
         {/* Days Left Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-            <Clock className="w-5 h-5 text-amber-600" />
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center mb-3">
+            <Clock className="w-5 h-5 text-amber-400" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{getDaysRemaining()}</p>
-          <p className="text-sm text-gray-500 mt-1">Days Left</p>
+          <p className="text-2xl font-bold text-white">{getDaysRemaining()}</p>
+          <p className="text-sm text-text-tertiary mt-1">Days Left</p>
         </div>
       </div>
 
       {/* Sessions & Coach - Stack on mobile */}
       <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
         {/* Upcoming Sessions */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
+        <div className="lg:col-span-2 bg-surface-1 rounded-2xl border border-border shadow-lg shadow-black/20 overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="font-semibold text-white flex items-center gap-2 text-base">
               <Calendar className="w-5 h-5 text-[#FF0099]" />
               Upcoming Sessions
             </h2>
@@ -789,18 +792,18 @@ function OverviewTab({
             </Link>
           </div>
           {upcomingSessions.length > 0 ? (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-border">
               {upcomingSessions.slice(0, 3).map((session) => (
-                <div key={session.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors gap-3">
+                <div key={session.id} className="p-4 flex items-center justify-between hover:bg-surface-2/50 transition-colors gap-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#FF0099]/10 to-[#7B008B]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#FF0099]/20 to-[#7B008B]/20 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Video className="w-6 h-6 text-[#FF0099]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 text-base truncate">
+                      <p className="font-medium text-white text-base truncate">
                         {session.title || (session.session_type === 'coaching' ? 'Coaching Session' : 'Parent Check-in')}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-text-tertiary">
                         {formatDate(session.scheduled_date)} • {formatTime(session.scheduled_time)}
                       </p>
                     </div>
@@ -820,17 +823,17 @@ function OverviewTab({
             </div>
           ) : (
             <div className="p-8 text-center">
-              <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-              <p className="text-gray-600 text-base">No upcoming sessions</p>
-              <p className="text-sm text-gray-400 mt-1">Sessions will appear here once scheduled</p>
+              <Calendar className="w-12 h-12 text-text-tertiary/30 mx-auto mb-4" />
+              <p className="text-text-secondary text-base">No upcoming sessions</p>
+              <p className="text-sm text-text-tertiary mt-1">Sessions will appear here once scheduled</p>
             </div>
           )}
         </div>
 
         {/* Coach Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
+        <div className="bg-surface-1 rounded-2xl border border-border shadow-lg shadow-black/20 overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h2 className="font-semibold text-white flex items-center gap-2 text-base">
               <User className="w-5 h-5 text-[#FF0099]" />
               Your Coach
             </h2>
@@ -843,12 +846,12 @@ function OverviewTab({
                 </span>
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-gray-900 text-base truncate">{getCoachName()}</p>
+                <p className="font-semibold text-white text-base truncate">{getCoachName()}</p>
                 <p className="text-sm text-[#FF0099]">Reading Coach</p>
               </div>
             </div>
             {enrollment?.coaches?.bio && (
-              <p className="text-sm text-gray-500 mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
+              <p className="text-sm text-text-tertiary mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
             )}
             <a
               href={`https://wa.me/${getCoachPhone()}?text=Hi ${getCoachName()}, I'm ${childName}'s parent.`}
@@ -873,9 +876,9 @@ function OverviewTab({
       />
 
       {/* Referrals Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
+      <div className="bg-surface-1 rounded-2xl border border-border shadow-lg shadow-black/20 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="font-semibold text-white flex items-center gap-2 text-base">
             <Gift className="w-5 h-5 text-[#FF0099]" />
             Refer Friends & Earn
           </h2>

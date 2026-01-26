@@ -1,32 +1,66 @@
+'use client';
+
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
+import { Loader2 } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils/helpers';
+import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap text-sm font-semibold ring-offset-[#0D0D0D] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF2D92] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  // Base styles
+  `inline-flex items-center justify-center gap-2 font-semibold
+   transition-all duration-200
+   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0
+   disabled:pointer-events-none disabled:opacity-50
+   active:scale-[0.98]`,
   {
     variants: {
       variant: {
-        default: 'bg-[#FF2D92] text-white hover:bg-[#FF1A85] shadow-lg shadow-pink-500/25',
-        blue: 'bg-[#3B82F6] text-white hover:bg-[#2563EB] shadow-lg shadow-blue-500/25',
-        destructive: 'bg-red-500 text-white hover:bg-red-600',
-        outline: 'border-2 border-gray-700 bg-transparent text-white hover:bg-gray-800 hover:border-gray-600',
-        secondary: 'bg-[#1A1A1A] text-white hover:bg-[#222222] border border-gray-800',
-        ghost: 'text-gray-400 hover:bg-gray-800 hover:text-white',
-        link: 'text-[#FF2D92] underline-offset-4 hover:underline',
+        primary: `
+          bg-brand-primary text-white
+          hover:bg-brand-primary/90 hover:shadow-[0_0_20px_-5px_rgba(255,0,153,0.5)]
+          focus-visible:ring-brand-primary
+        `,
+        secondary: `
+          bg-surface-2 text-white border border-border
+          hover:bg-surface-3
+          focus-visible:ring-brand-secondary
+        `,
+        outline: `
+          bg-transparent text-brand-primary border border-brand-primary
+          hover:bg-brand-primary/10
+          focus-visible:ring-brand-primary
+        `,
+        ghost: `
+          bg-transparent text-white
+          hover:bg-white/10
+          focus-visible:ring-white
+        `,
+        danger: `
+          bg-semantic-error text-white
+          hover:bg-semantic-error/90
+          focus-visible:ring-semantic-error
+        `,
+        whatsapp: `
+          bg-[#25D366] text-white
+          hover:bg-[#25D366]/90 hover:shadow-[0_0_20px_-5px_rgba(37,211,102,0.5)]
+          focus-visible:ring-[#25D366]
+        `,
       },
       size: {
-        default: 'h-11 px-6 py-2 rounded-xl',
-        sm: 'h-9 px-4 rounded-lg text-xs',
-        lg: 'h-14 px-8 rounded-xl text-base',
-        xl: 'h-16 px-10 rounded-xl text-lg',
-        icon: 'h-10 w-10 rounded-xl',
+        sm: 'h-9 px-3 text-sm rounded-lg',
+        md: 'h-11 px-4 text-base rounded-xl min-h-[44px]',
+        lg: 'h-14 px-6 text-lg rounded-xl min-h-[48px]',
+        icon: 'h-11 w-11 rounded-xl',
+      },
+      fullWidth: {
+        true: 'w-full',
+        false: '',
       },
     },
     defaultVariants: {
-      variant: 'default',
-      size: 'default',
+      variant: 'primary',
+      size: 'md',
+      fullWidth: false,
     },
   }
 );
@@ -34,21 +68,32 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
+  loading?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
+  ({ className, variant, size, fullWidth, loading, leftIcon, rightIcon, children, disabled, ...props }, ref) => {
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+      <button
         ref={ref}
+        className={cn(buttonVariants({ variant, size, fullWidth, className }))}
+        disabled={disabled || loading}
         {...props}
-      />
+      >
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-current" />
+        ) : leftIcon ? (
+          leftIcon
+        ) : null}
+        {children}
+        {!loading && rightIcon}
+      </button>
     );
   }
 );
+
 Button.displayName = 'Button';
 
 export { Button, buttonVariants };

@@ -220,7 +220,7 @@ export default function CompletionManagementPage() {
   const getRiskBadge = (enrollment: Enrollment) => {
     if (enrollment.status === 'completed') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
           <CheckCircle className="w-3 h-3" /> Completed
         </span>
       );
@@ -229,31 +229,31 @@ export default function CompletionManagementPage() {
     switch (enrollment.riskLevel) {
       case 'overdue':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
             <XCircle className="w-3 h-3" /> Overdue
           </span>
         );
       case 'at_risk':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
             <AlertTriangle className="w-3 h-3" /> At Risk
           </span>
         );
       case 'inactive':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
             <Clock className="w-3 h-3" /> Inactive
           </span>
         );
       case 'ready':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
             <Zap className="w-3 h-3" /> Ready
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-surface-2 text-text-secondary border border-border">
             <Activity className="w-3 h-3" /> Active
           </span>
         );
@@ -281,14 +281,14 @@ export default function CompletionManagementPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Completion Management</h1>
-          <p className="text-sm text-gray-500">Track program progress and manage completions</p>
+          <h1 className="text-2xl font-bold text-white">Completion Management</h1>
+          <p className="text-sm text-text-tertiary">Track program progress and manage completions</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={runCronManually}
             disabled={actionLoading === 'cron'}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg hover:bg-purple-500/30 transition-colors disabled:opacity-50"
             title="Run daily alerts check"
           >
             {actionLoading === 'cron' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
@@ -296,7 +296,7 @@ export default function CompletionManagementPage() {
           </button>
           <button
             onClick={fetchEnrollments}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-surface-2 text-white rounded-lg hover:bg-surface-3 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -310,16 +310,16 @@ export default function CompletionManagementPage() {
         <button
           onClick={() => setFilter('overdue')}
           className={`p-3 rounded-xl border-2 transition-all ${
-            filter === 'overdue' ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white hover:border-red-300'
+            filter === 'overdue' ? 'border-red-500 bg-red-500/10' : 'border-border bg-surface-1 hover:border-red-500/50'
           }`}
         >
           <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.overdue > 0 ? 'bg-red-100' : 'bg-gray-100'}`}>
-              <XCircle className={`w-4 h-4 ${stats.overdue > 0 ? 'text-red-600' : 'text-gray-400'}`} />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.overdue > 0 ? 'bg-red-500/20' : 'bg-surface-2'}`}>
+              <XCircle className={`w-4 h-4 ${stats.overdue > 0 ? 'text-red-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.overdue > 0 ? 'text-red-600' : 'text-gray-400'}`}>{stats.overdue}</p>
-              <p className="text-[10px] text-gray-500">Overdue</p>
+              <p className={`text-xl font-bold ${stats.overdue > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>{stats.overdue}</p>
+              <p className="text-[10px] text-text-tertiary">Overdue</p>
             </div>
           </div>
         </button>
@@ -328,16 +328,16 @@ export default function CompletionManagementPage() {
         <button
           onClick={() => setFilter('at_risk')}
           className={`p-3 rounded-xl border-2 transition-all ${
-            filter === 'at_risk' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:border-orange-300'
+            filter === 'at_risk' ? 'border-orange-500 bg-orange-500/10' : 'border-border bg-surface-1 hover:border-orange-500/50'
           }`}
         >
           <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.atRisk > 0 ? 'bg-orange-100' : 'bg-gray-100'}`}>
-              <AlertTriangle className={`w-4 h-4 ${stats.atRisk > 0 ? 'text-orange-600' : 'text-gray-400'}`} />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.atRisk > 0 ? 'bg-orange-500/20' : 'bg-surface-2'}`}>
+              <AlertTriangle className={`w-4 h-4 ${stats.atRisk > 0 ? 'text-orange-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.atRisk > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{stats.atRisk}</p>
-              <p className="text-[10px] text-gray-500">At Risk</p>
+              <p className={`text-xl font-bold ${stats.atRisk > 0 ? 'text-orange-400' : 'text-text-tertiary'}`}>{stats.atRisk}</p>
+              <p className="text-[10px] text-text-tertiary">At Risk</p>
             </div>
           </div>
         </button>
@@ -346,16 +346,16 @@ export default function CompletionManagementPage() {
         <button
           onClick={() => setFilter('inactive')}
           className={`p-3 rounded-xl border-2 transition-all ${
-            filter === 'inactive' ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200 bg-white hover:border-yellow-300'
+            filter === 'inactive' ? 'border-yellow-500 bg-yellow-500/10' : 'border-border bg-surface-1 hover:border-yellow-500/50'
           }`}
         >
           <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.inactive > 0 ? 'bg-yellow-100' : 'bg-gray-100'}`}>
-              <Clock className={`w-4 h-4 ${stats.inactive > 0 ? 'text-yellow-600' : 'text-gray-400'}`} />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.inactive > 0 ? 'bg-yellow-500/20' : 'bg-surface-2'}`}>
+              <Clock className={`w-4 h-4 ${stats.inactive > 0 ? 'text-yellow-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.inactive > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>{stats.inactive}</p>
-              <p className="text-[10px] text-gray-500">Inactive</p>
+              <p className={`text-xl font-bold ${stats.inactive > 0 ? 'text-yellow-400' : 'text-text-tertiary'}`}>{stats.inactive}</p>
+              <p className="text-[10px] text-text-tertiary">Inactive</p>
             </div>
           </div>
         </button>
@@ -364,16 +364,16 @@ export default function CompletionManagementPage() {
         <button
           onClick={() => setFilter('ready')}
           className={`p-3 rounded-xl border-2 transition-all ${
-            filter === 'ready' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'
+            filter === 'ready' ? 'border-blue-500 bg-blue-500/10' : 'border-border bg-surface-1 hover:border-blue-500/50'
           }`}
         >
           <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.ready > 0 ? 'bg-blue-100' : 'bg-gray-100'}`}>
-              <Zap className={`w-4 h-4 ${stats.ready > 0 ? 'text-blue-600' : 'text-gray-400'}`} />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.ready > 0 ? 'bg-blue-500/20' : 'bg-surface-2'}`}>
+              <Zap className={`w-4 h-4 ${stats.ready > 0 ? 'text-blue-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.ready > 0 ? 'text-blue-600' : 'text-gray-400'}`}>{stats.ready}</p>
-              <p className="text-[10px] text-gray-500">Ready</p>
+              <p className={`text-xl font-bold ${stats.ready > 0 ? 'text-blue-400' : 'text-text-tertiary'}`}>{stats.ready}</p>
+              <p className="text-[10px] text-text-tertiary">Ready</p>
             </div>
           </div>
         </button>
@@ -382,16 +382,16 @@ export default function CompletionManagementPage() {
         <button
           onClick={() => setFilter('on_track')}
           className={`p-3 rounded-xl border-2 transition-all ${
-            filter === 'on_track' ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:border-green-300'
+            filter === 'on_track' ? 'border-green-500 bg-green-500/10' : 'border-border bg-surface-1 hover:border-green-500/50'
           }`}
         >
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <Activity className="w-4 h-4 text-green-600" />
+            <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
+              <Activity className="w-4 h-4 text-green-400" />
             </div>
             <div className="text-left">
-              <p className="text-xl font-bold text-gray-900">{stats.onTrack}</p>
-              <p className="text-[10px] text-gray-500">On Track</p>
+              <p className="text-xl font-bold text-white">{stats.onTrack}</p>
+              <p className="text-[10px] text-text-tertiary">On Track</p>
             </div>
           </div>
         </button>
@@ -400,16 +400,16 @@ export default function CompletionManagementPage() {
         <button
           onClick={() => setFilter('completed')}
           className={`p-3 rounded-xl border-2 transition-all ${
-            filter === 'completed' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 bg-white hover:border-emerald-300'
+            filter === 'completed' ? 'border-emerald-500 bg-emerald-500/10' : 'border-border bg-surface-1 hover:border-emerald-500/50'
           }`}
         >
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-left">
-              <p className="text-xl font-bold text-emerald-600">{stats.completed}</p>
-              <p className="text-[10px] text-gray-500">Done</p>
+              <p className="text-xl font-bold text-emerald-400">{stats.completed}</p>
+              <p className="text-[10px] text-text-tertiary">Done</p>
             </div>
           </div>
         </button>
@@ -418,16 +418,16 @@ export default function CompletionManagementPage() {
         <button
           onClick={() => setFilter('all')}
           className={`p-3 rounded-xl border-2 transition-all ${
-            filter === 'all' ? 'border-gray-500 bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'
+            filter === 'all' ? 'border-white/50 bg-surface-2' : 'border-border bg-surface-1 hover:border-white/30'
           }`}
         >
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-              <Users className="w-4 h-4 text-gray-600" />
+            <div className="w-8 h-8 bg-surface-2 rounded-lg flex items-center justify-center">
+              <Users className="w-4 h-4 text-text-secondary" />
             </div>
             <div className="text-left">
-              <p className="text-xl font-bold text-gray-900">{enrollments.length}</p>
-              <p className="text-[10px] text-gray-500">All</p>
+              <p className="text-xl font-bold text-white">{enrollments.length}</p>
+              <p className="text-[10px] text-text-tertiary">All</p>
             </div>
           </div>
         </button>
@@ -436,50 +436,50 @@ export default function CompletionManagementPage() {
       {/* Search */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
           <input
             type="text"
             placeholder="Search child, parent, coach..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-surface-2 text-white placeholder:text-text-muted focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
           />
         </div>
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-text-tertiary">
           Showing {sortedEnrollments.length} of {enrollments.length}
         </span>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-surface-2 border-b border-border">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Child</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Progress</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">End Date</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Assessment</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase">Child</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase">Progress</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase">End Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-tertiary uppercase">Assessment</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-tertiary uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {sortedEnrollments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-text-tertiary">
                     No enrollments found
                   </td>
                 </tr>
               ) : (
                 sortedEnrollments.map((enrollment) => (
                   <>
-                    <tr key={enrollment.id} className={`hover:bg-gray-50 ${enrollment.riskLevel === 'overdue' ? 'bg-red-50/50' : enrollment.riskLevel === 'at_risk' ? 'bg-orange-50/50' : ''}`}>
+                    <tr key={enrollment.id} className={`hover:bg-surface-2 ${enrollment.riskLevel === 'overdue' ? 'bg-red-500/10' : enrollment.riskLevel === 'at_risk' ? 'bg-orange-500/10' : ''}`}>
                       {/* Child */}
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-gray-900">{enrollment.childName}</p>
-                          <p className="text-xs text-gray-500">{enrollment.coachName}</p>
+                          <p className="font-medium text-white">{enrollment.childName}</p>
+                          <p className="text-xs text-text-tertiary">{enrollment.coachName}</p>
                         </div>
                       </td>
 
@@ -497,24 +497,24 @@ export default function CompletionManagementPage() {
                       {/* Progress */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="w-20 h-2 bg-surface-2 rounded-full overflow-hidden">
                             <div
                               className={`h-full ${getProgressColor(enrollment.sessionsCompleted, enrollment.sessionsTotal)}`}
                               style={{ width: `${(enrollment.sessionsCompleted / enrollment.sessionsTotal) * 100}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium text-gray-600">
+                          <span className="text-xs font-medium text-text-secondary">
                             {enrollment.sessionsCompleted}/{enrollment.sessionsTotal}
                           </span>
                         </div>
                         {enrollment.daysSinceLastSession !== null && enrollment.daysSinceLastSession > 7 && enrollment.status !== 'completed' && (
-                          <p className="text-[10px] text-yellow-600 mt-1">{enrollment.daysSinceLastSession}d since last session</p>
+                          <p className="text-[10px] text-yellow-400 mt-1">{enrollment.daysSinceLastSession}d since last session</p>
                         )}
                       </td>
 
                       {/* End Date */}
                       <td className="px-4 py-3">
-                        <p className="text-sm text-gray-900">
+                        <p className="text-sm text-white">
                           {new Date(enrollment.programEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </p>
                       </td>
@@ -523,15 +523,15 @@ export default function CompletionManagementPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1" title="Initial Assessment">
-                            <span className={`w-2 h-2 rounded-full ${enrollment.hasInitialAssessment ? 'bg-green-500' : 'bg-gray-300'}`} />
-                            <span className="text-[10px] text-gray-500">I</span>
+                            <span className={`w-2 h-2 rounded-full ${enrollment.hasInitialAssessment ? 'bg-green-500' : 'bg-surface-3'}`} />
+                            <span className="text-[10px] text-text-tertiary">I</span>
                           </div>
                           <div className="flex items-center gap-1" title="Final Assessment">
-                            <span className={`w-2 h-2 rounded-full ${enrollment.hasFinalAssessment ? 'bg-green-500' : enrollment.finalAssessmentSent ? 'bg-yellow-500' : 'bg-gray-300'}`} />
-                            <span className="text-[10px] text-gray-500">F</span>
+                            <span className={`w-2 h-2 rounded-full ${enrollment.hasFinalAssessment ? 'bg-green-500' : enrollment.finalAssessmentSent ? 'bg-yellow-500' : 'bg-surface-3'}`} />
+                            <span className="text-[10px] text-text-tertiary">F</span>
                           </div>
                           {enrollment.npsSubmitted && (
-                            <span className="text-xs font-medium text-blue-600" title="NPS Score">
+                            <span className="text-xs font-medium text-blue-400" title="NPS Score">
                               {enrollment.npsScore}/10
                             </span>
                           )}
@@ -546,7 +546,7 @@ export default function CompletionManagementPage() {
                             <button
                               onClick={() => extendProgram(enrollment.id, enrollment.childName)}
                               disabled={actionLoading === enrollment.id + '_extend'}
-                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50"
+                              className="p-2 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-colors disabled:opacity-50"
                               title="Extend Program"
                             >
                               {actionLoading === enrollment.id + '_extend' ? (
@@ -563,9 +563,9 @@ export default function CompletionManagementPage() {
                               onClick={() => sendFinalAssessment(enrollment.id, enrollment.parentEmail, enrollment.childName)}
                               disabled={actionLoading === enrollment.id + '_assessment'}
                               className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                                enrollment.finalAssessmentSent 
-                                  ? 'text-yellow-600 hover:bg-yellow-50' 
-                                  : 'text-blue-600 hover:bg-blue-50'
+                                enrollment.finalAssessmentSent
+                                  ? 'text-yellow-400 hover:bg-yellow-500/20'
+                                  : 'text-blue-400 hover:bg-blue-500/20'
                               }`}
                               title={enrollment.finalAssessmentSent ? 'Resend Final Assessment' : 'Send Final Assessment'}
                             >
@@ -583,9 +583,9 @@ export default function CompletionManagementPage() {
                               onClick={() => triggerCompletion(enrollment.id, enrollment.sessionsCompleted < 9)}
                               disabled={actionLoading === enrollment.id + '_complete'}
                               className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                                enrollment.sessionsCompleted >= 9 
-                                  ? 'text-green-600 hover:bg-green-50' 
-                                  : 'text-gray-400 hover:bg-gray-50'
+                                enrollment.sessionsCompleted >= 9
+                                  ? 'text-green-400 hover:bg-green-500/20'
+                                  : 'text-text-tertiary hover:bg-surface-2'
                               }`}
                               title={enrollment.sessionsCompleted < 9 ? `Force Complete (${enrollment.sessionsCompleted}/9)` : 'Mark Complete'}
                             >
@@ -601,7 +601,7 @@ export default function CompletionManagementPage() {
                           {enrollment.status === 'completed' && (
                             <button
                               onClick={() => downloadCertificate(enrollment.id)}
-                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              className="p-2 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-colors"
                               title="Download Certificate"
                             >
                               <Award className="w-4 h-4" />
@@ -611,7 +611,7 @@ export default function CompletionManagementPage() {
                           {/* Expand */}
                           <button
                             onClick={() => setExpandedRow(expandedRow === enrollment.id ? null : enrollment.id)}
-                            className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 text-text-tertiary hover:bg-surface-2 rounded-lg transition-colors"
                           >
                             {expandedRow === enrollment.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
@@ -621,31 +621,31 @@ export default function CompletionManagementPage() {
 
                     {/* Expanded Details */}
                     {expandedRow === enrollment.id && (
-                      <tr className="bg-gray-50">
+                      <tr className="bg-surface-2">
                         <td colSpan={6} className="px-4 py-4">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
-                              <p className="text-gray-500 text-xs">Parent</p>
-                              <p className="text-gray-900">{enrollment.parentName}</p>
-                              <p className="text-gray-500 text-xs">{enrollment.parentEmail}</p>
+                              <p className="text-text-tertiary text-xs">Parent</p>
+                              <p className="text-white">{enrollment.parentName}</p>
+                              <p className="text-text-tertiary text-xs">{enrollment.parentEmail}</p>
                             </div>
                             <div>
-                              <p className="text-gray-500 text-xs">Program Dates</p>
-                              <p className="text-gray-900">
+                              <p className="text-text-tertiary text-xs">Program Dates</p>
+                              <p className="text-white">
                                 {new Date(enrollment.programStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - {new Date(enrollment.programEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500 text-xs">Last Session</p>
-                              <p className="text-gray-900">
-                                {enrollment.lastSessionDate 
+                              <p className="text-text-tertiary text-xs">Last Session</p>
+                              <p className="text-white">
+                                {enrollment.lastSessionDate
                                   ? new Date(enrollment.lastSessionDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
                                   : 'No sessions yet'}
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500 text-xs">Certificate</p>
-                              <p className="text-gray-900">{enrollment.certificateNumber || '—'}</p>
+                              <p className="text-text-tertiary text-xs">Certificate</p>
+                              <p className="text-white">{enrollment.certificateNumber || '—'}</p>
                             </div>
                           </div>
                         </td>
@@ -660,7 +660,7 @@ export default function CompletionManagementPage() {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-text-tertiary">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Overdue: Program ended, sessions incomplete</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" /> At Risk: Ending within 7 days</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500" /> Inactive: No session in 14+ days</span>

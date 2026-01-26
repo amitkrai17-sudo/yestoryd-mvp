@@ -31,6 +31,7 @@ import {
   BookOpen,
   Ticket,
   CheckCircle,
+  Database,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -66,6 +67,14 @@ const NAV_ITEMS = [
     href: '/admin/settings',
     icon: Settings,
     description: 'Manage dynamic content',
+    ready: true,
+    section: 'core',
+  },
+  {
+    label: 'All Settings (DB)',
+    href: '/admin/site-settings',
+    icon: Database,
+    description: 'Full site_settings manager',
     ready: true,
     section: 'core',
   },
@@ -327,12 +336,12 @@ export default function AdminLayout({
   // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <p className="text-slate-500">Verifying access...</p>
+          <p className="text-text-tertiary">Verifying access...</p>
         </div>
       </div>
     );
@@ -346,18 +355,18 @@ export default function AdminLayout({
   // Unauthorized
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="bg-surface-1 rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-6">
+          <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-text-tertiary mb-6">
             {user?.email || 'Your account'} is not authorized to access the admin portal.
           </p>
           <button
             onClick={handleSignOut}
-            className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
+            className="w-full py-3 bg-surface-1 text-white rounded-xl font-medium hover:bg-surface-2 transition-colors"
           >
             Sign Out
           </button>
@@ -367,13 +376,13 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex">
+    <div className="min-h-screen bg-surface-0 flex">
       {/* ==================== MOBILE MENU BUTTON ==================== */}
       <button
         onClick={() => setSidebarOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-xl shadow-lg border border-slate-200"
+        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-surface-1 rounded-xl shadow-lg border border-border"
       >
-        <Menu className="w-6 h-6 text-slate-700" />
+        <Menu className="w-6 h-6 text-text-secondary" />
       </button>
 
       {/* ==================== MOBILE OVERLAY ==================== */}
@@ -386,13 +395,13 @@ export default function AdminLayout({
 
       {/* ==================== SIDEBAR ==================== */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 
+        fixed inset-y-0 left-0 z-50 w-72 bg-surface-1 border-r border-border
         transform transition-transform duration-300 ease-in-out
         lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-border">
           <Link href="/admin" className="flex items-center gap-3">
             <Image
               src="/images/logo.png"
@@ -401,13 +410,13 @@ export default function AdminLayout({
               height={32}
               className="rounded-lg"
             />
-            <span className="font-bold text-slate-900">Admin Portal</span>
+            <span className="font-bold text-white">Admin Portal</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 hover:bg-slate-100 rounded-lg"
+            className="lg:hidden p-1 hover:bg-surface-2 rounded-lg"
           >
-            <X className="w-5 h-5 text-slate-500" />
+            <X className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
 
@@ -417,17 +426,17 @@ export default function AdminLayout({
             <div key={section} className="mb-4">
               {/* Section Label */}
               {SECTION_LABELS[section] && (
-                <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <p className="px-4 py-2 text-xs font-semibold text-text-muted uppercase tracking-wider">
                   {SECTION_LABELS[section]}
                 </p>
               )}
-              
+
               {/* Nav Items */}
               <div className="space-y-1">
                 {items.map((item) => {
-                  const isActive = pathname === item.href || 
+                  const isActive = pathname === item.href ||
                     (item.href !== '/admin' && pathname.startsWith(item.href));
-                  
+
                   return (
                     <Link
                       key={item.href}
@@ -438,27 +447,27 @@ export default function AdminLayout({
                       }}
                       className={`group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
                         isActive
-                          ? 'bg-blue-50 text-blue-700'
+                          ? 'bg-blue-500/20 text-blue-400'
                           : item.ready
-                          ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                          : 'text-slate-400 cursor-not-allowed'
+                          ? 'text-text-secondary hover:bg-surface-2 hover:text-white'
+                          : 'text-text-muted cursor-not-allowed'
                       }`}
                     >
                       <item.icon className={`w-5 h-5 flex-shrink-0 ${
-                        isActive ? 'text-blue-600' : item.ready ? 'text-slate-400 group-hover:text-slate-600' : 'text-slate-300'
+                        isActive ? 'text-blue-400' : item.ready ? 'text-text-muted group-hover:text-text-secondary' : 'text-text-tertiary'
                       }`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className={`font-medium truncate ${isActive ? 'text-blue-700' : ''}`}>
+                          <p className={`font-medium truncate ${isActive ? 'text-blue-400' : ''}`}>
                             {item.label}
                           </p>
                           {!item.ready && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium flex-shrink-0">
+                            <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded font-medium flex-shrink-0">
                               Soon
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 truncate">{item.description}</p>
+                        <p className="text-xs text-text-muted truncate">{item.description}</p>
                       </div>
                       {isActive && <ChevronRight className="w-4 h-4 text-blue-400 flex-shrink-0" />}
                     </Link>
@@ -470,20 +479,20 @@ export default function AdminLayout({
         </nav>
 
         {/* User Profile */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 bg-white">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-surface-1">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
               {user?.email?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-slate-900 truncate text-sm">
+              <p className="font-medium text-white truncate text-sm">
                 {user?.user_metadata?.full_name || 'Admin'}
               </p>
-              <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+              <p className="text-xs text-text-tertiary truncate">{user?.email}</p>
             </div>
             <button
               onClick={handleSignOut}
-              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+              className="p-2 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
               title="Sign out"
             >
               <LogOut className="w-4 h-4" />

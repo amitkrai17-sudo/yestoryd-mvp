@@ -408,7 +408,7 @@ export default function CoachSessionsPage() {
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#FF0099] mx-auto mb-4" />
-            <p className="text-gray-400">Loading sessions...</p>
+            <p className="text-text-tertiary">Loading sessions...</p>
           </div>
         </div>
       </CoachLayout>
@@ -446,16 +446,16 @@ export default function CoachSessionsPage() {
             </div>
             Sessions
           </h1>
-          <p className="text-xs lg:text-sm text-gray-400 mt-0.5 lg:mt-1">Manage your coaching sessions</p>
+          <p className="text-xs lg:text-sm text-text-tertiary mt-0.5 lg:mt-1">Manage your coaching sessions</p>
         </div>
 
         <div className="flex items-center gap-2 lg:gap-3">
           {/* View Toggle */}
-          <div className="flex items-center bg-gray-800 rounded-lg p-0.5 lg:p-1">
+          <div className="flex items-center bg-surface-1 rounded-lg p-0.5 lg:p-1">
             <button
               onClick={() => setView('list')}
               className={`px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-md text-xs lg:text-sm font-medium transition-colors ${
-                view === 'list' ? 'bg-[#00ABFF] text-white' : 'text-gray-400 hover:text-white'
+                view === 'list' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary hover:text-white'
               }`}
             >
               List
@@ -463,7 +463,7 @@ export default function CoachSessionsPage() {
             <button
               onClick={() => setView('calendar')}
               className={`px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-md text-xs lg:text-sm font-medium transition-colors ${
-                view === 'calendar' ? 'bg-[#00ABFF] text-white' : 'text-gray-400 hover:text-white'
+                view === 'calendar' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary hover:text-white'
               }`}
             >
               Calendar
@@ -475,7 +475,7 @@ export default function CoachSessionsPage() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as FilterValue)}
-              className="appearance-none bg-gray-800 text-white border border-gray-700 rounded-lg px-2.5 lg:px-4 py-1.5 lg:py-2 pr-7 lg:pr-8 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-[#00ABFF] focus:border-transparent"
+              className="appearance-none bg-surface-1 text-white border border-border rounded-lg px-2.5 lg:px-4 py-1.5 lg:py-2 pr-7 lg:pr-8 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-[#00ABFF] focus:border-transparent"
             >
               {FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -483,57 +483,57 @@ export default function CoachSessionsPage() {
                 </option>
               ))}
             </select>
-            <Filter className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Filter className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-text-tertiary absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-4">
+        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
           <div className="flex items-center gap-2 lg:gap-3">
             <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#FF0099]/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <Clock className="w-4 h-4 lg:w-5 lg:h-5 text-[#FF0099]" />
             </div>
             <div className="min-w-0">
               <p className="text-lg lg:text-2xl font-bold text-white">{stats.today}</p>
-              <p className="text-gray-400 text-[10px] lg:text-sm">Today</p>
+              <p className="text-text-tertiary text-[10px] lg:text-sm">Today</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-4">
+        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
           <div className="flex items-center gap-2 lg:gap-3">
             <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <CalendarDays className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
             </div>
             <div className="min-w-0">
               <p className="text-lg lg:text-2xl font-bold text-white">{stats.thisWeek}</p>
-              <p className="text-gray-400 text-[10px] lg:text-sm">This Week</p>
+              <p className="text-text-tertiary text-[10px] lg:text-sm">This Week</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-4">
+        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
           <div className="flex items-center gap-2 lg:gap-3">
             <div className="w-8 h-8 lg:w-10 lg:h-10 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-green-400" />
             </div>
             <div className="min-w-0">
               <p className="text-lg lg:text-2xl font-bold text-white">{stats.completed}</p>
-              <p className="text-gray-400 text-[10px] lg:text-sm">Completed</p>
+              <p className="text-text-tertiary text-[10px] lg:text-sm">Completed</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-4">
+        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
           <div className="flex items-center gap-2 lg:gap-3">
             <div className="w-8 h-8 lg:w-10 lg:h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <Users className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
             </div>
             <div className="min-w-0">
               <p className="text-lg lg:text-2xl font-bold text-white">{stats.upcoming}</p>
-              <p className="text-gray-400 text-[10px] lg:text-sm">Upcoming</p>
+              <p className="text-text-tertiary text-[10px] lg:text-sm">Upcoming</p>
             </div>
           </div>
         </div>
@@ -543,12 +543,12 @@ export default function CoachSessionsPage() {
       {view === 'list' && (
         <div className="space-y-4 lg:space-y-6">
           {Object.keys(groupedSessions).length === 0 ? (
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 lg:p-12 text-center">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gray-800 rounded-xl lg:rounded-2xl flex items-center justify-center mx-auto mb-3 lg:mb-4">
-                <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-gray-500" />
+            <div className="bg-surface-1 border border-border rounded-xl p-8 lg:p-12 text-center">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-surface-2 rounded-xl lg:rounded-2xl flex items-center justify-center mx-auto mb-3 lg:mb-4">
+                <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-text-tertiary" />
               </div>
               <h3 className="text-white text-base lg:text-lg font-medium mb-2">No sessions found</h3>
-              <p className="text-gray-400 text-sm mb-4">
+              <p className="text-text-tertiary text-sm mb-4">
                 {filterStatus === 'upcoming'
                   ? 'No upcoming sessions scheduled'
                   : 'Try adjusting your filters'}
@@ -567,10 +567,10 @@ export default function CoachSessionsPage() {
               .map(([date, daySessions]) => (
                 <div key={date}>
                   {/* Date Header */}
-                  <div className="sticky top-0 z-10 bg-[#0a0a0a] py-2 mb-2 lg:mb-3">
+                  <div className="sticky top-0 z-10 bg-surface-0 py-2 mb-2 lg:mb-3">
                     <div className="flex items-center gap-2 lg:gap-3">
                       <h2 className="text-white text-sm lg:text-base font-semibold">{formatDate(date)}</h2>
-                      <span className="text-gray-500 text-xs lg:text-sm">
+                      <span className="text-text-tertiary text-xs lg:text-sm">
                         ({daySessions.length})
                       </span>
                       {isToday(date) && (
@@ -578,7 +578,7 @@ export default function CoachSessionsPage() {
                           Today
                         </span>
                       )}
-                      <div className="flex-1 h-px bg-gray-800" />
+                      <div className="flex-1 h-px bg-border" />
                     </div>
                   </div>
 
@@ -610,23 +610,23 @@ export default function CoachSessionsPage() {
 
       {/* Calendar View */}
       {view === 'calendar' && (
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-surface-1 border border-border rounded-xl overflow-hidden">
           {/* Calendar Header */}
-          <div className="flex items-center justify-between p-3 lg:p-4 border-b border-gray-800">
+          <div className="flex items-center justify-between p-3 lg:p-4 border-b border-border">
             <button
               onClick={prevMonth}
-              className="p-1.5 lg:p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-1.5 lg:p-2 hover:bg-surface-2 rounded-lg transition-colors"
             >
-              <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" />
+              <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5 text-text-tertiary" />
             </button>
             <h3 className="text-white text-sm lg:text-base font-semibold">
               {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h3>
             <button
               onClick={nextMonth}
-              className="p-1.5 lg:p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-1.5 lg:p-2 hover:bg-surface-2 rounded-lg transition-colors"
             >
-              <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" />
+              <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5 text-text-tertiary" />
             </button>
           </div>
 
@@ -635,7 +635,7 @@ export default function CoachSessionsPage() {
             {/* Day Headers - Single letters on mobile, full on desktop */}
             <div className="grid grid-cols-7 gap-0.5 lg:gap-1 mb-1 lg:mb-2">
               {DAYS_OF_WEEK.map((day, index) => (
-                <div key={day} className="text-center text-gray-500 text-[10px] lg:text-sm font-medium py-1 lg:py-2">
+                <div key={day} className="text-center text-text-tertiary text-[10px] lg:text-sm font-medium py-1 lg:py-2">
                   <span className="lg:hidden">{DAYS_OF_WEEK_SHORT[index]}</span>
                   <span className="hidden lg:inline">{day}</span>
                 </div>
@@ -662,18 +662,18 @@ export default function CoachSessionsPage() {
                       isCurrentDay
                         ? 'border-[#00ABFF] bg-[#00ABFF]/10'
                         : daySessions.length > 0
-                        ? 'border-gray-700 bg-gray-800/30 hover:bg-gray-800/50'
+                        ? 'border-border bg-surface-1/30 hover:bg-surface-1/50'
                         : 'border-transparent'
                     }`}
                   >
-                    <div className="text-[10px] lg:text-xs text-gray-400 mb-0.5">{day}</div>
+                    <div className="text-[10px] lg:text-xs text-text-tertiary mb-0.5">{day}</div>
                     {/* Mobile: just show dot indicators */}
                     <div className="lg:hidden flex flex-wrap gap-0.5 justify-center">
                       {daySessions.length > 0 && (
                         <div className="w-1.5 h-1.5 rounded-full bg-[#00ABFF]" />
                       )}
                       {daySessions.length > 1 && (
-                        <span className="text-[8px] text-gray-500">+{daySessions.length - 1}</span>
+                        <span className="text-[8px] text-text-tertiary">+{daySessions.length - 1}</span>
                       )}
                     </div>
                     {/* Desktop: show session details */}
@@ -691,7 +691,7 @@ export default function CoachSessionsPage() {
                         );
                       })}
                       {daySessions.length > 3 && (
-                        <div className="text-xs text-gray-500 text-center">
+                        <div className="text-xs text-text-tertiary text-center">
                           +{daySessions.length - 3} more
                         </div>
                       )}
@@ -747,17 +747,17 @@ export default function CoachSessionsPage() {
       {/* Missed Confirmation Modal */}
       {showMissedConfirm && selectedSession && (
         <div className="fixed inset-0 bg-black/70 flex items-end lg:items-center justify-center z-50 p-0 lg:p-4">
-          <div className="bg-gray-800 rounded-t-2xl lg:rounded-xl max-w-md w-full p-4 lg:p-6 border border-gray-700">
+          <div className="bg-surface-1 rounded-t-2xl lg:rounded-xl max-w-md w-full p-4 lg:p-6 border border-border">
             <h3 className="text-lg lg:text-xl font-bold text-white mb-3 lg:mb-4">Mark as Missed?</h3>
-            <p className="text-gray-400 text-sm lg:text-base mb-3 lg:mb-4">
+            <p className="text-text-tertiary text-sm lg:text-base mb-3 lg:mb-4">
               Mark {selectedSession.child_name}&apos;s Session #{selectedSession.session_number} as missed?
             </p>
             <div className="mb-4">
-              <label className="block text-gray-400 text-xs lg:text-sm mb-2">Reason (optional)</label>
+              <label className="block text-text-tertiary text-xs lg:text-sm mb-2">Reason (optional)</label>
               <select
                 value={missedReason}
                 onChange={(e) => setMissedReason(e.target.value)}
-                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full bg-surface-0 text-white border border-border rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               >
                 <option value="">Select reason...</option>
                 <option value="Parent no-show">Parent no-show</option>
@@ -774,7 +774,7 @@ export default function CoachSessionsPage() {
                   setSelectedSession(null);
                   setMissedReason('');
                 }}
-                className="flex-1 px-3 lg:px-4 py-2.5 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors"
+                className="flex-1 px-3 lg:px-4 py-2.5 bg-surface-2 text-white text-sm rounded-lg hover:bg-surface-3 transition-colors"
               >
                 Cancel
               </button>
@@ -797,17 +797,17 @@ export default function CoachSessionsPage() {
       {/* Cancel Confirmation Modal */}
       {showCancelConfirm && selectedSession && (
         <div className="fixed inset-0 bg-black/70 flex items-end lg:items-center justify-center z-50 p-0 lg:p-4">
-          <div className="bg-gray-800 rounded-t-2xl lg:rounded-xl max-w-md w-full p-4 lg:p-6 border border-gray-700">
+          <div className="bg-surface-1 rounded-t-2xl lg:rounded-xl max-w-md w-full p-4 lg:p-6 border border-border">
             <h3 className="text-lg lg:text-xl font-bold text-white mb-3 lg:mb-4">Cancel Session?</h3>
-            <p className="text-gray-400 text-sm lg:text-base mb-3 lg:mb-4">
+            <p className="text-text-tertiary text-sm lg:text-base mb-3 lg:mb-4">
               Cancel {selectedSession.child_name}&apos;s Session #{selectedSession.session_number}? This action cannot be undone.
             </p>
             <div className="mb-4">
-              <label className="block text-gray-400 text-xs lg:text-sm mb-2">Reason (required)</label>
+              <label className="block text-text-tertiary text-xs lg:text-sm mb-2">Reason (required)</label>
               <select
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full bg-surface-0 text-white border border-border rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">Select reason...</option>
                 <option value="Parent requested">Parent requested</option>
@@ -824,7 +824,7 @@ export default function CoachSessionsPage() {
                   setSelectedSession(null);
                   setCancelReason('');
                 }}
-                className="flex-1 px-3 lg:px-4 py-2.5 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors"
+                className="flex-1 px-3 lg:px-4 py-2.5 bg-surface-2 text-white text-sm rounded-lg hover:bg-surface-3 transition-colors"
               >
                 Go Back
               </button>

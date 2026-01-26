@@ -160,30 +160,23 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // 9. Coach route → verify coach role
+    // 9. Coach route → verify coach role from metadata
     if (isCoachRoute(pathname)) {
-      const { data: coach } = await supabase
-        .from('coaches')
-        .select('id, is_active')
-        .eq('email', userEmail)
-        .single();
+      const isCoach = user.user_metadata?.role === 'coach';
+      const coachIsActive = user.user_metadata?.is_active_coach;
 
-      if (!coach || !coach.is_active) {
-        console.log(`[Middleware] Unauthorized coach access attempt: ${userEmail}`);
+      if (!isCoach || !coachIsActive) {
+        console.log(`[Middleware] Unauthorized coach access attempt: ${userEmail} (metadata check)`);
         return NextResponse.redirect(new URL('/coach/login?error=unauthorized', request.url));
       }
     }
 
-    // 10. Parent route → verify parent exists
+    // 10. Parent route → verify parent exists from metadata
     if (isParentRoute(pathname)) {
-      const { data: parent } = await supabase
-        .from('parents')
-        .select('id')
-        .eq('email', userEmail)
-        .single();
+      const isParent = user.user_metadata?.role === 'parent';
 
-      if (!parent) {
-        console.log(`[Middleware] Unauthorized parent access attempt: ${userEmail}`);
+      if (!isParent) {
+        console.log(`[Middleware] Unauthorized parent access attempt: ${userEmail} (metadata check)`);
         return NextResponse.redirect(new URL('/parent/login?error=unauthorized', request.url));
       }
     }

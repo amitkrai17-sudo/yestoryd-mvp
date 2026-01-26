@@ -288,12 +288,12 @@ export default function ParentCheckinForm({
   if (success) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full">
+        <div className="bg-surface-1 rounded-2xl p-8 text-center max-w-md w-full">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Check-in Saved!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl font-bold text-white mb-2">Check-in Saved!</h2>
+          <p className="text-text-secondary mb-6">
             Parent check-in for {childName} has been recorded.
           </p>
           {escalateToAdmin && (
@@ -314,22 +314,22 @@ export default function ParentCheckinForm({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface-1 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 p-4 rounded-t-2xl">
+        <div className="sticky top-0 bg-surface-1 border-b border-border p-4 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <User className="w-5 h-5 text-[#00ABFF]" />
                 Parent Check-in
               </h2>
-              <p className="text-sm text-gray-500">{parentName} • {childName}</p>
+              <p className="text-sm text-text-tertiary">{parentName} • {childName}</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 hover:bg-surface-2 rounded-lg transition"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5 text-text-tertiary" />
             </button>
           </div>
 
@@ -344,7 +344,7 @@ export default function ParentCheckinForm({
               />
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2">Step {step} of {totalSteps}</p>
+          <p className="text-xs text-text-tertiary mt-2">Step {step} of {totalSteps}</p>
         </div>
 
         {/* Form Content */}
@@ -360,7 +360,7 @@ export default function ParentCheckinForm({
           {step === 1 && (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   How did {parentName} seem during the call?
                 </label>
                 <div className="grid grid-cols-5 gap-2">
@@ -372,18 +372,18 @@ export default function ParentCheckinForm({
                       className={`flex flex-col items-center p-3 rounded-xl border-2 transition ${
                         parentSentiment === option.value
                           ? 'border-[#FF0099] bg-[#FF0099]/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <span className="text-2xl mb-1">{option.emoji}</span>
-                      <span className="text-xs text-gray-600 text-center">{option.label}</span>
+                      <span className="text-xs text-text-secondary text-center">{option.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Does parent see improvement in {childName}?
                 </label>
                 <div className="space-y-2">
@@ -395,10 +395,10 @@ export default function ParentCheckinForm({
                       className={`w-full p-4 rounded-xl border-2 text-left transition ${
                         parentSeesProgress === option.value
                           ? option.color + ' border-current'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                          : 'border-border hover:border-border bg-surface-1'
                       }`}
                     >
-                      <span className="font-medium text-gray-900">{option.label}</span>
+                      <span className="font-medium text-white">{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -410,7 +410,7 @@ export default function ParentCheckinForm({
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   <Home className="w-4 h-4 inline mr-1" />
                   How often is {childName} practicing at home?
                 </label>
@@ -423,18 +423,18 @@ export default function ParentCheckinForm({
                       className={`w-full p-4 rounded-xl border-2 text-left transition ${
                         homePracticeFrequency === option.value
                           ? 'border-[#FF0099] bg-[#FF0099]/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
-                      <span className="font-medium text-gray-900">{option.label}</span>
-                      <span className="text-sm text-gray-500 block">{option.description}</span>
+                      <span className="font-medium text-white">{option.label}</span>
+                      <span className="text-sm text-text-tertiary block">{option.description}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Who helps with reading at home?
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -446,7 +446,7 @@ export default function ParentCheckinForm({
                       className={`px-4 py-2 rounded-full border transition ${
                         homeHelpers.includes(helper.value)
                           ? 'bg-[#00ABFF] text-white border-[#00ABFF]'
-                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300'
+                          : 'bg-surface-2 text-text-secondary border-border hover:border-border'
                       }`}
                     >
                       {helper.label}
@@ -461,7 +461,7 @@ export default function ParentCheckinForm({
           {step === 3 && (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   <MessageSquare className="w-4 h-4 inline mr-1" />
                   Any concerns raised by parent?
                 </label>
@@ -478,7 +478,7 @@ export default function ParentCheckinForm({
                             : concern.value === 'considering_stopping'
                               ? 'bg-red-500 text-white border-red-500'
                               : 'bg-orange-400 text-white border-orange-400'
-                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300'
+                          : 'bg-surface-2 text-text-secondary border-border hover:border-border'
                       }`}
                     >
                       {concern.label}
@@ -489,28 +489,28 @@ export default function ParentCheckinForm({
 
               {concernsRaised.includes('other') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
                     Describe the concern:
                   </label>
                   <textarea
                     value={concernDetails}
                     onChange={(e) => setConcernDetails(e.target.value)}
                     placeholder="What specific concern did the parent raise?"
-                    className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                    className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                     rows={3}
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-text-secondary mb-2">
                   Action items agreed (optional):
                 </label>
                 <textarea
                   value={actionItems}
                   onChange={(e) => setActionItems(e.target.value)}
                   placeholder="What did you agree to do? E.g., Send extra worksheets, schedule extra session..."
-                  className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                   rows={2}
                 />
               </div>
@@ -522,10 +522,10 @@ export default function ParentCheckinForm({
             <div className="space-y-5">
               {/* Voice Note */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   Voice note summary (optional):
                 </label>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-2 rounded-xl p-4">
                   {!audioBlob ? (
                     <div className="text-center">
                       <button
@@ -542,7 +542,7 @@ export default function ParentCheckinForm({
                           <Mic className="w-6 h-6 text-white" />
                         )}
                       </button>
-                      <p className="text-sm text-gray-500 mt-2">
+                      <p className="text-sm text-text-tertiary mt-2">
                         {isRecording
                           ? `Recording... ${formatTime(recordingTime)}`
                           : 'Tap to record'
@@ -556,8 +556,8 @@ export default function ParentCheckinForm({
                           <CheckCircle className="w-5 h-5 text-green-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">Recording saved</p>
-                          <p className="text-sm text-gray-500">{formatTime(recordingTime)}</p>
+                          <p className="font-medium text-white">Recording saved</p>
+                          <p className="text-sm text-text-tertiary">{formatTime(recordingTime)}</p>
                         </div>
                       </div>
                       <button
@@ -572,10 +572,10 @@ export default function ParentCheckinForm({
               </div>
 
               {/* Follow-up */}
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+              <div className="flex items-center justify-between p-4 border border-border rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                  <span className="font-medium text-gray-700">Follow-up needed?</span>
+                  <Calendar className="w-5 h-5 text-text-tertiary" />
+                  <span className="font-medium text-text-secondary">Follow-up needed?</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -584,13 +584,13 @@ export default function ParentCheckinForm({
                     onChange={(e) => setFollowUpNeeded(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[#FF0099]/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF0099]"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[#FF0099]/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-1 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF0099]"></div>
                 </label>
               </div>
 
               {followUpNeeded && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
                     Follow-up by:
                   </label>
                   <input
@@ -598,7 +598,7 @@ export default function ParentCheckinForm({
                     value={followUpDate}
                     onChange={(e) => setFollowUpDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full p-3 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                    className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
                   />
                 </div>
               )}
@@ -616,13 +616,13 @@ export default function ParentCheckinForm({
                     onChange={(e) => setEscalateToAdmin(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-orange-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-orange-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-1 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                 </label>
               </div>
 
               {/* Renewal Likelihood */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
                   <Target className="w-4 h-4 inline mr-1" />
                   Likelihood to renew program:
                 </label>
@@ -635,12 +635,12 @@ export default function ParentCheckinForm({
                       className={`p-4 rounded-xl border-2 text-center transition ${
                         renewalLikelihood === option.value
                           ? 'border-[#FF0099] bg-[#FF0099]/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-border hover:border-border'
                       }`}
                     >
                       <span className="text-xl">{option.label.split(' ')[0]}</span>
-                      <p className="text-sm text-gray-600 mt-1">{option.label.split(' ')[1]}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{option.description}</p>
+                      <p className="text-sm text-text-secondary mt-1">{option.label.split(' ')[1]}</p>
+                      <p className="text-xs text-text-tertiary mt-0.5">{option.description}</p>
                     </button>
                   ))}
                 </div>
@@ -650,12 +650,12 @@ export default function ParentCheckinForm({
         </div>
 
         {/* Footer with navigation */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 rounded-b-2xl">
+        <div className="sticky bottom-0 bg-surface-1 border-t border-border p-4 rounded-b-2xl">
           <div className="flex gap-3">
             {step > 1 && (
               <button
                 onClick={() => setStep(step - 1)}
-                className="flex-1 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                className="flex-1 py-3 border border-border text-text-secondary rounded-xl font-medium hover:bg-surface-2 transition flex items-center justify-center gap-2"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Back

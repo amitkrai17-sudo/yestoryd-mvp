@@ -25,10 +25,10 @@ interface Ticket {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  open: { label: 'Open', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-  in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-700', icon: AlertCircle },
-  resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700', icon: CheckCircle },
-  closed: { label: 'Closed', color: 'bg-gray-100 text-gray-700', icon: CheckCircle },
+  open: { label: 'Open', color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', icon: Clock },
+  in_progress: { label: 'In Progress', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30', icon: AlertCircle },
+  resolved: { label: 'Resolved', color: 'bg-green-500/20 text-green-400 border border-green-500/30', icon: CheckCircle },
+  closed: { label: 'Closed', color: 'bg-surface-2 text-text-tertiary border border-border', icon: CheckCircle },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -79,8 +79,8 @@ export default function ParentSupportPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Support Center</h1>
-          <p className="text-gray-500 mt-1">Get help with your questions and concerns</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white">Support Center</h1>
+          <p className="text-text-tertiary mt-1">Get help with your questions and concerns</p>
         </div>
 
         {/* New Request Button */}
@@ -98,10 +98,10 @@ export default function ParentSupportPage() {
         {showForm && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">New Support Request</h2>
+              <h2 className="text-lg font-semibold text-white">New Support Request</h2>
               <button
                 onClick={() => setShowForm(false)}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-sm text-text-tertiary hover:text-text-secondary"
               >
                 Cancel
               </button>
@@ -123,8 +123,8 @@ export default function ParentSupportPage() {
             {/* Active Tickets */}
             {openTickets.length > 0 && (
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-yellow-600" />
+                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-yellow-400" />
                   Active Requests ({openTickets.length})
                 </h2>
                 <div className="space-y-3">
@@ -142,8 +142,8 @@ export default function ParentSupportPage() {
             {/* Resolved Tickets */}
             {resolvedTickets.length > 0 && (
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
+                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
                   Resolved ({resolvedTickets.length})
                 </h2>
                 <div className="space-y-3">
@@ -160,13 +160,13 @@ export default function ParentSupportPage() {
 
             {/* Empty State */}
             {!loading && tickets.length === 0 && (
-              <div className="text-center py-12 bg-white rounded-2xl border border-gray-200">
-                <HelpCircle className="w-16 h-16 text-[#7b008b]/30 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">No Support Requests</h2>
-                <p className="text-gray-500 mb-6">You haven't submitted any requests yet.</p>
+              <div className="text-center py-12 bg-surface-1 rounded-2xl border border-border">
+                <HelpCircle className="w-16 h-16 text-[#FF0099]/30 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-white mb-2">No Support Requests</h2>
+                <p className="text-text-tertiary mb-6">You haven't submitted any requests yet.</p>
                 <button
                   onClick={() => setShowForm(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#7b008b] text-white rounded-xl font-semibold hover:bg-[#6a0078] transition-all shadow-lg"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF0099] text-white rounded-xl font-semibold hover:bg-[#FF0099]/80 transition-all shadow-lg"
                 >
                   Submit Your First Request
                   <ChevronRight className="w-5 h-5" />
@@ -176,8 +176,8 @@ export default function ParentSupportPage() {
 
             {loading && (
               <div className="text-center py-12">
-                <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-500">Loading your requests...</p>
+                <div className="w-8 h-8 border-4 border-[#FF0099] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-text-tertiary">Loading your requests...</p>
               </div>
             )}
           </>
@@ -203,23 +203,23 @@ function TicketCard({ ticket, onClick }: { ticket: Ticket; onClick: () => void }
   return (
     <button
       onClick={onClick}
-      className="w-full bg-white rounded-xl border border-gray-200 p-4 hover:border-[#7b008b]/30 hover:shadow-md transition-all text-left"
+      className="w-full bg-surface-1 rounded-xl border border-border p-4 hover:border-[#FF0099]/30 hover:shadow-md hover:shadow-black/20 transition-all text-left"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono text-gray-400">{ticket.ticket_number}</span>
+            <span className="text-xs font-mono text-text-muted">{ticket.ticket_number}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}>
               {statusConfig.label}
             </span>
           </div>
-          <p className="font-medium text-gray-800 truncate">
+          <p className="font-medium text-white truncate">
             {CATEGORY_LABELS[ticket.category] || ticket.category}
           </p>
           {ticket.subject && (
-            <p className="text-sm text-gray-600 truncate mt-1">{ticket.subject}</p>
+            <p className="text-sm text-text-secondary truncate mt-1">{ticket.subject}</p>
           )}
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-text-muted mt-2">
             {new Date(ticket.created_at).toLocaleDateString('en-IN', {
               day: 'numeric',
               month: 'short',
@@ -227,7 +227,7 @@ function TicketCard({ ticket, onClick }: { ticket: Ticket; onClick: () => void }
             })}
           </p>
         </div>
-        <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+        <ChevronRight className="w-5 h-5 text-text-muted flex-shrink-0" />
       </div>
     </button>
   );
@@ -238,43 +238,43 @@ function TicketDetailModal({ ticket, onClose }: { ticket: Ticket; onClose: () =>
   const statusConfig = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.open;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-1 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-border">
+        <div className="sticky top-0 bg-surface-1 border-b border-border px-6 py-4 flex items-center justify-between">
           <div>
-            <span className="text-sm font-mono text-gray-400">{ticket.ticket_number}</span>
+            <span className="text-sm font-mono text-text-muted">{ticket.ticket_number}</span>
             <div className="flex items-center gap-2 mt-1">
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}>
                 {statusConfig.label}
               </span>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-            <span className="text-xl text-gray-500">×</span>
+          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-lg transition-colors">
+            <span className="text-xl text-text-tertiary">&times;</span>
           </button>
         </div>
 
         <div className="p-6 space-y-4">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Category</p>
-            <p className="font-medium text-gray-800">{CATEGORY_LABELS[ticket.category] || ticket.category}</p>
+            <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Category</p>
+            <p className="font-medium text-white">{CATEGORY_LABELS[ticket.category] || ticket.category}</p>
           </div>
 
           {ticket.subject && (
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Subject</p>
-              <p className="text-gray-800">{ticket.subject}</p>
+              <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Subject</p>
+              <p className="text-text-secondary">{ticket.subject}</p>
             </div>
           )}
 
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Description</p>
-            <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
+            <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Description</p>
+            <p className="text-text-secondary whitespace-pre-wrap">{ticket.description}</p>
           </div>
 
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Submitted</p>
-            <p className="text-gray-700">
+            <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Submitted</p>
+            <p className="text-text-secondary">
               {new Date(ticket.created_at).toLocaleString('en-IN', {
                 dateStyle: 'medium',
                 timeStyle: 'short',
@@ -283,11 +283,11 @@ function TicketDetailModal({ ticket, onClose }: { ticket: Ticket; onClose: () =>
           </div>
 
           {ticket.resolution_notes && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <p className="text-xs text-green-600 uppercase tracking-wide mb-1">Resolution</p>
-              <p className="text-green-800">{ticket.resolution_notes}</p>
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+              <p className="text-xs text-green-400 uppercase tracking-wide mb-1">Resolution</p>
+              <p className="text-green-300">{ticket.resolution_notes}</p>
               {ticket.resolved_at && (
-                <p className="text-xs text-green-600 mt-2">
+                <p className="text-xs text-green-400 mt-2">
                   Resolved on {new Date(ticket.resolved_at).toLocaleDateString('en-IN')}
                 </p>
               )}
@@ -295,10 +295,10 @@ function TicketDetailModal({ ticket, onClose }: { ticket: Ticket; onClose: () =>
           )}
         </div>
 
-        <div className="p-6 border-t">
+        <div className="p-6 border-t border-border">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
+            className="w-full py-3 bg-surface-2 text-text-secondary rounded-xl font-medium hover:bg-surface-3 transition-all"
           >
             Close
           </button>

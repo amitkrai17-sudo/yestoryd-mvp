@@ -34,10 +34,10 @@ export default function TestSessionFormPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-8">
+    <div className="min-h-screen bg-surface-0 p-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-4">Session Form Test Page</h1>
-        <p className="text-gray-400 text-sm mb-6">
+        <p className="text-text-tertiary text-sm mb-6">
           Test the new 4-step session completion form with contextual suggestions.
         </p>
 
@@ -52,7 +52,7 @@ export default function TestSessionFormPage() {
             Open Form
           </button>
 
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-text-tertiary">
             <span>Status:</span>
             {completed ? (
               <span className="text-green-400 flex items-center gap-1">
@@ -64,14 +64,14 @@ export default function TestSessionFormPage() {
             ) : showForm ? (
               <span className="text-blue-400">Form Open</span>
             ) : (
-              <span className="text-gray-500">Closed</span>
+              <span className="text-text-tertiary">Closed</span>
             )}
           </div>
         </div>
 
         {/* Test with different ages */}
-        <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
-          <p className="text-sm text-gray-400 mb-3">Test different child ages (affects available focus areas and skills):</p>
+        <div className="mb-6 p-4 bg-surface-1 rounded-lg border border-border">
+          <p className="text-sm text-text-tertiary mb-3">Test different child ages (affects available focus areas and skills):</p>
           <div className="flex flex-wrap gap-2">
             {[5, 6, 7, 8, 9, 10, 11, 12].map(age => (
               <button
@@ -84,22 +84,22 @@ export default function TestSessionFormPage() {
                 className={`px-3 py-1.5 rounded text-sm transition-all ${
                   testAge === age && showForm
                     ? 'bg-[#FF0099] text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    : 'bg-surface-2 text-text-secondary hover:bg-surface-3'
                 }`}
               >
                 Age {age}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-text-tertiary mt-2">
             Current: Age {testAge} | Available focus areas will filter based on age range
           </p>
         </div>
 
         {/* Feature checklist */}
-        <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+        <div className="mb-6 p-4 bg-surface-1/50 rounded-lg border border-border">
           <p className="text-sm font-semibold text-white mb-3">Features to Test:</p>
-          <ul className="text-sm text-gray-400 space-y-1">
+          <ul className="text-sm text-text-tertiary space-y-1">
             <li className="flex items-start gap-2">
               <span className="text-[#FF0099]">1.</span>
               <span>Step 1: Rating scale and focus area selection (filtered by age)</span>
@@ -132,19 +132,19 @@ export default function TestSessionFormPage() {
         )}
 
         {/* Console output display */}
-        <div className="mt-8 p-4 bg-gray-900 rounded-lg border border-gray-700">
-          <p className="text-xs text-gray-500 mb-2">
+        <div className="mt-8 p-4 bg-surface-0 rounded-lg border border-border">
+          <p className="text-xs text-text-tertiary mb-2">
             Open browser console (F12) to see form data structure on submit.
           </p>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-text-tertiary">
             Look for: Form State, Event Data, Child Summary, Content for Embedding
           </p>
         </div>
 
         {/* Data structure reference */}
-        <div className="mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-          <p className="text-xs font-semibold text-gray-400 mb-2">Expected Data Structure:</p>
-          <pre className="text-xs text-gray-500 overflow-x-auto">
+        <div className="mt-4 p-4 bg-surface-0 rounded-lg border border-border">
+          <p className="text-xs font-semibold text-text-tertiary mb-2">Expected Data Structure:</p>
+          <pre className="text-xs text-text-tertiary overflow-x-auto">
 {`{
   focus_area: "phonics_letter_sounds",
   overall_rating: 4,

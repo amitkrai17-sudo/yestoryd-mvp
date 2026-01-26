@@ -12,6 +12,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// Default WhatsApp number (can be fetched from site_settings)
+const DEFAULT_WHATSAPP = '918976287997';
+
 export default function ParentLoginPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -260,9 +263,9 @@ export default function ParentLoginPage() {
   // ─────────────────────────────────────────────────────────
   if (mode === 'phone-otp') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
+          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-8 lg:p-10 border border-border">
             <div className="text-center mb-8">
               <div className={`w-14 h-14 ${actualOtpMethod === 'whatsapp' ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600'} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${actualOtpMethod === 'whatsapp' ? 'shadow-green-500/30' : 'shadow-blue-500/30'}`}>
                 {actualOtpMethod === 'whatsapp' ? (
@@ -271,15 +274,15 @@ export default function ParentLoginPage() {
                   <Mail className="w-7 h-7 text-white" />
                 )}
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Enter OTP</h1>
-              <p className="text-gray-500 mt-2">
+              <h1 className="text-2xl font-bold text-white">Enter OTP</h1>
+              <p className="text-text-tertiary mt-2">
                 We sent a 6-digit code to your {actualOtpMethod === 'whatsapp' ? 'WhatsApp' : 'Email'}
               </p>
               <p className="text-[#00abff] font-medium mt-1">{countryCode} {formatPhoneDisplay(phone)}</p>
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -294,14 +297,14 @@ export default function ParentLoginPage() {
                   value={digit}
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  className="w-12 h-14 text-center text-2xl font-bold text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none transition-all"
+                  className="w-12 h-14 text-center text-2xl font-bold text-white bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none transition-all"
                   maxLength={1}
                 />
               ))}
             </div>
 
             {countdown > 0 && (
-              <p className="text-center text-sm text-gray-500 mb-4">
+              <p className="text-center text-sm text-text-tertiary mb-4">
                 Code expires in {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
               </p>
             )}
@@ -331,7 +334,7 @@ export default function ParentLoginPage() {
                   Resend OTP
                 </button>
               ) : (
-                <p className="text-gray-500 text-sm">
+                <p className="text-text-tertiary text-sm">
                   Didn't receive? Wait {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')} to resend
                 </p>
               )}
@@ -343,7 +346,7 @@ export default function ParentLoginPage() {
                 setOtp(['', '', '', '', '', '']);
                 setError('');
               }}
-              className="w-full mt-4 text-gray-500 hover:text-gray-700 text-sm"
+              className="w-full mt-4 text-text-tertiary hover:text-text-secondary text-sm"
             >
               ← Change phone number
             </button>
@@ -358,25 +361,25 @@ export default function ParentLoginPage() {
   // ─────────────────────────────────────────────────────────
   if (mode === 'phone') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
+          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-8 lg:p-10 border border-border">
             <div className="text-center mb-8">
               <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30">
                 <MessageCircle className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">WhatsApp Login</h1>
-              <p className="text-gray-500 mt-2">Enter your registered mobile number</p>
+              <h1 className="text-2xl font-bold text-white">WhatsApp Login</h1>
+              <p className="text-text-tertiary mt-2">Enter your registered mobile number</p>
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
                 {error}
               </div>
             )}
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Mobile Number</label>
               <div className="flex">
                 <input
                     type="text"
@@ -387,7 +390,7 @@ export default function ParentLoginPage() {
                       else val = '+' + val.slice(1).replace(/\D/g, '');
                       if (val.length <= 5) setCountryCode(val || '+');
                     }}
-                    className="w-[70px] px-2 py-3.5 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-700 text-center text-sm font-medium focus:ring-2 focus:ring-[#00abff] outline-none"
+                    className="w-[70px] px-2 py-3.5 rounded-l-xl border border-r-0 border-border bg-surface-2 text-white text-center text-sm font-medium focus:ring-2 focus:ring-[#00abff] outline-none"
                     placeholder="+91"
                   />
                 <input
@@ -395,7 +398,7 @@ export default function ParentLoginPage() {
                   value={formatPhoneDisplay(phone)}
                   onChange={handlePhoneChange}
                   placeholder="98765 43210"
-                  className="flex-1 px-4 py-3.5 text-lg text-gray-900 bg-gray-50 border border-gray-200 rounded-r-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none"
+                  className="flex-1 px-4 py-3.5 text-lg text-white bg-surface-2 border border-border rounded-r-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none placeholder:text-text-muted"
                   maxLength={11}
                   autoFocus
                 />
@@ -422,7 +425,7 @@ export default function ParentLoginPage() {
                 setMode('login');
                 setError('');
               }}
-              className="w-full mt-4 text-gray-500 hover:text-gray-700 text-sm"
+              className="w-full mt-4 text-text-tertiary hover:text-text-secondary text-sm"
             >
               ← Back to login options
             </button>
@@ -436,7 +439,7 @@ export default function ParentLoginPage() {
   // RENDER: MAIN LOGIN PAGE
   // ─────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex">
+    <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex">
       {/* Left Side - Branding & rAI */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -512,21 +515,21 @@ export default function ParentLoginPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">100+</p>
-                <p className="text-sm text-gray-400">Families Helped</p>
+                <p className="text-sm text-text-muted">Families Helped</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">4.9★</p>
-                <p className="text-sm text-gray-400">Parent Rating</p>
+                <p className="text-sm text-text-muted">Parent Rating</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">2x</p>
-                <p className="text-sm text-gray-400">Faster Progress</p>
+                <p className="text-sm text-text-muted">Faster Progress</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 text-gray-500 text-sm">
+        <div className="relative z-10 text-text-muted text-sm">
           © 2025 Yestoryd. All rights reserved.
         </div>
       </div>
@@ -560,22 +563,22 @@ export default function ParentLoginPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
+          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-8 lg:p-10 border border-border">
             <div className="text-center mb-8">
               <div className="w-14 h-14 bg-gradient-to-br from-[#00abff] to-[#0066cc] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#00abff]/30">
                 <BookOpen className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Welcome Back!</h1>
-              <p className="text-gray-500 mt-2">Sign in to access your parent dashboard</p>
+              <h1 className="text-2xl font-bold text-white">Welcome Back!</h1>
+              <p className="text-text-tertiary mt-2">Sign in to access your parent dashboard</p>
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
                 {error}
               </div>
             )}
             {message && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">
+              <div className="mb-6 p-4 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 text-sm">
                 {message}
               </div>
             )}
@@ -584,7 +587,7 @@ export default function ParentLoginPage() {
             <button
               onClick={handleGoogleSignIn}
               disabled={googleLoading}
-              className="w-full py-3.5 bg-white border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-3 mb-3 disabled:opacity-50"
+              className="w-full py-3.5 bg-surface-2 border border-border rounded-xl font-medium text-text-secondary hover:bg-surface-3 transition-all flex items-center justify-center gap-3 mb-3 disabled:opacity-50"
             >
               {googleLoading ? (
                 <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
@@ -612,23 +615,23 @@ export default function ParentLoginPage() {
 
             {/* Divider */}
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-sm text-gray-400">or use email</span>
-              <div className="flex-1 h-px bg-gray-200" />
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-sm text-text-tertiary">or use email</span>
+              <div className="flex-1 h-px bg-border" />
             </div>
 
             {/* Email + Magic Link */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-tertiary" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="parent@email.com"
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00abff] focus:border-transparent transition-all"
+                    className="w-full pl-12 pr-4 py-3.5 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:ring-2 focus:ring-[#00abff] focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -651,14 +654,14 @@ export default function ParentLoginPage() {
 
             {/* Divider */}
             <div className="my-6 flex items-center gap-4">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-sm text-gray-400">new to Yestoryd?</span>
-              <div className="flex-1 h-px bg-gray-200" />
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-sm text-text-tertiary">new to Yestoryd?</span>
+              <div className="flex-1 h-px bg-border" />
             </div>
 
             {/* rAI CTA (Mobile) */}
             <div className="lg:hidden mb-4">
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-4">
+              <div className="bg-surface-2 border border-border rounded-xl p-4 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff0099] to-[#7b008b] flex items-center justify-center flex-shrink-0 overflow-hidden">
                   <Image
                     src="/images/rai-mascot.png"
@@ -669,8 +672,8 @@ export default function ParentLoginPage() {
                   />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">New here?</p>
-                  <p className="text-sm text-gray-500">Take a free assessment first!</p>
+                  <p className="font-semibold text-white">New here?</p>
+                  <p className="text-sm text-text-tertiary">Take a free assessment first!</p>
                 </div>
               </div>
             </div>
@@ -691,9 +694,9 @@ export default function ParentLoginPage() {
             </Link>
           </div>
 
-          <p className="text-center mt-6 text-gray-400 text-sm">
+          <p className="text-center mt-6 text-text-tertiary text-sm">
             Need help?{' '}
-            <a href="https://wa.me/918976287997" className="text-[#00abff] hover:underline">
+            <a href={`https://wa.me/${DEFAULT_WHATSAPP}`} className="text-[#00abff] hover:underline">
               Contact Support
             </a>
           </p>

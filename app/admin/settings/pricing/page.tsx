@@ -197,12 +197,12 @@ export default function PricingSettingsPage() {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      pricing: 'text-green-600 bg-green-100',
-      referral: 'text-pink-600 bg-pink-100',
-      discount: 'text-purple-600 bg-purple-100',
-      completion: 'text-blue-600 bg-blue-100',
+      pricing: 'text-green-400 bg-green-500/20 border border-green-500/30',
+      referral: 'text-pink-400 bg-pink-500/20 border border-pink-500/30',
+      discount: 'text-purple-400 bg-purple-500/20 border border-purple-500/30',
+      completion: 'text-blue-400 bg-blue-500/20 border border-blue-500/30',
     };
-    return colors[category] || 'text-gray-600 bg-gray-100';
+    return colors[category] || 'text-text-secondary bg-surface-2';
   };
 
   const getCategoryLabel = (category: string) => {
@@ -226,24 +226,24 @@ export default function PricingSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-surface-0 to-surface-1">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-surface-1 border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                 <Settings className="w-7 h-7 text-pink-500" />
                 Pricing & Discounts
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-text-tertiary mt-1">
                 Configure program pricing, referral rewards, and discount rules
               </p>
             </div>
@@ -280,19 +280,19 @@ export default function PricingSettingsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Error Message */}
         {error && (
-          <div className="mb-6 flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+          <div className="mb-6 flex items-center gap-3 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             {error}
           </div>
         )}
 
         {/* Info Banner - Coaching price location */}
-        <div className="mb-6 flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-700">
+        <div className="mb-6 flex items-start gap-3 p-4 bg-blue-500/20 border border-blue-500/30 rounded-xl text-blue-400">
           <IndianRupee className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">Coaching Program Price</p>
-            <p className="text-sm text-blue-600 mt-0.5">
-              Managed in <a href="/admin/settings" className="underline hover:text-blue-800 font-semibold">Site Settings → Pricing tab</a>
+            <p className="text-sm text-blue-300 mt-0.5">
+              Managed in <a href="/admin/settings" className="underline hover:text-blue-200 font-semibold">Site Settings → Pricing tab</a>
             </p>
           </div>
         </div>
@@ -300,29 +300,29 @@ export default function PricingSettingsPage() {
         {/* Settings Groups */}
         <div className="space-y-6">
           {Object.entries(groupedSettings).map(([category, categorySettings]) => (
-            <div key={category} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div key={category} className="bg-surface-1 rounded-2xl shadow-sm border border-border/50 overflow-hidden">
               {/* Category Header */}
-              <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+              <div className="px-6 py-4 border-b border-border/50 bg-surface-0">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getCategoryColor(category)}`}>
                     {getCategoryIcon(category)}
                   </div>
-                  <h2 className="font-semibold text-gray-900">
+                  <h2 className="font-semibold text-white">
                     {getCategoryLabel(category)}
                   </h2>
                 </div>
               </div>
 
               {/* Settings List */}
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-border/50">
                 {categorySettings.map((setting) => (
                   <div key={setting.key} className="px-6 py-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       <div className="flex-1">
-                        <label className="font-medium text-gray-900">
+                        <label className="font-medium text-white">
                           {setting.label}
                         </label>
-                        <p className="text-sm text-gray-500 mt-0.5">
+                        <p className="text-sm text-text-tertiary mt-0.5">
                           {setting.description}
                         </p>
                       </div>
@@ -335,12 +335,12 @@ export default function PricingSettingsPage() {
                               onChange={(e) => handleChange(setting.key, e.target.checked ? 'true' : 'false')}
                               className="sr-only peer"
                             />
-                            <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-pink-500"></div>
+                            <div className="w-14 h-7 bg-surface-3 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-500/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-border after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-pink-500"></div>
                           </label>
                         ) : (
                           <div className="relative">
                             {setting.suffix === '₹' && (
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">
                                 ₹
                               </span>
                             )}
@@ -348,12 +348,12 @@ export default function PricingSettingsPage() {
                               type={setting.key === 'completion_certificate_prefix' ? 'text' : 'number'}
                               value={getSettingValue(setting.key, setting.value)}
                               onChange={(e) => handleChange(setting.key, e.target.value)}
-                              className={`w-full py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-right focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all ${
+                              className={`w-full py-2.5 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted text-right focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all ${
                                 setting.suffix === '₹' ? 'pl-8 pr-4' : 'px-4'
                               }`}
                             />
                             {setting.suffix && setting.suffix !== '₹' && (
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary text-sm">
                                 {setting.suffix}
                               </span>
                             )}
@@ -369,47 +369,47 @@ export default function PricingSettingsPage() {
         </div>
 
         {/* Calculated Values Preview */}
-        <div className="mt-6 bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl border border-pink-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="mt-6 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-2xl border border-pink-500/30 p-6">
+          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
             <Calculator className="w-5 h-5 text-pink-500" />
             Calculated Values
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4">
-              <div className="text-2xl font-bold text-pink-600">
+            <div className="bg-surface-1 rounded-xl p-4">
+              <div className="text-2xl font-bold text-pink-400">
                 ₹{Math.round(
                   parseInt(getSettingValue('coaching_program_price', '5999')) *
                   parseInt(getSettingValue('parent_referral_credit_percent', '10')) / 100
                 )}
               </div>
-              <div className="text-xs text-gray-500">Referral Credit</div>
+              <div className="text-xs text-text-tertiary">Referral Credit</div>
             </div>
-            <div className="bg-white rounded-xl p-4">
-              <div className="text-2xl font-bold text-green-600">
+            <div className="bg-surface-1 rounded-xl p-4">
+              <div className="text-2xl font-bold text-green-400">
                 ₹{Math.round(
                   parseInt(getSettingValue('coaching_program_price', '5999')) *
                   parseInt(getSettingValue('max_discount_percent', '20')) / 100
                 )}
               </div>
-              <div className="text-xs text-gray-500">Max Discount (₹)</div>
+              <div className="text-xs text-text-tertiary">Max Discount (₹)</div>
             </div>
-            <div className="bg-white rounded-xl p-4">
-              <div className="text-2xl font-bold text-purple-600">
+            <div className="bg-surface-1 rounded-xl p-4">
+              <div className="text-2xl font-bold text-purple-400">
                 ₹{Math.round(
                   parseInt(getSettingValue('coaching_program_price', '5999')) *
                   (100 - parseInt(getSettingValue('max_discount_percent', '20'))) / 100
                 )}
               </div>
-              <div className="text-xs text-gray-500">Min Payment</div>
+              <div className="text-xs text-text-tertiary">Min Payment</div>
             </div>
-            <div className="bg-white rounded-xl p-4">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="bg-surface-1 rounded-xl p-4">
+              <div className="text-2xl font-bold text-blue-400">
                 ₹{Math.round(
                   parseInt(getSettingValue('coaching_program_price', '5999')) *
                   (100 - parseInt(getSettingValue('loyalty_discount_percent', '10'))) / 100
                 )}
               </div>
-              <div className="text-xs text-gray-500">Loyalty Price</div>
+              <div className="text-xs text-text-tertiary">Loyalty Price</div>
             </div>
           </div>
         </div>

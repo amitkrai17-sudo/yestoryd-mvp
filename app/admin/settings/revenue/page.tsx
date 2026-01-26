@@ -115,14 +115,14 @@ export default function RevenueSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="min-h-screen bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -131,8 +131,8 @@ export default function RevenueSettingsPage() {
               <Settings className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Revenue Split Configuration</h1>
-              <p className="text-slate-500">Configure how enrollment fees are distributed</p>
+              <h1 className="text-2xl font-bold text-white">Revenue Split Configuration</h1>
+              <p className="text-text-tertiary">Configure how enrollment fees are distributed</p>
             </div>
           </div>
           <button
@@ -161,20 +161,20 @@ export default function RevenueSettingsPage() {
           {/* Configuration Panel */}
           <div className="space-y-6">
             {/* Component Percentages */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-border bg-surface-2">
                 <div className="flex items-center gap-3">
                   <Percent className="w-5 h-5 text-violet-500" />
-                  <h2 className="text-lg font-semibold text-slate-900">Component Percentages</h2>
+                  <h2 className="text-lg font-semibold text-white">Component Percentages</h2>
                 </div>
-                <p className="text-sm text-slate-500 mt-1">Must total 100%. Platform Fee adjusts automatically.</p>
+                <p className="text-sm text-text-tertiary mt-1">Must total 100%. Platform Fee adjusts automatically.</p>
               </div>
               
               <div className="p-6 space-y-6">
                 {/* Lead Cost */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-blue-500" />
                       Lead Cost
                     </label>
@@ -188,13 +188,13 @@ export default function RevenueSettingsPage() {
                     onChange={(e) => handlePercentChange('lead_cost_percent', parseFloat(e.target.value))}
                     className="w-full h-2 bg-blue-100 rounded-full appearance-none cursor-pointer accent-blue-500"
                   />
-                  <p className="text-xs text-slate-400 mt-2">Goes to whoever sourced the lead</p>
+                  <p className="text-xs text-text-muted mt-2">Goes to whoever sourced the lead</p>
                 </div>
 
                 {/* Coach Cost */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
                       <Users className="w-4 h-4 text-pink-500" />
                       Coach Cost
                     </label>
@@ -208,7 +208,7 @@ export default function RevenueSettingsPage() {
                     onChange={(e) => handlePercentChange('coach_cost_percent', parseFloat(e.target.value))}
                     className="w-full h-2 bg-pink-100 rounded-full appearance-none cursor-pointer accent-pink-500"
                   />
-                  <p className="text-xs text-slate-400 mt-2">Goes to the coach delivering sessions</p>
+                  <p className="text-xs text-text-muted mt-2">Goes to the coach delivering sessions</p>
                 </div>
 
                 {/* Platform Fee (Auto) */}
@@ -229,18 +229,18 @@ export default function RevenueSettingsPage() {
             </div>
 
             {/* TDS Configuration */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-border bg-surface-2">
                 <div className="flex items-center gap-3">
                   <IndianRupee className="w-5 h-5 text-amber-500" />
-                  <h2 className="text-lg font-semibold text-slate-900">TDS Configuration</h2>
+                  <h2 className="text-lg font-semibold text-white">TDS Configuration</h2>
                 </div>
-                <p className="text-sm text-slate-500 mt-1">Section 194J - Professional Fees</p>
+                <p className="text-sm text-text-tertiary mt-1">Section 194J - Professional Fees</p>
               </div>
-              
+
               <div className="p-6 grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">TDS Rate</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">TDS Rate</label>
                   <div className="relative">
                     <input
                       type="number"
@@ -249,22 +249,22 @@ export default function RevenueSettingsPage() {
                       step="0.5"
                       value={config.tds_rate_percent}
                       onChange={(e) => setConfig({ ...config, tds_rate_percent: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-3 pr-10 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      className="w-full px-4 py-3 pr-10 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">%</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted">%</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Annual Threshold</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Annual Threshold</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">₹</span>
                     <input
                       type="number"
                       min="0"
                       step="1000"
                       value={config.tds_threshold_annual}
                       onChange={(e) => setConfig({ ...config, tds_threshold_annual: parseInt(e.target.value) || 0 })}
-                      className="w-full pl-8 pr-4 py-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      className="w-full pl-8 pr-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
                     />
                   </div>
                 </div>
@@ -278,28 +278,28 @@ export default function RevenueSettingsPage() {
             </div>
 
             {/* Payout Schedule */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-border bg-surface-2">
                 <div className="flex items-center gap-3">
                   <Calendar className="w-5 h-5 text-emerald-500" />
-                  <h2 className="text-lg font-semibold text-slate-900">Payout Schedule</h2>
+                  <h2 className="text-lg font-semibold text-white">Payout Schedule</h2>
                 </div>
               </div>
-              
+
               <div className="p-6 grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Frequency</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Frequency</label>
                   <select
                     value={config.payout_frequency}
                     onChange={(e) => setConfig({ ...config, payout_frequency: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
                   >
                     <option value="monthly">Monthly</option>
                     <option value="per_session">Per Session</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Payout Day</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Payout Day</label>
                   <div className="relative">
                     <input
                       type="number"
@@ -307,9 +307,9 @@ export default function RevenueSettingsPage() {
                       max="28"
                       value={config.payout_day_of_month}
                       onChange={(e) => setConfig({ ...config, payout_day_of_month: parseInt(e.target.value) || 7 })}
-                      className="w-full px-4 py-3 pr-16 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      className="w-full px-4 py-3 pr-16 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">of month</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted text-sm">of month</span>
                   </div>
                 </div>
               </div>
@@ -383,26 +383,26 @@ export default function RevenueSettingsPage() {
             </div>
 
             {/* Scenario Comparison */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100">
-                <h2 className="text-lg font-semibold text-slate-900">Scenario Comparison</h2>
-                <p className="text-sm text-slate-500">Net amounts after TDS (if applicable)</p>
+            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-border">
+                <h2 className="text-lg font-semibold text-white">Scenario Comparison</h2>
+                <p className="text-sm text-text-tertiary">Net amounts after TDS (if applicable)</p>
               </div>
 
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border">
                 {/* Yestoryd Lead */}
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-slate-700">Yestoryd Lead + External Coach</span>
+                    <span className="text-sm font-medium text-text-secondary">Yestoryd Lead + External Coach</span>
                     <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">50-50 Split</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 p-3 bg-slate-50 rounded-lg">
-                      <p className="text-xs text-slate-500 mb-1">Coach Gets</p>
-                      <p className="text-lg font-bold text-slate-900">₹{netToCoach.toLocaleString()}</p>
-                      <p className="text-xs text-slate-400">After TDS</p>
+                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
+                      <p className="text-xs text-text-tertiary mb-1">Coach Gets</p>
+                      <p className="text-lg font-bold text-white">₹{netToCoach.toLocaleString()}</p>
+                      <p className="text-xs text-text-muted">After TDS</p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-slate-300" />
+                    <ArrowRight className="w-5 h-5 text-text-muted" />
                     <div className="flex-1 p-3 bg-violet-50 rounded-lg">
                       <p className="text-xs text-violet-600 mb-1">Yestoryd Gets</p>
                       <p className="text-lg font-bold text-violet-700">₹{(leadCostAmount + platformFeeAmount + tdsAmount).toLocaleString()}</p>
@@ -414,7 +414,7 @@ export default function RevenueSettingsPage() {
                 {/* Coach Lead */}
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-slate-700">Coach Lead + External Coach</span>
+                    <span className="text-sm font-medium text-text-secondary">Coach Lead + External Coach</span>
                     <span className="px-3 py-1 bg-pink-50 text-pink-700 text-xs font-medium rounded-full">70-30 Split</span>
                   </div>
                   <div className="flex items-center gap-4">
@@ -423,7 +423,7 @@ export default function RevenueSettingsPage() {
                       <p className="text-lg font-bold text-pink-700">₹{(netToCoach + leadCostAmount - Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
                       <p className="text-xs text-pink-500">Coach + Lead Bonus</p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-slate-300" />
+                    <ArrowRight className="w-5 h-5 text-text-muted" />
                     <div className="flex-1 p-3 bg-violet-50 rounded-lg">
                       <p className="text-xs text-violet-600 mb-1">Yestoryd Gets</p>
                       <p className="text-lg font-bold text-violet-700">₹{(platformFeeAmount + tdsAmount + Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
@@ -435,7 +435,7 @@ export default function RevenueSettingsPage() {
                 {/* Rucha Coaching */}
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-slate-700">Yestoryd Lead + Rucha Coaching</span>
+                    <span className="text-sm font-medium text-text-secondary">Yestoryd Lead + Rucha Coaching</span>
                     <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full">100% Retained</span>
                   </div>
                   <div className="p-3 bg-emerald-50 rounded-lg">
@@ -448,26 +448,26 @@ export default function RevenueSettingsPage() {
             </div>
 
             {/* Staggered Payout Preview */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100">
-                <h2 className="text-lg font-semibold text-slate-900">3-Month Payout Schedule</h2>
-                <p className="text-sm text-slate-500">Coach payments split across 3 months</p>
+            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-border">
+                <h2 className="text-lg font-semibold text-white">3-Month Payout Schedule</h2>
+                <p className="text-sm text-text-tertiary">Coach payments split across 3 months</p>
               </div>
-              
+
               <div className="p-6">
                 <div className="flex items-center justify-between gap-4">
                   {[1, 2, 3].map((month) => {
                     const monthlyAmount = Math.round(netToCoach / 3);
                     const isLast = month === 3;
                     const amount = isLast ? netToCoach - (monthlyAmount * 2) : monthlyAmount;
-                    
+
                     return (
                       <div key={month} className="flex-1 text-center">
                         <div className="w-12 h-12 mx-auto bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center text-white font-bold mb-2">
                           M{month}
                         </div>
-                        <p className="text-lg font-bold text-slate-900">₹{amount.toLocaleString()}</p>
-                        <p className="text-xs text-slate-400">{config.payout_day_of_month}th of month</p>
+                        <p className="text-lg font-bold text-white">₹{amount.toLocaleString()}</p>
+                        <p className="text-xs text-text-muted">{config.payout_day_of_month}th of month</p>
                       </div>
                     );
                   })}

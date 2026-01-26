@@ -61,30 +61,30 @@ export default function AdminLoginPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f010_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f010_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-      
-      <div className="relative bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-8">
+
+      <div className="relative bg-surface-1 rounded-2xl border border-border shadow-xl max-w-md w-full p-8">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-600/25">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Portal</h1>
-          <p className="text-slate-500 mt-2">Sign in to access the dashboard</p>
+          <h1 className="text-2xl font-bold text-white">Admin Portal</h1>
+          <p className="text-text-tertiary mt-2">Sign in to access the dashboard</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm">
+          <div className="mb-6 p-4 bg-red-50 border border-border rounded-xl text-red-600 text-sm">
             {error}
           </div>
         )}
@@ -93,7 +93,7 @@ export default function AdminLoginPage() {
         <button
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-slate-200 rounded-xl font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-surface-1 border-2 border-border rounded-xl font-medium text-text-secondary hover:bg-surface-2 hover:border-border/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {loading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -121,8 +121,8 @@ export default function AdminLoginPage() {
         </button>
 
         {/* Info */}
-        <div className="mt-6 p-4 bg-slate-50 rounded-xl">
-          <p className="text-xs text-slate-500 text-center">
+        <div className="mt-6 p-4 bg-surface-0 rounded-xl">
+          <p className="text-xs text-text-tertiary text-center">
             Access is restricted to authorized administrators only.
             <br />
             Contact support if you need access.
@@ -133,7 +133,7 @@ export default function AdminLoginPage() {
         <div className="mt-6 text-center">
           <a
             href="/"
-            className="text-sm text-slate-500 hover:text-blue-600 transition-colors"
+            className="text-sm text-text-tertiary hover:text-blue-600 transition-colors"
           >
             ← Back to Website
           </a>

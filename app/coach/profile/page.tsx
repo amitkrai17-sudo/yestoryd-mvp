@@ -189,7 +189,7 @@ export default function CoachProfilePage() {
       <div className="p-3 lg:p-6 text-white">
 
       {/* Tabs - Compact on mobile */}
-      <div className="bg-gray-800/50 rounded-lg p-1 mb-4 overflow-x-auto">
+      <div className="bg-surface-1/50 rounded-lg p-1 mb-4 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
           {[
             { id: 'profile', label: 'Profile', icon: User },
@@ -244,7 +244,7 @@ export default function CoachProfilePage() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => updateField('name', e.target.value)}
-                    className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                   />
                 </div>
 
@@ -256,7 +256,7 @@ export default function CoachProfilePage() {
                     onChange={(e) => updateField('bio', e.target.value)}
                     rows={3}
                     placeholder="Tell parents about your teaching experience..."
-                    className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099] resize-none"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099] resize-none"
                   />
                   <p className="text-[10px] lg:text-xs text-gray-500 mt-1">
                     {formData.bio.length}/500 characters
@@ -271,7 +271,7 @@ export default function CoachProfilePage() {
                     value={formData.whatsapp_number}
                     onChange={(e) => updateField('whatsapp_number', e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                   />
                 </div>
 
@@ -284,7 +284,7 @@ export default function CoachProfilePage() {
                       value={formData.city}
                       onChange={(e) => updateField('city', e.target.value)}
                       placeholder="Mumbai"
-                      className="w-full px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                      className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                     />
                   </div>
                   <div>
@@ -295,7 +295,7 @@ export default function CoachProfilePage() {
                       onChange={(e) => updateField('years_experience', parseInt(e.target.value) || 0)}
                       min={0}
                       max={50}
-                      className="w-full sm:w-32 px-3 lg:px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                      className="w-full sm:w-32 px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
                     />
                   </div>
                 </div>
@@ -308,7 +308,7 @@ export default function CoachProfilePage() {
 
               <div className="space-y-3 lg:space-y-4">
                 {/* Is Available */}
-                <div className="flex items-center justify-between p-3 lg:p-4 bg-gray-900 rounded-lg gap-3">
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-surface-0 rounded-lg gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-sm lg:text-base">Available for Sessions</p>
                     <p className="text-xs lg:text-sm text-gray-400">Toggle off if temporarily unavailable</p>
@@ -330,7 +330,7 @@ export default function CoachProfilePage() {
                 </div>
 
                 {/* Accepting New Students */}
-                <div className="flex items-center justify-between p-3 lg:p-4 bg-gray-900 rounded-lg gap-3">
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-surface-0 rounded-lg gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-sm lg:text-base">Accepting New Students</p>
                     <p className="text-xs lg:text-sm text-gray-400">
@@ -367,7 +367,7 @@ export default function CoachProfilePage() {
                 Select skills to match with students who need your expertise.
               </p>
 
-              <div className="bg-gray-900 rounded-lg p-3 lg:p-4">
+              <div className="bg-surface-0 rounded-lg p-3 lg:p-4">
                 <SkillTagSelector
                   selectedTags={formData.skill_tags}
                   onChange={(tags) => updateField('skill_tags', tags)}
@@ -393,7 +393,7 @@ export default function CoachProfilePage() {
                 </div>
                 <button
                   onClick={addCertification}
-                  className="px-2.5 lg:px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs lg:text-sm flex-shrink-0"
+                  className="px-2.5 lg:px-3 py-1.5 bg-surface-1 hover:bg-surface-2 rounded-lg text-xs lg:text-sm flex-shrink-0"
                 >
                   + Add
                 </button>
@@ -406,7 +406,7 @@ export default function CoachProfilePage() {
                   {formData.certifications.map((cert, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center gap-1.5 lg:gap-2 px-2.5 lg:px-3 py-1.5 bg-gray-800 rounded-full text-xs lg:text-sm"
+                      className="inline-flex items-center gap-1.5 lg:gap-2 px-2.5 lg:px-3 py-1.5 bg-surface-1 rounded-full text-xs lg:text-sm"
                     >
                       <Award className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-yellow-400" />
                       {cert}
@@ -436,7 +436,7 @@ export default function CoachProfilePage() {
             </div>
 
             {/* Mark Time Off */}
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-surface-1 rounded-xl overflow-hidden border border-border">
               <CoachAvailabilityCard coachId={profile.id} coachEmail={profile.email} />
             </div>
           </div>

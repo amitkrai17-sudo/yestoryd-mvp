@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
             const highlightsArr = (data.highlights as string[]) || [];
             const challengesArr = (data.challenges as string[]) || [];
 
-            return `Session ${i + 1} (${new Date(s.event_date).toLocaleDateString()}):
+            return `Session ${i + 1} (${new Date(s.event_date || Date.now()).toLocaleDateString()}):
   - Focus: ${focusLabel}
   - Progress: ${progressStr}
   - Highlights: ${highlightsArr.join(', ') || 'None recorded'}
