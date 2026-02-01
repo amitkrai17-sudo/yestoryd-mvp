@@ -41,7 +41,7 @@ export function ProblemSection({
   };
 
   return (
-    <section className="py-16 lg:py-24 bg-surface-0">
+    <section className="pt-10 pb-16 lg:pt-14 lg:pb-24 bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -111,7 +111,8 @@ export function ProblemSection({
                 {symptomsText.includes('symptoms') ? (
                   <>
                     These are <strong className="text-white">symptoms</strong>.
-                    The cause is usually a gap in phonemic awareness.
+                    The cause is usually a gap in{' '}
+                    <span className="text-[#00ABFF] font-semibold">phonemic awareness</span>.
                   </>
                 ) : symptomsText}
               </p>

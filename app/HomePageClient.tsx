@@ -254,10 +254,12 @@ const trackABEvent = async (testName: string, variant: string, eventType: string
 // Default FAQ data - function to inject session durations
 const getDefaultFaqData = (durations: { coaching: number; checkin: number }) => [
   { question: "What device do I need for the assessment?", answer: "Any smartphone, tablet, or laptop with a microphone works! The assessment runs in your browser — no app download needed. 80% of our parents use their phone." },
-  { question: "How long is each coaching session?", answer: `Coaching sessions are ${durations.coaching} minutes each, with parent check-ins being ${durations.checkin} minutes. Sessions are scheduled at times convenient for you — weekdays or weekends.` },
+  { question: "How long is each coaching session?", answer: `Each coaching session is ${durations.coaching} minutes, which is the optimal duration for effective learning with engagement breaks built in. Parent check-ins are ${durations.checkin} minutes. Sessions are scheduled at times convenient for you — weekdays or weekends.` },
   { question: "Is this a subscription? Will I be charged monthly?", answer: "No subscriptions! It's a one-time payment. Choose from Starter Pack, Continuation, or Full Program based on your needs. No hidden fees, no recurring charges." },
   { question: "What if my child doesn't improve?", answer: "We offer a 100% satisfaction guarantee. If you don't see improvement after completing the program, we'll either continue working with you at no extra cost or provide a full refund." },
   { question: "Is the AI safe for my child?", answer: "Absolutely. Unlike ChatGPT which guesses, rAI (our Reading Intelligence) only references our expert-verified knowledge base built on 7+ years of phonics expertise." },
+  { question: "Are the coaches certified?", answer: "Our coaches are experienced educators with diverse specializations — including Jolly Phonics certification, ADHD expertise, and child development training. Above all, they excel at connecting with and managing children effectively." },
+  { question: "Should parents attend the sessions?", answer: "We recommend parents assist initially, but sessions work best when focused on the coach-child interaction. If we need your help, we'll ask! We also have dedicated Parent Check-in calls to discuss progress and home support strategies." },
   { question: "What age group is this for?", answer: "Yestoryd is designed for children aged 4-12 years. Our AI adapts the assessment based on your child's age, and coaches personalize sessions accordingly." }
 ];
 
@@ -337,7 +339,7 @@ export default function HomePageClient({
       />
 
       {/* Hero Section */}
-      <section className="pt-28 sm:pt-32 lg:pt-44 pb-20 sm:pb-16 lg:pb-24 bg-gradient-to-b from-surface-1 to-surface-0 relative overflow-x-hidden">
+      <section className="pt-28 sm:pt-32 lg:pt-36 pb-12 sm:pb-14 lg:pb-20 bg-gradient-to-b from-surface-1 to-surface-0 relative overflow-x-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00abff]/10 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/4"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#ff0099]/10 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/4"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -392,7 +394,7 @@ export default function HomePageClient({
         subtitle={c.arc_section_subtitle || 'A clear path from struggling reader to confident communicator'}
         phases={{
           assess: { letter: 'A', weeks: c.arc_assess_weeks || 'Week 1-4', title: c.arc_assess_title || 'Assess', subtitle: c.arc_assess_subtitle || 'Foundation Arc', description: c.arc_assess_description || 'AI listens to your child read and identifies exact gaps in 40+ sound patterns.', features: c.arc_assess_features || ['5-minute AI assessment', 'Detailed gap report', 'Personalized learning path'], icon: 'brain', color: '#00ABFF' },
-          remediate: { letter: 'R', weeks: c.arc_remediate_weeks || 'Week 5-8', title: c.arc_remediate_title || 'Remediate', subtitle: c.arc_remediate_subtitle || 'Building Arc', description: c.arc_remediate_description || 'Expert coaches fill gaps with personalized 1:1 sessions using Jolly Phonics.', features: c.arc_remediate_features || ['6 coaching sessions (1:1)', 'Practice activities at home', 'Weekly WhatsApp updates'], icon: 'heart', color: '#FF0099' },
+          remediate: { letter: 'R', weeks: c.arc_remediate_weeks || 'Week 5-8', title: c.arc_remediate_title || 'Remediate', subtitle: c.arc_remediate_subtitle || 'Building Arc', description: c.arc_remediate_description || 'Expert coaches fill gaps with personalized 1:1 sessions covering phonics, grammar, comprehension, and vocabulary — tailored for ages 4-12.', features: c.arc_remediate_features || ['6 coaching sessions (1:1)', 'Practice activities at home', 'Weekly WhatsApp updates'], icon: 'heart', color: '#FF0099' },
           celebrate: { letter: 'C', weeks: c.arc_celebrate_weeks || 'Week 9-12', title: c.arc_celebrate_title || 'Celebrate', subtitle: c.arc_celebrate_subtitle || 'Confidence Arc', description: c.arc_celebrate_description || 'Your child reads with confidence. Measurable improvement you can see.', features: c.arc_celebrate_features || ['Before/after comparison', 'Progress certificate', 'Continuation roadmap'], icon: 'award', color: '#c44dff' },
         }}
         promise={{ title: c.arc_promise_title || 'The 90-Day Promise', description: c.arc_promise_description || 'In 90 days, your child reads more fluently.', badges: [c.arc_promise_badge_1 || 'Measurable Growth', c.arc_promise_badge_2 || '100% Refund Guarantee', c.arc_promise_badge_3 || 'Full Transparency'] }}
@@ -412,8 +414,8 @@ export default function HomePageClient({
         badge={c.rai_section_badge || 'Meet rAI'}
         title={c.rai_section_title || 'Why rAI is Different (and Safer)'}
         subtitle={c.rai_section_subtitle || 'our AI that never guesses'}
-        genericAi={{ label: c.rai_generic_ai_label || '❌ Generic AI', name: c.rai_generic_ai_name || 'ChatGPT, etc.', type: c.rai_generic_ai_type || 'General Purpose AI', description: c.rai_generic_ai_description || 'based on the internet. No reading expertise.' }}
-        safeAi={{ label: c.rai_safe_ai_label || '✓ Safe, Expert-Verified AI', name: c.rai_safe_ai_name || 'rAI Knowledge Engine', type: c.rai_safe_ai_type || 'Expert-Verified AI', description: c.rai_safe_ai_description || "Built on 7+ years of Rucha's phonics expertise." }}
+        genericAi={{ label: c.rai_generic_ai_label || '❌ Generic AI', name: c.rai_generic_ai_name || 'ChatGPT, etc.', type: c.rai_generic_ai_type || 'General Purpose AI', description: c.rai_generic_ai_description || 'based on the internet. No reading expertise. No understanding of phonics rules. May give incorrect or generic advice.' }}
+        safeAi={{ label: c.rai_safe_ai_label || '✓ Safe, Expert-Verified AI', name: c.rai_safe_ai_name || 'rAI Knowledge Engine', type: c.rai_safe_ai_type || 'Expert-Verified AI', description: c.rai_safe_ai_description || "Built on 7+ years of Rucha's phonics expertise. Never guesses — always references proven methods." }}
         processSteps={c.rai_process_steps || ['Child Error', 'Check Expert DB', 'Perfect Fix ✓']}
         explanation={{ intro: c.rai_explanation_intro || "Most AI makes things up. We couldn't risk that with your child's education.", analogy: c.rai_explanation_analogy || "Imagine rAI as a librarian with a manual written by Rucha.", detail: c.rai_explanation_detail || "When your child makes a mistake, rAI doesn't guess." }}
       />

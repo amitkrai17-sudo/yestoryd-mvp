@@ -239,7 +239,7 @@ export function PricingSection({
                       <li>• {product.coachingSessions} Coaching sessions ({durations.coaching} min)</li>
                     )}
                     {product.skillBuildingSessions > 0 && (
-                      <li>• {product.skillBuildingSessions} Skill Building sessions ({durations.skillBuilding} min)</li>
+                      <li>• {product.skillBuildingSessions} Skill Booster sessions ({durations.skillBuilding} min)</li>
                     )}
                     {product.checkinSessions > 0 && (
                       <li>• {product.checkinSessions} Parent Check-ins ({durations.checkin} min)</li>
