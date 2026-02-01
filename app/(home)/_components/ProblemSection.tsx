@@ -90,7 +90,7 @@ export function ProblemSection({
 
           {/* Signs List */}
           <div className="space-y-4">
-            <p className="text-sm font-semibold text-[#7b008b] uppercase tracking-wider mb-4">
+            <p className="text-sm font-semibold text-[#ff0099] uppercase tracking-wider mb-4">
               Signs you might notice
             </p>
 
@@ -100,7 +100,9 @@ export function ProblemSection({
                 className="flex items-center gap-4 bg-surface-2 rounded-2xl p-5 shadow-sm border border-border hover:border-[#ff0099]/30 hover:shadow-md transition-all"
               >
                 <span className="w-2 h-2 rounded-full bg-[#ff0099] flex-shrink-0" />
-                <p className="text-text-secondary font-medium">{text}</p>
+                <p className="text-text-secondary font-medium">
+                  {typeof text === 'string' ? text : (text as any)?.title || (text as any)?.description || 'Sign'}
+                </p>
               </div>
             ))}
 

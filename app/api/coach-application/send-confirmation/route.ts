@@ -16,9 +16,7 @@ import sgMail from '@sendgrid/mail';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
-const ADMIN_EMAILS = ['rucha.rai@yestoryd.com', 'amitkrai17@gmail.com'];
-const FROM_EMAIL = 'engage@yestoryd.com';
-const FROM_NAME = 'Yestoryd Academy';
+import { loadAuthConfig, loadEmailConfig } from '@/lib/config/loader';
 const WHATSAPP_NUMBER = '+91 89762 87997';
 
 // --- VALIDATION SCHEMA ---
@@ -35,8 +33,11 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const auth = await requireAdmin();
-    
+    const [auth, authConfig, emailConfig] = await Promise.all([requireAdmin(), loadAuthConfig(), loadEmailConfig()]);
+    const FROM_EMAIL = emailConfig.fromEmail;
+    const FROM_NAME = emailConfig.fromName;
+    const ADMIN_EMAILS = authConfig.adminEmails;
+
     if (!auth.authorized) {
       console.log(JSON.stringify({ requestId, event: 'send_confirmation_auth_failed', error: auth.error }));
       return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { rescheduleEvent, cancelEvent, scheduleCalendarEvent } from '@/lib/googleCalendar';
+import { cancelRecallBot } from '@/lib/recall-auto-bot';
 
 // ============================================================
 // CONSTANTS
@@ -444,7 +445,7 @@ export async function DELETE(request: NextRequest) {
     // Get session
     const { data: session, error: fetchError } = await supabase
       .from('scheduled_sessions')
-      .select('*')
+      .select('*, recall_bot_id')
       .eq('id', sessionId)
       .single();
 
@@ -487,6 +488,16 @@ export async function DELETE(request: NextRequest) {
       }
     } else {
       logInfo('DELETE', `Session ${sessionId} has no google_event_id, skipping calendar cancel`);
+    }
+
+    // Cancel Recall.ai bot if present
+    if (session.recall_bot_id) {
+      try {
+        await cancelRecallBot(session.recall_bot_id);
+        logInfo('DELETE', `Recall bot ${session.recall_bot_id} cancelled`);
+      } catch (recallError) {
+        logError('DELETE cancel recall bot', recallError);
+      }
     }
 
     // Update database

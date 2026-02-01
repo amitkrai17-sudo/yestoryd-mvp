@@ -173,109 +173,86 @@ export default function PayoutsPage() {
 
   if (loading && !summary) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-emerald-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="bg-surface-0">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25">
-              <Wallet className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25 flex-shrink-0">
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Coach Payouts</h1>
-              <p className="text-text-tertiary">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">Coach Payouts</h1>
+              <p className="text-xs sm:text-sm text-text-tertiary">
                 {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
               </p>
             </div>
           </div>
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-xl text-text-secondary hover:bg-surface-2 transition-colors"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-surface-1 border border-border rounded-lg sm:rounded-xl text-text-secondary hover:bg-surface-2 transition-colors text-xs sm:text-sm flex-shrink-0"
           >
-            <Download className="w-4 h-4" />
-            Export CSV
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Export</span> CSV
           </button>
         </div>
 
         {/* Summary Cards */}
         {summary && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-400" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+            {[
+              { icon: Clock, color: 'amber', label: 'Due This Month', amount: summary.due_this_month.amount, sub: `${summary.due_this_month.count} payouts` },
+              { icon: FileText, color: 'blue', label: 'Pending', amount: summary.pending_approval.amount, sub: `${summary.pending_approval.count} payouts` },
+              { icon: CheckCircle, color: 'emerald', label: 'Paid', amount: summary.paid_this_month.amount, sub: `${summary.paid_this_month.count} payouts` },
+              { icon: Building2, color: 'violet', label: 'TDS', amount: summary.tds_to_deposit.amount, sub: `${summary.tds_to_deposit.quarter} FY${summary.tds_to_deposit.fy}` },
+            ].map((card) => {
+              const colorMap: Record<string, string> = { amber: 'bg-amber-500/20 text-amber-400', blue: 'bg-blue-500/20 text-blue-400', emerald: 'bg-emerald-500/20 text-emerald-400', violet: 'bg-violet-500/20 text-violet-400' };
+              return (
+                <div key={card.label} className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border p-2.5 sm:p-3 lg:p-5 hover:border-border/80 transition-colors">
+                  <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 mb-1.5 sm:mb-3">
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${colorMap[card.color]}`}>
+                      <card.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" />
+                    </div>
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-text-tertiary">{card.label}</span>
+                  </div>
+                  <p className="text-base sm:text-lg lg:text-2xl font-bold text-white">₹{card.amount.toLocaleString()}</p>
+                  <p className="text-[10px] sm:text-xs text-text-muted mt-0.5">{card.sub}</p>
                 </div>
-                <span className="text-sm text-text-tertiary">Due This Month</span>
-              </div>
-              <p className="text-2xl font-bold text-white">₹{summary.due_this_month.amount.toLocaleString()}</p>
-              <p className="text-xs text-text-muted mt-1">{summary.due_this_month.count} payouts</p>
-            </div>
-
-            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-blue-400" />
-                </div>
-                <span className="text-sm text-text-tertiary">Pending Approval</span>
-              </div>
-              <p className="text-2xl font-bold text-white">₹{summary.pending_approval.amount.toLocaleString()}</p>
-              <p className="text-xs text-text-muted mt-1">{summary.pending_approval.count} payouts</p>
-            </div>
-
-            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-emerald-400" />
-                </div>
-                <span className="text-sm text-text-tertiary">Paid This Month</span>
-              </div>
-              <p className="text-2xl font-bold text-white">₹{summary.paid_this_month.amount.toLocaleString()}</p>
-              <p className="text-xs text-text-muted mt-1">{summary.paid_this_month.count} payouts</p>
-            </div>
-
-            <div className="bg-surface-1 rounded-2xl border border-border p-5 hover:border-border/80 transition-colors">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-violet-400" />
-                </div>
-                <span className="text-sm text-text-tertiary">TDS to Deposit</span>
-              </div>
-              <p className="text-2xl font-bold text-white">₹{summary.tds_to_deposit.amount.toLocaleString()}</p>
-              <p className="text-xs text-text-muted mt-1">{summary.tds_to_deposit.quarter} FY{summary.tds_to_deposit.fy}</p>
-            </div>
+              );
+            })}
           </div>
         )}
 
         {/* Tabs & Actions */}
-        <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-b border-border">
-            <div className="flex gap-2">
+        <div className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-4 border-b border-border">
+            <div className="flex gap-1 sm:gap-2">
               <button
                 onClick={() => setActiveTab('pending')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                   activeTab === 'pending'
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : 'text-text-tertiary hover:bg-surface-2'
                 }`}
               >
-                Pending Payouts
+                Pending
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                   activeTab === 'history'
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : 'text-text-tertiary hover:bg-surface-2'
                 }`}
               >
-                Payout History
+                History
               </button>
             </div>
 
@@ -305,8 +282,8 @@ export default function PayoutsPage() {
             </div>
           </div>
 
-          {/* Payouts Table */}
-          <div className="overflow-x-auto">
+          {/* Payouts */}
+          <div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <RefreshCw className="w-6 h-6 animate-spin text-text-tertiary" />
@@ -317,6 +294,49 @@ export default function PayoutsPage() {
                 <p className="text-text-secondary">No payouts found</p>
               </div>
             ) : (
+              <>
+              {/* Mobile Cards */}
+              <div className="sm:hidden space-y-2">
+                {filteredPayouts.map((payout) => (
+                  <div key={payout.id} className="bg-surface-2 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {activeTab === 'pending' && (
+                          <input
+                            type="checkbox"
+                            checked={selectedPayouts.includes(payout.id)}
+                            onChange={() => toggleSelection(payout.id)}
+                            className="rounded border-border text-emerald-500 focus:ring-emerald-500 flex-shrink-0"
+                          />
+                        )}
+                        <div className="w-7 h-7 bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {payout.coaches?.name?.charAt(0) || '?'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{payout.coaches?.name || 'Unknown'}</p>
+                          <p className="text-xs text-text-tertiary truncate">{payout.child_name || '-'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-emerald-400">₹{payout.net_amount.toLocaleString()}</p>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          payout.payout_type === 'lead_bonus' ? 'bg-blue-500/20 text-blue-400' : 'bg-pink-500/20 text-pink-400'
+                        }`}>
+                          {payout.payout_type === 'lead_bonus' ? 'Lead' : 'Coach'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50 text-[10px] text-text-tertiary">
+                      <span>Gross: ₹{payout.gross_amount.toLocaleString()}</span>
+                      <span>TDS: {payout.tds_amount > 0 ? `₹${payout.tds_amount.toLocaleString()}` : '-'}</span>
+                      <span>Due: {new Date(payout.scheduled_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-surface-2 border-b border-border">
                   <tr>
@@ -439,6 +459,8 @@ export default function PayoutsPage() {
                   </tfoot>
                 )}
               </table>
+              </div>
+              </>
             )}
           </div>
         </div>

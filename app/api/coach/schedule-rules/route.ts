@@ -2,9 +2,14 @@
 // COACH SCHEDULE RULES API
 // app/api/coach/schedule-rules/route.ts
 // ============================================================================
-// 
+//
 // CRUD operations for coach_schedule_rules table
-// Used by CoachAvailabilityManager component
+// Used by AvailabilityCalendar component
+//
+// Features:
+// - Session type filtering (coaching, discovery, etc.)
+// - Batch delete support
+// - Quick template application
 //
 // ============================================================================
 
@@ -15,6 +20,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Default session types for new rules
+const DEFAULT_SESSION_TYPES = ['coaching', 'parent_checkin', 'skill_booster', 'discovery'];
 
 // ============================================================================
 // GET - Fetch schedule rules for a coach
@@ -96,7 +104,14 @@ export async function POST(request: NextRequest) {
       endTime,
       reason,
       appliesTo = 'all',
+      sessionTypes,    // Array of session types this rule applies to
     } = body;
+
+    // Validate and normalize session types
+    const validSessionTypes = ['coaching', 'parent_checkin', 'skill_booster', 'discovery'];
+    const normalizedSessionTypes = sessionTypes && Array.isArray(sessionTypes)
+      ? sessionTypes.filter((t: string) => validSessionTypes.includes(t))
+      : DEFAULT_SESSION_TYPES;
 
     // Validation
     if (!coachId) {
@@ -195,6 +210,7 @@ export async function POST(request: NextRequest) {
             priority: ruleType === 'unavailable' ? 20 : 10,
             applies_to: appliesTo,
             reason: reason || null,
+            session_types: normalizedSessionTypes,
             is_active: true,
           })
           .select()
@@ -246,6 +262,7 @@ export async function POST(request: NextRequest) {
           priority: 30, // Date-specific rules have highest priority
           applies_to: appliesTo,
           reason: reason || null,
+          session_types: normalizedSessionTypes,
           is_active: true,
         })
         .select()
@@ -298,6 +315,7 @@ export async function PUT(request: NextRequest) {
       startTime,
       endTime,
       reason,
+      sessionTypes,
     } = body;
 
     if (!id) {
@@ -330,15 +348,23 @@ export async function PUT(request: NextRequest) {
 
     // Build update object
     const updates: any = { updated_at: new Date().toISOString() };
-    
+
     if (ruleType && ['available', 'unavailable'].includes(ruleType)) {
       updates.rule_type = ruleType;
       updates.priority = ruleType === 'unavailable' ? 20 : 10;
     }
-    
+
     if (startTime) updates.start_time = startTime;
     if (endTime) updates.end_time = endTime;
     if (reason !== undefined) updates.reason = reason || null;
+
+    // Update session types if provided
+    if (sessionTypes !== undefined) {
+      const validSessionTypes = ['coaching', 'parent_checkin', 'skill_booster', 'discovery'];
+      updates.session_types = Array.isArray(sessionTypes)
+        ? sessionTypes.filter((t: string) => validSessionTypes.includes(t))
+        : DEFAULT_SESSION_TYPES;
+    }
 
     // Validate time range if both provided
     const newStartTime = updates.start_time || existingRule.start_time;
@@ -382,27 +408,113 @@ export async function PUT(request: NextRequest) {
 }
 
 // ============================================================================
-// DELETE - Soft delete a schedule rule
+// DELETE - Delete schedule rule(s)
+// Supports: single ID (query param), batch IDs (body), delete all (body)
 // ============================================================================
 
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    const coachId = searchParams.get('coachId');
+    const idFromQuery = searchParams.get('id');
+    const coachIdFromQuery = searchParams.get('coachId');
 
-    if (!id) {
+    // Try to parse request body for batch operations
+    let body: { coachId?: string; id?: string; ids?: string[]; deleteAll?: boolean } = {};
+    try {
+      const text = await request.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch {
+      // No body or invalid JSON, proceed with query params
+    }
+
+    const coachId = coachIdFromQuery || body.coachId;
+
+    if (!coachId) {
       return NextResponse.json(
-        { success: false, error: 'Rule ID required' },
+        { success: false, error: 'Coach ID required' },
         { status: 400 }
       );
     }
 
-    // Verify rule exists
+    // Verify coach exists
+    const { data: coach, error: coachError } = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('id', coachId)
+      .single();
+
+    if (coachError || !coach) {
+      return NextResponse.json(
+        { success: false, error: 'Coach not found' },
+        { status: 404 }
+      );
+    }
+
+    // OPTION 1: Delete all rules for this coach
+    if (body.deleteAll) {
+      const { data: deletedRules, error: deleteError } = await supabase
+        .from('coach_schedule_rules')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('coach_id', coachId)
+        .eq('is_active', true)
+        .select('id');
+
+      if (deleteError) {
+        console.error('[Schedule Rules API] Batch delete error:', deleteError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to delete rules' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Deleted ${deletedRules?.length || 0} rule(s)`,
+        deleted: deletedRules?.length || 0,
+      });
+    }
+
+    // OPTION 2: Delete multiple specific rules by IDs
+    if (body.ids && Array.isArray(body.ids) && body.ids.length > 0) {
+      const { data: deletedRules, error: deleteError } = await supabase
+        .from('coach_schedule_rules')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('coach_id', coachId)
+        .in('id', body.ids)
+        .select('id');
+
+      if (deleteError) {
+        console.error('[Schedule Rules API] Batch delete error:', deleteError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to delete rules' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Deleted ${deletedRules?.length || 0} rule(s)`,
+        deleted: deletedRules?.length || 0,
+      });
+    }
+
+    // OPTION 3: Delete single rule by ID (query param or body)
+    const singleId = idFromQuery || body.id;
+
+    if (!singleId) {
+      return NextResponse.json(
+        { success: false, error: 'Rule ID required (use id, ids[], or deleteAll)' },
+        { status: 400 }
+      );
+    }
+
+    // Verify rule exists and belongs to coach
     const { data: existingRule, error: fetchError } = await supabase
       .from('coach_schedule_rules')
       .select('*')
-      .eq('id', id)
+      .eq('id', singleId)
       .single();
 
     if (fetchError || !existingRule) {
@@ -412,19 +524,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Optional: Verify ownership
-    if (coachId && existingRule.coach_id !== coachId) {
+    if (existingRule.coach_id !== coachId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }
       );
     }
 
-    // Soft delete - set is_active to false
+    // Soft delete single rule
     const { error: deleteError } = await supabase
       .from('coach_schedule_rules')
       .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', singleId);
 
     if (deleteError) {
       console.error('[Schedule Rules API] Delete error:', deleteError);
@@ -437,6 +548,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Rule deleted',
+      deleted: 1,
     });
 
   } catch (error: any) {

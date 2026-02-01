@@ -70,14 +70,40 @@ AI-powered reading intelligence platform for children aged 4-12 in India. Combin
 
 ## Critical Patterns
 
-### 1. NO HARDCODING - Everything from site_settings
+### 1. NO HARDCODING - Use Enterprise Config Loader
 ```typescript
-// WRONG
+// WRONG - hardcoded values
 const price = 5999;
+const currency = 'INR';
+const ADMIN_EMAILS = ['rucha@...'];
 
-// RIGHT
-const { data } = await supabase.from('site_settings').select('value').eq('key', 'coaching_price').single();
+// WRONG - raw Supabase query with fallback
+const { data } = await supabase.from('site_settings')...;
+const value = data?.value || 'fallback'; // NO silent fallbacks!
+
+// RIGHT - use typed config loader (fails loudly if missing)
+import { loadPaymentConfig, loadAuthConfig } from '@/lib/config/loader';
+const paymentConfig = await loadPaymentConfig();
+const authConfig = await loadAuthConfig();
 ```
+
+**Config categories:** `auth`, `coach`, `payment`, `scheduling`, `revenueSplit`, `notification`, `enrollment`, `email`, `integrations`, `pricingPlans`
+
+**Architecture:** `lib/config/types.ts` (types) + `lib/config/loader.ts` (cached loaders, 5min TTL)
+
+**Cache invalidation:** POST `/api/admin/config/invalidate` with optional `{ category }` body
+
+**Structural constants** (HTTP codes, status enums, regex, session type keys) → `lib/constants/structural.ts`
+
+**Deleted files** (do NOT recreate):
+- `lib/site-settings.ts` → use `lib/config/loader.ts`
+- `lib/utils/constants.ts` → structural moved to `lib/constants/structural.ts`, business deleted
+- `lib/settings/coach-settings.ts` → merged into `loadCoachConfig()`
+
+**Adding new config:**
+1. Add to `site_settings` table with appropriate category
+2. Add type to `lib/config/types.ts`
+3. Add loader in `lib/config/loader.ts` — NO hardcoded fallbacks, fail loudly
 
 ### 2. Mobile-First Design
 80%+ users are on mobile. Always test responsive layouts.

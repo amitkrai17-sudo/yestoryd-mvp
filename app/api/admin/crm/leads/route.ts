@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { capitalizeName } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,12 +106,16 @@ export async function GET(request: NextRequest) {
       const isCoachLead = lead.lead_source === 'coach' && lead.lead_source_coach;
       return {
         ...lead,
-        source_display: isCoachLead ? `👤 ${lead.lead_source_coach.name}` : '🟢 Yestoryd',
+        // Capitalize all names for consistent display
+        name: capitalizeName(lead.name),
+        child_name: capitalizeName(lead.child_name),
+        parent_name: capitalizeName(lead.parent_name),
+        source_display: isCoachLead ? `👤 ${capitalizeName(lead.lead_source_coach.name)}` : '🟢 Yestoryd',
         source_type: isCoachLead ? 'coach' : 'yestoryd',
-        referrer_name: lead.lead_source_coach?.name || null,
+        referrer_name: lead.lead_source_coach?.name ? capitalizeName(lead.lead_source_coach.name) : null,
         referrer_email: lead.lead_source_coach?.email || null,
         referrer_code: lead.lead_source_coach?.referral_code || null,
-        assigned_coach_name: lead.assigned_coach?.name || null,
+        assigned_coach_name: lead.assigned_coach?.name ? capitalizeName(lead.assigned_coach.name) : null,
       };
     });
 

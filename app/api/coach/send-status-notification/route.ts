@@ -1,17 +1,21 @@
 // file: app/api/coach/send-status-notification/route.ts
 // Sends Email + WhatsApp notification when coach status changes
 // Handles: approved, rejected, hold, qualified
+// SECURITY: requireAdmin() - only admins can trigger status notifications
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    const supabase = getServiceSupabase();
+
     const { coachId, coachEmail, coachName, coachPhone, status, interviewLink } = await request.json();
 
     if (!coachId || !coachEmail || !coachName || !status) {
@@ -21,9 +25,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const onboardingLink = `https://yestoryd.com/coach/onboarding?coachId=${coachId}`;
-    const websiteLink = 'https://yestoryd.com';
-    const reapplyLink = 'https://yestoryd.com/yestoryd-academy/apply';
+    const [coachConfig, integrationsConfig, emailConfig] = await Promise.all([
+      loadCoachConfig(), loadIntegrationsConfig(), loadEmailConfig(),
+    ]);
+    const settings = { siteBaseUrl: integrationsConfig.siteBaseUrl, adminEmail: emailConfig.fromEmail };
+    const onboardingLink = `${settings.siteBaseUrl}/coach/onboarding?coachId=${coachId}`;
+    const websiteLink = settings.siteBaseUrl;
+    const reapplyLink = `${settings.siteBaseUrl}/yestoryd-academy/apply`;
     
     let emailSubject = '';
     let emailHtml = '';
@@ -414,8 +422,8 @@ Excited to meet you!
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: coachEmail, name: coachName }] }],
-          from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
-          reply_to: { email: 'engage@yestoryd.com', name: 'Yestoryd Team' },
+          from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
+          reply_to: { email: settings.adminEmail, name: 'Yestoryd Team' },
           subject: emailSubject,
           content: [{ type: 'text/html', value: emailHtml }],
         }),

@@ -4,6 +4,8 @@ import type { Metadata, Viewport } from 'next';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import TrackingPixels from '@/components/TrackingPixels';
 import PWAProvider from '@/components/shared/pwa/PWAProvider';
+import { SiteSettingsProvider } from '@/contexts/SiteSettingsContext';
+import { getSessionDurations } from '@/lib/settings/getSettings';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -66,11 +68,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Fetch session durations server-side for SSR hydration
+  const sessionDurations = await getSessionDurations();
+
   return (
     <html lang="en" className={`${jakarta.variable} ${inter.variable} ${lexend.variable}`}>
       <head>
@@ -79,9 +84,11 @@ export default function RootLayout({
       <body className="font-body bg-surface-0 text-white antialiased">
         <GoogleAnalytics />
         <TrackingPixels />
-        <PWAProvider>
-          {children}
-        </PWAProvider>
+        <SiteSettingsProvider initialDurations={sessionDurations}>
+          <PWAProvider>
+            {children}
+          </PWAProvider>
+        </SiteSettingsProvider>
       </body>
     </html>
   );

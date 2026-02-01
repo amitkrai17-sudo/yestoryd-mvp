@@ -11,16 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
-
-// ==================== CONFIGURATION ====================
-
-const ADMIN_EMAILS = [
-  'rucha.rai@yestoryd.com',
-  'rucha@yestoryd.com',
-  'amitkrai17@gmail.com',
-  'amitkrai17@yestoryd.com',
-  'engage@yestoryd.com',
-];
+import { loadAuthConfig } from '@/lib/config/loader';
 
 // ==================== TYPES ====================
 
@@ -112,7 +103,8 @@ export async function requireAdmin(): Promise<AuthResult> {
     return { authorized: false, error: 'Invalid session - no email' };
   }
 
-  if (!ADMIN_EMAILS.includes(email)) {
+  const authConfig = await loadAuthConfig();
+  if (!authConfig.adminEmails.includes(email)) {
     console.warn(JSON.stringify({
       event: 'admin_access_denied',
       email,
@@ -170,7 +162,8 @@ export async function requireAdminOrCoach(): Promise<AuthResult> {
   }
 
   // Check admin first - but also get coachId if they're a coach too
-    if (ADMIN_EMAILS.includes(email)) {
+    const authConfig = await loadAuthConfig();
+    if (authConfig.adminEmails.includes(email)) {
       const supabase = getServiceSupabase();
       const { data: coach } = await supabase
         .from('coaches')
@@ -215,16 +208,18 @@ export async function requireAuth(): Promise<AuthResult> {
 /**
  * Check if email is admin
  */
-export function isAdminEmail(email: string | null | undefined): boolean {
+export async function isAdminEmail(email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  const authConfig = await loadAuthConfig();
+  return authConfig.adminEmails.includes(email.toLowerCase());
 }
 
 /**
  * Get admin emails list
  */
-export function getAdminEmails(): readonly string[] {
-  return ADMIN_EMAILS;
+export async function getAdminEmails(): Promise<readonly string[]> {
+  const authConfig = await loadAuthConfig();
+  return authConfig.adminEmails;
 }
 
 /**
@@ -248,7 +243,8 @@ export async function getOptionalAuth(): Promise<{
   const email = user.email?.toLowerCase();
   
   // Check if admin
-  if (email && ADMIN_EMAILS.includes(email)) {
+  const authConfig = await loadAuthConfig();
+  if (email && authConfig.adminEmails.includes(email)) {
     return { email, userId: user.id, role: 'admin' };
   }
 

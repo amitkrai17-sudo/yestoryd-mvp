@@ -53,7 +53,7 @@ export function HeaderNav({
             <Link
               href="/assessment"
               onClick={onCTAClick}
-              className="h-11 inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 rounded-full font-bold hover:bg-[#e6008a] hover:shadow-lg hover:shadow-[#ff0099]/20 hover:-translate-y-0.5 transition-all duration-200 text-sm"
+              className="min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#FF0099]/90 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#FF0099]/25 transition-all text-sm"
             >
               Reading Test - Free
             </Link>
@@ -78,7 +78,7 @@ export function HeaderNav({
             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-white font-semibold py-2">Pricing</a>
             <hr className="border-border-subtle" />
             <Link href="/parent/login" onClick={() => setMobileMenuOpen(false)} className="block text-text-secondary py-2">Parent Login</Link>
-            <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); onCTAClick(); }} className="h-12 flex items-center justify-center gap-2 bg-[#FF0099] text-white rounded-full font-bold w-full mt-4 hover:bg-[#e6008a]">
+            <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); onCTAClick(); }} className="min-h-[44px] flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold w-full mt-4 hover:bg-[#FF0099]/90 transition-all">
               Reading Test - Free
             </Link>
           </div>

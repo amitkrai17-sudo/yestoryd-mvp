@@ -1,7 +1,9 @@
 import { google } from 'googleapis';
 
 // Initialize Google Calendar API
-const getCalendarClient = () => {
+// Pass impersonateEmail to create events on a specific user's calendar (e.g., coach as organizer)
+// Defaults to GOOGLE_CALENDAR_DELEGATED_USER (engage@yestoryd.com) for discovery calls etc.
+const getCalendarClient = (impersonateEmail?: string) => {
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -9,7 +11,7 @@ const getCalendarClient = () => {
     },
     scopes: ['https://www.googleapis.com/auth/calendar'],
     clientOptions: {
-      subject: process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com',
+      subject: impersonateEmail || process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com',
     },
   });
 
@@ -18,6 +20,9 @@ const getCalendarClient = () => {
 
 // Email to impersonate (must have domain-wide delegation)
 const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || 'engage@yestoryd.com';
+
+// For coaching sessions, fall back to DEFAULT_COACH_EMAIL (not engage@) so a coach is always organizer
+const DEFAULT_COACH_ORGANIZER = process.env.DEFAULT_COACH_EMAIL || CALENDAR_EMAIL;
 
 // Constants
 export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -117,11 +122,13 @@ export interface DiscoveryBookingResult {
 // =============================================================================
 
 // Schedule a single calendar event
+// Pass organizerEmail to create on a coach's calendar (coach becomes organizer)
 export async function scheduleCalendarEvent(
-  session: SessionDetails
+  session: SessionDetails,
+  organizerEmail?: string
 ): Promise<{ eventId: string; meetLink: string }> {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(organizerEmail);
 
     const event = {
       summary: session.title,
@@ -151,7 +158,7 @@ export async function scheduleCalendarEvent(
     };
 
     const response = await calendar.events.insert({
-      calendarId: CALENDAR_EMAIL,
+      calendarId: organizerEmail || CALENDAR_EMAIL,
       requestBody: event,
       conferenceDataVersion: 1,
       sendUpdates: 'all',
@@ -221,9 +228,9 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
           description: `Yestoryd Reading Session for ${childName}\n\nType: ${schedule.type}\nCoach will join via Google Meet.`,
           startTime: sessionDate,
           endTime: endTime,
-          attendees: [parentEmail, coachEmail, CALENDAR_EMAIL].filter(Boolean),
+          attendees: [parentEmail, CALENDAR_EMAIL].filter(Boolean), // Coach is organizer (implicit attendee)
           sessionType: schedule.type as 'coaching' | 'parent_checkin',
-        });
+        }, coachEmail || DEFAULT_COACH_ORGANIZER); // Coach as organizer, fallback to default coach
 
         sessions.push({
           // For enrollment/complete route
@@ -333,16 +340,17 @@ export async function getAvailableSlots(
 export async function rescheduleEvent(
   eventId: string,
   newDateTime: Date,
-  durationMinutes: number = 45
+  durationMinutes: number = 45,
+  organizerEmail?: string
 ): Promise<{ success: boolean; error?: string; meetLink?: string }> {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(organizerEmail);
 
     const newEndTime = new Date(newDateTime);
     newEndTime.setMinutes(newEndTime.getMinutes() + durationMinutes);
 
     const response = await calendar.events.patch({
-      calendarId: CALENDAR_EMAIL,
+      calendarId: organizerEmail || CALENDAR_EMAIL,
       eventId: eventId,
       requestBody: {
         start: {
@@ -373,14 +381,15 @@ export async function rescheduleEvent(
 // Cancel an event
 // Route calls: cancelEvent(eventId, true)
 export async function cancelEvent(
-  eventId: string, 
-  sendNotifications: boolean = true
+  eventId: string,
+  sendNotifications: boolean = true,
+  organizerEmail?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(organizerEmail);
 
     await calendar.events.delete({
-      calendarId: CALENDAR_EMAIL,
+      calendarId: organizerEmail || CALENDAR_EMAIL,
       eventId: eventId,
       sendUpdates: sendNotifications ? 'all' : 'none',
     });
@@ -406,12 +415,12 @@ export async function cancelEvent(
  * @param eventId - Google Calendar event ID
  * @returns true if deleted successfully, false otherwise
  */
-export async function deleteCalendarEvent(eventId: string): Promise<boolean> {
+export async function deleteCalendarEvent(eventId: string, organizerEmail?: string): Promise<boolean> {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(organizerEmail);
 
     await calendar.events.delete({
-      calendarId: CALENDAR_EMAIL,
+      calendarId: organizerEmail || CALENDAR_EMAIL,
       eventId: eventId,
       sendUpdates: 'none', // Silent delete - no notifications to attendees
     });
@@ -431,12 +440,12 @@ export async function deleteCalendarEvent(eventId: string): Promise<boolean> {
 }
 
 // Get event details
-export async function getEventDetails(eventId: string) {
+export async function getEventDetails(eventId: string, organizerEmail?: string) {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(organizerEmail);
 
     const response = await calendar.events.get({
-      calendarId: CALENDAR_EMAIL,
+      calendarId: organizerEmail || CALENDAR_EMAIL,
       eventId: eventId,
     });
 
@@ -675,14 +684,16 @@ export async function updateEventAttendees(
   options: {
     addAttendees?: string[];
     removeAttendees?: string[];
+    organizerEmail?: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const calendar = getCalendarClient();
+    const calendarId = options.organizerEmail || CALENDAR_EMAIL;
+    const calendar = getCalendarClient(options.organizerEmail);
 
     // 1. Get current event
     const { data: event } = await calendar.events.get({
-      calendarId: CALENDAR_EMAIL,
+      calendarId,
       eventId: eventId,
     });
 
@@ -711,7 +722,7 @@ export async function updateEventAttendees(
 
     // 3. Update the event
     await calendar.events.patch({
-      calendarId: CALENDAR_EMAIL,
+      calendarId,
       eventId: eventId,
       sendUpdates: 'all', // Notify all attendees of the change
       requestBody: {

@@ -2,22 +2,16 @@
 // Schedule interview with Google Calendar, Meet link, and tl;dv
 
 import { google } from 'googleapis';
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Google Calendar setup (same as enrollment scheduling)
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
 const DELEGATED_USER = process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com';
-const TLDV_EMAIL = 'engage@yestoryd.com'; // tl;dv bot joins via this email
-const INTERVIEWER_EMAIL = 'rucha.rai@yestoryd.com'; // Primary interviewer
 
 async function getGoogleCalendarClient() {
   const auth = new google.auth.GoogleAuth({
@@ -37,10 +31,26 @@ async function getGoogleCalendarClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      applicationId, 
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    const supabase = getServiceSupabase();
+    const [coachConfig, integrationsConfig, emailConfig] = await Promise.all([
+      loadCoachConfig(), loadIntegrationsConfig(), loadEmailConfig(),
+    ]);
+    const settings = {
+      interviewDurationMinutes: coachConfig.interviewDurationMinutes,
+      ruchaEmail: coachConfig.defaultCoachEmail,
+      adminEmail: emailConfig.fromEmail,
+      siteBaseUrl: integrationsConfig.siteBaseUrl,
+    };
+
+    const {
+      applicationId,
       scheduledDateTime, // ISO string
-      duration = 20, // minutes
+      duration = settings.interviewDurationMinutes,
       notes = ''
     } = await request.json();
 
@@ -95,8 +105,8 @@ This meeting is being recorded by tl;dv for review purposes.
       },
       attendees: [
         { email: application.email, displayName: application.name }, // Applicant
-        { email: INTERVIEWER_EMAIL, displayName: 'Rucha Rai' }, // Interviewer
-        { email: TLDV_EMAIL, displayName: 'Yestoryd (Recording)' }, // tl;dv bot
+        { email: settings.ruchaEmail, displayName: 'Rucha Rai' }, // Interviewer
+        { email: settings.adminEmail, displayName: 'Yestoryd (Recording)' }, // tl;dv bot
       ],
       conferenceData: {
         createRequest: {
@@ -144,7 +154,7 @@ This meeting is being recorded by tl;dv for review purposes.
     try {
       await sgMail.send({
         to: application.email,
-        from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
+        from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: '📅 Interview Scheduled - Yestoryd Academy',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -211,8 +221,8 @@ This meeting is being recorded by tl;dv for review purposes.
     // Send notification to interviewer
     try {
       await sgMail.send({
-        to: INTERVIEWER_EMAIL,
-        from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
+        to: settings.ruchaEmail,
+        from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: `📅 Coach Interview: ${application.name} - ${startTime.toLocaleDateString('en-IN')}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -232,7 +242,7 @@ This meeting is being recorded by tl;dv for review purposes.
             </a>
             
             <p style="margin-top: 20px;">
-              <a href="https://yestoryd.com/admin/coach-applications">View Application Details →</a>
+              <a href="${settings.siteBaseUrl}/admin/coach-applications">View Application Details →</a>
             </p>
           </div>
         `

@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "quality": "npm run typecheck && npm run lint"
+    "quality": "npm run typecheck && npm run lint",
+    "test": "jest",
+    "test:scheduling": "jest __tests__/scheduling"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.45",
@@ -52,6 +54,7 @@
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -59,9 +62,11 @@
     "autoprefixer": "^10.4.18",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.0",
+    "jest": "^30.2.0",
     "postcss": "^8.4.35",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.1",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.4.0"
   }
 }

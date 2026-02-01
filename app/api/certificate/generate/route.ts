@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { capitalizeName } from '@/lib/utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,8 +65,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const childName = (enrollment.children as any)?.name || (enrollment.children as any)?.child_name || 'Student';
-    const coachName = (enrollment.coaches as any)?.name || 'Coach';
+    const childName = capitalizeName((enrollment.children as any)?.name || (enrollment.children as any)?.child_name || 'Student');
+    const coachName = capitalizeName((enrollment.coaches as any)?.name || 'Coach');
     const certificateNumber = enrollment.certificate_number || `YC-${new Date().getFullYear()}-00001`;
     const completedDate = enrollment.completed_at 
       ? new Date(enrollment.completed_at).toLocaleDateString('en-IN', { 

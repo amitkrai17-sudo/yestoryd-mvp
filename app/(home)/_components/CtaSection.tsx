@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, MessageCircle, Shield, Clock, TrendingUp } from 'lucide-react';
+import { ArrowRight, Shield, Clock, TrendingUp } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 
 interface CtaSectionProps {
   titleLine1: string;
@@ -51,7 +52,7 @@ export function CtaSection({
           <Link
             href="/assessment"
             onClick={onCTAClick}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-[#e6008a] px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors shadow-xl"
+            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-white text-[#e6008a] px-6 py-3 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all hover:scale-[1.02] shadow-xl"
           >
             Reading Test - Free
             <ArrowRight className="w-5 h-5" />
@@ -60,25 +61,25 @@ export function CtaSection({
             href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#25d366] text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-[#20bd5a] transition-colors"
+            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#25d366] text-white px-6 py-3 rounded-xl font-bold text-lg hover:bg-[#20bd5a] transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-[#25d366]/25"
           >
-            <MessageCircle className="w-5 h-5" />
+            <WhatsAppIcon className="w-5 h-5" />
             {whatsappButtonText}
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-white/60 text-sm">
-          <span className="flex items-center gap-2">
-            <Shield className="w-4 h-4" />
+        <div className="flex items-center justify-center gap-3 sm:gap-6 mt-10 text-white/60 text-xs sm:text-sm">
+          <span className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
+            <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
             100% Free
           </span>
-          <span className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            5 Minutes Only
+          <span className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
+            <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+            5 Min
           </span>
-          <span className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Instant Results
+          <span className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
+            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
+            Instant
           </span>
         </div>
 

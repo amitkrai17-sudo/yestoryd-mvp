@@ -60,14 +60,22 @@ const JSON_FIELDS = new Set([
 
 /**
  * Parse a value, attempting JSON parse for known JSON fields
+ * Handles both string (text column) and object (JSONB column) values
  */
-function parseValue(key: string, value: string): unknown {
+function parseValue(key: string, value: unknown): unknown {
   if (JSON_FIELDS.has(key)) {
-    try {
-      return JSON.parse(value);
-    } catch {
-      console.warn(`[getSettings] Failed to parse JSON for key: ${key}`);
+    // If already an object/array, return as-is (Supabase JSONB returns parsed)
+    if (typeof value === 'object' && value !== null) {
       return value;
+    }
+    // If string, try to parse as JSON
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        console.warn(`[getSettings] Failed to parse JSON for key: ${key}`);
+        return value;
+      }
     }
   }
   return value;
@@ -338,4 +346,50 @@ export async function getAssessmentSettings(): Promise<Partial<AssessmentSetting
     acc[row.key as keyof AssessmentSettings] = parseValue(row.key, row.value) as any;
     return acc;
   }, {} as Partial<AssessmentSettings>);
+}
+
+// =============================================================================
+// SESSION DURATIONS
+// =============================================================================
+
+export interface SessionDurations {
+  coaching: number;
+  skillBuilding: number;
+  checkin: number;
+  discovery: number;
+}
+
+/**
+ * Fetch session durations from site_settings
+ * Single source of truth for all session duration values
+ */
+export async function getSessionDurations(): Promise<SessionDurations> {
+  const defaults: SessionDurations = {
+    coaching: 45,
+    skillBuilding: 45,
+    checkin: 45,
+    discovery: 45,
+  };
+
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('key, value')
+    .in('key', [
+      'session_coaching_duration_mins',
+      'session_skill_building_duration_mins',
+      'session_checkin_duration_mins',
+      'session_discovery_duration_mins',
+    ]);
+
+  if (error || !data) {
+    console.warn('[getSettings] Failed to fetch session durations, using defaults');
+    return defaults;
+  }
+
+  return {
+    coaching: parseInt(data.find(d => d.key === 'session_coaching_duration_mins')?.value || '45'),
+    skillBuilding: parseInt(data.find(d => d.key === 'session_skill_building_duration_mins')?.value || '45'),
+    checkin: parseInt(data.find(d => d.key === 'session_checkin_duration_mins')?.value || '45'),
+    discovery: parseInt(data.find(d => d.key === 'session_discovery_duration_mins')?.value || '45'),
+  };
 }

@@ -38,12 +38,12 @@ const createSessionSchema = z.object({
 });
 
 // --- GOOGLE CALENDAR SETUP ---
-function getCalendarClient(): calendar_v3.Calendar | null {
+function getCalendarClient(impersonateEmail?: string): calendar_v3.Calendar | null {
   const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  const delegatedUser = process.env.GOOGLE_CALENDAR_DELEGATED_USER;
+  const subject = impersonateEmail || process.env.GOOGLE_CALENDAR_DELEGATED_USER;
 
-  if (!serviceEmail || !privateKey || !delegatedUser) {
+  if (!serviceEmail || !privateKey || !subject) {
     console.log('Google Calendar not configured');
     return null;
   }
@@ -52,7 +52,7 @@ function getCalendarClient(): calendar_v3.Calendar | null {
     const auth = new google.auth.GoogleAuth({
       credentials: { client_email: serviceEmail, private_key: privateKey },
       scopes: ['https://www.googleapis.com/auth/calendar'],
-      clientOptions: { subject: delegatedUser },
+      clientOptions: { subject },
     });
     return google.calendar({ version: 'v3', auth });
   } catch (error) {
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get instructor
-    let instructorEmail = process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com';
+    let instructorEmail: string | null = null;
     let instructorName = 'Yestoryd Team';
     if (sessionData.instructorId) {
       const { data: instructor } = await supabase
@@ -214,6 +214,8 @@ export async function POST(request: NextRequest) {
         instructorName = instructor.name;
       }
     }
+    // Fallback to engage@ if no instructor assigned
+    const calendarOrganizerEmail = instructorEmail || (process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com');
 
     // Build datetime (IST)
     const sessionDateTime = new Date(`${sessionData.scheduledDate}T${sessionData.scheduledTime}:00+05:30`);
@@ -225,14 +227,14 @@ export async function POST(request: NextRequest) {
     let googleMeetLink = null;
     let googleEventId = null;
 
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(calendarOrganizerEmail);
     if (calendar) {
       try {
         const eventDescription = `📚 ${classType.name} - Group Class
 
 ${sessionData.description || classType.description || ''}
 
-👨‍🏫 Instructor: ${instructorName} (${instructorEmail})
+👨‍🏫 Instructor: ${instructorName} (${calendarOrganizerEmail})
 ⏱️ Duration: ${durationMins} minutes
 👧 Ages: ${sessionData.ageMin ?? classType.age_min}-${sessionData.ageMax ?? classType.age_max} years
 💰 Price: ₹${sessionData.priceInr ?? classType.price_inr}
@@ -241,10 +243,15 @@ ${sessionData.description || classType.description || ''}
 
 WhatsApp: +91 89762 87997`;
 
-        const calendarId = process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'primary';
+        // Build attendees: engage@ for Recall.ai tracking (organizer is implicit attendee)
+        const attendees: { email: string; displayName: string }[] = [
+          { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
+        ];
+        // If no instructor assigned, organizer is engage@ so no need to add it again
+        // If instructor assigned, engage@ is added above as attendee for tracking
 
         const event = await calendar.events.insert({
-          calendarId,
+          calendarId: calendarOrganizerEmail, // Organizer's calendar
           conferenceDataVersion: 1,
           sendUpdates: 'all',
           requestBody: {
@@ -252,7 +259,7 @@ WhatsApp: +91 89762 87997`;
             description: eventDescription,
             start: { dateTime: sessionDateTime.toISOString(), timeZone: 'Asia/Kolkata' },
             end: { dateTime: sessionEndTime.toISOString(), timeZone: 'Asia/Kolkata' },
-            attendees: [{ email: instructorEmail, displayName: instructorName }],
+            attendees,
             conferenceData: {
               createRequest: { requestId: `yestoryd-gc-${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } },
             },

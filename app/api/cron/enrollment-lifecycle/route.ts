@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
+import { queueEnrollmentComplete } from '@/lib/qstash';
 import crypto from 'crypto';
 
 export const runtime = 'nodejs';
@@ -122,7 +123,9 @@ export async function GET(request: NextRequest) {
     
     const { data: delayedEnrollments, error: delayedError } = await supabase
       .from('enrollments')
-      .select('id, requested_start_date')
+      .select(`id, requested_start_date, child_id, parent_id, coach_id,
+        children (id, name, child_name, parent_email, parent_phone, parent_name),
+        coaches!coach_id (id, name, email)`)
       .eq('status', 'pending_start')
       .lte('requested_start_date', todayStr);
 
@@ -143,12 +146,42 @@ export async function GET(request: NextRequest) {
           await supabase.from('enrollment_events').insert({
             enrollment_id: enrollment.id,
             event_type: 'started',
-            event_data: { 
+            event_data: {
               triggered_by: 'cron',
               request_id: requestId,
               requested_start_date: enrollment.requested_start_date,
             },
           });
+
+          // Queue session scheduling via enrollment-complete job
+          try {
+            const child = (enrollment as any).children;
+            const coach = (enrollment as any).coaches;
+            await queueEnrollmentComplete({
+              enrollmentId: enrollment.id,
+              childId: (enrollment as any).child_id || child?.id || '',
+              childName: child?.child_name || child?.name || 'Child',
+              parentId: (enrollment as any).parent_id || '',
+              parentEmail: child?.parent_email || '',
+              parentName: child?.parent_name || '',
+              parentPhone: child?.parent_phone || undefined,
+              coachId: (enrollment as any).coach_id || coach?.id || '',
+              coachEmail: coach?.email || '',
+              coachName: coach?.name || '',
+            });
+            console.log(JSON.stringify({
+              requestId,
+              event: 'enrollment_complete_queued',
+              enrollmentId: enrollment.id,
+            }));
+          } catch (queueError: any) {
+            console.error(JSON.stringify({
+              requestId,
+              event: 'enrollment_complete_queue_failed',
+              enrollmentId: enrollment.id,
+              error: queueError.message,
+            }));
+          }
 
           results.delayedStarts.processed++;
         } catch (e: any) {

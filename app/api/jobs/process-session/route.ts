@@ -446,9 +446,16 @@ async function saveSessionData(
     }));
   }
 
-  // 4. Increment sessions completed
+  // 4. Increment sessions completed + reset consecutive no-shows
   if (childId) {
     await supabase.rpc('increment_sessions_completed', { child_id_param: childId });
+
+    // Reset consecutive no-shows on session completion
+    await supabase
+      .from('enrollments')
+      .update({ consecutive_no_shows: 0, updated_at: new Date().toISOString() })
+      .eq('child_id', childId)
+      .eq('status', 'active');
   }
 }
 

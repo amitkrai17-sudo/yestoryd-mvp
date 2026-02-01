@@ -165,109 +165,109 @@ function SessionIntelligenceCard() {
   return (
     <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
       {/* Header */}
-      <div className="p-6 border-b border-border/50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
+      <div className="p-3 sm:p-4 lg:p-6 border-b border-border/50">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+              <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Session Intelligence</h2>
-              <p className="text-sm text-text-tertiary">{data.period}</p>
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-white truncate">Session Intelligence</h2>
+              <p className="text-xs text-text-tertiary">{data.period}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <select
               value={daysBack}
               onChange={(e) => setDaysBack(parseInt(e.target.value))}
-              className="text-sm border border-border rounded-lg px-3 py-1.5 bg-surface-1 text-white"
+              className="text-xs sm:text-sm border border-border rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 bg-surface-1 text-white"
             >
-              <option value={7}>Last 7 days</option>
-              <option value={30}>Last 30 days</option>
-              <option value={90}>Last 90 days</option>
+              <option value={7}>7 days</option>
+              <option value={30}>30 days</option>
+              <option value={90}>90 days</option>
             </select>
             <button
               onClick={fetchStats}
-              className="p-2 hover:bg-surface-2 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 hover:bg-surface-2 rounded-lg transition-colors"
               title="Refresh"
             >
-              <RefreshCw className="w-4 h-4 text-text-tertiary" />
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-text-tertiary" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Stats Grid */}
-      <div className="p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="p-3 sm:p-4 lg:p-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
           {/* Completion Rate */}
-          <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/30">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-medium text-emerald-400">Completion Rate</span>
+          <div className="bg-emerald-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-emerald-500/30">
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-400">Completion</span>
             </div>
-            <p className="text-3xl font-bold text-emerald-400">{stats.completionRate}%</p>
-            <p className="text-xs text-emerald-400/70 mt-1">{stats.completed} of {stats.total - stats.scheduled} sessions</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-emerald-400">{stats.completionRate}%</p>
+            <p className="text-[10px] sm:text-xs text-emerald-400/70 mt-0.5">{stats.completed}/{stats.total - stats.scheduled}</p>
           </div>
 
           {/* Completed */}
-          <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/30">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-4 h-4 text-blue-400" />
-              <span className="text-xs font-medium text-blue-400">Completed</span>
+          <div className="bg-blue-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-blue-500/30">
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+              <span className="text-[10px] sm:text-xs font-medium text-blue-400">Completed</span>
             </div>
-            <p className="text-3xl font-bold text-blue-400">{stats.completed}</p>
-            <p className="text-xs text-blue-400/70 mt-1">Avg {stats.avgDuration} min</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{stats.completed}</p>
+            <p className="text-[10px] sm:text-xs text-blue-400/70 mt-0.5">Avg {stats.avgDuration} min</p>
           </div>
 
           {/* No-Shows */}
-          <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/30">
-            <div className="flex items-center gap-2 mb-2">
-              <UserX className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-medium text-amber-400">No-Shows</span>
+          <div className="bg-amber-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-amber-500/30">
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <UserX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+              <span className="text-[10px] sm:text-xs font-medium text-amber-400">No-Shows</span>
             </div>
-            <p className="text-3xl font-bold text-amber-400">{stats.noShows}</p>
-            <p className="text-xs text-amber-400/70 mt-1">Child/parent missing</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-400">{stats.noShows}</p>
+            <p className="text-[10px] sm:text-xs text-amber-400/70 mt-0.5">Child/parent</p>
           </div>
 
           {/* Coach No-Shows */}
-          <div className={`rounded-xl p-4 border ${
+          <div className={`rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border ${
             stats.coachNoShows > 0
               ? 'bg-red-500/10 border-red-500/30'
               : 'bg-surface-2 border-border'
           }`}>
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className={`w-4 h-4 ${stats.coachNoShows > 0 ? 'text-red-400' : 'text-text-tertiary'}`} />
-              <span className={`text-xs font-medium ${stats.coachNoShows > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
-                Coach No-Shows
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <AlertTriangle className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${stats.coachNoShows > 0 ? 'text-red-400' : 'text-text-tertiary'}`} />
+              <span className={`text-[10px] sm:text-xs font-medium ${stats.coachNoShows > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
+                Coach No-Show
               </span>
             </div>
-            <p className={`text-3xl font-bold ${stats.coachNoShows > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
+            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${stats.coachNoShows > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
               {stats.coachNoShows}
             </p>
-            <p className={`text-xs mt-1 ${stats.coachNoShows > 0 ? 'text-red-400/70' : 'text-text-tertiary'}`}>
+            <p className={`text-[10px] sm:text-xs mt-0.5 ${stats.coachNoShows > 0 ? 'text-red-400/70' : 'text-text-tertiary'}`}>
               {stats.coachNoShows > 0 ? 'Needs attention' : 'All good'}
             </p>
           </div>
         </div>
 
         {/* Secondary Stats Row */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          <div className="bg-surface-2 rounded-lg p-3 text-center">
-            <p className="text-lg font-semibold text-white">{stats.scheduled}</p>
-            <p className="text-xs text-text-tertiary">Upcoming</p>
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 lg:gap-3 mb-4 sm:mb-6">
+          <div className="bg-surface-2 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-sm sm:text-base lg:text-lg font-semibold text-white">{stats.scheduled}</p>
+            <p className="text-[10px] sm:text-xs text-text-tertiary">Upcoming</p>
           </div>
-          <div className="bg-surface-2 rounded-lg p-3 text-center">
-            <p className="text-lg font-semibold text-white">{stats.partial}</p>
-            <p className="text-xs text-text-tertiary">Partial</p>
+          <div className="bg-surface-2 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-sm sm:text-base lg:text-lg font-semibold text-white">{stats.partial}</p>
+            <p className="text-[10px] sm:text-xs text-text-tertiary">Partial</p>
           </div>
-          <div className="bg-surface-2 rounded-lg p-3 text-center">
-            <p className="text-lg font-semibold text-white">{stats.botErrors}</p>
-            <p className="text-xs text-text-tertiary">Bot Errors</p>
+          <div className="bg-surface-2 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-sm sm:text-base lg:text-lg font-semibold text-white">{stats.botErrors}</p>
+            <p className="text-[10px] sm:text-xs text-text-tertiary">Bot Errors</p>
           </div>
-          <div className="bg-surface-2 rounded-lg p-3 text-center">
-            <p className="text-lg font-semibold text-white">{stats.flagged}</p>
-            <p className="text-xs text-text-tertiary">Flagged</p>
+          <div className="bg-surface-2 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-sm sm:text-base lg:text-lg font-semibold text-white">{stats.flagged}</p>
+            <p className="text-[10px] sm:text-xs text-text-tertiary">Flagged</p>
           </div>
         </div>
 
@@ -440,16 +440,16 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div className="bg-surface-0">
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
-        <div className="px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-              <p className="text-text-tertiary mt-1">Welcome back! Here's what's happening.</p>
+        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">Dashboard</h1>
+              <p className="text-xs sm:text-sm text-text-tertiary mt-0.5 sm:mt-1">Welcome back! Here&apos;s what&apos;s happening.</p>
             </div>
-            <div className="flex items-center gap-2 text-sm text-text-tertiary">
+            <div className="hidden sm:flex items-center gap-2 text-sm text-text-tertiary flex-shrink-0">
               <Clock className="w-4 h-4" />
               {new Date().toLocaleDateString('en-IN', {
                 weekday: 'long',
@@ -462,9 +462,9 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="px-6 lg:px-8 py-8">
+      <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
           {statCards.map((stat, index) => {
             const colorClasses: Record<string, string> = {
               blue: 'bg-blue-500/20 text-blue-400',
@@ -476,48 +476,44 @@ export default function AdminDashboardPage() {
             return (
               <div
                 key={index}
-                className="bg-surface-1 rounded-2xl border border-border p-6 hover:shadow-lg hover:border-border transition-all"
+                className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border p-3 sm:p-4 lg:p-6 hover:shadow-lg hover:border-border transition-all"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colorClasses[stat.color]}`}>
-                    <stat.icon className="w-6 h-6" />
+                <div className="flex items-start justify-between mb-2 sm:mb-4">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center ${colorClasses[stat.color]}`}>
+                    <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                   </div>
-                  <div className={`flex items-center gap-1 text-sm font-medium ${
+                  <div className={`flex items-center gap-0.5 text-xs sm:text-sm font-medium ${
                     stat.trendUp ? 'text-emerald-400' : 'text-red-400'
                   }`}>
                     {stat.trendUp ? (
-                      <ArrowUpRight className="w-4 h-4" />
+                      <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
                     ) : (
-                      <ArrowDownRight className="w-4 h-4" />
+                      <ArrowDownRight className="w-3 h-3 sm:w-4 sm:h-4" />
                     )}
                     {stat.trend}
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-white mb-1">
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-0.5 sm:mb-1">
                   {loading ? '...' : stat.value}
                 </p>
-                <p className="text-sm text-text-tertiary">{stat.label}</p>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-text-tertiary">{stat.label}</p>
               </div>
             );
           })}
         </div>
 
-        {/* ============================================================ */}
-        {/* SESSION INTELLIGENCE CARD - NEW! */}
-        {/* ============================================================ */}
-        <div className="mb-8">
-          <SessionIntelligenceCard />
-        </div>
+        {/* SESSION INTELLIGENCE CARD */}
+        <SessionIntelligenceCard />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Quick Actions */}
           <div className="lg:col-span-1">
             <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
-              <div className="p-6 border-b border-border/50">
-                <h2 className="text-lg font-semibold text-white">Quick Actions</h2>
-                <p className="text-sm text-text-tertiary mt-1">Common tasks</p>
+              <div className="p-3 sm:p-4 lg:p-6 border-b border-border/50">
+                <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-white">Quick Actions</h2>
+                <p className="text-xs text-text-tertiary mt-0.5">Common tasks</p>
               </div>
-              <div className="p-4 space-y-2">
+              <div className="p-2 sm:p-3 lg:p-4 space-y-1 sm:space-y-2">
                 {quickActions.map((action, index) => {
                   const colorClasses: Record<string, string> = {
                     blue: 'bg-blue-500/20 text-blue-400 group-hover:bg-blue-600 group-hover:text-white',
@@ -530,15 +526,15 @@ export default function AdminDashboardPage() {
                     <Link
                       key={index}
                       href={action.href}
-                      className="group flex items-center gap-4 p-4 rounded-xl hover:bg-surface-2 transition-all"
+                      className="group flex items-center gap-2.5 sm:gap-3 lg:gap-4 p-2.5 sm:p-3 lg:p-4 rounded-lg sm:rounded-xl hover:bg-surface-2 transition-all"
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${colorClasses[action.color]}`}>
-                        <action.icon className="w-5 h-5" />
+                      <div className={`w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${colorClasses[action.color]}`}>
+                        <action.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
-                      <span className="flex-1 font-medium text-text-secondary group-hover:text-white">
+                      <span className="flex-1 text-sm sm:text-base font-medium text-text-secondary group-hover:text-white truncate">
                         {action.label}
                       </span>
-                      <ChevronRight className="w-5 h-5 text-text-tertiary group-hover:text-text-secondary group-hover:translate-x-1 transition-all" />
+                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-text-tertiary group-hover:text-text-secondary group-hover:translate-x-1 transition-all flex-shrink-0" />
                     </Link>
                   );
                 })}
@@ -546,37 +542,37 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Session Stats */}
-            <div className="bg-surface-1 rounded-2xl border border-border mt-6 overflow-hidden">
-              <div className="p-6 border-b border-border/50">
-                <h2 className="text-lg font-semibold text-white">Sessions</h2>
-                <p className="text-sm text-text-tertiary mt-1">Coaching overview</p>
+            <div className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border mt-3 sm:mt-4 lg:mt-6 overflow-hidden">
+              <div className="p-3 sm:p-4 lg:p-6 border-b border-border/50">
+                <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-white">Sessions</h2>
+                <p className="text-xs text-text-tertiary mt-0.5">Coaching overview</p>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-blue-400" />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/20 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="font-medium text-white">Upcoming</p>
-                      <p className="text-xs text-text-tertiary">Next 7 days</p>
+                      <p className="text-sm sm:text-base font-medium text-white">Upcoming</p>
+                      <p className="text-[10px] sm:text-xs text-text-tertiary">Next 7 days</p>
                     </div>
                   </div>
-                  <span className="text-2xl font-bold text-white">
+                  <span className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
                     {loading ? '...' : stats.upcomingSessions}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                      <Target className="w-5 h-5 text-emerald-400" />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-500/20 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Target className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                     </div>
                     <div>
-                      <p className="font-medium text-white">Completed</p>
-                      <p className="text-xs text-text-tertiary">This month</p>
+                      <p className="text-sm sm:text-base font-medium text-white">Completed</p>
+                      <p className="text-[10px] sm:text-xs text-text-tertiary">This month</p>
                     </div>
                   </div>
-                  <span className="text-2xl font-bold text-white">
+                  <span className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
                     {loading ? '...' : stats.completedSessions}
                   </span>
                 </div>
@@ -587,17 +583,17 @@ export default function AdminDashboardPage() {
           {/* Recent Enrollments */}
           <div className="lg:col-span-2">
             <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden h-full">
-              <div className="p-6 border-b border-border/50 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Recent Enrollments</h2>
-                  <p className="text-sm text-text-tertiary mt-1">Latest program enrollments</p>
+              <div className="p-3 sm:p-4 lg:p-6 border-b border-border/50 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-white">Recent Enrollments</h2>
+                  <p className="text-xs text-text-tertiary mt-0.5">Latest enrollments</p>
                 </div>
                 <Link
                   href="/admin/enrollments"
-                  className="text-sm font-medium text-blue-400 hover:text-blue-500 flex items-center gap-1"
+                  className="text-xs sm:text-sm font-medium text-blue-400 hover:text-blue-500 flex items-center gap-1 flex-shrink-0"
                 >
                   View All
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </Link>
               </div>
 
@@ -616,20 +612,20 @@ export default function AdminDashboardPage() {
               ) : (
                 <div className="divide-y divide-border">
                   {recentEnrollments.map((enrollment, index) => (
-                    <div key={index} className="p-4 hover:bg-surface-2 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-semibold">
+                    <div key={index} className="p-3 sm:p-4 hover:bg-surface-2 transition-colors">
+                      <div className="flex items-center gap-2.5 sm:gap-4">
+                        <div className="w-9 h-9 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white text-sm sm:text-base font-semibold flex-shrink-0">
                           {enrollment.childName?.charAt(0) || 'C'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-white">{enrollment.childName}</p>
-                          <p className="text-sm text-text-tertiary truncate">
-                            Parent: {enrollment.parentName} • {enrollment.parentEmail}
+                          <p className="text-sm sm:text-base font-medium text-white truncate">{enrollment.childName}</p>
+                          <p className="text-xs text-text-tertiary truncate">
+                            {enrollment.parentName} <span className="hidden sm:inline">• {enrollment.parentEmail}</span>
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-white">₹{enrollment.amount}</p>
-                          <p className="text-xs text-text-tertiary">
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm sm:text-base font-semibold text-white">₹{enrollment.amount}</p>
+                          <p className="text-[10px] sm:text-xs text-text-tertiary">
                             {new Date(enrollment.createdAt).toLocaleDateString('en-IN')}
                           </p>
                         </div>

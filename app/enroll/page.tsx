@@ -7,11 +7,12 @@
 
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Loader2, Video, BookOpen, Calendar, Sparkles, MessageCircle, Award, Gift } from 'lucide-react';
+import { Loader2, Video, BookOpen, Calendar, Sparkles, MessageCircle, Award, Gift, CheckCircle } from 'lucide-react';
 import { LEARNING_GOALS } from '@/lib/constants/goals';
+import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 import {
   EnrollHeader,
   ProductSelector,
@@ -25,6 +26,7 @@ import {
   EnrollForm,
   PaymentSection,
 } from './_components';
+import { TimeBucketSelector, DayOfWeekSelector } from '@/components/ui/scheduling';
 
 declare global {
   interface Window {
@@ -85,6 +87,14 @@ interface Product {
   display_order: number;
   available: boolean;
   eligibility_message: string | null;
+  // New columns
+  week_range?: string | null;
+  is_locked?: boolean;
+  lock_message?: string | null;
+  duration_coaching_mins?: number;
+  duration_skill_mins?: number;
+  duration_checkin_mins?: number;
+  phase_number?: number | null;
 }
 
 // Default coach settings (fallback)
@@ -100,6 +110,8 @@ const DEFAULT_COACH: CoachSettings = {
 // ==================== MAIN COMPONENT ====================
 function EnrollContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const durations = useSessionDurations();
 
   // === CORE STATE ===
   const [loading, setLoading] = useState(false);
@@ -143,6 +155,10 @@ function EnrollContent() {
   const minDate = new Date(today); minDate.setDate(minDate.getDate() + 3);
   const maxDate = new Date(today); maxDate.setDate(maxDate.getDate() + 30);
   const formatDateForInput = (date: Date) => date.toISOString().split('T')[0];
+
+  // === SCHEDULING PREFERENCE STATE ===
+  const [preferenceTimeBucket, setPreferenceTimeBucket] = useState<'morning' | 'afternoon' | 'evening' | 'any'>('any');
+  const [preferenceDays, setPreferenceDays] = useState<number[]>([]);
 
   // === COUPON STATE ===
   const [couponCode, setCouponCode] = useState(searchParams.get('ref') || searchParams.get('coupon') || '');
@@ -294,6 +310,9 @@ function EnrollContent() {
               discoveryCallId: discoveryCallId || null,
               originalAmount: pricing?.programPrice ?? 0,
               discountAmount: discountBreakdown?.totalDiscount || 0,
+              // Scheduling preferences
+              preferenceTimeBucket: preferenceTimeBucket !== 'any' ? preferenceTimeBucket : null,
+              preferenceDays: preferenceDays.length > 0 ? preferenceDays : null,
             };
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -329,19 +348,51 @@ function EnrollContent() {
 
   // === FEATURES COMPUTATION ===
   const getFeatures = () => {
+    if (!selectedProduct) return [];
+
+    // Get session counts and durations (use product-specific durations if available, else context)
     const coachingSessions = selectedProduct?.sessions_coaching ?? selectedProduct?.coaching_sessions ?? 6;
     const skillBuildingSessions = selectedProduct?.sessions_skill_building ?? 0;
     const checkinSessions = selectedProduct?.sessions_checkin ?? selectedProduct?.parent_sessions ?? 3;
-    const isStarter = selectedProduct?.slug === 'starter';
-    const isFull = selectedProduct?.slug === 'full';
+    const coachingMins = selectedProduct?.duration_coaching_mins ?? durations.coaching;
+    const skillMins = selectedProduct?.duration_skill_mins ?? durations.skillBuilding;
+    const checkinMins = selectedProduct?.duration_checkin_mins ?? durations.checkin;
+
     const featuresList: Array<{ icon: typeof Video; text: string }> = [];
-    featuresList.push({ icon: Video, text: `${coachingSessions} Coaching Session${coachingSessions !== 1 ? 's' : ''} (45 min)` });
-    if (skillBuildingSessions > 0) featuresList.push({ icon: BookOpen, text: `${skillBuildingSessions} Skill Building Session${skillBuildingSessions !== 1 ? 's' : ''} (45 min)` });
-    if (checkinSessions > 0) featuresList.push({ icon: Calendar, text: `${checkinSessions} Parent Check-in${checkinSessions !== 1 ? 's' : ''} (30 min)` });
-    featuresList.push({ icon: Sparkles, text: isStarter ? 'AI Progress Report' : 'AI Progress Tracking' });
-    featuresList.push({ icon: MessageCircle, text: 'WhatsApp Support' });
-    if (!isStarter) featuresList.push({ icon: Award, text: 'Completion Certificate' });
-    if (isFull) featuresList.push({ icon: Gift, text: 'FREE E-Learning Access' });
+
+    // Session breakdown (always show these first)
+    featuresList.push({ icon: Video, text: `${coachingSessions} Coaching Session${coachingSessions !== 1 ? 's' : ''} (${coachingMins} min)` });
+    if (skillBuildingSessions > 0) {
+      featuresList.push({ icon: BookOpen, text: `${skillBuildingSessions} Skill Building Session${skillBuildingSessions !== 1 ? 's' : ''} (${skillMins} min)` });
+    }
+    if (checkinSessions > 0) {
+      featuresList.push({ icon: Calendar, text: `${checkinSessions} Parent Check-in${checkinSessions !== 1 ? 's' : ''} (${checkinMins} min)` });
+    }
+
+    // Map DB features to icons based on keywords
+    const iconMap: Record<string, typeof Video> = {
+      'e-learning': BookOpen,
+      'learning': BookOpen,
+      'ai progress': Sparkles,
+      'rAI': Sparkles,
+      'whatsapp': MessageCircle,
+      'recording': Video,
+      'certificate': Award,
+      'priority': Calendar,
+      'scheduling': Calendar,
+    };
+
+    // Add features from database
+    const dbFeatures = selectedProduct.features || [];
+    dbFeatures.forEach((feature: string) => {
+      const featureLower = feature.toLowerCase();
+      const matchedKey = Object.keys(iconMap).find(key => featureLower.includes(key));
+      featuresList.push({
+        icon: matchedKey ? iconMap[matchedKey] : CheckCircle,
+        text: feature,
+      });
+    });
+
     return featuresList;
   };
 
@@ -378,6 +429,13 @@ function EnrollContent() {
       });
     }
   }, [selectedProduct]);
+
+  // Redirect if locked product is selected
+  useEffect(() => {
+    if (selectedProduct?.is_locked) {
+      router.push('/#pricing');
+    }
+  }, [selectedProduct?.is_locked, router]);
 
   useEffect(() => {
     async function fetchSettings() {
@@ -464,6 +522,19 @@ function EnrollContent() {
               source={source}
             >
               <EnrollForm formData={formData} onChange={handleInputChange} />
+
+              {/* Scheduling Preferences */}
+              <div className="border border-border rounded-xl p-3 bg-surface-2 space-y-4">
+                <TimeBucketSelector
+                  selected={preferenceTimeBucket}
+                  onChange={setPreferenceTimeBucket}
+                />
+                <DayOfWeekSelector
+                  selectedDays={preferenceDays}
+                  onChange={setPreferenceDays}
+                />
+              </div>
+
               <StartDateSelector
                 startOption={startOption}
                 startDate={startDate}

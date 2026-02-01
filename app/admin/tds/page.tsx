@@ -141,31 +141,31 @@ export default function TdsPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="bg-surface-0 flex items-center justify-center min-h-[400px]">
         <RefreshCw className="w-8 h-8 animate-spin text-violet-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="bg-surface-0">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <FileText className="w-6 h-6 text-white" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/25 flex-shrink-0">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">TDS Compliance</h1>
-              <p className="text-text-tertiary">Section 194J - Professional Fees</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">TDS Compliance</h1>
+              <p className="text-xs sm:text-sm text-text-tertiary">Section 194J</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <select
               value={selectedFY}
               onChange={(e) => setSelectedFY(e.target.value)}
-              className="px-4 py-2 border border-border rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-border rounded-lg sm:rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             >
               {fyOptions().map(fy => (
                 <option key={fy} value={fy}>FY {fy}</option>
@@ -173,10 +173,10 @@ export default function TdsPage() {
             </select>
             <button
               onClick={() => window.open('https://www.incometax.gov.in/iec/foportal/', '_blank')}
-              className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-xl text-text-secondary hover:bg-surface-2 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-surface-1 border border-border rounded-lg sm:rounded-xl text-text-secondary hover:bg-surface-2 transition-colors text-xs sm:text-sm"
             >
-              <ExternalLink className="w-4 h-4" />
-              TRACES Portal
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">TRACES</span>
             </button>
           </div>
         </div>
@@ -198,10 +198,10 @@ export default function TdsPage() {
         )}
 
         {/* Quarterly Summary */}
-        <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden mb-8">
-          <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-semibold text-white">Quarterly Summary</h2>
-            <p className="text-sm text-text-tertiary mt-1">TDS deducted and deposit status by quarter</p>
+        <div className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border overflow-hidden">
+          <div className="p-3 sm:p-4 lg:p-6 border-b border-border">
+            <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-white">Quarterly Summary</h2>
+            <p className="text-xs text-text-tertiary mt-0.5">TDS deducted and deposit status</p>
           </div>
 
           <div className="overflow-x-auto">

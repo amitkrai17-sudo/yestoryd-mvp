@@ -38,14 +38,35 @@ const PUBLIC_ROUTES = [
   '/images',
 ];
 
-// Admin email whitelist
-const ADMIN_EMAILS = [
-  'rucha.rai@yestoryd.com',
-  'rucha@yestoryd.com',
-  'amitkrai17@gmail.com',
-  'amitkrai17@yestoryd.com',
-  'engage@yestoryd.com',
-];
+// Admin email whitelist — cached from database
+let _adminEmailsCache: { emails: string[]; loadedAt: number } | null = null;
+const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getAdminEmailsList(): Promise<string[]> {
+  if (_adminEmailsCache && Date.now() - _adminEmailsCache.loadedAt < ADMIN_CACHE_TTL) {
+    return _adminEmailsCache.emails;
+  }
+  const serviceClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return []; }, setAll() {} } }
+  );
+  const { data } = await serviceClient
+    .from('site_settings')
+    .select('value')
+    .eq('category', 'auth')
+    .eq('key', 'admin_emails')
+    .single();
+
+  if (!data?.value) {
+    console.error('[Middleware] CRITICAL: No admin_emails in site_settings');
+    return [];
+  }
+
+  const emails: string[] = (typeof data.value === 'string' ? JSON.parse(data.value) : data.value).map((e: string) => e.toLowerCase());
+  _adminEmailsCache = { emails, loadedAt: Date.now() };
+  return emails;
+}
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -154,19 +175,26 @@ export async function middleware(request: NextRequest) {
 
     // 8. Admin route → check admin whitelist
     if (isAdminRoute(pathname)) {
-      if (!ADMIN_EMAILS.includes(userEmail)) {
+      const adminEmails = await getAdminEmailsList();
+    if (!adminEmails.includes(userEmail)) {
         console.log(`[Middleware] Unauthorized admin access attempt: ${userEmail}`);
         return NextResponse.redirect(new URL('/admin/login?error=unauthorized', request.url));
       }
     }
 
-    // 9. Coach route → verify coach role from metadata
+    // 9. Coach route → verify coach is active in database
     if (isCoachRoute(pathname)) {
-      const isCoach = user.user_metadata?.role === 'coach';
-      const coachIsActive = user.user_metadata?.is_active_coach;
+      const { data: coach } = await supabase
+        .from('coaches')
+        .select('id, is_active')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
 
-      if (!isCoach || !coachIsActive) {
-        console.log(`[Middleware] Unauthorized coach access attempt: ${userEmail} (metadata check)`);
+      const isActiveCoach = !!coach;
+
+      if (!isActiveCoach) {
+        console.log(`[Middleware] Unauthorized coach access attempt: ${userEmail} (DB check)`);
         return NextResponse.redirect(new URL('/coach/login?error=unauthorized', request.url));
       }
     }

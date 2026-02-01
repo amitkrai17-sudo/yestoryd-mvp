@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { capitalizeName } from '@/lib/utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,12 +126,12 @@ export async function POST(
     // Prepare data for Gemini
     const reportData: ReportData = {
       child: {
-        name: enrollment.child.child_name,
+        name: capitalizeName(enrollment.child.child_name),
         age: enrollment.child.age,
         grade: enrollment.child.grade || 'Not specified',
       },
       coach: {
-        name: enrollment.coach?.name || 'Coach',
+        name: capitalizeName(enrollment.coach?.name || 'Coach'),
       },
       program: {
         startDate: enrollment.program_start,

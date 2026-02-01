@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     // 4. Get enrollment details
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, schedule_confirmed, sessions_scheduled, program_start, preferred_start_date')
+      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date')
       .eq('id', data.enrollmentId)
       .single();
 
@@ -294,7 +294,7 @@ interface CalendarSession {
 async function scheduleCalendarForExistingSessions(
   enrollmentId: string,
   data: z.infer<typeof enrollmentJobSchema>,
-  enrollment: { program_start?: string; preferred_start_date?: string },
+  enrollment: { program_start?: string; preference_start_date?: string },
   requestId: string,
   supabase: ReturnType<typeof getSupabase>
 ): Promise<{ sessionsUpdated: number; sessions: CalendarSession[]; errors: any[] }> {
@@ -362,19 +362,19 @@ async function scheduleCalendarForExistingSessions(
     };
   }
 
-  // 3. Initialize Google Calendar API
+  // 3. Initialize Google Calendar API (coach as organizer)
   const auth = new google.auth.JWT(
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     undefined,
     process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     ['https://www.googleapis.com/auth/calendar'],
-    process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com'
+    data.coachEmail // Impersonate coach so they become the organizer
   );
   const calendar = google.calendar({ version: 'v3', auth });
 
   // 4. DETERMINE START DATE for scheduling
-  const startDate = enrollment.preferred_start_date
-    ? new Date(enrollment.preferred_start_date)
+  const startDate = enrollment.preference_start_date
+    ? new Date(enrollment.preference_start_date)
     : enrollment.program_start
       ? new Date(enrollment.program_start)
       : getNextAvailableStartDate();
@@ -428,7 +428,7 @@ async function scheduleCalendarForExistingSessions(
 
       // Create Google Calendar event
       const event = await calendar.events.insert({
-        calendarId: process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com',
+        calendarId: data.coachEmail, // Coach's calendar (coach is organizer)
         conferenceDataVersion: 1,
         sendUpdates: 'all',
         requestBody: {
@@ -438,7 +438,6 @@ async function scheduleCalendarForExistingSessions(
           end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Kolkata' },
           attendees: [
             { email: data.parentEmail, displayName: data.parentName },
-            { email: data.coachEmail, displayName: data.coachName },
             { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
           ],
           conferenceData: {

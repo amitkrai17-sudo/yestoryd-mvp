@@ -25,6 +25,7 @@ import FlightStyleSlotPicker from '@/components/booking/FlightStyleSlotPicker';
 import { GoalsCapture } from '@/components/assessment/GoalsCapture';
 import { LEARNING_GOALS } from '@/lib/constants/goals';
 import { GoalIcon } from '@/components/shared/GoalIcon';
+import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 
 // ============================================================
 // TYPES
@@ -45,6 +46,7 @@ interface Slot {
 
 function LetsTalkContent() {
   const searchParams = useSearchParams();
+  const durations = useSessionDurations();
 
   // Form state - pre-fill from URL params
   const [formData, setFormData] = useState({
@@ -263,7 +265,7 @@ function LetsTalkContent() {
             </h1>
 
             <p className="text-base text-gray-600 mb-5">
-              A friendly 30-minute conversation to understand your child's needs:
+              A friendly {durations.discovery}-minute conversation to understand your child's needs:
             </p>
 
             {/* Benefits */}
@@ -324,7 +326,7 @@ function LetsTalkContent() {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex items-center gap-2 text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
                   <Clock className="w-4 h-4 text-[#00ABFF]" />
-                  <span>30 minutes</span>
+                  <span>{durations.discovery} minutes</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
                   <Video className="w-4 h-4 text-green-500" />
@@ -524,7 +526,7 @@ function LetsTalkContent() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-[#00ABFF]" />
-                        30 min
+                        {durations.discovery} min
                       </span>
                       <span className="flex items-center gap-1">
                         <Heart className="w-3 h-3 text-[#ff0099]" />

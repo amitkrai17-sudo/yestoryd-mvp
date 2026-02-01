@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import sgMail from '@sendgrid/mail';
+import { loadAuthConfig } from '@/lib/config/loader';
 
 // Initialize Supabase
 const supabase = createClient(
@@ -84,7 +85,7 @@ async function sendAdminNotification(ticket: any) {
   const color = priorityColor[ticket.priority as keyof typeof priorityColor] || '#3b82f6';
 
   const msg = {
-    to: ['engage@yestoryd.com', 'rucha.rai@yestoryd.com'],
+    to: await loadAuthConfig().then(c => c.adminEmails),
     from: {
       email: 'noreply@yestoryd.com',
       name: 'Yestoryd Support',

@@ -143,82 +143,53 @@ export default function AdminCouponsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div className="bg-surface-0">
       {/* Header */}
       <div className="bg-surface-1 border-b border-border sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Ticket className="w-7 h-7 text-pink-500" />
-                Coupons & Referrals
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white flex items-center gap-2">
+                <Ticket className="w-5 h-5 sm:w-6 sm:h-6 text-pink-500 flex-shrink-0" />
+                <span className="truncate">Coupons</span>
               </h1>
-              <p className="text-sm text-text-tertiary mt-1">
-                Manage promotional coupons and track referral performance
+              <p className="text-xs sm:text-sm text-text-tertiary mt-0.5">
+                Manage coupons & referrals
               </p>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-full hover:scale-105 transition-all shadow-lg"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs sm:text-sm font-semibold rounded-full hover:scale-105 transition-all shadow-lg flex-shrink-0"
             >
-              <Plus className="w-5 h-5" />
-              Create Coupon
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Create</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-3 sm:space-y-4 lg:space-y-6">
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-surface-1 rounded-2xl p-4 shadow-sm border border-border/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <Ticket className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{stats.total}</p>
-                  <p className="text-xs text-text-tertiary">Total Coupons</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-surface-1 rounded-2xl p-4 shadow-sm border border-border/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{stats.active}</p>
-                  <p className="text-xs text-text-tertiary">Active</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+            {[
+              { icon: Ticket, color: 'purple', value: stats.total, label: 'Total' },
+              { icon: CheckCircle, color: 'green', value: stats.active, label: 'Active' },
+              { icon: TrendingUp, color: 'pink', value: stats.totalUsage, label: 'Uses' },
+              { icon: Gift, color: 'yellow', value: `₹${(stats.totalDiscountGiven || 0).toLocaleString()}`, label: 'Discounts' },
+            ].map((s) => (
+              <div key={s.label} className="bg-surface-1 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 lg:p-4 shadow-sm border border-border/50">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className={`w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-${s.color}-500/20 flex items-center justify-center flex-shrink-0`}>
+                    <s.icon className={`w-4 h-4 sm:w-5 sm:h-5 text-${s.color}-400`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-white truncate">{s.value}</p>
+                    <p className="text-[10px] sm:text-xs text-text-tertiary">{s.label}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-surface-1 rounded-2xl p-4 shadow-sm border border-border/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-pink-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{stats.totalUsage}</p>
-                  <p className="text-xs text-text-tertiary">Total Uses</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-surface-1 rounded-2xl p-4 shadow-sm border border-border/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                  <Gift className="w-5 h-5 text-yellow-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">₹{(stats.totalDiscountGiven || 0).toLocaleString()}</p>
-                  <p className="text-xs text-text-tertiary">Discounts Given</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         )}
 

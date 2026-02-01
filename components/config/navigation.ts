@@ -14,6 +14,9 @@ import {
   Home,
   Library,
   HelpCircle,
+  UserSearch,
+  Radio,
+  IndianRupee,
 } from 'lucide-react';
 
 export type PortalType = 'coach' | 'parent' | 'admin';
@@ -79,11 +82,12 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
     basePath: '/admin',
     portalName: 'Admin Portal',
     bottomNav: [
-      { id: 'dashboard', href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-      { id: 'crm', href: '/admin/crm', icon: Users, label: 'CRM' },
-      { id: 'coaches', href: '/admin/coaches', icon: Users, label: 'Coaches' },
-      { id: 'payouts', href: '/admin/payouts', icon: DollarSign, label: 'Payouts' },
-      { id: 'settings', href: '/admin/settings', icon: Settings, label: 'Settings' },
+      { id: 'dashboard', href: '/admin', icon: LayoutDashboard, label: 'Dashboard', shortLabel: 'Home' },
+      { id: 'crm', href: '/admin/crm', icon: UserSearch, label: 'CRM', shortLabel: 'CRM' },
+      { id: 'payments', href: '/admin/payments', icon: IndianRupee, label: 'Payments', shortLabel: 'Payments' },
+      { id: 'communication', href: '/admin/communication', icon: Radio, label: 'Comms', shortLabel: 'Comms' },
+      { id: 'coaches', href: '/admin/coach-applications', icon: Users, label: 'Coaches', shortLabel: 'Coaches' },
+      { id: 'settings', href: '/admin/settings', icon: Settings, label: 'Settings', shortLabel: 'Settings' },
     ],
     sidebar: [
       { id: 'dashboard', href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },

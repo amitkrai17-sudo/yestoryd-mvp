@@ -1,20 +1,25 @@
 // app/api/coach-assessment/interview-feedback/route.ts
 // Save post-interview assessment feedback
 
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+import { loadEmailConfig } from '@/lib/config/loader';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: NextRequest) {
   try {
-    const { 
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    const supabase = getServiceSupabase();
+    const emailConfig = await loadEmailConfig();
+    const settings = { adminEmail: emailConfig.fromEmail };
+
+    const {
       applicationId,
       outcome, // 'proceed' | 'reject' | 'hold'
       interviewScore, // 1-5
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest) {
       // Send approval email
       await sgMail.send({
         to: application.email,
-        from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
+        from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: '🎉 Welcome to Yestoryd Academy!',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -122,7 +127,7 @@ export async function POST(request: NextRequest) {
       // Send rejection email
       await sgMail.send({
         to: application.email,
-        from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
+        from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: 'Yestoryd Academy - Application Update',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

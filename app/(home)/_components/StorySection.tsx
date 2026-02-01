@@ -44,18 +44,21 @@ function VideoFacade({ videoUrl }: { videoUrl: string }) {
         <span className="text-white font-bold text-lg">Yestoryd Story</span>
       </div>
 
-      {/* Video title */}
-      <div className="absolute bottom-6 left-6 right-6">
-        <p className="text-white/80 text-sm mb-1">Watch</p>
-        <p className="text-white font-bold text-lg">How Rucha Started Yestoryd</p>
+      {/* Video title - hidden on mobile to prevent overlap */}
+      <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 z-20 hidden sm:block">
+        <p className="text-white/80 text-xs sm:text-sm mb-1">Watch</p>
+        <p className="text-white font-bold text-sm sm:text-lg">How Rucha Started Yestoryd</p>
       </div>
 
       {/* Play button */}
       <div className="relative z-10 flex flex-col items-center">
-        <div className="w-20 h-20 bg-white/95 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 group-hover:bg-white transition-all duration-300">
-          <Play className="w-8 h-8 text-[#ff0099] ml-1" fill="#ff0099" />
+        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/95 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 group-hover:bg-white transition-all duration-300">
+          <Play className="w-6 h-6 sm:w-8 sm:h-8 text-[#ff0099] ml-1" fill="#ff0099" />
         </div>
-        <p className="text-white/80 text-sm mt-4 group-hover:text-white transition-colors">Click to play</p>
+        <p className="text-white text-xs sm:text-sm mt-3 sm:mt-4 group-hover:text-white transition-colors font-medium">
+          <span className="sm:hidden">Play Video</span>
+          <span className="hidden sm:inline">Click to play</span>
+        </p>
       </div>
 
       {/* Decorative elements */}
@@ -75,7 +78,7 @@ export function StorySection({
   const credentialIcons = [GraduationCap, Award];
 
   return (
-    <section id="rucha-story" className="py-16 lg:py-24 bg-[#1a1a2e] text-white relative overflow-hidden">
+    <section id="rucha-story" className="py-16 lg:py-24 bg-[#1a1a2e] text-white relative overflow-x-hidden">
       <div className="absolute top-0 left-0 w-64 h-64 bg-[#ff0099] blur-[100px] opacity-20"></div>
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-[#00abff] blur-[100px] opacity-20"></div>
 

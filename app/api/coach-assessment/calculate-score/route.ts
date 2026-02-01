@@ -1,15 +1,25 @@
 // app/api/coach-assessment/calculate-score/route.ts
 // FIXED: temperature=0 for consistent scores + caching to prevent recalculation
+// SECURITY: Validates applicationId exists before expensive Gemini calls
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getServiceSupabase } from '@/lib/api-auth';
+import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/utils/rate-limiter';
+import { loadCoachConfig } from '@/lib/config/loader';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 requests per minute per IP (expensive Gemini calls)
+  const clientId = getClientIdentifier(request);
+  const rateLimit = checkRateLimit(`score:${clientId}`, { maxRequests: 5, windowMs: 60000 });
+  if (!rateLimit.success) {
+    return rateLimitResponse(rateLimit);
+  }
+
   console.log('🎯 Calculate score API called');
-  
+
   try {
     const { applicationId, forceRecalculate = false } = await request.json();
     
@@ -17,10 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Application ID required' }, { status: 400 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = getServiceSupabase();
 
     // Fetch application
     const { data: application, error: fetchError } = await supabase
@@ -39,6 +46,7 @@ export async function POST(request: NextRequest) {
     // If score already exists and not forcing recalculate, return cached
     if (!forceRecalculate && application.ai_total_score && application.ai_score_breakdown) {
       console.log('📦 Returning CACHED score:', application.ai_total_score);
+      const cachedSettings = await loadCoachConfig();
       const breakdown = application.ai_score_breakdown;
       return NextResponse.json({
         success: true,
@@ -50,8 +58,8 @@ export async function POST(request: NextRequest) {
           rai: breakdown.raiScore || 0,
           raiAnalysis: breakdown.raiAnalysis || {},
           combined: application.ai_total_score,
-          isQualified: breakdown.isQualified || application.ai_total_score >= 6,
-          threshold: 6
+          isQualified: breakdown.isQualified || application.ai_total_score >= cachedSettings.assessmentPassScore,
+          threshold: cachedSettings.assessmentPassScore
         }
       });
     }
@@ -359,11 +367,12 @@ Return ONLY this JSON structure (no other text):
     console.log(`   Recommendation: ${raiAnalysis.recommendation}`);
 
     // ========== COMBINED SCORE ==========
+    const settings = await loadCoachConfig();
     const combinedScore = Math.round((voiceScore + raiScore) * 10) / 10;
-    
-    const isQualified = combinedScore >= 6 && 
+
+    const isQualified = combinedScore >= settings.assessmentPassScore &&
       raiAnalysis.recommendation !== 'STRONG_NO' &&
-      voiceScore >= 2 && 
+      voiceScore >= 2 &&
       raiScore >= 2;
 
     console.log(`📊 Combined: ${combinedScore}/10 - ${isQualified ? '✅ Qualified' : '❌ Not Qualified'}`);
@@ -385,7 +394,35 @@ Return ONLY this JSON structure (no other text):
     };
 
     if (['applied', 'ai_assessment_complete', 'started'].includes(application.status)) {
-      updatePayload.status = isQualified ? 'qualified' : 'not_qualified';
+      if (isQualified) {
+        updatePayload.status = 'qualified';
+      } else if (combinedScore >= (settings.assessmentPassScore - 1) && voiceScore >= 1.5 && raiScore >= 1.5) {
+        // Borderline: within 1 point of pass threshold with minimum sub-scores
+        updatePayload.status = 'waitlist';
+      } else {
+        updatePayload.status = 'not_qualified';
+      }
+    }
+
+    // Extract red flags from AI analysis
+    const allConcerns = [
+      ...(voiceAnalysis.concerns || []),
+      ...(raiAnalysis.concerns || []),
+    ].filter(Boolean);
+
+    if (allConcerns.length > 0) {
+      updatePayload.has_red_flags = true;
+      updatePayload.red_flag_summary = allConcerns;
+      // Severity based on recommendation and score
+      if (raiAnalysis.recommendation === 'STRONG_NO' || combinedScore < 3) {
+        updatePayload.red_flag_severity = 'critical';
+      } else if (raiAnalysis.recommendation === 'NO' || combinedScore < 4) {
+        updatePayload.red_flag_severity = 'high';
+      } else if (allConcerns.length >= 3) {
+        updatePayload.red_flag_severity = 'medium';
+      } else {
+        updatePayload.red_flag_severity = 'low';
+      }
     }
 
     const { error: updateError } = await supabase
@@ -418,7 +455,7 @@ Return ONLY this JSON structure (no other text):
         raiAnalysis,
         combined: combinedScore,
         isQualified,
-        threshold: 6
+        threshold: settings.assessmentPassScore
       }
     });
 

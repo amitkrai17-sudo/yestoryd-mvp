@@ -47,7 +47,7 @@ function HeroCuriosity({
       {/* Badge */}
       <div className="inline-flex items-center gap-2 bg-surface-2 border border-border rounded-full px-4 py-1.5 mb-6 shadow-sm">
         <Brain className="w-3 h-3 text-[#00abff]" />
-        <span className="text-xs font-bold text-text-secondary tracking-wide uppercase">
+        <span className="text-xs font-bold text-text-secondary tracking-wide">
           {content.badge}
         </span>
       </div>
@@ -81,14 +81,14 @@ function HeroCuriosity({
         <Link
           href="/assessment"
           onClick={onCTAClick}
-          className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-8 rounded-full hover:bg-[#e6008a] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
+          className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#FF0099]/90 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#FF0099]/25 transition-all whitespace-nowrap"
         >
           <Zap className="w-5 h-5" />
           {content.ctaPrimary}
         </Link>
         <a
           href="#rucha-story"
-          className="flex items-center gap-2 text-text-secondary font-semibold hover:text-[#ff0099] transition-colors"
+          className="min-h-[44px] flex items-center justify-center gap-2 px-4 py-3 text-text-secondary font-semibold hover:text-[#ff0099] transition-all"
         >
           <Play className="w-5 h-5" />
           {content.ctaSecondary}
@@ -110,30 +110,30 @@ function HeroCuriosity({
         </div>
       )}
 
-      {/* Trust Badges */}
-      <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-sm text-text-tertiary mb-4">
-        <span className="flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full border border-green-500/20">
-          <Shield className="w-4 h-4" />
+      {/* Trust Badges - wrap on mobile, row on desktop */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-center lg:justify-start gap-2 text-xs sm:text-sm text-text-tertiary mb-4">
+        <span className="flex items-center gap-1 bg-green-500/10 text-green-400 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-green-500/20">
+          <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
           {content.trustBadge1}
         </span>
-        <span className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-full border border-blue-500/20">
-          <Clock className="w-4 h-4" />
+        <span className="flex items-center gap-1 bg-blue-500/10 text-blue-400 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-blue-500/20">
+          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
           {content.trustBadge2}
         </span>
-        <span className="flex items-center gap-1.5 bg-purple-500/10 text-purple-400 px-3 py-1.5 rounded-full border border-purple-500/20">
-          <TrendingUp className="w-4 h-4" />
+        <span className="flex items-center gap-1 bg-[#ff0099]/10 text-[#ff0099] px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-[#ff0099]/20">
+          <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
           {content.trustBadge3}
         </span>
       </div>
 
       {/* Sharp Stat + Urgency */}
       <div className="space-y-2">
-        <p className="text-sm text-text-secondary flex items-center justify-center lg:justify-start gap-2">
+        <p className="text-xs sm:text-sm text-text-secondary text-center lg:text-left">
           <span className="text-[#00abff] font-bold">{content.statPercentage}</span> {content.statText}
         </p>
-        <p className="text-xs text-amber-400 flex items-center justify-center lg:justify-start gap-1.5">
-          <AlertTriangle className="w-3.5 h-3.5" />
-          {content.urgencyText}
+        <p className="text-[10px] sm:text-xs text-amber-400 flex items-center justify-center lg:justify-start gap-1">
+          <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+          <span className="leading-tight">{content.urgencyText}</span>
         </p>
       </div>
     </div>
@@ -151,7 +151,7 @@ function HeroValidation({
       {/* Badge */}
       <div className="inline-flex items-center gap-2 bg-surface-2 border border-border rounded-full px-4 py-1.5 mb-6 shadow-sm">
         <Heart className="w-3 h-3 text-[#ff0099] fill-[#ff0099]" />
-        <span className="text-xs font-bold text-text-secondary tracking-wide uppercase">
+        <span className="text-xs font-bold text-text-secondary tracking-wide">
           {content.badge}
         </span>
       </div>
@@ -187,14 +187,14 @@ function HeroValidation({
         <Link
           href="/assessment"
           onClick={onCTAClick}
-          className="w-full sm:w-auto h-14 inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-8 rounded-full hover:bg-[#e6008a] hover:scale-105 transition-all shadow-xl shadow-[#ff0099]/20 whitespace-nowrap"
+          className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#FF0099]/90 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#FF0099]/25 transition-all whitespace-nowrap"
         >
           <Zap className="w-5 h-5" />
           {content.ctaPrimary}
         </Link>
         <a
           href="#rucha-story"
-          className="flex items-center gap-2 text-text-secondary font-semibold hover:text-[#ff0099] transition-colors"
+          className="min-h-[44px] flex items-center justify-center gap-2 px-4 py-3 text-text-secondary font-semibold hover:text-[#ff0099] transition-all"
         >
           <Play className="w-5 h-5" />
           {content.ctaSecondary}
@@ -221,30 +221,30 @@ function HeroValidation({
         </div>
       )}
 
-      {/* Trust Badges */}
-      <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-sm text-text-tertiary mb-4">
-        <span className="flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full border border-green-500/20">
-          <Shield className="w-4 h-4" />
+      {/* Trust Badges - wrap on mobile, row on desktop */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-center lg:justify-start gap-2 text-xs sm:text-sm text-text-tertiary mb-4">
+        <span className="flex items-center gap-1 bg-green-500/10 text-green-400 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-green-500/20">
+          <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
           {content.trustBadge1}
         </span>
-        <span className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-full border border-blue-500/20">
-          <Clock className="w-4 h-4" />
+        <span className="flex items-center gap-1 bg-blue-500/10 text-blue-400 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-blue-500/20">
+          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
           {content.trustBadge2}
         </span>
-        <span className="flex items-center gap-1.5 bg-purple-500/10 text-purple-400 px-3 py-1.5 rounded-full border border-purple-500/20">
-          <TrendingUp className="w-4 h-4" />
+        <span className="flex items-center gap-1 bg-[#ff0099]/10 text-[#ff0099] px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-[#ff0099]/20">
+          <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
           {content.trustBadge3}
         </span>
       </div>
 
       {/* Sharp Stat + Urgency */}
       <div className="space-y-2">
-        <p className="text-sm text-text-secondary flex items-center justify-center lg:justify-start gap-2">
+        <p className="text-xs sm:text-sm text-text-secondary text-center lg:text-left">
           <span className="text-[#00abff] font-bold">{content.statPercentage}</span> {content.statText}
         </p>
-        <p className="text-xs text-amber-400 flex items-center justify-center lg:justify-start gap-1.5">
-          <AlertTriangle className="w-3.5 h-3.5" />
-          {content.urgencyText}
+        <p className="text-[10px] sm:text-xs text-amber-400 flex items-center justify-center lg:justify-start gap-1">
+          <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+          <span className="leading-tight">{content.urgencyText}</span>
         </p>
       </div>
     </div>

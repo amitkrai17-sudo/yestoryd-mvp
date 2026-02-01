@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: app/completion/[enrollmentId]/page.tsx
 // PURPOSE: Program completion page - certificate, referral, re-enrollment
+// DESIGN: Yestoryd dark theme, celebration, mobile-first
 // =============================================================================
 
 'use client';
@@ -12,7 +13,7 @@ import Image from 'next/image';
 import {
   Award, Download, Share2, Gift, RefreshCw, Loader2,
   CheckCircle, Star, MessageCircle, ChevronRight,
-  BookOpen, Trophy, Sparkles, ArrowRight, Copy, Check
+  BookOpen, Trophy, Sparkles, ArrowRight, Copy, Check, PartyPopper
 } from 'lucide-react';
 
 interface CompletionData {
@@ -128,7 +129,7 @@ export default function CompletionPage() {
 
   async function handleGenerateReferralCode() {
     if (!data?.parentEmail) return;
-    
+
     setGeneratingCode(true);
     try {
       const res = await fetch('/api/parent/referral/generate', {
@@ -148,10 +149,10 @@ export default function CompletionPage() {
 
   function handleShareWhatsApp() {
     const message = encodeURIComponent(
-      `🎉 ${data?.childName} just completed Yestoryd's 3-month reading program!\n\n` +
+      `${data?.childName} just completed Yestoryd's 3-month reading program!\n\n` +
       `Use my referral code *${referralCode}* to get 10% OFF when you enroll.\n\n` +
       `Take the FREE reading assessment: https://yestoryd.com/assessment?ref=${referralCode}\n\n` +
-      `Trust me, it's worth it! 📚`
+      `Trust me, it's worth it!`
     );
     window.open(`https://wa.me/?text=${message}`, '_blank');
   }
@@ -164,10 +165,10 @@ export default function CompletionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
-          <p className="text-gray-600">Loading your achievement...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-[#ff0099] mx-auto mb-4" />
+          <p className="text-text-secondary">Loading your achievement...</p>
         </div>
       </div>
     );
@@ -175,16 +176,16 @@ export default function CompletionPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BookOpen className="w-8 h-8 text-yellow-600" />
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-surface-1 rounded-2xl shadow-xl shadow-black/30 border border-border p-8 text-center">
+          <div className="w-16 h-16 bg-[#ffde00]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <BookOpen className="w-8 h-8 text-[#ffde00]" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Almost There!</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h1 className="text-xl font-bold text-white mb-2">Almost There!</h1>
+          <p className="text-text-secondary mb-6">{error}</p>
           <Link
             href="/parent/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-pink-500 text-white font-semibold rounded-xl hover:bg-pink-600 transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff0099] text-white font-semibold rounded-xl hover:bg-[#ff0099]/90 transition-all min-h-[44px]"
           >
             Go to Dashboard
             <ArrowRight className="w-4 h-4" />
@@ -195,9 +196,9 @@ export default function CompletionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50">
+    <div className="min-h-screen bg-surface-0">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-surface-1/95 backdrop-blur-sm border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -210,9 +211,9 @@ export default function CompletionPage() {
           </Link>
           <Link
             href="/parent/dashboard"
-            className="text-sm font-medium text-gray-600 hover:text-pink-600"
+            className="text-sm font-medium text-text-secondary hover:text-[#ff0099] min-h-[44px] flex items-center"
           >
-            Dashboard →
+            Dashboard <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
       </header>
@@ -220,27 +221,28 @@ export default function CompletionPage() {
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Celebration Hero */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#ffde00]/20 text-[#ffde00] rounded-full text-sm font-medium mb-4 border border-[#ffde00]/30">
             <Trophy className="w-4 h-4" />
             Program Completed!
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            🎉 Congratulations, {data?.childName}!
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
+            <PartyPopper className="w-8 h-8 text-[#ffde00]" />
+            Congratulations, {data?.childName}!
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-text-secondary">
             You&apos;ve successfully completed the 3-month reading program
           </p>
         </div>
 
         {/* Certificate Card */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 p-1">
-            <div className="bg-white p-6 md:p-8">
+        <div className="bg-surface-1 rounded-2xl shadow-xl shadow-black/30 border border-border overflow-hidden mb-6">
+          <div className="bg-gradient-to-r from-[#ffde00] via-[#ff0099] to-[#7b008b] p-1">
+            <div className="bg-surface-1 p-6 md:p-8">
               <div className="flex flex-col md:flex-row items-center gap-6">
-                {/* Certificate Preview */}
-                <div className="w-full md:w-1/2 bg-gradient-to-br from-yellow-50 to-pink-50 rounded-xl p-6 border-2 border-dashed border-yellow-300">
+                {/* Certificate Preview - Light background for readability */}
+                <div className="w-full md:w-1/2 bg-[#FDFBF7] rounded-xl p-6 border-2 border-dashed border-[#ffde00]">
                   <div className="text-center">
-                    <Award className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+                    <Award className="w-16 h-16 text-[#ffde00] mx-auto mb-4" />
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Certificate of Completion</p>
                     <p className="text-2xl font-bold text-gray-900 mb-1">{data?.childName}</p>
                     <p className="text-sm text-gray-600 mb-4">
@@ -259,15 +261,15 @@ export default function CompletionPage() {
 
                 {/* Actions */}
                 <div className="w-full md:w-1/2 space-y-4">
-                  <h2 className="text-xl font-bold text-gray-900">Your Certificate</h2>
-                  <p className="text-gray-600 text-sm">
+                  <h2 className="text-xl font-bold text-white">Your Certificate</h2>
+                  <p className="text-text-secondary text-sm">
                     Download and share {data?.childName}&apos;s achievement with family and friends!
                   </p>
 
                   <button
                     onClick={handleDownloadCertificate}
                     disabled={downloading}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-[#ffde00] to-[#ffc107] text-gray-900 font-bold rounded-xl hover:shadow-lg hover:shadow-[#ffde00]/30 transition-all disabled:opacity-50 min-h-[56px]"
                   >
                     {downloading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -280,15 +282,15 @@ export default function CompletionPage() {
                   </button>
 
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-gray-500">Started</p>
-                      <p className="font-semibold text-gray-900">
+                    <div className="bg-surface-2 rounded-lg p-3 border border-border">
+                      <p className="text-text-tertiary">Started</p>
+                      <p className="font-semibold text-white">
                         {data?.programStart ? new Date(data.programStart).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '-'}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-gray-500">Completed</p>
-                      <p className="font-semibold text-gray-900">
+                    <div className="bg-surface-2 rounded-lg p-3 border border-border">
+                      <p className="text-text-tertiary">Completed</p>
+                      <p className="font-semibold text-white">
                         {data?.completedAt ? new Date(data.completedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '-'}
                       </p>
                     </div>
@@ -300,19 +302,19 @@ export default function CompletionPage() {
         </div>
 
         {/* NPS Prompt */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="bg-surface-1 rounded-2xl shadow-lg shadow-black/25 border border-border p-6 mb-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Star className="w-6 h-6 text-pink-600" />
+            <div className="w-12 h-12 bg-[#ff0099]/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Star className="w-6 h-6 text-[#ff0099]" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-1">Share Your Experience</h3>
-              <p className="text-gray-600 text-sm mb-3">
+              <h3 className="font-bold text-white mb-1">Share Your Experience</h3>
+              <p className="text-text-secondary text-sm mb-3">
                 Your feedback helps us improve the program for other families
               </p>
               <Link
                 href={`/nps/${enrollmentId}`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500 text-white text-sm font-semibold rounded-lg hover:bg-pink-600 transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#ff0099] text-white text-sm font-semibold rounded-lg hover:bg-[#ff0099]/90 transition-all min-h-[44px]"
               >
                 Rate Your Experience
                 <ChevronRight className="w-4 h-4" />
@@ -322,33 +324,33 @@ export default function CompletionPage() {
         </div>
 
         {/* Referral Section */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-6 mb-6">
+        <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-2xl border border-green-500/30 p-6 mb-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Gift className="w-6 h-6 text-green-600" />
+            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Gift className="w-6 h-6 text-green-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-1">Refer a Friend, Earn ₹600!</h3>
-              <p className="text-gray-600 text-sm mb-4">
+              <h3 className="font-bold text-white mb-1">Refer a Friend, Earn ₹600!</h3>
+              <p className="text-text-secondary text-sm mb-4">
                 Share your success! Friends get 10% off, you get ₹600 credit.
               </p>
 
               {referralCode ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-white border border-green-300 rounded-lg px-4 py-2 font-mono font-bold text-green-700">
+                    <div className="flex-1 bg-surface-2 border border-green-500/30 rounded-lg px-4 py-2 font-mono font-bold text-green-400">
                       {referralCode}
                     </div>
                     <button
                       onClick={copyReferralCode}
-                      className="px-4 py-2 bg-white border border-green-300 rounded-lg hover:bg-green-50 transition-all"
+                      className="px-4 py-2 bg-surface-2 border border-green-500/30 rounded-lg hover:bg-surface-1 transition-all min-h-[44px]"
                     >
-                      {copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-gray-600" />}
+                      {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5 text-text-secondary" />}
                     </button>
                   </div>
                   <button
                     onClick={handleShareWhatsApp}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-all min-h-[44px]"
                   >
                     <MessageCircle className="w-5 h-5" />
                     Share on WhatsApp
@@ -358,7 +360,7 @@ export default function CompletionPage() {
                 <button
                   onClick={handleGenerateReferralCode}
                   disabled={generatingCode}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 min-h-[44px]"
                 >
                   {generatingCode ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -373,7 +375,7 @@ export default function CompletionPage() {
         </div>
 
         {/* Re-enrollment CTA */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-r from-[#7b008b] to-[#ff0099] rounded-2xl p-6 text-white">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-sm mb-3">
@@ -387,14 +389,14 @@ export default function CompletionPage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/enroll"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-purple-600 font-bold rounded-xl hover:shadow-lg transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#7b008b] font-bold rounded-xl hover:shadow-lg transition-all min-h-[44px]"
                 >
                   <RefreshCw className="w-5 h-5" />
                   Re-enroll Now
                 </Link>
                 <Link
                   href="/parent/dashboard#elearning"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-all min-h-[44px]"
                 >
                   <BookOpen className="w-5 h-5" />
                   Explore E-Learning
@@ -403,7 +405,7 @@ export default function CompletionPage() {
             </div>
             <div className="hidden md:block">
               <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center">
-                <Trophy className="w-16 h-16 text-yellow-300" />
+                <Trophy className="w-16 h-16 text-[#ffde00]" />
               </div>
             </div>
           </div>
@@ -411,7 +413,7 @@ export default function CompletionPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-4xl mx-auto px-4 py-8 text-center text-sm text-gray-500">
+      <footer className="max-w-4xl mx-auto px-4 py-8 text-center text-sm text-text-tertiary">
         <p>Questions? Contact us at engage@yestoryd.com or WhatsApp 8976287997</p>
       </footer>
     </div>

@@ -138,13 +138,13 @@ export async function POST(request: NextRequest) {
     // SCHEDULE CALENDAR EVENTS FOR EXISTING SESSIONS
     // ============================================================
 
-    // Initialize Google Calendar API
+    // Initialize Google Calendar API (coach as organizer)
     const auth = new google.auth.JWT(
       process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       undefined,
       process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       ['https://www.googleapis.com/auth/calendar'],
-      process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com'
+      coach.email // Impersonate coach so they become the organizer
     );
     const calendar = google.calendar({ version: 'v3', auth });
 
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
 
         // Create Google Calendar event
         const event = await calendar.events.insert({
-          calendarId: process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com',
+          calendarId: coach.email, // Coach's calendar (coach is organizer)
           conferenceDataVersion: 1,
           sendUpdates: 'all',
           requestBody: {
@@ -207,7 +207,6 @@ export async function POST(request: NextRequest) {
             end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Kolkata' },
             attendees: [
               { email: parentEmail, displayName: parentName },
-              { email: coach.email, displayName: coach.name },
               { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
             ],
             conferenceData: {

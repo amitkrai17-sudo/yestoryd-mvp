@@ -104,10 +104,10 @@ export function GoalsCapture({
     <div className={`space-y-4 ${className}`}>
       {/* Header */}
       <div className="text-center px-2">
-        <p className="text-gray-800 text-base font-semibold">
+        <p className="text-white text-base font-semibold">
           Beyond reading, what else would help {childName}?
         </p>
-        <p className="text-gray-500 text-xs mt-1">
+        <p className="text-text-tertiary text-xs mt-1">
           Optional — helps us prepare for your session
         </p>
       </div>
@@ -129,17 +129,17 @@ export function GoalsCapture({
                 min-h-[90px] touch-manipulation
                 ${isSelected
                   ? 'border-[#FF0099] bg-[#FF0099]/10'
-                  : 'border-gray-200 bg-white hover:border-gray-300 active:scale-[0.98]'
+                  : 'border-border bg-surface-1 hover:border-[#FF0099]/50 active:scale-[0.98]'
                 }
               `}
             >
               {/* Icon */}
               {IconComponent && (
-                <IconComponent className={`w-8 h-8 mb-2 ${isSelected ? 'text-[#FF0099]' : 'text-gray-500'}`} />
+                <IconComponent className={`w-8 h-8 mb-2 ${isSelected ? 'text-[#FF0099]' : 'text-text-secondary'}`} />
               )}
 
               {/* Label - use shortLabel for mobile */}
-              <span className={`text-sm text-center leading-tight font-medium ${isSelected ? 'text-[#FF0099]' : 'text-gray-700'}`}>
+              <span className={`text-sm text-center leading-tight font-medium ${isSelected ? 'text-[#FF0099]' : 'text-text-secondary'}`}>
                 {goal.shortLabel || goal.label}
               </span>
 
@@ -158,8 +158,8 @@ export function GoalsCapture({
 
       {/* Status indicator */}
       {(isSaving || hasSaved) && (
-        <p className={`text-center text-xs ${isSaving ? 'text-gray-400' : 'text-green-600 font-medium'}`}>
-          {isSaving ? 'Saving...' : '✓ Preferences saved'}
+        <p className={`text-center text-xs ${isSaving ? 'text-text-tertiary' : 'text-green-400 font-medium'}`}>
+          {isSaving ? 'Saving...' : 'Preferences saved'}
         </p>
       )}
     </div>

@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { requireAdminOrCoach } from '@/lib/api-auth';
+import { randomUUID } from 'crypto';
+import { dispatch } from '@/lib/scheduling/orchestrator';
 
 // ============================================================
 // CONSTANTS
@@ -185,7 +187,23 @@ export async function POST(request: NextRequest) {
       searchable_content: `Session ${session.session_number} missed. ${reason || ''}`,
     });
 
-    // 7. Optionally notify parent (using existing communication system)
+    // 7. No-show cascade via orchestrator (handles counters, at_risk, auto-pause, admin alerts)
+    let noShowResult: any = null;
+    try {
+      noShowResult = await dispatch('session.no_show', {
+        sessionId,
+        requestId: randomUUID(),
+      });
+      if (noShowResult.success) {
+        logInfo('noShowCascade', `Orchestrator processed no-show: ${JSON.stringify(noShowResult.data)}`);
+      } else {
+        logError('noShowCascade', `Orchestrator failed: ${noShowResult.error}`);
+      }
+    } catch (cascadeError) {
+      logError('noShowCascade', cascadeError);
+    }
+
+    // 8. Optionally notify parent (using existing communication system)
     if (notifyParent) {
       try {
         // Get child and parent info
@@ -217,12 +235,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 8. Return success
+    // 9. Return success
     return NextResponse.json({
       success: true,
       message: 'Session marked as missed',
       sessionId,
       sessionNumber: session.session_number,
+      noShowData: noShowResult?.data || null,
     });
 
   } catch (error) {

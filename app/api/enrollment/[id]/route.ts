@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { capitalizeName } from '@/lib/utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -71,10 +72,28 @@ export async function GET(
       .select('*', { count: 'exact', head: true })
       .eq('child_id', enrollment.child_id);
 
+    // Capitalize names in nested objects
+    const transformedEnrollment = {
+      ...enrollment,
+      children: enrollment.children ? {
+        ...enrollment.children,
+        name: capitalizeName(enrollment.children.name),
+        child_name: capitalizeName(enrollment.children.child_name),
+      } : null,
+      parents: enrollment.parents ? {
+        ...enrollment.parents,
+        name: capitalizeName(enrollment.parents.name),
+      } : null,
+      coaches: enrollment.coaches ? {
+        ...enrollment.coaches,
+        name: capitalizeName(enrollment.coaches.name),
+      } : null,
+    };
+
     return NextResponse.json({
       success: true,
       data: {
-        ...enrollment,
+        ...transformedEnrollment,
         sessions: {
           completed: completedSessions || 0,
           total: totalSessions || 0,

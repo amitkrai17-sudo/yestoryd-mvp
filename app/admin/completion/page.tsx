@@ -277,35 +277,35 @@ export default function CompletionManagementPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Completion Management</h1>
-          <p className="text-sm text-text-tertiary">Track program progress and manage completions</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">Completion</h1>
+          <p className="text-xs sm:text-sm text-text-tertiary">Track progress & manage completions</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <button
             onClick={runCronManually}
             disabled={actionLoading === 'cron'}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg hover:bg-purple-500/30 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg hover:bg-purple-500/30 transition-colors disabled:opacity-50"
             title="Run daily alerts check"
           >
-            {actionLoading === 'cron' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            Run Alerts
+            {actionLoading === 'cron' ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+            <span className="hidden sm:inline">Run</span> Alerts
           </button>
           <button
             onClick={fetchEnrollments}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-surface-2 text-white rounded-lg hover:bg-surface-3 transition-colors"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-surface-2 text-white rounded-lg hover:bg-surface-3 transition-colors"
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
+            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
 
       {/* Stats Cards - Risk Categories */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2 lg:gap-3">
         {/* Overdue */}
         <button
           onClick={() => setFilter('overdue')}
@@ -313,12 +313,12 @@ export default function CompletionManagementPage() {
             filter === 'overdue' ? 'border-red-500 bg-red-500/10' : 'border-border bg-surface-1 hover:border-red-500/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.overdue > 0 ? 'bg-red-500/20' : 'bg-surface-2'}`}>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center ${stats.overdue > 0 ? 'bg-red-500/20' : 'bg-surface-2'}`}>
               <XCircle className={`w-4 h-4 ${stats.overdue > 0 ? 'text-red-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.overdue > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>{stats.overdue}</p>
+              <p className={`text-base sm:text-xl font-bold ${stats.overdue > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>{stats.overdue}</p>
               <p className="text-[10px] text-text-tertiary">Overdue</p>
             </div>
           </div>
@@ -331,12 +331,12 @@ export default function CompletionManagementPage() {
             filter === 'at_risk' ? 'border-orange-500 bg-orange-500/10' : 'border-border bg-surface-1 hover:border-orange-500/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.atRisk > 0 ? 'bg-orange-500/20' : 'bg-surface-2'}`}>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center ${stats.atRisk > 0 ? 'bg-orange-500/20' : 'bg-surface-2'}`}>
               <AlertTriangle className={`w-4 h-4 ${stats.atRisk > 0 ? 'text-orange-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.atRisk > 0 ? 'text-orange-400' : 'text-text-tertiary'}`}>{stats.atRisk}</p>
+              <p className={`text-base sm:text-xl font-bold ${stats.atRisk > 0 ? 'text-orange-400' : 'text-text-tertiary'}`}>{stats.atRisk}</p>
               <p className="text-[10px] text-text-tertiary">At Risk</p>
             </div>
           </div>
@@ -349,12 +349,12 @@ export default function CompletionManagementPage() {
             filter === 'inactive' ? 'border-yellow-500 bg-yellow-500/10' : 'border-border bg-surface-1 hover:border-yellow-500/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.inactive > 0 ? 'bg-yellow-500/20' : 'bg-surface-2'}`}>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center ${stats.inactive > 0 ? 'bg-yellow-500/20' : 'bg-surface-2'}`}>
               <Clock className={`w-4 h-4 ${stats.inactive > 0 ? 'text-yellow-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.inactive > 0 ? 'text-yellow-400' : 'text-text-tertiary'}`}>{stats.inactive}</p>
+              <p className={`text-base sm:text-xl font-bold ${stats.inactive > 0 ? 'text-yellow-400' : 'text-text-tertiary'}`}>{stats.inactive}</p>
               <p className="text-[10px] text-text-tertiary">Inactive</p>
             </div>
           </div>
@@ -367,12 +367,12 @@ export default function CompletionManagementPage() {
             filter === 'ready' ? 'border-blue-500 bg-blue-500/10' : 'border-border bg-surface-1 hover:border-blue-500/50'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${stats.ready > 0 ? 'bg-blue-500/20' : 'bg-surface-2'}`}>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center ${stats.ready > 0 ? 'bg-blue-500/20' : 'bg-surface-2'}`}>
               <Zap className={`w-4 h-4 ${stats.ready > 0 ? 'text-blue-400' : 'text-text-tertiary'}`} />
             </div>
             <div className="text-left">
-              <p className={`text-xl font-bold ${stats.ready > 0 ? 'text-blue-400' : 'text-text-tertiary'}`}>{stats.ready}</p>
+              <p className={`text-base sm:text-xl font-bold ${stats.ready > 0 ? 'text-blue-400' : 'text-text-tertiary'}`}>{stats.ready}</p>
               <p className="text-[10px] text-text-tertiary">Ready</p>
             </div>
           </div>
@@ -434,19 +434,19 @@ export default function CompletionManagementPage() {
       </div>
 
       {/* Search */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
           <input
             type="text"
             placeholder="Search child, parent, coach..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-surface-2 text-white placeholder:text-text-muted focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-surface-2 text-sm text-white placeholder:text-text-muted focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
           />
         </div>
-        <span className="text-sm text-text-tertiary">
-          Showing {sortedEnrollments.length} of {enrollments.length}
+        <span className="text-xs sm:text-sm text-text-tertiary whitespace-nowrap flex-shrink-0">
+          {sortedEnrollments.length}/{enrollments.length}
         </span>
       </div>
 

@@ -4,10 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, X, GraduationCap } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 
 export default function TermsOfServicePage() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const durations = useSessionDurations();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -110,7 +112,7 @@ export default function TermsOfServicePage() {
                 <li>1:1 personalized coaching sessions with certified coaches</li>
                 <li>AI-powered progress tracking and recommendations</li>
                 <li>Parent dashboard with real-time progress updates</li>
-                <li>Sessions conducted online via Google Meet (30 minutes each)</li>
+                <li>Sessions conducted online via Google Meet (coaching: {durations.coaching} min, check-ins: {durations.checkin} min)</li>
               </ul>
             </section>
 

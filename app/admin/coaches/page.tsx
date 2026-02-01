@@ -4,15 +4,15 @@ import { Users, Construction } from 'lucide-react';
 
 export default function CoachesPage() {
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div className="bg-surface-0">
       <div className="bg-surface-1 border-b border-border">
-        <div className="px-6 lg:px-8 py-6">
-          <h1 className="text-2xl font-bold text-white">Coaches</h1>
-          <p className="text-text-tertiary mt-1">Manage your coaching team</p>
+        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">Coaches</h1>
+          <p className="text-xs sm:text-sm text-text-tertiary mt-0.5 sm:mt-1">Manage your coaching team</p>
         </div>
       </div>
 
-      <div className="px-6 lg:px-8 py-16">
+      <div className="px-4 sm:px-6 lg:px-8 py-8 sm:py-16">
         <div className="max-w-md mx-auto text-center">
           <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <Construction className="w-10 h-10 text-amber-400" />

@@ -39,7 +39,7 @@ export function RaiSection({
     <section className="py-16 lg:py-24 bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <span className="inline-block text-sm font-semibold text-[#00abff] uppercase tracking-wider mb-4">
+          <span className="inline-block text-sm font-semibold text-[#00abff] tracking-wider mb-4">
             {badge}
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -110,6 +110,7 @@ export function RaiSection({
             {processSteps.map((step, index) => {
               const colors = ['#ff0099', '#00abff', 'rgb(34 197 94)'];
               const isLast = index === processSteps.length - 1;
+              const stepText = typeof step === 'string' ? step : (step as any)?.title || (step as any)?.description || 'Step';
               return (
                 <div key={index} className="flex items-center gap-2 sm:gap-4">
                   <div
@@ -118,7 +119,7 @@ export function RaiSection({
                     }`}
                     style={!isLast ? { backgroundColor: `${colors[index]}1a`, color: colors[index] } : {}}
                   >
-                    {step}
+                    {stepText}
                   </div>
                   {index < processSteps.length - 1 && (
                     <ArrowRight className="w-5 h-5 text-text-tertiary" />
@@ -132,8 +133,9 @@ export function RaiSection({
             {processSteps.map((step, index) => {
               const colors = ['#ff0099', '#00abff', 'rgb(34 197 94)'];
               const isLast = index === processSteps.length - 1;
+              const stepText = typeof step === 'string' ? step : (step as any)?.title || (step as any)?.description || 'Step';
               // Shorten labels for mobile
-              const shortStep = step.replace('Check Expert DB', 'Expert DB').replace('Perfect Fix ✓', 'Fix ✓');
+              const shortStep = stepText.replace('Check Expert DB', 'Expert DB').replace('Perfect Fix ✓', 'Fix ✓');
               return (
                 <div key={index} className="flex items-center gap-1.5">
                   <div

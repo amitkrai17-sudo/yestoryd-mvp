@@ -120,7 +120,7 @@ export function TestimonialsSection({
             <p className="text-sm text-text-tertiary">{stats.foundIssueLabel}</p>
           </div>
           <div className="text-center">
-            <p className="text-3xl sm:text-4xl font-bold text-[#7b008b]">{stats.improvementStat}</p>
+            <p className="text-3xl sm:text-4xl font-bold text-[#c44dff]">{stats.improvementStat}</p>
             <p className="text-sm text-text-tertiary">{stats.improvementLabel}</p>
           </div>
         </div>

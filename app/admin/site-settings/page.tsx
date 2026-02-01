@@ -217,7 +217,7 @@ export default function SiteSettingsManager() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-[#FF0099] animate-spin mx-auto mb-4" />
           <p className="text-text-secondary">Loading settings...</p>
@@ -227,7 +227,7 @@ export default function SiteSettingsManager() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 lg:p-6">
+    <div className="bg-surface-0 p-3 sm:p-4 lg:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

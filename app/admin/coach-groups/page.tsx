@@ -267,7 +267,7 @@ export default function AdminCoachGroupsPage() {
 
   if (loading) {
     return (
-      <div className="p-4 lg:p-8 bg-surface-0 min-h-screen">
+      <div className="p-3 sm:p-4 lg:p-6 bg-surface-0">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
@@ -279,7 +279,7 @@ export default function AdminCoachGroupsPage() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto bg-surface-0 min-h-screen">
+    <div className="p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto bg-surface-0">
       {/* ==================== HEADER ==================== */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

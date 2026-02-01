@@ -542,48 +542,40 @@ export default function AdminSettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface-0">
-      {/* Header */}
-      <div className="bg-surface-1 border-b border-border sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-xl flex items-center justify-center">
+    <div className="bg-surface-0">
+      {/* Sticky header + tabs */}
+      <div className="sticky top-0 z-40 bg-surface-1 border-b border-border">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4">
+          {/* Header row */}
+          <div className="flex items-center justify-between gap-3 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center flex-shrink-0">
                 <Settings className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-white">Site Settings</h1>
-                <p className="text-xs text-text-tertiary hidden sm:block">Manage content without code</p>
-              </div>
+              <h1 className="text-lg font-bold text-white truncate">Site Settings</h1>
             </div>
-
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {saveStatus === 'success' && (
-                <span className="flex items-center gap-1 text-emerald-600 text-sm">
-                  <CheckCircle className="w-4 h-4" /> Saved
+                <span className="flex items-center gap-1 text-emerald-400 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5" /> Saved
                 </span>
               )}
               <button
                 onClick={fetchAllData}
-                className="p-2 hover:bg-surface-3 rounded-lg transition-colors"
-                title="Refresh"
+                disabled={loading}
+                className="p-2 bg-surface-2 hover:bg-surface-3 rounded-lg text-text-secondary flex-shrink-0"
               >
-                <RefreshCw className="w-4 h-4 text-text-tertiary" />
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-surface-1 border-b border-border sticky top-[73px] z-30">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide py-2">
+          {/* Tabs row */}
+          <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
+                className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
                   activeTab === tab.id
                     ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                     : 'text-text-secondary hover:bg-surface-2'
@@ -598,7 +590,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Search - Only on General tab */}
         {activeTab === 'general' && (
           <div className="mb-6">
@@ -989,28 +981,28 @@ function PricingCard({
   saving: boolean;
 }) {
   return (
-    <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
-      <div className="p-4 border-b border-border/50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-            <IndianRupee className="w-5 h-5 text-emerald-400" />
+    <div className="bg-surface-1 rounded-xl border border-border">
+      <div className="p-3 sm:p-4 border-b border-border/50 flex items-center justify-between gap-2 rounded-t-xl">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
           </div>
-          <div>
-            <h3 className="font-semibold text-white">{plan.name}</h3>
-            <p className="text-xs text-text-tertiary">Slug: {plan.slug}</p>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-white text-sm sm:text-base truncate">{plan.name}</h3>
+            <p className="text-xs text-text-tertiary truncate">Slug: {plan.slug}</p>
           </div>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
           plan.is_active ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-surface-2 text-text-secondary'
         }`}>
           {plan.is_active ? 'Active' : 'Inactive'}
         </span>
       </div>
 
-      <div className="p-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div className="p-3 sm:p-4">
+        <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-3 lg:gap-4 mb-3">
           <div>
-            <label className="text-xs font-medium text-text-tertiary mb-1 block">Original</label>
+            <label className="text-xs font-medium text-text-tertiary mb-1 block">Original ₹</label>
             <input
               type="number"
               value={plan.original_price}
@@ -1019,7 +1011,7 @@ function PricingCard({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-text-tertiary mb-1 block">Discounted</label>
+            <label className="text-xs font-medium text-text-tertiary mb-1 block">Discounted ₹</label>
             <input
               type="number"
               value={plan.discounted_price}
@@ -1050,7 +1042,7 @@ function PricingCard({
         <button
           onClick={() => onSave(plan)}
           disabled={saving}
-          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <Save className="w-4 h-4" />
           Save

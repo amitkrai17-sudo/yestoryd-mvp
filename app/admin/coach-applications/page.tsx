@@ -631,30 +631,30 @@ export default function AdminCoachApplicationsPage() {
   const hasActiveFilters = statusFilter !== 'all' || scoreFilter !== 'all' || dateFrom || dateTo || search;
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6">
+    <div className="bg-surface-0 p-3 sm:p-4 lg:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-xl font-bold text-white">Coach Applications</h1>
-            <p className="text-sm text-text-tertiary">Quick review dashboard</p>
+            <h1 className="text-lg sm:text-xl font-bold text-white">Coach Applications</h1>
+            <p className="text-xs text-text-tertiary">Quick review dashboard</p>
           </div>
-          <button onClick={fetchApplications} className="p-2 bg-surface-1 border border-border rounded-lg hover:bg-surface-2" title="Refresh">
+          <button onClick={fetchApplications} className="p-2 bg-surface-1 border border-border rounded-lg hover:bg-surface-2 flex-shrink-0" title="Refresh">
             <RefreshCw className={`w-5 h-5 text-text-secondary ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
           {[
             { label: 'Total', value: stats.total, color: 'border-border' },
             { label: 'Pending', value: stats.pending, color: 'border-yellow-400' },
             { label: 'Qualified', value: stats.qualified, color: 'border-green-400' },
             { label: 'Approved', value: stats.approved, color: 'border-blue-400' },
           ].map(s => (
-            <div key={s.label} className={`bg-surface-1 rounded-lg p-3 border-l-4 ${s.color}`}>
-              <div className="text-2xl font-bold text-white">{s.value}</div>
-              <div className="text-xs text-text-tertiary">{s.label}</div>
+            <div key={s.label} className={`bg-surface-1 rounded-lg p-2.5 sm:p-3 border-l-4 ${s.color}`}>
+              <div className="text-xl sm:text-2xl font-bold text-white">{s.value}</div>
+              <div className="text-[10px] sm:text-xs text-text-tertiary">{s.label}</div>
             </div>
           ))}
         </div>
@@ -663,7 +663,7 @@ export default function AdminCoachApplicationsPage() {
         <div className="bg-surface-1 rounded-lg p-3 mb-4 space-y-3">
           {/* Main Search Row */}
           <div className="flex gap-3">
-            <div className="flex-1 relative">
+            <div className="flex-1 min-w-0 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input
                 type="text"
@@ -675,10 +675,10 @@ export default function AdminCoachApplicationsPage() {
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 border rounded-lg text-sm flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-pink-500/20 border-pink-500 text-pink-400' : 'text-text-secondary border-border hover:bg-surface-2'}`}
+              className={`flex-shrink-0 px-3 sm:px-4 py-2 border rounded-lg text-sm flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-pink-500/20 border-pink-500 text-pink-400' : 'text-text-secondary border-border hover:bg-surface-2'}`}
             >
               <Filter className="w-4 h-4" />
-              Filters
+              <span className="hidden sm:inline">Filters</span>
               {hasActiveFilters && <span className="w-2 h-2 bg-pink-500 rounded-full"></span>}
             </button>
           </div>
@@ -779,29 +779,29 @@ export default function AdminCoachApplicationsPage() {
                     onClick={() => setSelectedAppId(app.id)}
                     className="p-3 hover:bg-surface-2 cursor-pointer flex items-center gap-3"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
                       {app.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-white truncate">{app.name}</span>
+                        <span className="font-medium text-white truncate text-sm">{app.name}</span>
                         {app.ai_total_score !== null && (
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${isQ ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ${isQ ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                             {app.ai_total_score}
                           </span>
                         )}
                       </div>
                       <div className="text-xs text-text-tertiary truncate">{app.email}</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sc.bgColor} ${sc.color}`}>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium whitespace-nowrap ${sc.bgColor} ${sc.color}`}>
                         {sc.label}
                       </span>
                       {app.city && (
                         <span className="text-xs text-text-tertiary hidden md:inline">{app.city}</span>
                       )}
                     </div>
-                    <div className="text-xs text-text-tertiary w-20 text-right">
+                    <div className="text-xs text-text-tertiary hidden sm:block w-20 text-right">
                       {new Date(app.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                     </div>
                   </div>

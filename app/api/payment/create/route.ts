@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
+import { loadPaymentConfig } from '@/lib/config/loader';
 
 // --- CONFIGURATION ---
 const razorpay = new Razorpay({
@@ -106,10 +107,10 @@ interface ProductInfo {
 async function getProductBySlug(
   productCode: string,
   requestId: string
-): Promise<ProductInfo | null> {
+): Promise<ProductInfo | { locked: true; message: string } | null> {
   const { data: product, error } = await supabase
     .from('pricing_plans')
-    .select('id, slug, name, discounted_price, sessions_included, sessions_coaching, sessions_skill_building, sessions_checkin, duration_months')
+    .select('id, slug, name, discounted_price, sessions_included, sessions_coaching, sessions_skill_building, sessions_checkin, duration_months, is_locked, lock_message')
     .eq('slug', productCode)
     .eq('is_active', true)
     .single();
@@ -122,6 +123,17 @@ async function getProductBySlug(
       error: error?.message,
     }));
     return null;
+  }
+
+  // Check if product is locked (coming soon)
+  if (product.is_locked) {
+    console.log(JSON.stringify({
+      requestId,
+      event: 'product_locked',
+      productCode,
+      lockMessage: product.lock_message,
+    }));
+    return { locked: true, message: product.lock_message || 'This product is not available yet' };
   }
 
   console.log(JSON.stringify({
@@ -455,20 +467,19 @@ async function getOrCreateChild(
  * For production, use Upstash Rate Limit or similar
  */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 5; // 5 orders per minute per email
 
-function checkRateLimit(email: string): boolean {
+function checkRateLimit(email: string, maxRequests: number, windowSeconds: number): boolean {
   const now = Date.now();
   const key = email.toLowerCase();
   const record = rateLimitMap.get(key);
+  const windowMs = windowSeconds * 1000;
 
   if (!record || now > record.resetTime) {
-    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    rateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
     return true;
   }
 
-  if (record.count >= RATE_LIMIT_MAX) {
+  if (record.count >= maxRequests) {
     return false;
   }
 
@@ -509,6 +520,9 @@ export async function POST(request: NextRequest) {
 
     const body = validation.data;
 
+    // Load payment config from database
+    const paymentConfig = await loadPaymentConfig();
+
     console.log(JSON.stringify({
       requestId,
       event: 'create_order_start',
@@ -519,7 +533,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // 3. Rate Limiting
-    if (!checkRateLimit(body.parentEmail)) {
+    if (!checkRateLimit(body.parentEmail, paymentConfig.rateLimitRequests, paymentConfig.rateLimitWindowSeconds)) {
       console.log(JSON.stringify({
         requestId,
         event: 'rate_limited',
@@ -532,15 +546,24 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Get Product from Database (Server-Controlled)
-    const product = await getProductBySlug(body.productCode, requestId);
+    const productResult = await getProductBySlug(body.productCode, requestId);
 
-    if (!product) {
+    if (!productResult) {
       return NextResponse.json(
         { success: false, error: 'Invalid product selected', code: 'INVALID_PRODUCT' },
         { status: 400 }
       );
     }
 
+    // Check if product is locked
+    if ('locked' in productResult && productResult.locked) {
+      return NextResponse.json(
+        { success: false, error: productResult.message, code: 'PRODUCT_LOCKED' },
+        { status: 400 }
+      );
+    }
+
+    const product = productResult as ProductInfo;
     const basePrice = product.discounted_price;
 
     // 4a. Validate Continuation Eligibility
@@ -665,11 +688,11 @@ export async function POST(request: NextRequest) {
     );
 
     // 8. Create Razorpay Order (with SERVER-CONTROLLED amount!)
-    const receiptId = `rcpt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const receiptId = `${paymentConfig.receiptPrefix}${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
     const order = await razorpay.orders.create({
       amount: pricing.finalAmount * 100, // Convert to paise
-      currency: 'INR',
+      currency: paymentConfig.currency,
       receipt: receiptId,
       notes: {
         requestId,

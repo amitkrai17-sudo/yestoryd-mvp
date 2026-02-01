@@ -857,31 +857,31 @@ export default function AdminCRMPage() {
   });
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div className="bg-surface-0">
       <div className="bg-surface-1 border-b border-border sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-white">Lead Management</h1>
+            <h1 className="text-lg sm:text-2xl font-bold text-white">Lead Management</h1>
             <button
               onClick={() => { fetchData(); fetchDiscoveryCalls(); fetchSupportTicketCount(); }}
-              className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface-2 rounded-lg"
+              className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface-2 rounded-lg flex-shrink-0"
             >
               <RefreshCw className="w-4 h-4" />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
 
-          <div className="flex gap-1 mt-4">
+          <div className="flex gap-1 mt-4 overflow-x-auto pb-1">
             <button
               onClick={() => setActiveTab('leads')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${activeTab === 'leads' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition whitespace-nowrap ${activeTab === 'leads' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
                 }`}
             >
               Leads ({stats.total})
             </button>
             <button
               onClick={() => setActiveTab('discovery')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'discovery' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${activeTab === 'discovery' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
                 }`}
             >
               Discovery Calls ({discoveryCalls.length})
@@ -893,7 +893,7 @@ export default function AdminCRMPage() {
             </button>
             <button
               onClick={() => setActiveTab('support')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'support' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${activeTab === 'support' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
                 }`}
             >
               <HelpCircle className="w-4 h-4" />
@@ -911,76 +911,54 @@ export default function AdminCRMPage() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {activeTab === 'leads' ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-2 text-text-tertiary text-sm">
-                  <Users className="w-4 h-4" />
-                  Total Leads
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 mb-4 sm:mb-6">
+              {[
+                { icon: Users, label: 'Total Leads', value: stats.total, color: 'text-text-tertiary', valueColor: 'text-white' },
+                { icon: TrendingUp, label: 'Yestoryd', value: stats.yestoryd_leads, color: 'text-green-400', valueColor: 'text-green-400' },
+                { icon: UserPlus, label: 'Coach Refs', value: stats.coach_leads, color: 'text-orange-400', valueColor: 'text-orange-400' },
+                { icon: CheckCircle, label: 'Enrolled', value: stats.enrolled, color: 'text-blue-400', valueColor: 'text-blue-400' },
+                { icon: Clock, label: 'Pending', value: stats.pending, color: 'text-yellow-400', valueColor: 'text-yellow-400' },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-surface-1 rounded-xl p-3 sm:p-4 border border-border">
+                  <div className={`flex items-center gap-1.5 ${stat.color} text-xs sm:text-sm`}>
+                    <stat.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="truncate">{stat.label}</span>
+                  </div>
+                  <p className={`text-xl sm:text-2xl font-bold ${stat.valueColor} mt-1`}>{stat.value}</p>
                 </div>
-                <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
-              </div>
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-2 text-green-400 text-sm">
-                  <TrendingUp className="w-4 h-4" />
-                  Yestoryd Leads
-                </div>
-                <p className="text-2xl font-bold text-green-400 mt-1">{stats.yestoryd_leads}</p>
-              </div>
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-2 text-orange-400 text-sm">
-                  <UserPlus className="w-4 h-4" />
-                  Coach Referrals
-                </div>
-                <p className="text-2xl font-bold text-orange-400 mt-1">{stats.coach_leads}</p>
-              </div>
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-2 text-blue-400 text-sm">
-                  <CheckCircle className="w-4 h-4" />
-                  Enrolled
-                </div>
-                <p className="text-2xl font-bold text-blue-400 mt-1">{stats.enrolled}</p>
-              </div>
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <div className="flex items-center gap-2 text-yellow-400 text-sm">
-                  <Clock className="w-4 h-4" />
-                  Pending
-                </div>
-                <p className="text-2xl font-bold text-yellow-400 mt-1">{stats.pending}</p>
-              </div>
+              ))}
             </div>
 
-            <div className="bg-surface-1 rounded-xl border border-border p-4 mb-6">
-              <div className="flex flex-wrap gap-4 items-center">
-                <div className="flex-1 min-w-[200px] relative">
+            <div className="bg-surface-1 rounded-xl border border-border p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex flex-col gap-3">
+                {/* Search */}
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                   <input
                     type="text"
                     placeholder="Search by name, email, phone..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-pink-500"
+                    className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-pink-500"
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-text-tertiary">Source:</span>
+                {/* Filters row */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
                   <select
                     value={sourceFilter}
                     onChange={(e) => setSourceFilter(e.target.value)}
-                    className="px-3 py-2 border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+                    className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
                   >
                     <option value="all">All Sources</option>
                     <option value="yestoryd">Yestoryd</option>
                     <option value="coach">Coach Referrals</option>
                   </select>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-text-tertiary">Status:</span>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+                    className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
                   >
                     <option value="all">All Statuses</option>
                     <option value="assessed">Assessed</option>
@@ -990,98 +968,137 @@ export default function AdminCRMPage() {
                     <option value="active">Active</option>
                     <option value="lost">Lost</option>
                   </select>
-                </div>
 
-                {(sourceFilter !== 'all' || statusFilter !== 'all' || search) && (
-                  <button
-                    onClick={() => {
-                      setSourceFilter('all');
-                      setStatusFilter('all');
-                      setSearch('');
-                    }}
-                    className="text-sm text-pink-400 hover:underline"
-                  >
-                    Clear Filters
-                  </button>
-                )}
+                  {(sourceFilter !== 'all' || statusFilter !== 'all' || search) && (
+                    <button
+                      onClick={() => {
+                        setSourceFilter('all');
+                        setStatusFilter('all');
+                        setSearch('');
+                      }}
+                      className="flex-shrink-0 text-sm text-pink-400 hover:underline whitespace-nowrap"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
-              {loading ? (
-                <div className="p-8 text-center text-text-tertiary">Loading leads...</div>
-              ) : filteredLeads.length === 0 ? (
-                <div className="p-8 text-center text-text-tertiary">No leads found</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-surface-0 border-b border-border">
-                      <tr>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Child</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Parent</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Source</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Status</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Score</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Coach</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Date</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {filteredLeads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-surface-2">
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-white">{lead.name}</div>
-                            <div className="text-sm text-text-tertiary">Age {lead.age}</div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="text-sm text-white">{lead.parent_name}</div>
-                            <div className="text-xs text-text-tertiary">{lead.parent_email}</div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <LeadSourceBadge lead={lead} />
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[lead.lead_status] || 'bg-surface-2 text-text-secondary border border-border'}`}>
-                              {lead.lead_status?.replace('_', ' ')}
+            {loading ? (
+              <div className="bg-surface-1 rounded-xl border border-border p-8 text-center text-text-tertiary">Loading leads...</div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="bg-surface-1 rounded-xl border border-border p-8 text-center text-text-tertiary">No leads found</div>
+            ) : (
+              <>
+                {/* Mobile: Card Layout */}
+                <div className="sm:hidden space-y-2">
+                  {filteredLeads.map((lead) => (
+                    <div
+                      key={lead.id}
+                      onClick={() => setSelected(lead)}
+                      className="bg-surface-1 border border-border rounded-xl p-3 active:bg-surface-2 cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-white truncate">{lead.name}, {lead.age}y</div>
+                          <div className="text-xs text-text-tertiary truncate">{lead.parent_name}</div>
+                        </div>
+                        <span className={`ml-2 flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[lead.lead_status] || 'bg-surface-2 text-text-secondary border border-border'}`}>
+                          {lead.lead_status?.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <LeadSourceBadge lead={lead} />
+                        </div>
+                        <div className="flex items-center gap-3 text-text-tertiary">
+                          {lead.latest_assessment_score !== null && (
+                            <span className={`font-semibold ${lead.latest_assessment_score >= 7 ? 'text-green-400' :
+                              lead.latest_assessment_score >= 5 ? 'text-yellow-400' : 'text-red-400'
+                              }`}>
+                              {lead.latest_assessment_score}/10
                             </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {lead.latest_assessment_score !== null ? (
-                              <span className={`font-semibold ${lead.latest_assessment_score >= 7 ? 'text-green-400' :
-                                lead.latest_assessment_score >= 5 ? 'text-yellow-400' : 'text-red-400'
-                                }`}>
-                                {lead.latest_assessment_score}/10
-                              </span>
-                            ) : (
-                              <span className="text-text-tertiary">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-text-secondary">
-                            {lead.assigned_coach?.name || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-text-tertiary">
-                            {new Date(lead.created_at).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short'
-                            })}
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => setSelected(lead)}
-                              className="flex items-center gap-1 text-pink-400 hover:text-pink-300 text-sm font-medium"
-                            >
-                              <Eye className="w-4 h-4" />
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          )}
+                          <span>{new Date(lead.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+
+                {/* Desktop: Table Layout */}
+                <div className="hidden sm:block bg-surface-1 rounded-xl border border-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-surface-0 border-b border-border">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Child</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Parent</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Source</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Status</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Score</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Coach</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Date</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filteredLeads.map((lead) => (
+                          <tr key={lead.id} className="hover:bg-surface-2">
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-white">{lead.name}</div>
+                              <div className="text-sm text-text-tertiary">Age {lead.age}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm text-white">{lead.parent_name}</div>
+                              <div className="text-xs text-text-tertiary">{lead.parent_email}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <LeadSourceBadge lead={lead} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[lead.lead_status] || 'bg-surface-2 text-text-secondary border border-border'}`}>
+                                {lead.lead_status?.replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {lead.latest_assessment_score !== null ? (
+                                <span className={`font-semibold ${lead.latest_assessment_score >= 7 ? 'text-green-400' :
+                                  lead.latest_assessment_score >= 5 ? 'text-yellow-400' : 'text-red-400'
+                                  }`}>
+                                  {lead.latest_assessment_score}/10
+                                </span>
+                              ) : (
+                                <span className="text-text-tertiary">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-text-secondary">
+                              {lead.assigned_coach?.name || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-text-tertiary">
+                              {new Date(lead.created_at).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => setSelected(lead)}
+                                className="flex items-center gap-1 text-pink-400 hover:text-pink-300 text-sm font-medium"
+                              >
+                                <Eye className="w-4 h-4" />
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         ) : activeTab === 'discovery' ? (
           <>
@@ -1131,50 +1148,48 @@ export default function AdminCRMPage() {
                       <div
                         key={call.id}
                         onClick={() => setSelectedCall(call)}
-                        className={`p-4 hover:bg-surface-2 cursor-pointer flex items-center justify-between ${isPending ? 'bg-orange-500/5' : ''
-                          }`}
+                        className={`p-3 sm:p-4 hover:bg-surface-2 cursor-pointer ${isPending ? 'bg-orange-500/5' : ''}`}
                       >
-                        <div className="flex items-center gap-3">
-                          {isPending && (
-                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-                          )}
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-white">{call.child_name}</span>
-                              {call.call_completed && (
-                                <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-xs">
-                                  Done
-                                </span>
-                              )}
-                              {call.call_outcome && (
-                                <span className={`px-1.5 py-0.5 rounded text-xs ${call.call_outcome === 'enrolled' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                  call.call_outcome === 'follow_up' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                    call.call_outcome === 'not_interested' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                                      'bg-surface-2 text-text-secondary border border-border'
-                                  }`}>
-                                  {call.call_outcome === 'enrolled' ? 'Enrolled' :
-                                    call.call_outcome === 'follow_up' ? 'Follow-up' :
-                                      call.call_outcome === 'not_interested' ? 'Not Interested' :
-                                        call.call_outcome === 'no_show' ? 'No Show' : call.call_outcome}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-sm text-text-tertiary">
-                              {call.parent_name} - {new Date(call.scheduled_time).toLocaleString('en-IN', {
-                                dateStyle: 'medium',
-                                timeStyle: 'short',
-                              })}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            {isPending && (
+                              <div className="w-2 h-2 mt-2 bg-orange-500 rounded-full animate-pulse flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="font-medium text-white">{call.child_name}</span>
+                                {call.call_completed && (
+                                  <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-[10px]">
+                                    Done
+                                  </span>
+                                )}
+                                {call.call_outcome && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${call.call_outcome === 'enrolled' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                    call.call_outcome === 'follow_up' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                                      call.call_outcome === 'not_interested' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                                        'bg-surface-2 text-text-secondary border border-border'
+                                    }`}>
+                                    {call.call_outcome === 'enrolled' ? 'Enrolled' :
+                                      call.call_outcome === 'follow_up' ? 'Follow-up' :
+                                        call.call_outcome === 'not_interested' ? 'Not Interested' :
+                                          call.call_outcome === 'no_show' ? 'No Show' : call.call_outcome}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs sm:text-sm text-text-tertiary mt-0.5">
+                                {call.parent_name} · {new Date(call.scheduled_time).toLocaleString('en-IN', {
+                                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                                })}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <AssignmentBadge type={call.assignment_type} />
-                          {call.assigned_coach ? (
-                            <span className="text-sm text-text-secondary">{call.assigned_coach.name}</span>
-                          ) : (
-                            <span className="text-sm text-orange-400 font-medium">Unassigned</span>
-                          )}
-                          <ChevronDown className="w-4 h-4 text-text-tertiary rotate-[-90deg]" />
+                          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+                            <AssignmentBadge type={call.assignment_type} />
+                            <span className="hidden sm:inline text-sm text-text-secondary">
+                              {call.assigned_coach?.name || <span className="text-orange-400 font-medium">Unassigned</span>}
+                            </span>
+                            <ChevronDown className="w-4 h-4 text-text-tertiary rotate-[-90deg]" />
+                          </div>
                         </div>
                       </div>
                     );

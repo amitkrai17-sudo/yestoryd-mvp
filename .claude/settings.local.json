@@ -21,7 +21,27 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(npx supabase --version)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\yestoryd-mvp\\\\app\\\\enroll\" -Recurse)",
+      "Bash(Select-Object FullName, Length)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(npx next build:*)",
+      "Bash(npx jest --testPathPattern=scheduling)",
+      "Bash(npx jest:*)",
+      "Bash(claude -p \"You are auditing this entire codebase. Analyze everything in this directory and all subdirectories. Produce a comprehensive technical audit report covering:\n\n1. PROJECT STRUCTURE: Full directory tree, key files, architecture pattern\n2. TECH STACK: Framework, language, dependencies \\(package.json, requirements.txt, etc.\\)\n3. DATABASE: Schema, models, tables, relationships, what data is stored where\n4. API ROUTES: Every endpoint, what it does, what it connects to\n5. AUTHENTICATION: How users/admins log in, session management\n6. THIRD-PARTY INTEGRATIONS: AiSensy, payment gateways, analytics, any external APIs\n7. FRONTEND: Pages, components, user flows, what parents see vs admin\n8. ENVIRONMENT VARIABLES: What .env keys exist \\(not values, just key names\\)\n9. DEPLOYMENT: How and where this is hosted\n10. DATA FLOW: How does a parent inquiry flow from WhatsApp to database to response\n\nSave the full report as YESTORYD_CODEBASE_AUDIT.md in the current directory.\")",
+      "Bash(powershell -Command:*)",
+      "Bash(claude -p \"You are adding WhatsApp Cloud API integration to this existing Next.js codebase for a prospect-facing AI assistant.\n\nCONTEXT:\n- This is Yestoryd, a children''s English literacy ed-tech platform\n- Existing number 8976287997 uses AiSensy for outbound \\(don''t touch\\)\n- NEW number will use Meta WhatsApp Cloud API for incoming prospect queries\n- Gemini 2.5 Flash Lite is already integrated at lib/gemini/\n- rAI system exists at lib/rai/ with intent classification, embeddings, hybrid search\n- Communication engine exists at lib/communication/\n- Supabase is the database with children, parents, enrollments, learning_events, communication_logs tables\n\nTASK - Create these files:\n\n1. app/api/webhooks/whatsapp-cloud/route.ts\n   - GET handler for Meta webhook verification \\(hub.mode, hub.verify_token, hub.challenge\\)\n   - POST handler for incoming messages\n   - Extract sender phone, message text, message_id, timestamp\n   - Check if phone exists in parents/children tables \\(known vs new prospect\\)\n   - Build context from Supabase if known\n   - Call Gemini with prospect system prompt + context + message\n   - Send reply via Cloud API\n   - Log to communication_logs table\n   - Handle errors gracefully \\(don''t crash on bad payloads\\)\n   - Verify webhook signature using X-Hub-Signature-256 header\n\n2. lib/communication/whatsapp-cloud.ts\n   - sendWhatsAppMessage\\(to: string, message: string\\) function\n   - Uses fetch to POST to https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages\n   - Handles text messages\n   - Returns message_id on success\n   - Env vars: WHATSAPP_CLOUD_TOKEN, WHATSAPP_CLOUD_PHONE_ID\n\n3. lib/rai/prompts/prospect.ts\n   - PROSPECT_SYSTEM_PROMPT constant\n   - Warm, friendly tone for parents inquiring about Yestoryd\n   - Covers: what is Yestoryd, programs offered, age groups, assessment process, pricing, booking discovery call\n   - Includes instruction to escalate to human if: asked about refunds, complaints, technical issues, or says ''talk to someone''\n   - Returns structured response with { reply: string, shouldEscalate: boolean, escalationReason?: string }\n\n4. lib/communication/index.ts \\(MODIFY existing\\)\n   - Add export for whatsapp-cloud functions\n   - Keep existing aisensy exports intact\n\n5. Update .env.example\n   - Add WHATSAPP_CLOUD_TOKEN, WHATSAPP_CLOUD_PHONE_ID, WHATSAPP_CLOUD_VERIFY_TOKEN, WHATSAPP_CLOUD_APP_SECRET\n\nREQUIREMENTS:\n- Reuse existing lib/gemini/client.ts for AI calls\n- Reuse existing lib/supabase/server.ts for database\n- Match existing code style and patterns in the codebase\n- Use Zod for webhook payload validation\n- Add proper TypeScript types\n- Handle rate limiting \\(don''t respond to same message_id twice - use Redis or in-memory cache\\)\n- If shouldEscalate is true, also send WhatsApp notification to Rucha''s number \\(get from env ESCALATION_PHONE\\)\n\nANALYZE existing files first:\n- lib/communication/aisensy.ts \\(match the pattern\\)\n- lib/communication/index.ts \\(see how it orchestrates\\)\n- lib/rai/prompts/ \\(if exists, match structure\\)\n- lib/gemini/client.ts \\(see how to call Gemini\\)\n- lib/supabase/server.ts \\(see how to query\\)\n- app/api/webhooks/recall/route.ts \\(see webhook pattern\\)\n\nCreate all files with full implementation, not stubs. Make it production-ready.\")",
+      "Bash(npx supabase:*)",
+      "Bash(PGHOST=\"db.agnfzrkrpuwmtjulbbpd.supabase.co\" PGPORT=\"5432\" PGUSER=\"cli_login_postgres\" PGPASSWORD=\"YcWtXaoyINSEVGecXhBrAsvWZBeYiouY\" PGDATABASE=\"postgres\" psql:*)",
+      "Bash(curl:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(del \"C:\\\\yestoryd-mvp\\\\lib\\\\site-settings.ts\")",
+      "Bash(del \"C:\\\\yestoryd-mvp\\\\lib\\\\utils\\\\constants.ts\")",
+      "Bash(del \"C:\\\\yestoryd-mvp\\\\lib\\\\settings\\\\coach-settings.ts\")",
+      "Bash(del \"C:\\\\yestoryd-mvp\\\\lib\\\\crm\\\\lead-scoring.ts\")",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsx:*)",
+      "Bash(del /f \"C:\\\\yestoryd-mvp\\\\scripts\\\\query-test-data.ts\" \"C:\\\\yestoryd-mvp\\\\scripts\\\\verify-organizer.ts\")"
     ]
   }
 }

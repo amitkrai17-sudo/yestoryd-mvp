@@ -6,9 +6,7 @@ import sgMail from '@sendgrid/mail';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
-const ADMIN_EMAILS = ['rucha.rai@yestoryd.com', 'amitkrai17@gmail.com']; // Notification recipients
-const FROM_EMAIL = 'engage@yestoryd.com';  // All Yestoryd communication
-const FROM_NAME = 'Yestoryd Academy';
+import { loadAuthConfig, loadEmailConfig } from '@/lib/config/loader';
 const WHATSAPP_NUMBER = '+91 89762 87997';
 
 export async function POST(request: NextRequest) {
@@ -20,6 +18,11 @@ export async function POST(request: NextRequest) {
       city,
       applicationId 
     } = await request.json();
+
+    const [authConfig, emailConfig] = await Promise.all([loadAuthConfig(), loadEmailConfig()]);
+    const FROM_EMAIL = emailConfig.fromEmail;
+    const FROM_NAME = emailConfig.fromName;
+    const ADMIN_EMAILS = authConfig.adminEmails;
 
     if (!applicantEmail || !applicantName) {
       return NextResponse.json(

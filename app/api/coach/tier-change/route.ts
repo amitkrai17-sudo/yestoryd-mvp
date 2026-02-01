@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { loadPricingPlan } from '@/lib/config/loader';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -71,8 +72,9 @@ export async function POST(request: NextRequest) {
       whatsapp: { sent: false, error: null as string | null },
     };
 
-    // Calculate earnings
-    const enrollmentAmount = 5999;
+    // Calculate earnings from featured pricing plan
+    const plan = await loadPricingPlan('full');
+    const enrollmentAmount = plan.discountedPrice;
     const coachEarnings = Math.round(enrollmentAmount * newCoachPercent / 100);
     const coachEarningsWithLead = Math.round(
       enrollmentAmount * (newCoachPercent + newLeadPercent) / 100

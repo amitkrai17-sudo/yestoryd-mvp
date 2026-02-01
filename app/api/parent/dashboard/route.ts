@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { timedQuery } from '@/lib/db-utils';
+import { capitalizeName } from '@/lib/utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
       hasEnrollment: true,
       child: {
         id: child.id,
-        name: child.child_name || child.name,
+        name: capitalizeName(child.child_name || child.name),
         age: child.age,
         latestScore: child.latest_assessment_score,
         sessionsCompleted,
@@ -100,7 +101,10 @@ export async function GET(request: NextRequest) {
         programEndDate: child.program_end_date,
         daysRemaining,
       },
-      coach: child.coaches,
+      coach: child.coaches ? {
+        ...child.coaches,
+        name: capitalizeName(child.coaches.name),
+      } : null,
       upcomingSessions: upcomingSessions || [],
       recentNotes: recentNotes || [],
     });

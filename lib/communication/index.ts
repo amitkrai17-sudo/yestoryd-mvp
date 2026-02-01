@@ -4,6 +4,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { sendWhatsAppMessage, isWhatsAppConfigured } from './aisensy';
 import { sendEmail, isEmailConfigured } from './sendgrid';
+import { loadAuthConfig } from '@/lib/config/loader';
+
+// Re-export WhatsApp Cloud API (prospect-facing AI assistant)
+export { sendWhatsAppCloudMessage, markMessageAsRead, isWhatsAppCloudConfigured } from './whatsapp-cloud';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,10 +20,7 @@ const ADMIN_PHONES = [
   // '91XXXXXXXXXX',  // Rucha - add her number
 ];
 
-const ADMIN_EMAILS = [
-  'amitkrai17@gmail.com',
-  'rucha.rai@yestoryd.com',
-];
+// Admin emails loaded from config at runtime
 
 export interface SendCommunicationParams {
   templateCode: string;
@@ -79,7 +80,8 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
           results.push({ channel: 'whatsapp', ...waResult });
         }
       }
-      for (const adminEmail of ADMIN_EMAILS) {
+      const authConfig = await loadAuthConfig();
+      for (const adminEmail of authConfig.adminEmails) {
         if (template.use_email && !params.skipChannels?.includes('email')) {
           const emailResult = await sendEmailToRecipient(template, adminEmail, params.variables);
           results.push({ channel: 'email', ...emailResult });
@@ -104,13 +106,34 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
         }
       }
 
-      // 3. Send via enabled channels
-      if (template.use_whatsapp && phone && !params.skipChannels?.includes('whatsapp')) {
+      // 2b. Check parent notification preferences
+      let prefs: Record<string, any> = {};
+      if (params.recipientType === 'parent' && params.recipientId) {
+        const { data: parentPrefs } = await supabase
+          .from('parents')
+          .select('notification_preferences')
+          .eq('id', params.recipientId)
+          .single();
+        prefs = parentPrefs?.notification_preferences || {};
+      }
+
+      // Determine if this category is allowed by preferences
+      const category = template.category || '';
+      const categoryAllowed =
+        (category === 'session_reminder' ? prefs.session_reminders !== false : true) &&
+        (category === 'progress' ? prefs.progress_updates !== false : true) &&
+        (category === 'promotional' ? prefs.promotional !== false : true);
+
+      // 3. Send via enabled channels (respecting preferences)
+      const whatsappAllowed = prefs.whatsapp !== false && categoryAllowed;
+      const emailAllowed = prefs.email !== false && categoryAllowed;
+
+      if (template.use_whatsapp && phone && !params.skipChannels?.includes('whatsapp') && whatsappAllowed) {
         const waResult = await sendWhatsAppToRecipient(template, phone, mergedVariables);
         results.push({ channel: 'whatsapp', ...waResult });
       }
 
-      if (template.use_email && email && !params.skipChannels?.includes('email')) {
+      if (template.use_email && email && !params.skipChannels?.includes('email') && emailAllowed) {
         const emailResult = await sendEmailToRecipient(template, email, mergedVariables);
         results.push({ channel: 'email', ...emailResult });
       }

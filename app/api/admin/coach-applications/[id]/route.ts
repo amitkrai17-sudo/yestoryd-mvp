@@ -1,20 +1,24 @@
 // file: app/api/admin/coach-applications/[id]/route.ts
 // Admin API for updating coach application status
 // UPDATED: Auto-creates coach record when status = 'approved'
+// SECURITY: requireAdmin() on all handlers
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+import crypto from 'crypto';
+import { buildEngagementRecords } from '@/lib/coach-engagement/schedule';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    const supabase = getServiceSupabase();
     const { data, error } = await supabase
       .from('coach_applications')
       .select('*')
@@ -36,6 +40,12 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    const supabase = getServiceSupabase();
     const body = await request.json();
     const { status, reviewed_by, reviewed_at, ...otherUpdates } = body;
 
@@ -68,7 +78,8 @@ export async function PATCH(
 
       // Generate referral code from name
       const firstName = updatedApp.name?.split(' ')[0]?.toUpperCase() || 'COACH';
-      const referralCode = `REF-${firstName}-${new Date().getFullYear()}`;
+      const uniqueSuffix = crypto.randomUUID().slice(0, 6).toUpperCase();
+      const referralCode = `REF-${firstName}-${uniqueSuffix}`;
       const referralLink = `https://yestoryd.com/assessment?ref=${referralCode}`;
 
       // Check if coach already exists
@@ -118,6 +129,27 @@ export async function PATCH(
           console.log('✅ Coach record created:', newCoach?.id);
         }
       }
+
+      // Schedule engagement messages for newly approved coach
+      const { data: coachForEngagement } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('email', updatedApp.email)
+        .single();
+
+      if (coachForEngagement) {
+        const records = buildEngagementRecords(coachForEngagement.id, 'approval');
+        if (records.length > 0) {
+          const { error: engErr } = await supabase
+            .from('coach_engagement_log')
+            .insert(records);
+          if (engErr) {
+            console.error('Failed to schedule engagement:', engErr);
+          } else {
+            console.log(`Scheduled ${records.length} engagement messages`);
+          }
+        }
+      }
     }
 
     // ==================== DEACTIVATE COACH ON REJECTION ====================
@@ -148,6 +180,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    const supabase = getServiceSupabase();
     const { error } = await supabase
       .from('coach_applications')
       .delete()

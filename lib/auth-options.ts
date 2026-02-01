@@ -23,13 +23,7 @@ const getSupabase = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Admin emails - these users get admin role
-const ADMIN_EMAILS = [
-  'amitkrai17@yestoryd.com',
-  'engage@yestoryd.com',
-  'rucha.rai@yestoryd.com',
-  // Add more admin emails as needed
-];
+import { loadAuthConfig } from '@/lib/config/loader';
 
 // --- TYPES ---
 interface ExtendedSession extends Session {
@@ -65,7 +59,8 @@ async function getUserRole(email: string): Promise<{
   const supabase = getSupabase();
 
   // 1. Check if admin
-  if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+  const authConfig = await loadAuthConfig();
+  if (authConfig.adminEmails.includes(email.toLowerCase())) {
     return { role: 'admin' };
   }
 

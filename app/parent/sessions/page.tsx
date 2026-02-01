@@ -19,6 +19,7 @@ import {
   Users,
   Sparkles,
 } from 'lucide-react';
+import SessionActionsCard from '@/components/parent/SessionActionsCard';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,6 +28,7 @@ const supabase = createClient(
 
 interface Session {
   id: string;
+  child_id: string;
   session_type: string;
   session_number: number;
   scheduled_date: string;
@@ -371,6 +373,17 @@ export default function ParentSessionsPage() {
                       <Sparkles className="w-4 h-4 flex-shrink-0" />
                       <span><strong>Next session!</strong> Join link activates 10 min before.</span>
                     </p>
+                  </div>
+                )}
+
+                {/* Cancel/Reschedule Actions */}
+                {upcoming && session.status === 'scheduled' && (
+                  <div className="px-4 pb-3">
+                    <SessionActionsCard
+                      session={session}
+                      childId={session.child_id}
+                      onRequestSubmitted={() => fetchSessions()}
+                    />
                   </div>
                 )}
               </div>

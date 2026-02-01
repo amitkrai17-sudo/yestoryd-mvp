@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle, Shield, Star } from 'lucide-react';
+import { CheckCircle, Shield, Star, Lock, Bell } from 'lucide-react';
+import NotifyMeModal from '@/components/NotifyMeModal';
 
 interface ProductData {
   id: string;
@@ -20,6 +22,15 @@ interface ProductData {
   isFeatured: boolean;
   badgeText: string | null;
   displayOrder: number;
+  isLocked?: boolean;
+  lockMessage?: string | null;
+}
+
+interface SessionDurations {
+  coaching: number;
+  skillBuilding: number;
+  checkin: number;
+  discovery: number;
 }
 
 interface PricingSectionProps {
@@ -35,6 +46,7 @@ interface PricingSectionProps {
   guaranteeText: string;
   products: ProductData[];
   onCTAClick: () => void;
+  sessionDurations?: SessionDurations;
 }
 
 export function PricingSection({
@@ -50,7 +62,29 @@ export function PricingSection({
   guaranteeText,
   products,
   onCTAClick,
+  sessionDurations,
 }: PricingSectionProps) {
+  // Session durations from site_settings (single source of truth)
+  const durations = sessionDurations || { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 };
+
+  const [notifyModal, setNotifyModal] = useState<{
+    isOpen: boolean;
+    productName: string;
+    productSlug: string;
+  }>({
+    isOpen: false,
+    productName: '',
+    productSlug: '',
+  });
+
+  const openNotifyModal = (productName: string, productSlug: string) => {
+    setNotifyModal({ isOpen: true, productName, productSlug });
+  };
+
+  const closeNotifyModal = () => {
+    setNotifyModal({ ...notifyModal, isOpen: false });
+  };
+
   return (
     <section id="pricing" className="py-16 lg:py-24 bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -105,7 +139,7 @@ export function PricingSection({
             <Link
               href="/assessment"
               onClick={onCTAClick}
-              className="block w-full text-center bg-white hover:bg-gray-100 text-surface-1 py-4 rounded-xl font-semibold transition-colors"
+              className="block w-full min-h-[44px] text-center bg-white hover:bg-gray-100 text-surface-1 px-6 py-3 rounded-xl font-semibold transition-all hover:scale-[1.02]"
             >
               Reading Test - Free
             </Link>
@@ -119,36 +153,55 @@ export function PricingSection({
           </span>
         </div>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {/* Pricing Cards - 2 or 3 columns based on product count */}
+        <div className={`grid gap-6 max-w-5xl mx-auto ${
+          products.length === 2
+            ? 'md:grid-cols-2 max-w-3xl'
+            : 'md:grid-cols-3'
+        }`}>
           {products.length > 0 ? products.map((product) => {
             const isFullProgram = product.slug === 'full';
             const isContinuation = product.slug === 'continuation';
             const savings = product.originalPrice - product.discountedPrice;
+            const isLocked = product.isLocked === true;
 
             return (
               <div
                 key={product.id}
-                className={`rounded-3xl p-6 relative overflow-hidden transition-all ${
+                className={`rounded-3xl p-6 relative overflow-visible transition-all flex flex-col ${
                   isFullProgram
                     ? 'bg-gradient-to-br from-[#ff0099] to-[#7b008b] text-white ring-4 ring-[#ff0099]/30 scale-[1.02]'
                     : 'bg-surface-2 border-2 border-border'
                 }`}
               >
-                {/* Badge */}
-                {isFullProgram && (
+                {/* Coming Soon Badge - top right corner */}
+                {isLocked && (
+                  <div className="absolute -top-2 -right-2 z-10">
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                      isFullProgram
+                        ? 'bg-yellow-400 text-gray-900'
+                        : 'bg-surface-1 border border-border text-text-secondary'
+                    }`}>
+                      <Lock className="w-3 h-3" />
+                      Mar 2026
+                    </div>
+                  </div>
+                )}
+
+                {/* Best Value Badge - only when not locked */}
+                {isFullProgram && !isLocked && (
                   <div className="absolute top-0 right-0 bg-yellow-400 text-gray-900 px-3 py-1.5 rounded-bl-xl text-xs font-bold flex items-center gap-1">
                     <Star className="w-3 h-3 fill-current" />
                     Best Value
                   </div>
                 )}
-                {isContinuation && (
+                {isContinuation && !isLocked && (
                   <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1.5 rounded-bl-xl text-xs font-bold">
                     After Starter
                   </div>
                 )}
 
-                {/* Product Name */}
+                  {/* Product Name */}
                 <div className="mb-4 mt-2">
                   <h3 className={`text-xl font-bold mb-1 ${isFullProgram ? 'text-white' : 'text-white'}`}>
                     {product.name}
@@ -168,8 +221,9 @@ export function PricingSection({
                       ₹{product.originalPrice.toLocaleString('en-IN')}
                     </span>
                   )}
-                  {isFullProgram && savings > 0 && (
-                    <p className="text-yellow-300 text-sm font-semibold mt-1">
+                  {/* Show savings for ALL products, not just featured */}
+                  {savings > 0 && (
+                    <p className={`text-sm font-semibold mt-1 ${isFullProgram ? 'text-yellow-300' : 'text-green-400'}`}>
                       Save ₹{savings.toLocaleString('en-IN')}
                     </p>
                   )}
@@ -182,47 +236,78 @@ export function PricingSection({
                   </p>
                   <ul className={`text-xs space-y-1 ${isFullProgram ? 'text-white/80' : 'text-text-secondary'}`}>
                     {product.coachingSessions > 0 && (
-                      <li>• {product.coachingSessions} Coaching sessions (45 min)</li>
+                      <li>• {product.coachingSessions} Coaching sessions ({durations.coaching} min)</li>
                     )}
                     {product.skillBuildingSessions > 0 && (
-                      <li>• {product.skillBuildingSessions} Skill Building sessions (45 min)</li>
+                      <li>• {product.skillBuildingSessions} Skill Building sessions ({durations.skillBuilding} min)</li>
                     )}
                     {product.checkinSessions > 0 && (
-                      <li>• {product.checkinSessions} Parent Check-ins (30 min)</li>
+                      <li>• {product.checkinSessions} Parent Check-ins ({durations.checkin} min)</li>
                     )}
                   </ul>
                 </div>
 
-                {/* Features */}
-                <ul className="space-y-2 mb-6">
-                  {(product.features.length > 0 ? product.features : [
-                    'Everything in Free Assessment',
-                    'Expert 1:1 coaching',
-                    'WhatsApp support',
-                    'Progress tracking',
-                  ]).slice(0, 4).map((feature, idx) => (
-                    <li key={idx} className={`flex items-center gap-2 text-sm ${isFullProgram ? 'text-white/90' : 'text-text-secondary'}`}>
-                      <CheckCircle className={`w-4 h-4 flex-shrink-0 ${isFullProgram ? 'text-yellow-300' : 'text-green-400'}`} />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                {/* Value-Add Features from Database */}
+                {product.features && Array.isArray(product.features) && product.features.length > 0 && (
+                  <ul className="space-y-2.5 mb-6">
+                    {product.features.map((feature: string, idx: number) => (
+                      <li
+                        key={idx}
+                        className={`flex items-start gap-2.5 text-sm ${isFullProgram ? 'text-white/90' : 'text-text-secondary'}`}
+                      >
+                        <svg
+                          className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isFullProgram ? 'text-yellow-300' : 'text-green-400'}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span>{typeof feature === 'string' ? feature : String(feature)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-                {/* CTA Button */}
-                <Link
-                  href={`/enroll?product=${product.slug}`}
-                  className={`block w-full text-center py-3 rounded-xl font-semibold transition-all ${
-                    isFullProgram
-                      ? 'bg-white text-[#ff0099] hover:bg-gray-100'
-                      : isContinuation
-                      ? 'bg-blue-500 text-white hover:bg-blue-600'
-                      : 'bg-[#ff0099] text-white hover:bg-[#e6008a]'
-                  }`}
-                >
-                  {isContinuation ? 'Continue Journey' : 'Enroll Now'}
-                </Link>
+                {/* CTA Section */}
+                {isLocked ? (
+                  <div className={`mt-auto pt-4 border-t ${isFullProgram ? 'border-white/20' : 'border-border'}`}>
+                    <p className={`text-center text-sm mb-3 ${isFullProgram ? 'text-white/80' : 'text-text-secondary'}`}>
+                      Be first to know when we launch
+                    </p>
+                    <button
+                      onClick={() => openNotifyModal(product.name, product.slug)}
+                      className={`w-full min-h-[44px] px-6 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                        isFullProgram
+                          ? 'bg-white text-[#ff0099] hover:bg-gray-100'
+                          : 'bg-[#FF0099] hover:bg-[#e6008a] text-white'
+                      }`}
+                    >
+                      <Bell className="w-4 h-4" />
+                      Notify Me
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    href={`/enroll?product=${product.slug}`}
+                    className={`block w-full min-h-[44px] text-center px-6 py-3 rounded-xl font-semibold transition-all mt-auto hover:scale-[1.02] ${
+                      isFullProgram
+                        ? 'bg-white text-[#ff0099] hover:bg-gray-100'
+                        : isContinuation
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-500/25'
+                        : 'bg-[#ff0099] text-white hover:bg-[#FF0099]/90 hover:shadow-lg hover:shadow-[#FF0099]/25'
+                    }`}
+                  >
+                    {isContinuation ? 'Continue Journey' : 'Enroll Now'}
+                  </Link>
+                )}
 
-                {isContinuation && (
+                {isContinuation && !isLocked && (
                   <p className={`text-center text-xs mt-2 ${isFullProgram ? 'text-white/60' : 'text-text-tertiary'}`}>
                     Requires completed Starter Pack
                   </p>
@@ -236,11 +321,19 @@ export function PricingSection({
           )}
         </div>
 
-        <p className="text-center text-text-tertiary text-sm mt-8 flex items-center justify-center gap-1.5">
-          <Shield className="w-4 h-4 text-green-400" />
-          {guaranteeText}
+        <p className="text-center text-text-tertiary text-xs sm:text-sm mt-8 flex items-center justify-center gap-1.5 px-4">
+          <Shield className="w-4 h-4 text-green-400 flex-shrink-0" />
+          <span className="leading-tight">{guaranteeText}</span>
         </p>
       </div>
+
+      {/* Notify Me Modal */}
+      <NotifyMeModal
+        isOpen={notifyModal.isOpen}
+        onClose={closeNotifyModal}
+        productName={notifyModal.productName}
+        productSlug={notifyModal.productSlug}
+      />
     </section>
   );
 }

@@ -230,7 +230,7 @@ export function ChatWidget({
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r ${theme.gradient} rounded-full shadow-lg ${theme.gradientHover} hover:shadow-xl transition-all flex items-center justify-center z-50`}
+        className={`fixed bottom-24 lg:bottom-6 right-6 w-14 h-14 bg-gradient-to-r ${theme.gradient} rounded-full shadow-lg ${theme.gradientHover} hover:shadow-xl transition-all flex items-center justify-center z-50`}
       >
         <Sparkles className="w-6 h-6 text-white" />
       </button>
@@ -242,7 +242,7 @@ export function ChatWidget({
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className={`fixed bottom-6 right-6 px-4 py-2 bg-gradient-to-r ${theme.gradient} rounded-full shadow-lg ${theme.gradientHover} hover:shadow-xl transition-all flex items-center gap-2 z-50`}
+        className={`fixed bottom-24 lg:bottom-6 right-6 px-4 py-2 bg-gradient-to-r ${theme.gradient} rounded-full shadow-lg ${theme.gradientHover} hover:shadow-xl transition-all flex items-center gap-2 z-50`}
       >
         <Sparkles className="w-4 h-4 text-white" />
         <span className="text-white text-sm font-medium">{theme.label}</span>
@@ -257,7 +257,7 @@ export function ChatWidget({
 
   // Full chat widget
   return (
-    <div className="fixed bottom-6 right-6 w-[360px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[calc(100vh-6rem)] bg-gray-50 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 border border-gray-200">
+    <div className="fixed bottom-24 lg:bottom-6 right-6 w-[360px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[calc(100vh-8rem)] bg-gray-50 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 border border-gray-200">
       {/* Header */}
       <div className={`bg-gradient-to-r ${theme.gradient} p-4 flex items-center justify-between`}>
         <div className="flex items-center gap-3">

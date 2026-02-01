@@ -946,7 +946,7 @@ https://yestoryd.com/lets-talk
                 {/* Submit Button */}
                 <button
                   onClick={handleStartAssessment}
-                  className="w-full font-bold py-4 px-6 rounded-2xl text-white transition-all duration-300 hover:scale-[1.02] shadow-lg flex items-center justify-center gap-3"
+                  className="w-full font-bold py-4 px-8 rounded-full text-white transition-all duration-300 hover:scale-[1.02] shadow-lg flex items-center justify-center gap-3 whitespace-nowrap"
                   style={{ background: `linear-gradient(135deg, ${COLORS.pink}, ${COLORS.purple})` }}
                 >
                   <BookOpen className="w-5 h-5" />
@@ -1227,9 +1227,11 @@ https://yestoryd.com/lets-talk
 
           {/* Powered by rAI */}
           <div className="text-center mt-6">
-            <p className="text-text-tertiary text-sm flex items-center justify-center gap-2">
-              <Brain className="w-4 h-4 text-blue-500" />
-              Powered by <span className="text-white font-medium">rAI</span> - Yestoryd&apos;s Reading Intelligence
+            <p className="text-text-tertiary text-xs sm:text-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00abff] flex-shrink-0" />
+              <span>Powered by</span>
+              <span className="text-white font-medium">rAI</span>
+              <span className="hidden sm:inline">- Yestoryd&apos;s Reading Intelligence</span>
             </p>
           </div>
         </div>

@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { loadCoachConfig } from '@/lib/config/loader';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -102,12 +103,13 @@ export async function GET(
       }
     }
 
-    // Final fallback: Use Rucha (lead coach) - FIXED email
+    // Final fallback: Use default coach (from config)
     if (!coach) {
+      const coachConfig = await loadCoachConfig();
       const { data: ruchaCoach } = await supabase
         .from('coaches')
         .select('id, name, email, phone, photo_url, status, is_active')
-        .eq('email', 'rucha.rai@yestoryd.com')
+        .eq('id', coachConfig.defaultCoachId)
         .single();
 
       if (ruchaCoach) {
@@ -136,30 +138,50 @@ export async function GET(
       .eq('id', session.child_id)
       .single();
 
-    // 4. Generate available slots (Mon-Sat, 9 AM - 6 PM, next 7 days)
-    // Note: No calendar_id in coaches table, so we generate default slots
-    const availableSlots: { date: string; time: string; datetime: string }[] = [];
-    const now = new Date();
-    
-    for (let day = 1; day <= 7; day++) {
-      const date = new Date(now);
-      date.setDate(date.getDate() + day);
+    // 4. Get available slots from scheduling API (respects coach availability)
+    let availableSlots: { date: string; time: string; datetime: string }[] = [];
 
-      // Skip Sunday
-      if (date.getDay() === 0) continue;
+    try {
+      // Use internal fetch to scheduling/slots API
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+      const slotsResponse = await fetch(
+        `${baseUrl}/api/scheduling/slots?coachId=${coach.id}&days=7&sessionType=coaching`,
+        { cache: 'no-store' }
+      );
 
-      const dateStr = date.toISOString().split('T')[0];
+      if (slotsResponse.ok) {
+        const slotsData = await slotsResponse.json();
+        if (slotsData.success && slotsData.slots) {
+          availableSlots = slotsData.slots
+            .filter((s: any) => s.available)
+            .map((s: any) => ({
+              date: s.date,
+              time: s.time,
+              datetime: s.datetime,
+            }));
+        }
+      }
+    } catch (slotsErr) {
+      console.error('Failed to fetch slots from API, using fallback:', slotsErr);
+    }
 
-      // Generate slots: 9 AM, 10 AM, 11 AM, 2 PM, 3 PM, 4 PM, 5 PM
-      for (const hour of [9, 10, 11, 14, 15, 16, 17]) {
-        const slotDate = new Date(date);
-        slotDate.setHours(hour, 0, 0, 0);
-        
-        availableSlots.push({
-          date: dateStr,
-          time: `${hour.toString().padStart(2, '0')}:00`,
-          datetime: slotDate.toISOString(),
-        });
+    // Fallback: Generate default slots if API fails
+    if (availableSlots.length === 0) {
+      const now = new Date();
+      for (let day = 1; day <= 7; day++) {
+        const date = new Date(now);
+        date.setDate(date.getDate() + day);
+        if (date.getDay() === 0) continue; // Skip Sunday
+        const dateStr = date.toISOString().split('T')[0];
+        for (const hour of [9, 10, 11, 14, 15, 16, 17]) {
+          const slotDate = new Date(date);
+          slotDate.setHours(hour, 0, 0, 0);
+          availableSlots.push({
+            date: dateStr,
+            time: `${hour.toString().padStart(2, '0')}:00`,
+            datetime: slotDate.toISOString(),
+          });
+        }
       }
     }
 

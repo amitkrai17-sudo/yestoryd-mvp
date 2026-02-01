@@ -32,8 +32,12 @@ import {
   Ticket,
   CheckCircle,
   Database,
+  Radio,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
+import { NotificationBell } from '@/components/ui/NotificationBell';
+import BottomNav from '@/components/shared/navigation/BottomNav';
+import { navigationConfig } from '@/components/config/navigation';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 // ==================== SUPABASE CLIENT ====================
@@ -42,14 +46,18 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// ==================== ALLOWED ADMIN EMAILS ====================
-const ADMIN_EMAILS = [
-  'rucha.rai@yestoryd.com',
-  'rucha@yestoryd.com',
-  'amitkrai17@gmail.com',
-  'amitkrai17@yestoryd.com',
-  'engage@yestoryd.com',
-];
+// ==================== ADMIN EMAILS (loaded from DB) ====================
+async function fetchAdminEmails(): Promise<string[]> {
+  const { data } = await supabase
+    .from('site_settings')
+    .select('value')
+    .eq('category', 'auth')
+    .eq('key', 'admin_emails')
+    .single();
+  if (!data?.value) return [];
+  const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+  return (parsed as string[]).map((e: string) => e.toLowerCase());
+}
 
 // ==================== NAVIGATION ITEMS ====================
 const NAV_ITEMS = [
@@ -170,6 +178,14 @@ const NAV_ITEMS = [
     section: 'ops',
   },
   {
+    label: 'Communication',
+    href: '/admin/communication',
+    icon: Radio,
+    description: 'Notifications & channels',
+    ready: true,
+    section: 'ops',
+  },
+  {
     label: 'Enrollments',
     href: '/admin/enrollments',
     icon: GraduationCap,
@@ -198,7 +214,7 @@ const NAV_ITEMS = [
     href: '/admin/payments',
     icon: IndianRupee,
     description: 'Payment history',
-    ready: false,
+    ready: true,
     section: 'ops',
   },
   {
@@ -306,10 +322,11 @@ export default function AdminLayout({
     }
   };
 
-  const validateAdmin = (authUser: any) => {
+  const validateAdmin = async (authUser: any) => {
     const email = authUser.email?.toLowerCase();
-    
-    if (!email || !ADMIN_EMAILS.includes(email)) {
+    const adminEmails = await fetchAdminEmails();
+
+    if (!email || !adminEmails.includes(email)) {
       setUser(authUser);
       setIsAuthorized(false);
       setLoading(false);
@@ -380,7 +397,7 @@ export default function AdminLayout({
       {/* ==================== MOBILE MENU BUTTON ==================== */}
       <button
         onClick={() => setSidebarOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-surface-1 rounded-xl shadow-lg border border-border"
+        className="hidden md:flex lg:hidden fixed top-4 left-4 z-40 p-2 bg-surface-1 rounded-xl shadow-lg border border-border"
       >
         <Menu className="w-6 h-6 text-text-secondary" />
       </button>
@@ -412,12 +429,17 @@ export default function AdminLayout({
             />
             <span className="font-bold text-white">Admin Portal</span>
           </Link>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 hover:bg-surface-2 rounded-lg"
-          >
-            <X className="w-5 h-5 text-text-tertiary" />
-          </button>
+          <div className="flex items-center gap-1">
+            {user && isAuthorized && (
+              <NotificationBell userId={user.id} userType="admin" />
+            )}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-1 hover:bg-surface-2 rounded-lg"
+            >
+              <X className="w-5 h-5 text-text-tertiary" />
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -502,8 +524,8 @@ export default function AdminLayout({
       </aside>
 
       {/* ==================== MAIN CONTENT ==================== */}
-      <main className="flex-1 lg:ml-72 min-h-screen">
-        <div className="pt-16 lg:pt-0">
+      <main className="flex-1 lg:ml-72 min-h-screen pb-24 lg:pb-0">
+        <div className="pt-0 md:pt-16 lg:pt-0">
           {children}
         </div>
       </main>
@@ -513,6 +535,14 @@ export default function AdminLayout({
         <ChatWidget
           userRole="admin"
           userEmail={user.email}
+        />
+      )}
+
+      {/* ==================== BOTTOM NAV - MOBILE ONLY ==================== */}
+      {user && isAuthorized && (
+        <BottomNav
+          items={navigationConfig.admin.bottomNav}
+          basePath="/admin"
         />
       )}
     </div>

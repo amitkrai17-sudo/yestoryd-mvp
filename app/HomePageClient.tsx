@@ -50,6 +50,8 @@ interface ProductData {
   isFeatured: boolean;
   badgeText: string | null;
   displayOrder: number;
+  isLocked?: boolean;
+  lockMessage?: string | null;
 }
 
 interface ContactData {
@@ -196,6 +198,13 @@ export interface ContentSettings {
   sticky_mobile_cta: string;
 }
 
+interface SessionDurations {
+  coaching: number;
+  skillBuilding: number;
+  checkin: number;
+  discovery: number;
+}
+
 interface HomePageClientProps {
   stats: StatsData;
   pricing: PricingData;
@@ -206,6 +215,7 @@ interface HomePageClientProps {
   showTestimonials: boolean;
   abTestConfig?: ABTestConfig;
   content: ContentSettings;
+  sessionDurations: SessionDurations;
 }
 
 // ==================== A/B TEST UTILITIES ====================
@@ -241,10 +251,10 @@ const trackABEvent = async (testName: string, variant: string, eventType: string
   }
 };
 
-// Default FAQ data
-const defaultFaqData = [
+// Default FAQ data - function to inject session durations
+const getDefaultFaqData = (durations: { coaching: number; checkin: number }) => [
   { question: "What device do I need for the assessment?", answer: "Any smartphone, tablet, or laptop with a microphone works! The assessment runs in your browser — no app download needed. 80% of our parents use their phone." },
-  { question: "How long is each coaching session?", answer: "Coaching sessions are 45 minutes each, with parent check-ins being 30 minutes. Sessions are scheduled at times convenient for you — weekdays or weekends." },
+  { question: "How long is each coaching session?", answer: `Coaching sessions are ${durations.coaching} minutes each, with parent check-ins being ${durations.checkin} minutes. Sessions are scheduled at times convenient for you — weekdays or weekends.` },
   { question: "Is this a subscription? Will I be charged monthly?", answer: "No subscriptions! It's a one-time payment. Choose from Starter Pack, Continuation, or Full Program based on your needs. No hidden fees, no recurring charges." },
   { question: "What if my child doesn't improve?", answer: "We offer a 100% satisfaction guarantee. If you don't see improvement after completing the program, we'll either continue working with you at no extra cost or provide a full refund." },
   { question: "Is the AI safe for my child?", answer: "Absolutely. Unlike ChatGPT which guesses, rAI (our Reading Intelligence) only references our expert-verified knowledge base built on 7+ years of phonics expertise." },
@@ -269,6 +279,7 @@ export default function HomePageClient({
   testimonials,
   abTestConfig = { enabled: true, testName: 'homepage_hero_jan2026', split: 0.5 },
   content,
+  sessionDurations,
 }: HomePageClientProps) {
   const [scrolled, setScrolled] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -279,7 +290,8 @@ export default function HomePageClient({
   const whatsappNumber = contact.whatsappNumber;
   const whatsappMessage = "Hi! I'd like to know more about the reading program for my child.";
   const storyVideoUrl = videos?.homepageStoryVideoUrl || 'https://www.youtube.com/embed/Dz94bVuWH_A';
-  const faqItems = c.faq_items?.length > 0 ? c.faq_items : defaultFaqData;
+  const durations = sessionDurations || { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 };
+  const faqItems = c.faq_items?.length > 0 ? c.faq_items : getDefaultFaqData(durations);
   const displayTestimonials = testimonials.length > 0 ? testimonials : defaultTestimonials;
 
   useEffect(() => {
@@ -325,7 +337,7 @@ export default function HomePageClient({
       />
 
       {/* Hero Section */}
-      <section className="pt-28 lg:pt-40 pb-16 lg:pb-24 bg-gradient-to-b from-surface-1 to-surface-0 relative overflow-hidden">
+      <section className="pt-28 sm:pt-32 lg:pt-44 pb-20 sm:pb-16 lg:pb-24 bg-gradient-to-b from-surface-1 to-surface-0 relative overflow-x-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00abff]/10 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/4"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#ff0099]/10 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/4"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -381,7 +393,7 @@ export default function HomePageClient({
         phases={{
           assess: { letter: 'A', weeks: c.arc_assess_weeks || 'Week 1-4', title: c.arc_assess_title || 'Assess', subtitle: c.arc_assess_subtitle || 'Foundation Arc', description: c.arc_assess_description || 'AI listens to your child read and identifies exact gaps in 40+ sound patterns.', features: c.arc_assess_features || ['5-minute AI assessment', 'Detailed gap report', 'Personalized learning path'], icon: 'brain', color: '#00ABFF' },
           remediate: { letter: 'R', weeks: c.arc_remediate_weeks || 'Week 5-8', title: c.arc_remediate_title || 'Remediate', subtitle: c.arc_remediate_subtitle || 'Building Arc', description: c.arc_remediate_description || 'Expert coaches fill gaps with personalized 1:1 sessions using Jolly Phonics.', features: c.arc_remediate_features || ['6 coaching sessions (1:1)', 'Practice activities at home', 'Weekly WhatsApp updates'], icon: 'heart', color: '#FF0099' },
-          celebrate: { letter: 'C', weeks: c.arc_celebrate_weeks || 'Week 9-12', title: c.arc_celebrate_title || 'Celebrate', subtitle: c.arc_celebrate_subtitle || 'Confidence Arc', description: c.arc_celebrate_description || 'Your child reads with confidence. Measurable improvement you can see.', features: c.arc_celebrate_features || ['Before/after comparison', 'Progress certificate', 'Continuation roadmap'], icon: 'award', color: '#7B008B' },
+          celebrate: { letter: 'C', weeks: c.arc_celebrate_weeks || 'Week 9-12', title: c.arc_celebrate_title || 'Celebrate', subtitle: c.arc_celebrate_subtitle || 'Confidence Arc', description: c.arc_celebrate_description || 'Your child reads with confidence. Measurable improvement you can see.', features: c.arc_celebrate_features || ['Before/after comparison', 'Progress certificate', 'Continuation roadmap'], icon: 'award', color: '#c44dff' },
         }}
         promise={{ title: c.arc_promise_title || 'The 90-Day Promise', description: c.arc_promise_description || 'In 90 days, your child reads more fluently.', badges: [c.arc_promise_badge_1 || 'Measurable Growth', c.arc_promise_badge_2 || '100% Refund Guarantee', c.arc_promise_badge_3 || 'Full Transparency'] }}
         trustStats={{ assessmentTime: c.arc_trust_assessment_time || '5 min', coachingType: c.arc_trust_coaching_type || '1:1', transformationDays: c.arc_trust_transformation_days || '90 days', happyParents: stats.happyParents }}
@@ -437,6 +449,7 @@ export default function HomePageClient({
         guaranteeText={c.pricing_guarantee_text || '100% satisfaction guarantee on all programs. Flexible scheduling included.'}
         products={products}
         onCTAClick={handleCTAClick}
+        sessionDurations={durations}
       />
 
       <FaqSection

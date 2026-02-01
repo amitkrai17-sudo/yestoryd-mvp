@@ -12,6 +12,12 @@ import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import Razorpay from 'razorpay';
 import { queueEnrollmentComplete } from '@/lib/qstash';
+import {
+  scheduleEnrollmentSessions,
+  createSessionsSimple,
+  type TimePreference,
+} from '@/lib/scheduling';
+import { loadCoachConfig, loadRevenueSplitConfig, loadPaymentConfig } from '@/lib/config/loader';
 
 // --- CONFIGURATION ---
 const supabase = createClient(
@@ -50,6 +56,9 @@ const VerifyPaymentSchema = z.object({
   // Scheduling
   requestedStartDate: z.string().optional().nullable(),
   discoveryCallId: z.string().uuid().optional().nullable(),
+  // Session preferences (for smart scheduling)
+  preferenceTimeBucket: z.enum(['morning', 'afternoon', 'evening', 'any']).optional().default('any'),
+  preferenceDays: z.array(z.number().min(0).max(6)).optional().nullable(),
 });
 
 // --- 2. TYPES ---
@@ -467,7 +476,66 @@ async function getCoach(
     }
   }
 
-  // Fallback to default coach (Rucha)
+  // Try smart matching before falling back to Rucha
+  try {
+    const { data: allCoaches } = await supabase
+      .from('coaches')
+      .select(`
+        id, name, email, phone, tds_cumulative_fy, skill_tags, avg_rating,
+        total_sessions_completed, max_children, current_children,
+        is_accepting_new, is_available,
+        coach_groups (
+          id, name, display_name,
+          lead_cost_percent, coach_cost_percent, platform_fee_percent,
+          is_internal
+        )
+      `)
+      .eq('is_active', true)
+      .eq('is_available', true)
+      .eq('is_accepting_new', true);
+
+    const eligible = (allCoaches || []).filter(
+      (c: any) => (c.current_children || 0) < (c.max_children || 30)
+    );
+
+    if (eligible.length > 0) {
+      // Fetch specializations for skill-based scoring
+      const coachIds = eligible.map((c: any) => c.id);
+      const { data: specs } = await supabase
+        .from('coach_specializations')
+        .select('coach_id, skill_area, proficiency_level, certified')
+        .in('coach_id', coachIds);
+
+      // Build skill score map per coach
+      const skillScores = new Map<string, number>();
+      if (specs && specs.length > 0) {
+        for (const s of specs) {
+          const current = skillScores.get(s.coach_id) || 0;
+          skillScores.set(s.coach_id, current + s.proficiency_level + (s.certified ? 2 : 0));
+        }
+      }
+
+      // Sort by: skill score (desc), then load balance (asc), then rating (desc)
+      eligible.sort((a: any, b: any) => {
+        const skillA = skillScores.get(a.id) || 0;
+        const skillB = skillScores.get(b.id) || 0;
+        if (skillA !== skillB) return skillB - skillA;
+        const loadA = (a.current_children || 0) / (a.max_children || 30);
+        const loadB = (b.current_children || 0) / (b.max_children || 30);
+        if (loadA !== loadB) return loadA - loadB;
+        return (b.avg_rating || 0) - (a.avg_rating || 0);
+      });
+
+      const matched = eligible[0];
+      console.log(JSON.stringify({ requestId, event: 'smart_match_coach', coachId: matched.id, coachName: matched.name, skillScore: skillScores.get(matched.id) || 0 }));
+      return matched as unknown as CoachWithGroup;
+    }
+  } catch (matchErr) {
+    console.error(JSON.stringify({ requestId, event: 'smart_match_failed', error: String(matchErr) }));
+  }
+
+  // Final fallback to default coach (from config)
+  const coachConfig = await loadCoachConfig();
   const { data: defaultCoach, error } = await supabase
     .from('coaches')
     .select(`
@@ -478,7 +546,7 @@ async function getCoach(
         is_internal
       )
     `)
-    .eq('email', 'rucha.rai@yestoryd.com')
+    .eq('id', coachConfig.defaultCoachId)
     .single();
 
   if (error || !defaultCoach) {
@@ -599,7 +667,8 @@ async function calculateRevenueSplit(
   leadSourceCoachId: string | null,
   childId: string,
   childName: string,
-  requestId: string
+  requestId: string,
+  durationMonths: number = 3
 ): Promise<RevenueResult> {
   try {
     // Normalize Group Data
@@ -647,16 +716,11 @@ async function calculateRevenueSplit(
     const coachCost = Math.round(amount * group.coach_cost_percent / 100);
     const platformFee = amount - leadCost - coachCost;
 
-    // Get TDS Config
-    const { data: config } = await supabase
-      .from('revenue_split_config')
-      .select('tds_rate_percent, tds_threshold_annual, payout_day_of_month')
-      .eq('is_active', true)
-      .single();
-
-    const tdsRate = config?.tds_rate_percent || 10;
-    const tdsThreshold = config?.tds_threshold_annual || 30000;
-    const payoutDay = config?.payout_day_of_month || 7;
+    // Get TDS Config — fail loudly, no silent fallbacks
+    const revConfig = await loadRevenueSplitConfig();
+    const tdsRate = revConfig.tdsRatePercent;
+    const tdsThreshold = revConfig.tdsThresholdAnnual;
+    const payoutDay = revConfig.payoutDayOfMonth;
 
     // Calculate TDS
     const currentFY = coach.tds_cumulative_fy || 0;
@@ -698,10 +762,10 @@ async function calculateRevenueSplit(
     // Schedule Payouts (Batch Insert)
     const now = new Date();
     const payoutRecords = [];
-    const monthlyCoachGross = Math.round(coachCost / 3);
-    const monthlyCoachTds = Math.round(tdsOnCoach / 3);
+    const monthlyCoachGross = Math.round(coachCost / durationMonths);
+    const monthlyCoachTds = Math.round(tdsOnCoach / durationMonths);
 
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= durationMonths; i++) {
       const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
       payoutRecords.push({
         enrollment_revenue_id: revenue.id,
@@ -720,10 +784,10 @@ async function calculateRevenueSplit(
 
     // Lead bonus payouts if coach-sourced
     if (leadSource === 'coach' && leadSourceCoachId) {
-      const monthlyLeadGross = Math.round(leadCost / 3);
-      const monthlyLeadTds = Math.round(tdsOnLead / 3);
+      const monthlyLeadGross = Math.round(leadCost / durationMonths);
+      const monthlyLeadTds = Math.round(tdsOnLead / durationMonths);
 
-      for (let i = 1; i <= 3; i++) {
+      for (let i = 1; i <= durationMonths; i++) {
         const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
         payoutRecords.push({
           enrollment_revenue_id: revenue.id,
@@ -779,117 +843,9 @@ async function calculateRevenueSplit(
   }
 }
 
-// --- 5. CONFLICT RESOLUTION HELPER ---
-
-/**
- * Available time slots for coaching sessions (IST)
- * These are the preferred times in order of priority
- */
-const TIME_SLOTS = [
-  '10:00:00', // Morning slot 1
-  '11:00:00', // Morning slot 2
-  '14:00:00', // Afternoon slot 1
-  '15:00:00', // Afternoon slot 2
-  '16:00:00', // Afternoon slot 3
-  '17:00:00', // Evening slot 1
-  '18:00:00', // Evening slot 2
-];
-
-/**
- * Find an available slot for a session, avoiding conflicts with existing bookings
- * @param coachId - The coach's ID to check for conflicts
- * @param baseDate - The preferred date for the session
- * @param preferredTime - The preferred time slot
- * @param requestId - Request ID for logging
- * @returns { date: string, time: string } - The available slot
- */
-async function findAvailableSlot(
-  coachId: string,
-  baseDate: Date,
-  preferredTime: string,
-  requestId: string
-): Promise<{ date: string; time: string }> {
-  const maxDaysToSearch = 7; // Look up to 7 days ahead if needed
-
-  for (let dayOffset = 0; dayOffset < maxDaysToSearch; dayOffset++) {
-    const checkDate = new Date(baseDate);
-    checkDate.setDate(checkDate.getDate() + dayOffset);
-    const dateStr = checkDate.toISOString().split('T')[0];
-
-    // Build time slots to try: preferred time first, then others
-    const timesToTry = [preferredTime, ...TIME_SLOTS.filter(t => t !== preferredTime)];
-
-    for (const timeSlot of timesToTry) {
-      // Check if this slot is already booked for this coach
-      const { data: existingSession, error } = await supabase
-        .from('scheduled_sessions')
-        .select('id')
-        .eq('coach_id', coachId)
-        .eq('scheduled_date', dateStr)
-        .eq('scheduled_time', timeSlot)
-        .limit(1)
-        .single();
-
-      // If no existing session found (error means no match), this slot is available
-      if (error && error.code === 'PGRST116') {
-        // PGRST116 = "JSON object requested, multiple (or no) rows returned"
-        // This means no conflict - slot is available
-        if (dayOffset > 0 || timeSlot !== preferredTime) {
-          console.log(JSON.stringify({
-            requestId,
-            event: 'slot_conflict_resolved',
-            originalDate: baseDate.toISOString().split('T')[0],
-            originalTime: preferredTime,
-            newDate: dateStr,
-            newTime: timeSlot,
-            dayOffset,
-          }));
-        }
-        return { date: dateStr, time: timeSlot };
-      }
-
-      if (!error && existingSession) {
-        // Conflict found, try next slot
-        console.log(JSON.stringify({
-          requestId,
-          event: 'slot_conflict_detected',
-          coachId,
-          date: dateStr,
-          time: timeSlot,
-          conflictingSessionId: existingSession.id,
-        }));
-        continue;
-      }
-
-      // If some other error, log it but assume slot is available
-      if (error && error.code !== 'PGRST116') {
-        console.error(JSON.stringify({
-          requestId,
-          event: 'slot_check_error',
-          error: error.message,
-          code: error.code,
-        }));
-        // Assume available on error to avoid blocking enrollment
-        return { date: dateStr, time: timeSlot };
-      }
-    }
-  }
-
-  // If we exhausted all options, just return the original (will fail on insert but at least we tried)
-  console.error(JSON.stringify({
-    requestId,
-    event: 'no_available_slot_found',
-    coachId,
-    baseDate: baseDate.toISOString().split('T')[0],
-    searchedDays: maxDaysToSearch,
-    searchedSlotsPerDay: TIME_SLOTS.length,
-  }));
-
-  return {
-    date: baseDate.toISOString().split('T')[0],
-    time: preferredTime,
-  };
-}
+// --- 5. SCHEDULING ---
+// Session scheduling now uses the unified scheduling library
+// See: lib/scheduling/enrollment-scheduler.ts
 
 // --- 6. MAIN HANDLER ---
 export async function POST(request: NextRequest) {
@@ -1043,7 +999,7 @@ export async function POST(request: NextRequest) {
       razorpay_order_id: body.razorpay_order_id,
       razorpay_payment_id: body.razorpay_payment_id,
       amount: verifiedAmount, // Use verified amount!
-      currency: 'INR',
+      currency: (await loadPaymentConfig()).currency,
       status: 'captured',
       captured_at: new Date().toISOString(),
       coupon_code: couponUsed,
@@ -1115,6 +1071,11 @@ export async function POST(request: NextRequest) {
       // Skill booster (remedial) sessions - booked on-demand via /api/skill-booster/request
       remedial_sessions_max: remedialSessionsMax,
       remedial_sessions_used: 0,
+      // Scheduling preferences
+      preference_time_bucket: body.preferenceTimeBucket || null,
+      preference_days: body.preferenceDays || null,
+      preference_start_type: body.requestedStartDate ? 'later' : 'immediate',
+      preference_start_date: body.requestedStartDate || null,
     };
 
     // Add continuation-specific fields
@@ -1160,214 +1121,66 @@ export async function POST(request: NextRequest) {
     let queueResult = { success: false, messageId: null as string | null };
     let sessionsCreatedCount = 0;
 
-    // 10d. Create Scheduled Sessions based on product session breakdown
-    // IMPORTANT: This must complete quickly - no external API calls here
+    // 10d. Create Scheduled Sessions using unified scheduling library
+    // Uses smart slot finder that respects coach availability and parent preferences
     try {
       console.log(JSON.stringify({ requestId, event: 'sessions_creation_start' }));
 
-      const sessionsToCreate: Array<{
-      enrollment_id: string;
-      child_id: string;
-      coach_id: string;
-      session_number: number;
-      session_type: string;
-      session_title: string;
-      week_number: number;
-      scheduled_date: string;
-      scheduled_time: string;
-      status: string;
-      duration_minutes: number;
-    }> = [];
+      // Build preference from request body
+      const preference: TimePreference = {
+        bucket: body.preferenceTimeBucket || 'any',
+        preferredDays: body.preferenceDays || undefined,
+      };
 
-    // Get session counts from pricing_plans table (with fallbacks if query failed)
-    const coachingSessions = productDetails?.sessions_coaching ?? 6;
-    const checkinSessions = productDetails?.sessions_checkin ?? 3;
-    // Skill building sessions are NOT auto-scheduled - they use on-demand booking via /api/skill-booster/request
-    // Track them as remedial_sessions_max for the enrollment
-    const skillBoosterCredits = productDetails?.sessions_skill_building ?? 3;
-    // Only auto-schedule coaching + checkin sessions
-    const totalSessionsToSchedule = coachingSessions + checkinSessions;
-
-    console.log(JSON.stringify({
-      requestId,
-      event: 'sessions_counts_calculated',
-      source: productDetails ? 'pricing_plans_db' : 'fallback_defaults',
-      productSlug: productInfo.productCode,
-      coachingSessions,
-      checkinSessions,
-      skillBoosterCredits,
-      totalSessionsToSchedule,
-      note: 'skill_building_is_on_demand',
-    }));
-
-    // Session titles by type
-    const coachingTitles = [
-      'Initial Assessment & Goals',
-      'Foundation Building',
-      'Skill Development',
-      'Practice & Reinforcement',
-      'Advanced Techniques',
-      'Confidence Building',
-      'Mastery Building',
-      'Final Skills Assessment',
-    ];
-    const checkinTitles = [
-      'Progress Review',
-      'Mid-Program Review',
-      'Progress Assessment',
-      'Final Review & Next Steps',
-    ];
-
-    // Build session schedule - SIMPLE SEQUENTIAL APPROACH
-    // Previous interleaved logic had infinite loop bug when conditions didn't align
-    // Now uses simple for loops - guaranteed to terminate
-    let weekNumber = 1;
-
-    // 1. Add all coaching sessions with conflict resolution
-    for (let i = 0; i < coachingSessions; i++) {
-      const title = coachingTitles[i] || `Coaching Session ${i + 1}`;
-      const baseSessionDate = new Date(programStart);
-      baseSessionDate.setDate(baseSessionDate.getDate() + (weekNumber - 1) * 7);
-
-      // Find available slot to avoid double-booking conflicts
-      const availableSlot = await findAvailableSlot(
-        coach.id,
-        baseSessionDate,
-        '10:00:00', // Preferred time
-        requestId
-      );
-
-      sessionsToCreate.push({
-        enrollment_id: enrollment.id,
-        child_id: child.id,
-        coach_id: coach.id,
-        session_number: i + 1,
-        session_type: 'coaching',
-        session_title: `Coaching ${i + 1}: ${title}`,
-        week_number: weekNumber,
-        scheduled_date: availableSlot.date,
-        scheduled_time: availableSlot.time,
-        status: 'pending',
-        duration_minutes: 45,
-      });
-      weekNumber++;
-    }
-
-    // NOTE: Skill building sessions are NOT auto-scheduled
-    // They are booked on-demand via /api/skill-booster/request
-    // Credits tracked in enrollment.remedial_sessions_max
-
-    // 2. Add all parent check-in sessions with conflict resolution
-    for (let i = 0; i < checkinSessions; i++) {
-      const title = checkinTitles[i] || `Check-in ${i + 1}`;
-      const baseSessionDate = new Date(programStart);
-      baseSessionDate.setDate(baseSessionDate.getDate() + (weekNumber - 1) * 7);
-
-      // Find available slot to avoid double-booking conflicts
-      const availableSlot = await findAvailableSlot(
-        coach.id,
-        baseSessionDate,
-        '10:00:00', // Preferred time
-        requestId
-      );
-
-      sessionsToCreate.push({
-        enrollment_id: enrollment.id,
-        child_id: child.id,
-        coach_id: coach.id,
-        session_number: coachingSessions + i + 1,
-        session_type: 'parent_checkin',
-        session_title: `Parent Check-in ${i + 1}: ${title}`,
-        week_number: weekNumber,
-        scheduled_date: availableSlot.date,
-        scheduled_time: availableSlot.time,
-        status: 'pending',
-        duration_minutes: 30,
-      });
-      weekNumber++;
-    }
-
-    console.log(JSON.stringify({
-      requestId,
-      event: 'sessions_loops_done',
-      sessionsBuilt: sessionsToCreate.length,
-      coaching: coachingSessions,
-      checkin: checkinSessions,
-      skillBoosterCredits,
-    }));
-
-    // Sort sessions by week number and renumber
-    sessionsToCreate.sort((a, b) => a.week_number - b.week_number);
-    sessionsToCreate.forEach((session, idx) => {
-      session.session_number = idx + 1;
-    });
-
-    console.log(JSON.stringify({
-      requestId,
-      event: 'sessions_array_built',
-      count: sessionsToCreate.length,
-      expected: totalSessionsToSchedule,
-    }));
-
-    // Insert sessions with 15-second timeout
-    const insertPromise = supabase
-      .from('scheduled_sessions')
-      .insert(sessionsToCreate);
-
-    const timeoutPromise = new Promise<{ error: { message: string } }>((_, reject) =>
-      setTimeout(() => reject({ error: { message: 'Sessions insert timed out after 15s' } }), 15000)
-    );
-
-    let sessionsError: { message: string } | null = null;
-    try {
-      const result = await Promise.race([insertPromise, timeoutPromise]);
-      sessionsError = (result as any).error || null;
-    } catch (raceErr: any) {
-      sessionsError = raceErr.error || { message: raceErr.message || 'Unknown insert error' };
-    }
-
-    console.log(JSON.stringify({ requestId, event: 'sessions_insert_done', hasError: !!sessionsError }));
-
-    if (sessionsError) {
-      console.error(JSON.stringify({ requestId, event: 'sessions_create_failed', error: sessionsError.message }));
-    } else {
-      sessionsCreatedCount = sessionsToCreate.length;
-
-      // CRITICAL: Set schedule_confirmed = true to prevent QStash job from creating duplicate sessions
-      // This is the SINGLE SOURCE OF TRUTH for session creation
-      const { error: confirmError } = await supabase
-        .from('enrollments')
-        .update({
-          schedule_confirmed: true,
-          sessions_scheduled: sessionsToCreate.length,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', enrollment.id);
-
-      if (confirmError) {
-        console.error(JSON.stringify({
+      // Use unified scheduler with smart slot finding
+      // Falls back to simple scheduling if smart finder unavailable
+      let schedulerResult;
+      try {
+        schedulerResult = await scheduleEnrollmentSessions({
+          enrollmentId: enrollment.id,
+          childId: child.id,
+          coachId: coach.id,
+          planSlug: productInfo.productCode,
+          programStart,
+          preference,
           requestId,
-          event: 'schedule_confirm_failed',
-          error: confirmError.message
+        }, supabase as any);
+      } catch (smartErr: any) {
+        console.warn(JSON.stringify({
+          requestId,
+          event: 'smart_scheduler_failed_using_fallback',
+          error: smartErr.message,
         }));
-        // Don't throw - sessions are created, this is non-critical
+        // Fallback to simple scheduling without API calls
+        schedulerResult = await createSessionsSimple({
+          enrollmentId: enrollment.id,
+          childId: child.id,
+          coachId: coach.id,
+          planSlug: productInfo.productCode,
+          programStart,
+          requestId,
+        }, supabase as any);
       }
 
-      console.log(JSON.stringify({
-        requestId,
-        event: 'sessions_created_and_confirmed',
-        count: sessionsToCreate.length,
-        enrollmentId: enrollment.id,
-        schedule_confirmed: true,
-        productCode: productInfo.productCode,
-        breakdown: {
-          coaching: coachingSessions,
-          checkin: checkinSessions,
-          skillBoosterCredits: skillBoosterCredits,
-        },
-        note: 'skill_boosters_are_on_demand_not_auto_scheduled',
-      }));
-    }
+      if (schedulerResult.success) {
+        sessionsCreatedCount = schedulerResult.sessionsCreated;
+        console.log(JSON.stringify({
+          requestId,
+          event: 'sessions_created_and_confirmed',
+          count: schedulerResult.sessionsCreated,
+          enrollmentId: enrollment.id,
+          schedule_confirmed: true,
+          productCode: productInfo.productCode,
+          manualRequired: schedulerResult.manualRequired,
+          errors: schedulerResult.errors,
+        }));
+      } else {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'sessions_create_failed',
+          errors: schedulerResult.errors,
+        }));
+      }
     } catch (sessionsErr: any) {
       console.error(JSON.stringify({ requestId, event: 'sessions_block_error', error: sessionsErr.message, stack: sessionsErr.stack }));
     }
@@ -1400,7 +1213,8 @@ export async function POST(request: NextRequest) {
         body.leadSourceCoachId || null,
         child.id,
         body.childName,
-        requestId
+        requestId,
+        durationMonths
       );
       console.log(JSON.stringify({ requestId, event: 'revenue_split_done', success: revenueResult.success }));
     } catch (revenueErr: any) {

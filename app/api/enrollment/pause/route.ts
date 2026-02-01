@@ -7,6 +7,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { conditionalUpdate } from '@/lib/db-utils';
+import { cancelEvent } from '@/lib/googleCalendar';
+import { cancelRecallBot } from '@/lib/recall-auto-bot';
+import { dispatch } from '@/lib/scheduling/orchestrator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -249,7 +252,7 @@ export async function POST(request: NextRequest) {
       // Get sessions during pause period to mark as paused
       const { data: sessionsToCancel } = await supabase
         .from('scheduled_sessions')
-        .select('id, scheduled_date, scheduled_time, google_calendar_event_id')
+        .select('id, scheduled_date, scheduled_time, google_calendar_event_id, recall_bot_id')
         .eq('child_id', (enrollment.children as any)?.[0]?.id)
         .gte('scheduled_date', pauseStartDate)
         .lte('scheduled_date', pauseEndDate)
@@ -286,7 +289,19 @@ export async function POST(request: NextRequest) {
           })
           .in('id', sessionIds);
 
-        // TODO: Cancel Google Calendar events
+        // Cancel Google Calendar events and Recall.ai bots
+        for (const s of sessionsToCancel) {
+          try {
+            if (s.google_calendar_event_id) {
+              await cancelEvent(s.google_calendar_event_id, true);
+            }
+            if (s.recall_bot_id) {
+              await cancelRecallBot(s.recall_bot_id);
+            }
+          } catch (cancelError) {
+            console.error(`Failed to cancel external resources for session ${s.id}:`, cancelError);
+          }
+        }
       }
 
       // Log event
@@ -300,8 +315,18 @@ export async function POST(request: NextRequest) {
         pause_number: (enrollment.pause_count || 0) + 1,
       }, 'parent');
 
-      // TODO: Send WhatsApp notification to parent
-      // TODO: Notify coach
+      // Dispatch to orchestrator for consistent session cancellation during pause
+      try {
+        await dispatch('enrollment.paused', {
+          enrollmentId,
+          pauseStartDate,
+          pauseEndDate,
+          reason: pauseReason,
+          requestId: crypto.randomUUID(),
+        });
+      } catch (dispatchError) {
+        console.error('Orchestrator enrollment.paused dispatch failed:', dispatchError);
+      }
 
       return NextResponse.json({
         success: true,

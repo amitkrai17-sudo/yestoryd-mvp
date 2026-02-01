@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 
 interface FloatingElementsProps {
   whatsappNumber: string;
@@ -27,10 +27,11 @@ export function FloatingElements({
         href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-20 sm:bottom-6 right-6 z-30 bg-[#25d366] p-3 rounded-full shadow-2xl hover:scale-110 transition-all duration-300 flex items-center gap-2 group"
+        className="fixed bottom-20 sm:bottom-6 right-6 z-30 bg-surface-1/80 backdrop-blur-sm p-3.5 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center gap-2 group"
+        aria-label="Chat on WhatsApp"
       >
-        <Image src="/images/rai-mascot.png" alt="Chat" width={40} height={40} className="w-8 h-8 rounded-full" />
-        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 ease-in-out text-white font-bold whitespace-nowrap text-sm">
+        <WhatsAppIcon className="w-7 h-7 text-[#25D366]" />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 ease-in-out text-[#25D366] font-bold whitespace-nowrap text-sm">
           {whatsappHoverText}
         </span>
       </a>
@@ -42,7 +43,7 @@ export function FloatingElements({
         <Link
           href="/assessment"
           onClick={onCTAClick}
-          className="block w-full text-center bg-[#FF0099] text-white py-3 rounded-xl font-bold shadow-lg text-sm hover:bg-[#e6008a]"
+          className="block w-full min-h-[44px] text-center bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold shadow-lg text-sm hover:bg-[#FF0099]/90 transition-all"
         >
           {stickyCtaText}
         </Link>

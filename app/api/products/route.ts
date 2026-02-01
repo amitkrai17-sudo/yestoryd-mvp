@@ -38,6 +38,14 @@ interface Product {
   display_order: number;
   available: boolean;
   eligibility_message: string | null;
+  // New columns
+  week_range: string | null;
+  is_locked: boolean;
+  lock_message: string | null;
+  duration_coaching_mins: number;
+  duration_skill_mins: number;
+  duration_checkin_mins: number;
+  phase_number: number | null;
 }
 
 /**
@@ -123,7 +131,11 @@ export async function GET(request: NextRequest) {
       let available = true;
       let eligibilityMessage: string | null = null;
 
-      if (plan.slug === 'continuation') {
+      // Locked products are not available for purchase
+      if (plan.is_locked) {
+        available = false;
+        eligibilityMessage = plan.lock_message || 'Coming soon';
+      } else if (plan.slug === 'continuation') {
         // Continuation requires completed starter
         if (!childId) {
           available = false;
@@ -155,6 +167,14 @@ export async function GET(request: NextRequest) {
         display_order: plan.display_order,
         available,
         eligibility_message: eligibilityMessage,
+        // New columns
+        week_range: plan.week_range || null,
+        is_locked: plan.is_locked || false,
+        lock_message: plan.lock_message || null,
+        duration_coaching_mins: plan.duration_coaching_mins || 45,
+        duration_skill_mins: plan.duration_skill_mins || 45,
+        duration_checkin_mins: plan.duration_checkin_mins || 45,
+        phase_number: plan.phase_number || null,
       };
     });
 

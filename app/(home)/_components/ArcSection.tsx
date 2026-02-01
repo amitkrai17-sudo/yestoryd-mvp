@@ -67,20 +67,20 @@ export function ArcSection({
   onCTAClick,
 }: ArcSectionProps) {
   const phaseArray = [
-    { ...phases.assess, letter: 'A', color: '#00ABFF' },
-    { ...phases.remediate, letter: 'R', color: '#FF0099' },
-    { ...phases.celebrate, letter: 'C', color: '#7B008B' },
+    { ...phases.assess, letter: 'A', color: phases.assess.color || '#00ABFF' },
+    { ...phases.remediate, letter: 'R', color: phases.remediate.color || '#FF0099' },
+    { ...phases.celebrate, letter: 'C', color: phases.celebrate.color || '#c44dff' },
   ];
 
   return (
-    <section id="how-it-works" className="py-16 lg:py-24 bg-surface-1 overflow-hidden">
+    <section id="how-it-works" className="py-16 lg:py-24 bg-surface-1 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
         <div className="text-center mb-12 lg:mb-16">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 px-4 py-2 rounded-full mb-4">
             <Sparkles className="w-4 h-4 text-[#ff0099]" />
-            <span className="text-sm font-bold text-[#7b008b]">{badge}</span>
+            <span className="text-sm font-bold text-[#ff0099]">{badge}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
             {title.includes('90-Day') ? (
@@ -196,7 +196,7 @@ export function ArcSection({
                           {phase.features.map((feature, idx) => (
                             <li key={idx} className="flex items-center gap-2">
                               <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: phase.color }} />
-                              {feature}
+                              {typeof feature === 'string' ? feature : (feature as any)?.title || (feature as any)?.description || 'Feature'}
                             </li>
                           ))}
                         </ul>
@@ -247,7 +247,7 @@ export function ArcSection({
                 <Link
                   href="/assessment"
                   onClick={onCTAClick}
-                  className="inline-flex items-center justify-center gap-2 bg-[#ff0099] hover:bg-[#e6008a] text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-full font-bold text-sm sm:text-lg transition-all hover:scale-105 shadow-xl shadow-[#ff0099]/30 whitespace-nowrap"
+                  className="min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#ff0099] hover:bg-[#FF0099]/90 text-white px-6 py-3 rounded-xl font-bold text-sm sm:text-lg transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-[#FF0099]/25 whitespace-nowrap"
                 >
                   Reading Test - Free
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />

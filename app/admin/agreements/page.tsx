@@ -423,7 +423,7 @@ export default function AdminAgreementsPage() {
   }, {} as { [key: string]: ConfigVariable[] });
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div className="bg-surface-0">
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

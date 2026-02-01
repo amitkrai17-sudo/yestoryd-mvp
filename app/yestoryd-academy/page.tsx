@@ -1,6 +1,6 @@
 // app/yestoryd-academy/page.tsx
 // Yestoryd Academy - Coach Recruitment Landing Page
-// Fixes: Consistency ("100+ families"), urgency element, minor polish
+// DARK THEME - Consistent with Yestoryd design system
 
 'use client';
 
@@ -45,6 +45,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
+import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -108,6 +109,9 @@ export default function YestorydAcademyPage() {
   // Dynamic earnings data from database
   const { data: earningsData, isLoading: earningsLoading } = useEarningsCalculator();
 
+  // Session durations from site_settings
+  const durations = useSessionDurations();
+
   // Fetch video URL from site_settings
   useEffect(() => {
     async function fetchVideoUrl() {
@@ -117,7 +121,7 @@ export default function YestorydAcademyPage() {
           .select('value')
           .eq('key', 'yestoryd_academy_video_url')
           .single();
-        
+
         if (data?.value) {
           const parsed = JSON.parse(data.value);
           if (parsed && parsed.startsWith('http')) {
@@ -162,9 +166,9 @@ export default function YestorydAcademyPage() {
   const platformLeadTotal = fullProgram?.coach_earnings_platform_lead || coachCostAmount;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-0">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100">
+      <nav className="sticky top-0 z-50 bg-surface-1/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/">
             <Image
@@ -177,7 +181,7 @@ export default function YestorydAcademyPage() {
           </Link>
           <Link
             href="/yestoryd-academy/apply"
-            className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-5 py-2.5 rounded-full font-semibold text-sm hover:shadow-lg transition-all"
+            className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-5 py-2.5 rounded-full font-semibold text-sm hover:shadow-lg transition-all min-h-[44px] flex items-center"
           >
             Apply Now
           </Link>
@@ -187,17 +191,17 @@ export default function YestorydAcademyPage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-pink-50/30 to-purple-50/30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#ff0099]/10 via-surface-0 to-[#7b008b]/10" />
 
         <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-20 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2 mb-8 shadow-sm">
+          <div className="inline-flex items-center gap-2 bg-surface-1 border border-border rounded-full px-4 py-2 mb-8 shadow-md shadow-black/20">
             <GraduationCap className="w-5 h-5 text-[#ff0099]" />
-            <span className="text-sm font-medium text-slate-700">Yestoryd Academy</span>
+            <span className="text-sm font-medium text-text-secondary">Yestoryd Academy</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
             Partner With Us to{' '}
             <span className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] bg-clip-text text-transparent">
               Transform Young Readers
@@ -205,56 +209,56 @@ export default function YestorydAcademyPage() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
             You bring the warmth, patience, and human connection.
             We bring the science, technology, and support system.
             Together, we help children fall in love with reading.
           </p>
 
-          {/* URGENCY BADGE - NEW */}
-          <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-4 py-2 mb-8">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            <span className="text-sm font-medium text-amber-700">January 2026 Batch • Limited Spots</span>
+          {/* URGENCY BADGE */}
+          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-2 mb-8">
+            <AlertCircle className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-medium text-amber-400">January 2026 Batch • Limited Spots</span>
           </div>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link
               href="/yestoryd-academy/apply"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-xl transition-all min-h-[56px]"
             >
               Apply Now
               <ArrowRight className="w-5 h-5" />
             </Link>
             <button
               onClick={() => document.getElementById('partnership')?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium"
+              className="inline-flex items-center gap-2 text-text-secondary hover:text-white font-medium min-h-[44px]"
             >
               Learn More
               <ChevronDown className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Stats - FIXED: "100+ Families" for consistency */}
+          {/* Stats */}
           <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto mb-12">
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-slate-900">100+</div>
-              <div className="text-sm text-slate-500 mt-1">Families Helped</div>
+              <div className="text-3xl md:text-4xl font-bold text-white">100+</div>
+              <div className="text-sm text-text-tertiary mt-1">Families Helped</div>
             </div>
-            <div className="text-center border-x border-slate-200">
-              <div className="text-3xl md:text-4xl font-bold text-slate-900">4.9★</div>
-              <div className="text-sm text-slate-500 mt-1">Parent Satisfaction</div>
+            <div className="text-center border-x border-border">
+              <div className="text-3xl md:text-4xl font-bold text-white">4.9★</div>
+              <div className="text-sm text-text-tertiary mt-1">Parent Satisfaction</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-slate-900">AI-Powered</div>
-              <div className="text-sm text-slate-500 mt-1">Progress Tracking</div>
+              <div className="text-3xl md:text-4xl font-bold text-white">AI-Powered</div>
+              <div className="text-sm text-text-tertiary mt-1">Progress Tracking</div>
             </div>
           </div>
 
           {/* Video Section - Shows if video URL is configured */}
           {videoUrl && (
             <div className="max-w-2xl mx-auto">
-              <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+              <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl shadow-black/40 border-4 border-surface-1">
                 <iframe
                   src={`${videoUrl}${videoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`}
                   title="Join Yestoryd Academy"
@@ -263,7 +267,7 @@ export default function YestorydAcademyPage() {
                   className="absolute inset-0 w-full h-full"
                 />
               </div>
-              <p className="text-sm text-slate-500 mt-4">
+              <p className="text-sm text-text-tertiary mt-4">
                 Watch: Why coaches love working with Yestoryd
               </p>
             </div>
@@ -272,27 +276,27 @@ export default function YestorydAcademyPage() {
       </section>
 
       {/* Partnership Section */}
-      <section id="partnership" className="py-20 bg-white">
+      <section id="partnership" className="py-20 bg-surface-0">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               A True <span className="text-[#ff0099]">Partnership</span>
             </h2>
-            <p className="text-lg text-slate-600">
+            <p className="text-lg text-text-secondary">
               You focus on what you do best — nurturing children. We handle everything else.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* You Provide */}
-            <div className="bg-gradient-to-br from-pink-50 to-white rounded-2xl p-8 border border-pink-100">
+            <div className="bg-gradient-to-br from-[#ff0099]/10 to-surface-1 rounded-2xl p-8 border border-[#ff0099]/20">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 bg-[#ff0099] rounded-xl flex items-center justify-center">
                   <Heart className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900">You Provide</h3>
-                  <p className="text-sm text-slate-500">Just 3-4 hours per child/month</p>
+                  <h3 className="text-xl font-bold text-white">You Provide</h3>
+                  <p className="text-sm text-text-tertiary">Just 3-4 hours per child/month</p>
                 </div>
               </div>
 
@@ -306,25 +310,25 @@ export default function YestorydAcademyPage() {
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-[#ff0099] flex-shrink-0 mt-0.5" />
-                    <span className="text-slate-700">{item}</span>
+                    <span className="text-text-secondary">{item}</span>
                   </li>
                 ))}
               </ul>
 
-              <p className="mt-6 text-sm text-slate-500 italic">
+              <p className="mt-6 text-sm text-text-tertiary italic">
                 That's it. Just be present and caring.
               </p>
             </div>
 
             {/* Yestoryd Handles */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 text-white">
+            <div className="bg-gradient-to-br from-surface-2 to-surface-1 rounded-2xl p-8 border border-border">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-[#ff0099]" />
+                <div className="w-12 h-12 bg-[#00abff]/20 rounded-xl flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-[#00abff]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Yestoryd Handles</h3>
-                  <p className="text-sm text-slate-400">Everything else — so you don't have to</p>
+                  <h3 className="text-xl font-bold text-white">Yestoryd Handles</h3>
+                  <p className="text-sm text-text-tertiary">Everything else — so you don't have to</p>
                 </div>
               </div>
 
@@ -343,32 +347,32 @@ export default function YestorydAcademyPage() {
                   { icon: GraduationCap, text: "Continuous training & resources" }
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3">
-                    <item.icon className="w-4 h-4 text-[#ff0099] flex-shrink-0" />
-                    <span className="text-sm text-slate-300">{item.text}</span>
+                    <item.icon className="w-4 h-4 text-[#00abff] flex-shrink-0" />
+                    <span className="text-sm text-text-secondary">{item.text}</span>
                   </li>
                 ))}
               </ul>
 
-              <p className="mt-6 text-sm text-[#ff0099] font-medium">
+              <p className="mt-6 text-sm text-[#00abff] font-medium">
                 You nurture. We handle the rest.
               </p>
             </div>
           </div>
 
-          <p className="text-center mt-8 text-slate-500">
+          <p className="text-center mt-8 text-text-tertiary">
             Minimum effort, maximum impact.
           </p>
         </div>
       </section>
 
       {/* What We Look For */}
-      <section className="py-20 bg-slate-50">
+      <section className="py-20 bg-surface-1">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               What We Look For
             </h2>
-            <p className="text-lg text-slate-600">
+            <p className="text-lg text-text-secondary">
               Skills can be taught. These qualities cannot. Do you recognize yourself?
             </p>
           </div>
@@ -406,12 +410,12 @@ export default function YestorydAcademyPage() {
                 description: "You honor commitments. When you say you'll be there at 5 PM, you're there at 4:55 PM."
               }
             ].map((item, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-[#ff0099]/30 hover:shadow-lg transition-all">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-100 to-purple-100 rounded-xl flex items-center justify-center mb-4">
+              <div key={i} className="bg-surface-0 rounded-2xl p-6 border border-border hover:border-[#ff0099]/30 hover:shadow-lg hover:shadow-[#ff0099]/10 transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#ff0099]/20 to-[#7b008b]/20 rounded-xl flex items-center justify-center mb-4">
                   <item.icon className="w-6 h-6 text-[#ff0099]" />
                 </div>
-                <h3 className="font-bold text-slate-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
+                <h3 className="font-bold text-white mb-2">{item.title}</h3>
+                <p className="text-sm text-text-secondary leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
@@ -419,13 +423,13 @@ export default function YestorydAcademyPage() {
       </section>
 
       {/* Journey Steps */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-surface-0">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Your Journey to Partnership
             </h2>
-            <p className="text-lg text-slate-600">
+            <p className="text-lg text-text-secondary">
               A thoughtful process to ensure we're the right fit for each other.
             </p>
           </div>
@@ -448,7 +452,7 @@ export default function YestorydAcademyPage() {
                 step: 3,
                 title: "Meet Our Team",
                 description: "A friendly conversation with our founders to align on values and answer your questions.",
-                time: "30 minutes"
+                time: `${durations.discovery} minutes`
               },
               {
                 step: 4,
@@ -459,22 +463,20 @@ export default function YestorydAcademyPage() {
             ].map((item, i) => (
               <div key={i} className="flex gap-6 items-start">
                 <div className="flex-shrink-0">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
-                    i === 3 ? 'bg-gradient-to-r from-[#ff0099] to-[#7b008b]' : 'bg-gradient-to-r from-[#ff0099] to-[#7b008b]'
-                  }`}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-r from-[#ff0099] to-[#7b008b]">
                     {item.step}
                   </div>
                   {i < 3 && (
                     <div className="w-0.5 h-16 bg-gradient-to-b from-[#ff0099] to-transparent mx-auto mt-2" />
                   )}
                 </div>
-                <div className="flex-grow bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                <div className="flex-grow bg-surface-1 rounded-2xl p-6 border border-border">
                   <div className="flex items-center gap-2 mb-2">
                     {i === 3 && <Sparkles className="w-5 h-5 text-[#ff0099]" />}
-                    <h3 className="font-bold text-slate-900">{item.title}</h3>
+                    <h3 className="font-bold text-white">{item.title}</h3>
                   </div>
-                  <p className="text-slate-600 mb-3">{item.description}</p>
-                  <span className={`text-sm ${i === 3 ? 'text-[#ff0099] font-medium' : 'text-slate-400'}`}>
+                  <p className="text-text-secondary mb-3">{item.description}</p>
+                  <span className={`text-sm ${i === 3 ? 'text-[#ff0099] font-medium' : 'text-text-tertiary'}`}>
                     {item.time}
                   </span>
                 </div>
@@ -485,13 +487,13 @@ export default function YestorydAcademyPage() {
       </section>
 
       {/* Coach Tiers */}
-      <section className="py-20 bg-slate-900 text-white">
+      <section className="py-20 bg-surface-1">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Grow With <span className="text-[#ff0099]">Yestoryd</span>
             </h2>
-            <p className="text-lg text-slate-400">
+            <p className="text-lg text-text-tertiary">
               Your journey from new coach to master mentor.
             </p>
           </div>
@@ -503,32 +505,35 @@ export default function YestorydAcademyPage() {
                 title: "Rising Coach",
                 description: "New coaches, first 3 months",
                 perk: "Full training, mentorship support",
-                bg: "from-green-900/50 to-green-800/30",
-                iconColor: "text-green-400"
+                bg: "from-green-500/20 to-green-500/10",
+                iconColor: "text-green-400",
+                borderColor: "border-green-500/30"
               },
               {
                 icon: Star,
                 title: "Expert Coach",
                 description: "30+ children coached, strong NPS",
                 perk: "Priority assignments, featured profile",
-                bg: "from-yellow-900/50 to-yellow-800/30",
-                iconColor: "text-yellow-400"
+                bg: "from-[#ffde00]/20 to-[#ffde00]/10",
+                iconColor: "text-[#ffde00]",
+                borderColor: "border-[#ffde00]/30"
               },
               {
                 icon: Crown,
                 title: "Master Coach",
                 description: "75+ children, exceptional results",
                 perk: "Train new coaches, leadership role",
-                bg: "from-purple-900/50 to-purple-800/30",
-                iconColor: "text-purple-400"
+                bg: "from-[#c847f4]/20 to-[#c847f4]/10",
+                iconColor: "text-[#c847f4]",
+                borderColor: "border-[#c847f4]/30"
               }
             ].map((tier, i) => (
-              <div key={i} className={`bg-gradient-to-br ${tier.bg} rounded-2xl p-6 border border-white/10`}>
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4">
+              <div key={i} className={`bg-gradient-to-br ${tier.bg} rounded-2xl p-6 border ${tier.borderColor}`}>
+                <div className="w-12 h-12 rounded-xl bg-surface-0/50 flex items-center justify-center mb-4">
                   <tier.icon className={`w-6 h-6 ${tier.iconColor}`} />
                 </div>
-                <h3 className="text-xl font-bold mb-2">{tier.title}</h3>
-                <p className="text-sm text-slate-400 mb-4">{tier.description}</p>
+                <h3 className="text-xl font-bold text-white mb-2">{tier.title}</h3>
+                <p className="text-sm text-text-tertiary mb-4">{tier.description}</p>
                 <p className="text-sm text-[#ff0099]">{tier.perk}</p>
               </div>
             ))}
@@ -537,17 +542,17 @@ export default function YestorydAcademyPage() {
       </section>
 
       {/* Earnings Section */}
-      <section className="py-20 bg-slate-900 text-white border-t border-white/10">
+      <section className="py-20 bg-surface-0 border-t border-border">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-[#ff0099]/20 text-[#ff0099] rounded-full px-4 py-2 mb-4">
               <Sparkles className="w-4 h-4" />
               <span className="text-sm font-medium">INTRODUCTORY OFFER</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               How You Earn
             </h2>
-            <p className="text-slate-400">
+            <p className="text-text-tertiary">
               Lock in these rates by joining now — percentages may change for future coaches.
             </p>
           </div>
@@ -556,27 +561,27 @@ export default function YestorydAcademyPage() {
           {earningsLoading ? (
             <div className="flex items-center justify-center gap-3 py-12">
               <Loader2 className="w-6 h-6 text-[#ff0099] animate-spin" />
-              <span className="text-slate-400">Loading earnings data...</span>
+              <span className="text-text-tertiary">Loading earnings data...</span>
             </div>
           ) : (
             <div className="grid md:grid-cols-3 gap-4 mb-10">
-              <div className="bg-gradient-to-br from-purple-600/30 to-purple-500/20 rounded-2xl p-6 text-center border border-purple-500/30">
-                <div className="text-3xl font-bold text-purple-400 mb-2">{leadCostPercent}%</div>
-                <div className="font-semibold mb-1">Lead Cost</div>
-                <div className="text-sm text-slate-400 mb-2">₹{leadCostAmount.toLocaleString()}</div>
-                <div className="text-xs text-slate-500">Goes to whoever<br />brought the student</div>
+              <div className="bg-gradient-to-br from-[#c847f4]/20 to-[#c847f4]/10 rounded-2xl p-6 text-center border border-[#c847f4]/30">
+                <div className="text-3xl font-bold text-[#c847f4] mb-2">{leadCostPercent}%</div>
+                <div className="font-semibold text-white mb-1">Lead Cost</div>
+                <div className="text-sm text-text-secondary mb-2">₹{leadCostAmount.toLocaleString()}</div>
+                <div className="text-xs text-text-tertiary">Goes to whoever<br />brought the student</div>
               </div>
-              <div className="bg-gradient-to-br from-green-600/30 to-green-500/20 rounded-2xl p-6 text-center border border-green-500/30">
+              <div className="bg-gradient-to-br from-green-500/20 to-green-500/10 rounded-2xl p-6 text-center border border-green-500/30">
                 <div className="text-3xl font-bold text-green-400 mb-2">{coachCostPercent}%</div>
-                <div className="font-semibold mb-1">Coach Cost</div>
-                <div className="text-sm text-slate-400 mb-2">₹{coachCostAmount.toLocaleString()}</div>
-                <div className="text-xs text-slate-500">Goes to coach<br />who teaches</div>
+                <div className="font-semibold text-white mb-1">Coach Cost</div>
+                <div className="text-sm text-text-secondary mb-2">₹{coachCostAmount.toLocaleString()}</div>
+                <div className="text-xs text-text-tertiary">Goes to coach<br />who teaches</div>
               </div>
-              <div className="bg-gradient-to-br from-blue-600/30 to-blue-500/20 rounded-2xl p-6 text-center border border-blue-500/30">
-                <div className="text-3xl font-bold text-blue-400 mb-2">{platformFeePercent}%</div>
-                <div className="font-semibold mb-1">Platform Fee</div>
-                <div className="text-sm text-slate-400 mb-2">₹{platformFeeAmount.toLocaleString()}</div>
-                <div className="text-xs text-slate-500">Yestoryd<br />(tech, content, support)</div>
+              <div className="bg-gradient-to-br from-[#00abff]/20 to-[#00abff]/10 rounded-2xl p-6 text-center border border-[#00abff]/30">
+                <div className="text-3xl font-bold text-[#00abff] mb-2">{platformFeePercent}%</div>
+                <div className="font-semibold text-white mb-1">Platform Fee</div>
+                <div className="text-sm text-text-secondary mb-2">₹{platformFeeAmount.toLocaleString()}</div>
+                <div className="text-xs text-text-tertiary">Yestoryd<br />(tech, content, support)</div>
               </div>
             </div>
           )}
@@ -584,67 +589,67 @@ export default function YestorydAcademyPage() {
           {/* Scenarios */}
           <div className="space-y-4 mb-10">
             {/* Yestoryd Assigns */}
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+            <div className="bg-surface-1 rounded-2xl p-6 border border-border">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 rounded-full bg-blue-500" />
-                <h3 className="font-semibold">Yestoryd Assigns</h3>
+                <div className="w-3 h-3 rounded-full bg-[#00abff]" />
+                <h3 className="font-semibold text-white">Yestoryd Assigns</h3>
               </div>
-              <p className="text-sm text-slate-400 mb-4">We bring the student, you coach them.</p>
+              <p className="text-sm text-text-tertiary mb-4">We bring the student, you coach them.</p>
               <div className="flex justify-between items-center">
                 <div>
-                  <span className="text-slate-400">You earn:</span>
+                  <span className="text-text-tertiary">You earn:</span>
                   <span className="text-2xl font-bold text-white ml-2">₹{platformLeadTotal.toLocaleString()}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-500">Yestoryd:</span>
-                  <span className="text-slate-400 ml-2">₹{(programPrice - platformLeadTotal).toLocaleString()}</span>
+                  <span className="text-text-tertiary">Yestoryd:</span>
+                  <span className="text-text-secondary ml-2">₹{(programPrice - platformLeadTotal).toLocaleString()}</span>
                 </div>
               </div>
-              <div className="text-center mt-4 text-2xl font-bold text-blue-400">{coachCostPercent}%</div>
+              <div className="text-center mt-4 text-2xl font-bold text-[#00abff]">{coachCostPercent}%</div>
             </div>
 
             {/* You Bring & Coach */}
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+            <div className="bg-surface-1 rounded-2xl p-6 border border-border">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-3 h-3 rounded-full bg-orange-500" />
-                <h3 className="font-semibold">You Bring & Coach</h3>
+                <h3 className="font-semibold text-white">You Bring & Coach</h3>
               </div>
-              <p className="text-sm text-slate-400 mb-4">Your student, you coach them.</p>
+              <p className="text-sm text-text-tertiary mb-4">Your student, you coach them.</p>
               <div className="flex justify-between items-center">
                 <div>
-                  <span className="text-slate-400">You earn:</span>
+                  <span className="text-text-tertiary">You earn:</span>
                   <span className="text-2xl font-bold text-white ml-2">₹{ownLeadTotal.toLocaleString()}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-500">Yestoryd:</span>
-                  <span className="text-slate-400 ml-2">₹{platformFeeAmount.toLocaleString()}</span>
+                  <span className="text-text-tertiary">Yestoryd:</span>
+                  <span className="text-text-secondary ml-2">₹{platformFeeAmount.toLocaleString()}</span>
                 </div>
               </div>
               <div className="text-center mt-4 text-2xl font-bold text-orange-400">{ownLeadTotalPercent}%</div>
             </div>
 
             {/* You Refer Only */}
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+            <div className="bg-surface-1 rounded-2xl p-6 border border-border">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                <h3 className="font-semibold">You Refer Only</h3>
+                <div className="w-3 h-3 rounded-full bg-[#ffde00]" />
+                <h3 className="font-semibold text-white">You Refer Only</h3>
               </div>
-              <p className="text-sm text-slate-400 mb-4">Your lead, another coach teaches.</p>
+              <p className="text-sm text-text-tertiary mb-4">Your lead, another coach teaches.</p>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <span className="text-slate-500">Referral bonus:</span>
-                  <div className="font-bold text-yellow-400">₹{leadCostAmount.toLocaleString()}</div>
+                  <span className="text-text-tertiary">Referral bonus:</span>
+                  <div className="font-bold text-[#ffde00]">₹{leadCostAmount.toLocaleString()}</div>
                 </div>
                 <div>
-                  <span className="text-slate-500">Teaching coach:</span>
-                  <div className="text-slate-400">₹{coachCostAmount.toLocaleString()}</div>
+                  <span className="text-text-tertiary">Teaching coach:</span>
+                  <div className="text-text-secondary">₹{coachCostAmount.toLocaleString()}</div>
                 </div>
                 <div>
-                  <span className="text-slate-500">Yestoryd:</span>
-                  <div className="text-slate-400">₹{platformFeeAmount.toLocaleString()}</div>
+                  <span className="text-text-tertiary">Yestoryd:</span>
+                  <div className="text-text-secondary">₹{platformFeeAmount.toLocaleString()}</div>
                 </div>
               </div>
-              <div className="text-center mt-4 text-2xl font-bold text-yellow-400">{leadCostPercent}%</div>
+              <div className="text-center mt-4 text-2xl font-bold text-[#ffde00]">{leadCostPercent}%</div>
             </div>
           </div>
 
@@ -653,26 +658,26 @@ export default function YestorydAcademyPage() {
           </p>
 
           {/* Earnings Calculator */}
-          <div className="mt-12 bg-white/5 rounded-2xl p-8 border border-white/10">
-            <h3 className="text-xl font-bold text-center mb-6">Earnings Calculator</h3>
+          <div className="mt-12 bg-surface-1 rounded-2xl p-8 border border-border">
+            <h3 className="text-xl font-bold text-white text-center mb-6">Earnings Calculator</h3>
 
-            <div className="flex justify-center gap-4 mb-6">
+            <div className="flex flex-wrap justify-center gap-4 mb-6">
               <button
                 onClick={() => setEarningsMode('assigned')}
-                className={`px-6 py-2 rounded-full font-medium transition-all ${
+                className={`px-6 py-2 rounded-full font-medium transition-all min-h-[44px] ${
                   earningsMode === 'assigned'
                     ? 'bg-[#ff0099] text-white'
-                    : 'bg-white/10 text-slate-400 hover:bg-white/20'
+                    : 'bg-surface-2 text-text-tertiary hover:bg-surface-0 border border-border'
                 }`}
               >
                 Yestoryd assigns ({coachCostPercent}%)
               </button>
               <button
                 onClick={() => setEarningsMode('bring')}
-                className={`px-6 py-2 rounded-full font-medium transition-all ${
+                className={`px-6 py-2 rounded-full font-medium transition-all min-h-[44px] ${
                   earningsMode === 'bring'
                     ? 'bg-[#ff0099] text-white'
-                    : 'bg-white/10 text-slate-400 hover:bg-white/20'
+                    : 'bg-surface-2 text-text-tertiary hover:bg-surface-0 border border-border'
                 }`}
               >
                 You bring students ({ownLeadTotalPercent}%)
@@ -680,7 +685,7 @@ export default function YestorydAcademyPage() {
             </div>
 
             <div className="text-center mb-6">
-              <label className="text-slate-400 block mb-2">Children you coach:</label>
+              <label className="text-text-tertiary block mb-2">Children you coach:</label>
               <div className="flex items-center justify-center gap-4">
                 <input
                   type="range"
@@ -690,16 +695,16 @@ export default function YestorydAcademyPage() {
                   onChange={(e) => setChildrenCount(parseInt(e.target.value))}
                   className="w-48 accent-[#ff0099]"
                 />
-                <span className="text-2xl font-bold w-12">{childrenCount}</span>
+                <span className="text-2xl font-bold text-white w-12">{childrenCount}</span>
               </div>
             </div>
 
             <div className="text-center">
-              <p className="text-slate-400 mb-2">Monthly earnings potential</p>
-              <div className="text-4xl md:text-5xl font-bold">
+              <p className="text-text-tertiary mb-2">Monthly earnings potential</p>
+              <div className="text-4xl md:text-5xl font-bold text-white">
                 ₹{calculateEarnings().toLocaleString()}
               </div>
-              <p className="text-slate-500 text-sm mt-2">
+              <p className="text-text-tertiary text-sm mt-2">
                 ({earningsMode === 'assigned' ? `${coachCostPercent}%` : `${ownLeadTotalPercent}%`} share)
               </p>
             </div>
@@ -708,10 +713,10 @@ export default function YestorydAcademyPage() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-surface-1">
         <div className="max-w-3xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Common <span className="text-[#ff0099]">Questions</span>
             </h2>
           </div>
@@ -720,22 +725,22 @@ export default function YestorydAcademyPage() {
             {FAQ_DATA.map((faq, i) => (
               <div
                 key={i}
-                className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden"
+                className="bg-surface-0 rounded-2xl border border-border overflow-hidden"
               >
                 <button
                   onClick={() => toggleFaq(i)}
-                  className="w-full flex items-center justify-between p-6 text-left hover:bg-slate-100 transition-colors"
+                  className="w-full flex items-center justify-between p-6 text-left hover:bg-surface-2 transition-colors min-h-[44px]"
                 >
-                  <span className="font-semibold text-slate-900 pr-8">{faq.question}</span>
+                  <span className="font-semibold text-white pr-8">{faq.question}</span>
                   {openFaq === i ? (
-                    <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                    <ChevronUp className="w-5 h-5 text-text-tertiary flex-shrink-0" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                    <ChevronDown className="w-5 h-5 text-text-tertiary flex-shrink-0" />
                   )}
                 </button>
                 {openFaq === i && (
                   <div className="px-6 pb-6">
-                    <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
+                    <p className="text-text-secondary leading-relaxed">{faq.answer}</p>
                   </div>
                 )}
               </div>
@@ -754,16 +759,16 @@ export default function YestorydAcademyPage() {
             If you believe every child deserves patient, personalized guidance on their
             reading journey, we'd love to hear from you.
           </p>
-          
+
           {/* Urgency reminder */}
           <p className="text-white/60 text-sm mb-8 flex items-center justify-center gap-2">
             <Clock className="w-4 h-4" />
             January 2026 batch applications closing soon
           </p>
-          
+
           <Link
             href="/yestoryd-academy/apply"
-            className="inline-flex items-center gap-2 bg-white text-[#ff0099] px-10 py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all"
+            className="inline-flex items-center gap-2 bg-white text-[#ff0099] px-10 py-4 rounded-full font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all min-h-[56px]"
           >
             Apply Now
             <ArrowRight className="w-5 h-5" />
@@ -775,17 +780,17 @@ export default function YestorydAcademyPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-slate-900 text-white">
+      <footer className="py-12 bg-surface-1 border-t border-border">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <Image
             src="/images/logo.png"
             alt="Yestoryd"
             width={120}
             height={35}
-            className="h-8 w-auto mx-auto mb-6 brightness-0 invert opacity-80"
+            className="h-8 w-auto mx-auto mb-6"
           />
-          <p className="text-slate-500">
-            © 2025 Yestoryd. Transforming young readers, one child at a time.
+          <p className="text-text-tertiary">
+            © 2026 Yestoryd. Transforming young readers, one child at a time.
           </p>
         </div>
       </footer>

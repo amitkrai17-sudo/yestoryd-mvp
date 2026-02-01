@@ -1,8 +1,11 @@
 // app/api/coach-assessment/chat/route.ts
 // Gemini handles the ENTIRE coach assessment conversation WITH SCORING
+// SECURITY: Validates applicationId exists and is in valid assessment state
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
+import { getServiceSupabase } from '@/lib/api-auth';
+import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/utils/rate-limiter';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -99,8 +102,38 @@ JSON only (no markdown):
 }`;
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 20 requests per minute per IP
+  const clientId = getClientIdentifier(request);
+  const rateLimit = checkRateLimit(`chat:${clientId}`, { maxRequests: 20, windowMs: 60000 });
+  if (!rateLimit.success) {
+    return rateLimitResponse(rateLimit);
+  }
+
   try {
-    const { messages, questionNumber, currentScores } = await request.json();
+    const body = await request.json();
+    const { messages, questionNumber, currentScores, applicationId } = body;
+
+    // Validate applicationId to prevent unauthorized Gemini API usage
+    if (!applicationId) {
+      return NextResponse.json({ error: 'applicationId required' }, { status: 400 });
+    }
+
+    const supabase = getServiceSupabase();
+    const { data: app, error: appError } = await supabase
+      .from('coach_applications')
+      .select('id, status')
+      .eq('id', applicationId)
+      .single();
+
+    if (appError || !app) {
+      return NextResponse.json({ error: 'Invalid application' }, { status: 404 });
+    }
+
+    // Only allow chat during active assessment states
+    const allowedStates = ['applied', 'started', 'ai_assessment_in_progress'];
+    if (!allowedStates.includes(app.status)) {
+      return NextResponse.json({ error: 'Assessment not active for this application' }, { status: 403 });
+    }
 
     // Build conversation history for Gemini
     const conversationHistory = messages.map((msg: { role: string; content: string }) => ({

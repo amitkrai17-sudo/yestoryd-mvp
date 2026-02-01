@@ -115,14 +115,14 @@ export default function RevenueSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div className="bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

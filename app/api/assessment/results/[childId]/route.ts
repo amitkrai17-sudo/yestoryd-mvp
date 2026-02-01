@@ -3,6 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { capitalizeName } from '@/lib/utils';
+
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,10 +72,10 @@ export async function GET(
     const response = {
       // Basic info
       childId: child.id,
-      childName: child.child_name || child.name,
+      childName: capitalizeName(child.child_name || child.name),
       // Use age from learning event if available (age at assessment time), else current age
       childAge: eventData.child_age?.toString() || child.age?.toString() || '',
-      parentName: child.parent_name || '',
+      parentName: capitalizeName(child.parent_name || ''),
       parentEmail: child.parent_email || '',
       parentPhone: child.parent_phone || '',
 

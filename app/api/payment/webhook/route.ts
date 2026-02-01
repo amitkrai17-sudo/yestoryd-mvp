@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { queueEnrollmentComplete } from '@/lib/qstash';
+import { loadCoachConfig, loadPaymentConfig } from '@/lib/config/loader';
 
 // --- CONFIGURATION ---
 const supabase = createClient(
@@ -35,12 +36,23 @@ const PaymentEntitySchema = z.object({
   notes: z.record(z.any()).optional(),
 });
 
+const RefundEntitySchema = z.object({
+  id: z.string(),
+  payment_id: z.string(),
+  amount: z.number(),
+  status: z.string(),
+  notes: z.record(z.any()).optional(),
+});
+
 const WebhookPayloadSchema = z.object({
   event: z.string(),
   payload: z.object({
     payment: z.object({
       entity: PaymentEntitySchema,
-    }),
+    }).optional(),
+    refund: z.object({
+      entity: RefundEntitySchema,
+    }).optional(),
   }),
   created_at: z.number().optional(),
 });
@@ -109,10 +121,11 @@ async function getCoachId(
     if (data) return data.id;
   }
 
+  const coachConfig = await loadCoachConfig();
   const { data: defaultCoach } = await supabase
     .from('coaches')
     .select('id')
-    .eq('email', 'rucha.rai@yestoryd.com')
+    .eq('id', coachConfig.defaultCoachId)
     .single();
 
   if (!defaultCoach) {
@@ -205,7 +218,7 @@ async function processPaymentCaptured(
     razorpay_order_id: orderId,
     razorpay_payment_id: paymentId,
     amount: amount,
-    currency: 'INR',
+    currency: (await loadPaymentConfig()).currency,
     status: 'captured',
     captured_at: new Date().toISOString(),
     source: 'webhook',
@@ -353,15 +366,18 @@ async function processPaymentFailed(
   payment: z.infer<typeof PaymentEntitySchema>,
   requestId: string
 ): Promise<ProcessingResult> {
-  const { order_id: orderId, error_description } = payment;
+  const { id: paymentId, order_id: orderId, amount: amountPaise, error_code, error_description } = payment;
 
   console.log(JSON.stringify({
     requestId,
     event: 'payment_failed',
+    paymentId,
     orderId,
+    errorCode: error_code,
     reason: error_description,
   }));
 
+  // 1. Update booking status
   await supabase
     .from('bookings')
     .update({
@@ -371,7 +387,188 @@ async function processPaymentFailed(
     })
     .eq('razorpay_order_id', orderId);
 
-  return { status: 'success', message: 'Failure recorded' };
+  // 2. Find booking to get parent/child details
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('id, child_id, parent_id, parent_email, parent_name, parent_phone, child_name, amount, metadata')
+    .eq('razorpay_order_id', orderId)
+    .maybeSingle();
+
+  if (!booking) {
+    console.log(JSON.stringify({ requestId, event: 'failed_payment_no_booking', orderId }));
+    return { status: 'success', message: 'Failure recorded - no booking found' };
+  }
+
+  // 3. Check for existing failed_payment record (increment attempt_count)
+  const { data: existingFailed } = await supabase
+    .from('failed_payments')
+    .select('id, attempt_count')
+    .eq('razorpay_order_id', orderId)
+    .maybeSingle();
+
+  if (existingFailed) {
+    await supabase
+      .from('failed_payments')
+      .update({
+        razorpay_payment_id: paymentId,
+        error_code: error_code || null,
+        error_description: error_description || null,
+        attempt_count: existingFailed.attempt_count + 1,
+      })
+      .eq('id', existingFailed.id);
+  } else {
+    // 4. Generate retry token
+    const retryToken = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 48);
+
+    const productCode = booking.metadata?.product_code || 'full';
+
+    const { data: tokenRecord } = await supabase
+      .from('payment_retry_tokens')
+      .insert({
+        token: retryToken,
+        booking_id: booking.id,
+        parent_id: booking.parent_id,
+        child_id: booking.child_id,
+        razorpay_order_id: orderId,
+        amount: booking.amount,
+        product_code: productCode,
+        expires_at: expiresAt.toISOString(),
+      })
+      .select('id')
+      .single();
+
+    // 5. Create failed_payment record
+    await supabase.from('failed_payments').insert({
+      booking_id: booking.id,
+      razorpay_order_id: orderId,
+      razorpay_payment_id: paymentId,
+      parent_id: booking.parent_id,
+      child_id: booking.child_id,
+      amount: (amountPaise || 0) / 100,
+      error_code: error_code || null,
+      error_description: error_description || null,
+      retry_token_id: tokenRecord?.id || null,
+    });
+
+    // 6. Queue parent notification with retry link via QStash
+    try {
+      const { qstash: qstashClient } = await import('@/lib/qstash');
+      const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
+
+      if (qstashClient) {
+        await qstashClient.publishJSON({
+          url: `${APP_URL}/api/jobs/send-communication`,
+          body: {
+            templateCode: 'payment_failed_retry',
+            recipientType: 'parent',
+            recipientId: booking.parent_id,
+            recipientPhone: booking.parent_phone,
+            recipientEmail: booking.parent_email,
+            recipientName: booking.parent_name || 'Parent',
+            variables: {
+              parent_name: booking.parent_name || 'there',
+              child_name: booking.child_name || 'your child',
+              amount: String(booking.amount),
+              retry_link: `${APP_URL}/payment/retry?token=${retryToken}`,
+              error_reason: error_description || 'Payment could not be processed',
+            },
+            relatedEntityType: 'booking',
+            relatedEntityId: booking.id,
+          },
+          retries: 3,
+        });
+
+        // Mark as notified
+        await supabase
+          .from('failed_payments')
+          .update({ notified: true, notified_at: new Date().toISOString() })
+          .eq('razorpay_order_id', orderId);
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'failed_payment_notification_queued',
+          parentEmail: booking.parent_email,
+          retryToken,
+        }));
+      }
+    } catch (notifyErr: any) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'failed_payment_notification_error',
+        error: notifyErr.message,
+      }));
+    }
+  }
+
+  return { status: 'success', message: 'Failure recorded with retry token' };
+}
+
+// --- 4b. REFUND HANDLERS ---
+
+async function processRefundProcessed(
+  refund: z.infer<typeof RefundEntitySchema>,
+  requestId: string
+): Promise<ProcessingResult> {
+  console.log(JSON.stringify({
+    requestId,
+    event: 'refund_processed',
+    refundId: refund.id,
+    paymentId: refund.payment_id,
+    amount: refund.amount / 100,
+  }));
+
+  const { error } = await supabase
+    .from('enrollment_terminations')
+    .update({
+      refund_status: 'completed',
+      refund_completed_at: new Date().toISOString(),
+    })
+    .eq('razorpay_refund_id', refund.id);
+
+  if (error) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'refund_status_update_failed',
+      refundId: refund.id,
+      error: error.message,
+    }));
+    return { status: 'error', message: 'Failed to update termination record' };
+  }
+
+  return { status: 'success', message: 'Refund completion recorded' };
+}
+
+async function processRefundFailed(
+  refund: z.infer<typeof RefundEntitySchema>,
+  requestId: string
+): Promise<ProcessingResult> {
+  console.error(JSON.stringify({
+    requestId,
+    event: 'refund_failed',
+    refundId: refund.id,
+    paymentId: refund.payment_id,
+  }));
+
+  const { error } = await supabase
+    .from('enrollment_terminations')
+    .update({
+      refund_status: 'failed',
+      refund_failure_reason: `Razorpay refund failed (${refund.status})`,
+    })
+    .eq('razorpay_refund_id', refund.id);
+
+  if (error) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'refund_failure_update_failed',
+      refundId: refund.id,
+      error: error.message,
+    }));
+  }
+
+  return { status: 'success', message: 'Refund failure recorded' };
 }
 
 // --- 5. MAIN HANDLER ---
@@ -415,10 +612,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { event, payload: eventPayload } = validation.data;
-    const payment = eventPayload.payment.entity;
+    const isRefundEvent = event.startsWith('refund.');
+    const refundEntity = eventPayload.refund?.entity;
+    const payment = eventPayload.payment?.entity;
+
+    // Determine entity ID for idempotency
+    const entityId = isRefundEvent ? refundEntity?.id : payment?.id;
+    if (!entityId) {
+      return NextResponse.json({ status: 'validation_failed', message: 'No entity ID found' });
+    }
 
     // Idempotency check
-    const webhookId = `${payment.id}_${event}`;
+    const webhookId = `${entityId}_${event}`;
     const { isDuplicate } = await checkAndRecordWebhook(webhookId, event, requestId);
 
     if (isDuplicate) {
@@ -430,16 +635,30 @@ export async function POST(request: NextRequest) {
 
     switch (event) {
       case 'payment.captured':
-        result = await processPaymentCaptured(payment, requestId);
+        result = payment
+          ? await processPaymentCaptured(payment, requestId)
+          : { status: 'error', message: 'Missing payment entity' };
         break;
       case 'payment.failed':
-        result = await processPaymentFailed(payment, requestId);
+        result = payment
+          ? await processPaymentFailed(payment, requestId)
+          : { status: 'error', message: 'Missing payment entity' };
         break;
       case 'payment.authorized':
         result = { status: 'success', message: 'Authorized - awaiting capture' };
         break;
       case 'order.paid':
         result = { status: 'skipped', message: 'Handled via payment.captured' };
+        break;
+      case 'refund.processed':
+        result = refundEntity
+          ? await processRefundProcessed(refundEntity, requestId)
+          : { status: 'error', message: 'Missing refund entity' };
+        break;
+      case 'refund.failed':
+        result = refundEntity
+          ? await processRefundFailed(refundEntity, requestId)
+          : { status: 'error', message: 'Missing refund entity' };
         break;
       default:
         result = { status: 'skipped', message: `Unhandled event: ${event}` };

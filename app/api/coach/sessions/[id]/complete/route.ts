@@ -7,6 +7,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { timedQuery } from '@/lib/db-utils';
 import { NextRequest, NextResponse } from 'next/server';
+import { dispatch } from '@/lib/scheduling/orchestrator';
 
 /**
  * Complete a coaching session
@@ -196,6 +197,26 @@ export async function POST(
     if (childError) {
       console.error('Children cache update error:', childError);
       // Log but don't fail
+    }
+
+    // Dispatch to orchestrator for consistent post-completion handling
+    try {
+      await dispatch('session.completed', {
+        sessionId,
+        requestId: crypto.randomUUID(),
+      });
+    } catch (dispatchError) {
+      console.error('Orchestrator session.completed dispatch failed:', dispatchError);
+      // Fallback: reset no-shows directly
+      try {
+        await supabase
+          .from('enrollments')
+          .update({ consecutive_no_shows: 0, updated_at: new Date().toISOString() })
+          .eq('child_id', session.child_id)
+          .eq('status', 'active');
+      } catch (noShowResetError) {
+        console.error('Failed to reset consecutive_no_shows:', noShowResetError);
+      }
     }
 
     const duration = Date.now() - startTime;

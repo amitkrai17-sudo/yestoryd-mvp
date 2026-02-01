@@ -1,18 +1,21 @@
 // file: app/api/coach/onboarding/route.ts
 // Save coach bank details and create Razorpay contact/fund account
+// SECURITY: requireCoach() + ownership verification
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireCoach, getServiceSupabase } from '@/lib/api-auth';
+import { buildEngagementRecords } from '@/lib/coach-engagement/schedule';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireCoach();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+    }
+
+    const supabase = getServiceSupabase();
     const body = await request.json();
-    
+
     const {
       coach_id,
       bank_account_number,
@@ -22,6 +25,14 @@ export async function POST(request: NextRequest) {
       pan_number,
       upi_id,
     } = body;
+
+    // Ownership check: coach can only update their own record
+    if (coach_id !== auth.coachId) {
+      return NextResponse.json(
+        { success: false, error: 'Cannot modify another coach\'s details' },
+        { status: 403 }
+      );
+    }
 
     // Validate required fields
     if (!coach_id || !bank_account_number || !bank_ifsc || !pan_number || !bank_account_holder) {
@@ -129,6 +140,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Only mark payout_enabled if Razorpay fund account was created
+    const payoutEnabled = !!razorpayFundAccountId;
+    const onboardingComplete = !!razorpayFundAccountId;
+
     // Update coach in database
     const { data: updatedCoach, error: updateError } = await supabase
       .from('coaches')
@@ -141,8 +156,8 @@ export async function POST(request: NextRequest) {
         upi_id: upi_id || null,
         razorpay_contact_id: razorpayContactId,
         razorpay_fund_account_id: razorpayFundAccountId,
-        onboarding_complete: true,
-        payout_enabled: true,
+        onboarding_complete: onboardingComplete,
+        payout_enabled: payoutEnabled,
         updated_at: new Date().toISOString(),
       })
       .eq('id', coach_id)
@@ -157,13 +172,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Schedule onboarding_complete engagement messages
+    if (onboardingComplete) {
+      const engRecords = buildEngagementRecords(coach_id, 'onboarding_complete');
+      if (engRecords.length > 0) {
+        await supabase.from('coach_engagement_log').insert(engRecords);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Bank details saved successfully',
       coach: {
         id: updatedCoach.id,
-        onboarding_complete: true,
-        payout_enabled: true,
+        onboarding_complete: onboardingComplete,
+        payout_enabled: payoutEnabled,
         razorpay_contact_id: razorpayContactId,
         razorpay_fund_account_id: razorpayFundAccountId,
       },

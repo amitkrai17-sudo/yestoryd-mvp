@@ -39,7 +39,10 @@ export interface EnrollmentResult {
 
 // ==================== GOOGLE CALENDAR CLIENT ====================
 
-function getCalendarClient(): calendar_v3.Calendar {
+// For coaching sessions, fall back to DEFAULT_COACH_EMAIL (not engage@) so a coach is always organizer
+const DEFAULT_COACH_ORGANIZER = process.env.DEFAULT_COACH_EMAIL || process.env.GOOGLE_CALENDAR_DELEGATED_USER;
+
+function getCalendarClient(impersonateEmail?: string): calendar_v3.Calendar {
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -47,7 +50,7 @@ function getCalendarClient(): calendar_v3.Calendar {
     },
     scopes: ['https://www.googleapis.com/auth/calendar'],
     clientOptions: {
-      subject: process.env.GOOGLE_CALENDAR_DELEGATED_USER,
+      subject: impersonateEmail || DEFAULT_COACH_ORGANIZER,
     },
   });
 
@@ -63,7 +66,9 @@ export async function createEnrollmentSessions(
   sessions: SessionToCreate[],
   adminEmail: string = 'engage@yestoryd.com'
 ): Promise<EnrollmentResult> {
-  const calendar = getCalendarClient();
+  // Use the coach email from the first session as the organizer (falls back to DEFAULT_COACH_EMAIL)
+  const coachEmail = sessions[0]?.coachEmail || DEFAULT_COACH_ORGANIZER;
+  const calendar = getCalendarClient(coachEmail);
   const createdSessions: CreatedSession[] = [];
   const errors: string[] = [];
 
@@ -88,7 +93,7 @@ export async function createEnrollmentSessions(
 
         // Rollback all created events
         console.log(`[Calendar] Rolling back ${createdSessions.length} created events...`);
-        await rollbackCreatedEvents(calendar, createdSessions);
+        await rollbackCreatedEvents(calendar, createdSessions, coachEmail || 'primary');
 
         return {
           success: false,
@@ -111,7 +116,7 @@ export async function createEnrollmentSessions(
     
     // Attempt rollback
     if (createdSessions.length > 0) {
-      await rollbackCreatedEvents(calendar, createdSessions);
+      await rollbackCreatedEvents(calendar, createdSessions, coachEmail || 'primary');
     }
 
     return {
@@ -129,7 +134,7 @@ export async function createEnrollmentSessions(
 async function createCalendarEvent(
   calendar: calendar_v3.Calendar,
   session: SessionToCreate,
-  adminEmail: string
+  adminEmail: string,
 ): Promise<calendar_v3.Schema$Event> {
   const startTime = new Date(session.scheduledDate);
   const endTime = new Date(startTime.getTime() + session.durationMinutes * 60 * 1000);
@@ -168,8 +173,8 @@ Discuss your child's progress and address any questions.`;
     },
     attendees: [
       { email: session.parentEmail, displayName: 'Parent' },
-      { email: session.coachEmail, displayName: 'Coach' },
-      { email: adminEmail, displayName: 'Yestoryd' },
+      { email: adminEmail, displayName: 'Yestoryd (Recording)' },
+      // Coach is the organizer (implicit attendee), not added here
     ],
     conferenceData: {
       createRequest: {
@@ -190,7 +195,7 @@ Discuss your child's progress and address any questions.`;
   };
 
   const response = await calendar.events.insert({
-    calendarId: 'primary',
+    calendarId: session.coachEmail || 'primary', // Coach's calendar (coach is organizer)
     requestBody: event,
     conferenceDataVersion: 1,
     sendUpdates: 'all',
@@ -208,12 +213,13 @@ Discuss your child's progress and address any questions.`;
  */
 async function rollbackCreatedEvents(
   calendar: calendar_v3.Calendar,
-  createdSessions: CreatedSession[]
+  createdSessions: CreatedSession[],
+  calendarId: string = 'primary'
 ): Promise<void> {
   for (const session of createdSessions) {
     try {
       await calendar.events.delete({
-        calendarId: 'primary',
+        calendarId,
         eventId: session.googleEventId,
         sendUpdates: 'all',
       });
@@ -234,14 +240,15 @@ export async function rescheduleSession(
   eventId: string,
   newDate: Date,
   durationMinutes: number,
-  sendNotifications: boolean = true
+  sendNotifications: boolean = true,
+  coachEmail?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(coachEmail);
     const endTime = new Date(newDate.getTime() + durationMinutes * 60 * 1000);
 
     await calendar.events.patch({
-      calendarId: 'primary',
+      calendarId: coachEmail || 'primary',
       eventId,
       requestBody: {
         start: {
@@ -267,13 +274,14 @@ export async function rescheduleSession(
  */
 export async function cancelSession(
   eventId: string,
-  sendNotifications: boolean = true
+  sendNotifications: boolean = true,
+  coachEmail?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(coachEmail);
 
     await calendar.events.delete({
-      calendarId: 'primary',
+      calendarId: coachEmail || 'primary',
       eventId,
       sendUpdates: sendNotifications ? 'all' : 'none',
     });
@@ -288,13 +296,14 @@ export async function cancelSession(
  * Get event details
  */
 export async function getEventDetails(
-  eventId: string
+  eventId: string,
+  coachEmail?: string
 ): Promise<{ success: boolean; event?: calendar_v3.Schema$Event; error?: string }> {
   try {
-    const calendar = getCalendarClient();
+    const calendar = getCalendarClient(coachEmail);
 
     const response = await calendar.events.get({
-      calendarId: 'primary',
+      calendarId: coachEmail || 'primary',
       eventId,
     });
 
@@ -310,16 +319,17 @@ export async function getEventDetails(
  * Cancel all sessions for a child (e.g., on enrollment cancellation)
  */
 export async function cancelAllChildSessions(
-  eventIds: string[]
+  eventIds: string[],
+  coachEmail?: string
 ): Promise<{ success: boolean; cancelled: number; errors: string[] }> {
-  const calendar = getCalendarClient();
+  const calendar = getCalendarClient(coachEmail);
   let cancelled = 0;
   const errors: string[] = [];
 
   for (const eventId of eventIds) {
     try {
       await calendar.events.delete({
-        calendarId: 'primary',
+        calendarId: coachEmail || 'primary',
         eventId,
         sendUpdates: 'all',
       });

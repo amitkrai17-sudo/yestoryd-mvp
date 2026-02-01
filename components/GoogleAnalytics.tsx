@@ -168,4 +168,58 @@ export const analytics = {
       duration_seconds: duration,
     });
   },
+
+  // Coach Journey Events
+  coachApplicationStarted: () => {
+    trackEvent('coach_application_started', {
+      event_category: 'Coach',
+    });
+  },
+
+  coachApplicationSubmitted: (applicationId: string) => {
+    trackEvent('coach_application_submitted', {
+      event_category: 'Coach',
+      application_id: applicationId,
+    });
+  },
+
+  coachAssessmentStarted: (applicationId: string) => {
+    trackEvent('coach_assessment_started', {
+      event_category: 'Coach',
+      application_id: applicationId,
+    });
+  },
+
+  coachAssessmentCompleted: (applicationId: string, score: number) => {
+    trackEvent('coach_assessment_completed', {
+      event_category: 'Coach',
+      application_id: applicationId,
+      score,
+    });
+  },
+
+  coachVoiceRecorded: (durationSeconds: number) => {
+    trackEvent('coach_voice_recorded', {
+      event_category: 'Coach',
+      duration_seconds: durationSeconds,
+    });
+  },
+
+  coachOnboardingStarted: () => {
+    trackEvent('coach_onboarding_started', {
+      event_category: 'Coach',
+    });
+  },
+
+  coachOnboardingCompleted: () => {
+    trackEvent('coach_onboarding_completed', {
+      event_category: 'Coach',
+    });
+  },
+
+  coachDashboardViewed: () => {
+    trackEvent('coach_dashboard_viewed', {
+      event_category: 'Coach',
+    });
+  },
 };

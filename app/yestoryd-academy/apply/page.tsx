@@ -59,7 +59,8 @@ export default function ApplyPage() {
     phone: '',
     country: '',
     city: '',
-    customCity: ''
+    customCity: '',
+    referralCode: ''
   });
 
   // Check for existing session
@@ -161,6 +162,7 @@ export default function ApplyPage() {
           phone: formData.phone.trim(),
           country: formData.country,
           city: finalCity,
+          referral_code_used: formData.referralCode.trim() || null,
           status: 'started'
         })
         .select()
@@ -393,6 +395,20 @@ export default function ApplyPage() {
                   />
                 </div>
               )}
+            </div>
+
+            {/* Referral Code (Optional) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Referral Code <span className="text-slate-400">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.referralCode}
+                onChange={(e) => setFormData({...formData, referralCode: e.target.value.toUpperCase()})}
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 focus:border-[#ff0099] focus:ring-1 focus:ring-[#ff0099] outline-none transition-all"
+                placeholder="e.g. REF-SARAH-ABC123"
+              />
             </div>
 
             {/* Error Message */}
