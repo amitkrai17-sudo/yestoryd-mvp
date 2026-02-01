@@ -13,6 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { Client } from '@upstash/qstash';
+import { Webhook } from 'svix';
 
 // --- CONFIGURATION ---
 const supabase = createClient(
@@ -84,24 +85,31 @@ interface AttendanceInfo {
 
 // --- 3. SECURITY HELPERS ---
 
-function verifyRecallSignature(body: string, signature: string): boolean {
+/**
+ * Verify Recall.ai webhook signature using Svix.
+ * Recall.ai uses Svix for webhook delivery. The signature is verified
+ * using three headers: svix-id, svix-timestamp, svix-signature.
+ * The secret is in whsec_ format from the Recall.ai dashboard.
+ */
+function verifyRecallSignature(
+  body: string,
+  headers: { svixId: string; svixTimestamp: string; svixSignature: string }
+): boolean {
   if (!RECALL_WEBHOOK_SECRET) {
-    console.warn('RECALL_WEBHOOK_SECRET not configured');
+    console.warn('RECALL_WEBHOOK_SECRET not configured — skipping verification');
     return true;
   }
 
   try {
-    const expectedSignature = crypto
-      .createHmac('sha256', RECALL_WEBHOOK_SECRET)
-      .update(body)
-      .digest('hex');
-
-    const sigBuffer = Buffer.from(signature);
-    const expectedBuffer = Buffer.from(expectedSignature);
-
-    if (sigBuffer.length !== expectedBuffer.length) return false;
-    return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
-  } catch {
+    const wh = new Webhook(RECALL_WEBHOOK_SECRET);
+    wh.verify(body, {
+      'svix-id': headers.svixId,
+      'svix-timestamp': headers.svixTimestamp,
+      'svix-signature': headers.svixSignature,
+    });
+    return true;
+  } catch (err: any) {
+    console.error('Svix signature verification failed:', err.message);
     return false;
   }
 }
@@ -609,10 +617,13 @@ export async function POST(request: NextRequest) {
     // 1. Get raw body
     const rawBody = await request.text();
 
-    // 2. Verify signature
-    const signature = request.headers.get('x-recall-signature') || '';
-    if (RECALL_WEBHOOK_SECRET && !verifyRecallSignature(rawBody, signature)) {
-      console.error(JSON.stringify({ requestId, event: 'invalid_signature' }));
+    // 2. Verify Svix signature (Recall.ai uses Svix for webhook delivery)
+    const svixId = request.headers.get('svix-id') || request.headers.get('webhook-id') || '';
+    const svixTimestamp = request.headers.get('svix-timestamp') || request.headers.get('webhook-timestamp') || '';
+    const svixSignature = request.headers.get('svix-signature') || request.headers.get('webhook-signature') || '';
+
+    if (RECALL_WEBHOOK_SECRET && !verifyRecallSignature(rawBody, { svixId, svixTimestamp, svixSignature })) {
+      console.error(JSON.stringify({ requestId, event: 'invalid_signature', hasSvixHeaders: !!svixId }));
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 

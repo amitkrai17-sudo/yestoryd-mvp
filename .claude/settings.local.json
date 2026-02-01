@@ -41,7 +41,8 @@
       "Bash(del \"C:\\\\yestoryd-mvp\\\\lib\\\\crm\\\\lead-scoring.ts\")",
       "Bash(npm run dev:*)",
       "Bash(npx tsx:*)",
-      "Bash(del /f \"C:\\\\yestoryd-mvp\\\\scripts\\\\query-test-data.ts\" \"C:\\\\yestoryd-mvp\\\\scripts\\\\verify-organizer.ts\")"
+      "Bash(del /f \"C:\\\\yestoryd-mvp\\\\scripts\\\\query-test-data.ts\" \"C:\\\\yestoryd-mvp\\\\scripts\\\\verify-organizer.ts\")",
+      "WebSearch"
     ]
   }
 }
