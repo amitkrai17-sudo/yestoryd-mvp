@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
               },
             ],
             from: {
-              email: 'team@yestoryd.com',
+              email: 'engage@yestoryd.com',
               name: 'Yestoryd Team',
             },
             subject,

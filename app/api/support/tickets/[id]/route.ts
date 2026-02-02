@@ -30,7 +30,7 @@ async function sendResolutionNotification(ticket: any) {
   const msg = {
     to: ticket.user_email,
     from: {
-      email: 'support@yestoryd.com',
+      email: 'engage@yestoryd.com',
       name: 'Yestoryd Support',
     },
     subject: `Your request ${ticket.ticket_number} has been resolved`,

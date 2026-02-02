@@ -87,7 +87,7 @@ async function sendAdminNotification(ticket: any) {
   const msg = {
     to: await loadAuthConfig().then(c => c.adminEmails),
     from: {
-      email: 'noreply@yestoryd.com',
+      email: 'engage@yestoryd.com',
       name: 'Yestoryd Support',
     },
     subject: `${emoji} New Support Ticket: ${ticket.ticket_number} - ${categoryLabel}`,
@@ -186,7 +186,7 @@ async function sendUserConfirmation(ticket: any) {
   const msg = {
     to: ticket.user_email,
     from: {
-      email: 'support@yestoryd.com',
+      email: 'engage@yestoryd.com',
       name: 'Yestoryd Support',
     },
     subject: `We received your request - ${ticket.ticket_number}`,

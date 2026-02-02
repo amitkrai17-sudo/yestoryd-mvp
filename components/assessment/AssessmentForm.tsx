@@ -121,10 +121,37 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
     setCountrySearch('');
   };
 
+  const detectedMimeTypeRef = useRef<string>('audio/webm');
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100,
+        },
+      });
+
+      // Detect best supported MIME type
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+      ];
+      const supportedMime = mimeTypes.find(t => MediaRecorder.isTypeSupported(t)) || '';
+      detectedMimeTypeRef.current = supportedMime || 'audio/webm';
+
+      const recorderOptions: MediaRecorderOptions = {
+        audioBitsPerSecond: 128000,
+      };
+      if (supportedMime) {
+        recorderOptions.mimeType = supportedMime;
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       chunksRef.current = [];
       mediaRecorderRef.current = mediaRecorder;
 
@@ -133,12 +160,12 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: detectedMimeTypeRef.current });
         setAudioBlob(blob);
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime((prev) => prev + 1), 1000);
@@ -184,6 +211,7 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
             parentEmail: formData.parentEmail,
             parentPhone: `${formData.countryCode}${formData.phoneNumber}`,
             recordingDuration: recordingTime,
+            mimeType: detectedMimeTypeRef.current,
           }),
         });
 

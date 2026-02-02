@@ -25,6 +25,8 @@ export interface AuthResult {
 }
 
 // ==================== SERVICE CLIENT ====================
+// TODO: Add <Database> generic once all consumers handle strict types
+// import type { Database } from '@/lib/supabase/database.types';
 
 export const getServiceSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

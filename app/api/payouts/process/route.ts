@@ -430,7 +430,7 @@ export async function POST(request: NextRequest) {
 
           // 5j. Audit log
           await supabase.from('activity_log').insert({
-            user_email: auth.adminEmail || 'system@yestoryd.com',
+            user_email: auth.adminEmail || 'engage@yestoryd.com',
             action: 'payout_processed',
             details: {
               request_id: requestId,
@@ -497,7 +497,7 @@ export async function POST(request: NextRequest) {
 
         // Audit log failure
         await supabase.from('activity_log').insert({
-          user_email: auth.adminEmail || 'system@yestoryd.com',
+          user_email: auth.adminEmail || 'engage@yestoryd.com',
           action: 'payout_failed',
           details: {
             request_id: requestId,

@@ -160,7 +160,7 @@ export async function POST(
     const { error: eventError } = await supabase
       .from('learning_events')
       .insert({
-        child_id: session.child_id,
+        child_id: session.child_id!,
         coach_id: session.coach_id,
         session_id: sessionId,
         event_type: 'session',
@@ -188,11 +188,11 @@ export async function POST(
     const { error: childError } = await supabase
       .from('children')
       .update({
-        last_session_summary: childSummary,
+        last_session_summary: JSON.stringify(childSummary),
         last_session_date: new Date().toISOString(),
         last_session_focus: primaryFocus,
       })
-      .eq('id', session.child_id);
+      .eq('id', session.child_id!);
 
     if (childError) {
       console.error('Children cache update error:', childError);
@@ -212,7 +212,7 @@ export async function POST(
         await supabase
           .from('enrollments')
           .update({ consecutive_no_shows: 0, updated_at: new Date().toISOString() })
-          .eq('child_id', session.child_id)
+          .eq('child_id', session.child_id!)
           .eq('status', 'active');
       } catch (noShowResetError) {
         console.error('Failed to reset consecutive_no_shows:', noShowResetError);

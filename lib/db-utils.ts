@@ -66,7 +66,7 @@ export async function conditionalUpdate<T extends Record<string, unknown>>(
 ): Promise<ConditionalUpdateResult<T>> {
   try {
     // Fetch current row
-    const { data: currentRow, error: fetchError } = await supabaseAdmin
+    const { data: currentRow, error: fetchError } = await (supabaseAdmin as any)
       .from(table)
       .select('*')
       .eq('id', id)
@@ -130,7 +130,7 @@ export async function conditionalUpdate<T extends Record<string, unknown>>(
     }
 
     // Perform update
-    const { data: updatedRow, error: updateError } = await supabaseAdmin
+    const { data: updatedRow, error: updateError } = await (supabaseAdmin as any)
       .from(table)
       .update(newData)
       .eq('id', id)
@@ -251,7 +251,7 @@ export async function batchUpsert<T extends Record<string, unknown>>(
   try {
     const startTime = Date.now();
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (supabaseAdmin as any)
       .from(table)
       .upsert(records, {
         onConflict: conflictColumn,

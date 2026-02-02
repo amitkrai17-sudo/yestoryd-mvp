@@ -25,7 +25,7 @@ const DEFAULT_COACHES: Record<string, any> = {
   rucha: {
     coachId: 'coach_rucha',
     name: 'Rucha Rai',
-    email: 'rucha@yestoryd.com',
+    email: 'engage@yestoryd.com',
     specialization: 'Early Reading, Phonics, Fluency',
     ageGroups: '4-12',
     totalSessions: 150,

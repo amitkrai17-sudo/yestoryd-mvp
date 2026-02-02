@@ -374,7 +374,7 @@ export async function POST(request: NextRequest) {
     // 14. AUDIT LOG
     // =================================================================
     await supabase.from('activity_log').insert({
-      user_email: adminEmail || 'system@yestoryd.com',
+      user_email: adminEmail || 'engage@yestoryd.com',
       action: 'enrollment_revenue_calculated',
       details: {
         request_id: requestId,

@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
     // 4. Audit log
     const supabase = getServiceSupabase();
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action: 'monthly_payout_cron_executed',
       details: {
         request_id: requestId,
@@ -208,7 +208,7 @@ async function sendSummaryEmail(baseUrl: string, requestId: string, result: any)
       },
       body: JSON.stringify({
         channel: 'email',
-        to: 'amit@yestoryd.com',
+        to: 'engage@yestoryd.com',
         subject: `✅ Monthly Payouts Processed - ${new Date().toLocaleDateString('en-IN')}`,
         html: `
           <h2>Monthly Payout Summary</h2>
@@ -242,7 +242,7 @@ async function sendAlertEmail(baseUrl: string, requestId: string, status: string
       },
       body: JSON.stringify({
         channel: 'email',
-        to: 'amit@yestoryd.com',
+        to: 'engage@yestoryd.com',
         subject: `🚨 Monthly Payouts FAILED - ${new Date().toLocaleDateString('en-IN')}`,
         html: `
           <h2 style="color: red;">Monthly Payout Failed</h2>

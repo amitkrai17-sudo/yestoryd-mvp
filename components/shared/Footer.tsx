@@ -92,8 +92,8 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
             <h4 className="font-bold text-[#FBBF24] mb-5">Get in Touch</h4>
             <ul className="space-y-3 text-sm">
               <li>
-                <a href="mailto:hello@yestoryd.com" className="text-gray-400 hover:text-white transition-colors">
-                  hello@yestoryd.com
+                <a href="mailto:engage@yestoryd.com" className="text-gray-400 hover:text-white transition-colors">
+                  engage@yestoryd.com
                 </a>
               </li>
               <li>

@@ -23,8 +23,20 @@ import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
+// --- AI PROVIDER FALLBACK CHAIN ---
+interface AIProvider {
+  name: string;
+  model: string;
+  type: 'gemini' | 'openai';
+}
+
+const AI_PROVIDERS: AIProvider[] = [
+  { name: 'gemini-flash-lite', model: 'gemini-2.5-flash-lite', type: 'gemini' },
+  { name: 'gemini-flash', model: 'gemini-2.5-flash', type: 'gemini' },
+  { name: 'openai-gpt4o-mini', model: 'gpt-4o-mini', type: 'openai' },
+];
+
 // --- CONFIGURATION (Lazy initialization) ---
-const getGenAI = () => new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -104,8 +116,14 @@ const AssessmentSchema = z.object({
     .default('yestoryd'),
   
   lead_source_coach_id: z.string().uuid().optional().nullable(),
-  
+
   referral_code_used: z.string().max(50).optional().nullable(),
+
+  mimeType: z.string().optional().default('audio/webm'),
+
+  recordingDuration: z.union([z.string(), z.number()])
+    .transform(val => parseFloat(String(val)))
+    .optional(),
 });
 
 type AssessmentInput = z.infer<typeof AssessmentSchema>;
@@ -205,46 +223,6 @@ interface AnalysisResult {
   practice_recommendations: PracticeRecommendations;
 }
 
-function getDefaultAnalysis(name: string): AnalysisResult {
-  return {
-    clarity_score: 5,
-    fluency_score: 5,
-    speed_score: 5,
-    wpm: 60,
-    completeness_percentage: 80,
-    error_classification: {
-      substitutions: [],
-      omissions: [],
-      insertions: [],
-      reversals: [],
-      mispronunciations: []
-    },
-    phonics_analysis: {
-      struggling_phonemes: [],
-      phoneme_details: [],
-      strong_phonemes: [],
-      recommended_focus: 'Continue practicing current level'
-    },
-    skill_breakdown: {
-      decoding: { score: 5, notes: 'Assessment needed' },
-      sight_words: { score: 5, notes: 'Assessment needed' },
-      blending: { score: 5, notes: 'Assessment needed' },
-      segmenting: { score: 5, notes: 'Assessment needed' },
-      expression: { score: 5, notes: 'Assessment needed' },
-      comprehension_indicators: { score: 5, notes: 'Assessment needed' }
-    },
-    errors: [],
-    strengths: ['Completed the reading', 'Showed effort'],
-    areas_to_improve: ['Practice reading aloud daily', 'Work on fluency'],
-    feedback: `${name} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily reading aloud to build confidence and smooth out hesitations. With consistent effort, ${name} will show noticeable improvement in reading skills.`,
-    practice_recommendations: {
-      daily_words: [],
-      phonics_focus: 'Review current phonics level',
-      suggested_activity: 'Read aloud for 10 minutes daily'
-    }
-  };
-}
-
 // --- MAIN HANDLER ---
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
@@ -321,10 +299,11 @@ export async function POST(request: NextRequest) {
     }
 
     const params = validation.data;
-    const { audio, passage, childName, childAge, parentName, parentEmail, parentPhone } = params;
-    
+    const { audio, passage, childName, childAge, parentName, parentEmail, parentPhone, mimeType, recordingDuration } = params;
+
     const name = childName;
     const age = childAge;
+    const audioMimeType = mimeType || 'audio/webm';
     const strictness = getStrictnessForAge(age);
     const wordCount = passage.split(' ').length;
 
@@ -470,59 +449,143 @@ If the passage was incomplete, state it factually: "${name} read X out of ${word
 
 Respond ONLY with valid JSON. No markdown, no explanation.`;
 
-    // 6. Call Gemini AI
-    const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    // 6. Call AI with multi-provider fallback
     const audioData = audio.split(',')[1] || audio;
 
-    let analysisResult: AnalysisResult;
+    let analysisResult: AnalysisResult | null = null;
+    let aiProviderUsed: string = 'none';
+    const providerErrors: string[] = [];
 
-    try {
-      const result = await model.generateContent([
-        {
-          inlineData: {
-            mimeType: 'audio/webm',
-            data: audioData,
-          },
-        },
-        { text: analysisPrompt },
-      ]);
+    for (const provider of AI_PROVIDERS) {
+      try {
+        console.log(JSON.stringify({ requestId, event: 'ai_trying_provider', provider: provider.name }));
 
-      const response = await result.response;
-      const responseText = response.text();
+        let responseText: string;
 
-      let cleanedResponse = responseText
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
+        if (provider.type === 'gemini') {
+          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+          const model = genAI.getGenerativeModel({ model: provider.model });
+          const result = await model.generateContent([
+            { inlineData: { mimeType: audioMimeType, data: audioData } },
+            { text: analysisPrompt },
+          ]);
+          responseText = result.response.text();
+        } else {
+          // OpenAI fallback (text-only, no audio)
+          const openaiKey = process.env.OPENAI_API_KEY;
+          if (!openaiKey) throw new Error('OPENAI_API_KEY not configured');
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: provider.model,
+              messages: [
+                { role: 'system', content: 'You are a reading assessment specialist. Respond ONLY with valid JSON.' },
+                { role: 'user', content: analysisPrompt },
+              ],
+              response_format: { type: 'json_object' },
+            }),
+          });
+          if (!res.ok) throw new Error(`OpenAI API error: ${res.status}`);
+          const data = await res.json();
+          responseText = data.choices[0].message.content;
+        }
 
-      analysisResult = JSON.parse(cleanedResponse);
+        const cleanedResponse = responseText
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim();
 
-      // Fix wrong names in feedback
-      if (analysisResult.feedback) {
-        const wrongNames = ['Aisha', 'Ali', 'Ahmed', 'Sara', 'Omar', 'Fatima', 'Mohammed', 'Zara', 'Aryan', 'Priya', 'Rahul', 'Ananya', 'the child', 'The child', 'this child', 'This child'];
-        let feedback = analysisResult.feedback;
-        wrongNames.forEach(wrongName => {
-          const regex = new RegExp(wrongName, 'gi');
-          feedback = feedback.replace(regex, name);
-        });
-        analysisResult.feedback = feedback;
+        analysisResult = JSON.parse(cleanedResponse);
+        aiProviderUsed = provider.name;
+
+        // Fix wrong names in feedback
+        if (analysisResult!.feedback) {
+          const wrongNames = ['Aisha', 'Ali', 'Ahmed', 'Sara', 'Omar', 'Fatima', 'Mohammed', 'Zara', 'Aryan', 'Priya', 'Rahul', 'Ananya', 'the child', 'The child', 'this child', 'This child'];
+          let feedback = analysisResult!.feedback;
+          wrongNames.forEach(wrongName => {
+            const regex = new RegExp(wrongName, 'gi');
+            feedback = feedback.replace(regex, name);
+          });
+          analysisResult!.feedback = feedback;
+        }
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'ai_analysis_complete',
+          provider: provider.name,
+          wpm: analysisResult!.wpm,
+          completeness: analysisResult!.completeness_percentage,
+        }));
+
+        break; // Success — stop trying providers
+      } catch (providerError) {
+        const errMsg = (providerError as Error).message;
+        providerErrors.push(`${provider.name}: ${errMsg}`);
+        console.error(JSON.stringify({
+          requestId,
+          event: 'ai_provider_failed',
+          provider: provider.name,
+          error: errMsg,
+        }));
+        continue;
       }
+    }
 
-      console.log(JSON.stringify({
-        requestId,
-        event: 'ai_analysis_complete',
-        wpm: analysisResult.wpm,
-        completeness: analysisResult.completeness_percentage,
-      }));
-
-    } catch (aiError) {
+    // ALL PROVIDERS FAILED — Queue for retry
+    if (!analysisResult) {
       console.error(JSON.stringify({
         requestId,
-        event: 'ai_analysis_failed',
-        error: (aiError as Error).message,
+        event: 'all_ai_providers_failed',
+        errors: providerErrors,
       }));
-      analysisResult = getDefaultAnalysis(name);
+
+      // Save to pending_assessments for async retry
+      const supabase = getServiceSupabase();
+      const pendingId = crypto.randomUUID();
+
+      try {
+        await supabase.from('pending_assessments').insert({
+          id: pendingId,
+          child_name: name,
+          child_age: age,
+          parent_email: parentEmail,
+          parent_name: parentName || null,
+          parent_phone: parentPhone || null,
+          audio_url: audioData.substring(0, 100) + '...[truncated_for_log]',
+          audio_data: audioData,
+          passage: passage,
+          status: 'pending',
+          retry_count: 0,
+          error_message: providerErrors.join('; '),
+          lead_source: params.lead_source || 'yestoryd',
+          lead_source_coach_id: params.lead_source_coach_id || null,
+          referral_code_used: params.referral_code_used || null,
+        });
+
+        // Queue retry via QStash (5 minute delay)
+        try {
+          const { queueAssessmentRetry } = await import('@/lib/qstash');
+          await queueAssessmentRetry({ pendingAssessmentId: pendingId, requestId });
+        } catch (queueError) {
+          console.error(JSON.stringify({ requestId, event: 'assessment_retry_queue_failed', error: (queueError as Error).message }));
+        }
+      } catch (dbError) {
+        console.error(JSON.stringify({ requestId, event: 'pending_assessment_save_failed', error: (dbError as Error).message }));
+      }
+
+      return NextResponse.json({
+        success: true,
+        pending: true,
+        requestId,
+        pendingAssessmentId: pendingId,
+        message: "Your reading is being analyzed! Results will arrive via email in 5-10 minutes.",
+        childName: name,
+        childAge: age,
+        parentEmail,
+      }, {
+        headers: { 'X-Request-Id': requestId },
+      });
     }
 
     // 7. Calculate scores
@@ -531,15 +594,57 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
     const speedScore = Math.min(10, Math.max(1, analysisResult.speed_score || 5));
     const overallScore = Math.round((clarityScore * 0.35) + (fluencyScore * 0.40) + (speedScore * 0.25));
 
-    const skillScores = analysisResult.skill_breakdown;
+    // 7a. Server-side WPM calculation
+    let finalWpm = analysisResult.wpm;
+    if (recordingDuration && recordingDuration > 0) {
+      const durationSeconds = recordingDuration > 1000 ? recordingDuration / 1000 : recordingDuration;
+      const calculatedWpm = Math.round((wordCount / durationSeconds) * 60);
+      const geminiWpm = analysisResult.wpm || 0;
+      const wpmDiff = Math.abs(calculatedWpm - geminiWpm);
+
+      if (wpmDiff > 20) {
+        console.log(JSON.stringify({
+          requestId,
+          event: 'wpm_discrepancy',
+          calculatedWpm,
+          geminiWpm,
+          diff: wpmDiff,
+          durationSeconds,
+          wordCount,
+        }));
+      }
+
+      // Prefer server-side calculation when recording duration is available
+      finalWpm = calculatedWpm;
+    }
+    // WPM sanity check: clamp to 5-200 for children
+    finalWpm = Math.min(200, Math.max(5, finalWpm || 60));
+
+    // Override analysis result wpm with validated value
+    analysisResult.wpm = finalWpm;
+
+    // 7b. Null-safe skill breakdown averaging
+    const defaultSkill = { score: 5, notes: 'Assessment needed' };
+    const sb = analysisResult.skill_breakdown || {} as any;
+    const safeSkill = (field: any) => (field && typeof field.score === 'number') ? field.score : 5;
     const avgSkillScore = Math.round(
-      (skillScores.decoding.score +
-        skillScores.sight_words.score +
-        skillScores.blending.score +
-        skillScores.segmenting.score +
-        skillScores.expression.score +
-        skillScores.comprehension_indicators.score) / 6
+      (safeSkill(sb.decoding) +
+        safeSkill(sb.sight_words) +
+        safeSkill(sb.blending) +
+        safeSkill(sb.segmenting) +
+        safeSkill(sb.expression) +
+        safeSkill(sb.comprehension_indicators)) / 6
     );
+
+    // Fill missing skill_breakdown fields to prevent downstream crashes
+    analysisResult.skill_breakdown = {
+      decoding: sb.decoding || defaultSkill,
+      sight_words: sb.sight_words || defaultSkill,
+      blending: sb.blending || defaultSkill,
+      segmenting: sb.segmenting || defaultSkill,
+      expression: sb.expression || defaultSkill,
+      comprehension_indicators: sb.comprehension_indicators || defaultSkill,
+    };
 
     // 8. Save to database
     const supabase = getServiceSupabase();
@@ -628,6 +733,7 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
           phonics_analysis: analysisResult.phonics_analysis,
           skill_breakdown: analysisResult.skill_breakdown,
           practice_recommendations: analysisResult.practice_recommendations,
+          ai_provider_used: aiProviderUsed,
         };
 
         const searchableContent = buildSearchableContent(
@@ -844,6 +950,7 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
       practice_recommendations: analysisResult.practice_recommendations,
 
       encouragement: `Keep reading daily, ${name}! Every page makes you stronger.`,
+      ai_provider_used: aiProviderUsed,
       lead_source: params.lead_source || 'yestoryd',
     }, {
       headers: {

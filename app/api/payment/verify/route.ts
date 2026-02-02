@@ -964,17 +964,24 @@ export async function POST(request: NextRequest) {
       requestId
     );
 
-    // 7. Get or Create Child (check discovery_call first)
+    // 7. Get or Create Child + Coach from discovery call
     let childIdToUse = body.childId;
-    if (!childIdToUse && body.discoveryCallId) {
+    let coachIdToUse = body.coachId;
+    if (body.discoveryCallId) {
       const { data: dc } = await supabase
         .from('discovery_calls')
-        .select('child_id')
+        .select('child_id, assigned_coach_id')
         .eq('id', body.discoveryCallId)
         .single();
-      if (dc?.child_id) {
-        childIdToUse = dc.child_id;
-        console.log(JSON.stringify({ requestId, event: 'child_from_discovery', childId: childIdToUse, discoveryCallId: body.discoveryCallId }));
+      if (dc) {
+        if (!childIdToUse && dc.child_id) {
+          childIdToUse = dc.child_id;
+          console.log(JSON.stringify({ requestId, event: 'child_from_discovery', childId: childIdToUse, discoveryCallId: body.discoveryCallId }));
+        }
+        if (!coachIdToUse && dc.assigned_coach_id) {
+          coachIdToUse = dc.assigned_coach_id;
+          console.log(JSON.stringify({ requestId, event: 'coach_from_discovery', coachId: coachIdToUse, discoveryCallId: body.discoveryCallId }));
+        }
       }
     }
     const child = await getOrCreateChild(
@@ -983,12 +990,12 @@ export async function POST(request: NextRequest) {
       body.childAge,
       parent.id,
       body.parentEmail,
-      body.coachId,
+      coachIdToUse,
       requestId
     );
 
-    // 8. Get Coach
-    const coach = await getCoach(body.coachId, requestId);
+    // 8. Get Coach (priority: body.coachId > discovery_calls.assigned_coach_id > smart match > fallback)
+    const coach = await getCoach(coachIdToUse, requestId);
 
     // 9. Record Payment
     const couponUsed = body.couponCode || body.referralCodeUsed || null;

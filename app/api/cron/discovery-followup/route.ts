@@ -272,7 +272,7 @@ export async function GET(request: NextRequest) {
 
     // 9. Audit log
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action: 'discovery_followup_cron_executed',
       details: {
         request_id: requestId,

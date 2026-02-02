@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
     const msg = {
       to: parentEmail,
       from: {
-        email: process.env.SENDGRID_FROM_EMAIL || 'hello@yestoryd.com',
+        email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
         name: 'Yestoryd',
       },
       subject: `🎉 Welcome! ${childName} is enrolled in Reading Coaching`,

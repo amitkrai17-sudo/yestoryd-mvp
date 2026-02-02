@@ -65,7 +65,7 @@ const DEFAULT_VARIABLES: ConfigVariable[] = [
   // Company Details
   { key: 'company_name', value: 'Yestoryd', description: 'Company/Brand name', category: 'company' },
   { key: 'company_address', value: 'A 703, Mahavir Dham CHS, Plot No 27 & 28, Sector 40, Seawoods, Navi Mumbai, Maharashtra - 400706', description: 'Registered address', category: 'company' },
-  { key: 'company_email', value: 'rucha.rai@yestoryd.com', description: 'Company email', category: 'company' },
+  { key: 'company_email', value: 'engage@yestoryd.com', description: 'Company email', category: 'company' },
   { key: 'company_phone', value: '8976287997', description: 'Company phone', category: 'company' },
   { key: 'company_website', value: 'https://yestoryd.com', description: 'Company website', category: 'company' },
   { key: 'company_gstin', value: '27AOQPD7421L1ZL', description: 'GST Number', category: 'company' },

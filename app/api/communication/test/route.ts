@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     
     const testType = body.type || 'email'; // 'email', 'whatsapp', 'both'
     const testPhone = body.phone || '918976287997';
-    const testEmail = body.email || 'amitkrai17@gmail.com';
+    const testEmail = body.email || 'engage@yestoryd.com';
 
     console.log(`[Test] Running ${testType} test...`);
 
@@ -63,7 +63,7 @@ export async function GET() {
       body: {
         type: 'email | whatsapp | both (default: email)',
         phone: 'Phone number with country code (default: 918976287997)',
-        email: 'Email address (default: amitkrai17@gmail.com)',
+        email: 'Email address (default: engage@yestoryd.com)',
       },
     },
     examples: [
@@ -77,7 +77,7 @@ export async function GET() {
       },
       {
         description: 'Test both channels',
-        body: { type: 'both', phone: '918976287997', email: 'test@example.com' },
+        body: { type: 'both', phone: '918976287997', email: 'engage@yestoryd.com' },
       },
     ],
   });

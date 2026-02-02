@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
 
     // 9. AUDIT LOG
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action: 'enrollment_complete_processed',
       details: {
         request_id: requestId,
@@ -614,7 +614,7 @@ async function sendConfirmationEmail(
       body: JSON.stringify({
         personalizations: [{ to: [{ email: data.parentEmail, name: data.parentName }] }],
         from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
-        reply_to: { email: 'support@yestoryd.com', name: 'Yestoryd Support' },
+        reply_to: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
         subject: `Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
         content: [{
           type: 'text/html',
@@ -699,7 +699,7 @@ function generateEmailHtml(
     <div style="border-top: 1px solid #eee; padding-top: 24px; margin-top: 24px;">
       <p style="color: #666; font-size: 14px; margin: 0;">
         <strong>Questions?</strong><br>
-        Email: support@yestoryd.com<br>
+        Email: engage@yestoryd.com<br>
         WhatsApp: <a href="https://wa.me/918976287997" style="color: #25D366;">+91 89762 87997</a>
       </p>
     </div>

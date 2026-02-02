@@ -484,7 +484,7 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
 
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action: 'enrollment_lifecycle_cron_executed',
       details: {
         request_id: requestId,

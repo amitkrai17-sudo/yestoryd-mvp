@@ -96,7 +96,7 @@ export async function getSetting(key: string): Promise<string | null> {
     return null;
   }
 
-  return data.value;
+  return data.value as string | null;
 }
 
 /**
@@ -105,7 +105,7 @@ export async function getSetting(key: string): Promise<string | null> {
 export async function getSettingParsed<T = string>(key: string): Promise<T | null> {
   const value = await getSetting(key);
   if (value === null) return null;
-  return parseValue(key, value) as T;
+  return parseValue(key, value as string) as T;
 }
 
 /**
@@ -123,7 +123,7 @@ export async function getSettings(keys: string[]): Promise<Record<string, string
   }
 
   return data.reduce((acc, row) => {
-    acc[row.key] = row.value;
+    acc[row.key] = String(row.value ?? '');
     return acc;
   }, {} as Record<string, string>);
 }
@@ -387,9 +387,9 @@ export async function getSessionDurations(): Promise<SessionDurations> {
   }
 
   return {
-    coaching: parseInt(data.find(d => d.key === 'session_coaching_duration_mins')?.value || '45'),
-    skillBuilding: parseInt(data.find(d => d.key === 'session_skill_building_duration_mins')?.value || '45'),
-    checkin: parseInt(data.find(d => d.key === 'session_checkin_duration_mins')?.value || '45'),
-    discovery: parseInt(data.find(d => d.key === 'session_discovery_duration_mins')?.value || '45'),
+    coaching: parseInt(String(data.find(d => d.key === 'session_coaching_duration_mins')?.value ?? '45')),
+    skillBuilding: parseInt(String(data.find(d => d.key === 'session_skill_building_duration_mins')?.value ?? '45')),
+    checkin: parseInt(String(data.find(d => d.key === 'session_checkin_duration_mins')?.value ?? '45')),
+    discovery: parseInt(String(data.find(d => d.key === 'session_discovery_duration_mins')?.value ?? '45')),
   };
 }

@@ -62,6 +62,40 @@ async function fetchRazorpayPayments(fromTs: number, toTs: number) {
   return payments;
 }
 
+// --- ADMIN NOTIFICATION ---
+async function sendAdminNotification(childName: string, amount: number, paymentId: string) {
+  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: 'engage@yestoryd.com', name: 'Yestoryd Admin' }] }],
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
+      subject: `Payment Recovered: ${childName} - ₹${amount}`,
+      content: [{
+        type: 'text/html',
+        value: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+            <h2 style="color:#1e293b;">Payment Recovered via Reconciliation</h2>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="padding:8px;font-weight:bold;">Child</td><td style="padding:8px;">${childName}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold;">Amount</td><td style="padding:8px;">₹${amount}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold;">Payment ID</td><td style="padding:8px;">${paymentId}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold;">Recovered At</td><td style="padding:8px;">${new Date().toISOString()}</td></tr>
+            </table>
+            <p style="color:#64748b;margin-top:16px;">This payment was automatically recovered by the reconciliation cron.</p>
+          </div>`,
+      }],
+    }),
+  });
+
+  if (!response.ok) {
+    console.error(`SendGrid admin notification error: ${response.status}`);
+  }
+}
+
 // --- RECOVERY ---
 async function recoverPayment(payment: any, requestId: string) {
   const supabase = getServiceSupabase();
@@ -169,6 +203,35 @@ async function recoverPayment(payment: any, requestId: string) {
 
   console.log(JSON.stringify({ requestId, event: 'payment_recovered', paymentId: payment.id, enrollmentId: enrollment.id }));
 
+  // Fetch child name for notification
+  const { data: child } = await supabase
+    .from('children')
+    .select('name')
+    .eq('id', booking.child_id)
+    .maybeSingle();
+
+  const childName = child?.name || `Child ${booking.child_id}`;
+  const amount = payment.amount / 100;
+
+  // Send admin email notification
+  await sendAdminNotification(childName, amount, payment.id).catch(err =>
+    console.error(`Admin notification failed: ${err}`)
+  );
+
+  // Log to activity_log
+  await supabase.from('activity_log').insert({
+    user_email: 'engage@yestoryd.com',
+    action: 'payment_recovered',
+    details: {
+      request_id: requestId,
+      payment_id: payment.id,
+      child_id: booking.child_id,
+      child_name: childName,
+      amount,
+      enrollment_id: enrollment.id,
+    },
+  });
+
   return { status: 'recovered', id: enrollment.id };
 }
 
@@ -214,6 +277,19 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(JSON.stringify({ requestId, event: 'reconciliation_complete', results }));
+
+    // Summary activity log
+    await supabase.from('activity_log').insert({
+      user_email: 'engage@yestoryd.com',
+      action: 'payment_reconciliation_cron_executed',
+      details: {
+        request_id: requestId,
+        source: auth.source,
+        razorpay_payments_checked: razorpayPayments.length,
+        orphaned_found: orphaned.length,
+        results,
+      },
+    });
 
     return NextResponse.json({ success: true, requestId, results });
   } catch (error) {

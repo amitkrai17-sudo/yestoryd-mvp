@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
     // 11. Audit log
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'system@yestoryd.com',
+        user_email: 'engage@yestoryd.com',
         action: 'goals_capture_job_executed',
         details: {
           request_id: requestId,

@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action: 'coach_unavailability_cron_executed',
       details: {
         request_id: requestId,

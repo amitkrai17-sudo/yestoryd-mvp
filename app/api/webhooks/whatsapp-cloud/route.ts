@@ -186,10 +186,10 @@ async function processMessage(
       pricing: dbContext.pricing,
       faq: dbContext.faq,
       settings: dbContext.settings,
-      parentName: parentData?.parent?.name,
-      childName: parentData?.child?.name,
-      childAge: parentData?.child?.age,
-      enrollmentStatus: parentData?.enrollmentStatus,
+      parentName: parentData?.parent?.name ?? undefined,
+      childName: parentData?.child?.name ?? undefined,
+      childAge: parentData?.child?.age ?? undefined,
+      enrollmentStatus: parentData?.enrollmentStatus ?? undefined,
     });
 
     // 5. Call Gemini with tone-only prompt + DB context

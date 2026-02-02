@@ -10,7 +10,7 @@ export function buildParentPrompt(
 ): string {
   const coachName = coachInfo?.name || 'your coach';
   const coachPhone = coachInfo?.phone || '918976287997';
-  const coachEmail = coachInfo?.email || 'support@yestoryd.com';
+  const coachEmail = coachInfo?.email || 'engage@yestoryd.com';
 
   return `You are rAI, the friendly assistant for Yestoryd reading platform. You're speaking with the parent of ${childName}.
 

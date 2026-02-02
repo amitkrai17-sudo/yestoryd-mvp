@@ -279,8 +279,8 @@ function RetryPageContent() {
         {/* Help */}
         <p className="text-center text-text-tertiary text-xs">
           Having trouble? Contact us at{' '}
-          <a href="mailto:hello@yestoryd.com" className="text-pink-400 hover:underline">
-            hello@yestoryd.com
+          <a href="mailto:engage@yestoryd.com" className="text-pink-400 hover:underline">
+            engage@yestoryd.com
           </a>
         </p>
       </div>

@@ -425,7 +425,7 @@ async function computeInsights(requestId: string, source: string) {
     // AUDIT LOG & RESPONSE
     // ============================================================
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action: 'compute_insights_executed',
       details: {
         request_id: requestId,

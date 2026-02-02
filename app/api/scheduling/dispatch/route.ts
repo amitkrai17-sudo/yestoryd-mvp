@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     let auth: { authorized: boolean; email?: string | null; role?: string | null; error?: string };
     if (isInternalAuth) {
-      auth = { authorized: true, email: 'internal@yestoryd.com', role: 'admin' };
+      auth = { authorized: true, email: 'engage@yestoryd.com', role: 'admin' };
     } else {
       auth = await requireAdminOrCoach();
       if (!auth.authorized) {

@@ -135,7 +135,7 @@ async function sendEmailOTP(email: string, otp: string): Promise<boolean> {
           subject: `Your Yestoryd verification code: ${otp}`,
         }],
         from: { 
-          email: process.env.SENDGRID_FROM_EMAIL || 'noreply@yestoryd.com',
+          email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
           name: 'Yestoryd'
         },
         content: [{

@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         interview_notes: notes,
         interview_feedback: feedback,
         interview_score: interviewScore,
-        reviewed_by: reviewedBy || 'admin@yestoryd.com',
+        reviewed_by: reviewedBy || 'engage@yestoryd.com',
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })

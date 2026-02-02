@@ -235,7 +235,7 @@ async function processReminders(requestId: string, source: string) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action: 'coach_reminders_1h_executed',
       details: {
         request_id: requestId,

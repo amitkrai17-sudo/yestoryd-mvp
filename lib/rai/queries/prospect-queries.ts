@@ -26,7 +26,7 @@ export async function getSiteSetting(key: string): Promise<string | null> {
     .single();
 
   if (error) return null;
-  return data?.value ?? null;
+  return (data?.value as string) ?? null;
 }
 
 export async function getSiteSettings(keys: string[]): Promise<Record<string, string>> {
@@ -36,10 +36,10 @@ export async function getSiteSettings(keys: string[]): Promise<Record<string, st
     .in('key', keys);
 
   if (error || !data) return {};
-  return data.reduce((acc: Record<string, string>, item: { key: string; value: string }) => {
-    acc[item.key] = item.value;
+  return data.reduce((acc: Record<string, string>, item) => {
+    acc[item.key] = String(item.value ?? '');
     return acc;
-  }, {});
+  }, {} as Record<string, string>);
 }
 
 export async function getFaqItems(): Promise<unknown | null> {
@@ -75,7 +75,7 @@ export async function findParentByPhone(phone: string) {
   // Get child info
   const { data: child } = await supabaseAdmin
     .from('children')
-    .select('id, name, age, assessment_score, assessment_date')
+    .select('id, name, age, latest_assessment_score, assessment_completed_at')
     .eq('parent_id', data.id)
     .order('created_at', { ascending: false })
     .limit(1)

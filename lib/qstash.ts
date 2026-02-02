@@ -555,6 +555,46 @@ export async function triggerDailyLeadDigest(): Promise<QueueResult> {
 }
 
 // ============================================================
+// ASSESSMENT RETRY
+// ============================================================
+
+/**
+ * Queue a failed assessment for retry (5 minute delay)
+ * Called when all AI providers fail during assessment
+ */
+export async function queueAssessmentRetry(data: {
+  pendingAssessmentId: string;
+  requestId: string;
+}): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping assessment retry');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/assessment/retry`,
+      body: {
+        ...data,
+        timestamp: new Date().toISOString(),
+      },
+      retries: 2,
+      delay: 300, // 5 minutes
+    });
+
+    console.log('[QSTASH] Queued assessment retry:', {
+      messageId: response.messageId,
+      pendingAssessmentId: data.pendingAssessmentId,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: any) {
+    console.error('[QSTASH] Failed to queue assessment retry:', error.message);
+    return { success: false, messageId: null, error: error.message };
+  }
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 

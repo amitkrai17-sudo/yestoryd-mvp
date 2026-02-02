@@ -16,7 +16,7 @@ const DEFAULT_COACHES = [
   {
     id: '9fb07277-60b6-4410-a71c-9de94b8b9971',
     name: 'Rucha Rai',
-    email: 'rucha@yestoryd.com',
+    email: 'engage@yestoryd.com',
     is_available: true,
     is_active: true,
     exit_status: null

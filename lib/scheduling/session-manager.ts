@@ -85,7 +85,7 @@ async function logAudit(
 ) {
   try {
     await supabase.from('activity_log').insert({
-      user_email: 'system@yestoryd.com',
+      user_email: 'engage@yestoryd.com',
       action,
       details: { ...details, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),

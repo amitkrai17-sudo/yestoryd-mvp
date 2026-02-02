@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
     // 11. Audit log (non-blocking)
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'system@yestoryd.com',
+        user_email: 'engage@yestoryd.com',
         action: 'daily_lead_digest_sent',
         details: {
           request_id: requestId,
