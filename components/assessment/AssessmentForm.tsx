@@ -43,6 +43,24 @@ const DEFAULT_COUNTRY_CODES: SupportedCountryCode[] = [
   { code: '+65', country: 'Singapore', flag: '🇸🇬' },
 ];
 
+// Cambridge English Level mapping (handles both numeric and string levels)
+const CAMBRIDGE_LEVELS: Record<number | string, string> = {
+  1: "Pre-A1 Starters",
+  2: "A1 Movers",
+  3: "A2 Flyers",
+  4: "B1 Preliminary",
+  5: "B2 First",
+  "Pre-A1 Starters": "Pre-A1 Starters",
+  "A1 Movers": "A1 Movers",
+  "A2 Flyers": "A2 Flyers",
+  "B1 Preliminary": "B1 Preliminary",
+  "B2 First": "B2 First",
+};
+
+function getCambridgeLevel(level: number | string): string {
+  return CAMBRIDGE_LEVELS[level] || String(level);
+}
+
 export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) {
   const COUNTRY_CODES = countryCodes || DEFAULT_COUNTRY_CODES;
   const router = useRouter();
@@ -88,8 +106,7 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
     if (age <= 5) return '4-5';
     if (age <= 7) return '6-7';
     if (age <= 9) return '8-9';
-    if (age <= 11) return '10-11';
-    return '12+';
+    return '10-12'; // Ages 10+ all use the same passage group (matches database)
   };
 
   const selectRandomPassage = () => {
@@ -104,7 +121,7 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
           title: selected.title,
           text: selected.text,
           wordCount: selected.wordCount,
-          level: selected.level,
+          level: getCambridgeLevel(selected.level), // Normalize to Cambridge label
         });
       }
     }
@@ -246,7 +263,7 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
 
   const isPhoneValid = formData.phoneNumber.length >= 7 && formData.phoneNumber.length <= 15;
   const isEmailValid = formData.parentEmail.includes('@') && formData.parentEmail.includes('.');
-  const isFormValid = formData.parentName && isEmailValid && isPhoneValid && formData.childName && formData.childAge && parseInt(formData.childAge) >= 4 && parseInt(formData.childAge) <= 15;
+  const isFormValid = formData.parentName && isEmailValid && isPhoneValid && formData.childName && formData.childAge && parseInt(formData.childAge) >= 4 && parseInt(formData.childAge) <= 12;
 
   const selectedCountry = COUNTRY_CODES.find((c) => c.code === formData.countryCode);
 
@@ -397,10 +414,10 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
                 <Input
                   type="number"
                   min="4"
-                  max="15"
+                  max="12"
                   value={formData.childAge}
                   onChange={(e) => updateField('childAge', e.target.value)}
-                  placeholder="Age (4-15 years)"
+                  placeholder="Age (4-12 years)"
                   className="mt-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">📚 Passage difficulty adjusts based on age</p>

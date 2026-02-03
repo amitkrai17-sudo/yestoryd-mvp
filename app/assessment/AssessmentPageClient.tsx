@@ -81,13 +81,30 @@ const supabase = createClient(
 
 // ==================== HELPER FUNCTIONS (use settings with fallbacks) ====================
 
-// Get age group key from age
+// Cambridge English Level mapping (handles both numeric and string levels)
+const CAMBRIDGE_LEVELS: Record<number | string, string> = {
+  1: "Pre-A1 Starters",
+  2: "A1 Movers",
+  3: "A2 Flyers",
+  4: "B1 Preliminary",
+  5: "B2 First",
+  "Pre-A1 Starters": "Pre-A1 Starters",
+  "A1 Movers": "A1 Movers",
+  "A2 Flyers": "A2 Flyers",
+  "B1 Preliminary": "B1 Preliminary",
+  "B2 First": "B2 First",
+};
+
+function getCambridgeLevel(level: number | string): string {
+  return CAMBRIDGE_LEVELS[level] || String(level);
+}
+
+// Get age group key from age (matches database ageGroup values)
 function getAgeGroupKey(age: number): string {
   if (age <= 5) return '4-5';
   if (age <= 7) return '6-7';
   if (age <= 9) return '8-9';
-  if (age <= 11) return '10-11';
-  return '12+';
+  return '10-12'; // Ages 10+ all use the same passage group
 }
 
 // Get passage for age from settings (with fallback)
@@ -104,17 +121,36 @@ function getPassageForAge(
     const selected = filteredPassages[Math.floor(Math.random() * filteredPassages.length)];
     return {
       text: selected.text,
-      level: selected.level,
+      level: getCambridgeLevel(selected.level), // Normalize to Cambridge label
       readingTime: selected.readingTime,
     };
   }
 
-  // Fallback passage if settings not loaded
-  return {
-    text: "I have a red ball. The ball is big and round. I kick the ball. It goes far away. I run fast to get it. My dog runs with me. We play all day. The sun is hot. I am very happy.",
-    level: "Pre-A1 Starters",
-    readingTime: "1-2 min"
+  // Age-appropriate fallback passages if database unavailable
+  const fallbacks: Record<string, { text: string; level: string; readingTime: string }> = {
+    '4-5': {
+      text: "I have a red ball. The ball is big and round. I kick the ball. It goes far away. I run fast to get it. My dog runs with me. We play all day. The sun is hot. I am very happy.",
+      level: "Pre-A1 Starters",
+      readingTime: "1-2 min"
+    },
+    '6-7': {
+      text: "Tom has a little cat named Whiskers. Whiskers likes to play with a ball of yarn. Every morning, Tom gives Whiskers some milk. The cat drinks it quickly. Then they play together in the garden. Tom throws the ball and Whiskers runs after it. They are best friends.",
+      level: "A1 Movers",
+      readingTime: "2-3 min"
+    },
+    '8-9': {
+      text: "Maya loved visiting the library every Saturday. The building was old with tall windows that let in golden sunlight. She would spend hours exploring the shelves, discovering new adventures between the pages. Her favourite spot was a cozy corner near the history section. The librarian, Mrs. Chen, always saved the newest books for Maya to see first.",
+      level: "A2 Flyers",
+      readingTime: "2-3 min"
+    },
+    '10-12': {
+      text: "The ancient lighthouse had stood on the rocky cliff for over two hundred years, guiding ships safely through the treacherous waters below. Captain Roberts remembered his grandfather's stories about the keeper who lived there alone, maintaining the great lamp through fierce storms and foggy nights. Now, as his vessel approached the harbour, he understood why sailors called it the Guardian of the Coast.",
+      level: "B1 Preliminary",
+      readingTime: "3-4 min"
+    },
   };
+
+  return fallbacks[ageGroup] || fallbacks['4-5'];
 }
 
 // Get score-based CTA from settings (with fallback)
@@ -261,6 +297,7 @@ function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSetti
 
   // Recording state
   const [passage, setPassage] = useState<{ text: string; level: string; readingTime: string } | null>(null);
+  const [lockedPassage, setLockedPassage] = useState<{ text: string; level: string; readingTime: string } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [supportedMimeType, setSupportedMimeType] = useState<string | null>(null);
   const handleAudioReady = useCallback((mimeType: string) => setSupportedMimeType(mimeType), []);
@@ -489,6 +526,7 @@ function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSetti
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
+      setLockedPassage(passage); // Lock passage when recording starts to prevent mismatch
 
       trackEvent('recording_started');
 
@@ -529,6 +567,7 @@ function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSetti
     setAudioUrl(null);
     setRecordingTime(0);
     setIsPlaying(false);
+    setLockedPassage(null); // Allow passage changes again
   };
 
   const handleSubmitRecording = async () => {
@@ -545,12 +584,15 @@ function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSetti
 
       const fullPhone = formData.parentPhone ? `${formData.countryCode}${formData.parentPhone}` : '';
 
+      // Use lockedPassage (set when recording started) to ensure consistency
+      const passageToAnalyze = lockedPassage || passage;
+
       const response = await fetch('/api/assessment/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           audio: audioBase64,
-          passage: passage.text,
+          passage: passageToAnalyze.text,
           childName: formData.childName,
           childAge: formData.childAge,
           parentName: formData.parentName,
@@ -933,7 +975,7 @@ https://yestoryd.com/lets-talk
                           className="w-full bg-surface-3 border border-border rounded-xl px-4 py-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                         >
                           <option value="">Select</option>
-                          {Array.from({ length: 11 }, (_, i) => i + 4).map(age => (
+                          {Array.from({ length: 9 }, (_, i) => i + 4).map(age => (
                             <option key={age} value={age}>{age} years</option>
                           ))}
                         </select>
