@@ -48,7 +48,8 @@
       "Bash(git reset:*)",
       "Bash(npx next lint:*)",
       "Bash(node:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(psql:*)"
     ]
   }
 }
