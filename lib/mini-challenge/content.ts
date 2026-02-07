@@ -56,7 +56,7 @@ export async function getMiniChallengeVideo(
     return null;
   }
 
-  return data as MiniChallengeVideo;
+  return data as unknown as MiniChallengeVideo;
 }
 
 /**
@@ -84,7 +84,7 @@ export async function getAllMiniChallengeVideos(
     return [];
   }
 
-  return (data || []) as MiniChallengeVideo[];
+  return (data || []) as unknown as MiniChallengeVideo[];
 }
 
 /**
@@ -106,8 +106,8 @@ export async function markMiniChallengeCompleted(
 ): Promise<boolean> {
   const supabase = supabaseAdmin;
 
-  const { error } = await supabase
-    .from('children')
+  const { error } = await (supabase
+    .from('children') as any)
     .update({
       mini_challenge_completed: true,
       mini_challenge_data: {

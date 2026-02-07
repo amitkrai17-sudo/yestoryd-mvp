@@ -134,13 +134,6 @@ async function handleMessages(messages: ExtractedMessage[], requestId: string) {
     const phone = normalizePhone(msg.from);
 
     // 1. Deduplicate by wa_message_id
-    const { error: dedupError } = await supabase
-      .from('wa_lead_messages')
-      .select('id')
-      .eq('wa_message_id', msg.messageId)
-      .maybeSingle();
-
-    // Check if message already exists
     const { data: existing } = await supabase
       .from('wa_lead_messages')
       .select('id')
@@ -238,7 +231,7 @@ async function handleMessages(messages: ExtractedMessage[], requestId: string) {
 // ============================================================
 
 async function getOrCreateConversation(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   phone: string,
   msg: ExtractedMessage,
   requestId: string
@@ -292,7 +285,7 @@ async function getOrCreateConversation(
       lead_score: 0,
       conversation_id: conversation.id,
     })
-    .then(({ error }) => {
+    .then(({ error }: { error: any }) => {
       if (error && error.code !== '23505') {
         console.error(JSON.stringify({ requestId, event: 'wa_leadbot_lead_create_error', error: error.message }));
       }
@@ -320,14 +313,7 @@ async function handleStatuses(
   const supabase = getSupabase();
 
   for (const status of statuses) {
-    await supabase
-      .from('wa_lead_messages')
-      .update({
-        metadata: supabase.rpc ? undefined : undefined, // Can't do JSONB merge easily
-      })
-      .eq('wa_message_id', status.messageId);
-
-    // For now, just log status updates
+    // For now, just log status updates (JSONB merge for metadata deferred to Phase 2)
     console.log(JSON.stringify({
       requestId,
       event: 'wa_leadbot_status',
