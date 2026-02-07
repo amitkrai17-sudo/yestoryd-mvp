@@ -19,6 +19,8 @@ import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // Using getServiceSupabase from lib/api-auth.ts
 
 // --- VALIDATION SCHEMA ---

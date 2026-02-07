@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const [coachConfig, integrationsConfig, emailConfig] = await Promise.all([

@@ -22,6 +22,8 @@ import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION ---
 // Using getServiceSupabase from api-auth.ts
 

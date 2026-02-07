@@ -6,6 +6,8 @@ import sgMail from '@sendgrid/mail';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { loadEmailConfig } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 export async function POST(request: NextRequest) {

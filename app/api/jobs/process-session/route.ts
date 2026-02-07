@@ -19,6 +19,8 @@ import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embe
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization to avoid build-time errors) ---
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

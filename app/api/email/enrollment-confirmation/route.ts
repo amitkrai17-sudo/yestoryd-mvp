@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 // Initialize SendGrid
 const sendgridApiKey = process.env.SENDGRID_API_KEY;
 if (sendgridApiKey) {

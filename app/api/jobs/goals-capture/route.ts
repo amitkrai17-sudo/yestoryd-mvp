@@ -23,6 +23,8 @@ import crypto from 'crypto';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
+export const dynamic = 'force-dynamic';
+
 const P7_TEMPLATE_NAME = 'p7_goals_capture_1';
 
 // --- CONFIGURATION (Lazy initialization) ---

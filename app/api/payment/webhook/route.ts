@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import { loadCoachConfig, loadPaymentConfig } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION ---
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

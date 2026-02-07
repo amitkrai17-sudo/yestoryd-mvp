@@ -17,6 +17,8 @@ import { Receiver } from '@upstash/qstash';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 const getReceiver = () => new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,

@@ -8,6 +8,8 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/utils/rate-limiter';
 import { loadCoachConfig } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {

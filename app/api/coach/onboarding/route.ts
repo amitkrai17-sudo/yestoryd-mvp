@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCoach, getServiceSupabase } from '@/lib/api-auth';
 import { buildEngagementRecords } from '@/lib/coach-engagement/schedule';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireCoach();

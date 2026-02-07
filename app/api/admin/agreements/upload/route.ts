@@ -13,6 +13,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMA ---
 const uploadSchema = z.object({
   version: z.string().min(1).max(20).regex(/^[\d.]+$/, 'Version must be numeric (e.g., 1.0, 2.1)'),

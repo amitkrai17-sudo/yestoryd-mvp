@@ -7,6 +7,8 @@ import sgMail from '@sendgrid/mail';
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 import { loadAuthConfig, loadEmailConfig } from '@/lib/config/loader';
+
+export const dynamic = 'force-dynamic';
 const WHATSAPP_NUMBER = '+91 89762 87997';
 
 export async function POST(request: NextRequest) {

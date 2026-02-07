@@ -23,6 +23,8 @@ import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- AI PROVIDER FALLBACK CHAIN ---
 interface AIProvider {
   name: string;

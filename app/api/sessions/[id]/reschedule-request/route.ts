@@ -4,6 +4,8 @@ import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { format } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

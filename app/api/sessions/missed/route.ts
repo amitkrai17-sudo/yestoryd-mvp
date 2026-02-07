@@ -8,6 +8,8 @@ import { requireAdminOrCoach } from '@/lib/api-auth';
 import { randomUUID } from 'crypto';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 
+export const dynamic = 'force-dynamic';
+
 // ============================================================
 // CONSTANTS
 // ============================================================

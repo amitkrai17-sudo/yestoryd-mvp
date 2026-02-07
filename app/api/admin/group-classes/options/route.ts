@@ -13,6 +13,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMA ---
 const createCoachSchema = z.object({
   name: z.string().min(1).max(100),

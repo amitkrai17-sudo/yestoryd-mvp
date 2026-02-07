@@ -14,6 +14,8 @@ import { generateReferralCode, generateReferralLink } from '@/lib/referral';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMAS ---
 const generateForCoachSchema = z.object({
   coachId: z.string().uuid('Invalid coach ID'),

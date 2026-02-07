@@ -8,6 +8,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { getPlanSchedule, DEFAULT_PLAN_SCHEDULES } from '@/lib/scheduling/config';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const results: {
     timestamp: string;

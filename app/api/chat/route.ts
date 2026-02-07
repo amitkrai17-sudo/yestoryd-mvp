@@ -43,6 +43,8 @@ import {
 import { handleAdminInsightQuery } from '@/lib/rai/admin-insights';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 const getGenAI = () => new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const getSupabase = () => createClient(

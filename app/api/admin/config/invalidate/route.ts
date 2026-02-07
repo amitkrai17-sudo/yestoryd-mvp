@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { invalidateConfigCache } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 const VALID_CATEGORIES = [
   'auth', 'coach', 'payment', 'scheduling', 'revenueSplit',
   'notification', 'enrollment', 'email', 'integrations', 'pricingPlans',

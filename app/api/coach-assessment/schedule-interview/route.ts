@@ -7,6 +7,8 @@ import sgMail from '@sendgrid/mail';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 // Google Calendar setup (same as enrollment scheduling)

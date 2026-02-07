@@ -13,6 +13,8 @@ import { z } from 'zod';
 import { phoneSchemaOptional, normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION ---
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

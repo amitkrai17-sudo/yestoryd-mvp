@@ -13,6 +13,8 @@ import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 import { loadPaymentConfig } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION ---
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,

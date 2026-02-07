@@ -27,6 +27,8 @@ import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

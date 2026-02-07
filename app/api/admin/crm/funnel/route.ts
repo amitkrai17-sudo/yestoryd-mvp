@@ -12,6 +12,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION ---
 const querySchema = z.object({
   days: z.coerce.number().min(1).max(365).default(30),

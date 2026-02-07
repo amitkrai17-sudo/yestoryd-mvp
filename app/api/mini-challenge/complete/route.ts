@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { getMiniChallengeSettings, type GoalArea } from '@/lib/mini-challenge';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMA ---
 const AnswerSchema = z.object({
   question: z.string(),

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { LEARNING_GOALS, isValidGoal, LearningGoalId } from '@/lib/constants/goals';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/children/goals
  * Save parent goals for a child (from results page)

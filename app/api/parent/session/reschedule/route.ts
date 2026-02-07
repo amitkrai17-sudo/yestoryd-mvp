@@ -10,6 +10,8 @@ import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { format } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 const RescheduleSchema = z.object({
   sessionId: z.string().uuid(),
   newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

@@ -8,6 +8,8 @@ import { hybridSearch, formatEventsForContext } from '@/lib/rai/hybrid-search';
 import { buildSessionPrepPrompt } from '@/lib/rai/prompts';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!

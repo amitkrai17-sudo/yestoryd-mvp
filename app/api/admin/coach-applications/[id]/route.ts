@@ -8,6 +8,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import crypto from 'crypto';
 import { buildEngagementRecords } from '@/lib/coach-engagement/schedule';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

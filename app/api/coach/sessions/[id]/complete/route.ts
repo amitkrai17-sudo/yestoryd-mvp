@@ -9,6 +9,8 @@ import { timedQuery } from '@/lib/db-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Complete a coaching session
  * - Updates scheduled_sessions status

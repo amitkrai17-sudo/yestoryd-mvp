@@ -6,6 +6,8 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { normalizePhone } from '@/lib/utils/phone';
 import { WHATSAPP_GOAL_MAPPING, isValidGoal } from '@/lib/constants/goals';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * AiSensy webhook payload structure (incoming message)
  */

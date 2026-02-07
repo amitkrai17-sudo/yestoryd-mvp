@@ -14,6 +14,8 @@ import crypto from 'crypto';
 import { sendText, sendButtons, sendList, sendTemplate } from '@/lib/whatsapp/cloud-api';
 import type { SendResult } from '@/lib/whatsapp/types';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION ---
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

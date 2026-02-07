@@ -12,6 +12,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMAS ---
 const getInteractionsSchema = z.object({
   child_id: z.string().uuid('Invalid child ID').optional(),

@@ -14,6 +14,8 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+export const dynamic = 'force-dynamic';
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // --- VALIDATION SCHEMA ---

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateSpeechGemini, generateSpeech } from '@/lib/tts/google-tts';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 // Validation schema
 const TTSRequestSchema = z.object({
   text: z.string().min(1).max(5000), // Max 5000 characters

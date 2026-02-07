@@ -15,6 +15,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMAS ---
 const getQuerySchema = z.object({
   type: z.enum(['referral', 'promo', 'all']).optional().default('all'),

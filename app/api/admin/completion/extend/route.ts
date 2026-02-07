@@ -13,6 +13,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMA ---
 const extendSchema = z.object({
   enrollmentId: z.string().uuid('Invalid enrollment ID'),

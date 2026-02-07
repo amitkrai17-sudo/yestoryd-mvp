@@ -9,6 +9,8 @@ const supabase = createClient(
 );
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // POST - Update video progress
 export async function POST(
   request: NextRequest,

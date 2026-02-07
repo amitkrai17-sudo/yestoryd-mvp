@@ -13,6 +13,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- HELPER: Mask PAN number ---
 function maskPAN(pan: string | null): string | null {
   if (!pan) return null;

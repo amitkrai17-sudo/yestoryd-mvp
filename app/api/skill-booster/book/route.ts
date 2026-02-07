@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { scheduleCalendarEvent } from '@/lib/googleCalendar';
 
+export const dynamic = 'force-dynamic';
+
 const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || 'engage@yestoryd.com';
 
 export async function POST(request: NextRequest) {

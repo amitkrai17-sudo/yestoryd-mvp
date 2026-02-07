@@ -19,6 +19,8 @@ import { extractMessages, extractStatuses } from '@/lib/whatsapp/extract';
 import type { WebhookPayload, ExtractedMessage, ConversationState } from '@/lib/whatsapp/types';
 import { normalizePhone } from '@/lib/utils/phone';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

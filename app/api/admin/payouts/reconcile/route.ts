@@ -7,6 +7,8 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 const ReconcileSchema = z.object({
   payoutIds: z.array(z.string().uuid()).min(1).max(50),
   utrNumber: z.string().min(1).max(100),

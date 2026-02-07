@@ -19,6 +19,8 @@ import { isValidPhone, normalizePhone } from '@/lib/utils/phone';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // Service Supabase client (bypasses RLS)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

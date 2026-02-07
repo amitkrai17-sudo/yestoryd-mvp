@@ -19,6 +19,8 @@ import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 const initSendGrid = () => {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');

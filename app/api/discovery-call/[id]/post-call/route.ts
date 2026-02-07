@@ -18,6 +18,8 @@ import { conditionalUpdate } from '@/lib/db-utils';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 // Using getServiceSupabase from lib/api-auth.ts
 

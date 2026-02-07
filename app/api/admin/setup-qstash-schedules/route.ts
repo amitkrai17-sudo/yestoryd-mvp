@@ -14,6 +14,8 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { Client } from '@upstash/qstash';
 
+export const dynamic = 'force-dynamic';
+
 const qstash = new Client({
   token: process.env.QSTASH_TOKEN!,
 });

@@ -15,6 +15,8 @@ import crypto from 'crypto';
 import { Client } from '@upstash/qstash';
 import { Webhook } from 'svix';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION ---
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

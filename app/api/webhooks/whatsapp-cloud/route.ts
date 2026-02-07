@@ -21,6 +21,8 @@ import {
   findParentByPhone,
 } from '@/lib/rai/queries/prospect-queries';
 
+export const dynamic = 'force-dynamic';
+
 // ==================== DEDUP CACHE ====================
 const processedMessages = new Map<string, number>();
 const DEDUP_TTL_MS = 5 * 60 * 1000;

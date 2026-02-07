@@ -13,6 +13,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMAS ---
 const updateFlagSchema = z.object({
   flag_key: z.string().min(1).max(100).regex(/^[a-z_]+$/, 'Flag key must be lowercase with underscores'),

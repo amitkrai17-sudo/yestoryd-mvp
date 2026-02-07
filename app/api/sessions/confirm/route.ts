@@ -16,6 +16,8 @@ import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!

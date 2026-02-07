@@ -19,6 +19,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 // Using getServiceSupabase from api-auth.ts
 

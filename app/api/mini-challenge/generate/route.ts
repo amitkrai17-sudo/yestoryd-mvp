@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { getMiniChallengeSettings, getMiniChallengeVideo, type GoalArea } from '@/lib/mini-challenge';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMA ---
 const GenerateSchema = z.object({
   childId: z.string().uuid('Invalid child ID format'),

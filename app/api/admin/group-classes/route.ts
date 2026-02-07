@@ -14,6 +14,8 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { google, calendar_v3 } from 'googleapis';
 
+export const dynamic = 'force-dynamic';
+
 // --- VALIDATION SCHEMAS ---
 const getQuerySchema = z.object({
   status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),

@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 const SpecializationSchema = z.object({
   specializations: z.array(z.object({
     skill_area: z.string().min(1).max(100),

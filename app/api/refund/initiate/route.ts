@@ -10,6 +10,8 @@ import razorpay from '@/lib/razorpay';
 import { calculateRefund, isFullRefundEligible } from '@/lib/refund/calculator';
 import { loadRevenueSplitConfig } from '@/lib/config/loader';
 
+export const dynamic = 'force-dynamic';
+
 const InitiateRefundSchema = z.object({
   enrollmentId: z.string().uuid(),
   reason: z.string().min(1).max(500),

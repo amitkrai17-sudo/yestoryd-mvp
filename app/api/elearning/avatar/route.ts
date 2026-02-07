@@ -9,6 +9,8 @@ const supabase = createClient(
 );
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // Avatar options
 const AVATAR_TYPES = [
   { id: 'fox', name: 'Fox', emoji: '🦊', description: 'Clever and curious' },

@@ -27,6 +27,8 @@ import { Receiver } from '@upstash/qstash';
 import { sendDailyDigest, type DailyDigestData } from '@/lib/notifications/admin-alerts';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- VERIFICATION ---
 async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
   // 1. Check CRON_SECRET

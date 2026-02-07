@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // Default coaches (always available even without DB)
 const DEFAULT_COACHES = [
   {

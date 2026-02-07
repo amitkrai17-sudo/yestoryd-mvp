@@ -20,6 +20,8 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // --- CONFIGURATION (Lazy initialization) ---
 // Using getServiceSupabase from api-auth.ts
 
