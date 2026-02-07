@@ -276,7 +276,7 @@ export function PricingSection({
 
                 {/* CTA Section */}
                 {isLocked ? (
-                  <div className={`mt-auto pt-4 border-t ${isFullProgram ? 'border-white/20' : 'border-border'}`}>
+                  <div className={`mt-auto pt-4 border-t ${isFullProgram ? 'border-gray-700' : 'border-gray-700'}`}>
                     <p className={`text-center text-sm mb-3 ${isFullProgram ? 'text-white/80' : 'text-text-secondary'}`}>
                       Be first to know when we launch
                     </p>

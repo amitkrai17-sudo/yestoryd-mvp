@@ -1,6 +1,8 @@
 // file: app/api/coach/earnings/route.ts
 // Fetch coach earnings summary and payout history
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

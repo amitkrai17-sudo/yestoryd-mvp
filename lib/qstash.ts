@@ -598,6 +598,58 @@ export async function queueAssessmentRetry(data: {
 // UTILITY FUNCTIONS
 // ============================================================
 
+// ============================================================
+// WHATSAPP LEAD BOT
+// ============================================================
+
+interface WaLeadBotProcessData {
+  conversationId: string;
+  messageId: string;
+  phone: string;
+  text: string | null;
+  type: string;
+  contactName: string;
+  interactiveId: string | null;
+  interactiveTitle: string | null;
+  currentState: string;
+  requestId: string;
+}
+
+/**
+ * Queue WhatsApp Lead Bot message for processing
+ * Called by the webhook after saving the inbound message
+ */
+export async function queueWaLeadBotProcess(data: WaLeadBotProcessData): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping wa-leadbot process');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/whatsapp/process`,
+      body: data,
+      retries: 3,
+      delay: 1, // 1 second delay
+    });
+
+    console.log('[QSTASH] Queued wa-leadbot process:', {
+      messageId: response.messageId,
+      conversationId: data.conversationId,
+      state: data.currentState,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: any) {
+    console.error('[QSTASH] Failed to queue wa-leadbot process:', error.message);
+    return { success: false, messageId: null, error: error.message };
+  }
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
 /**
  * Check if QStash is properly configured
  */

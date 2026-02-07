@@ -42,7 +42,13 @@
       "Bash(npm run dev:*)",
       "Bash(npx tsx:*)",
       "Bash(del /f \"C:\\\\yestoryd-mvp\\\\scripts\\\\query-test-data.ts\" \"C:\\\\yestoryd-mvp\\\\scripts\\\\verify-organizer.ts\")",
-      "WebSearch"
+      "WebSearch",
+      "Bash(iconv:*)",
+      "Bash(powershell.exe -NoProfile -Command \"& {\\(Get-Content -LiteralPath ''C:\\\\yestoryd-mvp\\\\app\\\\coach\\\\[subdomain]\\\\page.tsx''\\) -replace ''rucha@yestoryd.com'',''engage@yestoryd.com'' | Set-Content -LiteralPath ''C:\\\\yestoryd-mvp\\\\app\\\\coach\\\\[subdomain]\\\\page.tsx''; Write-Host ''C:\\\\yestoryd-mvp\\\\app\\\\coach\\\\[subdomain]\\\\page.tsx''}\")",
+      "Bash(git reset:*)",
+      "Bash(npx next lint:*)",
+      "Bash(node:*)",
+      "Bash(tree:*)"
     ]
   }
 }

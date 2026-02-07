@@ -97,7 +97,7 @@ const AssessmentSchema = z.object({
   
   childAge: z.union([z.string(), z.number()])
     .transform(val => parseInt(String(val)))
-    .refine(val => val >= 3 && val <= 15, 'Age must be between 3 and 15'),
+    .refine(val => val >= 4 && val <= 12, 'Age must be between 4 and 12'),
   
   parentName: z.string()
     .min(1, 'Parent name is required')

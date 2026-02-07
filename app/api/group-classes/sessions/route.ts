@@ -4,6 +4,8 @@
 // FIXED: Uses separate queries for related data to avoid FK issues
 // =============================================================================
 
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 

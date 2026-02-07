@@ -2,6 +2,8 @@
 // Coach self-service: Manage availability and time off
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

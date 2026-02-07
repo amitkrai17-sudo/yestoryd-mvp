@@ -1,6 +1,8 @@
 // app/api/elearning/games/[gameId]/route.ts
 // API for fetching game content and submitting results
 
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(

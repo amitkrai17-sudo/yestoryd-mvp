@@ -17,7 +17,7 @@ export function TransformationSection({
 }: TransformationSectionProps) {
   return (
     <div className="w-full max-w-[420px] mx-auto">
-      <div className="bg-surface-2 rounded-3xl shadow-xl border border-border overflow-hidden">
+      <div className="bg-gray-800/50 rounded-3xl shadow-xl border border-gray-700 overflow-hidden">
 
         {/* Header */}
         <div className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white text-center py-3 px-4">

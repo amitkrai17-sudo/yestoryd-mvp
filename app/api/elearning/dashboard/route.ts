@@ -1,6 +1,8 @@
 // app/api/elearning/dashboard/route.ts
 // Main API for child's e-learning dashboard
 
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(

@@ -1,6 +1,8 @@
 // file: app/api/referral/track/route.ts
 // Track referral visits and link to coach
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

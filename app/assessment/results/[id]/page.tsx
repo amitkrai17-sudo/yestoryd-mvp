@@ -9,6 +9,7 @@ import {
   ChevronDown, ChevronUp, Target, Volume2, Lightbulb,
   BookOpenCheck, Sparkles, BookOpen, Zap, MessageSquare,
   TrendingUp, Download, Share2, AlertTriangle, Calendar, FileText,
+  Play, Check,
 } from 'lucide-react';
 import Confetti from '@/components/Confetti';
 import { GoalsCapture } from '@/components/assessment/GoalsCapture';
@@ -23,6 +24,14 @@ interface AssessmentData {
   errors: string[]; strengths: string[]; areas_to_improve: string[];
   error_classification?: any; phonics_analysis?: any;
   skill_breakdown?: any; practice_recommendations?: any;
+  parent_goals?: string[];
+  mini_challenge_completed?: boolean;
+  mini_challenge_data?: {
+    quiz_score: number;
+    quiz_total: number;
+    xp_earned: number;
+    goal: string;
+  };
 }
 
 // Score-based messaging (matching email)
@@ -58,6 +67,66 @@ function getScoreMessage(score: number, childName: string, age: string) {
     dailyTip: `The journey of a thousand books begins with one page, ${childName.toLowerCase()}!`,
     ctaText: `Start ${firstName}'s Journey`,
   };
+}
+
+// Mini Challenge CTA Component
+function MiniChallengeCTA({ childId, goalArea }: { childId: string; goalArea?: string }) {
+  const goalParam = goalArea ? `?goal=${goalArea}` : '';
+
+  return (
+    <div className="mt-4 bg-gray-800/50 border border-gray-700 rounded-2xl p-6">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 bg-[#FF0099]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-6 h-6 text-[#FF0099]" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-white">
+            Ready for a Quick Challenge?
+          </h3>
+          <p className="text-gray-400 mt-1 text-sm">
+            Try a fun mini challenge based on your reading goals!
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+        <Link
+          href={`/mini-challenge/${childId}${goalParam}`}
+          className="flex-1 h-12 bg-[#FF0099] hover:bg-[#FF0099]/90 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+        >
+          <Play className="w-5 h-5" />
+          Start Challenge
+        </Link>
+        <Link
+          href={`/enroll?childId=${childId}&source=assessment`}
+          className="h-12 px-6 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl flex items-center justify-center transition-colors"
+        >
+          Skip
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// Mini Challenge Completed Badge
+function MiniChallengeCompletedBadge({ data }: { data: AssessmentData['mini_challenge_data'] }) {
+  if (!data) return null;
+
+  return (
+    <div className="mt-4 bg-green-900/20 border border-green-700 rounded-2xl p-6">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+          <Check className="w-5 h-5 text-green-400" />
+        </div>
+        <div>
+          <p className="text-white font-medium">Mini Challenge Completed!</p>
+          <p className="text-gray-400 text-sm">
+            Score: {data.quiz_score}/{data.quiz_total} • XP: {data.xp_earned}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const SKILL_CONFIG: Record<string, { icon: React.ReactNode; label: string }> = {
@@ -344,6 +413,19 @@ _Assessed by rAI | yestoryd.com_`);
               className="mb-4"
               onGoalsSaved={(goals) => setSelectedGoals(goals)}
             />
+
+            {/* Mini Challenge CTA - Show if goals selected and not completed */}
+            {selectedGoals.length > 0 && !data.mini_challenge_completed && (
+              <MiniChallengeCTA
+                childId={childId}
+                goalArea={selectedGoals[0]}
+              />
+            )}
+
+            {/* Mini Challenge Completed Badge */}
+            {data.mini_challenge_completed && data.mini_challenge_data && (
+              <MiniChallengeCompletedBadge data={data.mini_challenge_data} />
+            )}
 
             {/* Yellow Daily Tip */}
             <div className="bg-[#ffde00] rounded-xl px-4 py-3 mb-4">

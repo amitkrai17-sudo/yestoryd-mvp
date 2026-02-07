@@ -66,10 +66,10 @@ export function TestimonialsSection({
             return (
               <div
                 key={testimonial.id || index}
-                className={`bg-surface-2 rounded-2xl p-6 shadow-lg border-2 transition-all ${
+                className={`bg-gray-800/50 rounded-2xl p-6 shadow-lg border transition-all ${
                   activeIndex === index
                     ? 'border-[#ff0099] shadow-[#ff0099]/10'
-                    : 'border-border hover:border-border-strong'
+                    : 'border-gray-700 hover:border-gray-600'
                 }`}
               >
                 {/* Score Badge */}

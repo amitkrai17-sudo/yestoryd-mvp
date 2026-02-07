@@ -3,6 +3,8 @@
 // HARDENED: Full TypeScript, validation, error handling, null-safe
 // FEATURE: Creates calendar event on reschedule if none exists
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { rescheduleEvent, cancelEvent, scheduleCalendarEvent } from '@/lib/googleCalendar';

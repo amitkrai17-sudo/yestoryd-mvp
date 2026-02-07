@@ -4,6 +4,8 @@
 // FIXES: Correct pause day calculations, pause_count on start, max 3 pauses
 // =============================================================================
 
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { conditionalUpdate } from '@/lib/db-utils';

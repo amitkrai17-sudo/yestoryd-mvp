@@ -132,7 +132,7 @@ export function StorySection({
                 return (
                   <span
                     key={index}
-                    className="inline-flex items-center gap-2 bg-white/10 text-white/90 px-4 py-2 rounded-full text-sm font-medium border border-white/10"
+                    className="inline-flex items-center gap-2 bg-white/10 text-white/90 px-4 py-2 rounded-full text-sm font-medium border border-gray-700"
                   >
                     <Icon className="w-4 h-4" style={{ color: iconColor }} />
                     {credential}

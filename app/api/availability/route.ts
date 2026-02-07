@@ -1,6 +1,8 @@
 // app/api/availability/route.ts
 // Check coach availability for scheduling
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getAvailableSlots } from '@/lib/googleCalendar';
 
