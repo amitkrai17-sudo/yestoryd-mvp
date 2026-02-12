@@ -27,6 +27,8 @@ import {
   Check,
   AlertCircle,
   RefreshCw,
+  CheckSquare,
+  MapPin,
 } from 'lucide-react';
 import BottomNav from '@/components/navigation/BottomNav';
 import { parentNavItems } from '@/lib/config/navigation';
@@ -102,6 +104,18 @@ const NAV_ITEMS = [
     href: '/parent/sessions',
     icon: Calendar,
     description: 'Upcoming & past sessions',
+  },
+  {
+    label: 'Daily Tasks',
+    href: '/parent/tasks',
+    icon: CheckSquare,
+    description: 'Practice activities',
+  },
+  {
+    label: 'Journey',
+    href: '/parent/journey',
+    icon: MapPin,
+    description: 'Season roadmap',
   },
   {
     label: 'E-Learning',

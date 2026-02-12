@@ -183,7 +183,8 @@ export async function POST(request: NextRequest) {
         );
 
         const isCoaching = session.session_type === 'coaching';
-        const duration = isCoaching ? 45 : 30;
+        // V2: Use session's own duration_minutes, fallback to legacy defaults
+        const duration = session.duration_minutes || (isCoaching ? 45 : 30);
 
         const endDate = new Date(sessionDate);
         endDate.setMinutes(endDate.getMinutes() + duration);

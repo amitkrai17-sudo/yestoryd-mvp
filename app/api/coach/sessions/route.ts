@@ -42,6 +42,8 @@ interface SessionData {
   session_type: string | null;
   session_number: number | null;
   session_title: string | null;
+  duration_minutes: number | null;
+  is_diagnostic: boolean;
   status: string | null;
   google_meet_link: string | null;
   coach_notes: string | null;
@@ -78,6 +80,8 @@ interface FormattedSession {
   motivators: string[];
   sessions_completed: number;
   total_sessions: number;
+  duration_minutes: number | null;
+  is_diagnostic: boolean;
 }
 
 // ============================================================
@@ -144,6 +148,8 @@ async function getSessionsWithChildren(
       session_type,
       session_number,
       session_title,
+      duration_minutes,
+      is_diagnostic,
       status,
       google_meet_link,
       coach_notes,
@@ -256,6 +262,8 @@ function formatSession(
     // Real-time calculated values (source of truth)
     sessions_completed: sessionCounts?.completed ?? 0,
     total_sessions: sessionCounts?.total || DEFAULT_TOTAL_SESSIONS,
+    duration_minutes: session.duration_minutes,
+    is_diagnostic: session.is_diagnostic || false,
   };
 }
 

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     // Get gamification record
     const { data: gamificationRecords, error: fetchError } = await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .select('*')
       .eq('child_id', trimmedChildId);
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     if (!gamification) {
       // Create new gamification record
       const { data: newRecord, error: createError } = await supabase
-        .from('child_gamification')
+        .from('el_child_gamification')
         .insert({
           child_id: trimmedChildId,
           total_xp: 0,
@@ -79,10 +79,10 @@ export async function GET(request: NextRequest) {
 
     // Get badges
     const { data: badges } = await supabase
-      .from('child_badges')
-      .select('id, badge_name, badge_icon, badge_description, badge_category, earned_at')
+      .from('el_child_badges')
+      .select('id, badge_id, created_at, badge:el_badges(name, icon, description, category)')
       .eq('child_id', trimmedChildId)
-      .order('earned_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     const levelInfo = calculateLevel(gamification.total_xp);
 
@@ -111,13 +111,13 @@ export async function GET(request: NextRequest) {
         totalTimeMinutes: gamification.total_time_minutes || 0,
       },
       badges: {
-        earned: badges?.map(b => ({
-          id: b.id,
-          earnedAt: b.earned_at,
-          name: b.badge_name,
-          icon: b.badge_icon,
-          description: b.badge_description,
-          category: b.badge_category,
+        earned: badges?.map((b: any) => ({
+          id: b.badge_id,
+          earnedAt: b.created_at,
+          name: b.badge?.name || '',
+          icon: b.badge?.icon || '🏆',
+          description: b.badge?.description || '',
+          category: b.badge?.category || 'milestone',
         })) || [],
         unearned: [],
         total: badges?.length || 0,

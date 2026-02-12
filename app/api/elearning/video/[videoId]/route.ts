@@ -27,9 +27,9 @@ export async function GET(
       );
     }
     
-    // Fetch video from learning_videos table
+    // Fetch video from el_videos table
     const { data: video, error } = await supabase
-      .from('learning_videos')
+      .from('el_videos')
       .select('*')
       .eq('id', videoId)
       .single();

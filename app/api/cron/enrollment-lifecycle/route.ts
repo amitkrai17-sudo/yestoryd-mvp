@@ -392,6 +392,7 @@ export async function GET(request: NextRequest) {
         coach_id,
         program_end_date,
         completion_alert_sent_at,
+        total_sessions,
         children (name, parent_email),
         coaches (name, email)
       `)
@@ -448,13 +449,15 @@ export async function GET(request: NextRequest) {
         for (const enrollment of enrollmentsToCheck) {
           const completedCount = countsMap[enrollment.id] || 0;
           
-          if (completedCount < 9) {
+          // V2: Use enrollment.total_sessions, fallback to legacy 9
+          const enrollmentTotal = (enrollment as any).total_sessions || 9;
+          if (completedCount < enrollmentTotal) {
             try {
               await supabase.from('admin_alerts').insert({
                 alert_type: 'completion_at_risk',
                 severity: 'high',
                 title: `${(enrollment.children as any)?.name} - Program ending soon`,
-                message: `Only ${completedCount}/9 sessions completed. Program ends ${enrollment.program_end_date}`,
+                message: `Only ${completedCount}/${enrollmentTotal} sessions completed. Program ends ${enrollment.program_end_date}`,
                 context_data: {
                   enrollment_id: enrollment.id,
                   sessions_completed: completedCount,

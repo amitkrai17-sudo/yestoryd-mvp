@@ -25,6 +25,7 @@ import {
   CouponInput,
   EnrollForm,
   PaymentSection,
+  AgeBandInfoCard,
 } from './_components';
 import { TimeBucketSelector, DayOfWeekSelector } from '@/components/ui/scheduling';
 
@@ -522,6 +523,8 @@ function EnrollContent() {
               source={source}
             >
               <EnrollForm formData={formData} onChange={handleInputChange} />
+
+              <AgeBandInfoCard childAge={formData.childAge ? parseInt(formData.childAge) : null} />
 
               {/* Scheduling Preferences */}
               <div className="border border-border rounded-xl p-3 bg-surface-2 space-y-4">

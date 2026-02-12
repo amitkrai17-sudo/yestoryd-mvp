@@ -26,8 +26,11 @@ const querySchema = z.object({
 
 // --- HELPER: Generate embedding ---
 async function generateEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  const result = await model.embedContent(text);
+  const model = genAI.getGenerativeModel({ model: 'gemini-embedding-001' });
+  const result = await model.embedContent({
+    content: { parts: [{ text }] },
+    outputDimensionality: 768,
+  } as any);
   return result.embedding.values;
 }
 

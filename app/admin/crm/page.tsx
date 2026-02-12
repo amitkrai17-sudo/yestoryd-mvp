@@ -29,6 +29,7 @@ interface Lead {
   id: string;
   name: string;
   age: number;
+  age_band: 'foundation' | 'building' | 'mastery' | null;
   parent_name: string;
   parent_email: string;
   parent_phone: string;
@@ -46,6 +47,8 @@ interface Lead {
   latest_assessment_score: number | null;
   lead_notes: string;
 }
+
+import { AgeBandBadge } from '@/components/AgeBandBadge';
 
 interface Stats {
   total: number;
@@ -1034,6 +1037,7 @@ export default function AdminCRMPage() {
                       <thead className="bg-surface-0 border-b border-border">
                         <tr>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Child</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Band</th>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Parent</th>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Source</th>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">Status</th>
@@ -1049,6 +1053,9 @@ export default function AdminCRMPage() {
                             <td className="px-4 py-3">
                               <div className="font-medium text-white">{lead.name}</div>
                               <div className="text-sm text-text-tertiary">Age {lead.age}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <AgeBandBadge ageBand={lead.age_band} age={lead.age} />
                             </td>
                             <td className="px-4 py-3">
                               <div className="text-sm text-white">{lead.parent_name}</div>

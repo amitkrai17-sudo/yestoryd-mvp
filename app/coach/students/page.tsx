@@ -25,6 +25,7 @@ interface Student {
   id: string;
   child_name: string;
   age: number;
+  age_band: string | null;
   assessment_score: number | null;
   sessions_completed: number;
   total_sessions: number;
@@ -73,6 +74,8 @@ export default function CoachStudentsPage() {
           id,
           status,
           sessions_scheduled,
+          total_sessions,
+          age_band,
           lead_source,
           child:children (
             id,
@@ -101,9 +104,10 @@ export default function CoachStudentsPage() {
             id: child.id,
             child_name: child.child_name,
             age: child.age,
+            age_band: (enrollment as any).age_band || null,
             assessment_score: child.latest_assessment_score,
             sessions_completed: count || 0,
-            total_sessions: enrollment.sessions_scheduled || 9,
+            total_sessions: enrollment.total_sessions || enrollment.sessions_scheduled || 9,
             status: enrollment.status === 'pending_start' ? 'active' : enrollment.status,
             is_coach_lead: enrollment.lead_source === 'coach',
           };

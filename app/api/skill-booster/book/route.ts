@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
         enrollment_id,
         focus_area,
         session_type,
-        status
+        status,
+        duration_minutes
       `)
       .eq('id', sessionId)
       .eq('session_type', 'remedial')
@@ -65,7 +66,9 @@ export async function POST(request: NextRequest) {
 
     // 4. Create Google Calendar event
     const startTime = new Date(selectedSlot);
-    const endTime = new Date(startTime.getTime() + 45 * 60 * 1000); // 45 minutes
+    // V2: Use session duration_minutes if set, fallback to 45
+    const sbDuration = session.duration_minutes || 45;
+    const endTime = new Date(startTime.getTime() + sbDuration * 60 * 1000);
 
     const childName = child.child_name || child.name || 'Child';
     const focusAreaLabel = getFocusAreaLabel(session.focus_area);

@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         
         // Get fresh progress data to update completion status
         const { data: progress } = await supabase
-          .from('child_video_progress')
+          .from('el_child_video_progress')
           .select('video_id, is_completed, quiz_passed, quiz_attempted')
           .eq('child_id', childId);
 
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         // Get video details for has_quiz check
         const videoIds = cached[0].event_data.carousel.map((c: any) => c.id);
         const { data: videos } = await supabase
-          .from('learning_videos')
+          .from('el_videos')
           .select('id, has_quiz')
           .in('id', videoIds);
 
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
 
     // STEP 3: Get video progress
     const { data: progress } = await supabase
-      .from('child_video_progress')
+      .from('el_child_video_progress')
       .select('video_id, is_completed, quiz_passed, quiz_attempted, best_quiz_score, completed_at')
       .eq('child_id', childId);
 
@@ -155,12 +155,12 @@ export async function GET(request: NextRequest) {
 
     // STEP 4: Get all videos
     const { data: allVideos } = await supabase
-      .from('learning_videos')
+      .from('el_videos')
       .select(`
-        id, title, slug, description, video_source, video_id, 
+        id, title, slug, description, video_source, video_id,
         thumbnail_url, duration_seconds, xp_reward, has_quiz,
         key_concepts,
-        module:learning_modules(id, name, level_id)
+        skill:el_skills(id, name, category)
       `)
       .eq('status', 'published')
       .order('display_order');
@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
             title: v.title,
             description: v.description,
             keyConcepts: v.key_concepts,
-            moduleName: v.module?.[0]?.name,
+            moduleName: (v as any).skill?.[0]?.name || (v as any).skill?.name,
             hasQuiz: v.has_quiz,
             isCompleted: completedVideoIds.has(v.id),
             needsQuizRetry: v.has_quiz && quizPendingVideoIds.has(v.id),
@@ -283,7 +283,7 @@ export async function GET(request: NextRequest) {
         xp_reward: xpAvailable,
         has_quiz: video.has_quiz,
         is_locked: isLocked,
-        module_name: video.module?.[0]?.name,
+        module_name: (video as any).skill?.[0]?.name || (video as any).skill?.name,
         // Explicit status
         is_completed: isCompleted,
         needs_quiz_retry: needsQuizRetry,
@@ -568,7 +568,7 @@ export async function POST(request: NextRequest) {
 
     // Get progress
     const { data: progress } = await supabase
-      .from('child_video_progress')
+      .from('el_child_video_progress')
       .select('video_id, is_completed, quiz_passed, quiz_attempted')
       .eq('child_id', childId);
 
@@ -600,11 +600,11 @@ export async function POST(request: NextRequest) {
 
     // Get videos matching request
     const { data: allVideos } = await supabase
-      .from('learning_videos')
+      .from('el_videos')
       .select(`
-        id, title, description, video_source, video_id, 
+        id, title, description, video_source, video_id,
         thumbnail_url, duration_seconds, xp_reward, has_quiz,
-        key_concepts, module:learning_modules(name)
+        key_concepts, skill:el_skills(name)
       `)
       .eq('status', 'published')
       .order('display_order');
@@ -682,7 +682,7 @@ export async function POST(request: NextRequest) {
         xp_reward: isCompleted && !needsQuizRetry ? 0 : (needsQuizRetry ? 50 : (video.xp_reward || 10)),
         has_quiz: video.has_quiz,
         is_locked: isLocked,
-        module_name: video.module?.[0]?.name,
+        module_name: (video as any).skill?.[0]?.name || (video as any).skill?.name,
         is_completed: isCompleted,
         needs_quiz_retry: needsQuizRetry,
         quiz_passed: progressData?.quiz_passed === true,

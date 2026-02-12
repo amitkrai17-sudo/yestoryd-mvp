@@ -85,6 +85,8 @@ interface Session {
   motivators: string[];
   sessions_completed: number;
   total_sessions: number;
+  duration_minutes: number | null;
+  is_diagnostic: boolean;
   parent_update_sent_at?: string | null;
 }
 

@@ -43,6 +43,7 @@ export interface ScheduledSession {
   status: string;
   duration_minutes: number;
   slot_match_type?: SlotMatchType;
+  is_diagnostic?: boolean;
 }
 
 export interface EnrollmentSchedulerOptions {
@@ -245,9 +246,13 @@ export async function scheduleEnrollmentSessions(
       return 0;
     });
 
-    // Renumber sessions
+    // Renumber sessions and mark first coaching session as diagnostic
     sessionsToCreate.forEach((session, idx) => {
       session.session_number = idx + 1;
+      // V2: First coaching session is the diagnostic session
+      if (idx === 0 && session.session_type === 'coaching') {
+        session.is_diagnostic = true;
+      }
     });
 
     console.log(`[EnrollmentScheduler] [${requestId}] Sessions built:`, {
@@ -273,6 +278,49 @@ export async function scheduleEnrollmentSessions(
         manualRequired: 0,
         errors: [`Failed to insert sessions: ${insertError.message}`],
       };
+    }
+
+    // ========================================================================
+    // STEP 5.5: Auto-assign session templates from season_learning_plans
+    // ========================================================================
+    try {
+      const { data: learningPlans } = await supabase
+        .from('season_learning_plans')
+        .select('week_number, session_template_id')
+        .eq('child_id', childId) as { data: { week_number: number; session_template_id: string | null }[] | null };
+
+      if (learningPlans && learningPlans.length > 0) {
+        // Build a map: week_number → session_template_id
+        const templateByWeek = new Map<number, string>();
+        for (const plan of learningPlans) {
+          if (plan.session_template_id) {
+            templateByWeek.set(plan.week_number, plan.session_template_id);
+          }
+        }
+
+        // Update each coaching session with its template
+        for (const session of sessionsToCreate) {
+          if (session.session_type !== 'coaching') continue;
+          const templateId = templateByWeek.get(session.week_number);
+          if (templateId) {
+            await (supabase as any)
+              .from('scheduled_sessions')
+              .update({ session_template_id: templateId })
+              .eq('enrollment_id', enrollmentId)
+              .eq('session_number', session.session_number);
+          }
+        }
+
+        console.log(`[EnrollmentScheduler] [${requestId}] Templates assigned:`, {
+          plansFound: learningPlans.length,
+          sessionsMatched: sessionsToCreate.filter(
+            s => s.session_type === 'coaching' && templateByWeek.has(s.week_number)
+          ).length,
+        });
+      }
+    } catch (templateErr) {
+      console.warn(`[EnrollmentScheduler] [${requestId}] Template assignment skipped:`, templateErr);
+      // Non-blocking — sessions still created without templates
     }
 
     // ========================================================================
@@ -405,6 +453,10 @@ export async function createSessionsSimple(
     sessionsToCreate.sort((a, b) => a.week_number - b.week_number);
     sessionsToCreate.forEach((session, idx) => {
       session.session_number = idx + 1;
+      // V2: First coaching session is the diagnostic session
+      if (idx === 0 && session.session_type === 'coaching') {
+        session.is_diagnostic = true;
+      }
     });
 
     // Insert
@@ -420,6 +472,36 @@ export async function createSessionsSimple(
         manualRequired: 0,
         errors: [`Insert failed: ${insertError.message}`],
       };
+    }
+
+    // Auto-assign templates from season_learning_plans
+    try {
+      const { data: learningPlans } = await supabase
+        .from('season_learning_plans')
+        .select('week_number, session_template_id')
+        .eq('child_id', childId) as { data: { week_number: number; session_template_id: string | null }[] | null };
+
+      if (learningPlans && learningPlans.length > 0) {
+        const templateByWeek = new Map<number, string>();
+        for (const plan of learningPlans) {
+          if (plan.session_template_id) {
+            templateByWeek.set(plan.week_number, plan.session_template_id);
+          }
+        }
+        for (const session of sessionsToCreate) {
+          if (session.session_type !== 'coaching') continue;
+          const templateId = templateByWeek.get(session.week_number);
+          if (templateId) {
+            await (supabase as any)
+              .from('scheduled_sessions')
+              .update({ session_template_id: templateId })
+              .eq('enrollment_id', enrollmentId)
+              .eq('session_number', session.session_number);
+          }
+        }
+      }
+    } catch {
+      // Non-blocking
     }
 
     // Update enrollment

@@ -209,6 +209,103 @@ function formatTimeAgo(date: Date): string {
   }
 }
 
+// --- Content Unit Search ---
+
+export interface ContentUnitMatch {
+  id: string;
+  name: string;
+  content_code: string | null;
+  description: string | null;
+  skill_name: string | null;
+  arc_stage: string | null;
+  min_age: number | null;
+  max_age: number | null;
+  difficulty: string | null;
+  tags: string[] | null;
+  coach_guidance: Record<string, unknown> | null;
+  parent_instruction: string | null;
+  video_count: number;
+  worksheet_count: number;
+  similarity: number;
+}
+
+interface ContentSearchOptions {
+  query: string;
+  childAge?: number | null;
+  skillId?: string | null;
+  arcStage?: string | null;
+  tags?: string[] | null;
+  limit?: number;
+  threshold?: number;
+}
+
+/**
+ * Search content units by semantic similarity
+ * Used by rAI to recommend specific learning activities
+ */
+export async function searchContentUnits(
+  options: ContentSearchOptions
+): Promise<ContentUnitMatch[]> {
+  const { query, childAge, skillId, arcStage, tags, limit = 5, threshold = 0.3 } = options;
+
+  try {
+    const queryEmbedding = await generateEmbedding(query);
+
+    const { data, error } = await supabase.rpc('match_content_units', {
+      query_embedding: queryEmbedding,
+      filter_skill_id: skillId || null,
+      filter_min_age: childAge || null,
+      filter_max_age: childAge || null,
+      filter_arc_stage: arcStage || null,
+      filter_tags: tags?.length ? tags : null,
+      match_threshold: threshold,
+      match_count: limit,
+    });
+
+    if (error) {
+      console.error('Content search RPC error:', error);
+      return [];
+    }
+
+    return (data || []) as ContentUnitMatch[];
+  } catch (error) {
+    console.error('Content search error:', error);
+    return [];
+  }
+}
+
+/**
+ * Format content unit matches for inclusion in Gemini prompts
+ */
+export function formatContentUnitsForContext(units: ContentUnitMatch[]): string {
+  if (!units || units.length === 0) return '';
+
+  const formatted = units.map((u, i) => {
+    const parts = [
+      `[${i + 1}] ${u.name}${u.content_code ? ` (${u.content_code})` : ''}`,
+    ];
+    if (u.skill_name) parts.push(`   Skill: ${u.skill_name}`);
+    if (u.description) parts.push(`   ${u.description}`);
+    if (u.arc_stage) parts.push(`   Stage: ${u.arc_stage}`);
+    if (u.difficulty) parts.push(`   Difficulty: ${u.difficulty}`);
+    if (u.tags?.length) parts.push(`   Tags: ${u.tags.join(', ')}`);
+    if (u.coach_guidance) {
+      const g = u.coach_guidance as Record<string, unknown>;
+      if (Array.isArray(g.key_concepts) && g.key_concepts.length) {
+        parts.push(`   Key concepts: ${g.key_concepts.join(', ')}`);
+      }
+    }
+    const assets: string[] = [];
+    if (u.video_count > 0) assets.push(`${u.video_count} video${u.video_count > 1 ? 's' : ''}`);
+    if (u.worksheet_count > 0) assets.push(`${u.worksheet_count} worksheet${u.worksheet_count > 1 ? 's' : ''}`);
+    if (assets.length) parts.push(`   Assets: ${assets.join(', ')}`);
+    parts.push(`   Match: ${(u.similarity * 100).toFixed(0)}%`);
+    return parts.join('\n');
+  });
+
+  return `RECOMMENDED CONTENT UNITS FROM LIBRARY:\n${formatted.join('\n\n')}`;
+}
+
 export function formatEventsForContext(events: LearningEvent[]): string {
   if (!events || events.length === 0) {
     return 'No learning events found.';

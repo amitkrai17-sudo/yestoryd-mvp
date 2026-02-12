@@ -118,12 +118,18 @@ export async function POST(
       .eq('status', 'completed')
       .order('session_number', { ascending: true });
 
-    // Get e-learning progress if available
-    const { data: elearningProgress } = await supabase
-      .from('elearning_progress')
-      .select('modules_completed, quiz_scores, time_spent_minutes')
+    // Get e-learning progress from consolidated tables
+    const { data: gamificationData } = await supabase
+      .from('el_child_gamification')
+      .select('total_units_completed, total_quizzes_completed, total_time_minutes')
       .eq('child_id', enrollment.child_id)
       .single();
+
+    const elearningProgress = gamificationData ? {
+      modules_completed: gamificationData.total_units_completed || 0,
+      quiz_scores: [],
+      time_spent_minutes: gamificationData.total_time_minutes || 0,
+    } : null;
 
     // Prepare data for Gemini
     const reportData: ReportData = {

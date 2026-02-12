@@ -7,6 +7,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
+import { searchContentUnits, formatContentUnitsForContext } from '@/lib/rai/hybrid-search';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,10 +59,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Fetch child's previous sessions from learning_events
+    // 1. Fetch child's learning profile + previous sessions
     let historyContext = 'No previous sessions recorded.';
+    let profileContext = '';
+    let profile: Record<string, any> | null = null;
 
     if (childId) {
+      // Fetch synthesized learning profile (primary context, column may not exist)
+      try {
+        const { data: childRow } = await supabaseAdmin
+          .from('children')
+          .select('learning_profile')
+          .eq('id', childId)
+          .single();
+        profile = childRow?.learning_profile as Record<string, any> | null;
+      } catch {
+        // Column doesn't exist yet — skip profile context
+      }
+      if (profile && Object.keys(profile).length > 0) {
+        profileContext = `
+SYNTHESIZED LEARNING PROFILE (updated after each session):
+- Reading Level: ${profile.reading_level?.current || 'Unknown'}, Trend: ${profile.reading_level?.trend || 'unknown'}
+- Active Skills: ${(profile.active_skills || []).join(', ') || 'None identified'}
+- Mastered Skills: ${(profile.mastered_skills || []).join(', ') || 'None yet'}
+- Struggle Areas: ${(profile.struggle_areas || []).map((s: any) => `${s.skill} (${s.severity}, ${s.sessions_struggling} sessions)`).join(', ') || 'None'}
+- What Works: ${(profile.what_works || []).join('; ') || 'Not enough data'}
+- What Doesn't Work: ${(profile.what_doesnt_work || []).join('; ') || 'Not enough data'}
+- Personality: ${profile.personality_notes || 'Not enough data'}
+- Parent Engagement: ${profile.parent_engagement?.level || 'unknown'}
+- Sessions Completed: ${profile.sessions_completed || 0}, Remaining: ${profile.sessions_remaining || '?'}
+- Recommended Next Focus: ${profile.recommended_focus_next_session || 'Not set'}`;
+      }
+
+      // Fetch raw session history (secondary context)
       const { data: previousSessions } = await supabaseAdmin
         .from('learning_events')
         .select('event_data, event_date')
@@ -70,7 +100,6 @@ export async function POST(request: NextRequest) {
         .order('event_date', { ascending: false })
         .limit(5);
 
-      // 2. Build context from history
       if (previousSessions && previousSessions.length > 0) {
         historyContext = previousSessions
           .map((s, i) => {
@@ -91,6 +120,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 2b. Search content library for relevant units
+    let contentContext = '';
+    try {
+      // Build search query from session context
+      const searchParts: string[] = [];
+      if (primaryFocus) searchParts.push(FOCUS_LABELS[primaryFocus] || primaryFocus.replace(/_/g, ' '));
+      if (challenges?.length) searchParts.push(challenges.join(', '));
+      if (highlights?.length) searchParts.push(highlights.join(', '));
+      if (skillsPracticed?.length) searchParts.push(skillsPracticed.join(', '));
+
+      // Also use struggle areas from profile if available
+      const struggleAreas = (profile as any)?.struggle_areas as Array<{ skill: string }> | undefined;
+      if (struggleAreas?.length) {
+        searchParts.push(struggleAreas.map((s: { skill: string }) => s.skill).join(', '));
+      }
+
+      if (searchParts.length > 0) {
+        const contentUnits = await searchContentUnits({
+          query: searchParts.join(' '),
+          childAge: childAge || null,
+          limit: 3,
+          threshold: 0.25,
+        });
+
+        if (contentUnits.length > 0) {
+          contentContext = '\n\n' + formatContentUnitsForContext(contentUnits);
+          console.log(`Content units found: ${contentUnits.length}`);
+        }
+      }
+    } catch (err) {
+      console.warn('Content search failed (non-blocking):', err);
+    }
+
     // 3. Build prompt for Gemini
     const focusLabel = FOCUS_LABELS[primaryFocus] || primaryFocus.replace(/_/g, ' ');
     const progressLabel = focusProgress.replace(/_/g, ' ');
@@ -101,6 +163,7 @@ CHILD PROFILE:
 - Name: ${childName}
 - Age: ${childAge} years
 - This is session #${sessionNumber || 1}
+${profileContext}
 
 PREVIOUS SESSIONS (most recent first):
 ${historyContext}
@@ -112,6 +175,7 @@ TODAY'S SESSION:
 - Challenges: ${challenges?.length > 0 ? challenges.join(', ') : 'None noted'}
 - Progress Level: ${progressLabel}
 - Engagement: ${engagementLevel || 'Not specified'}
+${contentContext}
 
 TASK: Provide a specific, actionable recommendation for the NEXT session (2-3 sentences max).
 
@@ -120,7 +184,7 @@ GUIDELINES:
 2. Address recurring challenges if any pattern exists
 3. Suggest age-appropriate progression
 4. Be encouraging but specific
-5. Mention exact skills or activities when possible
+5. If content units are listed above, reference them by name and content code when relevant
 6. If engagement was low, suggest ways to increase it
 
 Respond with ONLY the recommendation, no preamble or explanation.`;

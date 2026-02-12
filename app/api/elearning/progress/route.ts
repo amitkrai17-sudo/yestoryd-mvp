@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create unit progress
-    let { data: progress } = await supabase
-      .from('child_unit_progress')
+    let { data: progress }: any = await supabase
+      .from('el_child_unit_progress')
       .select('*')
       .eq('child_id', childId)
       .eq('unit_id', unitId)
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (!progress) {
       // Create new progress record
       const { data: newProgress, error: createError } = await supabase
-        .from('child_unit_progress')
+        .from('el_child_unit_progress')
         .insert({
           child_id: childId,
           unit_id: unitId,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Get unit to calculate completion percentage
     const { data: unit } = await supabase
-      .from('elearning_units')
+      .from('el_learning_units')
       .select('sequence')
       .eq('id', unitId)
       .single();
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     // Update progress
     const { error: updateError } = await supabase
-      .from('child_unit_progress')
+      .from('el_child_unit_progress')
       .update({
         current_step: stepIndex + 1,
         step_progress: stepProgress,
@@ -103,14 +103,14 @@ export async function POST(request: NextRequest) {
     } catch {
       // Fallback if RPC doesn't exist - direct update
       const { data: gamification } = await supabase
-        .from('child_gamification')
+        .from('el_child_gamification')
         .select('total_xp')
         .eq('child_id', childId)
         .single();
       
       if (gamification) {
         await supabase
-          .from('child_gamification')
+          .from('el_child_gamification')
           .update({ total_xp: gamification.total_xp + xpEarned })
           .eq('child_id', childId);
       }
@@ -129,11 +129,11 @@ export async function POST(request: NextRequest) {
 
     // If it was a game, log to child_game_progress
     if (stepType === 'game' && result) {
-      await supabase.from('child_game_progress').insert({
+      await supabase.from('el_game_sessions').insert({
         child_id: childId,
         unit_id: unitId,
         game_engine_slug: result.gameEngineSlug || 'word-match',
-        content_pool_id: result.contentPoolId,
+        game_content_id: result.contentPoolId,
         score: result.score || 0,
         max_score: result.maxScore || 100,
         correct_items: result.correctItems || 0,

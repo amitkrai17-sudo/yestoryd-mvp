@@ -173,6 +173,24 @@ async function recoverPayment(payment: any, requestId: string) {
   const programEnd = new Date();
   programEnd.setMonth(programEnd.getMonth() + 3);
 
+  // V2: Fetch child age → age_band_config for dynamic session parameters
+  const { data: childData } = await supabase
+    .from('children')
+    .select('age, age_band')
+    .eq('id', booking.child_id)
+    .maybeSingle();
+
+  let ageBandConfig: { age_band?: string; total_sessions?: number; session_duration_minutes?: number; sessions_per_week?: number } | null = null;
+  if (childData?.age) {
+    const { data: config } = await supabase
+      .from('age_band_config')
+      .select('age_band, total_sessions, session_duration_minutes, sessions_per_week')
+      .lte('min_age', childData.age)
+      .gte('max_age', childData.age)
+      .maybeSingle();
+    ageBandConfig = config;
+  }
+
   const { data: enrollment, error } = await supabase
     .from('enrollments')
     .insert({
@@ -183,7 +201,11 @@ async function recoverPayment(payment: any, requestId: string) {
       status: 'active',
       program_start: new Date().toISOString(),
       program_end: programEnd.toISOString(),
-      total_sessions: 9,
+      total_sessions: ageBandConfig?.total_sessions || 9,
+      session_duration_minutes: ageBandConfig?.session_duration_minutes || 45,
+      sessions_per_week: ageBandConfig?.sessions_per_week || null,
+      age_band: ageBandConfig?.age_band || childData?.age_band || null,
+      season_number: 1,
       sessions_completed: 0,
       source: 'reconciliation',
     })

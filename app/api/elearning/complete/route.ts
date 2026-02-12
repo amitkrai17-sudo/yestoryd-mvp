@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     
     // Update unit progress to completed
     const { error: progressError } = await supabase
-      .from('child_unit_progress')
+      .from('el_child_unit_progress')
       .update({
         status: 'completed',
         completion_percentage: 100,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     
     // Get current gamification state
     const { data: gamification } = await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .select('*')
       .eq('child_id', childId)
       .single();
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     
     // Update gamification
     const { error: gamificationError } = await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .upsert({
         child_id: childId,
         total_xp: newXP,
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         
         // Add daily goal bonus XP
         await supabase
-          .from('child_gamification')
+          .from('el_child_gamification')
           .update({
             total_xp: newXP + (dailyGoal.xp_bonus || 25),
             total_coins: (gamification?.total_coins || 0) + 10,
@@ -189,21 +189,28 @@ export async function POST(request: NextRequest) {
 // Helper to award badge
 async function awardBadge(childId: string, slug: string, name: string, icon: string) {
   try {
+    // Look up badge definition by slug (or name as fallback)
+    const { data: badgeDef } = await supabase
+      .from('el_badges')
+      .select('id')
+      .or(`slug.eq.${slug},name.eq.${name}`)
+      .limit(1)
+      .single();
+
+    if (!badgeDef) return;
+
     // Check if already has badge
     const { data: existing } = await supabase
-      .from('child_badges')
+      .from('el_child_badges')
       .select('id')
       .eq('child_id', childId)
-      .eq('badge_slug', slug)
+      .eq('badge_id', badgeDef.id)
       .single();
-    
+
     if (!existing) {
-      await supabase.from('child_badges').insert({
+      await supabase.from('el_child_badges').insert({
         child_id: childId,
-        badge_slug: slug,
-        badge_name: name,
-        badge_icon: icon,
-        earned_at: new Date().toISOString(),
+        badge_id: badgeDef.id,
       });
     }
   } catch (err) {

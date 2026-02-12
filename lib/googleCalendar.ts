@@ -215,7 +215,8 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
         sessionDate.setHours(16, 0, 0, 0);
       }
 
-      const durationMinutes = schedule.type === 'coaching' ? 45 : 30;
+      // V2: Use schedule's own duration if provided, fallback to type-based defaults
+      const durationMinutes = (schedule as any).durationMinutes || (schedule.type === 'coaching' ? 45 : 30);
       const endTime = new Date(sessionDate);
       endTime.setMinutes(endTime.getMinutes() + durationMinutes);
 

@@ -33,6 +33,7 @@ import {
   CheckCircle,
   Database,
   Radio,
+  ClipboardList,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { NotificationBell } from '@/components/ui/NotificationBell';
@@ -91,6 +92,14 @@ const NAV_ITEMS = [
     href: '/admin/elearning',
     icon: BookOpen,
     description: 'Manage video content',
+    ready: true,
+    section: 'core',
+  },
+  {
+    label: 'Session Templates',
+    href: '/admin/templates',
+    icon: ClipboardList,
+    description: 'Manage session templates',
     ready: true,
     section: 'core',
   },

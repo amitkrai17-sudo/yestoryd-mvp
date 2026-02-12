@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // Check if this is a retry
     const { data: existingProgress } = await supabase
-      .from('child_video_progress')
+      .from('el_child_video_progress')
       .select('quiz_attempted, quiz_passed, best_quiz_score, quiz_attempts')
       .eq('child_id', childId)
       .eq('video_id', videoId)
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     };
 
     const { data: currentProgress } = await supabase
-      .from('child_video_progress')
+      .from('el_child_video_progress')
       .select('quiz_attempts, best_quiz_score')
       .eq('child_id', childId)
       .eq('video_id', videoId)
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     await supabase
-      .from('child_video_progress')
+      .from('el_child_video_progress')
       .update(quizProgressUpdate)
       .eq('child_id', childId)
       .eq('video_id', videoId);
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     let newBadges: string[] = [];
     if (actualXPAwarded > 0) {
       const { data: gamification } = await supabase
-        .from('child_gamification')
+        .from('el_child_gamification')
         .select('*')
         .eq('child_id', childId)
         .single();
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         const newLevel = calculateLevel(newTotalXP);
 
         await supabase
-          .from('child_gamification')
+          .from('el_child_gamification')
           .update({
             total_xp: newTotalXP,
             current_level: newLevel,
@@ -235,22 +235,29 @@ async function checkQuizBadges(childId: string, stats: { quizzesPassed: number; 
 
   for (const badge of badgeChecks) {
     if (badge.condition) {
+      // Look up badge definition
+      const { data: badgeDef } = await supabase
+        .from('el_badges')
+        .select('id')
+        .eq('name', badge.name)
+        .limit(1)
+        .single();
+
+      if (!badgeDef) continue;
+
       const { data: existing } = await supabase
-        .from('child_badges')
+        .from('el_child_badges')
         .select('id')
         .eq('child_id', childId)
-        .eq('badge_name', badge.name)
+        .eq('badge_id', badgeDef.id)
         .single();
 
       if (!existing) {
         await supabase
-          .from('child_badges')
+          .from('el_child_badges')
           .insert({
             child_id: childId,
-            badge_name: badge.name,
-            badge_icon: badge.icon,
-            badge_description: badge.description,
-            badge_category: 'achievement',
+            badge_id: badgeDef.id,
           });
         newBadges.push(badge.name);
       }

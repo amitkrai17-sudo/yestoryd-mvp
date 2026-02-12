@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { AgeBandBadge } from '@/components/AgeBandBadge';
 
 interface StudentCardProps {
   student: {
     id: string;
     child_name: string;
     age: number;
+    age_band?: string | null;
     assessment_score?: number | null;
     sessions_completed: number;
     total_sessions: number;
@@ -44,6 +46,7 @@ export default function StudentCard({ student }: StudentCardProps) {
               {student.child_name}
             </span>
             <span className="text-[10px] text-gray-500">{student.age}y</span>
+            <AgeBandBadge ageBand={student.age_band} age={student.age} />
             {student.is_coach_lead && (
               <span className="px-1.5 py-0.5 bg-[#FF0099]/20 text-[#FF0099] text-[9px] rounded font-medium">
                 70%

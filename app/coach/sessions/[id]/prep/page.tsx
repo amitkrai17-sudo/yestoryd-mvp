@@ -57,7 +57,7 @@ interface LearningHistory {
 export default function SessionPrepHub() {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params.sessionId as string;
+  const sessionId = params.id as string;
 
   const [session, setSession] = useState<SessionData | null>(null);
   const [history, setHistory] = useState<LearningHistory | null>(null);

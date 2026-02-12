@@ -31,13 +31,10 @@ export async function GET(
     
     // Fetch unit with sub-skill info
     const { data: unit, error: unitError } = await supabase
-      .from('elearning_units')
+      .from('el_learning_units')
       .select(`
         *,
-        sub_skill:elearning_sub_skills(
-          id, name, slug, keywords,
-          skill:elearning_skills(id, name, slug, category)
-        )
+        skill:el_skills(id, name, slug, category)
       `)
       .eq('id', unitId)
       .single();
@@ -57,15 +54,19 @@ export async function GET(
     let contentPools: Record<string, any> = {};
     
     if (contentPoolIds.length > 0) {
-      const { data: pools } = await supabase
-        .from('elearning_content_pools')
-        .select('*')
-        .in('id', contentPoolIds);
-      
-      if (pools) {
-        pools.forEach((pool: any) => {
-          contentPools[pool.id] = pool;
-        });
+      try {
+        const { data: pools } = await supabase
+          .from('el_game_content')
+          .select('*')
+          .in('id', contentPoolIds);
+
+        if (pools) {
+          pools.forEach((pool: any) => {
+            contentPools[pool.id] = pool;
+          });
+        }
+      } catch {
+        // Content pool table may not exist yet
       }
     }
     
@@ -73,7 +74,7 @@ export async function GET(
     let progress = null;
     if (childId) {
       const { data: progressData } = await supabase
-        .from('child_unit_progress')
+        .from('el_child_unit_progress')
         .select('*')
         .eq('child_id', childId)
         .eq('unit_id', unitId)

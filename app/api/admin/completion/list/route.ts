@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
         nps_score,
         nps_submitted_at,
         risk_level,
+        total_sessions,
+        age_band,
         child_id,
         parent_id,
         coach_id,
@@ -133,13 +135,17 @@ export async function GET(request: NextRequest) {
 
         const completed = sessionsCompleted || 0;
 
+        // V2: Use enrollment.total_sessions, fallback to legacy 9
+        const enrollmentTotal = (enrollment as any).total_sessions || 9;
+        const onTrackThreshold = Math.ceil(enrollmentTotal * 0.67); // ~67% complete = on track
+
         // Calculate risk level
         let riskLevel = 'active';
         if (enrollment.status === 'completed') {
           riskLevel = 'completed';
         } else if (enrollment.status === 'paused') {
           riskLevel = 'paused';
-        } else if (completed >= 9) {
+        } else if (completed >= enrollmentTotal) {
           riskLevel = 'ready';
         } else if (daysRemaining < 0) {
           riskLevel = 'overdue';
@@ -147,7 +153,7 @@ export async function GET(request: NextRequest) {
           riskLevel = 'at_risk';
         } else if (daysSinceLastSession !== null && daysSinceLastSession >= 14) {
           riskLevel = 'inactive';
-        } else if (completed >= 6) {
+        } else if (completed >= onTrackThreshold) {
           riskLevel = 'on_track';
         }
 
@@ -176,7 +182,7 @@ export async function GET(request: NextRequest) {
           programEnd: enrollment.program_end,
           daysRemaining,
           sessionsCompleted: completed,
-          sessionsTotal: 9,
+          sessionsTotal: enrollmentTotal,
           lastSessionDate,
           daysSinceLastSession,
           hasInitialAssessment,

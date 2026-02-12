@@ -14,6 +14,921 @@ export type Database = {
   }
   public: {
     Tables: {
+      _deprecated_child_badges: {
+        Row: {
+          awarded_by: string | null
+          badge_id: string
+          child_id: string
+          context: string | null
+          earned_at: string | null
+          id: string
+        }
+        Insert: {
+          awarded_by?: string | null
+          badge_id: string
+          child_id: string
+          context?: string | null
+          earned_at?: string | null
+          id?: string
+        }
+        Update: {
+          awarded_by?: string | null
+          badge_id?: string
+          child_id?: string
+          context?: string | null
+          earned_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "achievement_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_badges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_badges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+        ]
+      }
+      _deprecated_child_gamification: {
+        Row: {
+          child_id: string | null
+          created_at: string | null
+          current_level: number | null
+          current_level_id: string | null
+          current_module_id: string | null
+          current_streak_days: number | null
+          id: string
+          last_activity_date: string | null
+          longest_streak_days: number | null
+          perfect_quiz_count: number | null
+          total_games_completed: number | null
+          total_perfect_scores: number | null
+          total_quizzes_completed: number | null
+          total_readings_completed: number | null
+          total_time_minutes: number | null
+          total_units_completed: number | null
+          total_videos_completed: number | null
+          total_xp: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          child_id?: string | null
+          created_at?: string | null
+          current_level?: number | null
+          current_level_id?: string | null
+          current_module_id?: string | null
+          current_streak_days?: number | null
+          id?: string
+          last_activity_date?: string | null
+          longest_streak_days?: number | null
+          perfect_quiz_count?: number | null
+          total_games_completed?: number | null
+          total_perfect_scores?: number | null
+          total_quizzes_completed?: number | null
+          total_readings_completed?: number | null
+          total_time_minutes?: number | null
+          total_units_completed?: number | null
+          total_videos_completed?: number | null
+          total_xp?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          child_id?: string | null
+          created_at?: string | null
+          current_level?: number | null
+          current_level_id?: string | null
+          current_module_id?: string | null
+          current_streak_days?: number | null
+          id?: string
+          last_activity_date?: string | null
+          longest_streak_days?: number | null
+          perfect_quiz_count?: number | null
+          total_games_completed?: number | null
+          total_perfect_scores?: number | null
+          total_quizzes_completed?: number | null
+          total_readings_completed?: number | null
+          total_time_minutes?: number | null
+          total_units_completed?: number | null
+          total_videos_completed?: number | null
+          total_xp?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_gamification_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: true
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_gamification_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: true
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "child_gamification_current_level_id_fkey"
+            columns: ["current_level_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_gamification_current_module_id_fkey"
+            columns: ["current_module_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_child_unit_progress: {
+        Row: {
+          attempts: number | null
+          best_score: number | null
+          child_id: string
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string | null
+          current_step: number | null
+          ease_factor: number | null
+          id: string
+          interval_days: number | null
+          last_activity_at: string | null
+          next_review_at: string | null
+          review_count: number | null
+          started_at: string | null
+          status: string | null
+          step_progress: Json | null
+          total_xp_earned: number | null
+          unit_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          best_score?: number | null
+          child_id: string
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          current_step?: number | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_activity_at?: string | null
+          next_review_at?: string | null
+          review_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          step_progress?: Json | null
+          total_xp_earned?: number | null
+          unit_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          best_score?: number | null
+          child_id?: string
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          current_step?: number | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_activity_at?: string | null
+          next_review_at?: string | null
+          review_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          step_progress?: Json | null
+          total_xp_earned?: number | null
+          unit_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_unit_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_unit_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "child_unit_progress_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_elearning_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_child_video_progress: {
+        Row: {
+          best_quiz_score: number | null
+          child_id: string | null
+          completed_at: string | null
+          completion_percentage: number | null
+          first_watched_at: string | null
+          id: string
+          is_completed: boolean | null
+          last_position_seconds: number | null
+          last_watched_at: string | null
+          quiz_attempted: boolean | null
+          quiz_attempts: number | null
+          quiz_completed_at: string | null
+          quiz_passed: boolean | null
+          quiz_score: number | null
+          video_id: string | null
+          watch_count: number | null
+          watch_time_seconds: number | null
+          xp_earned: number | null
+        }
+        Insert: {
+          best_quiz_score?: number | null
+          child_id?: string | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          first_watched_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          last_position_seconds?: number | null
+          last_watched_at?: string | null
+          quiz_attempted?: boolean | null
+          quiz_attempts?: number | null
+          quiz_completed_at?: string | null
+          quiz_passed?: boolean | null
+          quiz_score?: number | null
+          video_id?: string | null
+          watch_count?: number | null
+          watch_time_seconds?: number | null
+          xp_earned?: number | null
+        }
+        Update: {
+          best_quiz_score?: number | null
+          child_id?: string | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          first_watched_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          last_position_seconds?: number | null
+          last_watched_at?: string | null
+          quiz_attempted?: boolean | null
+          quiz_attempts?: number | null
+          quiz_completed_at?: string | null
+          quiz_passed?: boolean | null
+          quiz_score?: number | null
+          video_id?: string | null
+          watch_count?: number | null
+          watch_time_seconds?: number | null
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_video_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_video_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "child_video_progress_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_videos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_video_progress_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_elearning_content_pools: {
+        Row: {
+          age_group: string | null
+          content: Json
+          created_at: string | null
+          difficulty: string | null
+          difficulty_level: string | null
+          id: string
+          is_active: boolean | null
+          item_count: number | null
+          name: string
+          pool_type: string
+          slug: string
+          sub_skill_id: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          age_group?: string | null
+          content?: Json
+          created_at?: string | null
+          difficulty?: string | null
+          difficulty_level?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_count?: number | null
+          name: string
+          pool_type: string
+          slug: string
+          sub_skill_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          age_group?: string | null
+          content?: Json
+          created_at?: string | null
+          difficulty?: string | null
+          difficulty_level?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_count?: number | null
+          name?: string
+          pool_type?: string
+          slug?: string
+          sub_skill_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elearning_content_pools_sub_skill_id_fkey"
+            columns: ["sub_skill_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_elearning_sub_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_elearning_quizzes: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          passing_score: number | null
+          questions: Json
+          slug: string
+          sub_skill_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          passing_score?: number | null
+          questions?: Json
+          slug: string
+          sub_skill_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          passing_score?: number | null
+          questions?: Json
+          slug?: string
+          sub_skill_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elearning_quizzes_sub_skill_id_fkey"
+            columns: ["sub_skill_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_elearning_sub_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_elearning_skills: {
+        Row: {
+          category: string
+          color_hex: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number
+          icon_emoji: string | null
+          id: string
+          is_active: boolean | null
+          level: number
+          name: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          color_hex?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          icon_emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          level?: number
+          name: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          color_hex?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          icon_emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          level?: number
+          name?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      _deprecated_elearning_sub_skills: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean | null
+          keywords: string[] | null
+          name: string
+          skill_id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          name: string
+          skill_id: string
+          slug: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          name?: string
+          skill_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elearning_sub_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_elearning_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_elearning_units: {
+        Row: {
+          activity_count: number | null
+          color_hex: string | null
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          display_order: number | null
+          estimated_minutes: number | null
+          goal_area: string | null
+          icon_emoji: string | null
+          id: string
+          is_featured: boolean | null
+          is_mini_challenge: boolean | null
+          level: number | null
+          max_age: number | null
+          min_age: number | null
+          name: string
+          published_at: string | null
+          quest_title: string | null
+          sequence: Json
+          slug: string
+          status: string | null
+          sub_skill_id: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          total_xp_reward: number | null
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          activity_count?: number | null
+          color_hex?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          display_order?: number | null
+          estimated_minutes?: number | null
+          goal_area?: string | null
+          icon_emoji?: string | null
+          id?: string
+          is_featured?: boolean | null
+          is_mini_challenge?: boolean | null
+          level?: number | null
+          max_age?: number | null
+          min_age?: number | null
+          name: string
+          published_at?: string | null
+          quest_title?: string | null
+          sequence?: Json
+          slug: string
+          status?: string | null
+          sub_skill_id?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          total_xp_reward?: number | null
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          activity_count?: number | null
+          color_hex?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          display_order?: number | null
+          estimated_minutes?: number | null
+          goal_area?: string | null
+          icon_emoji?: string | null
+          id?: string
+          is_featured?: boolean | null
+          is_mini_challenge?: boolean | null
+          level?: number | null
+          max_age?: number | null
+          min_age?: number | null
+          name?: string
+          published_at?: string | null
+          quest_title?: string | null
+          sequence?: Json
+          slug?: string
+          status?: string | null
+          sub_skill_id?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          total_xp_reward?: number | null
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elearning_units_sub_skill_id_fkey"
+            columns: ["sub_skill_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_elearning_sub_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_learning_games: {
+        Row: {
+          config: Json
+          created_at: string | null
+          display_order: number | null
+          game_type: string
+          id: string
+          is_active: boolean | null
+          level_id: string | null
+          module_id: string | null
+          passing_score: number | null
+          skill_tags: string[] | null
+          slug: string | null
+          time_limit_seconds: number | null
+          title: string
+          updated_at: string | null
+          video_id: string | null
+          xp_per_correct: number | null
+          xp_reward: number | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          display_order?: number | null
+          game_type: string
+          id?: string
+          is_active?: boolean | null
+          level_id?: string | null
+          module_id?: string | null
+          passing_score?: number | null
+          skill_tags?: string[] | null
+          slug?: string | null
+          time_limit_seconds?: number | null
+          title: string
+          updated_at?: string | null
+          video_id?: string | null
+          xp_per_correct?: number | null
+          xp_reward?: number | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          display_order?: number | null
+          game_type?: string
+          id?: string
+          is_active?: boolean | null
+          level_id?: string | null
+          module_id?: string | null
+          passing_score?: number | null
+          skill_tags?: string[] | null
+          slug?: string | null
+          time_limit_seconds?: number | null
+          title?: string
+          updated_at?: string | null
+          video_id?: string | null
+          xp_per_correct?: number | null
+          xp_reward?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_games_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_games_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_games_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_videos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_games_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_learning_levels: {
+        Row: {
+          age_range: string
+          color: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          thumbnail_url: string | null
+          updated_at: string | null
+          xp_bonus: number | null
+        }
+        Insert: {
+          age_range: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          xp_bonus?: number | null
+        }
+        Update: {
+          age_range?: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          xp_bonus?: number | null
+        }
+        Relationships: []
+      }
+      _deprecated_learning_modules: {
+        Row: {
+          badge_id: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number
+          estimated_duration: number | null
+          id: string
+          is_active: boolean | null
+          is_free: boolean | null
+          level_id: string | null
+          name: string
+          prerequisite_module_id: string | null
+          slug: string
+          thumbnail_url: string | null
+          updated_at: string | null
+          xp_reward: number | null
+        }
+        Insert: {
+          badge_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          estimated_duration?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          level_id?: string | null
+          name: string
+          prerequisite_module_id?: string | null
+          slug: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          xp_reward?: number | null
+        }
+        Update: {
+          badge_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          estimated_duration?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          level_id?: string | null
+          name?: string
+          prerequisite_module_id?: string | null
+          slug?: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          xp_reward?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_modules_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_modules_prerequisite_module_id_fkey"
+            columns: ["prerequisite_module_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      _deprecated_learning_videos: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number
+          duration_seconds: number | null
+          game_id: string | null
+          game_type: string | null
+          has_quiz: boolean | null
+          id: string
+          is_active: boolean | null
+          is_free: boolean | null
+          key_concepts: string[] | null
+          module_id: string | null
+          published_at: string | null
+          quiz_pass_percentage: number | null
+          slug: string
+          status: string | null
+          thumbnail_url: string | null
+          title: string
+          transcript: string | null
+          unlock_after_percent: number | null
+          updated_at: string | null
+          video_id: string | null
+          video_source: string | null
+          video_url: string | null
+          xp_reward: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          duration_seconds?: number | null
+          game_id?: string | null
+          game_type?: string | null
+          has_quiz?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          key_concepts?: string[] | null
+          module_id?: string | null
+          published_at?: string | null
+          quiz_pass_percentage?: number | null
+          slug: string
+          status?: string | null
+          thumbnail_url?: string | null
+          title: string
+          transcript?: string | null
+          unlock_after_percent?: number | null
+          updated_at?: string | null
+          video_id?: string | null
+          video_source?: string | null
+          video_url?: string | null
+          xp_reward?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          duration_seconds?: number | null
+          game_id?: string | null
+          game_type?: string | null
+          has_quiz?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          is_free?: boolean | null
+          key_concepts?: string[] | null
+          module_id?: string | null
+          published_at?: string | null
+          quiz_pass_percentage?: number | null
+          slug?: string
+          status?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          transcript?: string | null
+          unlock_after_percent?: number | null
+          updated_at?: string | null
+          video_id?: string | null
+          video_source?: string | null
+          video_url?: string | null
+          xp_reward?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_videos_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "_deprecated_learning_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ab_test_events: {
         Row: {
           created_at: string
@@ -182,6 +1097,63 @@ export type Database = {
           insight_data?: Json
           insight_type?: string
           valid_until?: string | null
+        }
+        Relationships: []
+      }
+      age_band_config: {
+        Row: {
+          age_max: number
+          age_min: number
+          created_at: string
+          curriculum_start: string
+          daily_nudge_target: string
+          display_name: string
+          estimated_total_seasons: number
+          id: string
+          is_active: boolean
+          parent_role: string
+          primary_mode: string
+          season_duration_weeks: number
+          session_duration_minutes: number
+          sessions_per_season: number
+          sessions_per_week: number
+          updated_at: string
+        }
+        Insert: {
+          age_max: number
+          age_min: number
+          created_at?: string
+          curriculum_start: string
+          daily_nudge_target: string
+          display_name: string
+          estimated_total_seasons: number
+          id: string
+          is_active?: boolean
+          parent_role: string
+          primary_mode: string
+          season_duration_weeks?: number
+          session_duration_minutes: number
+          sessions_per_season: number
+          sessions_per_week: number
+          updated_at?: string
+        }
+        Update: {
+          age_max?: number
+          age_min?: number
+          created_at?: string
+          curriculum_start?: string
+          daily_nudge_target?: string
+          display_name?: string
+          estimated_total_seasons?: number
+          id?: string
+          is_active?: boolean
+          parent_role?: string
+          primary_mode?: string
+          season_duration_weeks?: number
+          session_duration_minutes?: number
+          sessions_per_season?: number
+          sessions_per_week?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -971,55 +1943,6 @@ export type Database = {
         }
         Relationships: []
       }
-      child_badges: {
-        Row: {
-          awarded_by: string | null
-          badge_id: string
-          child_id: string
-          context: string | null
-          earned_at: string | null
-          id: string
-        }
-        Insert: {
-          awarded_by?: string | null
-          badge_id: string
-          child_id: string
-          context?: string | null
-          earned_at?: string | null
-          id?: string
-        }
-        Update: {
-          awarded_by?: string | null
-          badge_id?: string
-          child_id?: string
-          context?: string | null
-          earned_at?: string | null
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "child_badges_badge_id_fkey"
-            columns: ["badge_id"]
-            isOneToOne: false
-            referencedRelation: "achievement_badges"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_badges_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "children"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_badges_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "v_remedial_eligibility"
-            referencedColumns: ["child_id"]
-          },
-        ]
-      }
       child_daily_goals: {
         Row: {
           achieved_at: string | null
@@ -1154,109 +2077,14 @@ export type Database = {
             foreignKeyName: "child_game_progress_content_pool_id_fkey"
             columns: ["content_pool_id"]
             isOneToOne: false
-            referencedRelation: "elearning_content_pools"
+            referencedRelation: "_deprecated_elearning_content_pools"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "child_game_progress_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
-            referencedRelation: "elearning_units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      child_gamification: {
-        Row: {
-          child_id: string | null
-          created_at: string | null
-          current_level: number | null
-          current_level_id: string | null
-          current_module_id: string | null
-          current_streak_days: number | null
-          id: string
-          last_activity_date: string | null
-          longest_streak_days: number | null
-          perfect_quiz_count: number | null
-          total_games_completed: number | null
-          total_perfect_scores: number | null
-          total_quizzes_completed: number | null
-          total_readings_completed: number | null
-          total_time_minutes: number | null
-          total_units_completed: number | null
-          total_videos_completed: number | null
-          total_xp: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          child_id?: string | null
-          created_at?: string | null
-          current_level?: number | null
-          current_level_id?: string | null
-          current_module_id?: string | null
-          current_streak_days?: number | null
-          id?: string
-          last_activity_date?: string | null
-          longest_streak_days?: number | null
-          perfect_quiz_count?: number | null
-          total_games_completed?: number | null
-          total_perfect_scores?: number | null
-          total_quizzes_completed?: number | null
-          total_readings_completed?: number | null
-          total_time_minutes?: number | null
-          total_units_completed?: number | null
-          total_videos_completed?: number | null
-          total_xp?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          child_id?: string | null
-          created_at?: string | null
-          current_level?: number | null
-          current_level_id?: string | null
-          current_module_id?: string | null
-          current_streak_days?: number | null
-          id?: string
-          last_activity_date?: string | null
-          longest_streak_days?: number | null
-          perfect_quiz_count?: number | null
-          total_games_completed?: number | null
-          total_perfect_scores?: number | null
-          total_quizzes_completed?: number | null
-          total_readings_completed?: number | null
-          total_time_minutes?: number | null
-          total_units_completed?: number | null
-          total_videos_completed?: number | null
-          total_xp?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "child_gamification_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: true
-            referencedRelation: "children"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_gamification_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: true
-            referencedRelation: "v_remedial_eligibility"
-            referencedColumns: ["child_id"]
-          },
-          {
-            foreignKeyName: "child_gamification_current_level_id_fkey"
-            columns: ["current_level_id"]
-            isOneToOne: false
-            referencedRelation: "learning_levels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_gamification_current_module_id_fkey"
-            columns: ["current_module_id"]
-            isOneToOne: false
-            referencedRelation: "learning_modules"
+            referencedRelation: "_deprecated_elearning_units"
             referencedColumns: ["id"]
           },
         ]
@@ -1399,189 +2227,10 @@ export type Database = {
           },
         ]
       }
-      child_unit_progress: {
-        Row: {
-          attempts: number | null
-          best_score: number | null
-          child_id: string
-          completed_at: string | null
-          completion_percentage: number | null
-          created_at: string | null
-          current_step: number | null
-          ease_factor: number | null
-          id: string
-          interval_days: number | null
-          last_activity_at: string | null
-          next_review_at: string | null
-          review_count: number | null
-          started_at: string | null
-          status: string | null
-          step_progress: Json | null
-          total_xp_earned: number | null
-          unit_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          attempts?: number | null
-          best_score?: number | null
-          child_id: string
-          completed_at?: string | null
-          completion_percentage?: number | null
-          created_at?: string | null
-          current_step?: number | null
-          ease_factor?: number | null
-          id?: string
-          interval_days?: number | null
-          last_activity_at?: string | null
-          next_review_at?: string | null
-          review_count?: number | null
-          started_at?: string | null
-          status?: string | null
-          step_progress?: Json | null
-          total_xp_earned?: number | null
-          unit_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          attempts?: number | null
-          best_score?: number | null
-          child_id?: string
-          completed_at?: string | null
-          completion_percentage?: number | null
-          created_at?: string | null
-          current_step?: number | null
-          ease_factor?: number | null
-          id?: string
-          interval_days?: number | null
-          last_activity_at?: string | null
-          next_review_at?: string | null
-          review_count?: number | null
-          started_at?: string | null
-          status?: string | null
-          step_progress?: Json | null
-          total_xp_earned?: number | null
-          unit_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "child_unit_progress_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "children"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_unit_progress_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "v_remedial_eligibility"
-            referencedColumns: ["child_id"]
-          },
-          {
-            foreignKeyName: "child_unit_progress_unit_id_fkey"
-            columns: ["unit_id"]
-            isOneToOne: false
-            referencedRelation: "elearning_units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      child_video_progress: {
-        Row: {
-          best_quiz_score: number | null
-          child_id: string | null
-          completed_at: string | null
-          completion_percentage: number | null
-          first_watched_at: string | null
-          id: string
-          is_completed: boolean | null
-          last_position_seconds: number | null
-          last_watched_at: string | null
-          quiz_attempted: boolean | null
-          quiz_attempts: number | null
-          quiz_completed_at: string | null
-          quiz_passed: boolean | null
-          quiz_score: number | null
-          video_id: string | null
-          watch_count: number | null
-          watch_time_seconds: number | null
-          xp_earned: number | null
-        }
-        Insert: {
-          best_quiz_score?: number | null
-          child_id?: string | null
-          completed_at?: string | null
-          completion_percentage?: number | null
-          first_watched_at?: string | null
-          id?: string
-          is_completed?: boolean | null
-          last_position_seconds?: number | null
-          last_watched_at?: string | null
-          quiz_attempted?: boolean | null
-          quiz_attempts?: number | null
-          quiz_completed_at?: string | null
-          quiz_passed?: boolean | null
-          quiz_score?: number | null
-          video_id?: string | null
-          watch_count?: number | null
-          watch_time_seconds?: number | null
-          xp_earned?: number | null
-        }
-        Update: {
-          best_quiz_score?: number | null
-          child_id?: string | null
-          completed_at?: string | null
-          completion_percentage?: number | null
-          first_watched_at?: string | null
-          id?: string
-          is_completed?: boolean | null
-          last_position_seconds?: number | null
-          last_watched_at?: string | null
-          quiz_attempted?: boolean | null
-          quiz_attempts?: number | null
-          quiz_completed_at?: string | null
-          quiz_passed?: boolean | null
-          quiz_score?: number | null
-          video_id?: string | null
-          watch_count?: number | null
-          watch_time_seconds?: number | null
-          xp_earned?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "child_video_progress_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "children"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_video_progress_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: false
-            referencedRelation: "v_remedial_eligibility"
-            referencedColumns: ["child_id"]
-          },
-          {
-            foreignKeyName: "child_video_progress_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "learning_videos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_video_progress_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "video_details"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       children: {
         Row: {
           age: number | null
+          age_band: string | null
           alumni_expires_at: string | null
           alumni_since: string | null
           assessment_completed_at: string | null
@@ -1600,6 +2249,7 @@ export type Database = {
           created_at: string | null
           current_confidence_level: number | null
           current_reading_level: number | null
+          current_streak: number | null
           custom_coach_split: number | null
           custom_yestoryd_split: number | null
           data_archived_at: string | null
@@ -1623,6 +2273,7 @@ export type Database = {
           last_session_date: string | null
           last_session_focus: string | null
           last_session_summary: string | null
+          last_task_completed_date: string | null
           latest_assessment_score: number | null
           lead_notes: string | null
           lead_score: number | null
@@ -1632,9 +2283,13 @@ export type Database = {
           lead_status: string | null
           learning_challenges: string[] | null
           learning_needs: string[] | null
+          learning_profile: Json | null
           learning_style: string | null
+          longest_streak: number | null
           lost_at: string | null
           lost_reason: string | null
+          mini_challenge_completed: boolean | null
+          mini_challenge_data: Json | null
           motivators: string[] | null
           name: string | null
           next_followup_at: string | null
@@ -1672,6 +2327,7 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          age_band?: string | null
           alumni_expires_at?: string | null
           alumni_since?: string | null
           assessment_completed_at?: string | null
@@ -1690,6 +2346,7 @@ export type Database = {
           created_at?: string | null
           current_confidence_level?: number | null
           current_reading_level?: number | null
+          current_streak?: number | null
           custom_coach_split?: number | null
           custom_yestoryd_split?: number | null
           data_archived_at?: string | null
@@ -1713,6 +2370,7 @@ export type Database = {
           last_session_date?: string | null
           last_session_focus?: string | null
           last_session_summary?: string | null
+          last_task_completed_date?: string | null
           latest_assessment_score?: number | null
           lead_notes?: string | null
           lead_score?: number | null
@@ -1722,9 +2380,13 @@ export type Database = {
           lead_status?: string | null
           learning_challenges?: string[] | null
           learning_needs?: string[] | null
+          learning_profile?: Json | null
           learning_style?: string | null
+          longest_streak?: number | null
           lost_at?: string | null
           lost_reason?: string | null
+          mini_challenge_completed?: boolean | null
+          mini_challenge_data?: Json | null
           motivators?: string[] | null
           name?: string | null
           next_followup_at?: string | null
@@ -1762,6 +2424,7 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          age_band?: string | null
           alumni_expires_at?: string | null
           alumni_since?: string | null
           assessment_completed_at?: string | null
@@ -1780,6 +2443,7 @@ export type Database = {
           created_at?: string | null
           current_confidence_level?: number | null
           current_reading_level?: number | null
+          current_streak?: number | null
           custom_coach_split?: number | null
           custom_yestoryd_split?: number | null
           data_archived_at?: string | null
@@ -1803,6 +2467,7 @@ export type Database = {
           last_session_date?: string | null
           last_session_focus?: string | null
           last_session_summary?: string | null
+          last_task_completed_date?: string | null
           latest_assessment_score?: number | null
           lead_notes?: string | null
           lead_score?: number | null
@@ -1812,9 +2477,13 @@ export type Database = {
           lead_status?: string | null
           learning_challenges?: string[] | null
           learning_needs?: string[] | null
+          learning_profile?: Json | null
           learning_style?: string | null
+          longest_streak?: number | null
           lost_at?: string | null
           lost_reason?: string | null
+          mini_challenge_completed?: boolean | null
+          mini_challenge_data?: Json | null
           motivators?: string[] | null
           name?: string | null
           next_followup_at?: string | null
@@ -1851,6 +2520,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "children_age_band_fkey"
+            columns: ["age_band"]
+            isOneToOne: false
+            referencedRelation: "age_band_config"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "children_assigned_coach_id_fkey"
             columns: ["assigned_coach_id"]
@@ -3143,6 +3819,7 @@ export type Database = {
           certifications: string[] | null
           city: string | null
           coach_split_percentage: number | null
+          completed_sessions_with_logs: number | null
           created_at: string | null
           current_children: number | null
           current_score: number | null
@@ -3227,6 +3904,7 @@ export type Database = {
           certifications?: string[] | null
           city?: string | null
           coach_split_percentage?: number | null
+          completed_sessions_with_logs?: number | null
           created_at?: string | null
           current_children?: number | null
           current_score?: number | null
@@ -3311,6 +3989,7 @@ export type Database = {
           certifications?: string[] | null
           city?: string | null
           coach_split_percentage?: number | null
+          completed_sessions_with_logs?: number | null
           created_at?: string | null
           current_children?: number | null
           current_score?: number | null
@@ -4689,6 +5368,13 @@ export type Database = {
             foreignKeyName: "el_child_badges_badge_id_fkey"
             columns: ["badge_id"]
             isOneToOne: false
+            referencedRelation: "badge_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
             referencedRelation: "el_badges"
             referencedColumns: ["id"]
           },
@@ -4719,8 +5405,16 @@ export type Database = {
           id: string
           last_activity_date: string | null
           longest_streak_days: number | null
+          perfect_quiz_count: number | null
           perfect_scores: number | null
           total_coins: number | null
+          total_games_completed: number | null
+          total_perfect_scores: number | null
+          total_quizzes_completed: number | null
+          total_readings_completed: number | null
+          total_time_minutes: number | null
+          total_units_completed: number | null
+          total_videos_completed: number | null
           total_xp: number | null
           units_completed: number | null
           updated_at: string | null
@@ -4736,8 +5430,16 @@ export type Database = {
           id?: string
           last_activity_date?: string | null
           longest_streak_days?: number | null
+          perfect_quiz_count?: number | null
           perfect_scores?: number | null
           total_coins?: number | null
+          total_games_completed?: number | null
+          total_perfect_scores?: number | null
+          total_quizzes_completed?: number | null
+          total_readings_completed?: number | null
+          total_time_minutes?: number | null
+          total_units_completed?: number | null
+          total_videos_completed?: number | null
           total_xp?: number | null
           units_completed?: number | null
           updated_at?: string | null
@@ -4753,8 +5455,16 @@ export type Database = {
           id?: string
           last_activity_date?: string | null
           longest_streak_days?: number | null
+          perfect_quiz_count?: number | null
           perfect_scores?: number | null
           total_coins?: number | null
+          total_games_completed?: number | null
+          total_perfect_scores?: number | null
+          total_quizzes_completed?: number | null
+          total_readings_completed?: number | null
+          total_time_minutes?: number | null
+          total_units_completed?: number | null
+          total_videos_completed?: number | null
           total_xp?: number | null
           units_completed?: number | null
           updated_at?: string | null
@@ -4850,66 +5560,90 @@ export type Database = {
         Row: {
           badge_earned: boolean | null
           best_game_score: number | null
+          best_score: number | null
           child_id: string | null
           coins_earned: number | null
           completed_at: string | null
+          completion_percentage: number | null
           created_at: string | null
           current_step: number | null
           games_passed: number | null
           games_played: number | null
           id: string
+          interval_days: number | null
           last_activity_at: string | null
+          next_review_at: string | null
           overall_mastery_percent: number | null
           quiz_score: number | null
+          review_count: number | null
           sequence_shown: Json | null
           started_at: string | null
           status: string | null
+          step_progress: Json | null
+          total_xp_earned: number | null
           unit_id: string | null
           unlocked_at: string | null
+          updated_at: string | null
           video_watch_percent: number | null
           xp_earned: number | null
         }
         Insert: {
           badge_earned?: boolean | null
           best_game_score?: number | null
+          best_score?: number | null
           child_id?: string | null
           coins_earned?: number | null
           completed_at?: string | null
+          completion_percentage?: number | null
           created_at?: string | null
           current_step?: number | null
           games_passed?: number | null
           games_played?: number | null
           id?: string
+          interval_days?: number | null
           last_activity_at?: string | null
+          next_review_at?: string | null
           overall_mastery_percent?: number | null
           quiz_score?: number | null
+          review_count?: number | null
           sequence_shown?: Json | null
           started_at?: string | null
           status?: string | null
+          step_progress?: Json | null
+          total_xp_earned?: number | null
           unit_id?: string | null
           unlocked_at?: string | null
+          updated_at?: string | null
           video_watch_percent?: number | null
           xp_earned?: number | null
         }
         Update: {
           badge_earned?: boolean | null
           best_game_score?: number | null
+          best_score?: number | null
           child_id?: string | null
           coins_earned?: number | null
           completed_at?: string | null
+          completion_percentage?: number | null
           created_at?: string | null
           current_step?: number | null
           games_passed?: number | null
           games_played?: number | null
           id?: string
+          interval_days?: number | null
           last_activity_at?: string | null
+          next_review_at?: string | null
           overall_mastery_percent?: number | null
           quiz_score?: number | null
+          review_count?: number | null
           sequence_shown?: Json | null
           started_at?: string | null
           status?: string | null
+          step_progress?: Json | null
+          total_xp_earned?: number | null
           unit_id?: string | null
           unlocked_at?: string | null
+          updated_at?: string | null
           video_watch_percent?: number | null
           xp_earned?: number | null
         }
@@ -4939,11 +5673,18 @@ export type Database = {
       }
       el_child_video_progress: {
         Row: {
+          best_quiz_score: number | null
           child_id: string | null
           completed: boolean | null
           completed_at: string | null
           created_at: string | null
           id: string
+          is_completed: boolean | null
+          quiz_attempted: boolean | null
+          quiz_attempts: number | null
+          quiz_completed_at: string | null
+          quiz_passed: boolean | null
+          quiz_score: number | null
           times_watched: number | null
           unit_id: string | null
           updated_at: string | null
@@ -4953,11 +5694,18 @@ export type Database = {
           xp_earned: number | null
         }
         Insert: {
+          best_quiz_score?: number | null
           child_id?: string | null
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
+          is_completed?: boolean | null
+          quiz_attempted?: boolean | null
+          quiz_attempts?: number | null
+          quiz_completed_at?: string | null
+          quiz_passed?: boolean | null
+          quiz_score?: number | null
           times_watched?: number | null
           unit_id?: string | null
           updated_at?: string | null
@@ -4967,11 +5715,18 @@ export type Database = {
           xp_earned?: number | null
         }
         Update: {
+          best_quiz_score?: number | null
           child_id?: string | null
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
+          is_completed?: boolean | null
+          quiz_attempted?: boolean | null
+          quiz_attempts?: number | null
+          quiz_completed_at?: string | null
+          quiz_passed?: boolean | null
+          quiz_score?: number | null
           times_watched?: number | null
           unit_id?: string | null
           updated_at?: string | null
@@ -5236,65 +5991,137 @@ export type Database = {
       }
       el_learning_units: {
         Row: {
+          activity_count: number | null
+          arc_stage: string | null
           badge_slug: string | null
+          coach_guidance: Json | null
           coins_reward: number | null
+          color_hex: string | null
+          content_code: string | null
           created_at: string | null
           description: string | null
-          difficulty: number | null
+          difficulty: string | null
+          display_order: number | null
+          embedding: string | null
           estimated_minutes: number | null
           game_types: string[] | null
+          goal_area: string | null
+          icon_emoji: string | null
           id: string
           is_active: boolean | null
+          is_featured: boolean | null
+          is_mini_challenge: boolean | null
+          level: number | null
+          max_age: number | null
+          min_age: number | null
           min_mastery_percent: number | null
           name: string
           order_index: number | null
+          parent_instruction: string | null
           prerequisite_unit_ids: string[] | null
+          published_at: string | null
           quest_description: string | null
           quest_title: string | null
+          sequence: Json | null
           skill_id: string | null
+          slug: string | null
+          status: string | null
+          sub_skill_tag: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          updated_at: string | null
           video_ids: string[] | null
+          video_url: string | null
           world_theme: string | null
           xp_reward: number | null
         }
         Insert: {
+          activity_count?: number | null
+          arc_stage?: string | null
           badge_slug?: string | null
+          coach_guidance?: Json | null
           coins_reward?: number | null
+          color_hex?: string | null
+          content_code?: string | null
           created_at?: string | null
           description?: string | null
-          difficulty?: number | null
+          difficulty?: string | null
+          display_order?: number | null
+          embedding?: string | null
           estimated_minutes?: number | null
           game_types?: string[] | null
+          goal_area?: string | null
+          icon_emoji?: string | null
           id?: string
           is_active?: boolean | null
+          is_featured?: boolean | null
+          is_mini_challenge?: boolean | null
+          level?: number | null
+          max_age?: number | null
+          min_age?: number | null
           min_mastery_percent?: number | null
           name: string
           order_index?: number | null
+          parent_instruction?: string | null
           prerequisite_unit_ids?: string[] | null
+          published_at?: string | null
           quest_description?: string | null
           quest_title?: string | null
+          sequence?: Json | null
           skill_id?: string | null
+          slug?: string | null
+          status?: string | null
+          sub_skill_tag?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
           video_ids?: string[] | null
+          video_url?: string | null
           world_theme?: string | null
           xp_reward?: number | null
         }
         Update: {
+          activity_count?: number | null
+          arc_stage?: string | null
           badge_slug?: string | null
+          coach_guidance?: Json | null
           coins_reward?: number | null
+          color_hex?: string | null
+          content_code?: string | null
           created_at?: string | null
           description?: string | null
-          difficulty?: number | null
+          difficulty?: string | null
+          display_order?: number | null
+          embedding?: string | null
           estimated_minutes?: number | null
           game_types?: string[] | null
+          goal_area?: string | null
+          icon_emoji?: string | null
           id?: string
           is_active?: boolean | null
+          is_featured?: boolean | null
+          is_mini_challenge?: boolean | null
+          level?: number | null
+          max_age?: number | null
+          min_age?: number | null
           min_mastery_percent?: number | null
           name?: string
           order_index?: number | null
+          parent_instruction?: string | null
           prerequisite_unit_ids?: string[] | null
+          published_at?: string | null
           quest_description?: string | null
           quest_title?: string | null
+          sequence?: Json | null
           skill_id?: string | null
+          slug?: string | null
+          status?: string | null
+          sub_skill_tag?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
           video_ids?: string[] | null
+          video_url?: string | null
           world_theme?: string | null
           xp_reward?: number | null
         }
@@ -5446,16 +6273,25 @@ export type Database = {
       }
       el_videos: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string | null
           description: string | null
           difficulty: number | null
+          display_order: number | null
           duration_seconds: number | null
+          has_quiz: boolean | null
           id: string
           is_active: boolean | null
+          is_free: boolean | null
           is_intro: boolean | null
           is_placeholder: boolean | null
+          key_concepts: string[] | null
+          module_id: string | null
           order_index: number | null
           skill_id: string | null
+          slug: string | null
+          status: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string | null
@@ -5466,16 +6302,25 @@ export type Database = {
           xp_reward: number | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           description?: string | null
           difficulty?: number | null
+          display_order?: number | null
           duration_seconds?: number | null
+          has_quiz?: boolean | null
           id?: string
           is_active?: boolean | null
+          is_free?: boolean | null
           is_intro?: boolean | null
           is_placeholder?: boolean | null
+          key_concepts?: string[] | null
+          module_id?: string | null
           order_index?: number | null
           skill_id?: string | null
+          slug?: string | null
+          status?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string | null
@@ -5486,16 +6331,25 @@ export type Database = {
           xp_reward?: number | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           description?: string | null
           difficulty?: number | null
+          display_order?: number | null
           duration_seconds?: number | null
+          has_quiz?: boolean | null
           id?: string
           is_active?: boolean | null
+          is_free?: boolean | null
           is_intro?: boolean | null
           is_placeholder?: boolean | null
+          key_concepts?: string[] | null
+          module_id?: string | null
           order_index?: number | null
           skill_id?: string | null
+          slug?: string | null
+          status?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string | null
@@ -5515,61 +6369,55 @@ export type Database = {
           },
         ]
       }
-      elearning_content_pools: {
+      el_worksheets: {
         Row: {
-          age_group: string | null
-          content: Json
+          asset_format: string | null
+          asset_url: string
           created_at: string | null
-          difficulty: string | null
-          difficulty_level: string | null
+          description: string | null
+          display_order: number | null
           id: string
           is_active: boolean | null
-          item_count: number | null
-          name: string
-          pool_type: string
-          slug: string
-          sub_skill_id: string | null
-          title: string | null
+          page_count: number | null
+          thumbnail_url: string | null
+          title: string
+          unit_id: string | null
           updated_at: string | null
         }
         Insert: {
-          age_group?: string | null
-          content?: Json
+          asset_format?: string | null
+          asset_url: string
           created_at?: string | null
-          difficulty?: string | null
-          difficulty_level?: string | null
+          description?: string | null
+          display_order?: number | null
           id?: string
           is_active?: boolean | null
-          item_count?: number | null
-          name: string
-          pool_type: string
-          slug: string
-          sub_skill_id?: string | null
-          title?: string | null
+          page_count?: number | null
+          thumbnail_url?: string | null
+          title: string
+          unit_id?: string | null
           updated_at?: string | null
         }
         Update: {
-          age_group?: string | null
-          content?: Json
+          asset_format?: string | null
+          asset_url?: string
           created_at?: string | null
-          difficulty?: string | null
-          difficulty_level?: string | null
+          description?: string | null
+          display_order?: number | null
           id?: string
           is_active?: boolean | null
-          item_count?: number | null
-          name?: string
-          pool_type?: string
-          slug?: string
-          sub_skill_id?: string | null
-          title?: string | null
+          page_count?: number | null
+          thumbnail_url?: string | null
+          title?: string
+          unit_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "elearning_content_pools_sub_skill_id_fkey"
-            columns: ["sub_skill_id"]
+            foreignKeyName: "el_worksheets_unit_id_fkey"
+            columns: ["unit_id"]
             isOneToOne: false
-            referencedRelation: "elearning_sub_skills"
+            referencedRelation: "el_learning_units"
             referencedColumns: ["id"]
           },
         ]
@@ -5624,225 +6472,6 @@ export type Database = {
           supported_pool_types?: string[] | null
         }
         Relationships: []
-      }
-      elearning_quizzes: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          passing_score: number | null
-          questions: Json
-          slug: string
-          sub_skill_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          passing_score?: number | null
-          questions?: Json
-          slug: string
-          sub_skill_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          passing_score?: number | null
-          questions?: Json
-          slug?: string
-          sub_skill_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "elearning_quizzes_sub_skill_id_fkey"
-            columns: ["sub_skill_id"]
-            isOneToOne: false
-            referencedRelation: "elearning_sub_skills"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      elearning_skills: {
-        Row: {
-          category: string
-          color_hex: string | null
-          created_at: string | null
-          description: string | null
-          display_order: number
-          icon_emoji: string | null
-          id: string
-          is_active: boolean | null
-          level: number
-          name: string
-          slug: string
-          updated_at: string | null
-        }
-        Insert: {
-          category: string
-          color_hex?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          icon_emoji?: string | null
-          id?: string
-          is_active?: boolean | null
-          level?: number
-          name: string
-          slug: string
-          updated_at?: string | null
-        }
-        Update: {
-          category?: string
-          color_hex?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          icon_emoji?: string | null
-          id?: string
-          is_active?: boolean | null
-          level?: number
-          name?: string
-          slug?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      elearning_sub_skills: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          display_order: number
-          id: string
-          is_active: boolean | null
-          keywords: string[] | null
-          name: string
-          skill_id: string
-          slug: string
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          id?: string
-          is_active?: boolean | null
-          keywords?: string[] | null
-          name: string
-          skill_id: string
-          slug: string
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          id?: string
-          is_active?: boolean | null
-          keywords?: string[] | null
-          name?: string
-          skill_id?: string
-          slug?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "elearning_sub_skills_skill_id_fkey"
-            columns: ["skill_id"]
-            isOneToOne: false
-            referencedRelation: "elearning_skills"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      elearning_units: {
-        Row: {
-          activity_count: number | null
-          color_hex: string | null
-          created_at: string | null
-          description: string | null
-          difficulty: string | null
-          display_order: number | null
-          estimated_minutes: number | null
-          icon_emoji: string | null
-          id: string
-          is_featured: boolean | null
-          level: number | null
-          max_age: number | null
-          min_age: number | null
-          name: string
-          published_at: string | null
-          quest_title: string | null
-          sequence: Json
-          slug: string
-          status: string | null
-          sub_skill_id: string
-          tags: string[] | null
-          thumbnail_url: string | null
-          total_xp_reward: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          activity_count?: number | null
-          color_hex?: string | null
-          created_at?: string | null
-          description?: string | null
-          difficulty?: string | null
-          display_order?: number | null
-          estimated_minutes?: number | null
-          icon_emoji?: string | null
-          id?: string
-          is_featured?: boolean | null
-          level?: number | null
-          max_age?: number | null
-          min_age?: number | null
-          name: string
-          published_at?: string | null
-          quest_title?: string | null
-          sequence?: Json
-          slug: string
-          status?: string | null
-          sub_skill_id: string
-          tags?: string[] | null
-          thumbnail_url?: string | null
-          total_xp_reward?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          activity_count?: number | null
-          color_hex?: string | null
-          created_at?: string | null
-          description?: string | null
-          difficulty?: string | null
-          display_order?: number | null
-          estimated_minutes?: number | null
-          icon_emoji?: string | null
-          id?: string
-          is_featured?: boolean | null
-          level?: number | null
-          max_age?: number | null
-          min_age?: number | null
-          name?: string
-          published_at?: string | null
-          quest_title?: string | null
-          sequence?: Json
-          slug?: string
-          status?: string | null
-          sub_skill_id?: string
-          tags?: string[] | null
-          thumbnail_url?: string | null
-          total_xp_reward?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "elearning_units_sub_skill_id_fkey"
-            columns: ["sub_skill_id"]
-            isOneToOne: false
-            referencedRelation: "elearning_sub_skills"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       enrollment_events: {
         Row: {
@@ -6202,6 +6831,7 @@ export type Database = {
       enrollments: {
         Row: {
           actual_start_date: string | null
+          age_band: string | null
           amount: number | null
           at_risk: boolean | null
           at_risk_reason: string | null
@@ -6226,6 +6856,7 @@ export type Database = {
           extension_count: number | null
           final_assessment_completed_at: string | null
           id: string
+          is_continuation: boolean | null
           is_paused: boolean | null
           last_alert_sent_at: string | null
           lead_source: string | null
@@ -6251,6 +6882,7 @@ export type Database = {
           preference_time_bucket: string | null
           preferred_day: number | null
           preferred_time: string | null
+          previous_enrollment_id: string | null
           product_id: string | null
           program_end: string | null
           program_start: string | null
@@ -6268,8 +6900,11 @@ export type Database = {
           schedule_confirmed: boolean | null
           schedule_confirmed_at: string | null
           schedule_confirmed_by: string | null
+          season_number: number
+          session_duration_minutes: number | null
           sessions_cancelled_count: number | null
           sessions_completed: number | null
+          sessions_per_week: number | null
           sessions_purchased: number | null
           sessions_remaining: number | null
           sessions_rescheduled_count: number | null
@@ -6282,10 +6917,12 @@ export type Database = {
           termination_reason: string | null
           total_no_shows: number | null
           total_pause_days: number | null
+          total_sessions: number | null
           updated_at: string | null
         }
         Insert: {
           actual_start_date?: string | null
+          age_band?: string | null
           amount?: number | null
           at_risk?: boolean | null
           at_risk_reason?: string | null
@@ -6310,6 +6947,7 @@ export type Database = {
           extension_count?: number | null
           final_assessment_completed_at?: string | null
           id?: string
+          is_continuation?: boolean | null
           is_paused?: boolean | null
           last_alert_sent_at?: string | null
           lead_source?: string | null
@@ -6335,6 +6973,7 @@ export type Database = {
           preference_time_bucket?: string | null
           preferred_day?: number | null
           preferred_time?: string | null
+          previous_enrollment_id?: string | null
           product_id?: string | null
           program_end?: string | null
           program_start?: string | null
@@ -6352,8 +6991,11 @@ export type Database = {
           schedule_confirmed?: boolean | null
           schedule_confirmed_at?: string | null
           schedule_confirmed_by?: string | null
+          season_number?: number
+          session_duration_minutes?: number | null
           sessions_cancelled_count?: number | null
           sessions_completed?: number | null
+          sessions_per_week?: number | null
           sessions_purchased?: number | null
           sessions_remaining?: number | null
           sessions_rescheduled_count?: number | null
@@ -6366,10 +7008,12 @@ export type Database = {
           termination_reason?: string | null
           total_no_shows?: number | null
           total_pause_days?: number | null
+          total_sessions?: number | null
           updated_at?: string | null
         }
         Update: {
           actual_start_date?: string | null
+          age_band?: string | null
           amount?: number | null
           at_risk?: boolean | null
           at_risk_reason?: string | null
@@ -6394,6 +7038,7 @@ export type Database = {
           extension_count?: number | null
           final_assessment_completed_at?: string | null
           id?: string
+          is_continuation?: boolean | null
           is_paused?: boolean | null
           last_alert_sent_at?: string | null
           lead_source?: string | null
@@ -6419,6 +7064,7 @@ export type Database = {
           preference_time_bucket?: string | null
           preferred_day?: number | null
           preferred_time?: string | null
+          previous_enrollment_id?: string | null
           product_id?: string | null
           program_end?: string | null
           program_start?: string | null
@@ -6436,8 +7082,11 @@ export type Database = {
           schedule_confirmed?: boolean | null
           schedule_confirmed_at?: string | null
           schedule_confirmed_by?: string | null
+          season_number?: number
+          session_duration_minutes?: number | null
           sessions_cancelled_count?: number | null
           sessions_completed?: number | null
+          sessions_per_week?: number | null
           sessions_purchased?: number | null
           sessions_remaining?: number | null
           sessions_rescheduled_count?: number | null
@@ -6450,9 +7099,17 @@ export type Database = {
           termination_reason?: string | null
           total_no_shows?: number | null
           total_pause_days?: number | null
+          total_sessions?: number | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "enrollments_age_band_fkey"
+            columns: ["age_band"]
+            isOneToOne: false
+            referencedRelation: "age_band_config"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "enrollments_certificate_id_fkey"
             columns: ["certificate_id"]
@@ -6543,6 +7200,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_previous_enrollment_id_fkey"
+            columns: ["previous_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_previous_enrollment_id_fkey"
+            columns: ["previous_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_previous_enrollment_id_fkey"
+            columns: ["previous_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_previous_enrollment_id_fkey"
+            columns: ["previous_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
           },
           {
             foreignKeyName: "enrollments_product_id_fkey"
@@ -7835,310 +8520,6 @@ export type Database = {
           },
         ]
       }
-      learning_games: {
-        Row: {
-          config: Json
-          created_at: string | null
-          display_order: number | null
-          game_type: string
-          id: string
-          is_active: boolean | null
-          level_id: string | null
-          module_id: string | null
-          passing_score: number | null
-          skill_tags: string[] | null
-          slug: string | null
-          time_limit_seconds: number | null
-          title: string
-          updated_at: string | null
-          video_id: string | null
-          xp_per_correct: number | null
-          xp_reward: number | null
-        }
-        Insert: {
-          config?: Json
-          created_at?: string | null
-          display_order?: number | null
-          game_type: string
-          id?: string
-          is_active?: boolean | null
-          level_id?: string | null
-          module_id?: string | null
-          passing_score?: number | null
-          skill_tags?: string[] | null
-          slug?: string | null
-          time_limit_seconds?: number | null
-          title: string
-          updated_at?: string | null
-          video_id?: string | null
-          xp_per_correct?: number | null
-          xp_reward?: number | null
-        }
-        Update: {
-          config?: Json
-          created_at?: string | null
-          display_order?: number | null
-          game_type?: string
-          id?: string
-          is_active?: boolean | null
-          level_id?: string | null
-          module_id?: string | null
-          passing_score?: number | null
-          skill_tags?: string[] | null
-          slug?: string | null
-          time_limit_seconds?: number | null
-          title?: string
-          updated_at?: string | null
-          video_id?: string | null
-          xp_per_correct?: number | null
-          xp_reward?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "learning_games_level_id_fkey"
-            columns: ["level_id"]
-            isOneToOne: false
-            referencedRelation: "learning_levels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_games_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "learning_modules"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_games_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "learning_videos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_games_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "video_details"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      learning_levels: {
-        Row: {
-          age_range: string
-          color: string | null
-          created_at: string | null
-          description: string | null
-          display_order: number
-          icon: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          slug: string
-          thumbnail_url: string | null
-          updated_at: string | null
-          xp_bonus: number | null
-        }
-        Insert: {
-          age_range: string
-          color?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          icon?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          slug: string
-          thumbnail_url?: string | null
-          updated_at?: string | null
-          xp_bonus?: number | null
-        }
-        Update: {
-          age_range?: string
-          color?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          icon?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          slug?: string
-          thumbnail_url?: string | null
-          updated_at?: string | null
-          xp_bonus?: number | null
-        }
-        Relationships: []
-      }
-      learning_modules: {
-        Row: {
-          badge_id: string | null
-          created_at: string | null
-          description: string | null
-          display_order: number
-          estimated_duration: number | null
-          id: string
-          is_active: boolean | null
-          is_free: boolean | null
-          level_id: string | null
-          name: string
-          prerequisite_module_id: string | null
-          slug: string
-          thumbnail_url: string | null
-          updated_at: string | null
-          xp_reward: number | null
-        }
-        Insert: {
-          badge_id?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          estimated_duration?: number | null
-          id?: string
-          is_active?: boolean | null
-          is_free?: boolean | null
-          level_id?: string | null
-          name: string
-          prerequisite_module_id?: string | null
-          slug: string
-          thumbnail_url?: string | null
-          updated_at?: string | null
-          xp_reward?: number | null
-        }
-        Update: {
-          badge_id?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          estimated_duration?: number | null
-          id?: string
-          is_active?: boolean | null
-          is_free?: boolean | null
-          level_id?: string | null
-          name?: string
-          prerequisite_module_id?: string | null
-          slug?: string
-          thumbnail_url?: string | null
-          updated_at?: string | null
-          xp_reward?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "learning_modules_level_id_fkey"
-            columns: ["level_id"]
-            isOneToOne: false
-            referencedRelation: "learning_levels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_modules_prerequisite_module_id_fkey"
-            columns: ["prerequisite_module_id"]
-            isOneToOne: false
-            referencedRelation: "learning_modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      learning_videos: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          created_at: string | null
-          description: string | null
-          display_order: number
-          duration_seconds: number | null
-          game_id: string | null
-          game_type: string | null
-          has_quiz: boolean | null
-          id: string
-          is_active: boolean | null
-          is_free: boolean | null
-          key_concepts: string[] | null
-          module_id: string | null
-          published_at: string | null
-          quiz_pass_percentage: number | null
-          slug: string
-          status: string | null
-          thumbnail_url: string | null
-          title: string
-          transcript: string | null
-          unlock_after_percent: number | null
-          updated_at: string | null
-          video_id: string | null
-          video_source: string | null
-          video_url: string | null
-          xp_reward: number | null
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          duration_seconds?: number | null
-          game_id?: string | null
-          game_type?: string | null
-          has_quiz?: boolean | null
-          id?: string
-          is_active?: boolean | null
-          is_free?: boolean | null
-          key_concepts?: string[] | null
-          module_id?: string | null
-          published_at?: string | null
-          quiz_pass_percentage?: number | null
-          slug: string
-          status?: string | null
-          thumbnail_url?: string | null
-          title: string
-          transcript?: string | null
-          unlock_after_percent?: number | null
-          updated_at?: string | null
-          video_id?: string | null
-          video_source?: string | null
-          video_url?: string | null
-          xp_reward?: number | null
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number
-          duration_seconds?: number | null
-          game_id?: string | null
-          game_type?: string | null
-          has_quiz?: boolean | null
-          id?: string
-          is_active?: boolean | null
-          is_free?: boolean | null
-          key_concepts?: string[] | null
-          module_id?: string | null
-          published_at?: string | null
-          quiz_pass_percentage?: number | null
-          slug?: string
-          status?: string | null
-          thumbnail_url?: string | null
-          title?: string
-          transcript?: string | null
-          unlock_after_percent?: number | null
-          updated_at?: string | null
-          video_id?: string | null
-          video_source?: string | null
-          video_url?: string | null
-          xp_reward?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "learning_videos_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "learning_modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       messages: {
         Row: {
           attachment_url: string | null
@@ -8466,6 +8847,94 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "session_recording_status"
             referencedColumns: ["session_id"]
+          },
+        ]
+      }
+      parent_daily_tasks: {
+        Row: {
+          child_id: string
+          completed_at: string | null
+          created_at: string
+          description: string
+          duration_minutes: number | null
+          enrollment_id: string | null
+          id: string
+          is_completed: boolean
+          linked_skill: string | null
+          linked_template_code: string | null
+          task_date: string
+          title: string
+        }
+        Insert: {
+          child_id: string
+          completed_at?: string | null
+          created_at?: string
+          description: string
+          duration_minutes?: number | null
+          enrollment_id?: string | null
+          id?: string
+          is_completed?: boolean
+          linked_skill?: string | null
+          linked_template_code?: string | null
+          task_date: string
+          title: string
+        }
+        Update: {
+          child_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          duration_minutes?: number | null
+          enrollment_id?: string | null
+          id?: string
+          is_completed?: boolean
+          linked_skill?: string | null
+          linked_template_code?: string | null
+          task_date?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_daily_tasks_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
           },
         ]
       }
@@ -9156,6 +9625,85 @@ export type Database = {
         }
         Relationships: []
       }
+      re_enrollment_nudges: {
+        Row: {
+          channel: string | null
+          child_id: string
+          created_at: string
+          enrollment_id: string
+          id: string
+          nudge_number: number
+          scheduled_for: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          channel?: string | null
+          child_id: string
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          nudge_number: number
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          channel?: string | null
+          child_id?: string
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          nudge_number?: number
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "re_enrollment_nudges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "re_enrollment_nudges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "re_enrollment_nudges_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "re_enrollment_nudges_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "re_enrollment_nudges_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "re_enrollment_nudges_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
+          },
+        ]
+      }
       reading_goals: {
         Row: {
           achieved_at: string | null
@@ -9794,6 +10342,8 @@ export type Database = {
       scheduled_sessions: {
         Row: {
           action_items: string | null
+          adherence_details: Json | null
+          adherence_score: number | null
           ai_analysis: Json | null
           ai_summary: string | null
           attendance_count: number | null
@@ -9812,7 +10362,9 @@ export type Database = {
           coach_reminder_1h_sent_at: string | null
           coach_reminder_24h_sent: boolean | null
           coach_reminder_24h_sent_at: string | null
+          companion_panel_completed: boolean | null
           completed_at: string | null
+          completion_nudge_sent_at: string | null
           concern_details: string | null
           concerns_noted: string | null
           concerns_raised: string[] | null
@@ -9839,6 +10391,7 @@ export type Database = {
           homework_due_date: string | null
           homework_topic: string | null
           id: string
+          is_diagnostic: boolean
           is_group_session: boolean | null
           is_makeup_session: boolean | null
           last_attempt_at: string | null
@@ -9875,8 +10428,10 @@ export type Database = {
           session_highlights: Json | null
           session_notes: string | null
           session_number: number | null
+          session_started_at: string | null
           session_struggles: Json | null
           session_subtype: string | null
+          session_template_id: string | null
           session_timer_seconds: number | null
           session_title: string | null
           session_type: string
@@ -9893,6 +10448,7 @@ export type Database = {
           tldv_recording_url: string | null
           tldv_transcript: string | null
           transcript: string | null
+          transcript_status: string | null
           updated_at: string | null
           video_expires_at: string | null
           video_url: string | null
@@ -9902,6 +10458,8 @@ export type Database = {
         }
         Insert: {
           action_items?: string | null
+          adherence_details?: Json | null
+          adherence_score?: number | null
           ai_analysis?: Json | null
           ai_summary?: string | null
           attendance_count?: number | null
@@ -9920,7 +10478,9 @@ export type Database = {
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
+          companion_panel_completed?: boolean | null
           completed_at?: string | null
+          completion_nudge_sent_at?: string | null
           concern_details?: string | null
           concerns_noted?: string | null
           concerns_raised?: string[] | null
@@ -9947,6 +10507,7 @@ export type Database = {
           homework_due_date?: string | null
           homework_topic?: string | null
           id?: string
+          is_diagnostic?: boolean
           is_group_session?: boolean | null
           is_makeup_session?: boolean | null
           last_attempt_at?: string | null
@@ -9983,8 +10544,10 @@ export type Database = {
           session_highlights?: Json | null
           session_notes?: string | null
           session_number?: number | null
+          session_started_at?: string | null
           session_struggles?: Json | null
           session_subtype?: string | null
+          session_template_id?: string | null
           session_timer_seconds?: number | null
           session_title?: string | null
           session_type: string
@@ -10001,6 +10564,7 @@ export type Database = {
           tldv_recording_url?: string | null
           tldv_transcript?: string | null
           transcript?: string | null
+          transcript_status?: string | null
           updated_at?: string | null
           video_expires_at?: string | null
           video_url?: string | null
@@ -10010,6 +10574,8 @@ export type Database = {
         }
         Update: {
           action_items?: string | null
+          adherence_details?: Json | null
+          adherence_score?: number | null
           ai_analysis?: Json | null
           ai_summary?: string | null
           attendance_count?: number | null
@@ -10028,7 +10594,9 @@ export type Database = {
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
+          companion_panel_completed?: boolean | null
           completed_at?: string | null
+          completion_nudge_sent_at?: string | null
           concern_details?: string | null
           concerns_noted?: string | null
           concerns_raised?: string[] | null
@@ -10055,6 +10623,7 @@ export type Database = {
           homework_due_date?: string | null
           homework_topic?: string | null
           id?: string
+          is_diagnostic?: boolean
           is_group_session?: boolean | null
           is_makeup_session?: boolean | null
           last_attempt_at?: string | null
@@ -10091,8 +10660,10 @@ export type Database = {
           session_highlights?: Json | null
           session_notes?: string | null
           session_number?: number | null
+          session_started_at?: string | null
           session_struggles?: Json | null
           session_subtype?: string | null
+          session_template_id?: string | null
           session_timer_seconds?: number | null
           session_title?: string | null
           session_type?: string
@@ -10109,6 +10680,7 @@ export type Database = {
           tldv_recording_url?: string | null
           tldv_transcript?: string | null
           transcript?: string | null
+          transcript_status?: string | null
           updated_at?: string | null
           video_expires_at?: string | null
           video_url?: string | null
@@ -10201,6 +10773,13 @@ export type Database = {
             referencedRelation: "v_remedial_eligibility"
             referencedColumns: ["enrollment_id"]
           },
+          {
+            foreignKeyName: "scheduled_sessions_session_template_id_fkey"
+            columns: ["session_template_id"]
+            isOneToOne: false
+            referencedRelation: "session_templates"
+            referencedColumns: ["id"]
+          },
         ]
       }
       scheduling_queue: {
@@ -10278,6 +10857,238 @@ export type Database = {
           },
           {
             foreignKeyName: "scheduling_queue_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_recording_status"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
+      season_learning_plans: {
+        Row: {
+          adapted_from: string | null
+          adapted_reason: string | null
+          child_id: string
+          coach_notes: string | null
+          created_at: string
+          difficulty_level: number | null
+          id: string
+          season_roadmap_id: string
+          session_template_id: string | null
+          skill_focus: string | null
+          status: string
+          week_number: number
+        }
+        Insert: {
+          adapted_from?: string | null
+          adapted_reason?: string | null
+          child_id: string
+          coach_notes?: string | null
+          created_at?: string
+          difficulty_level?: number | null
+          id?: string
+          season_roadmap_id: string
+          session_template_id?: string | null
+          skill_focus?: string | null
+          status?: string
+          week_number: number
+        }
+        Update: {
+          adapted_from?: string | null
+          adapted_reason?: string | null
+          child_id?: string
+          coach_notes?: string | null
+          created_at?: string
+          difficulty_level?: number | null
+          id?: string
+          season_roadmap_id?: string
+          session_template_id?: string | null
+          skill_focus?: string | null
+          status?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_learning_plans_adapted_from_fkey"
+            columns: ["adapted_from"]
+            isOneToOne: false
+            referencedRelation: "season_learning_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_learning_plans_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_learning_plans_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "season_learning_plans_season_roadmap_id_fkey"
+            columns: ["season_roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "season_roadmaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_learning_plans_session_template_id_fkey"
+            columns: ["session_template_id"]
+            isOneToOne: false
+            referencedRelation: "session_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_roadmaps: {
+        Row: {
+          child_id: string
+          completed_at: string | null
+          created_at: string
+          enrollment_id: string | null
+          estimated_sessions: number | null
+          focus_area: string
+          id: string
+          milestone_description: string
+          season_name: string
+          season_number: number
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          child_id: string
+          completed_at?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          estimated_sessions?: number | null
+          focus_area: string
+          id?: string
+          milestone_description: string
+          season_name: string
+          season_number: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          child_id?: string
+          completed_at?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          estimated_sessions?: number | null
+          focus_area?: string
+          id?: string
+          milestone_description?: string
+          season_name?: string
+          season_number?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_roadmaps_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_roadmaps_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "season_roadmaps_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_roadmaps_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_roadmaps_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_roadmaps_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
+          },
+        ]
+      }
+      session_activity_log: {
+        Row: {
+          activity_index: number
+          activity_name: string
+          activity_purpose: string | null
+          actual_duration_seconds: number | null
+          coach_note: string | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          planned_duration_minutes: number | null
+          session_id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          activity_index: number
+          activity_name: string
+          activity_purpose?: string | null
+          actual_duration_seconds?: number | null
+          coach_note?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          planned_duration_minutes?: number | null
+          session_id: string
+          started_at?: string | null
+          status: string
+        }
+        Update: {
+          activity_index?: number
+          activity_name?: string
+          activity_purpose?: string | null
+          actual_duration_seconds?: number | null
+          coach_note?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          planned_duration_minutes?: number | null
+          session_id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_activity_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_activity_log_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "session_recording_status"
@@ -10738,39 +11549,80 @@ export type Database = {
       }
       session_templates: {
         Row: {
-          created_at: string | null
-          duration_minutes: number | null
+          activity_flow: Json | null
+          age_band: string
+          coach_prep_notes: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          difficulty_level: number
+          duration_minutes: number
           id: string
-          is_active: boolean | null
-          session_type: string
-          structure: Json
-          target_age_group: string | null
-          template_name: string
-          tips: string[] | null
+          is_active: boolean
+          is_diagnostic: boolean
+          is_season_finale: boolean
+          materials_needed: string[] | null
+          parent_involvement: string | null
+          prerequisites: string[] | null
+          recommended_order: number | null
+          skill_dimensions: string[]
+          template_code: string
+          title: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          duration_minutes?: number | null
+          activity_flow?: Json | null
+          age_band: string
+          coach_prep_notes?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          difficulty_level: number
+          duration_minutes: number
           id?: string
-          is_active?: boolean | null
-          session_type: string
-          structure: Json
-          target_age_group?: string | null
-          template_name: string
-          tips?: string[] | null
+          is_active?: boolean
+          is_diagnostic?: boolean
+          is_season_finale?: boolean
+          materials_needed?: string[] | null
+          parent_involvement?: string | null
+          prerequisites?: string[] | null
+          recommended_order?: number | null
+          skill_dimensions?: string[]
+          template_code: string
+          title: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          duration_minutes?: number | null
+          activity_flow?: Json | null
+          age_band?: string
+          coach_prep_notes?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          difficulty_level?: number
+          duration_minutes?: number
           id?: string
-          is_active?: boolean | null
-          session_type?: string
-          structure?: Json
-          target_age_group?: string | null
-          template_name?: string
-          tips?: string[] | null
+          is_active?: boolean
+          is_diagnostic?: boolean
+          is_season_finale?: boolean
+          materials_needed?: string[] | null
+          parent_involvement?: string | null
+          prerequisites?: string[] | null
+          recommended_order?: number | null
+          skill_dimensions?: string[]
+          template_code?: string
+          title?: string
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "session_templates_age_band_fkey"
+            columns: ["age_band"]
+            isOneToOne: false
+            referencedRelation: "age_band_config"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
@@ -11283,7 +12135,7 @@ export type Database = {
             foreignKeyName: "video_quizzes_video_id_fkey"
             columns: ["video_id"]
             isOneToOne: false
-            referencedRelation: "learning_videos"
+            referencedRelation: "_deprecated_learning_videos"
             referencedColumns: ["id"]
           },
           {
@@ -11357,7 +12209,7 @@ export type Database = {
             foreignKeyName: "video_watch_sessions_video_id_fkey"
             columns: ["video_id"]
             isOneToOne: false
-            referencedRelation: "learning_videos"
+            referencedRelation: "_deprecated_learning_videos"
             referencedColumns: ["id"]
           },
           {
@@ -11366,6 +12218,288 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "video_details"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_lead_conversations: {
+        Row: {
+          assigned_agent: string | null
+          child_id: string | null
+          collected_data: Json
+          consent_given: boolean
+          consent_given_at: string | null
+          created_at: string
+          current_state: string
+          discovery_call_id: string | null
+          id: string
+          is_bot_active: boolean
+          last_message_at: string
+          lead_score: number
+          phone_number: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_agent?: string | null
+          child_id?: string | null
+          collected_data?: Json
+          consent_given?: boolean
+          consent_given_at?: string | null
+          created_at?: string
+          current_state?: string
+          discovery_call_id?: string | null
+          id?: string
+          is_bot_active?: boolean
+          last_message_at?: string
+          lead_score?: number
+          phone_number: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_agent?: string | null
+          child_id?: string | null
+          collected_data?: Json
+          consent_given?: boolean
+          consent_given_at?: string | null
+          created_at?: string
+          current_state?: string
+          discovery_call_id?: string | null
+          id?: string
+          is_bot_active?: boolean
+          last_message_at?: string
+          lead_score?: number
+          phone_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_lead_conversations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_lead_conversations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "wa_lead_conversations_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "coach_discovery_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_lead_conversations_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "discovery_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_lead_conversations_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "discovery_calls_need_followup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_lead_conversations_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "discovery_calls_pending_assignment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_lead_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          message_type: string
+          metadata: Json | null
+          sender_type: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          sender_type: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          sender_type?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_lead_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_lead_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_leads: {
+        Row: {
+          child_age: number | null
+          child_id: string | null
+          child_name: string | null
+          city: string | null
+          conversation_id: string | null
+          created_at: string
+          discovery_call_id: string | null
+          enrollment_id: string | null
+          id: string
+          lead_score: number
+          notes: string | null
+          parent_name: string | null
+          phone_number: string
+          reading_concerns: string | null
+          school: string | null
+          source: string
+          status: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          child_age?: number | null
+          child_id?: string | null
+          child_name?: string | null
+          city?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          discovery_call_id?: string | null
+          enrollment_id?: string | null
+          id?: string
+          lead_score?: number
+          notes?: string | null
+          parent_name?: string | null
+          phone_number: string
+          reading_concerns?: string | null
+          school?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          child_age?: number | null
+          child_id?: string | null
+          child_name?: string | null
+          city?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          discovery_call_id?: string | null
+          enrollment_id?: string | null
+          id?: string
+          lead_score?: number
+          notes?: string | null
+          parent_name?: string | null
+          phone_number?: string
+          reading_concerns?: string | null
+          school?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_leads_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "wa_leads_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_lead_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "coach_discovery_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "discovery_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "discovery_calls_need_followup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_discovery_call_id_fkey"
+            columns: ["discovery_call_id"]
+            isOneToOne: false
+            referencedRelation: "discovery_calls_pending_assignment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_leads_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
           },
         ]
       }
@@ -11473,6 +12607,60 @@ export type Database = {
       }
     }
     Views: {
+      badge_definitions: {
+        Row: {
+          coins_reward: number | null
+          created_at: string | null
+          criteria_extra: Json | null
+          criteria_type: string | null
+          criteria_value: number | null
+          description: string | null
+          icon: string | null
+          id: string | null
+          image_url: string | null
+          is_active: boolean | null
+          name: string | null
+          order_index: number | null
+          rarity: string | null
+          slug: string | null
+          xp_reward: number | null
+        }
+        Insert: {
+          coins_reward?: number | null
+          created_at?: string | null
+          criteria_extra?: Json | null
+          criteria_type?: string | null
+          criteria_value?: number | null
+          description?: string | null
+          icon?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          order_index?: number | null
+          rarity?: string | null
+          slug?: string | null
+          xp_reward?: number | null
+        }
+        Update: {
+          coins_reward?: number | null
+          created_at?: string | null
+          criteria_extra?: Json | null
+          criteria_type?: string | null
+          criteria_value?: number | null
+          description?: string | null
+          icon?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          order_index?: number | null
+          rarity?: string | null
+          slug?: string | null
+          xp_reward?: number | null
+        }
+        Relationships: []
+      }
       book_popularity: {
         Row: {
           age_max: number | null
@@ -11514,6 +12702,362 @@ export type Database = {
           total_requests?: number | null
         }
         Relationships: []
+      }
+      child_badges: {
+        Row: {
+          badge_id: string | null
+          child_id: string | null
+          earned_at: string | null
+          earned_context: string | null
+          id: string | null
+        }
+        Insert: {
+          badge_id?: string | null
+          child_id?: string | null
+          earned_at?: string | null
+          earned_context?: string | null
+          id?: string | null
+        }
+        Update: {
+          badge_id?: string | null
+          child_id?: string | null
+          earned_at?: string | null
+          earned_context?: string | null
+          id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "el_child_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badge_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "el_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_badges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_badges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+        ]
+      }
+      child_gamification: {
+        Row: {
+          child_id: string | null
+          created_at: string | null
+          current_level: number | null
+          current_streak_days: number | null
+          games_played: number | null
+          games_won: number | null
+          id: string | null
+          last_activity_date: string | null
+          longest_streak_days: number | null
+          perfect_quiz_count: number | null
+          perfect_scores: number | null
+          total_coins: number | null
+          total_games_completed: number | null
+          total_perfect_scores: number | null
+          total_quizzes_completed: number | null
+          total_readings_completed: number | null
+          total_time_minutes: number | null
+          total_units_completed: number | null
+          total_videos_completed: number | null
+          total_xp: number | null
+          units_completed: number | null
+          updated_at: string | null
+          videos_watched: number | null
+        }
+        Insert: {
+          child_id?: string | null
+          created_at?: string | null
+          current_level?: number | null
+          current_streak_days?: number | null
+          games_played?: number | null
+          games_won?: number | null
+          id?: string | null
+          last_activity_date?: string | null
+          longest_streak_days?: number | null
+          perfect_quiz_count?: number | null
+          perfect_scores?: number | null
+          total_coins?: number | null
+          total_games_completed?: number | null
+          total_perfect_scores?: number | null
+          total_quizzes_completed?: number | null
+          total_readings_completed?: number | null
+          total_time_minutes?: number | null
+          total_units_completed?: number | null
+          total_videos_completed?: number | null
+          total_xp?: number | null
+          units_completed?: number | null
+          updated_at?: string | null
+          videos_watched?: number | null
+        }
+        Update: {
+          child_id?: string | null
+          created_at?: string | null
+          current_level?: number | null
+          current_streak_days?: number | null
+          games_played?: number | null
+          games_won?: number | null
+          id?: string | null
+          last_activity_date?: string | null
+          longest_streak_days?: number | null
+          perfect_quiz_count?: number | null
+          perfect_scores?: number | null
+          total_coins?: number | null
+          total_games_completed?: number | null
+          total_perfect_scores?: number | null
+          total_quizzes_completed?: number | null
+          total_readings_completed?: number | null
+          total_time_minutes?: number | null
+          total_units_completed?: number | null
+          total_videos_completed?: number | null
+          total_xp?: number | null
+          units_completed?: number | null
+          updated_at?: string | null
+          videos_watched?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "el_child_gamification_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: true
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_gamification_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: true
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+        ]
+      }
+      child_unit_progress: {
+        Row: {
+          badge_earned: boolean | null
+          best_game_score: number | null
+          best_score: number | null
+          child_id: string | null
+          coins_earned: number | null
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string | null
+          current_step: number | null
+          games_passed: number | null
+          games_played: number | null
+          id: string | null
+          interval_days: number | null
+          last_activity_at: string | null
+          next_review_at: string | null
+          overall_mastery_percent: number | null
+          quiz_score: number | null
+          review_count: number | null
+          sequence_shown: Json | null
+          started_at: string | null
+          status: string | null
+          step_progress: Json | null
+          total_xp_earned: number | null
+          unit_id: string | null
+          unlocked_at: string | null
+          updated_at: string | null
+          video_watch_percent: number | null
+          xp_earned: number | null
+        }
+        Insert: {
+          badge_earned?: boolean | null
+          best_game_score?: number | null
+          best_score?: number | null
+          child_id?: string | null
+          coins_earned?: number | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          current_step?: number | null
+          games_passed?: number | null
+          games_played?: number | null
+          id?: string | null
+          interval_days?: number | null
+          last_activity_at?: string | null
+          next_review_at?: string | null
+          overall_mastery_percent?: number | null
+          quiz_score?: number | null
+          review_count?: number | null
+          sequence_shown?: Json | null
+          started_at?: string | null
+          status?: string | null
+          step_progress?: Json | null
+          total_xp_earned?: number | null
+          unit_id?: string | null
+          unlocked_at?: string | null
+          updated_at?: string | null
+          video_watch_percent?: number | null
+          xp_earned?: number | null
+        }
+        Update: {
+          badge_earned?: boolean | null
+          best_game_score?: number | null
+          best_score?: number | null
+          child_id?: string | null
+          coins_earned?: number | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          current_step?: number | null
+          games_passed?: number | null
+          games_played?: number | null
+          id?: string | null
+          interval_days?: number | null
+          last_activity_at?: string | null
+          next_review_at?: string | null
+          overall_mastery_percent?: number | null
+          quiz_score?: number | null
+          review_count?: number | null
+          sequence_shown?: Json | null
+          started_at?: string | null
+          status?: string | null
+          step_progress?: Json | null
+          total_xp_earned?: number | null
+          unit_id?: string | null
+          unlocked_at?: string | null
+          updated_at?: string | null
+          video_watch_percent?: number | null
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "el_child_unit_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_unit_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "el_child_unit_progress_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "el_learning_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      child_video_progress: {
+        Row: {
+          best_quiz_score: number | null
+          child_id: string | null
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string | null
+          is_completed: boolean | null
+          quiz_attempted: boolean | null
+          quiz_attempts: number | null
+          quiz_completed_at: string | null
+          quiz_passed: boolean | null
+          quiz_score: number | null
+          times_watched: number | null
+          unit_id: string | null
+          updated_at: string | null
+          video_id: string | null
+          watch_percent: number | null
+          watch_time_seconds: number | null
+          xp_earned: number | null
+        }
+        Insert: {
+          best_quiz_score?: number | null
+          child_id?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_completed?: boolean | null
+          quiz_attempted?: boolean | null
+          quiz_attempts?: number | null
+          quiz_completed_at?: string | null
+          quiz_passed?: boolean | null
+          quiz_score?: number | null
+          times_watched?: number | null
+          unit_id?: string | null
+          updated_at?: string | null
+          video_id?: string | null
+          watch_percent?: number | null
+          watch_time_seconds?: number | null
+          xp_earned?: number | null
+        }
+        Update: {
+          best_quiz_score?: number | null
+          child_id?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_completed?: boolean | null
+          quiz_attempted?: boolean | null
+          quiz_attempts?: number | null
+          quiz_completed_at?: string | null
+          quiz_passed?: boolean | null
+          quiz_score?: number | null
+          times_watched?: number | null
+          unit_id?: string | null
+          updated_at?: string | null
+          video_id?: string | null
+          watch_percent?: number | null
+          watch_time_seconds?: number | null
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "el_child_video_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_video_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "el_child_video_progress_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "el_learning_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_child_video_progress_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "el_videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coach_activity_summary: {
         Row: {
@@ -12364,7 +13908,7 @@ export type Database = {
             foreignKeyName: "learning_videos_module_id_fkey"
             columns: ["module_id"]
             isOneToOne: false
-            referencedRelation: "learning_modules"
+            referencedRelation: "_deprecated_learning_modules"
             referencedColumns: ["id"]
           },
         ]
@@ -12523,6 +14067,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_age_band_config: {
+        Args: { child_age: number }
+        Returns: {
+          band_id: string
+          estimated_total_seasons: number
+          parent_role: string
+          primary_mode: string
+          session_duration_minutes: number
+          sessions_per_season: number
+          sessions_per_week: number
+        }[]
       }
       get_agreement_config: { Args: never; Returns: Json }
       get_agreement_config_by_category: { Args: { cat: string }; Returns: Json }
@@ -12688,6 +14244,36 @@ export type Database = {
           p_triggered_by_id?: string
         }
         Returns: string
+      }
+      match_content_units: {
+        Args: {
+          filter_arc_stage?: string
+          filter_max_age?: number
+          filter_min_age?: number
+          filter_skill_id?: string
+          filter_tags?: string[]
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          arc_stage: string
+          coach_guidance: Json
+          content_code: string
+          description: string
+          difficulty: string
+          id: string
+          max_age: number
+          min_age: number
+          name: string
+          parent_instruction: string
+          similarity: number
+          skill_id: string
+          skill_name: string
+          tags: string[]
+          video_count: number
+          worksheet_count: number
+        }[]
       }
       match_learning_events: {
         Args: {

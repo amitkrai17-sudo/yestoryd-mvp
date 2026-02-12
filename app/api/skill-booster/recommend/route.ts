@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Note: DB columns still use 'remedial' naming for backwards compatibility
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, coach_id, remedial_sessions_used, remedial_sessions_max, child_id')
+      .select('id, coach_id, remedial_sessions_used, remedial_sessions_max, child_id, session_duration_minutes')
       .eq('id', enrollmentId)
       .eq('status', 'active')
       .single();
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         status: 'pending_booking',
         scheduled_date: today.toISOString().split('T')[0], // Placeholder
         scheduled_time: '00:00:00', // Placeholder
-        duration_minutes: 45,
+        duration_minutes: enrollment.session_duration_minutes || 45,
         focus_area: focusArea,
         coach_notes: coachNotes || null,
         remedial_trigger_source: 'coach_manual',

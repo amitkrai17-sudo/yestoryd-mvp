@@ -8,6 +8,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { timedQuery } from '@/lib/db-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { dispatch } from '@/lib/scheduling/orchestrator';
+import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
 
 export const dynamic = 'force-dynamic';
 
@@ -219,6 +220,14 @@ export async function POST(
       } catch (noShowResetError) {
         console.error('Failed to reset consecutive_no_shows:', noShowResetError);
       }
+    }
+
+    // Generate daily parent tasks (non-blocking for response)
+    try {
+      const taskResult = await generateAndInsertDailyTasks(session.child_id!, sessionId);
+      console.log(`[SESSION_COMPLETE] Daily tasks generated: ${taskResult.inserted}`);
+    } catch (taskError) {
+      console.error('[SESSION_COMPLETE] Daily task generation failed:', taskError);
     }
 
     const duration = Date.now() - startTime;

@@ -4,7 +4,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Video, ArrowRight, CheckCircle, FileText, MessageSquare } from 'lucide-react';
+import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
 
@@ -16,6 +16,9 @@ interface Session {
   scheduled_time: string;
   session_type: string;
   session_number: number | null;
+  total_sessions?: number;
+  duration_minutes?: number | null;
+  is_diagnostic?: boolean;
   status: string;
   google_meet_link: string | null;
   parent_update_sent_at?: string | null;
@@ -192,6 +195,15 @@ export function SessionCard({
     });
   }
 
+  // Diagnostic form - for diagnostic sessions
+  if (session.is_diagnostic) {
+    dropdownActions.push({
+      label: isCompleted ? 'View Diagnostic' : 'Diagnostic Form',
+      icon: <ClipboardCheck className="w-4 h-4" />,
+      onClick: () => window.location.href = `/coach/sessions/${session.id}/diagnostic`,
+    });
+  }
+
   // View Student - always available
   dropdownActions.push({
     label: 'View Student',
@@ -214,10 +226,17 @@ export function SessionCard({
               {session.child_name}
             </h3>
             <StatusBadge status={session.status} size="sm" />
+            {session.is_diagnostic && (
+              <span className="px-1.5 py-0.5 text-[9px] rounded bg-red-500/20 text-red-400 border border-red-500/30 font-medium">
+                Diagnostic
+              </span>
+            )}
           </div>
           <p className="text-gray-500 text-[11px] lg:text-xs mt-0.5 truncate">
             {getSessionTypeLabel(session.session_type)}
             {session.session_number && ` #${session.session_number}`}
+            {session.session_number && session.total_sessions && ` of ${session.total_sessions}`}
+            {session.duration_minutes && ` • ${session.duration_minutes}m`}
             <span className="sm:hidden"> • {formatTime(session.scheduled_time)}</span>
           </p>
         </div>

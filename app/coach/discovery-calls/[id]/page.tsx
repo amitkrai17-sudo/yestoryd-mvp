@@ -7,6 +7,7 @@ import {
   User, Clock, Target, Sparkles, Heart
 } from 'lucide-react';
 import { LEARNING_GOALS, LearningGoalId } from '@/lib/constants/goals';
+import { AgeBandBadge } from '@/components/AgeBandBadge';
 
 interface DiscoveryCall {
   id: string;
@@ -302,6 +303,11 @@ export default function CoachDiscoveryCallDetailPage() {
               <p className="text-xs text-text-tertiary">Age</p>
             </div>
           </div>
+          {call.child_age >= 4 && call.child_age <= 12 && (
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-center">
+              <AgeBandBadge age={call.child_age} size="md" showEmoji />
+            </div>
+          )}
         </div>
 
         {/* Parent Goals */}

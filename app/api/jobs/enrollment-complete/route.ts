@@ -140,10 +140,10 @@ export async function POST(request: NextRequest) {
       coachName: data.coachName,
     }));
 
-    // 4. Get enrollment details
+    // 4. Get enrollment details (include V2 fields)
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date')
+      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date, session_duration_minutes, total_sessions, age_band')
       .eq('id', data.enrollmentId)
       .single();
 
@@ -296,7 +296,7 @@ interface CalendarSession {
 async function scheduleCalendarForExistingSessions(
   enrollmentId: string,
   data: z.infer<typeof enrollmentJobSchema>,
-  enrollment: { program_start?: string; preference_start_date?: string },
+  enrollment: { program_start?: string; preference_start_date?: string; session_duration_minutes?: number; total_sessions?: number; age_band?: string },
   requestId: string,
   supabase: ReturnType<typeof getSupabase>
 ): Promise<{ sessionsUpdated: number; sessions: CalendarSession[]; errors: any[] }> {
@@ -414,7 +414,9 @@ async function scheduleCalendarForExistingSessions(
       );
 
       const isCoaching = session.session_type === 'coaching';
-      const duration = isCoaching ? 45 : 30;
+      // V2: Use session's own duration, then enrollment config, then legacy fallback
+      const duration = session.duration_minutes
+        || (isCoaching ? (enrollment.session_duration_minutes || 45) : 30);
 
       const endDate = new Date(sessionDate);
       endDate.setMinutes(endDate.getMinutes() + duration);
@@ -672,7 +674,7 @@ function generateEmailHtml(
         <tr><td>Child:</td><td><strong>${data.childName}</strong></td></tr>
         <tr><td>Coach:</td><td><strong>${data.coachName}</strong></td></tr>
         <tr><td>Sessions:</td><td><strong>${sessionCount} sessions</strong></td></tr>
-        <tr><td>Duration:</td><td><strong>3-month program</strong></td></tr>
+        <tr><td>Program:</td><td><strong>Season 1</strong></td></tr>
       </table>
     </div>
 

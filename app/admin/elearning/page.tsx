@@ -89,7 +89,7 @@ export default function AdminElearningPage() {
     try {
       // Fetch levels with modules and videos
       const { data: levelsData } = await supabase
-        .from('learning_levels')
+        .from('el_stages')
         .select('*')
         .order('display_order');
 
@@ -99,15 +99,15 @@ export default function AdminElearningPage() {
         return;
       }
 
-      // Fetch modules for each level
+      // Fetch modules for each level (stage)
       const { data: modulesData } = await supabase
-        .from('learning_modules')
+        .from('el_modules')
         .select('*')
         .order('display_order');
 
       // Fetch videos for each module
       const { data: videosData } = await supabase
-        .from('learning_videos')
+        .from('el_videos')
         .select('*')
         .order('display_order');
 
@@ -125,15 +125,18 @@ export default function AdminElearningPage() {
       // Organize data hierarchically
       const organizedLevels = levelsData.map(level => ({
         ...level,
+        age_range: level.age_range || '',
         modules: (modulesData || [])
-          .filter(m => m.level_id === level.id)
-          .map(module => ({
+          .filter((m: any) => m.stage_id === level.id)
+          .map((module: any) => ({
             ...module,
-            video_count: (videosData || []).filter(v => v.module_id === module.id).length,
+            level_id: module.stage_id,
+            video_count: (videosData || []).filter((v: any) => v.skill_id === module.id).length,
             videos: (videosData || [])
-              .filter(v => v.module_id === module.id)
-              .map(v => ({
+              .filter((v: any) => v.skill_id === module.id)
+              .map((v: any) => ({
                 ...v,
+                module_id: v.skill_id,
                 quiz_count: quizCountMap[v.id] || 0
               }))
           }))
@@ -610,9 +613,9 @@ function VideoModal({
     };
 
     if (video?.id) {
-      await supabase.from('learning_videos').update(data).eq('id', video.id);
+      await supabase.from('el_videos').update(data).eq('id', video.id);
     } else {
-      await supabase.from('learning_videos').insert(data);
+      await supabase.from('el_videos').insert(data);
     }
 
     setSaving(false);
@@ -807,9 +810,9 @@ function ModuleModal({
     };
 
     if (module?.id) {
-      await supabase.from('learning_modules').update(data).eq('id', module.id);
+      await supabase.from('el_modules').update(data).eq('id', module.id);
     } else {
-      await supabase.from('learning_modules').insert(data);
+      await supabase.from('el_modules').insert(data);
     }
 
     setSaving(false);

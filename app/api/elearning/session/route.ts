@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       // Gamification - may use child_gamification table
       safeQuery(
         supabase
-          .from('child_gamification')
+          .from('el_child_gamification')
           .select('*')
           .eq('child_id', childId)
           .single()
@@ -100,13 +100,10 @@ export async function GET(request: NextRequest) {
       // E-learning units - new table from migration
       safeQuery(
         supabase
-          .from('elearning_units')
+          .from('el_learning_units')
           .select(`
             *,
-            sub_skill:elearning_sub_skills(
-              id, name, slug, keywords,
-              skill:elearning_skills(id, name, slug, category)
-            )
+            skill:el_skills(id, name, slug, category)
           `)
           .eq('status', 'published')
           .order('display_order')
@@ -115,7 +112,7 @@ export async function GET(request: NextRequest) {
       // Child's unit progress - new table from migration
       safeQuery(
         supabase
-          .from('child_unit_progress')
+          .from('el_child_unit_progress')
           .select('*')
           .eq('child_id', childId)
       ),
@@ -217,9 +214,9 @@ export async function GET(request: NextRequest) {
       _debug: {
         unitsFound: units.length,
         tablesChecked: {
-          child_gamification: !!gamificationResult.data,
-          elearning_units: !!unitsResult.data,
-          child_unit_progress: !!progressResult.data,
+          el_child_gamification: !!gamificationResult.data,
+          el_learning_units: !!unitsResult.data,
+          el_child_unit_progress: !!progressResult.data,
           child_daily_goals: !!dailyGoalResult.data,
         }
       }

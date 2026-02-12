@@ -95,7 +95,7 @@ export async function awardXP(
 
   // Get current state
   const { data: currentState } = await supabase
-    .from('child_gamification')
+    .from('el_child_gamification')
     .select('*')
     .eq('child_id', childId)
     .single();
@@ -133,7 +133,7 @@ export async function awardXP(
     console.error('Error awarding XP:', error);
     // Fallback: direct update
     await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .upsert({
         child_id: childId,
         total_xp: previousXP + totalXPEarned,
@@ -162,7 +162,7 @@ export async function awardXP(
   const badgeXPBonus = newBadges.reduce((sum, b) => sum + b.xp_bonus, 0);
   if (badgeXPBonus > 0) {
     await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .update({ total_xp: newTotalXP + badgeXPBonus })
       .eq('child_id', childId);
   }
@@ -209,7 +209,7 @@ export async function updateStreak(childId: string): Promise<{
     const today = new Date().toISOString().split('T')[0];
     
     const { data: current } = await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .select('last_activity_date, current_streak_days')
       .eq('child_id', childId)
       .single();
@@ -240,7 +240,7 @@ export async function updateStreak(childId: string): Promise<{
     }
 
     await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .upsert({
         child_id: childId,
         current_streak_days: newStreak,
@@ -270,7 +270,7 @@ export async function checkAndAwardBadges(
 
   // Get child's current stats
   const { data: stats } = await supabase
-    .from('child_gamification')
+    .from('el_child_gamification')
     .select('*')
     .eq('child_id', childId)
     .single();
@@ -279,7 +279,7 @@ export async function checkAndAwardBadges(
 
   // Get badges child already has
   const { data: existingBadges } = await supabase
-    .from('child_badges')
+    .from('el_child_badges')
     .select('badge_id')
     .eq('child_id', childId);
 
@@ -287,7 +287,7 @@ export async function checkAndAwardBadges(
 
   // Get all active badge definitions
   const { data: allBadges } = await supabase
-    .from('badge_definitions')
+    .from('el_badges')
     .select('*')
     .eq('is_active', true)
     .order('display_order');
@@ -329,7 +329,7 @@ export async function checkAndAwardBadges(
 
     if (earned) {
       // Award badge
-      const { error } = await supabase.from('child_badges').insert({
+      const { error } = await supabase.from('el_child_badges').insert({
         child_id: childId,
         badge_id: badge.id,
       });
@@ -356,7 +356,7 @@ export async function checkAndAwardBadges(
 export async function getGamificationState(childId: string): Promise<GamificationState | null> {
   // Get or create gamification record
   let { data: gamification } = await supabase
-    .from('child_gamification')
+    .from('el_child_gamification')
     .select('*')
     .eq('child_id', childId)
     .single();
@@ -364,7 +364,7 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
   if (!gamification) {
     // Create initial record
     const { data: newRecord } = await supabase
-      .from('child_gamification')
+      .from('el_child_gamification')
       .insert({ child_id: childId })
       .select()
       .single();
@@ -389,10 +389,10 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
 
   // Get badges
   const { data: badges } = await supabase
-    .from('child_badges')
-    .select('*, badge:badge_definitions(*)')
+    .from('el_child_badges')
+    .select('*, badge:el_badges(*)')
     .eq('child_id', childId)
-    .order('earned_at', { ascending: false });
+    .order('created_at', { ascending: false });
 
   // Calculate progress to next level
   const currentLevelXP = currentLevelInfo?.xp_required || 0;
@@ -404,8 +404,8 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
   // Recent badges (last 7 days)
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentBadges = (badges || []).filter(b => 
-    new Date(b.earned_at) >= sevenDaysAgo
+  const recentBadges = (badges || []).filter(b =>
+    new Date(b.created_at) >= sevenDaysAgo
   );
 
   return {
@@ -424,7 +424,7 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
       icon: b.badge?.icon || '🏆',
       category: b.badge?.category || 'milestone',
       xp_bonus: b.badge?.xp_bonus || 0,
-      earnedAt: b.earned_at,
+      earnedAt: b.created_at,
     })),
     recentBadges: recentBadges.map(b => ({
       id: b.badge_id,
@@ -433,7 +433,7 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
       icon: b.badge?.icon || '🏆',
       category: b.badge?.category || 'milestone',
       xp_bonus: b.badge?.xp_bonus || 0,
-      earnedAt: b.earned_at,
+      earnedAt: b.created_at,
     })),
     stats: {
       videosCompleted: gamification.total_videos_completed,
@@ -465,36 +465,41 @@ export async function getLeaderboard(
     // Ignore refresh errors
   }
 
-  // Get top entries
-  let query = supabase
-    .from('elearning_leaderboard')
-    .select('*')
-    .order('level_rank', { ascending: true })
-    .limit(limit);
+  // Get top entries (leaderboard may not exist after migration)
+  let topEntries: any[] = [];
+  let childEntry: any = null;
+  let totalCount = 0;
 
-  if (levelId) {
-    query = query.eq('current_level_id', levelId);
+  try {
+    let query = supabase
+      .from('el_child_gamification')
+      .select('*')
+      .order('total_xp', { ascending: false })
+      .limit(limit);
+
+    const { data } = await query;
+    topEntries = data || [];
+
+    const { data: ce } = await supabase
+      .from('el_child_gamification')
+      .select('*')
+      .eq('child_id', childId)
+      .single();
+    childEntry = ce;
+
+    const { count } = await supabase
+      .from('el_child_gamification')
+      .select('child_id', { count: 'exact' });
+    totalCount = count || 0;
+  } catch (e) {
+    // Leaderboard query failed - return defaults
   }
-
-  const { data: topEntries } = await query;
-
-  // Get child's position
-  const { data: childEntry } = await supabase
-    .from('elearning_leaderboard')
-    .select('*')
-    .eq('child_id', childId)
-    .single();
-
-  // Get total count
-  const { count } = await supabase
-    .from('elearning_leaderboard')
-    .select('child_id', { count: 'exact' });
 
   return {
     topEntries: topEntries || [],
     childRank: childEntry?.level_rank || 0,
     childPercentile: Math.round((1 - (childEntry?.percentile || 1)) * 100),
-    totalInLevel: count || 0,
+    totalInLevel: totalCount,
   };
 }
 
@@ -507,19 +512,19 @@ export async function getAllBadges(childId: string): Promise<{
 }> {
   // Get all badges
   const { data: allBadges } = await supabase
-    .from('badge_definitions')
+    .from('el_badges')
     .select('*')
     .eq('is_active', true)
     .order('display_order');
 
   // Get child's earned badges
   const { data: earnedBadges } = await supabase
-    .from('child_badges')
-    .select('badge_id, earned_at')
+    .from('el_child_badges')
+    .select('badge_id, created_at')
     .eq('child_id', childId);
 
   const earnedIds = new Set(earnedBadges?.map(b => b.badge_id) || []);
-  const earnedMap = new Map(earnedBadges?.map(b => [b.badge_id, b.earned_at]) || []);
+  const earnedMap = new Map(earnedBadges?.map(b => [b.badge_id, b.created_at]) || []);
 
   const earned: Badge[] = [];
   const unearned: Badge[] = [];
@@ -554,10 +559,11 @@ export async function recordVideoCompletion(
 ): Promise<XPAwardResult> {
   // Update video progress
   await supabase
-    .from('child_video_progress')
+    .from('el_child_video_progress')
     .upsert({
       child_id: childId,
       video_id: videoId,
+      completed: true,
       is_completed: true,
       completion_percentage: 100,
       completed_at: new Date().toISOString(),
@@ -585,7 +591,7 @@ export async function recordQuizCompletion(
 
   // Update video progress with quiz info
   await supabase
-    .from('child_video_progress')
+    .from('el_child_video_progress')
     .update({
       quiz_attempted: true,
       quiz_score: scorePercent,
@@ -614,16 +620,16 @@ export async function recordGameCompletion(
 
   // Get game info
   const { data: game } = await supabase
-    .from('learning_games')
-    .select('game_type')
+    .from('el_game_content')
+    .select('game_engine_id, el_game_engines(slug)')
     .eq('id', gameId)
     .single();
 
   // Save game result
-  await supabase.from('child_game_results').insert({
+  await supabase.from('el_game_sessions').insert({
     child_id: childId,
-    game_id: gameId,
-    game_type: game?.game_type || 'unknown',
+    game_content_id: gameId,
+    game_engine_slug: (game as any)?.el_game_engines?.[0]?.slug || (game as any)?.el_game_engines?.slug || 'unknown',
     score,
     max_score: maxScore,
     score_percent: scorePercent,

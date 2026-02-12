@@ -9,3 +9,4 @@ export { StartDateSelector } from './StartDateSelector';
 export { CouponInput } from './CouponInput';
 export { EnrollForm } from './EnrollForm';
 export { PaymentSection } from './PaymentSection';
+export { AgeBandInfoCard } from './AgeBandInfoCard';

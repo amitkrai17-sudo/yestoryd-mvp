@@ -34,6 +34,8 @@ import {
   getSessionCache,
   formatCachedSummary,
   formatEventsForContext,
+  searchContentUnits,
+  formatContentUnitsForContext,
 } from '@/lib/rai/hybrid-search';
 import {
   getSystemPrompt,
@@ -517,6 +519,22 @@ async function handleLearning(
 
   const eventsContext = formatEventsForContext(searchResult.events);
 
+  // Content unit search — find relevant activities from content library
+  let contentContext = '';
+  try {
+    const contentUnits = await searchContentUnits({
+      query: message,
+      childAge: child?.age || null,
+      limit: 3,
+      threshold: 0.3,
+    });
+    if (contentUnits.length > 0) {
+      contentContext = '\n\n' + formatContentUnitsForContext(contentUnits);
+    }
+  } catch (err) {
+    console.warn('Content unit search failed (non-blocking):', err);
+  }
+
   const systemPrompt = getSystemPrompt(
     userRole,
     childName,
@@ -532,9 +550,13 @@ async function handleLearning(
     `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
   ).join('\n') || '';
 
+  const fullSystemPrompt = contentContext
+    ? `${systemPrompt}${contentContext}`
+    : systemPrompt;
+
   const prompt = conversationContext
-    ? `${systemPrompt}\n\nConversation so far:\n${conversationContext}\n\nUser: ${message}`
-    : `${systemPrompt}\n\nUser: ${message}`;
+    ? `${fullSystemPrompt}\n\nConversation so far:\n${conversationContext}\n\nUser: ${message}`
+    : `${fullSystemPrompt}\n\nUser: ${message}`;
 
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],

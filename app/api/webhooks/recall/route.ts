@@ -583,6 +583,9 @@ async function handleBotDone(
   // ============================================================
   // 8. QUEUE HEAVY PROCESSING TO BACKGROUND JOB
   // This is the key optimization - return fast, process async
+  // DONE: Merge logic implemented in process-session/route.ts —
+  //       checks for existing session_companion_log and merges
+  //       transcript analysis into it (or creates new event).
   // ============================================================
   const queueResult = await queueSessionProcessing({
     botId: bot_id,

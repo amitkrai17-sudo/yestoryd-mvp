@@ -40,7 +40,7 @@ export async function getMiniChallengeVideo(
   const supabase = supabaseAdmin;
 
   const { data, error } = await supabase
-    .from('elearning_units')
+    .from('el_learning_units')
     .select('id, name, slug, quest_title, description, goal_area, video_url, estimated_minutes, min_age, max_age, difficulty, icon_emoji')
     .eq('is_mini_challenge', true)
     .eq('goal_area', goalArea)
@@ -70,7 +70,7 @@ export async function getAllMiniChallengeVideos(
   const supabase = supabaseAdmin;
 
   const { data, error } = await supabase
-    .from('elearning_units')
+    .from('el_learning_units')
     .select('id, name, slug, quest_title, description, goal_area, video_url, estimated_minutes, min_age, max_age, difficulty, icon_emoji')
     .eq('is_mini_challenge', true)
     .lte('min_age', childAge)

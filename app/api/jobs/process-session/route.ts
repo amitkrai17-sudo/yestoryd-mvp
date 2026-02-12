@@ -379,7 +379,9 @@ async function saveSessionData(
     }));
   }
 
-  // 3. Create learning event with embedding
+  // 3. Create or merge learning event with embedding
+  // Data Stream Merge: If companion panel already logged (event_type='session_companion_log'),
+  // merge transcript analysis into that existing event. Otherwise create new 'session' event.
   if (childId && coachId) {
     let embedding: number[] | null = null;
 
@@ -414,38 +416,101 @@ async function saveSessionData(
       }));
     }
 
-    await supabase.from('learning_events').insert({
-      child_id: childId,
-      coach_id: coachId,
+    const transcriptAnalysisData = {
       session_id: sessionId,
-      event_type: 'session',
-      event_subtype: analysis.session_type,
-      event_data: {
-        focus_area: analysis.focus_area,
-        skills_worked_on: analysis.skills_worked_on,
-        progress_rating: analysis.progress_rating,
-        engagement_level: analysis.engagement_level,
-        confidence_level: analysis.confidence_level,
-        key_observations: analysis.key_observations,
-        duration_seconds: durationSeconds,
-        coach_talk_ratio: analysis.coach_talk_ratio,
-        child_reading_samples: analysis.child_reading_samples,
-        breakthrough_moment: analysis.breakthrough_moment,
-        concerns_noted: analysis.concerns_noted,
-        homework_assigned: analysis.homework_assigned,
-        homework_description: analysis.homework_description,
-        next_session_focus: analysis.next_session_focus,
-        attendance,
-      },
-      ai_summary: analysis.summary,
-      content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-      embedding,
-    });
+      focus_area: analysis.focus_area,
+      skills_worked_on: analysis.skills_worked_on,
+      progress_rating: analysis.progress_rating,
+      engagement_level: analysis.engagement_level,
+      confidence_level: analysis.confidence_level,
+      key_observations: analysis.key_observations,
+      duration_seconds: durationSeconds,
+      coach_talk_ratio: analysis.coach_talk_ratio,
+      child_reading_samples: analysis.child_reading_samples,
+      breakthrough_moment: analysis.breakthrough_moment,
+      concerns_noted: analysis.concerns_noted,
+      homework_assigned: analysis.homework_assigned,
+      homework_description: analysis.homework_description,
+      next_session_focus: analysis.next_session_focus,
+      attendance,
+    };
 
-    console.log(JSON.stringify({
-      requestId,
-      event: 'learning_event_created',
-    }));
+    try {
+      // Check if companion panel already created a 'session_companion_log' for this session
+      const { data: existingCompanionEvent } = sessionId ? await supabase
+        .from('learning_events')
+        .select('id, event_data')
+        .eq('child_id', childId)
+        .eq('event_type', 'session_companion_log')
+        .filter('event_data->>session_id', 'eq', sessionId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle() : { data: null };
+
+      if (existingCompanionEvent) {
+        // Scenario A: Companion Panel data arrived first — merge transcript into existing event
+        const mergedData = {
+          ...(existingCompanionEvent.event_data as Record<string, any>),
+          ...transcriptAnalysisData,
+          transcript_merged_at: new Date().toISOString(),
+          recording_url: payload.recordingUrl || null,
+        };
+
+        await supabase
+          .from('learning_events')
+          .update({
+            event_type: 'session', // Upgrade from companion_log to unified session event
+            event_data: mergedData,
+            ai_summary: analysis.summary,
+            content_for_embedding: `${childName} session: ${analysis.focus_area}`,
+            embedding,
+          })
+          .eq('id', existingCompanionEvent.id);
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'transcript_merged_into_companion',
+          existingEventId: existingCompanionEvent.id,
+        }));
+      } else {
+        // No companion event — create 'session' event as usual
+        await supabase.from('learning_events').insert({
+          child_id: childId,
+          coach_id: coachId,
+          session_id: sessionId,
+          event_type: 'session',
+          event_subtype: analysis.session_type,
+          event_data: transcriptAnalysisData,
+          ai_summary: analysis.summary,
+          content_for_embedding: `${childName} session: ${analysis.focus_area}`,
+          embedding,
+        });
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'learning_event_created',
+        }));
+      }
+    } catch (mergeError) {
+      // Fallback: create new event if merge check fails
+      console.error(JSON.stringify({
+        requestId,
+        event: 'merge_check_error',
+        error: (mergeError as Error).message,
+      }));
+
+      await supabase.from('learning_events').insert({
+        child_id: childId,
+        coach_id: coachId,
+        session_id: sessionId,
+        event_type: 'session',
+        event_subtype: analysis.session_type,
+        event_data: transcriptAnalysisData,
+        ai_summary: analysis.summary,
+        content_for_embedding: `${childName} session: ${analysis.focus_area}`,
+        embedding,
+      });
+    }
   }
 
   // 4. Increment sessions completed + reset consecutive no-shows

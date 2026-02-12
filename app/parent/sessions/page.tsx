@@ -31,6 +31,7 @@ interface Session {
   child_id: string;
   session_type: string;
   session_number: number;
+  total_sessions?: number;
   scheduled_date: string;
   scheduled_time: string;
   google_meet_link: string;
@@ -38,6 +39,9 @@ interface Session {
   duration_minutes: number;
   title: string;
   focus_area?: string;
+  is_diagnostic?: boolean;
+  session_template_id?: string;
+  template_title?: string;
 }
 
 export default function ParentSessionsPage() {
@@ -103,14 +107,32 @@ export default function ParentSessionsPage() {
       if (enrolledChild) {
         setChildName(enrolledChild.name || 'Your Child');
 
+        // Get enrollment total_sessions
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('total_sessions')
+          .eq('child_id', enrolledChild.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const total = enrollment?.total_sessions || 9;
+
         const { data: sessionsData } = await supabase
           .from('scheduled_sessions')
-          .select('*')
+          .select('*, session_templates:session_template_id(title)')
           .eq('child_id', enrolledChild.id)
           .order('scheduled_date', { ascending: true })
           .order('scheduled_time', { ascending: true });
 
-        setSessions(sessionsData || []);
+        const enriched = (sessionsData || []).map((s: any) => ({
+          ...s,
+          total_sessions: total,
+          template_title: s.session_templates?.title || null,
+        }));
+
+        setSessions(enriched);
       }
 
       setLoading(false);
@@ -173,19 +195,17 @@ export default function ParentSessionsPage() {
   }
 
   function getSessionTitle(session: Session): string {
+    if (session.template_title) return session.template_title;
     if (session.title) return session.title;
-
-    if (session.session_type === 'remedial') {
-      return 'Skill Booster Session';
-    }
-    if (session.session_type === 'coaching') {
-      return 'Coaching Session';
-    }
-    if (session.session_type === 'parent_checkin') {
-      return 'Parent Check-in';
-    }
+    if (session.is_diagnostic) return 'Diagnostic Session';
+    if (session.session_type === 'remedial') return 'Skill Booster Session';
+    if (session.session_type === 'coaching') return 'Coaching Session';
+    if (session.session_type === 'parent_checkin') return 'Parent Check-in';
     return 'Session';
   }
+
+  const completedCount = sessions.filter(s => s.status === 'completed').length;
+  const totalSessions = sessions[0]?.total_sessions || sessions.length;
 
   function isUpcoming(session: Session): boolean {
     const sessionDate = new Date(session.scheduled_date);
@@ -270,6 +290,22 @@ export default function ParentSessionsPage() {
           </div>
         </div>
 
+        {/* Progress bar */}
+        {sessions.length > 0 && (
+          <div className="bg-surface-1 rounded-xl border border-border p-4 mb-4">
+            <div className="flex justify-between text-sm text-text-tertiary mb-2">
+              <span>{completedCount} of {totalSessions} sessions completed</span>
+              <span>{totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0}%</span>
+            </div>
+            <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
+                style={{ width: `${totalSessions > 0 ? (completedCount / totalSessions) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
           {filteredSessions().map((session, index) => {
             const upcoming = isUpcoming(session);
@@ -339,6 +375,9 @@ export default function ParentSessionsPage() {
                       </span>
                     </div>
                     <p className="text-sm text-text-tertiary mt-0.5">
+                      {!isSkillBooster && session.session_number && session.total_sessions
+                        ? `Session ${session.session_number} of ${session.total_sessions} · `
+                        : ''}
                       {formatDate(session.scheduled_date)} · {formatTime(session.scheduled_time)} · {session.duration_minutes || 45} min
                       {isSkillBooster && session.focus_area && ` · ${session.focus_area.replace(/_/g, ' ')}`}
                     </p>
@@ -404,7 +443,7 @@ export default function ParentSessionsPage() {
           <div className="grid sm:grid-cols-3 gap-3 text-sm">
             <div className="flex items-center gap-2 text-text-secondary">
               <BookOpen className="w-4 h-4 text-[#FF0099]" />
-              <span><strong>Coaching</strong> - 45 min 1:1</span>
+              <span><strong>Coaching</strong> - 1:1 session</span>
             </div>
             <div className="flex items-center gap-2 text-text-secondary">
               <Users className="w-4 h-4 text-[#FF0099]" />

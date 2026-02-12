@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Confetti from '@/components/Confetti';
 import { GoalsCapture } from '@/components/assessment/GoalsCapture';
+import { getAgeBandFromAge } from '@/components/AgeBandBadge';
 
 // Types
 interface SkillScore { score: number; notes: string; }
@@ -189,6 +190,7 @@ export default function ResultsPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [ageBandConfig, setAgeBandConfig] = useState<{ label: string; total_sessions: number; sessions_per_week: number; session_duration_minutes: number; frequency_label: string } | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -226,6 +228,17 @@ export default function ResultsPage() {
   }, [data, childId, emailSent, sendingEmail]);
 
   useEffect(() => { if (data) sendCertificateEmail(); }, [data, sendCertificateEmail]);
+
+  // Fetch age band config when data loads
+  useEffect(() => {
+    if (!data?.childAge) return;
+    const age = parseInt(data.childAge);
+    if (isNaN(age) || age < 4 || age > 12) return;
+    fetch(`/api/age-band-config?age=${age}`)
+      .then(res => res.json())
+      .then(d => { if (d.success && d.config) setAgeBandConfig(d.config); })
+      .catch(() => {});
+  }, [data?.childAge]);
 
   const getWhatsAppMessage = useCallback(() => {
     if (!data) return '';
@@ -444,7 +457,12 @@ _Assessed by rAI | yestoryd.com_`);
               </button>
             </Link>
 
-            <p className="text-text-tertiary text-xs">100% Refund Guarantee • Start within 3-5 days</p>
+            {ageBandConfig && (
+              <p className="text-[#00ABFF] text-xs font-medium">
+                {ageBandConfig.label} Program · {ageBandConfig.total_sessions} sessions · {ageBandConfig.frequency_label}/week · {ageBandConfig.session_duration_minutes} min
+              </p>
+            )}
+            <p className="text-text-tertiary text-xs mt-1">100% Refund Guarantee · Start within 3-5 days</p>
 
             <Link href={bookCallUrl}>
               <button className="w-full mt-4 py-3 bg-surface-2 text-text-secondary font-semibold rounded-full border border-border hover:bg-surface-1 whitespace-nowrap text-sm flex items-center justify-center gap-2 min-h-[44px]">

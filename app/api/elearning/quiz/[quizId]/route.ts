@@ -27,26 +27,7 @@ export async function GET(
       );
     }
     
-    // Try elearning_quizzes first (new table)
-    const { data: quiz, error: quizError } = await supabase
-      .from('elearning_quizzes')
-      .select('*')
-      .eq('id', quizId)
-      .single();
-    
-    if (quiz && !quizError) {
-      return NextResponse.json({
-        success: true,
-        quiz: {
-          id: quiz.id,
-          name: quiz.name,
-          passing_score: quiz.passing_score,
-        },
-        questions: quiz.questions || [],
-      });
-    }
-    
-    // Fallback: try video_quizzes table (old table)
+    // Fetch quiz questions from video_quizzes table
     const { data: videoQuizzes, error: vqError } = await supabase
       .from('video_quizzes')
       .select('*')

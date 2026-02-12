@@ -108,6 +108,63 @@ interface ProductInfo {
   sessionsTotal: number;
 }
 
+interface AgeBandConfig {
+  age_band: 'foundation' | 'building' | 'mastery';
+  min_age: number;
+  max_age: number;
+  total_sessions: number;
+  session_duration_minutes: number;
+  sessions_per_week: number;
+  frequency_label: string;
+}
+
+/**
+ * Fetch age_band_config for a given child age
+ * Uses the SQL function get_age_band_config(age) or falls back to direct query
+ */
+async function getAgeBandConfig(
+  childAge: number,
+  requestId: string
+): Promise<AgeBandConfig | null> {
+  try {
+    const { data, error } = await supabase
+      .from('age_band_config')
+      .select('*')
+      .lte('min_age', childAge)
+      .gte('max_age', childAge)
+      .single();
+
+    if (error || !data) {
+      console.warn(JSON.stringify({
+        requestId,
+        event: 'age_band_config_not_found',
+        childAge,
+        error: error?.message,
+      }));
+      return null;
+    }
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'age_band_config_loaded',
+      childAge,
+      ageBand: data.age_band,
+      totalSessions: data.total_sessions,
+      durationMinutes: data.session_duration_minutes,
+      sessionsPerWeek: data.sessions_per_week,
+    }));
+
+    return data as AgeBandConfig;
+  } catch (err: any) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'age_band_config_error',
+      error: err.message,
+    }));
+    return null;
+  }
+}
+
 interface StarterEnrollmentInfo {
   id: string;
   status: string;
@@ -1029,8 +1086,14 @@ export async function POST(request: NextRequest) {
       (productInfo.productCode === 'starter' ? 1 : 3);
     programEnd.setMonth(programEnd.getMonth() + durationMonths);
 
-    // Get sessions count from product
-    const sessionsCount = productDetails?.sessions_included || productInfo.sessionsTotal || 9;
+    // 10.V2: Fetch age_band_config for V2 age-differentiated sessions
+    const ageBandConfig = await getAgeBandConfig(body.childAge, requestId);
+
+    // Get sessions count: prefer age_band_config, fallback to product details, then legacy default
+    const sessionsCount = ageBandConfig?.total_sessions
+      || productDetails?.sessions_included
+      || productInfo.sessionsTotal
+      || 9;
 
     // 10a. Handle continuation-specific logic
     let starterEnrollmentId: string | null = null;
@@ -1085,6 +1148,12 @@ export async function POST(request: NextRequest) {
       preference_days: body.preferenceDays || null,
       preference_start_type: body.requestedStartDate ? 'later' : 'immediate',
       preference_start_date: body.requestedStartDate || null,
+      // V2: Age-band differentiated sessions
+      age_band: ageBandConfig?.age_band || null,
+      season_number: 1,
+      total_sessions: sessionsCount,
+      session_duration_minutes: ageBandConfig?.session_duration_minutes || 45,
+      sessions_per_week: ageBandConfig?.sessions_per_week || null,
     };
 
     // Add continuation-specific fields
@@ -1115,6 +1184,10 @@ export async function POST(request: NextRequest) {
       status: enrollment.status,
       enrollmentType: productInfo.productCode,
       sessionsCount,
+      ageBand: ageBandConfig?.age_band || null,
+      sessionDurationMinutes: ageBandConfig?.session_duration_minutes || 45,
+      sessionsPerWeek: ageBandConfig?.sessions_per_week || null,
+      seasonNumber: 1,
       starterEnrollmentId: starterEnrollmentId || undefined,
       continuationDeadline: continuationDeadline || undefined,
     }));

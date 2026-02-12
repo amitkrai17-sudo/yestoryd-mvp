@@ -26,6 +26,7 @@ import { GoalsCapture } from '@/components/assessment/GoalsCapture';
 import { LEARNING_GOALS } from '@/lib/constants/goals';
 import { GoalIcon } from '@/components/shared/GoalIcon';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
+import { AgeBandBadge, getAgeBandFromAge } from '@/components/AgeBandBadge';
 
 // ============================================================
 // TYPES
@@ -99,6 +100,18 @@ function LetsTalkContent() {
     time: string;
     coachName?: string;
   } | null>(null);
+
+  // Age band config for info card
+  const [ageBandConfig, setAgeBandConfig] = useState<{ label: string; total_sessions: number; sessions_per_week: number; session_duration_minutes: number; frequency_label: string } | null>(null);
+
+  useEffect(() => {
+    const age = formData.childAge ? parseInt(formData.childAge) : 0;
+    if (age < 4 || age > 12) { setAgeBandConfig(null); return; }
+    fetch(`/api/age-band-config?age=${age}`)
+      .then(res => res.json())
+      .then(d => { if (d.success && d.config) setAgeBandConfig(d.config); else setAgeBandConfig(null); })
+      .catch(() => setAgeBandConfig(null));
+  }, [formData.childAge]);
 
   const source = searchParams.get('source') || 'direct';
   const assessmentScore = searchParams.get('assessmentScore') ? parseInt(searchParams.get('assessmentScore')!) : null;
@@ -502,6 +515,23 @@ function LetsTalkContent() {
                         </select>
                       </div>
                     </div>
+
+                    {/* Age Band Info Card - light theme */}
+                    {ageBandConfig && formData.childAge && (
+                      <div className="bg-gradient-to-r from-[#FF0099]/5 to-[#7b008b]/5 border border-pink-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AgeBandBadge ageBand={getAgeBandFromAge(parseInt(formData.childAge))} />
+                          <span className="text-gray-700 text-sm font-medium">Program for age {formData.childAge}</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-4 text-xs text-gray-600">
+                          <span className="font-semibold text-gray-900">{ageBandConfig.total_sessions} sessions</span>
+                          <span>·</span>
+                          <span className="font-semibold text-gray-900">{ageBandConfig.frequency_label}x/week</span>
+                          <span>·</span>
+                          <span className="font-semibold text-gray-900">{ageBandConfig.session_duration_minutes} min</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Error */}
                     {error && (

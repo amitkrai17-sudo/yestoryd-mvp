@@ -5,6 +5,7 @@ import {
   BookOpen,
   Users,
   DollarSign,
+  CheckSquare,
 } from 'lucide-react';
 import { NavItem } from '@/components/navigation/BottomNav';
 
@@ -13,8 +14,8 @@ import { NavItem } from '@/components/navigation/BottomNav';
 export const parentNavItems: NavItem[] = [
   { label: 'Home', href: '/parent/dashboard', icon: Home },
   { label: 'Sessions', href: '/parent/sessions', icon: Calendar },
+  { label: 'Tasks', href: '/parent/tasks', icon: CheckSquare },
   { label: 'Progress', href: '/parent/progress', icon: TrendingUp },
-  { label: 'Learn', href: '/parent/elearning', icon: BookOpen },
 ];
 
 // Coach Portal Navigation - Dark Theme

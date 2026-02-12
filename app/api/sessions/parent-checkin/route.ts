@@ -119,27 +119,10 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
   message?: string;
 }> {
   try {
-    // Count completed sessions for this child
-    const { count: completedSessions } = await supabase
-      .from('scheduled_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('child_id', childId)
-      .eq('status', 'completed');
-
-    const totalRequired = 9;
-
-    // If not yet 9 sessions, don't trigger
-    if ((completedSessions || 0) < totalRequired) {
-      return { 
-        triggered: false, 
-        message: `${completedSessions}/${totalRequired} sessions completed` 
-      };
-    }
-
-    // Get enrollment for this child
+    // Get enrollment for this child (includes V2 total_sessions)
     const { data: enrollment } = await supabase
       .from('enrollments')
-      .select('id, status, parent_id, child_id')
+      .select('id, status, parent_id, child_id, total_sessions')
       .eq('child_id', childId)
       .in('status', ['active', 'pending_start'])
       .order('created_at', { ascending: false })
@@ -148,6 +131,24 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
 
     if (!enrollment) {
       return { triggered: false, message: 'No active enrollment found' };
+    }
+
+    // V2: Use enrollment.total_sessions, fallback to legacy 9
+    const totalRequired = enrollment.total_sessions || 9;
+
+    // Count completed sessions for this child
+    const { count: completedSessions } = await supabase
+      .from('scheduled_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('child_id', childId)
+      .eq('status', 'completed');
+
+    // If not yet all sessions completed, don't trigger
+    if ((completedSessions || 0) < totalRequired) {
+      return {
+        triggered: false,
+        message: `${completedSessions}/${totalRequired} sessions completed`
+      };
     }
 
     // Check if final assessment already sent
