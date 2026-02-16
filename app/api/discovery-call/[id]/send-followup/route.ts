@@ -14,7 +14,6 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import crypto from 'crypto';
@@ -244,8 +243,9 @@ export async function POST(
     // 12. Log the follow-up
     await supabase.from('activity_log').insert({
       user_email: userEmail,
+      user_type: 'admin',
       action: 'discovery_followup_sent',
-      details: {
+      metadata: {
         request_id: requestId,
         discovery_call_id: id,
         child_name: call.child_name,

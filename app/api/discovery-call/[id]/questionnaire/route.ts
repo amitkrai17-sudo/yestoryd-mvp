@@ -13,19 +13,16 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- HELPER: UUID validation ---
 function isValidUUID(str: string): boolean {

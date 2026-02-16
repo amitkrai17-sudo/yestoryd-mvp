@@ -14,7 +14,6 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -338,9 +337,10 @@ export async function POST(request: NextRequest) {
     // 9. Log the assignment for audit trail
     try {
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'discovery_call_coach_assigned',
-        details: {
+        metadata: {
           request_id: requestId,
           discovery_call_id,
           coach_id,

@@ -1,13 +1,10 @@
 // app/api/elearning/avatar/route.ts
 // API for managing child's avatar
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 

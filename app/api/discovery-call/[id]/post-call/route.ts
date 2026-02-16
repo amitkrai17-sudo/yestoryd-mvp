@@ -192,8 +192,9 @@ export async function POST(
     if (updated) {
       await supabase.from('activity_log').insert({
         user_email: userEmail,
+      user_type: 'admin',
         action: 'discovery_post_call_saved',
-        details: {
+        metadata: {
           request_id: requestId,
           discovery_call_id: id,
           child_name: existingCall.child_name,
