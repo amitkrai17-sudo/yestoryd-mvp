@@ -20,20 +20,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
-import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { google } from 'googleapis';
 import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 const getReceiver = () => new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
@@ -221,8 +218,9 @@ export async function POST(request: NextRequest) {
     // 9. AUDIT LOG
     await supabase.from('activity_log').insert({
       user_email: 'engage@yestoryd.com',
+      user_type: 'system',
       action: 'enrollment_complete_processed',
-      details: {
+      metadata: {
         request_id: requestId,
         source: auth.source,
         enrollment_id: data.enrollmentId,

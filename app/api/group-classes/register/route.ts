@@ -3,16 +3,13 @@
 // PURPOSE: Create registration record and Razorpay order (if payment needed)
 // =============================================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,

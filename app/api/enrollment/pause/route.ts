@@ -6,17 +6,14 @@
 
 export const dynamic = 'force-dynamic';
 
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { conditionalUpdate } from '@/lib/db-utils';
 import { cancelEvent } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { dispatch } from '@/lib/scheduling/orchestrator';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = createAdminClient();
 
 // Configuration
 const MAX_PAUSE_DAYS_TOTAL = 30;    // Maximum total pause days per enrollment

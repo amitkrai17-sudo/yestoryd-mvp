@@ -14,7 +14,6 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
@@ -477,9 +476,10 @@ export async function PUT(request: NextRequest) {
       // Log completion only on first empty batch after processing
       if (cursor) {
         await supabase.from('activity_log').insert({
-          user_email: auth.email,
+          user_email: auth.email || 'unknown',
+      user_type: 'admin',
           action: 'lead_scores_recalculation_complete',
-          details: {
+          metadata: {
             request_id: requestId,
             final_cursor: cursor,
             timestamp: new Date().toISOString(),
@@ -556,9 +556,10 @@ export async function PUT(request: NextRequest) {
     // 7. Audit log for first batch
     if (isFirstBatch) {
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'lead_scores_recalculation_started',
-        details: {
+        metadata: {
           request_id: requestId,
           batch_size: BATCH_SIZE,
           timestamp: new Date().toISOString(),

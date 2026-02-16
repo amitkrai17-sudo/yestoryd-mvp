@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 
+const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
 
 // Initialize SendGrid
@@ -11,11 +12,6 @@ if (sendgridApiKey) {
 }
 
 // Initialize Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
