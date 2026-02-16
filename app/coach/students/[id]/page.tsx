@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import CoachLayout from '@/components/layouts/CoachLayout';
 import SkillBoosterSection from '@/components/coach/SkillBoosterSection';
+import { supabase } from '@/lib/supabase/client';
 import {
   Calendar,
   MessageCircle,
@@ -20,11 +20,6 @@ import {
   ChevronUp,
   BookOpen,
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // Types
 interface Student {
@@ -123,7 +118,7 @@ export default function StudentDetailPage() {
       const { data: coachData } = await supabase
         .from('coaches')
         .select('*')
-        .eq('email', user.email)
+        .eq('email', user.email!)
         .single();
 
       if (!coachData) {

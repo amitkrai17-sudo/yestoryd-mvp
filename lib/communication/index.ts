@@ -1,18 +1,15 @@
 // lib/communication/index.ts
 // Central Communication Engine
 
-import { createClient } from '@supabase/supabase-js';
 import { sendWhatsAppMessage, isWhatsAppConfigured } from './aisensy';
 import { sendEmail, isEmailConfigured } from './sendgrid';
 import { loadAuthConfig } from '@/lib/config/loader';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 // Re-export WhatsApp Cloud API (prospect-facing AI assistant)
 export { sendWhatsAppCloudMessage, markMessageAsRead, isWhatsAppCloudConfigured } from './whatsapp-cloud';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Admin phone numbers for alerts (add more as needed)
 const ADMIN_PHONES = [

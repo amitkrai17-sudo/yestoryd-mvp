@@ -10,7 +10,7 @@ import Confetti from '@/components/Confetti';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 import {
   CheckCircle2,
   Calendar,
@@ -25,11 +25,6 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 function SuccessContent() {
   const searchParams = useSearchParams();

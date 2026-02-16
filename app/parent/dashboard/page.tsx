@@ -8,7 +8,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import {
   Calendar, TrendingUp, HelpCircle,
@@ -21,11 +20,7 @@ import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
 import SupportWidget from '@/components/support/SupportWidget';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ReferralsTab from '@/components/parent/ReferralsTab';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 // Default WhatsApp number (fetched from site_settings)
 const DEFAULT_WHATSAPP = '918976287997';
@@ -134,7 +129,7 @@ export default function ParentDashboardPage() {
       const { data: parentData, error: parentError } = await supabase
         .from('parents')
         .select('id, email, name')
-        .eq('email', user.email)
+        .eq('email', user.email!)
         .maybeSingle();
 
       if (parentError) {

@@ -16,7 +16,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
-import { createClient } from '@supabase/supabase-js';
 import { markAsRead } from '@/lib/whatsapp/cloud-api';
 import { classifyIntent } from '@/lib/whatsapp/intent';
 import type { ClassificationResult } from '@/lib/whatsapp/intent';
@@ -27,14 +26,12 @@ import { handleQualification } from '@/lib/whatsapp/handlers/qualification';
 import { handleAssessmentCta } from '@/lib/whatsapp/handlers/assessment-cta';
 import { handleBooking } from '@/lib/whatsapp/handlers/booking';
 import { handleEscalate } from '@/lib/whatsapp/handlers/escalate';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 const getReceiver = () => new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ParentLayout from '@/components/parent/ParentLayout';
+import { supabase } from '@/lib/supabase/client';
 import {
   TrendingUp,
   Star,
@@ -19,11 +19,6 @@ import {
   Check,
   Flame,
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface Enrollment {
   id: string;
@@ -66,7 +61,7 @@ export default function ParentProgressPage() {
       const { data: parentData } = await supabase
         .from('parents')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email!)
         .maybeSingle();
 
       let enrolledChild = null;

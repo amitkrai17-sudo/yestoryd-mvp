@@ -7,7 +7,6 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 import {
   Heart,
   CheckCircle2,
@@ -46,11 +45,7 @@ import {
 } from 'lucide-react';
 import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 // FAQ Data
 const FAQ_DATA = [

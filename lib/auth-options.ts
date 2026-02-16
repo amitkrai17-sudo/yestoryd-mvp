@@ -14,16 +14,13 @@
 
 import { NextAuthOptions, Session } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
-import { createClient } from '@supabase/supabase-js';
 import { JWT } from 'next-auth/jwt';
 
 // --- CONFIGURATION (Lazy initialization to avoid build-time errors) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 import { loadAuthConfig } from '@/lib/config/loader';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // --- TYPES ---
 interface ExtendedSession extends Session {
@@ -102,8 +99,9 @@ async function logAuthEvent(
     const supabase = getSupabase();
     await supabase.from('activity_log').insert({
       user_email: email,
+      user_type: 'admin',
       action: `auth_${event}`,
-      details: {
+      metadata: {
         timestamp: new Date().toISOString(),
         ...details,
       },

@@ -1,10 +1,7 @@
 import { MetadataRoute } from 'next'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // Initialize Supabase client for sitemap generation
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://yestoryd.com'
   
@@ -46,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let blogPosts: MetadataRoute.Sitemap = []
   
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = createAdminClient()
     
     // Fetch published blog posts
     // Adjust table/column names based on your actual schema

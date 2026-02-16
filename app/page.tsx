@@ -7,19 +7,14 @@
  * Enterprise Data Architecture: ALL content from site_settings table
  */
 
-import { createClient } from '@supabase/supabase-js';
 import HomePageClient, { ContentSettings } from './HomePageClient';
+import { supabase } from '@/lib/supabase/client';
 
 // Disable caching - always fetch fresh data
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 // Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // Helper to safely parse JSON values
 function parseSettingValue(value: string): unknown {
   if (typeof value !== 'string') return value;

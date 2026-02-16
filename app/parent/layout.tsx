@@ -12,7 +12,6 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
 import {
   LayoutDashboard,
   TrendingUp,
@@ -32,13 +31,9 @@ import {
 } from 'lucide-react';
 import BottomNav from '@/components/navigation/BottomNav';
 import { parentNavItems } from '@/lib/config/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 // ==================== SUPABASE CLIENT ====================
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // ==================== ROUTE CONFIGURATION ====================
 const PUBLIC_ROUTES = ['/parent/login', '/parent/book-skill-booster'];
 

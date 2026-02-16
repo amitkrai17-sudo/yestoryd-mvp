@@ -9,7 +9,6 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Loader2, Video, BookOpen, Calendar, Sparkles, MessageCircle, Award, Gift, CheckCircle } from 'lucide-react';
 import { LEARNING_GOALS } from '@/lib/constants/goals';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
@@ -28,6 +27,7 @@ import {
   AgeBandInfoCard,
 } from './_components';
 import { TimeBucketSelector, DayOfWeekSelector } from '@/components/ui/scheduling';
+import { supabase } from '@/lib/supabase/client';
 
 declare global {
   interface Window {
@@ -36,11 +36,6 @@ declare global {
 }
 
 // Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // ==================== INTERFACES ====================
 interface CoachSettings {
   name: string;
