@@ -12,19 +12,16 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- RATE LIMITING ---
 // Prevent coupon enumeration attacks
@@ -180,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Check usage limits
-    if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
+    if (coupon.max_uses && (coupon.current_uses ?? 0) >= coupon.max_uses) {
       return NextResponse.json<CouponValidationResponse>(
         { valid: false, error: 'This coupon has reached its usage limit', requestId },
         { status: 200 }
@@ -260,7 +257,7 @@ export async function POST(request: NextRequest) {
         id: coupon.id,
         code: coupon.code,
         couponType: coupon.coupon_type,
-        discountType: coupon.discount_type,
+        discountType: (coupon.discount_type === 'percentage' || coupon.discount_type === 'fixed') ? coupon.discount_type : null,
         discountValue: coupon.discount_value,
         maxDiscount: coupon.max_discount,
       },
@@ -268,8 +265,14 @@ export async function POST(request: NextRequest) {
 
     // Add discount info if applicable
     if (coupon.discount_type && coupon.discount_value) {
+      const discountType = coupon.discount_type === 'percent' || coupon.discount_type === 'percentage'
+        ? 'percentage'
+        : coupon.discount_type === 'fixed'
+          ? 'fixed'
+          : 'fixed'; // default fallback
+
       response.discount = {
-        type: coupon.discount_type === 'percent' ? 'percentage' : coupon.discount_type,
+        type: discountType,
         value: coupon.discount_value,
         calculatedAmount: calculatedDiscount,
       };
@@ -280,7 +283,7 @@ export async function POST(request: NextRequest) {
       response.referralImpact = {
         leadSource: 'coach',
         revenueSplit: '70-30',
-        referrerName: coupon.coach?.name,
+        referrerName: coupon.coach?.name ?? undefined,
       };
     } else if (coupon.coupon_type === 'parent_referral') {
       // Fetch settings and pricing in PARALLEL to avoid waterfall
@@ -300,7 +303,9 @@ export async function POST(request: NextRequest) {
       ]);
 
       const creditPercent = parseInt(
-        settingsResult.data?.value?.replace(/"/g, '') || '10'
+        (typeof settingsResult.data?.value === 'string'
+          ? settingsResult.data.value.replace(/"/g, '')
+          : String(settingsResult.data?.value || 10))
       );
       const programPrice = pricingResult.data?.discounted_price || 5999;
 
@@ -308,7 +313,7 @@ export async function POST(request: NextRequest) {
         leadSource: 'parent',
         revenueSplit: '50-50',
         creditToReferrer: Math.round(programPrice * creditPercent / 100),
-        referrerName: coupon.parent?.name,
+        referrerName: coupon.parent?.name ?? undefined,
       };
     } else {
       response.referralImpact = {
