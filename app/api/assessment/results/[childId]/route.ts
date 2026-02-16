@@ -50,7 +50,7 @@ export async function GET(
       .limit(1)
       .single();
 
-    const eventData = learningEvent?.event_data || {};
+    const eventData = (learningEvent?.event_data as Record<string, any>) || {};
 
     // Debug logging
     console.log(JSON.stringify({
