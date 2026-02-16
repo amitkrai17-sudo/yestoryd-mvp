@@ -144,8 +144,9 @@ export async function GET(request: NextRequest) {
     // Audit log
     await supabase.from('activity_log').insert({
       user_email: 'engage@yestoryd.com',
+      user_type: 'system',
       action: 'coach_unavailability_cron_executed',
-      details: {
+      metadata: {
         request_id: requestId,
         processed: results.processed,
         errors: results.errors.length,

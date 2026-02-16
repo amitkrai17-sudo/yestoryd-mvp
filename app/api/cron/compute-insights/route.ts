@@ -17,19 +17,16 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- VERIFICATION ---
 async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
@@ -426,8 +423,9 @@ async function computeInsights(requestId: string, source: string) {
     // ============================================================
     await supabase.from('activity_log').insert({
       user_email: 'engage@yestoryd.com',
+      user_type: 'system',
       action: 'compute_insights_executed',
-      details: {
+      metadata: {
         request_id: requestId,
         source,
         results,

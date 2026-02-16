@@ -15,7 +15,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sendCommunication, SendCommunicationParams } from '@/lib/communication';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
@@ -191,8 +190,9 @@ async function logCommunicationAttempt(
     const supabase = getServiceSupabase();
     await supabase.from('activity_log').insert({
       user_email: senderEmail,
+      user_type: 'admin',
       action: 'communication_send',
-      details: {
+      metadata: {
         request_id: requestId,
         template_code: params.templateCode,
         recipient_type: params.recipientType,

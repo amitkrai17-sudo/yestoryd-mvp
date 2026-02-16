@@ -4,16 +4,13 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { capitalizeName } from '@/lib/utils';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 

@@ -15,18 +15,15 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { normalizePhone } from '@/lib/utils/phone'; // ✅ USE CENTRALIZED FUNCTION
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 // Service Supabase client (bypasses RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // ============================================================
 // TYPES
 // ============================================================

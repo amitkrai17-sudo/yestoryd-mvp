@@ -5,7 +5,6 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import {
@@ -16,11 +15,9 @@ import {
   StyleSheet,
 } from '@react-pdf/renderer';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = createAdminClient();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -557,8 +554,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
     }
 
-    // Get ALL assessment results for this child
-    const { data: assessments } = await supabase
+    // Get ALL assessment results for this child (table may not exist yet — cast to any)
+    const { data: assessments } = await (supabase as any)
       .from('assessment_results')
       .select('*')
       .eq('child_id', enrollment.child_id)
@@ -572,8 +569,8 @@ export async function GET(request: NextRequest) {
       .single();
 
     // Parse initial scores (from first assessment or children table)
-    const initialAssessment = assessments?.find(a => !a.assessment_type || a.assessment_type === 'initial');
-    const finalAssessment = assessments?.find(a => a.assessment_type === 'final') || 
+    const initialAssessment = assessments?.find((a: any) => !a.assessment_type || a.assessment_type === 'initial');
+    const finalAssessment = assessments?.find((a: any) => a.assessment_type === 'final') ||
                            (assessments && assessments.length > 1 ? assessments[assessments.length - 1] : null);
 
     const initialScores = {

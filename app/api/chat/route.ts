@@ -16,7 +16,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatRateLimiter, getClientIP, rateLimitResponse } from '@/lib/rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@supabase/supabase-js';
 import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import {
@@ -44,15 +43,13 @@ import {
 } from '@/lib/rai/prompts';
 import { handleAdminInsightQuery } from '@/lib/rai/admin-insights';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
 const getGenAI = () => new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- RATE LIMITING ---
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -101,8 +98,9 @@ async function trackAIUsage(
     const supabase = getSupabase();
     await supabase.from('activity_log').insert({
       user_email: userEmail,
+      user_type: 'admin',
       action: 'rai_chat',
-      details: {
+      metadata: {
         request_id: requestId,
         intent,
         source,

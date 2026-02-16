@@ -268,8 +268,9 @@ export async function GET(request: NextRequest) {
     try {
       await supabase.from('activity_log').insert({
         user_email: 'engage@yestoryd.com',
+      user_type: 'system',
         action: 'daily_lead_digest_sent',
-        details: {
+        metadata: {
           request_id: requestId,
           source: auth.source,
           digest,
