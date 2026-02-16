@@ -9,10 +9,10 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { qstash } from '@/lib/qstash';
 import { getRetryConfig } from './config-provider';
 import { escalate } from './manual-queue';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // ============================================================================
 // TYPES
@@ -33,10 +33,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.yestoryd.com');
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createAdminClient();
 }
 
 // ============================================================================

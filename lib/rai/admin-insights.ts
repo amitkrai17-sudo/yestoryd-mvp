@@ -1,12 +1,9 @@
 // file: lib/rai/admin-insights.ts
 // Retrieves pre-computed insights for admin queries
 
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = createAdminClient();
 
 // ============================================================
 // INSIGHT TYPES

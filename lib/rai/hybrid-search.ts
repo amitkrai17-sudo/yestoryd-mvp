@@ -1,15 +1,12 @@
 // file: lib/rai/hybrid-search.ts
 // rAI v2.0 - Hybrid search combining SQL filters with vector similarity
 
-import { createClient } from '@supabase/supabase-js';
 import { generateEmbedding } from './embeddings';
 import { extractQueryFilters } from './query-filters';
 import { LearningEvent, UserRole } from './types';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = createAdminClient();
 
 interface HybridSearchOptions {
   query: string;

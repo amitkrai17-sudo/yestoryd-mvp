@@ -19,8 +19,8 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
-
+import { Database } from '@/lib/supabase/database.types';
+import { createAdminClient } from '@/lib/supabase/admin';
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -187,13 +187,10 @@ export const SESSION_TITLES = {
  * Falls back to defaults if not configured
  */
 export async function getSchedulingDurations(
-  supabaseClient?: ReturnType<typeof createClient>
+  supabaseClient?: ReturnType<typeof createClient<Database>>
 ): Promise<SchedulingDurations> {
   try {
-    const supabase = supabaseClient || createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = supabaseClient || createAdminClient();
 
     const { data: settings } = await supabase
       .from('site_settings')
@@ -245,13 +242,10 @@ interface PricingPlanRow {
  */
 export async function getPlanSchedule(
   planSlug: string,
-  supabaseClient?: ReturnType<typeof createClient>
+  supabaseClient?: ReturnType<typeof createClient<Database>>
 ): Promise<PlanSchedule> {
   try {
-    const supabase = supabaseClient || createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = supabaseClient || createAdminClient();
 
     const { data: plan, error } = await supabase
       .from('pricing_plans')

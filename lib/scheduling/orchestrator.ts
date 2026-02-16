@@ -8,7 +8,7 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { scheduleSession, rescheduleSession, cancelSession, bulkReassign } from './session-manager';
 import { processUnavailability, processCoachReturn, processCoachExit } from './coach-availability-handler';
 import { scheduleEnrollmentSessions } from './enrollment-scheduler';
@@ -98,10 +98,7 @@ export interface DispatchResult {
 // ============================================================================
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createAdminClient();
 }
 
 // ============================================================================

@@ -3,12 +3,9 @@
 // Auto-schedule Recall.ai bots for coaching sessions
 // ============================================================
 
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = createAdminClient();
 
 const RECALL_API_URL = 'https://us-west-2.recall.ai/api/v1';
 const RECALL_API_KEY = process.env.RECALL_API_KEY;

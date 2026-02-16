@@ -9,7 +9,7 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 import {
   getPlanSchedule as getConfigPlanSchedule,
   getSchedulingDurations,
@@ -79,10 +79,7 @@ export function clearConfigCache(): void {
 // ============================================================================
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createAdminClient();
 }
 
 async function getSettingValue(key: string): Promise<string | null> {

@@ -16,7 +16,6 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
 import {
   scheduleCalendarEvent,
   rescheduleEvent,
@@ -30,6 +29,7 @@ import { notify } from './notification-manager';
 import { withCircuitBreaker } from './circuit-breaker';
 import { createLogger } from './logger';
 import { executeWithCompensation, type TransactionStep } from './transaction-manager';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const logger = createLogger('session-manager');
 
@@ -72,10 +72,7 @@ export interface SessionResult {
 // ============================================================================
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createAdminClient();
 }
 
 async function logAudit(
@@ -86,8 +83,9 @@ async function logAudit(
   try {
     await supabase.from('activity_log').insert({
       user_email: 'engage@yestoryd.com',
+      user_type: 'system',
       action,
-      details: { ...details, timestamp: new Date().toISOString() },
+      metadata: { ...details, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
   } catch (error) {

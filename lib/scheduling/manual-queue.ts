@@ -8,8 +8,8 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { notify } from './notification-manager';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // ============================================================================
 // TYPES
@@ -57,10 +57,7 @@ export interface EscalateContext {
 // ============================================================================
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createAdminClient();
 }
 
 // ============================================================================

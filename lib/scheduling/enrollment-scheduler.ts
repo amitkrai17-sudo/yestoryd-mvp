@@ -15,7 +15,7 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/lib/supabase/database.types';
 import {
   getPlanSchedule,
   getSchedulingDurations,
@@ -25,6 +25,7 @@ import {
   DEFAULT_DURATIONS,
 } from './config';
 import { findSlotsForSchedule, SlotSearchResult } from './smart-slot-finder';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // ============================================================================
 // TYPES
@@ -74,7 +75,7 @@ export interface EnrollmentSchedulerResult {
  */
 export async function scheduleEnrollmentSessions(
   options: EnrollmentSchedulerOptions,
-  supabaseClient?: ReturnType<typeof createClient>
+  supabaseClient?: ReturnType<typeof createClient<Database>>
 ): Promise<EnrollmentSchedulerResult> {
   const {
     enrollmentId,
@@ -86,7 +87,7 @@ export async function scheduleEnrollmentSessions(
     requestId = 'unknown',
   } = options;
 
-  const supabase = supabaseClient || createClient(
+  const supabase = supabaseClient || createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
@@ -267,7 +268,7 @@ export async function scheduleEnrollmentSessions(
     // ========================================================================
     const { error: insertError } = await supabase
       .from('scheduled_sessions')
-      .insert(sessionsToCreate as any);
+      .insert(sessionsToCreate as Database['public']['Tables']['scheduled_sessions']['Insert'][]);
 
     if (insertError) {
       console.error(`[EnrollmentScheduler] [${requestId}] Insert error:`, insertError);
@@ -303,7 +304,7 @@ export async function scheduleEnrollmentSessions(
           if (session.session_type !== 'coaching') continue;
           const templateId = templateByWeek.get(session.week_number);
           if (templateId) {
-            await (supabase as any)
+            await supabase
               .from('scheduled_sessions')
               .update({ session_template_id: templateId })
               .eq('enrollment_id', enrollmentId)
@@ -326,7 +327,7 @@ export async function scheduleEnrollmentSessions(
     // ========================================================================
     // STEP 6: Update enrollment record
     // ========================================================================
-    const updateResult = await (supabase as any)
+    const { error: updateError } = await supabase
       .from('enrollments')
       .update({
         schedule_confirmed: true,
@@ -334,7 +335,6 @@ export async function scheduleEnrollmentSessions(
         updated_at: new Date().toISOString(),
       })
       .eq('id', enrollmentId);
-    const updateError = updateResult?.error;
 
     if (updateError) {
       console.error(`[EnrollmentScheduler] [${requestId}] Enrollment update error:`, updateError);
@@ -380,7 +380,7 @@ export async function scheduleEnrollmentSessions(
  */
 export async function createSessionsSimple(
   options: EnrollmentSchedulerOptions,
-  supabaseClient?: ReturnType<typeof createClient>
+  supabaseClient?: ReturnType<typeof createClient<Database>>
 ): Promise<EnrollmentSchedulerResult> {
   const {
     enrollmentId,
@@ -391,7 +391,7 @@ export async function createSessionsSimple(
     requestId = 'unknown',
   } = options;
 
-  const supabase = supabaseClient || createClient(
+  const supabase = supabaseClient || createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
@@ -462,7 +462,7 @@ export async function createSessionsSimple(
     // Insert
     const { error: insertError } = await supabase
       .from('scheduled_sessions')
-      .insert(sessionsToCreate as any);
+      .insert(sessionsToCreate as Database['public']['Tables']['scheduled_sessions']['Insert'][]);
 
     if (insertError) {
       return {
@@ -492,7 +492,7 @@ export async function createSessionsSimple(
           if (session.session_type !== 'coaching') continue;
           const templateId = templateByWeek.get(session.week_number);
           if (templateId) {
-            await (supabase as any)
+            await supabase
               .from('scheduled_sessions')
               .update({ session_template_id: templateId })
               .eq('enrollment_id', enrollmentId)
@@ -505,7 +505,7 @@ export async function createSessionsSimple(
     }
 
     // Update enrollment
-    await (supabase as any)
+    await supabase
       .from('enrollments')
       .update({
         schedule_confirmed: true,
