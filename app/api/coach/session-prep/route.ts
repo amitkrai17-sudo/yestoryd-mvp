@@ -1,19 +1,16 @@
-﻿// app/api/coach/session-prep/route.ts
+// app/api/coach/session-prep/route.ts
 // Uses EXISTING rAI infrastructure - no parallel systems
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { hybridSearch, formatEventsForContext } from '@/lib/rai/hybrid-search';
 import { buildSessionPrepPrompt } from '@/lib/rai/prompts';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
