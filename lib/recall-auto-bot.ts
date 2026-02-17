@@ -177,6 +177,10 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
         continue;
       }
 
+      if (!session.child_id || !session.coach_id || !session.google_meet_link) {
+        continue;
+      }
+
       const childName = (session.children as any)?.name || 'Child';
 
       const result = await createRecallBot({

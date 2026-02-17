@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate new end date
+    if (!enrollment.program_end) {
+      return NextResponse.json({ success: false, error: 'Enrollment has no program end date' }, { status: 400 });
+    }
     const currentEnd = new Date(enrollment.program_end);
     const newEndDate = new Date(currentEnd);
     newEndDate.setDate(newEndDate.getDate() + days);
@@ -113,9 +116,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'enrollment_extended',
-      details: {
+      metadata: {
         request_id: requestId,
         enrollment_id: enrollmentId,
         previous_end: enrollment.program_end,

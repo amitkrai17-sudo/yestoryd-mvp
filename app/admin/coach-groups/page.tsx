@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 import {
   Users,
   Percent,
@@ -32,14 +32,17 @@ interface CoachGroup {
   id: string;
   name: string;
   display_name: string;
-  description: string;
+  description: string | null;
   lead_cost_percent: number;
   coach_cost_percent: number;
   platform_fee_percent: number;
-  is_internal: boolean;
-  badge_color: string;
-  sort_order: number;
-  coach_count?: number;
+  is_internal: boolean | null;
+  is_active: boolean | null;
+  badge_color: string | null;
+  sort_order: number | null;
+  coach_count: number;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 interface Coach {
@@ -47,7 +50,7 @@ interface Coach {
   name: string;
   email: string;
   group_id: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   referral_code: string | null;
   group_name?: string;
 }
@@ -62,11 +65,6 @@ const GROUP_ICONS: Record<string, any> = {
 };
 
 // Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export default function AdminCoachGroupsPage() {
   const [groups, setGroups] = useState<CoachGroup[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
@@ -384,7 +382,7 @@ export default function AdminCoachGroupsPage() {
                     {/* Icon */}
                     <div
                       className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0"
-                      style={{ backgroundColor: group.badge_color }}
+                      style={{ backgroundColor: group.badge_color || '#6366f1' }}
                     >
                       <GroupIcon name={group.name} />
                     </div>
@@ -600,7 +598,7 @@ export default function AdminCoachGroupsPage() {
                                   >
                                     <span
                                       className="w-2 h-2 rounded-full"
-                                      style={{ backgroundColor: group.badge_color }}
+                                      style={{ backgroundColor: group.badge_color || '#6366f1' }}
                                     />
                                     {coach.name}
                                   </span>

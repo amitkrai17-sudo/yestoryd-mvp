@@ -135,9 +135,10 @@ export async function POST(request: NextRequest) {
 
       // Audit log
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'coach_reactivated',
-        details: { request_id: requestId, coach_id: existing.id, coach_email: normalizedEmail, timestamp: new Date().toISOString() },
+        metadata: { request_id: requestId, coach_id: existing.id, coach_email: normalizedEmail, timestamp: new Date().toISOString() },
         created_at: new Date().toISOString(),
       });
 
@@ -166,9 +167,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'coach_quick_added',
-      details: { request_id: requestId, coach_id: coach.id, coach_name: name, coach_email: normalizedEmail, timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, coach_id: coach.id, coach_name: name, coach_email: normalizedEmail, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 

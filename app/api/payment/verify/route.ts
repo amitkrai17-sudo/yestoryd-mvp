@@ -7,7 +7,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import Razorpay from 'razorpay';
@@ -18,15 +17,13 @@ import {
   type TimePreference,
 } from '@/lib/scheduling';
 import { loadCoachConfig, loadRevenueSplitConfig, loadPaymentConfig } from '@/lib/config/loader';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION ---
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
@@ -129,9 +126,9 @@ async function getAgeBandConfig(
   try {
     const { data, error } = await supabase
       .from('age_band_config')
-      .select('*')
-      .lte('min_age', childAge)
-      .gte('max_age', childAge)
+      .select('display_name, age_min, age_max, sessions_per_season, session_duration_minutes, sessions_per_week, primary_mode')
+      .lte('age_min', childAge)
+      .gte('age_max', childAge)
       .single();
 
     if (error || !data) {
@@ -144,17 +141,31 @@ async function getAgeBandConfig(
       return null;
     }
 
+    // Map display_name to age_band type, derive frequency_label
+    const ageBand = (data.display_name?.toLowerCase() || 'building') as 'foundation' | 'building' | 'mastery';
+    const frequencyLabel = data.sessions_per_week === 1 ? 'weekly' :
+                          data.sessions_per_week === 2 ? 'twice-weekly' :
+                          `${data.sessions_per_week}x/week`;
+
     console.log(JSON.stringify({
       requestId,
       event: 'age_band_config_loaded',
       childAge,
-      ageBand: data.age_band,
-      totalSessions: data.total_sessions,
+      ageBand,
+      totalSessions: data.sessions_per_season,
       durationMinutes: data.session_duration_minutes,
       sessionsPerWeek: data.sessions_per_week,
     }));
 
-    return data as AgeBandConfig;
+    return {
+      age_band: ageBand,
+      min_age: data.age_min,
+      max_age: data.age_max,
+      total_sessions: data.sessions_per_season,
+      session_duration_minutes: data.session_duration_minutes,
+      sessions_per_week: data.sessions_per_week,
+      frequency_label: frequencyLabel,
+    };
   } catch (err: any) {
     console.error(JSON.stringify({
       requestId,
@@ -210,8 +221,8 @@ async function getStarterEnrollment(
 
   return {
     id: enrollment.id,
-    status: enrollment.status,
-    childId: enrollment.child_id,
+    status: enrollment.status ?? 'active',
+    childId: enrollment.child_id ?? childId,
   };
 }
 
@@ -278,7 +289,14 @@ async function getProductDetails(
     return null;
   }
 
-  return product;
+  return {
+    id: product.id,
+    sessions_included: product.sessions_included ?? 9,
+    duration_months: product.duration_months ?? 3,
+    sessions_coaching: product.sessions_coaching ?? 6,
+    sessions_skill_building: product.sessions_skill_building ?? 3,
+    sessions_checkin: product.sessions_checkin ?? 3,
+  };
 }
 
 // --- 3. SECURITY HELPERS ---
@@ -371,30 +389,26 @@ async function checkIdempotency(
 ): Promise<{ isDuplicate: boolean; existingEnrollmentId?: string }> {
   const { data: existingPayment } = await supabase
     .from('payments')
-    .select('id, enrollment_id')
+    .select('id')
     .eq('razorpay_payment_id', paymentId)
     .single();
 
   if (existingPayment) {
-    console.log(JSON.stringify({ 
-      requestId, 
+    // Fetch enrollment ID from enrollments table (payments don't have enrollment_id)
+    const { data: enrollment } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('payment_id', paymentId)
+      .single();
+
+    console.log(JSON.stringify({
+      requestId,
       event: 'duplicate_payment_detected',
       paymentId,
-      existingEnrollmentId: existingPayment.enrollment_id 
+      existingEnrollmentId: enrollment?.id
     }));
-    
-    // Fetch enrollment ID from enrollments if not on payment record
-    if (!existingPayment.enrollment_id) {
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('id')
-        .eq('payment_id', paymentId)
-        .single();
-      
-      return { isDuplicate: true, existingEnrollmentId: enrollment?.id };
-    }
-    
-    return { isDuplicate: true, existingEnrollmentId: existingPayment.enrollment_id };
+
+    return { isDuplicate: true, existingEnrollmentId: enrollment?.id };
   }
 
   return { isDuplicate: false };
@@ -562,7 +576,7 @@ async function getCoach(
       const coachIds = eligible.map((c: any) => c.id);
       const { data: specs } = await supabase
         .from('coach_specializations')
-        .select('coach_id, skill_area, proficiency_level, certified')
+        .select('coach_id, specialization_type, proficiency_level')
         .in('coach_id', coachIds);
 
       // Build skill score map per coach
@@ -570,7 +584,8 @@ async function getCoach(
       if (specs && specs.length > 0) {
         for (const s of specs) {
           const current = skillScores.get(s.coach_id) || 0;
-          skillScores.set(s.coach_id, current + s.proficiency_level + (s.certified ? 2 : 0));
+          const proficiency = s.proficiency_level ?? 3; // Default mid-level proficiency
+          skillScores.set(s.coach_id, current + proficiency);
         }
       }
 
@@ -646,8 +661,8 @@ async function awardReferralCredit(
       .select('key, value')
       .in('key', ['parent_referral_credit_percent', 'referral_credit_expiry_days']);
 
-    const creditPercent = parseInt(settings?.find(s => s.key === 'parent_referral_credit_percent')?.value || '10');
-    const expiryDays = parseInt(settings?.find(s => s.key === 'referral_credit_expiry_days')?.value || '30');
+    const creditPercent = parseInt(String(settings?.find(s => s.key === 'parent_referral_credit_percent')?.value || '10'));
+    const expiryDays = parseInt(String(settings?.find(s => s.key === 'referral_credit_expiry_days')?.value || '30'));
 
     // 3. Calculate Credit
     const creditAmount = Math.round((programAmount * creditPercent) / 100);
@@ -761,10 +776,14 @@ async function calculateRevenueSplit(
         total_amount: amount,
         platform_fee_amount: amount,
         net_retained_by_platform: amount,
+        coach_cost_amount: 0,
+        lead_cost_amount: 0,
+        net_to_coach: 0,
+        net_to_lead_source: 0,
         coach_group_id: group.id,
         coach_group_name: group.name,
         status: 'completed',
-        config_snapshot: { group, note: 'Internal coach - 100% to platform' },
+        config_snapshot: JSON.parse(JSON.stringify({ group, note: 'Internal coach - 100% to platform' })),
       }).select('id').single();
 
       return { success: true, enrollment_revenue_id: revenue?.id, platform_fee: amount, net_to_coach: 0, payouts_scheduled: 0 };
@@ -809,11 +828,12 @@ async function calculateRevenueSplit(
       tds_rate_applied: tdsApplicable ? tdsRate : null,
       tds_amount: totalTds,
       net_to_coach: netToCoach,
+      net_to_lead_source: leadSource === 'coach' ? leadCost : 0,
       net_retained_by_platform: netToPlatform,
       coach_group_id: group.id,
       coach_group_name: group.name,
       status: 'pending',
-      config_snapshot: { group, tds_rate: tdsRate, tds_threshold: tdsThreshold },
+      config_snapshot: JSON.parse(JSON.stringify({ group, tds_rate: tdsRate, tds_threshold: tdsThreshold })),
     }).select('id').single();
 
     if (revError) throw revError;

@@ -98,9 +98,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'content_embeddings_generated',
-      details: {
+      metadata: {
         request_id: requestId,
         mode: 'null_only',
         total: units.length,
@@ -211,9 +212,10 @@ export async function PUT(request: NextRequest) {
     }
 
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'content_embeddings_generated',
-      details: {
+      metadata: {
         request_id: requestId,
         mode: 'force_refresh',
         total: units.length,

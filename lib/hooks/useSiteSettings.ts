@@ -138,13 +138,13 @@ export function useSiteSettings<T = Record<string, unknown>>(
           if (!grouped[row.category]) {
             grouped[row.category] = {};
           }
-          grouped[row.category][row.key] = parseValue(row.key, row.value);
+          grouped[row.category][row.key] = parseValue(row.key, String(row.value ?? ''));
         }
         setSettings(grouped as T);
       } else {
         // Flat object for single category or keys
         const result = data.reduce((acc, row) => {
-          acc[row.key] = parseValue(row.key, row.value);
+          acc[row.key] = parseValue(row.key, String(row.value ?? ''));
           return acc;
         }, {} as Record<string, unknown>);
         setSettings(result as T);
@@ -198,7 +198,7 @@ export function useSetting(key: string): {
           throw fetchError;
         }
 
-        setValue(data?.value ?? null);
+        setValue(data?.value != null ? String(data.value) : null);
       } catch (err) {
         console.error(`[useSetting] Error fetching ${key}:`, err);
         setError(err instanceof Error ? err : new Error('Failed to fetch setting'));

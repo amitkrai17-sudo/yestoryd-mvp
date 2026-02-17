@@ -49,6 +49,10 @@ export async function POST(
 
     // Log to communication_logs for tracking (optional but recommended)
     try {
+      if (!session.child_id) {
+        return NextResponse.json({ success: true, message: 'Session update marked' });
+      }
+
       // Get child info for logging
       const { data: child } = await supabase
         .from('children')

@@ -94,7 +94,7 @@ export async function GET(
     }
 
     // Check spots available
-    const spotsAvailable = session.max_participants - session.current_participants;
+    const spotsAvailable = (session.max_participants ?? 0) - (session.current_participants ?? 0);
 
     return NextResponse.json({
       session: {

@@ -36,7 +36,7 @@ export async function GET(
         child:children(
           id, child_name, parent_id, parent_name, parent_email
         ),
-        coach:coaches(id, name)
+        coach:coaches!coach_id(id, name)
       `)
       .eq('id', enrollmentId)
       .single();
@@ -46,19 +46,27 @@ export async function GET(
     }
 
     // Get parent's referral code
-    const { data: referralCoupon } = await supabase
-      .from('coupons')
-      .select('code')
-      .eq('parent_id', enrollment.child?.parent_id)
-      .eq('coupon_type', 'parent_referral')
-      .single();
+    let referralCoupon = null;
+    if (enrollment.child?.parent_id) {
+      const { data } = await supabase
+        .from('coupons')
+        .select('code')
+        .eq('parent_id', enrollment.child.parent_id)
+        .eq('coupon_type', 'parent_referral')
+        .single();
+      referralCoupon = data;
+    }
 
     // Get parent's credit balance
-    const { data: parent } = await supabase
-      .from('parents')
-      .select('referral_credit_balance, referral_credit_expires_at')
-      .eq('id', enrollment.child?.parent_id)
-      .single();
+    let parent = null;
+    if (enrollment.child?.parent_id) {
+      const { data } = await supabase
+        .from('parents')
+        .select('referral_credit_balance, referral_credit_expires_at')
+        .eq('id', enrollment.child.parent_id)
+        .single();
+      parent = data;
+    }
 
     // Get loyalty discount settings
     const { data: settings } = await supabase
@@ -68,7 +76,7 @@ export async function GET(
 
     const settingsMap: Record<string, string> = {};
     settings?.forEach(s => {
-      settingsMap[s.key] = s.value?.replace(/"/g, '') || '';
+      settingsMap[s.key] = typeof s.value === 'string' ? s.value.replace(/"/g, '') : String(s.value || '');
     });
 
     const loyaltyDiscountPercent = parseInt(settingsMap.loyalty_discount_percent || '10');

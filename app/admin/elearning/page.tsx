@@ -6,26 +6,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 import {
   BookOpen, Video, Play, Plus, Edit, Trash2, ChevronRight,
   ChevronDown, Eye, EyeOff, Clock, CheckCircle, Search,
   Upload, GripVertical, BarChart3, Users, FileQuestion
 } from 'lucide-react';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 interface Level {
   id: string;
   name: string;
   slug: string;
   age_range: string;
-  description: string;
-  is_active: boolean;
-  display_order: number;
+  description: string | null;
+  is_active: boolean | null;
+  order_index: number;
+  min_age: number;
+  max_age: number;
+  color: string | null;
+  icon: string | null;
   modules?: Module[];
 }
 
@@ -34,10 +33,9 @@ interface Module {
   level_id: string;
   name: string;
   slug: string;
-  description: string;
-  is_active: boolean;
-  is_free: boolean;
-  display_order: number;
+  description: string | null;
+  is_active: boolean | null;
+  order_index: number;
   video_count?: number;
   videos?: VideoItem[];
 }
@@ -91,7 +89,7 @@ export default function AdminElearningPage() {
       const { data: levelsData } = await supabase
         .from('el_stages')
         .select('*')
-        .order('display_order');
+        .order('order_index');
 
       if (!levelsData) {
         setLevels([]);
@@ -103,7 +101,7 @@ export default function AdminElearningPage() {
       const { data: modulesData } = await supabase
         .from('el_modules')
         .select('*')
-        .order('display_order');
+        .order('order_index');
 
       // Fetch videos for each module
       const { data: videosData } = await supabase
@@ -119,13 +117,15 @@ export default function AdminElearningPage() {
       // Count quizzes per video
       const quizCountMap: Record<string, number> = {};
       quizCounts?.forEach(q => {
-        quizCountMap[q.video_id] = (quizCountMap[q.video_id] || 0) + 1;
+        if (q.video_id) {
+          quizCountMap[q.video_id] = (quizCountMap[q.video_id] || 0) + 1;
+        }
       });
 
       // Organize data hierarchically
       const organizedLevels = levelsData.map(level => ({
         ...level,
-        age_range: level.age_range || '',
+        age_range: `${level.min_age}-${level.max_age}`,
         modules: (modulesData || [])
           .filter((m: any) => m.stage_id === level.id)
           .map((module: any) => ({
@@ -372,9 +372,6 @@ export default function AdminElearningPage() {
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <span className="font-medium text-white">{module.name}</span>
-                                      {module.is_free && (
-                                        <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-xs">Free</span>
-                                      )}
                                     </div>
                                     <p className="text-xs text-text-tertiary">{module.video_count || 0} videos</p>
                                   </div>
@@ -793,7 +790,6 @@ function ModuleModal({
     level_id: module?.level_id || '',
     name: module?.name || '',
     description: module?.description || '',
-    is_free: module?.is_free || false,
     is_active: module?.is_active ?? true,
   });
   const [saving, setSaving] = useState(false);
@@ -804,15 +800,17 @@ function ModuleModal({
 
     const slug = form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const data = {
-      ...form,
+      stage_id: form.level_id,
+      name: form.name,
+      description: form.description,
+      is_active: form.is_active,
       slug,
-      updated_at: new Date().toISOString(),
     };
 
     if (module?.id) {
       await supabase.from('el_modules').update(data).eq('id', module.id);
     } else {
-      await supabase.from('el_modules').insert(data);
+      await supabase.from('el_modules').insert({ ...data, order_index: 0 });
     }
 
     setSaving(false);
@@ -866,15 +864,6 @@ function ModuleModal({
           </div>
 
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.is_free}
-                onChange={(e) => setForm({ ...form, is_free: e.target.checked })}
-                className="w-4 h-4 text-[#7b008b] rounded"
-              />
-              <span className="text-sm text-text-secondary">Free Preview</span>
-            </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"

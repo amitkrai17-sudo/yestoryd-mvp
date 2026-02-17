@@ -50,7 +50,7 @@ export async function GET(
     // Get enrollment
     const { data: enrollment } = await supabase
       .from('enrollments')
-      .select('id, child_id, coach_id, total_sessions, season_number, age_band, status, season_completed_at, created_at')
+      .select('id, child_id, coach_id, total_sessions, season_number, age_band, status, updated_at, created_at')
       .eq('id', enrollmentId)
       .single();
 
@@ -62,7 +62,7 @@ export async function GET(
     const { data: child } = await supabase
       .from('children')
       .select('id, child_name, name, age, age_band, parent_id, parent_email')
-      .eq('id', enrollment.child_id)
+      .eq('id', enrollment.child_id!)
       .single();
 
     if (!child) {
@@ -73,7 +73,7 @@ export async function GET(
       const { data: parent } = await supabase
         .from('parents')
         .select('id')
-        .eq('email', auth.email)
+        .eq('email', auth.email ?? '')
         .maybeSingle();
 
       if (!parent || child.parent_id !== parent.id) {
@@ -91,7 +91,7 @@ export async function GET(
       .limit(1)
       .maybeSingle();
 
-    const completionData = completionEvent?.event_data || {};
+    const completionData = (completionEvent?.event_data as any) || {};
 
     // Get coach info
     let coachName = null;
@@ -114,7 +114,7 @@ export async function GET(
       .limit(1)
       .maybeSingle();
 
-    const exitData = exitEvent?.event_data?.exit_data || exitEvent?.event_data || {};
+    const exitData = (exitEvent?.event_data as any)?.exit_data || (exitEvent?.event_data as any) || {};
 
     // Get completed session count
     const { count: sessionsCompleted } = await supabase
@@ -126,7 +126,7 @@ export async function GET(
     // Get next season preview (upcoming roadmap)
     const { data: nextRoadmap } = await supabase
       .from('season_roadmaps')
-      .select('season_number, roadmap_data, age_band')
+      .select('season_number, season_name, focus_area, milestone_description')
       .eq('child_id', child.id)
       .eq('status', 'upcoming')
       .order('season_number', { ascending: true })
@@ -160,7 +160,7 @@ export async function GET(
         sessions_completed: sessionsCompleted || completionData.sessions_completed || 0,
         sessions_total: totalSessions,
         completion_rate: completionData.completion_rate || (totalSessions > 0 ? (sessionsCompleted || 0) / totalSessions : 0),
-        completed_at: enrollment.season_completed_at || completionEvent?.created_at,
+        completed_at: enrollment.updated_at || completionEvent?.created_at,
         started_at: enrollment.created_at,
       },
       skill_growth: skillGrowth,
@@ -173,9 +173,9 @@ export async function GET(
       },
       next_season: nextRoadmap ? {
         season_number: nextRoadmap.season_number,
-        season_name: nextRoadmap.roadmap_data?.season_name || `Season ${nextRoadmap.season_number}`,
-        focus_areas: (nextRoadmap.roadmap_data?.focus_areas || []).map(friendlySkill),
-        age_band: nextRoadmap.age_band,
+        season_name: nextRoadmap.season_name || `Season ${nextRoadmap.season_number}`,
+        focus_areas: nextRoadmap.focus_area ? [friendlySkill(nextRoadmap.focus_area)] : [],
+        milestone: nextRoadmap.milestone_description || null,
       } : null,
     });
   } catch (error: any) {

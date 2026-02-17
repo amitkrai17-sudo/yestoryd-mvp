@@ -29,7 +29,7 @@ export async function POST(
     const { data: parent } = await supabase
       .from('parents')
       .select('id')
-      .eq('email', auth.email)
+      .eq('email', auth.email ?? '')
       .single();
 
     if (!parent) {
@@ -53,7 +53,7 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    if (!childIds.includes(session.child_id)) {
+    if (!session.child_id || !childIds.includes(session.child_id)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -100,18 +100,23 @@ export async function POST(
     }
 
     // Create the request
-    const { data: changeRequest, error: insertError } = await supabase
-      .from('session_change_requests')
-      .insert({
-        session_id: sessionId,
-        parent_id: parent.id,
-        request_type: 'reschedule',
-        reason,
-        requested_date: preferredDate || null,
-        requested_time: preferredTime || null,
-      })
-      .select('id')
-      .single();
+    const enrollmentId = (session as any).enrollment_id as string | null;
+    const originalDatetime = `${session.scheduled_date}T${session.scheduled_time}`;
+    const { data: changeRequest, error: insertError } = enrollmentId
+      ? await supabase
+          .from('session_change_requests')
+          .insert({
+            session_id: sessionId,
+            enrollment_id: enrollmentId,
+            initiated_by: parent.id,
+            change_type: 'reschedule',
+            reason,
+            original_datetime: originalDatetime,
+            requested_new_datetime: preferredDate && preferredTime ? `${preferredDate}T${preferredTime}` : null,
+          })
+          .select('id')
+          .single()
+      : { data: null, error: null };
 
     if (insertError) {
       console.error('Error creating reschedule request:', insertError);
@@ -135,12 +140,12 @@ export async function POST(
 
       return NextResponse.json({
         success: true,
-        requestId: changeRequest.id,
+        requestId: changeRequest?.id,
         orchestratorResult: orchestratorResult.success,
       });
     }
 
-    return NextResponse.json({ success: true, requestId: changeRequest.id });
+    return NextResponse.json({ success: true, requestId: changeRequest?.id });
   } catch (error) {
     console.error('Reschedule request error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

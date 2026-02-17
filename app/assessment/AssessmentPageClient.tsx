@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, Suspense, useCallback } from 'react';
 import { AudioRecorderCheck } from '@/components/assessment/AudioRecorderCheck';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -43,6 +42,7 @@ import {
 import type { AssessmentSettings, AssessmentPassage } from '@/types/settings';
 
 // Modular components
+import { supabase } from '@/lib/supabase/client';
 import {
   AssessmentHeader,
   TrustBadges,
@@ -74,11 +74,6 @@ const DEFAULT_COLORS = {
 };
 
 // Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // ==================== HELPER FUNCTIONS (use settings with fallbacks) ====================
 
 // Cambridge English Level mapping (handles both numeric and string levels)
@@ -608,6 +603,28 @@ function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSetti
 
       const data = await response.json();
 
+      // CASE 1: AI provider failed, assessment queued for retry
+      if (data.pending === true) {
+        trackEvent('assessment_pending', {
+          child_name: formData.childName,
+          child_age: formData.childAge,
+          pending_assessment_id: data.pendingAssessmentId
+        });
+
+        // Show friendly "processing" message
+        alert(
+          `🎉 ${data.message || "We're analyzing your reading!"}\n\n` +
+          `✉️ Results will be emailed to ${formData.parentEmail}\n` +
+          `⏱️ Check your inbox (and spam folder) in 5-10 minutes.\n\n` +
+          `📧 Confirmation sent to ${formData.parentEmail}`
+        );
+
+        // Reset to home or show a "check email" state
+        setIsAnalyzing(false);
+        return;
+      }
+
+      // CASE 2: Normal success - immediate results
       trackEvent('assessment_completed', {
         child_name: formData.childName,
         score: data.overall_score,

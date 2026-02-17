@@ -7,17 +7,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 import {
   Settings, Save, Search, ChevronDown, ChevronRight,
   Edit2, X, Check, AlertCircle, RefreshCw, Database,
   Loader2, Copy, CheckCircle
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface SiteSetting {
   id: string;
@@ -25,7 +20,7 @@ interface SiteSetting {
   key: string;
   value: any;
   description: string | null;
-  updated_at: string;
+  updated_at: string | null;
 }
 
 // Category display configuration

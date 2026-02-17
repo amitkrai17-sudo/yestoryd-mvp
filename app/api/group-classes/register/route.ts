@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check spots available
-    const spotsAvailable = session.max_participants - session.current_participants;
+    const spotsAvailable = (session.max_participants ?? 0) - (session.current_participants ?? 0);
     if (spotsAvailable <= 0) {
       return NextResponse.json({ error: 'Session is full' }, { status: 400 });
     }
@@ -157,9 +157,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate pricing
-    const originalPrice = session.price_inr;
+    const originalPrice = session.price_inr ?? 0;
     let discountAmount = 0;
-    let finalPrice = originalPrice;
+    let finalPrice: number = originalPrice;
     let appliedCouponId = null;
     let appliedCouponCode = null;
     let isEnrolledFree = false;
@@ -252,12 +252,12 @@ export async function POST(request: NextRequest) {
     if (finalPrice === 0) {
       await supabase
         .from('group_sessions')
-        .update({ current_participants: session.current_participants + 1 })
+        .update({ current_participants: (session.current_participants ?? 0) + 1 })
         .eq('id', sessionId);
 
       // Increment coupon usage if applicable
       if (appliedCouponId) {
-        await supabase.rpc('increment_coupon_usage', { coupon_id: appliedCouponId });
+        await supabase.rpc('increment_coupon_usage', { p_coupon_id: appliedCouponId });
       }
     }
 

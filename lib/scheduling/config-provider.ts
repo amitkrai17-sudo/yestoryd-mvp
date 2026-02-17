@@ -95,7 +95,8 @@ async function getSettingValue(key: string): Promise<string | null> {
       .eq('key', key)
       .single();
 
-    const value = data?.value ?? null;
+    const raw = data?.value ?? null;
+    const value = raw !== null ? String(raw) : null;
     setCache(cacheKey, value);
     return value;
   } catch {
@@ -128,8 +129,9 @@ async function getSettingValues(keys: string[]): Promise<Record<string, string>>
 
     if (data) {
       for (const row of data) {
-        result[row.key] = row.value;
-        setCache(`setting:${row.key}`, row.value);
+        const val = row.value !== null ? String(row.value) : '';
+        result[row.key] = val;
+        setCache(`setting:${row.key}`, val);
       }
     }
   } catch (error) {

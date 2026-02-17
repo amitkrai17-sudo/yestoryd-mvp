@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
 import {
   LayoutDashboard,
   Settings,
@@ -40,13 +39,9 @@ import { NotificationBell } from '@/components/ui/NotificationBell';
 import BottomNav from '@/components/shared/navigation/BottomNav';
 import { navigationConfig } from '@/components/config/navigation';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
+import { supabase } from '@/lib/supabase/client';
 
 // ==================== SUPABASE CLIENT ====================
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // ==================== ADMIN EMAILS (loaded from DB) ====================
 async function fetchAdminEmails(): Promise<string[]> {
   const { data } = await supabase

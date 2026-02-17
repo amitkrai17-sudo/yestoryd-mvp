@@ -4,7 +4,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import {
   Users,
   Search,
@@ -15,11 +14,7 @@ import {
 } from 'lucide-react';
 import CoachLayout from '@/components/layouts/CoachLayout';
 import StudentCard from '@/components/coach/StudentCard';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 interface Student {
   id: string;
@@ -57,7 +52,7 @@ export default function CoachStudentsPage() {
       const { data: coachData } = await supabase
         .from('coaches')
         .select('*')
-        .eq('email', user.email)
+        .eq('email', user.email!)
         .single();
 
       if (!coachData) {

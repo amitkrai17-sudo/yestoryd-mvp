@@ -8,18 +8,15 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { sendCommunication, sendAdminAlert } from '@/lib/communication';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createAdminClient();
 }
 
 /**
@@ -66,21 +63,21 @@ export type SchedulingEvent =
   | 'enrollment.at_risk';
 
 export interface NotificationData {
-  // Common
-  childId?: string;
+  // Common — accept null from Supabase nullable columns
+  childId?: string | null;
   childName?: string;
-  parentPhone?: string;
-  parentEmail?: string;
-  parentName?: string;
+  parentPhone?: string | null;
+  parentEmail?: string | null;
+  parentName?: string | null;
   coachName?: string;
-  enrollmentId?: string;
+  enrollmentId?: string | null;
   sessionId?: string;
 
   // Session-specific
   sessionDate?: string;
   sessionTime?: string;
-  sessionType?: string;
-  meetLink?: string;
+  sessionType?: string | null;
+  meetLink?: string | null;
 
   // Reschedule
   oldDate?: string;

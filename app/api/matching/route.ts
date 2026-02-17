@@ -5,16 +5,13 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAuth } from '@/lib/api-auth';
 import { z } from 'zod';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Time regex for HH:MM format
 const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
@@ -98,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     // Build the matching query
     // Using raw SQL for complex matching logic
-    const { data: coaches, error } = await supabase.rpc('find_matching_coaches', {
+    const { data: coaches, error } = await (supabase as any).rpc('find_matching_coaches', {
       p_learning_needs: effectiveNeeds,
       p_exclude_ids: exclude_coach_ids || [],
       p_max_results: max_results,
@@ -150,7 +147,7 @@ export async function POST(request: NextRequest) {
         if (!coach.is_accepting_new) continue;
 
         // Skip coaches at capacity
-        if (coach.current_children >= coach.max_children) continue;
+        if ((coach.current_children ?? 0) >= (coach.max_children ?? 0)) continue;
 
         // Calculate match score
         const coachTags = coach.skill_tags || [];
@@ -180,7 +177,7 @@ export async function POST(request: NextRequest) {
           matched_skills: matchedSkills,
           unmet_needs: unmetNeeds,
           available_slots_count: slotsCount || 0,
-          avg_rating: parseFloat(coach.avg_rating) || 0,
+          avg_rating: coach.avg_rating ?? 0,
           total_sessions_completed: coach.total_sessions_completed || 0,
           years_experience: coach.years_experience || 0,
           is_accepting_new: coach.is_accepting_new,

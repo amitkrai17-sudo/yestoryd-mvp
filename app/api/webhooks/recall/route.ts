@@ -9,20 +9,17 @@
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { Client } from '@upstash/qstash';
 import { Webhook } from 'svix';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION ---
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 const RECALL_WEBHOOK_SECRET = process.env.RECALL_WEBHOOK_SECRET;
 const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
 
@@ -424,10 +421,11 @@ async function handleStatusChange(
         // Queue notification
         await supabase.from('communication_queue').insert({
           template_code: 'session_no_show',
+          recipient_id: sessionId ?? 'system',
           recipient_type: 'admin',
-          variables: { session_id: sessionId, reason: latestChange.message },
+          scheduled_for: new Date().toISOString(),
+          variables: { session_id: sessionId, reason: latestChange.message, request_id: requestId },
           status: 'pending',
-          request_id: requestId,
         });
       }
     }
@@ -524,9 +522,10 @@ async function handleBotDone(
         await supabase.from('communication_queue').insert({
           template_code: outcome.status === 'coach_no_show' ? 'coach_no_show_urgent' : 'session_no_show',
           recipient_type: 'admin',
-          variables: { session_id: sessionId, reason: outcome.reason },
-          status: outcome.status === 'coach_no_show' ? 'urgent' : 'pending',
-          request_id: requestId,
+          recipient_id: 'admin',
+          scheduled_for: new Date().toISOString(),
+          variables: { session_id: sessionId, reason: outcome.reason, request_id: requestId },
+          status: 'pending',
         });
       }
     }
@@ -589,9 +588,9 @@ async function handleBotDone(
   // ============================================================
   const queueResult = await queueSessionProcessing({
     botId: bot_id,
-    sessionId,
-    childId,
-    coachId,
+    sessionId: sessionId ?? null,
+    childId: childId ?? null,
+    coachId: coachId ?? null,
     transcriptText,
     recordingUrl: recording?.url,
     durationSeconds: recording?.duration_seconds,

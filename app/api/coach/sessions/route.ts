@@ -2,6 +2,7 @@
 // Coach Sessions API - Hardened Version
 // Single source of truth: scheduled_sessions table for session counts
 
+import { Database } from '@/lib/supabase/database.types';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { requireAdminOrCoach } from '@/lib/api-auth';
@@ -96,7 +97,8 @@ function getSupabaseClient(): SupabaseClient {
     throw new Error('Missing Supabase configuration');
   }
 
-  return createClient(url, key);
+  return createClient(
+  url, key);
 }
 
 function safeString(value: string | null | undefined, fallback: string = ''): string {

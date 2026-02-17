@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       type: sessionType || 'coaching'
     } : null;
 
-    const prompt = buildSessionPrepPrompt(child.child_name, eventsContext, sessionInfo);
+    const prompt = buildSessionPrepPrompt(child.child_name || 'Student', eventsContext, sessionInfo);
 
     // Enhanced prompt for structured insights
     const structuredPrompt = `${prompt}

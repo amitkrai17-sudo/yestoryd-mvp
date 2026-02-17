@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         duration_minutes,
         next_action,
         next_followup_at,
-        logged_by: auth.email, // Properly tracks who logged it
+        logged_by: auth.email || 'unknown', // Properly tracks who logged it
       })
       .select()
       .single();
@@ -164,9 +164,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'crm_interaction_created',
-      details: { request_id: requestId, child_id, interaction_id: data.id, type, outcome, timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, child_id, interaction_id: data.id, type, outcome, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 

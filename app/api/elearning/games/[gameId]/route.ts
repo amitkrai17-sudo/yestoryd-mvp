@@ -198,13 +198,13 @@ export async function POST(
       await supabase
         .from('el_child_gamification')
         .update({
-          total_xp: currentStats.total_xp + xpEarned,
-          total_coins: currentStats.total_coins + coinsEarned,
-          games_played: currentStats.games_played + 1,
-          games_won: passed ? currentStats.games_won + 1 : currentStats.games_won,
-          perfect_scores: accuracyPercent === 100 
-            ? currentStats.perfect_scores + 1 
-            : currentStats.perfect_scores,
+          total_xp: (currentStats.total_xp ?? 0) + xpEarned,
+          total_coins: (currentStats.total_coins ?? 0) + coinsEarned,
+          games_played: (currentStats.games_played ?? 0) + 1,
+          games_won: passed ? (currentStats.games_won ?? 0) + 1 : (currentStats.games_won ?? 0),
+          perfect_scores: accuracyPercent === 100
+            ? (currentStats.perfect_scores ?? 0) + 1
+            : (currentStats.perfect_scores ?? 0),
           last_activity_date: new Date().toISOString().split('T')[0]
         })
         .eq('child_id', childId);
@@ -236,12 +236,12 @@ export async function POST(
         await supabase
           .from('el_child_unit_progress')
           .update({
-            games_played: unitProgress.games_played + 1,
-            games_passed: passed ? unitProgress.games_passed + 1 : unitProgress.games_passed,
+            games_played: (unitProgress.games_played ?? 0) + 1,
+            games_passed: passed ? (unitProgress.games_passed ?? 0) + 1 : (unitProgress.games_passed ?? 0),
             best_game_score: Math.max(unitProgress.best_game_score || 0, score),
-            xp_earned: unitProgress.xp_earned + xpEarned,
-            coins_earned: unitProgress.coins_earned + coinsEarned,
-            current_step: passed ? unitProgress.current_step + 1 : unitProgress.current_step,
+            xp_earned: (unitProgress.xp_earned ?? 0) + xpEarned,
+            coins_earned: (unitProgress.coins_earned ?? 0) + coinsEarned,
+            current_step: passed ? (unitProgress.current_step ?? 0) + 1 : (unitProgress.current_step ?? 0),
             status: 'in_progress',
             started_at: unitProgress.started_at || new Date().toISOString(),
             last_activity_at: new Date().toISOString()

@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
     const { data: session } = await supabase
       .from('group_sessions')
       .select('id, title, scheduled_date, scheduled_time, google_meet_link, current_participants')
-      .eq('id', registration.group_session_id)
+      .eq('id', registration.group_session_id!)
       .single();
 
     if (session) {
@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
 
     // Increment coupon usage if applicable
     if (registration.coupon_id) {
-      await supabase.rpc('increment_coupon_usage', { coupon_id: registration.coupon_id });
+      await supabase.rpc('increment_coupon_usage', { p_coupon_id: registration.coupon_id });
     }
 
     // =============================================================================
@@ -295,14 +295,14 @@ export async function POST(request: NextRequest) {
       const { data: child } = await supabase
         .from('children')
         .select('id, name')
-        .eq('id', registration.child_id)
+        .eq('id', registration.child_id!)
         .single();
 
       // Get parent details
       const { data: parent } = await supabase
         .from('parents')
         .select('id, name, email')
-        .eq('id', registration.parent_id)
+        .eq('id', registration.parent_id!)
         .single();
 
       if (parent && child) {
@@ -310,11 +310,11 @@ export async function POST(request: NextRequest) {
         
         emailSent = await sendConfirmationEmail(
           parent.email,
-          parent.name,
-          child.name,
+          parent.name ?? 'Parent',
+          child.name ?? 'Child',
           session.title,
-          session.scheduled_date,
-          session.scheduled_time,
+          session.scheduled_date ?? '',
+          session.scheduled_time ?? '',
           session.google_meet_link,
           registration.amount_paid || 0
         );

@@ -554,6 +554,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
     }
 
+    if (!enrollment.child_id) {
+      return NextResponse.json({ error: 'Invalid enrollment: missing child_id' }, { status: 400 });
+    }
+
     // Get ALL assessment results for this child (table may not exist yet — cast to any)
     const { data: assessments } = await (supabase as any)
       .from('assessment_results')
@@ -564,7 +568,7 @@ export async function GET(request: NextRequest) {
     // Also check children table for initial assessment data
     const { data: childData } = await supabase
       .from('children')
-      .select('assessment_score, fluency_score, pronunciation_score, comprehension_score, wpm, ai_feedback, assessment_data')
+      .select('latest_assessment_score')
       .eq('id', enrollment.child_id)
       .single();
 
@@ -574,11 +578,11 @@ export async function GET(request: NextRequest) {
                            (assessments && assessments.length > 1 ? assessments[assessments.length - 1] : null);
 
     const initialScores = {
-      overall: initialAssessment?.overall_score || initialAssessment?.score || childData?.assessment_score || 5,
-      fluency: initialAssessment?.fluency_score || childData?.fluency_score || 5,
-      pronunciation: initialAssessment?.pronunciation_score || childData?.pronunciation_score || 5,
-      comprehension: initialAssessment?.comprehension_score || childData?.comprehension_score || 5,
-      wpm: initialAssessment?.wpm || childData?.wpm || 40,
+      overall: initialAssessment?.overall_score || initialAssessment?.score || childData?.latest_assessment_score || 5,
+      fluency: initialAssessment?.fluency_score || 5,
+      pronunciation: initialAssessment?.pronunciation_score || 5,
+      comprehension: initialAssessment?.comprehension_score || 5,
+      wpm: initialAssessment?.wpm || 40,
     };
 
     // If no final assessment, estimate improvement
@@ -597,8 +601,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Get initial and final feedback text
-    const initialFeedback = initialAssessment?.ai_feedback || initialAssessment?.summary || 
-                           childData?.ai_feedback || '';
+    const initialFeedback = initialAssessment?.ai_feedback || initialAssessment?.summary || '';
     const finalFeedback = finalAssessment?.ai_feedback || finalAssessment?.summary || '';
 
     // Count completed sessions

@@ -110,13 +110,13 @@ async function getHomePageData() {
     // Parse ALL settings (including new content settings)
     const settings: Record<string, unknown> = {};
     settingsResult.data?.forEach((item) => {
-      settings[item.key] = parseSettingValue(item.value);
+      settings[item.key] = parseSettingValue(item.value as string);
     });
 
     // Parse flags
     const flags: Record<string, boolean> = {};
     flagsResult.data?.forEach((item) => {
-      flags[item.flag_key] = item.flag_value;
+      flags[item.flag_key] = item.flag_value ?? false;
     });
 
     // Build stats object (ensure string types)
@@ -144,15 +144,15 @@ async function getHomePageData() {
       originalPrice: plan.original_price,
       discountedPrice: plan.discounted_price,
       discountLabel: plan.discount_label,
-      sessionsIncluded: plan.sessions_included,
+      sessionsIncluded: plan.sessions_included ?? 0,
       coachingSessions: plan.sessions_coaching || 0,
       skillBuildingSessions: plan.sessions_skill_building || 0,
       checkinSessions: plan.sessions_checkin || 0,
-      durationMonths: plan.duration_months,
+      durationMonths: plan.duration_months ?? 0,
       features: typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []),
       isFeatured: plan.is_featured || false,
-      badgeText: plan.badge_text,
-      displayOrder: plan.display_order,
+      badgeText: (plan as any).badge_text,
+      displayOrder: plan.display_order ?? 0,
       isLocked: plan.is_locked || false,
       lockMessage: plan.lock_message || null,
     }));
@@ -187,7 +187,7 @@ async function getHomePageData() {
 
     // Testimonials - use from DB or defaults
     const testimonials = testimonialsResult.data && testimonialsResult.data.length > 0
-      ? testimonialsResult.data.slice(0, 3) // Show max 3 on homepage
+      ? (testimonialsResult.data.slice(0, 3) as any) // Show max 3 on homepage
       : DEFAULTS.testimonials;
 
     // Feature flags

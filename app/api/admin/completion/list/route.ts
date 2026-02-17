@@ -14,6 +14,32 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+interface EnrichedEnrollment {
+  id: string;
+  childName: string;
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  coachName: string;
+  coachEmail: string;
+  status: string;
+  riskLevel: string;
+  programStart: string;
+  programEnd: string;
+  daysRemaining: number;
+  sessionsCompleted: number;
+  sessionsTotal: number;
+  lastSessionDate: string | null;
+  daysSinceLastSession: number | null;
+  hasInitialAssessment: boolean;
+  hasFinalAssessment: boolean;
+  finalAssessmentSent: boolean;
+  npsSubmitted: boolean;
+  npsScore: number | null;
+  certificateNumber: string | null;
+  completedAt: string | null;
+}
+
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
@@ -78,8 +104,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Enrich each enrollment with session data and risk calculation
-    const enrichedEnrollments = await Promise.all(
-      (enrollments || []).map(async (enrollment) => {
+    const enrichedEnrollments: EnrichedEnrollment[] = await Promise.all(
+      (enrollments || []).map(async (enrollment: any) => {
         // Count completed sessions
         const { count: sessionsCompleted } = await supabase
           .from('scheduled_sessions')
@@ -90,15 +116,15 @@ export async function GET(request: NextRequest) {
         // Get last session date
         const { data: lastSession } = await supabase
           .from('scheduled_sessions')
-          .select('completed_at, session_date')
+          .select('completed_at, scheduled_date')
           .eq('child_id', enrollment.child_id)
           .eq('status', 'completed')
           .order('completed_at', { ascending: false, nullsFirst: false })
           .limit(1)
           .maybeSingle();
 
-        // Check for assessments
-        const { data: assessments } = await supabase
+        // Check for assessments (table may not exist yet — cast to any)
+        const { data: assessments } = await (supabase as any)
           .from('assessment_results')
           .select('id, assessment_type, created_at')
           .eq('child_id', enrollment.child_id);
@@ -110,8 +136,8 @@ export async function GET(request: NextRequest) {
           .eq('id', enrollment.child_id)
           .maybeSingle();
 
-        const hasInitialAssessment = (assessments?.some(a => !a.assessment_type || a.assessment_type === 'initial')) || !!childData;
-        const hasFinalAssessment = assessments?.some(a => a.assessment_type === 'final') || false;
+        const hasInitialAssessment = (assessments?.some((a: any) => !a.assessment_type || a.assessment_type === 'initial')) || !!childData;
+        const hasFinalAssessment = assessments?.some((a: any) => a.assessment_type === 'final') || false;
 
         // Check if final assessment was sent
         const { data: finalAssessmentEvent } = await supabase
@@ -128,7 +154,7 @@ export async function GET(request: NextRequest) {
         const programEnd = new Date(enrollment.program_end);
         const daysRemaining = Math.ceil((programEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-        const lastSessionDate = lastSession?.completed_at || lastSession?.session_date || null;
+        const lastSessionDate = lastSession?.completed_at || lastSession?.scheduled_date || null;
         const daysSinceLastSession = lastSessionDate
           ? Math.ceil((today.getTime() - new Date(lastSessionDate).getTime()) / (1000 * 60 * 60 * 24))
           : null;

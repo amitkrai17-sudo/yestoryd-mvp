@@ -1,14 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 
 // Use anon key for public access (RLS will filter)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // GET - Fetch public settings for frontend
 // Usage: /api/settings?keys=whatsapp_number,support_email
 // Or: /api/settings?category=pricing
@@ -37,7 +32,7 @@ export async function GET(request: NextRequest) {
     const settings: Record<string, any> = {};
     data?.forEach(item => {
       try {
-        settings[item.key] = JSON.parse(item.value);
+        settings[item.key] = JSON.parse(String(item.value));
       } catch {
         settings[item.key] = item.value;
       }

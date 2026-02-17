@@ -350,8 +350,8 @@ async function saveSessionData(
         completed_at: new Date().toISOString(),
         focus_area: analysis.focus_area,
         skills_worked_on: analysis.skills_worked_on,
-        progress_rating: analysis.progress_rating,
-        engagement_level: analysis.engagement_level,
+        progress_rating: analysis.progress_rating || null,
+        engagement_level: analysis.engagement_level || null,
         confidence_level: analysis.confidence_level,
         breakthrough_moment: analysis.breakthrough_moment,
         concerns_noted: analysis.concerns_noted,
@@ -364,7 +364,7 @@ async function saveSessionData(
         flagged_for_attention: analysis.flagged_for_attention,
         flag_reason: analysis.flag_reason,
         audio_storage_path: audioStoragePath,
-        duration_minutes: durationSeconds ? Math.round(durationSeconds / 60) : null,
+        duration_minutes: durationSeconds ? Math.round(durationSeconds / 60) : undefined,
         attendance_count: attendance.totalParticipants,
       })
       .eq('id', sessionId);
@@ -381,6 +381,7 @@ async function saveSessionData(
   // merge transcript analysis into that existing event. Otherwise create new 'session' event.
   if (childId && coachId) {
     let embedding: number[] | null = null;
+    const embeddingStr = () => embedding ? JSON.stringify(embedding) : null;
 
     try {
       const searchableContent = buildSessionSearchableContent(childName, {
@@ -460,7 +461,7 @@ async function saveSessionData(
             event_data: mergedData,
             ai_summary: analysis.summary,
             content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-            embedding,
+            embedding: embeddingStr(),
           })
           .eq('id', existingCompanionEvent.id);
 
@@ -480,7 +481,7 @@ async function saveSessionData(
           event_data: transcriptAnalysisData,
           ai_summary: analysis.summary,
           content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-          embedding,
+          embedding: embeddingStr(),
         });
 
         console.log(JSON.stringify({
@@ -505,7 +506,7 @@ async function saveSessionData(
         event_data: transcriptAnalysisData,
         ai_summary: analysis.summary,
         content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-        embedding,
+        embedding: embeddingStr(),
       });
     }
   }
@@ -537,16 +538,18 @@ async function queueParentSummary(
   
   await supabase.from('communication_queue').insert({
     template_code: 'session_summary_parent',
+    recipient_id: childId,
     recipient_type: 'parent',
     related_entity_type: 'child',
     related_entity_id: childId,
+    scheduled_for: new Date().toISOString(),
     variables: {
       child_name: childName,
       summary,
       session_id: sessionId,
+      request_id: requestId,
     },
     status: 'pending',
-    request_id: requestId,
   });
 
   console.log(JSON.stringify({

@@ -12,10 +12,10 @@
 //
 // ============================================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { getUnavailabilityThresholds } from './config-provider';
 import { rescheduleSession, cancelSession, bulkReassign } from './session-manager';
 import { notify, NotificationData } from './notification-manager';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // ============================================================================
 // TYPES
@@ -33,10 +33,7 @@ export interface UnavailabilityResult {
 // ============================================================================
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createAdminClient();
 }
 
 interface AffectedSession {

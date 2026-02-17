@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     // 4. Verify discovery call exists and is not already completed
     const { data: existingCall, error: callError } = await supabase
       .from('discovery_calls')
-      .select('id, status, coach_id, child_name')
+      .select('id, status, assigned_coach_id, child_name')
       .eq('id', discovery_call_id)
       .single();
 
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Check if already assigned to this coach
-    if (existingCall.coach_id === coach_id) {
+    if (existingCall.assigned_coach_id === coach_id) {
       return NextResponse.json({
         success: true,
         message: 'Coach already assigned to this call',
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     const { data: updatedCall, error: updateError } = await supabase
       .from('discovery_calls')
       .update({
-        coach_id: coach_id,
+        assigned_coach_id: coach_id,
         assignment_type: 'manual',
         assigned_by: auth.email,
         assigned_at: new Date().toISOString(),
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       .eq('id', discovery_call_id)
       .select(`
         *,
-        assigned_coach:coaches!coach_id(id, name, email)
+        assigned_coach:coaches!assigned_coach_id(id, name, email)
       `)
       .single();
 
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
       // 7b. Children sync handled by database trigger: trigger_sync_discovery_to_children
 
     // 8. CRITICAL: Sync external systems (Calendar + Notifications)
-    const previousCoachId = existingCall.coach_id;
+    const previousCoachId = existingCall.assigned_coach_id;
 
     // 8a. Notify the NEW coach
     try {
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
                 hour: '2-digit', minute: '2-digit'
               })
             : 'TBD',
-          meet_link: updatedCall.google_meet_link || updatedCall.meeting_link || '',
+          meet_link: updatedCall.google_meet_link || '',
           discovery_call_id: discovery_call_id,
         },
         relatedEntityType: 'discovery_call',
@@ -346,7 +346,7 @@ export async function POST(request: NextRequest) {
           coach_id,
           coach_name: coach.name,
           child_name: updatedCall.child_name,
-          previous_coach_id: existingCall.coach_id,
+          previous_coach_id: existingCall.assigned_coach_id,
           notifications_sent: true,
           timestamp: new Date().toISOString(),
         },

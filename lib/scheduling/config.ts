@@ -19,7 +19,6 @@
 //
 // ============================================================================
 
-import { Database } from '@/lib/supabase/database.types';
 import { createAdminClient } from '@/lib/supabase/admin';
 // ============================================================================
 // TYPES
@@ -187,7 +186,7 @@ export const SESSION_TITLES = {
  * Falls back to defaults if not configured
  */
 export async function getSchedulingDurations(
-  supabaseClient?: ReturnType<typeof createClient<Database>>
+  supabaseClient?: ReturnType<typeof createAdminClient>
 ): Promise<SchedulingDurations> {
   try {
     const supabase = supabaseClient || createAdminClient();
@@ -242,7 +241,7 @@ interface PricingPlanRow {
  */
 export async function getPlanSchedule(
   planSlug: string,
-  supabaseClient?: ReturnType<typeof createClient<Database>>
+  supabaseClient?: ReturnType<typeof createAdminClient>
 ): Promise<PlanSchedule> {
   try {
     const supabase = supabaseClient || createAdminClient();

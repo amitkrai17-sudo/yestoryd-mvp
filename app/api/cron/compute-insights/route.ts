@@ -154,6 +154,9 @@ async function computeInsights(requestId: string, source: string) {
     const recentSessionChildIds = new Set<string>();
 
     for (const session of allSessions) {
+      // Skip sessions without coach assignment
+      if (!session.coach_id) continue;
+
       // Group by coach
       if (!sessionsByCoach.has(session.coach_id)) {
         sessionsByCoach.set(session.coach_id, []);
@@ -161,7 +164,7 @@ async function computeInsights(requestId: string, source: string) {
       sessionsByCoach.get(session.coach_id)!.push(session);
 
       // Track children with recent sessions
-      if (session.status === 'completed' && new Date(session.scheduled_date) >= new Date(fourteenDaysAgo)) {
+      if (session.child_id && session.status === 'completed' && new Date(session.scheduled_date) >= new Date(fourteenDaysAgo)) {
         recentSessionChildIds.add(session.child_id);
       }
     }
@@ -272,7 +275,7 @@ async function computeInsights(requestId: string, source: string) {
       // Get children with ANY recent session (completed or scheduled)
       const childrenWithRecentActivity = new Set<string>();
       for (const session of allSessions) {
-        if (new Date(session.scheduled_date) >= new Date(fourteenDaysAgo)) {
+        if (session.child_id && session.status && new Date(session.scheduled_date) >= new Date(fourteenDaysAgo)) {
           if (['completed', 'scheduled'].includes(session.status)) {
             childrenWithRecentActivity.add(session.child_id);
           }
@@ -329,7 +332,7 @@ async function computeInsights(requestId: string, source: string) {
       // Get upcoming sessions count per coach
       const upcomingSessionsByCoach = new Map<string, number>();
       for (const session of allSessions) {
-        if (session.status === 'scheduled' && new Date(session.scheduled_date) >= new Date()) {
+        if (session.coach_id && session.status === 'scheduled' && new Date(session.scheduled_date) >= new Date()) {
           upcomingSessionsByCoach.set(
             session.coach_id,
             (upcomingSessionsByCoach.get(session.coach_id) || 0) + 1

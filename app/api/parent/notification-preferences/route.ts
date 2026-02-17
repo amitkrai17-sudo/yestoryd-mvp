@@ -28,7 +28,7 @@ export async function GET() {
   const { data: parent } = await supabase
     .from('parents')
     .select('notification_preferences')
-    .eq('email', auth.email)
+    .eq('email', auth.email ?? '')
     .single();
 
   if (!parent) {
@@ -60,14 +60,14 @@ export async function PUT(request: NextRequest) {
   const { data: parent } = await supabase
     .from('parents')
     .select('id, notification_preferences')
-    .eq('email', auth.email)
+    .eq('email', auth.email ?? '')
     .single();
 
   if (!parent) {
     return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
   }
 
-  const merged = { ...(parent.notification_preferences || {}), ...body };
+  const merged = { ...((parent.notification_preferences as Record<string, any>) || {}), ...body };
 
   const { error } = await supabase
     .from('parents')

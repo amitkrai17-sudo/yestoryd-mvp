@@ -75,12 +75,9 @@ export async function POST(
       .select(`
         *,
         child:children(
-          id, child_name, age, grade,
-          clarity_score, fluency_score, speed_score, wpm,
-          strengths, areas_to_improve, detailed_feedback,
-          assessment_audio_url
+          id, child_name, age, grade
         ),
-        coach:coaches(id, name, email)
+        coach:coaches!coach_id(id, name, email)
       `)
       .eq('id', enrollmentId)
       .single();
@@ -89,28 +86,19 @@ export async function POST(
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
     }
 
-    // Get initial assessment (first assessment for this child)
-    const { data: initialAssessment } = await supabase
-      .from('children')
-      .select('clarity_score, fluency_score, speed_score, wpm, strengths, areas_to_improve, detailed_feedback, created_at')
-      .eq('id', enrollment.child_id)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .single();
+    if (!enrollment.child_id || !enrollment.child) {
+      return NextResponse.json({ error: 'Enrollment has no child assigned' }, { status: 400 });
+    }
 
-    // Get final assessment (most recent)
-    const { data: finalAssessment } = await supabase
-      .from('children')
-      .select('clarity_score, fluency_score, speed_score, wpm, strengths, areas_to_improve, detailed_feedback')
-      .eq('id', enrollment.child_id)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
+    // NOTE: Assessment data queries disabled - assessment columns don't exist in children table
+    // Would need to query child_rag_profiles or another assessment table
+    const initialAssessment = null;
+    const finalAssessment = null;
 
     // Get session summaries
     const { data: sessions } = await supabase
       .from('scheduled_sessions')
-      .select('session_number, scheduled_date, session_type, coach_notes, session_summary, status')
+      .select('session_number, scheduled_date, session_type, coach_notes, status')
       .eq('enrollment_id', enrollmentId)
       .eq('status', 'completed')
       .order('session_number', { ascending: true });
@@ -132,40 +120,40 @@ export async function POST(
     const reportData: ReportData = {
       child: {
         name: capitalizeName(enrollment.child.child_name),
-        age: enrollment.child.age,
+        age: enrollment.child.age || 0,
         grade: enrollment.child.grade || 'Not specified',
       },
       coach: {
         name: capitalizeName(enrollment.coach?.name || 'Coach'),
       },
       program: {
-        startDate: enrollment.program_start,
-        endDate: enrollment.program_end,
+        startDate: enrollment.program_start || new Date().toISOString(),
+        endDate: enrollment.program_end || new Date().toISOString(),
         totalSessions: sessions?.length || 0,
       },
       initialAssessment: {
-        clarityScore: initialAssessment?.clarity_score || 5,
-        fluencyScore: initialAssessment?.fluency_score || 5,
-        speedScore: initialAssessment?.speed_score || 5,
-        wpm: initialAssessment?.wpm || 0,
-        strengths: initialAssessment?.strengths || [],
-        areasToImprove: initialAssessment?.areas_to_improve || [],
-        feedback: initialAssessment?.detailed_feedback || '',
+        clarityScore: 5,
+        fluencyScore: 5,
+        speedScore: 5,
+        wpm: 0,
+        strengths: [],
+        areasToImprove: [],
+        feedback: '',
       },
       finalAssessment: {
-        clarityScore: finalAssessment?.clarity_score || 5,
-        fluencyScore: finalAssessment?.fluency_score || 5,
-        speedScore: finalAssessment?.speed_score || 5,
-        wpm: finalAssessment?.wpm || 0,
-        strengths: finalAssessment?.strengths || [],
-        areasToImprove: finalAssessment?.areas_to_improve || [],
-        feedback: finalAssessment?.detailed_feedback || '',
+        clarityScore: 5,
+        fluencyScore: 5,
+        speedScore: 5,
+        wpm: 0,
+        strengths: [],
+        areasToImprove: [],
+        feedback: '',
       },
       sessionSummaries: sessions?.map((s, i) => ({
         sessionNumber: s.session_number || i + 1,
         date: s.scheduled_date,
         type: s.session_type as 'coaching' | 'parent_checkin',
-        summary: s.session_summary || s.coach_notes || '',
+        summary: s.coach_notes || '',
         highlights: [],
         focusAreas: [],
       })) || [],

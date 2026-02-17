@@ -148,7 +148,7 @@ export default function StudentDetailPage() {
       }
 
       setStudent(enrollmentData.child as any);
-      setEnrollment(enrollmentData);
+      setEnrollment(enrollmentData as any);
 
       // Get sessions
       const { data: sessionsData } = await supabase
@@ -157,7 +157,7 @@ export default function StudentDetailPage() {
         .eq('enrollment_id', enrollmentData.id)
         .order('scheduled_date', { ascending: true });
 
-      setSessions(sessionsData || []);
+      setSessions((sessionsData || []) as any);
 
       // Fetch learning_events for session details
       if (sessionsData && sessionsData.length > 0) {
@@ -170,20 +170,20 @@ export default function StudentDetailPage() {
 
         if (sessionEvents) {
           const detailsMap = new Map<string, SessionEventData>(
-            sessionEvents.map(e => [e.session_id, e.event_data as SessionEventData])
+            sessionEvents.filter(e => e.session_id).map(e => [e.session_id!, e.event_data as SessionEventData])
           );
           setSessionDetailsMap(detailsMap);
         }
       }
 
       // Get assessments
-      const { data: assessmentsData } = await supabase
+      const { data: assessmentsData } = await (supabase as any)
         .from('assessments')
         .select('*')
         .eq('child_id', studentId)
         .order('created_at', { ascending: false });
 
-      setAssessments(assessmentsData || []);
+      setAssessments((assessmentsData || []) as any);
 
     } catch (error) {
       console.error('Error loading student:', error);

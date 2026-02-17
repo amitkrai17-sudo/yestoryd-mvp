@@ -119,9 +119,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'coach_referral_code_generated',
-      details: { request_id: requestId, coach_id: coachId, coach_name: coach.name, referral_code: referralCode, timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, coach_id: coachId, coach_name: coach.name, referral_code: referralCode, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 
@@ -245,9 +246,10 @@ export async function GET(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'coach_referral_codes_bulk_generated',
-      details: {
+      metadata: {
         request_id: requestId,
         total_processed: coaches.length,
         successful: results.length,

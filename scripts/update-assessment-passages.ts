@@ -7,6 +7,7 @@
  * Run with: npx tsx scripts/update-assessment-passages.ts
  */
 
+import { Database } from '@/lib/supabase/database.types';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 
@@ -20,7 +21,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(
+  supabaseUrl, supabaseServiceKey);
 
 // Cambridge English Level Standards for Yestoryd (ages 4-12)
 // - Age 4-5 → "Pre-A1 Starters" (Cambridge YLE)

@@ -326,9 +326,10 @@ WhatsApp: +91 89762 87997`;
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'group_session_created',
-      details: {
+      metadata: {
         request_id: requestId,
         session_id: session.id,
         title: sessionData.title,

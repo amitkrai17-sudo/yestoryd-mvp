@@ -16,18 +16,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { Shield } from 'lucide-react';
 import { CoachContext, CoachData, CoachContextType } from './context';
 import BottomNav from '@/components/navigation/BottomNav';
 import { coachNavItems } from '@/lib/config/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 // ==================== SUPABASE CLIENT ====================
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // ==================== ROUTE CONFIGURATION ====================
 const PUBLIC_ROUTES = ['/coach/login', '/coach/confirm'];
 

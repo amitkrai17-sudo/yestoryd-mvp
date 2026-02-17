@@ -23,9 +23,9 @@ export interface SendCommunicationParams {
   templateCode: string;
   recipientType: 'parent' | 'coach' | 'admin';
   recipientId?: string;
-  recipientPhone?: string;
-  recipientEmail?: string;
-  recipientName?: string;
+  recipientPhone?: string | null;
+  recipientEmail?: string | null;
+  recipientName?: string | null;
   variables: Record<string, string>;
   relatedEntityType?: string;
   relatedEntityId?: string;
@@ -111,11 +111,11 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
           .select('notification_preferences')
           .eq('id', params.recipientId)
           .single();
-        prefs = parentPrefs?.notification_preferences || {};
+        prefs = (parentPrefs?.notification_preferences as Record<string, any>) || {};
       }
 
       // Determine if this category is allowed by preferences
-      const category = template.category || '';
+      const category = (template as any).category || '';
       const categoryAllowed =
         (category === 'session_reminder' ? prefs.session_reminders !== false : true) &&
         (category === 'progress' ? prefs.progress_updates !== false : true) &&
@@ -241,9 +241,9 @@ async function getRecipientContact(
   }
 
   return {
-    phone: data.phone,
+    phone: data.phone ?? undefined,
     email: data.email,
-    name: data.name,
+    name: data.name ?? undefined,
   };
 }
 
@@ -254,8 +254,8 @@ async function logCommunication(params: {
   channel: string;
   recipientType: string;
   recipientId?: string;
-  recipientName?: string;
-  recipientContact?: string;
+  recipientName?: string | null;
+  recipientContact?: string | null;
   variablesUsed: Record<string, string>;
   status: string;
   providerMessageId?: string;
@@ -296,8 +296,8 @@ export async function scheduleCommunication(params: SendCommunicationParams & {
       .insert({
         template_code: params.templateCode,
         recipient_type: params.recipientType,
-        recipient_id: params.recipientId,
-        variables: params.variables,
+        recipient_id: params.recipientId!,
+        variables: params.variables as any,
         related_entity_type: params.relatedEntityType,
         related_entity_id: params.relatedEntityId,
         scheduled_for: params.scheduledFor.toISOString(),

@@ -41,6 +41,11 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    if (!session.child_id) {
+      console.log(JSON.stringify({ requestId, event: 'parent_summary_skipped', reason: 'no child_id', sessionId }));
+      return NextResponse.json({ success: true, skipped: true, reason: 'No child assigned' });
+    }
+
     const child = (session as any).children;
     if (!child?.parent_phone) {
       console.log(JSON.stringify({ requestId, event: 'parent_summary_skipped', reason: 'no parent phone', sessionId }));
@@ -111,7 +116,7 @@ Write a SHORT (2-3 sentences max) parent-friendly summary of this session for Wh
     await supabase
       .from('learning_events')
       .insert({
-        child_id: session.child_id,
+        child_id: session.child_id as string, // Already verified not null above
         event_type: 'parent_session_summary',
         event_data: {
           session_id: sessionId,
@@ -270,7 +275,7 @@ async function synthesizeLearningProfile(
       .select('learning_profile')
       .eq('id', childId)
       .single();
-    currentProfile = profileRow?.learning_profile || {};
+    currentProfile = (profileRow?.learning_profile as Record<string, any>) || {};
   } catch {
     // Column doesn't exist yet — use empty profile
   }

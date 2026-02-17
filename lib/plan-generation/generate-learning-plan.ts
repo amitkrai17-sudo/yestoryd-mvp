@@ -478,17 +478,17 @@ export async function generateLearningPlan(
     let selections: TemplateSelection[];
     switch (ageBand) {
       case 'foundation':
-        selections = selectFoundationTemplates(templates, diagnosticData, totalSessions);
+        selections = selectFoundationTemplates(templates as any, diagnosticData, totalSessions);
         break;
       case 'mastery':
-        selections = selectMasteryTemplates(templates, diagnosticData, totalSessions);
+        selections = selectMasteryTemplates(templates as any, diagnosticData, totalSessions);
         break;
       default:
-        selections = selectBuildingTemplates(templates, diagnosticData, totalSessions);
+        selections = selectBuildingTemplates(templates as any, diagnosticData, totalSessions);
     }
 
     // 5. Sequence templates (respecting prerequisites)
-    const sequenced = sequenceTemplates(selections, templates);
+    const sequenced = sequenceTemplates(selections, templates as any);
 
     // 6. Determine focus areas
     const focusCounts = new Map<string, number>();
@@ -519,20 +519,10 @@ export async function generateLearningPlan(
         child_id: childId,
         enrollment_id: enrollment.id,
         season_number: seasonNumber,
-        age_band: ageBand,
-        roadmap_data: {
-          season_name: seasonName,
-          focus_areas: focusAreas,
-          total_planned_sessions: sequenced.length + 1, // +1 for diagnostic
-          milestone_description: `Complete ${sequenced.length} sessions focusing on ${focusAreas.slice(0, 2).join(' and ')}`,
-          generated_from: 'diagnostic_rules',
-          diagnostic_summary: {
-            confidence: diagnosticData.confidence_level,
-            recommended_focus: diagnosticData.coach_recommended_focus,
-            coach_observations: diagnosticData.coach_observations,
-          },
-        },
-        generated_by: 'system',
+        season_name: seasonName,
+        focus_area: focusAreas[0] || ageBand,
+        milestone_description: `Complete ${sequenced.length} sessions focusing on ${focusAreas.slice(0, 2).join(' and ')}`,
+        estimated_sessions: sequenced.length + 1,
         status: 'draft',
       })
       .select('id')
@@ -544,13 +534,12 @@ export async function generateLearningPlan(
     }
 
     // 8. Create season_learning_plans entries
-    const planRows = sequenced.map(sel => ({
-      roadmap_id: roadmap.id,
-      session_number: sel.session_number,
+    const planRows = sequenced.map((sel, idx) => ({
+      season_roadmap_id: roadmap.id,
+      child_id: childId,
+      week_number: sel.session_number ?? (idx + 1),
       session_template_id: sel.template_id,
-      focus_area: sel.skill_focus.join(', '),
-      objectives: [sel.reason],
-      success_criteria: null,
+      skill_focus: sel.skill_focus.join(', '),
       status: 'planned',
     }));
 

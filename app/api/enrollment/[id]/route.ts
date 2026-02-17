@@ -4,15 +4,12 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { capitalizeName } from '@/lib/utils';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(
   request: NextRequest,
@@ -66,13 +63,13 @@ export async function GET(
     const { count: completedSessions } = await supabase
       .from('scheduled_sessions')
       .select('*', { count: 'exact', head: true })
-      .eq('child_id', enrollment.child_id)
+      .eq('child_id', enrollment.child_id!)
       .eq('status', 'completed');
 
     const { count: totalSessions } = await supabase
       .from('scheduled_sessions')
       .select('*', { count: 'exact', head: true })
-      .eq('child_id', enrollment.child_id);
+      .eq('child_id', enrollment.child_id!);
 
     // Capitalize names in nested objects
     const transformedEnrollment = {

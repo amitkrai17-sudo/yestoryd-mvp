@@ -146,7 +146,7 @@ async function syncUserOnSignIn(
         phone: childRecord.parent_phone,
         avatar_url: image,
         created_at: new Date().toISOString(),
-        last_login_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
       });
     }
   } else {
@@ -154,7 +154,7 @@ async function syncUserOnSignIn(
     await supabase
       .from('parents')
       .update({
-        last_login_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
         avatar_url: image || undefined,
       })
       .eq('id', existingParent.id);
@@ -171,7 +171,7 @@ async function syncUserOnSignIn(
     await supabase
       .from('coaches')
       .update({
-        last_login_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
         avatar_url: image || undefined,
       })
       .eq('id', coach.id);

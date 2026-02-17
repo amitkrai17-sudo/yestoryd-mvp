@@ -4,15 +4,12 @@
 // AUTO-TRIGGERS final assessment email after session 9 (last parent check-in)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -173,7 +170,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
     const { data: parent } = await supabase
       .from('parents')
       .select('email, name, phone')
-      .eq('id', enrollment.parent_id)
+      .eq('id', enrollment.parent_id!)
       .single();
 
     const parentEmail = parent?.email || child?.parent_email;
@@ -348,7 +345,7 @@ export async function POST(request: NextRequest) {
 
     // Generate AI summary
     const aiSummary = await generateCheckinSummary(
-      child.name,
+      child.name ?? 'Child',
       child.parent_name || 'Parent',
       data,
       voiceTranscript

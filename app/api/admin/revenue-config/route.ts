@@ -179,9 +179,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'revenue_config_updated',
-      details: {
+      metadata: {
         request_id: requestId,
         previous_config: currentConfig ? {
           lead: currentConfig.lead_cost_percent,

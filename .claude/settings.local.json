@@ -57,7 +57,17 @@
       "Bash(openclaw status:*)",
       "Bash(timeout:*)",
       "Bash(child \")",
-      "Bash(python3 -c \" import re with open\\(''lib/supabase/database.types.ts''\\) as f: content = f.read\\(\\) # Find Tables section \\(line 16 to Views\\) tables_section = content.split\\(''Views:''\\)[0] # Match each table and count Row columns pattern = r''\\(\\\\w+\\): \\\\{\\\\s*Row: \\\\{\\([^}]+\\)\\\\}'' for m in re.finditer\\(pattern, tables_section\\): name = m.group\\(1\\) if name.startswith\\(''_deprecated''\\): continue cols = len\\([l for l in m.group\\(2\\).strip\\(\\).split\\(''\\\\n''\\) if '':'' in l]\\) print\\(f''{name} | {cols}''\\) \")"
+      "Bash(python3 -c \" import re with open\\(''lib/supabase/database.types.ts''\\) as f: content = f.read\\(\\) # Find Tables section \\(line 16 to Views\\) tables_section = content.split\\(''Views:''\\)[0] # Match each table and count Row columns pattern = r''\\(\\\\w+\\): \\\\{\\\\s*Row: \\\\{\\([^}]+\\)\\\\}'' for m in re.finditer\\(pattern, tables_section\\): name = m.group\\(1\\) if name.startswith\\(''_deprecated''\\): continue cols = len\\([l for l in m.group\\(2\\).strip\\(\\).split\\(''\\\\n''\\) if '':'' in l]\\) print\\(f''{name} | {cols}''\\) \")",
+      "Bash(env:*)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs file:*)",
+      "Bash(echo:*)",
+      "Bash(tee:*)",
+      "Bash(if [ -f \"app/api/discovery-call/[id]/send-payment-link/route.ts\" ])",
+      "Bash(then)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(git checkout:*)"
     ]
   }
 }

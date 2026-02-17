@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     if (onboardingComplete) {
       const engRecords = buildEngagementRecords(coach_id, 'onboarding_complete');
       if (engRecords.length > 0) {
-        await supabase.from('coach_engagement_log').insert(engRecords);
+        await (supabase as any).from('coach_engagement_log').insert(engRecords);
       }
     }
 

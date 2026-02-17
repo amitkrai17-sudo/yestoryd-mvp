@@ -3,15 +3,12 @@
 // Saves structured data + voice note + creates learning events for RAG
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -257,7 +254,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate AI summary
-    const aiSummary = await generateSessionSummary(child.name, data, voiceTranscript);
+    const aiSummary = await generateSessionSummary(child.name ?? 'Child', data, voiceTranscript);
 
     // Update scheduled_sessions
     const { error: sessionError } = await supabase
@@ -265,11 +262,11 @@ export async function POST(request: NextRequest) {
       .update({
         status: 'completed',
         completed_at: new Date().toISOString(),
-        
+
         // Form data
         focus_area: data.focusArea,
-        progress_rating: data.progressRating,
-        engagement_level: data.engagementLevel,
+        progress_rating: data.progressRating || null,
+        engagement_level: data.engagementLevel || null,
         confidence_level: data.confidenceLevel,
         skills_worked_on: data.skillsWorkedOn,
         
@@ -388,7 +385,7 @@ export async function POST(request: NextRequest) {
       .eq('id', data.childId);
 
     // Actually increment sessions_completed
-    await supabase.rpc('increment_sessions_completed', { child_id: data.childId });
+    await supabase.rpc('increment_sessions_completed', { child_id_param: data.childId });
 
     // If flagged, log for admin attention
     if (data.flaggedForAttention) {

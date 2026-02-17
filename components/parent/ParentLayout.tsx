@@ -104,7 +104,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
       const { data: parentData } = await supabase
         .from('parents')
         .select('id, name, email')
-        .eq('email', user.email)
+        .eq('email', user.email ?? '')
         .maybeSingle();
 
       let parentId = parentData?.id;
@@ -122,7 +122,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
           .order('enrolled_at', { ascending: false });
         
         if (childrenByParentId && childrenByParentId.length > 0) {
-          childrenList = childrenByParentId;
+          childrenList = childrenByParentId as any;
         }
       }
 
@@ -131,12 +131,12 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
         const { data: childrenByEmail } = await supabase
           .from('children')
           .select('id, name, lead_status, enrolled_at, created_at')
-          .eq('parent_email', user.email)
+          .eq('parent_email', user.email ?? '')
           .eq('lead_status', 'enrolled')
           .order('enrolled_at', { ascending: false });
         
         if (childrenByEmail && childrenByEmail.length > 0) {
-          childrenList = childrenByEmail;
+          childrenList = childrenByEmail as any;
         }
       }
 

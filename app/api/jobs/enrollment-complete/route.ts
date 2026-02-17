@@ -159,7 +159,13 @@ export async function POST(request: NextRequest) {
     const calendarResult = await scheduleCalendarForExistingSessions(
       data.enrollmentId,
       data,
-      enrollment,
+      {
+        program_start: enrollment.program_start ?? undefined,
+        preference_start_date: enrollment.preference_start_date ?? undefined,
+        session_duration_minutes: enrollment.session_duration_minutes ?? undefined,
+        total_sessions: enrollment.total_sessions ?? undefined,
+        age_band: enrollment.age_band ?? undefined,
+      },
       requestId,
       supabase
     );
@@ -352,9 +358,9 @@ async function scheduleCalendarForExistingSessions(
       sessionsUpdated: existingSessions.length,
       sessions: existingSessions.map(s => ({
         id: s.id,
-        sessionNumber: s.session_number,
-        type: s.session_type,
-        date: s.scheduled_date,
+        sessionNumber: s.session_number ?? 0,
+        type: s.session_type ?? '',
+        date: s.scheduled_date ?? '',
         meetLink: s.google_meet_link || '',
         eventId: s.google_event_id || '',
       })),
@@ -393,9 +399,9 @@ async function scheduleCalendarForExistingSessions(
     if (session.google_event_id) {
       sessionsUpdated.push({
         id: session.id,
-        sessionNumber: session.session_number,
-        type: session.session_type,
-        date: session.scheduled_date,
+        sessionNumber: session.session_number ?? 0,
+        type: session.session_type ?? '',
+        date: session.scheduled_date ?? '',
         meetLink: session.google_meet_link || '',
         eventId: session.google_event_id,
       });
@@ -406,9 +412,9 @@ async function scheduleCalendarForExistingSessions(
       // Calculate session date based on session_number and week_number
       const sessionDate = calculateSessionDate(
         startDate,
-        session.session_number,
-        session.week_number,
-        session.session_type
+        session.session_number ?? 0,
+        session.week_number ?? 0,
+        session.session_type ?? 'coaching'
       );
 
       const isCoaching = session.session_type === 'coaching';
@@ -494,8 +500,8 @@ async function scheduleCalendarForExistingSessions(
 
       sessionsUpdated.push({
         id: session.id,
-        sessionNumber: session.session_number,
-        type: session.session_type,
+        sessionNumber: session.session_number ?? 0,
+        type: session.session_type ?? '',
         date: sessionDate.toISOString(),
         meetLink,
         eventId: event.data.id || '',

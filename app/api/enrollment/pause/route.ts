@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       ));
 
       // Recalculate end date based on actual pause duration
-      const originalEnd = new Date(enrollment.original_end_date || enrollment.program_end);
+      const originalEnd = new Date(enrollment.original_end_date || enrollment.program_end || new Date().toISOString());
       const newEndDate = new Date(originalEnd);
       newEndDate.setDate(newEndDate.getDate() + actualPauseDays);
 
@@ -244,14 +244,14 @@ export async function POST(request: NextRequest) {
       const originalEndDate = enrollment.original_end_date || enrollment.program_end;
 
       // Calculate new program end date
-      const currentEndDate = new Date(enrollment.program_end);
+      const currentEndDate = new Date(enrollment.program_end || new Date().toISOString());
       const newEndDate = new Date(currentEndDate);
       newEndDate.setDate(newEndDate.getDate() + pauseDays);
 
       // Get sessions during pause period to mark as paused
       const { data: sessionsToCancel } = await supabase
         .from('scheduled_sessions')
-        .select('id, scheduled_date, scheduled_time, google_calendar_event_id, recall_bot_id')
+        .select('id, scheduled_date, scheduled_time, google_event_id, recall_bot_id')
         .eq('child_id', (enrollment.children as any)?.[0]?.id)
         .gte('scheduled_date', pauseStartDate)
         .lte('scheduled_date', pauseEndDate)
@@ -291,8 +291,8 @@ export async function POST(request: NextRequest) {
         // Cancel Google Calendar events and Recall.ai bots
         for (const s of sessionsToCancel) {
           try {
-            if (s.google_calendar_event_id) {
-              await cancelEvent(s.google_calendar_event_id, true);
+            if (s.google_event_id) {
+              await cancelEvent(s.google_event_id, true);
             }
             if (s.recall_bot_id) {
               await cancelRecallBot(s.recall_bot_id);

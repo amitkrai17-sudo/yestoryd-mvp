@@ -443,7 +443,7 @@ function EnrollContent() {
           setCoach({ name: settings.name || DEFAULT_COACH.name, title: settings.title || DEFAULT_COACH.title, rating: settings.rating || DEFAULT_COACH.rating, experience: settings.experience || DEFAULT_COACH.experience, families: settings.families || DEFAULT_COACH.families, initial: settings.initial || DEFAULT_COACH.initial });
         }
         const { data: whatsappData, error: whatsappError } = await supabase.from('site_settings').select('value').eq('key', 'whatsapp_number').single();
-        if (!whatsappError && whatsappData?.value) setWhatsappNumber(whatsappData.value.replace('+', ''));
+        if (!whatsappError && whatsappData?.value) setWhatsappNumber(String(whatsappData.value).replace('+', ''));
       } catch (err) { console.error('Failed to fetch settings:', err); }
     }
     fetchSettings();

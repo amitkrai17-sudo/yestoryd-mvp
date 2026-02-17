@@ -80,12 +80,12 @@ export async function GET(request: NextRequest) {
       .eq('child_id', trimmedChildId)
       .order('created_at', { ascending: false });
 
-    const levelInfo = calculateLevel(gamification.total_xp);
+    const levelInfo = calculateLevel(gamification.total_xp ?? 0);
 
     const response = {
       success: true,
       xp: {
-        current: gamification.total_xp,
+        current: gamification.total_xp ?? 0,
         level: levelInfo.level,
         levelName: levelInfo.name,
         xpInCurrentLevel: levelInfo.xpInLevel,

@@ -296,8 +296,8 @@ async function saveReconciliationData(
       completed_at: new Date().toISOString(),
       focus_area: analysis.focus_area,
       skills_worked_on: analysis.skills_worked_on,
-      progress_rating: analysis.progress_rating,
-      engagement_level: analysis.engagement_level,
+      progress_rating: analysis.progress_rating || null,
+      engagement_level: analysis.engagement_level || null,
       confidence_level: analysis.confidence_level,
       breakthrough_moment: analysis.breakthrough_moment,
       concerns_noted: analysis.concerns_noted,
@@ -314,6 +314,7 @@ async function saveReconciliationData(
 
   // 3. Create learning event with embedding
   let embedding: number[] | null = null;
+  const embeddingStr = () => embedding ? JSON.stringify(embedding) : null;
   try {
     const searchableContent = buildSessionSearchableContent(childName, {
       session_type: analysis.session_type,
@@ -360,7 +361,7 @@ async function saveReconciliationData(
     },
     ai_summary: analysis.summary,
     content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-    embedding,
+    embedding: embeddingStr(),
   });
 
   // 4. Increment sessions completed
@@ -479,6 +480,11 @@ export async function GET(request: NextRequest) {
     for (const session of sessionsToProcess) {
       const botId = session.recall_bot_id;
 
+      if (!botId) {
+        skipped++;
+        continue;
+      }
+
       try {
         // 2a. Get bot status from Recall.ai
         const botDetails = await getRecallBotDetails(botId);
@@ -535,6 +541,7 @@ export async function GET(request: NextRequest) {
         }));
 
         // 2c. Get child context for AI analysis
+        if (!session.child_id) { skipped++; continue; }
         const childContext = await getChildContext(supabase, session.child_id);
         const childName = childContext?.name || 'Child';
 
@@ -582,7 +589,7 @@ export async function GET(request: NextRequest) {
           supabase,
           session.id,
           session.child_id,
-          session.coach_id,
+          session.coach_id ?? '',
           transcript,
           analysis,
           audioStoragePath,
@@ -593,16 +600,18 @@ export async function GET(request: NextRequest) {
         if (analysis.parent_summary) {
           await supabase.from('communication_queue').insert({
             template_code: 'session_summary_parent',
+            recipient_id: session.child_id ?? session.id,
             recipient_type: 'parent',
             related_entity_type: 'child',
             related_entity_id: session.child_id,
+            scheduled_for: new Date().toISOString(),
             variables: {
               child_name: childName,
               summary: analysis.parent_summary,
               session_id: session.id,
+              request_id: requestId,
             },
             status: 'pending',
-            request_id: requestId,
           });
         }
 

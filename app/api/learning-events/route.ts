@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         event_date: event_date || new Date().toISOString(),
         data,
         ai_summary: aiSummary,
-        embedding,
+        embedding: embedding ? JSON.stringify(embedding) : null,
         created_by,
       })
       .select()

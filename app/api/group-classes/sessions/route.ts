@@ -65,9 +65,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get unique IDs for related data
-    const classTypeIds = Array.from(new Set(sessions.map(s => s.class_type_id).filter(Boolean)));
-    const instructorIds = Array.from(new Set(sessions.map(s => s.instructor_id).filter(Boolean)));
-    const bookIds = Array.from(new Set(sessions.map(s => s.book_id).filter(Boolean)));
+    const classTypeIds = Array.from(new Set(sessions.map(s => s.class_type_id).filter(Boolean))) as string[];
+    const instructorIds = Array.from(new Set(sessions.map(s => s.instructor_id).filter(Boolean))) as string[];
+    const bookIds = Array.from(new Set(sessions.map(s => s.book_id).filter(Boolean))) as string[];
 
     // Fetch related data in parallel
     const [classTypesRes, instructorsRes, booksRes] = await Promise.all([
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       durationMinutes: session.duration_minutes,
       maxParticipants: session.max_participants,
       currentParticipants: session.current_participants,
-      spotsAvailable: session.max_participants - session.current_participants,
+      spotsAvailable: (session.max_participants ?? 0) - (session.current_participants ?? 0),
       priceInr: session.price_inr,
       ageMin: session.age_min,
       ageMax: session.age_max,

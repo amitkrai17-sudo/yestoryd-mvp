@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       .eq('child_id', childId)
       .eq('is_read', false)
       .eq('is_deleted', false)
-      .neq('sender_id', auth.userId); // Don't count own messages
+      .neq('sender_id', auth.userId ?? ''); // Don't count own messages
 
     // Get child and coach info
     const { data: child } = await supabase
@@ -238,7 +238,7 @@ export async function PATCH(request: NextRequest) {
       })
       .eq('child_id', child_id)
       .eq('is_read', false)
-      .neq('sender_id', auth.userId); // Don't mark own messages
+      .neq('sender_id', auth.userId ?? ''); // Don't mark own messages
 
     if (message_ids && message_ids.length > 0) {
       query = query.in('id', message_ids);
@@ -292,7 +292,7 @@ async function verifyChildAccess(
     const { data: parent } = await supabase
       .from('parents')
       .select('id')
-      .eq('user_id', auth.userId)
+      .eq('user_id', auth.userId ?? '')
       .single();
 
     return parent?.id === child.parent_id;

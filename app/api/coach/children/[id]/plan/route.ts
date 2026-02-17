@@ -60,17 +60,17 @@ export async function GET(
     const { data: planItems } = await supabase
       .from('season_learning_plans')
       .select(`
-        id, session_number, session_template_id, focus_area,
-        objectives, success_criteria, status, coach_notes,
-        completed_at, created_at
+        id, week_number, session_template_id, skill_focus,
+        status, coach_notes, created_at, difficulty_level,
+        adapted_from, adapted_reason
       `)
-      .eq('roadmap_id', roadmap.id)
-      .order('session_number', { ascending: true });
+      .eq('season_roadmap_id', roadmap.id)
+      .order('week_number', { ascending: true });
 
     // Get template details for all plan items
     const templateIds = (planItems || [])
       .map(p => p.session_template_id)
-      .filter(Boolean);
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
 
     let templatesMap: Record<string, any> = {};
     if (templateIds.length > 0) {
@@ -86,12 +86,16 @@ export async function GET(
 
     // Get available templates for swaps (same age band, active, not already in plan)
     const usedTemplateIds = templateIds;
-    const { data: availableTemplates } = await supabase
-      .from('session_templates')
-      .select('id, template_code, title, skill_dimensions, difficulty_level, duration_minutes, is_diagnostic, is_season_finale')
-      .eq('age_band', roadmap.age_band)
-      .eq('is_active', true)
-      .eq('is_diagnostic', false);
+    let availableTemplates: any[] = [];
+    if (child.age_band) {
+      const { data } = await supabase
+        .from('session_templates')
+        .select('id, template_code, title, skill_dimensions, difficulty_level, duration_minutes, is_diagnostic, is_season_finale')
+        .eq('age_band', child.age_band)
+        .eq('is_active', true)
+        .eq('is_diagnostic', false);
+      availableTemplates = data || [];
+    }
 
     const swapOptions = (availableTemplates || [])
       .filter(t => !usedTemplateIds.includes(t.id))
@@ -117,13 +121,13 @@ export async function GET(
       roadmap: {
         id: roadmap.id,
         season_number: roadmap.season_number,
-        age_band: roadmap.age_band,
+        age_band: child.age_band,
         status: roadmap.status,
-        season_name: roadmap.roadmap_data?.season_name || null,
-        focus_areas: roadmap.roadmap_data?.focus_areas || [],
-        total_planned_sessions: roadmap.roadmap_data?.total_planned_sessions || 0,
-        milestone_description: roadmap.roadmap_data?.milestone_description || null,
-        generated_by: roadmap.generated_by,
+        season_name: roadmap.season_name,
+        focus_areas: roadmap.focus_area ? [roadmap.focus_area] : [],
+        total_planned_sessions: roadmap.estimated_sessions || 0,
+        milestone_description: roadmap.milestone_description,
+        generated_by: null, // This column doesn't exist in the schema
         created_at: roadmap.created_at,
       },
       plan_items: enrichedItems,
@@ -190,9 +194,9 @@ export async function PATCH(
         // Verify the plan item belongs to this roadmap
         const { data: planItem } = await supabase
           .from('season_learning_plans')
-          .select('id, roadmap_id, session_number')
+          .select('id, season_roadmap_id, week_number')
           .eq('id', planItemId)
-          .eq('roadmap_id', roadmap.id)
+          .eq('season_roadmap_id', roadmap.id)
           .single();
 
         if (!planItem) {
@@ -210,8 +214,7 @@ export async function PATCH(
           .from('season_learning_plans')
           .update({
             session_template_id: new_template_id,
-            focus_area: newTemplate?.skill_dimensions?.join(', ') || null,
-            objectives: [`Swapped by coach: ${newTemplate?.title || ''}`],
+            skill_focus: newTemplate?.skill_dimensions?.join(', ') || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', planItemId);
@@ -231,16 +234,16 @@ export async function PATCH(
           return NextResponse.json({ error: 'items array required' }, { status: 400 });
         }
 
-        // Batch update session numbers
+        // Batch update week numbers
         for (const item of items) {
           await supabase
             .from('season_learning_plans')
             .update({
-              session_number: item.session_number,
+              week_number: item.week_number,
               updated_at: new Date().toISOString(),
             })
             .eq('id', item.id)
-            .eq('roadmap_id', roadmap.id);
+            .eq('season_roadmap_id', roadmap.id);
         }
 
         console.log(JSON.stringify({ requestId, event: 'plan_reordered', roadmapId: roadmap.id, count: items.length, by: auth.email }));
@@ -261,7 +264,7 @@ export async function PATCH(
             updated_at: new Date().toISOString(),
           })
           .eq('id', planItemId)
-          .eq('roadmap_id', roadmap.id);
+          .eq('season_roadmap_id', roadmap.id);
 
         if (notesError) {
           return NextResponse.json({ error: 'Failed to update notes' }, { status: 500 });

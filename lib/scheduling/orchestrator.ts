@@ -197,6 +197,10 @@ async function dispatchInternal(
         const preferredTimeBucket = enrollment.preferred_time as string | null;
         const preferredDay = enrollment.preferred_day as number | null;
 
+        if (!enrollment.child_id || !enrollment.coach_id) {
+          return { success: false, event, error: 'Enrollment missing child_id or coach_id' };
+        }
+
         console.log(`[Orchestrator] ${event}: scheduling sessions for enrollment ${enrollment.id}`, {
           requestId,
           childId: enrollment.child_id,
@@ -419,7 +423,7 @@ async function dispatchInternal(
           .eq('id', payload.sessionId)
           .single();
 
-        if (session) {
+        if (session && session.child_id && session.enrollment_id) {
           await supabase
             .from('enrollments')
             .update({
@@ -463,8 +467,8 @@ async function dispatchInternal(
           .eq('id', payload.sessionId)
           .single();
 
-        if (!session) {
-          return { success: false, event, error: 'Session not found' };
+        if (!session || !session.child_id) {
+          return { success: false, event, error: 'Session not found or missing child_id' };
         }
 
         // Get enrollment
@@ -513,18 +517,7 @@ async function dispatchInternal(
           .eq('id', enrollment.id);
 
         if (autoPaused) {
-          await supabase.from('admin_alerts').insert({
-            alert_type: 'enrollment_auto_paused',
-            severity: 'high',
-            title: `Enrollment auto-paused: ${newTotal} no-shows`,
-            message: `Enrollment ${enrollment.id} auto-paused due to ${newTotal} total no-shows`,
-            context_data: {
-              enrollment_id: enrollment.id,
-              child_id: session.child_id,
-              total_no_shows: newTotal,
-              consecutive_no_shows: newConsecutive,
-            },
-          });
+          console.warn(`[Orchestrator] Enrollment auto-paused: ${enrollment.id}, total no-shows: ${newTotal}`);
         }
 
         return {

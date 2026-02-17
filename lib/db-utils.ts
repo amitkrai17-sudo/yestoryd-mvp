@@ -66,11 +66,12 @@ export async function conditionalUpdate<T extends Record<string, unknown>>(
 ): Promise<ConditionalUpdateResult<T>> {
   try {
     // Fetch current row
-    const { data: currentRow, error: fetchError } = await (supabaseAdmin as any)
-      .from(table)
+    // Dynamic table name requires type assertion on the table parameter
+    const { data: currentRow, error: fetchError } = await supabaseAdmin
+      .from(table as 'children')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id' as never, id)
+      .single() as { data: Record<string, unknown> | null; error: PostgrestError | null };
 
     if (fetchError) {
       console.error(`[DB] Error fetching ${table}:${id}:`, fetchError.message);
@@ -130,12 +131,12 @@ export async function conditionalUpdate<T extends Record<string, unknown>>(
     }
 
     // Perform update
-    const { data: updatedRow, error: updateError } = await (supabaseAdmin as any)
-      .from(table)
-      .update(newData)
-      .eq('id', id)
+    const { data: updatedRow, error: updateError } = await supabaseAdmin
+      .from(table as 'children')
+      .update(newData as never)
+      .eq('id' as never, id)
       .select()
-      .single();
+      .single() as { data: Record<string, unknown> | null; error: PostgrestError | null };
 
     if (updateError) {
       console.error(`[DB] Error updating ${table}:${id}:`, updateError.message);
@@ -251,13 +252,13 @@ export async function batchUpsert<T extends Record<string, unknown>>(
   try {
     const startTime = Date.now();
 
-    const { data, error } = await (supabaseAdmin as any)
-      .from(table)
-      .upsert(records, {
+    const { data, error } = await supabaseAdmin
+      .from(table as 'children')
+      .upsert(records as never, {
         onConflict: conflictColumn,
-        ignoreDuplicates: false, // Update on conflict instead of ignoring
+        ignoreDuplicates: false,
       })
-      .select();
+      .select() as { data: Record<string, unknown>[] | null; error: PostgrestError | null };
 
     const durationMs = Date.now() - startTime;
 

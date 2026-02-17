@@ -189,9 +189,12 @@ export async function GET(request: NextRequest) {
 
     // ========================================
     // TASK 2: Process Pause Endings
+    // NOTE: Disabled - pause_start_date, pause_end_date, program_end_date columns don't exist
+    // Would need migration to add these columns for pause functionality
     // ========================================
-    console.log(JSON.stringify({ requestId, event: 'task_started', task: 'pause_endings' }));
+    console.log(JSON.stringify({ requestId, event: 'task_skipped', task: 'pause_endings', reason: 'columns_not_exist' }));
 
+    /* DISABLED - Schema doesn't support pause dates
     const { data: pausedEnrollments, error: pauseError } = await supabase
       .from('enrollments')
       .select('id, pause_start_date, pause_end_date, program_end_date')
@@ -238,6 +241,7 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+    */
 
     // ========================================
     // TASK 3: Coach Unavailability Check
@@ -371,11 +375,12 @@ export async function GET(request: NextRequest) {
 
     // ========================================
     // TASK 5: Completion Alerts (Risk Detection)
-    // OPTIMIZED: Single query for session counts (avoids N+1)
-    // FIXED: Alert fatigue prevention
+    // NOTE: Disabled - program_end_date, completion_alert_sent_at columns don't exist
+    // Would need migration to add these columns
     // ========================================
-    console.log(JSON.stringify({ requestId, event: 'task_started', task: 'completion_alerts' }));
+    console.log(JSON.stringify({ requestId, event: 'task_skipped', task: 'completion_alerts', reason: 'columns_not_exist' }));
 
+    /* DISABLED - Schema doesn't support program_end_date
     const sevenDaysFromNow = new Date(nowIST);
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
     const sevenDaysStr = sevenDaysFromNow.toISOString().split('T')[0];
@@ -477,6 +482,7 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+    */
 
     // ========================================
     // AUDIT LOG & RESPONSE

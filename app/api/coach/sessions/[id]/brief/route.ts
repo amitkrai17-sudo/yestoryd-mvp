@@ -42,6 +42,10 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    if (!session.child_id) {
+      return NextResponse.json({ error: 'Session has no child assigned' }, { status: 400 });
+    }
+
     // 2. Get child details
     const { data: child } = await supabase
       .from('children')

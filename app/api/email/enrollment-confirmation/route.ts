@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (enrollmentId) {
       const { data } = await supabase
         .from('enrollments')
-        .select('*, children(*), coaches(*)')
+        .select('*, children(*), coaches!coach_id(name, phone)')
         .eq('id', enrollmentId)
         .single();
       enrollmentData = data;

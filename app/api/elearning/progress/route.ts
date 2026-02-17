@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       .eq('id', unitId)
       .single();
 
-    const totalSteps = unit?.sequence?.length || 1;
+    const totalSteps = (Array.isArray(unit?.sequence) ? unit.sequence.length : 0) || 1;
     const completedSteps = stepProgress.filter((s: any) => s?.completed).length;
     const completionPercentage = Math.round((completedSteps / totalSteps) * 100);
 

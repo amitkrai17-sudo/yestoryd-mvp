@@ -233,7 +233,7 @@ export default function ParentDashboardPage() {
       }
 
       if (enrollmentData) {
-        setEnrollment(enrollmentData);
+        setEnrollment(enrollmentData as any);
       }
 
       // Fetch pending Skill Booster sessions (DB still uses 'remedial' type)
@@ -262,8 +262,8 @@ export default function ParentDashboardPage() {
           setPendingSkillBooster({
             id: skillBoosterData.id,
             focus_area: skillBoosterData.focus_area || 'general',
-            coach_notes: skillBoosterData.coach_notes,
-            created_at: skillBoosterData.created_at,
+            coach_notes: skillBoosterData.coach_notes ?? undefined,
+            created_at: skillBoosterData.created_at ?? new Date().toISOString(),
             coach_name: (skillBoosterData.coaches as any)?.name || 'Your Coach'
           });
         } else {
@@ -290,7 +290,7 @@ export default function ParentDashboardPage() {
         console.error('Sessions fetch error:', sessionsError);
       }
 
-      setUpcomingSessions(sessions || []);
+      setUpcomingSessions((sessions || []) as any);
 
       // Count completed sessions
       const { count: completed, error: completedError } = await supabase

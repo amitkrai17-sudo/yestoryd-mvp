@@ -5,7 +5,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import {
   Upload,
   FileText,
@@ -31,11 +30,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import Link from 'next/link';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 interface AgreementVersion {
   id: string;
@@ -56,8 +51,8 @@ interface AgreementVersion {
 interface ConfigVariable {
   key: string;
   value: string;
-  description: string;
-  category: string;
+  description: string | null;
+  category: string | null;
 }
 
 // Default variables with categories

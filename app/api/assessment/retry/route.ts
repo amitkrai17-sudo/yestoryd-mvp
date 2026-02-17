@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
         event_data: eventData,
         ai_summary: aiSummary,
         content_for_embedding: searchableContent,
-        embedding,
+        embedding: embedding ? JSON.stringify(embedding) : null,
       });
     } catch (eventErr) {
       console.error(JSON.stringify({ requestId, event: 'retry_learning_event_failed', error: (eventErr as Error).message }));

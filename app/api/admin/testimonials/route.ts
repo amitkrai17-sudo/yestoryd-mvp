@@ -140,9 +140,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'testimonial_created',
-      details: { request_id: requestId, testimonial_id: data.id, parent_name: testimonialData.parent_name, timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, testimonial_id: data.id, parent_name: testimonialData.parent_name, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 
@@ -220,9 +221,10 @@ export async function PUT(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'testimonial_updated',
-      details: { request_id: requestId, testimonial_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, testimonial_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 
@@ -258,7 +260,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid testimonial ID', details: validation.error.flatten() }, { status: 400 });
     }
 
-    console.log(JSON.stringify({ requestId, event: 'testimonials_delete_request', adminEmail: auth.email, testimonialId: id }));
+    const validatedId = validation.data.id;
+    console.log(JSON.stringify({ requestId, event: 'testimonials_delete_request', adminEmail: auth.email, testimonialId: validatedId }));
 
     const supabase = getServiceSupabase();
 
@@ -266,13 +269,13 @@ export async function DELETE(request: NextRequest) {
     const { data: existing } = await supabase
       .from('testimonials')
       .select('parent_name')
-      .eq('id', id)
+      .eq('id', validatedId)
       .single();
 
     const { error } = await supabase
       .from('testimonials')
       .delete()
-      .eq('id', id);
+      .eq('id', validatedId);
 
     if (error) {
       console.error(JSON.stringify({ requestId, event: 'testimonials_delete_db_error', error: error.message }));
@@ -281,9 +284,10 @@ export async function DELETE(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'testimonial_deleted',
-      details: { request_id: requestId, testimonial_id: id, parent_name: existing?.parent_name || 'unknown', timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, testimonial_id: validatedId, parent_name: existing?.parent_name || 'unknown', timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 

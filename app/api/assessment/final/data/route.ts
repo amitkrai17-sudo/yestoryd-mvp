@@ -6,12 +6,9 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = createAdminClient();
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,18 +36,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch child data separately
-    const { data: child } = await supabase
+    const { data: child } = enrollment.child_id ? await supabase
       .from('children')
       .select('child_name, age, grade')
       .eq('id', enrollment.child_id)
-      .single();
+      .single() : { data: null };
 
     // Fetch coach data separately
-    const { data: coach } = await supabase
+    const { data: coach } = enrollment.coach_id ? await supabase
       .from('coaches')
       .select('name')
       .eq('id', enrollment.coach_id)
-      .single();
+      .single() : { data: null };
 
     return NextResponse.json({
       childName: child?.child_name || 'Child',

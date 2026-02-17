@@ -16,8 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +26,7 @@ const initSendGrid = () => {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 };
 
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- RATE LIMITING ---
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();

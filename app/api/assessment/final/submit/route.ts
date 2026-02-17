@@ -4,15 +4,12 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -42,18 +39,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch child data separately
+    if (!enrollment.child_id) {
+      return NextResponse.json({ error: 'Child ID not found in enrollment' }, { status: 400 });
+    }
+
     const { data: child } = await supabase
       .from('children')
-      .select('id, child_name, age, grade, clarity_score, fluency_score, speed_score, wpm, strengths, areas_to_improve')
+      .select('id, child_name, age, grade, assessment_wpm')
       .eq('id', enrollment.child_id)
       .single();
 
-    // Fetch coach data separately
-    const { data: coach } = await supabase
-      .from('coaches')
-      .select('name')
-      .eq('id', enrollment.coach_id)
+    // Get assessment scores from child_rag_profiles
+    const { data: profile } = await supabase
+      .from('child_rag_profiles')
+      .select('clarity_score, fluency_score, speed_score, strengths, areas_of_improvement')
+      .eq('child_id', enrollment.child_id)
       .single();
+
+    // Fetch coach data separately (optional - some enrollments may not have assigned coach yet)
+    let coach = null;
+    if (enrollment.coach_id) {
+      const { data } = await supabase
+        .from('coaches')
+        .select('name')
+        .eq('id', enrollment.coach_id)
+        .single();
+      coach = data;
+    }
 
     // Convert audio to base64 for Gemini
     const audioBuffer = await audioFile.arrayBuffer();
@@ -83,12 +95,12 @@ Child Information:
 - Grade: ${child?.grade || 'Not specified'}
 
 Previous Assessment Scores (Initial):
-- Clarity: ${child?.clarity_score || 'N/A'}/10
-- Fluency: ${child?.fluency_score || 'N/A'}/10
-- Speed: ${child?.speed_score || 'N/A'}/10
-- WPM: ${child?.wpm || 'N/A'}
-- Strengths: ${child?.strengths?.join(', ') || 'N/A'}
-- Areas to Improve: ${child?.areas_to_improve?.join(', ') || 'N/A'}
+- Clarity: ${profile?.clarity_score || 'N/A'}/10
+- Fluency: ${profile?.fluency_score || 'N/A'}/10
+- Speed: ${profile?.speed_score || 'N/A'}/10
+- WPM: ${child?.assessment_wpm || 'N/A'}
+- Strengths: ${profile?.strengths?.join(', ') || 'N/A'}
+- Areas to Improve: ${profile?.areas_of_improvement?.join(', ') || 'N/A'}
 
 Passage Text (${passageText?.split(' ').length || 0} words):
 "${passageText}"
@@ -136,10 +148,10 @@ IMPORTANT:
       console.error('Failed to parse Gemini response:', parseError);
       // Provide default scores
       analysis = {
-        clarity_score: Math.min(10, (child?.clarity_score || 5) + 1),
-        fluency_score: Math.min(10, (child?.fluency_score || 5) + 1),
-        speed_score: Math.min(10, (child?.speed_score || 5) + 1),
-        wpm: (child?.wpm || 50) + 15,
+        clarity_score: Math.min(10, (profile?.clarity_score || 5) + 1),
+        fluency_score: Math.min(10, (profile?.fluency_score || 5) + 1),
+        speed_score: Math.min(10, (profile?.speed_score || 5) + 1),
+        wpm: (child?.assessment_wpm || 50) + 15,
         strengths: ['Completed the program', 'Showed dedication'],
         areas_to_improve: ['Continue practicing'],
         feedback: 'Great job completing the program!',
@@ -147,25 +159,32 @@ IMPORTANT:
       };
     }
 
-    // Update child's assessment scores with final assessment
+    // Update child_rag_profiles with final assessment scores
     const { error: updateError } = await supabase
-      .from('children')
+      .from('child_rag_profiles')
       .update({
         clarity_score: analysis.clarity_score,
         fluency_score: analysis.fluency_score,
         speed_score: analysis.speed_score,
-        wpm: analysis.wpm,
         strengths: analysis.strengths,
-        areas_to_improve: analysis.areas_to_improve,
-        detailed_feedback: analysis.feedback,
-        final_assessment_audio_url: audioFileName,
-        updated_at: new Date().toISOString(),
+        areas_of_improvement: analysis.areas_to_improve,
+        last_updated_at: new Date().toISOString(),
       })
-      .eq('id', enrollment.child_id);
+      .eq('child_id', enrollment.child_id);
 
     if (updateError) {
       console.error('Failed to update child assessment:', updateError);
     }
+
+    // Update children table with final assessment audio URL and WPM
+    await supabase
+      .from('children')
+      .update({
+        assessment_wpm: analysis.wpm,
+        final_assessment_audio_url: audioFileName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', enrollment.child_id);
 
     // Update enrollment with final assessment completion
     await supabase
@@ -215,10 +234,10 @@ IMPORTANT:
       analysis,
       certificateNumber: reportData.certificateNumber,
       improvements: {
-        clarity: analysis.clarity_score - (child?.clarity_score || 5),
-        fluency: analysis.fluency_score - (child?.fluency_score || 5),
-        speed: analysis.speed_score - (child?.speed_score || 5),
-        wpm: analysis.wpm - (child?.wpm || 50),
+        clarity: analysis.clarity_score - (profile?.clarity_score || 5),
+        fluency: analysis.fluency_score - (profile?.fluency_score || 5),
+        speed: analysis.speed_score - (profile?.speed_score || 5),
+        wpm: analysis.wpm - (child?.assessment_wpm || 50),
       },
     });
 

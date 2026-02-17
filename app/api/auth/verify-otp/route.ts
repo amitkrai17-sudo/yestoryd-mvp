@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     // ───────────────────────────────────────────────────────
     // STEP 4: Check attempts
     // ───────────────────────────────────────────────────────
-    if (token.attempts >= token.max_attempts) {
+    if ((token.attempts ?? 0) >= (token.max_attempts ?? 5)) {
       await supabase
         .from('verification_tokens')
         .delete()
@@ -170,10 +170,10 @@ export async function POST(request: NextRequest) {
     if (!secureCompare(inputHash, token.token_hash)) {
       await supabase
         .from('verification_tokens')
-        .update({ attempts: token.attempts + 1 })
+        .update({ attempts: (token.attempts ?? 0) + 1 })
         .eq('id', token.id);
 
-      const attemptsLeft = token.max_attempts - token.attempts - 1;
+      const attemptsLeft = (token.max_attempts ?? 5) - (token.attempts ?? 0) - 1;
       console.log(`[${requestId}] Invalid OTP, ${attemptsLeft} attempts left`);
 
       return NextResponse.json(
@@ -223,10 +223,11 @@ export async function POST(request: NextRequest) {
         redirectTo = '/coach/dashboard';
 
         // Update last login
-        await supabase
-          .from('coaches')
-          .update({ last_login_at: new Date().toISOString() })
-          .eq('id', coach.id);
+        // TODO: Add last_login_at column to coaches table
+        // await supabase
+        //   .from('coaches')
+        //   .update({ last_login_at: new Date().toISOString() })
+        //   .eq('id', coach.id);
 
         console.log(`[${requestId}] Found coach: ${user.email}`);
       } else {
@@ -254,8 +255,8 @@ export async function POST(request: NextRequest) {
           .limit(1)
           .single();
 
-        if (child) {
-          // Create parent record
+        if (child && child.parent_email) {
+          // Create parent record (only if we have an email)
           const { data: newParent, error: createError } = await supabase
             .from('parents')
             .insert({
@@ -263,7 +264,8 @@ export async function POST(request: NextRequest) {
               name: child.parent_name || 'Parent',
               phone: normalizedPhone,
               created_at: new Date().toISOString(),
-              last_login_at: new Date().toISOString(),
+              // TODO: Add last_login_at column to parents table
+              // last_login_at: new Date().toISOString(),
             })
             .select()
             .single();
@@ -275,10 +277,11 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Update last login
-        await supabase
-          .from('parents')
-          .update({ last_login_at: new Date().toISOString() })
-          .eq('id', parent.id);
+        // TODO: Add last_login_at column to parents table
+        // await supabase
+        //   .from('parents')
+        //   .update({ last_login_at: new Date().toISOString() })
+        //   .eq('id', parent.id);
       }
 
       if (parent) {

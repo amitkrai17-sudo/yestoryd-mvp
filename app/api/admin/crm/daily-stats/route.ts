@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const supabase = getServiceSupabase();
 
     // Try RPC function first
-    const { data, error } = await supabase.rpc('get_crm_daily_stats', { days_back: daysBack });
+    const { data, error } = await (supabase as any).rpc('get_crm_daily_stats', { days_back: daysBack });
 
     if (error) {
       console.log(JSON.stringify({ requestId, event: 'rpc_fallback', reason: error.message }));

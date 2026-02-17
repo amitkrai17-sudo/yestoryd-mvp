@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         const { data: child } = await supabaseAdmin
           .from('children')
           .select('id, child_name, age, lead_status')
-          .eq('parent_email', user.email)
+          .eq('parent_email', user.email ?? '')
           .eq('lead_status', 'enrolled')
           .order('created_at', { ascending: false })
           .limit(1)

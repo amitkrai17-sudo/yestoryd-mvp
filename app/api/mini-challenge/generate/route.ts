@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Get settings
-    const settings = await getMiniChallengeSettings(child.age);
+    const settings = await getMiniChallengeSettings(child.age ?? 0);
 
     if (!settings.enabled) {
       console.log(JSON.stringify({
@@ -286,8 +286,8 @@ export async function POST(request: NextRequest) {
 
     // 5. Generate quiz questions
     const questions = await generateQuizQuestions(
-      child.name,
-      child.age,
+      child.name ?? 'Child',
+      child.age ?? 0,
       goalArea,
       child,
       settings.questionsCount,
@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
     );
 
     // 6. Fetch matching video
-    const video = await getMiniChallengeVideo(goalArea, child.age);
+    const video = await getMiniChallengeVideo(goalArea, child.age ?? 0);
 
     if (!video) {
       console.error(JSON.stringify({

@@ -88,9 +88,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'final_assessment_sent',
-      details: {
+      metadata: {
         request_id: requestId,
         enrollment_id: enrollmentId,
         parent_email: parentEmail,
@@ -143,11 +144,11 @@ export async function POST(request: NextRequest) {
     // Send via AiSensy WhatsApp
     let whatsappSent = false;
     try {
-      const { data: parent } = await supabase
+      const { data: parent } = enrollment.parent_id ? await supabase
         .from('parents')
         .select('phone')
         .eq('id', enrollment.parent_id)
-        .single();
+        .single() : { data: null };
 
       if (parent?.phone) {
         const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {

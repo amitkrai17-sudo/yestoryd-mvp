@@ -7,11 +7,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/lib/supabase/database.types';
 import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
 import { loadPaymentConfig } from '@/lib/config/loader';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
@@ -20,11 +23,6 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // NOTE: Pricing comes ONLY from pricing_plans table
 // No hardcoded fallbacks - if product not found, return error
@@ -203,8 +201,8 @@ async function validateCoupon(
       .from('coupons')
       .select(`
         id, code, coupon_type, discount_type, discount_value,
-        min_order_amount, max_discount_amount, max_uses, current_uses,
-        valid_from, valid_until, is_active, one_time_per_user, applicable_to
+        min_order_value, max_discount, max_uses, current_uses,
+        valid_from, valid_until, is_active, applicable_to, per_user_limit
       `)
       .eq('code', couponCode.toUpperCase())
       .eq('is_active', true)
@@ -237,31 +235,30 @@ async function validateCoupon(
     }
 
     // 3. Check usage limits
-    if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
+    if (coupon.max_uses && (coupon.current_uses ?? 0) >= coupon.max_uses) {
       return { valid: false, discountAmount: 0, discountPercent: 0, error: 'Coupon usage limit reached' };
     }
 
-    // 4. Check one-time-per-user
-    if (coupon.one_time_per_user) {
-      const { data: existingUse } = await supabase
+    // 4. Check per-user limit
+    if (coupon.per_user_limit) {
+      const { count: userUses } = await supabase
         .from('coupon_uses')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('coupon_id', coupon.id)
-        .eq('user_email', parentEmail)
-        .maybeSingle();
+        .eq('user_email', parentEmail);
 
-      if (existingUse) {
-        return { valid: false, discountAmount: 0, discountPercent: 0, error: 'Coupon already used' };
+      if (userUses && userUses >= coupon.per_user_limit) {
+        return { valid: false, discountAmount: 0, discountPercent: 0, error: 'Coupon usage limit reached for this user' };
       }
     }
 
     // 5. Check minimum order amount
-    if (coupon.min_order_amount && basePrice < coupon.min_order_amount) {
+    if (coupon.min_order_value && basePrice < coupon.min_order_value) {
       return { 
         valid: false, 
         discountAmount: 0, 
         discountPercent: 0, 
-        error: `Minimum order ₹${coupon.min_order_amount} required` 
+        error: `Minimum order ₹${coupon.min_order_value} required` 
       };
     }
 
@@ -296,8 +293,8 @@ async function validateCoupon(
     }
 
     // 7. Apply max discount cap
-    if (coupon.max_discount_amount && discountAmount > coupon.max_discount_amount) {
-      discountAmount = coupon.max_discount_amount;
+    if (coupon.max_discount && discountAmount > coupon.max_discount) {
+      discountAmount = coupon.max_discount;
     }
 
     // 8. Ensure discount doesn't exceed price

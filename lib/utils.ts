@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Capitalize each word in a name (e.g., "john doe" → "John Doe")
  */
-export const capitalizeName = (name: string): string => {
+export const capitalizeName = (name: string | null | undefined): string => {
   if (!name) return '';
   return name
     .split(' ')

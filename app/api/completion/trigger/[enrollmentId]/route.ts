@@ -38,7 +38,7 @@ export async function POST(
         child:children(
           id, child_name, age, grade, parent_email, parent_phone, parent_name, parent_id
         ),
-        coach:coaches(id, name, email)
+        coach:coaches!coach_id(id, name, email)
       `)
       .eq('id', enrollmentId)
       .single();
@@ -48,6 +48,13 @@ export async function POST(
         success: false,
         error: 'Enrollment not found',
       }, { status: 404 });
+    }
+
+    if (!enrollment.child) {
+      return NextResponse.json({
+        success: false,
+        error: 'Enrollment has no child assigned',
+      }, { status: 400 });
     }
 
     // Mark completion as triggered

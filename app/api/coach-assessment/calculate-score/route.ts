@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (!forceRecalculate && application.ai_total_score && application.ai_score_breakdown) {
       console.log('📦 Returning CACHED score:', application.ai_total_score);
       const cachedSettings = await loadCoachConfig();
-      const breakdown = application.ai_score_breakdown;
+      const breakdown = application.ai_score_breakdown as any;
       return NextResponse.json({
         success: true,
         cached: true,

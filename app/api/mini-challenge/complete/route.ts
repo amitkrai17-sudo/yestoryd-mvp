@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Get settings
-    const settings = await getMiniChallengeSettings(child.age);
+    const settings = await getMiniChallengeSettings(child.age ?? 0);
 
     // 4. Calculate score and XP
     const correctCount = answers.filter(a => a.is_correct).length;
@@ -231,8 +231,8 @@ export async function POST(request: NextRequest) {
     let discoveryInsight = '';
     try {
       discoveryInsight = await generateDiscoveryInsight(
-        child.name,
-        child.age,
+        child.name ?? 'Child',
+        child.age ?? 0,
         goal,
         correctCount,
         totalQuestions,

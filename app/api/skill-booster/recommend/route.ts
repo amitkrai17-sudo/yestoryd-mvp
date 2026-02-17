@@ -4,22 +4,15 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/admin';
+const supabaseAuth = getSupabaseClient();
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 // Service client for database operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Auth client for token verification
-const supabaseAuth = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export async function POST(request: NextRequest) {
   try {
     // 1. Get Bearer token from Authorization header
@@ -41,7 +34,7 @@ export async function POST(request: NextRequest) {
     const { data: coach, error: coachError } = await supabase
       .from('coaches')
       .select('id, name, email')
-      .eq('email', user.email)
+      .eq('email', user.email!)
       .single();
 
     if (coachError || !coach) {

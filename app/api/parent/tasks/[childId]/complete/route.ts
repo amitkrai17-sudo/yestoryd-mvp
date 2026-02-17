@@ -45,7 +45,7 @@ export async function POST(
       const { data: parent } = await supabase
         .from('parents')
         .select('id')
-        .eq('email', auth.email)
+        .eq('email', auth.email ?? '')
         .maybeSingle();
 
       if (!parent || child.parent_id !== parent.id) {

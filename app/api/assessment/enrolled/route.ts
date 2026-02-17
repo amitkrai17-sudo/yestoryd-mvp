@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 function getStrictnessForAge(age: number) {
   if (age <= 5) {
@@ -205,7 +202,7 @@ Respond ONLY with valid JSON. No additional text.`;
     };
 
     // Generate AI summary for RAG
-    const aiSummary = await generateAISummary(childName, assessmentData);
+    const aiSummary = await generateAISummary(childName || 'Child', assessmentData);
 
     // Create searchable text for embedding
     const searchableText = `assessment reading score ${assessmentData.score} wpm ${assessmentData.wpm} fluency ${assessmentData.fluency} pronunciation ${assessmentData.pronunciation} completeness ${assessmentData.completeness} ${assessmentData.feedback} ${aiSummary}`;
@@ -220,9 +217,9 @@ Respond ONLY with valid JSON. No additional text.`;
         child_id: childId,
         event_type: 'assessment',
         event_date: new Date().toISOString(),
-        data: assessmentData,
+        data: JSON.parse(JSON.stringify(assessmentData)),
         ai_summary: aiSummary,
-        embedding,
+        embedding: embedding ? JSON.stringify(embedding) : null,
       })
       .select()
       .single();

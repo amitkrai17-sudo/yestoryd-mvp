@@ -187,9 +187,10 @@ Review at: https://yestoryd.com/admin/coach-applications
     // Audit log
     const supabase = getServiceSupabase();
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'coach_application_confirmation_sent',
-      details: {
+      metadata: {
         request_id: requestId,
         applicant_email: applicantEmail,
         applicant_name: applicantName,

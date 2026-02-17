@@ -1,10 +1,12 @@
+import { Database } from '@/lib/supabase/database.types';
 import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 // Known test data
 const ENROLLMENT_ID = '8be2f014-37b9-4613-9af1-6209d297d8bc';

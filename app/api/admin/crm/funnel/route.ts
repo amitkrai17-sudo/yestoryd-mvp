@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
       .from('discovery_calls')
       .select(`
         id, parent_name, parent_email, child_name, child_age, assessment_score,
-        status, coach_id, scheduled_at, converted_to_enrollment, created_at,
-        coach:coaches!coach_id (name)
+        status, assigned_coach_id, scheduled_at, converted_to_enrollment, created_at,
+        coach:coaches!assigned_coach_id (name)
       `)
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: false })
@@ -86,15 +86,15 @@ export async function GET(request: NextRequest) {
     const { data: coachPerformance } = await supabase
       .from('discovery_calls')
       .select(`
-        coach_id, status, converted_to_enrollment,
-        coach:coaches!coach_id (name)
+        assigned_coach_id, status, converted_to_enrollment,
+        coach:coaches!assigned_coach_id (name)
       `)
-      .not('coach_id', 'is', null)
+      .not('assigned_coach_id', 'is', null)
       .gte('created_at', startDate.toISOString());
 
     const coachStats: Record<string, any> = {};
     coachPerformance?.forEach((call: any) => {
-      const coachId = call.coach_id;
+      const coachId = call.assigned_coach_id;
       if (!coachStats[coachId]) {
         coachStats[coachId] = {
           coachId,

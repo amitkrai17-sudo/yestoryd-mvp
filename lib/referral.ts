@@ -5,7 +5,6 @@
 // Format: REF-{FIRSTNAME}-{4_RANDOM_CHARS}
 
 import { SupabaseClient } from '@supabase/supabase-js';
-
 // Generate 4 random alphanumeric characters
 function generateRandomChars(length: number = 4): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing: I,1,O,0

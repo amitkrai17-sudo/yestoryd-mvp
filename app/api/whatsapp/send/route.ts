@@ -8,19 +8,16 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { sendText, sendButtons, sendList, sendTemplate } from '@/lib/whatsapp/cloud-api';
 import type { SendResult } from '@/lib/whatsapp/types';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- VALIDATION ---
 const SendMessageSchema = z.object({

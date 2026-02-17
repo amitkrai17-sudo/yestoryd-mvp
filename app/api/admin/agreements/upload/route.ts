@@ -147,9 +147,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'agreement_uploaded',
-      details: {
+      metadata: {
         request_id: requestId,
         agreement_id: agreementRecord.id,
         version: validatedData.version,

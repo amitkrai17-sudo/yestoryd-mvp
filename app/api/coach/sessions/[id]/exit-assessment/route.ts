@@ -40,6 +40,10 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    if (!session.child_id) {
+      return NextResponse.json({ error: 'Session has no child assigned' }, { status: 400 });
+    }
+
     // Get child details
     const { data: child } = await supabase
       .from('children')
@@ -98,14 +102,14 @@ export async function GET(
       template: template || null,
       diagnostic_baseline: diagnosticEvent
         ? {
-            data: diagnosticEvent.event_data?.diagnostic_data || diagnosticEvent.event_data || {},
+            data: (diagnosticEvent.event_data as any)?.diagnostic_data || diagnosticEvent.event_data || {},
             date: diagnosticEvent.created_at,
           }
         : null,
       exit_assessment: exitEvent
         ? {
             id: exitEvent.id,
-            data: exitEvent.event_data?.exit_data || exitEvent.event_data || {},
+            data: (exitEvent.event_data as any)?.exit_data || exitEvent.event_data || {},
             date: exitEvent.created_at,
           }
         : null,
@@ -153,6 +157,10 @@ export async function POST(
     // Verify coach assignment
     if (auth.role === 'coach' && session.coach_id !== auth.coachId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    }
+
+    if (!session.child_id) {
+      return NextResponse.json({ error: 'Session has no child assigned' }, { status: 400 });
     }
 
     // Get child details

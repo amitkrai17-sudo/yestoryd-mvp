@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
   for (const child of children) {
     try {
-      const daysSinceAssessment = child.latest_assessment_score !== null
+      const daysSinceAssessment = child.latest_assessment_score !== null && child.created_at
         ? Math.floor((now.getTime() - new Date(child.created_at).getTime()) / 86400000)
         : 0;
 

@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     const productEarnings: ProductEarnings[] = products.map(product => {
       const earnings = calculateEarnings(
         product.discounted_price,
-        product.sessions_included,
+        product.sessions_included ?? 0,
         splitConfig as RevenueConfig
       );
 
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         name: product.name,
         slug: product.slug,
         price: product.discounted_price,
-        sessions: product.sessions_included,
+        sessions: product.sessions_included ?? 0,
         coach_earnings_own_lead: earnings.own_lead,
         coach_earnings_platform_lead: earnings.platform_lead,
         per_session_own_lead: earnings.per_session_own,

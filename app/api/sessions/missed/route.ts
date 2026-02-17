@@ -3,10 +3,11 @@
 // Hardened with proper validation and logging
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { randomUUID } from 'crypto';
 import { dispatch } from '@/lib/scheduling/orchestrator';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,14 +33,7 @@ interface MarkMissedRequest {
 // ============================================================
 
 function getSupabaseClient(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    throw new Error('Missing Supabase configuration');
-  }
-
-  return createClient(url, key);
+  return createAdminClient();
 }
 
 function logError(context: string, error: unknown): void {

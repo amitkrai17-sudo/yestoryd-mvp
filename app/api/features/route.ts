@@ -1,12 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 // GET - Check feature flags for frontend
 // Usage: /api/features?flags=show_free_trial,enable_razorpay
@@ -29,7 +24,7 @@ export async function GET(request: NextRequest) {
     // Transform to key-value object
     const features: Record<string, boolean> = {};
     data?.forEach(item => {
-      features[item.flag_key] = item.flag_value;
+      features[item.flag_key] = item.flag_value ?? false;
     });
 
     return NextResponse.json(features);

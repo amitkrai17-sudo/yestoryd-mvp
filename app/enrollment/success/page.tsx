@@ -52,7 +52,7 @@ function SuccessContent() {
           .eq('key', 'whatsapp_number')
           .single();
         if (!error && data?.value) {
-          setWhatsappNumber(data.value.replace('+', ''));
+          setWhatsappNumber(String(data.value).replace('+', ''));
         }
       } catch (err) {
         console.error('Failed to fetch WhatsApp number:', err);

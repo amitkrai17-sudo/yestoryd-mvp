@@ -1,16 +1,11 @@
 ﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, Users, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 export default function CoachLoginPage() {
   const [email, setEmail] = useState('');
@@ -44,13 +39,13 @@ export default function CoachLoginPage() {
         if (data) {
           data.forEach((setting) => {
             if (setting.key === 'coach_login_video_url' && setting.value) {
-              const parsed = JSON.parse(setting.value);
-              if (parsed && parsed.startsWith('http')) {
+              const parsed = JSON.parse(String(setting.value));
+              if (parsed && typeof parsed === 'string' && parsed.startsWith('http')) {
                 setVideoUrl(parsed);
               }
             }
             if (setting.key === 'whatsapp_number' && setting.value) {
-              setWhatsappNumber(setting.value.replace('+', ''));
+              setWhatsappNumber(String(setting.value).replace('+', ''));
             }
           });
         }

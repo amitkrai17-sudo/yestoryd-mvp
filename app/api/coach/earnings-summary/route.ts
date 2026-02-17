@@ -90,9 +90,9 @@ export async function GET(request: Request) {
 
       return {
         id: child.id,
-        child_name: child.child_name,
-        parent_name: child.parent_name,
-        enrollment_date: child.created_at,
+        child_name: child.child_name || 'Unknown',
+        parent_name: child.parent_name || 'Unknown',
+        enrollment_date: child.created_at || '',
         program_fee: programFee,
         coach_amount: coachAmount,
         yestoryd_amount: yestorydAmount,

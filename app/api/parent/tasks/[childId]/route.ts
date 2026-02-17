@@ -39,7 +39,7 @@ export async function GET(
       const { data: parent } = await supabase
         .from('parents')
         .select('id')
-        .eq('email', auth.email)
+        .eq('email', auth.email ?? '')
         .maybeSingle();
 
       if (!parent || child.parent_id !== parent.id) {
@@ -100,7 +100,7 @@ export async function GET(
 
     const enrichedTasks = (weekTasks || []).map(t => ({
       ...t,
-      skill_label: SKILL_LABELS[t.linked_skill] || t.linked_skill,
+      skill_label: SKILL_LABELS[t.linked_skill ?? ''] || t.linked_skill,
       is_today: t.task_date === todayStr,
       is_past: t.task_date < todayStr,
     }));
@@ -110,7 +110,7 @@ export async function GET(
       child_name: child.child_name || child.name,
       today_task: todayTask ? {
         ...todayTask,
-        skill_label: SKILL_LABELS[todayTask.linked_skill] || todayTask.linked_skill,
+        skill_label: SKILL_LABELS[todayTask.linked_skill ?? ''] || todayTask.linked_skill,
       } : null,
       week_tasks: enrichedTasks,
       stats: {

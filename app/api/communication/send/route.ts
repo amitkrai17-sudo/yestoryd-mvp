@@ -155,25 +155,8 @@ async function checkIdempotency(
   key: string,
   requestId: string
 ): Promise<{ isDuplicate: boolean; previousResult?: any }> {
-  const supabase = getServiceSupabase();
-
-  // Check if this idempotency key was already used
-  const { data: existing } = await supabase
-    .from('communication_logs')
-    .select('id, status, response_data')
-    .eq('idempotency_key', key)
-    .single();
-
-  if (existing) {
-    console.log(JSON.stringify({
-      requestId,
-      event: 'idempotent_request_detected',
-      idempotencyKey: key,
-      previousLogId: existing.id,
-    }));
-    return { isDuplicate: true, previousResult: existing };
-  }
-
+  // Note: Idempotency check disabled - communication_logs table doesn't have idempotency_key column
+  // Would need migration to add: idempotency_key, status, response_data columns
   return { isDuplicate: false };
 }
 

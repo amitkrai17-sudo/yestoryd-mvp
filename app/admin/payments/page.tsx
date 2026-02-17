@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   IndianRupee, Search, Filter, Download, RefreshCw,
   TrendingUp, AlertTriangle, ArrowUpDown, ChevronLeft, ChevronRight,
-  Loader2, Calendar, X,
+  Loader2, Calendar, X, ExternalLink, ShieldAlert,
 } from 'lucide-react';
 
 interface Payment {
@@ -30,6 +30,21 @@ interface Stats {
   allTime: { revenue: number; count: number };
 }
 
+interface OrphanedPayment {
+  id: string;
+  detected_at: string;
+  razorpay_payment_id: string;
+  razorpay_order_id: string | null;
+  amount: number;
+  currency: string;
+  email: string | null;
+  phone: string | null;
+  contact_name: string | null;
+  captured_at: string;
+  has_booking: boolean;
+  has_payment_record: boolean;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   captured: 'bg-green-500/20 text-green-400 border border-green-500/30',
   failed: 'bg-red-500/20 text-red-400 border border-red-500/30',
@@ -51,12 +66,26 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [orphans, setOrphans] = useState<OrphanedPayment[]>([]);
+  const [orphansLoading, setOrphansLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/payments/stats');
       if (res.ok) setStats(await res.json());
     } catch {}
+  }, []);
+
+  const fetchOrphans = useCallback(async () => {
+    setOrphansLoading(true);
+    try {
+      const res = await fetch('/api/admin/orphaned-payments?days=7');
+      if (res.ok) {
+        const data = await res.json();
+        setOrphans(data.orphans || []);
+      }
+    } catch {}
+    setOrphansLoading(false);
   }, []);
 
   const fetchPayments = useCallback(async () => {
@@ -78,7 +107,7 @@ export default function PaymentsPage() {
     setLoading(false);
   }, [page, statusFilter, search, dateFrom, dateTo]);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { fetchStats(); fetchOrphans(); }, [fetchStats, fetchOrphans]);
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
 
   const handleExport = () => {
@@ -98,7 +127,7 @@ export default function PaymentsPage() {
             <p className="text-xs sm:text-sm text-text-tertiary mt-0.5">Payment history and transaction management</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { fetchStats(); fetchPayments(); }} className="p-2 rounded-lg bg-surface-2 text-text-secondary hover:text-white transition-colors">
+            <button onClick={() => { fetchStats(); fetchPayments(); fetchOrphans(); }} className="p-2 rounded-lg bg-surface-2 text-text-secondary hover:text-white transition-colors">
               <RefreshCw className="w-4 h-4" />
             </button>
             <button onClick={handleExport} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-surface-2 text-text-secondary hover:text-white text-sm transition-colors">
@@ -118,6 +147,50 @@ export default function PaymentsPage() {
             <StatCard label="All Time" value={formatINR(stats.allTime.revenue)} sub={`${stats.allTime.count} total`} icon={<IndianRupee className="w-5 h-5 text-purple-400" />} />
             <StatCard label="Failed (30d)" value={String(stats.failed.count)} sub="payment attempts" icon={<AlertTriangle className="w-5 h-5 text-red-400" />} />
             <StatCard label="Refunds" value={formatINR(stats.refunds.total)} sub={`${stats.refunds.count} refunds`} icon={<ArrowUpDown className="w-5 h-5 text-yellow-400" />} />
+          </div>
+        )}
+
+        {/* Orphaned Payments Alert */}
+        {!orphansLoading && orphans.length > 0 && (
+          <div className="bg-red-950/30 border border-red-500/40 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldAlert className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <h3 className="text-sm font-semibold text-red-300">
+                {orphans.length} Orphaned Payment{orphans.length > 1 ? 's' : ''} — Parents paid but have no enrollment
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {orphans.map((o) => (
+                <div key={o.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-surface-1/50 rounded-lg p-3 border border-red-500/20">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-white font-medium">{formatINR(o.amount)}</span>
+                      <span className="text-text-tertiary">—</span>
+                      <span className="text-text-secondary truncate">{o.contact_name || o.email || o.phone || 'Unknown'}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-text-tertiary mt-1">
+                      <span className="font-mono">{o.razorpay_payment_id}</span>
+                      <span>{o.captured_at ? new Date(o.captured_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                      <span className="text-yellow-400">
+                        {o.has_booking && o.has_payment_record ? 'Booking + Payment record, no enrollment' :
+                         o.has_booking ? 'Booking found, no payment record or enrollment' :
+                         o.has_payment_record ? 'Payment record, no booking or enrollment' :
+                         'No records in DB'}
+                      </span>
+                    </div>
+                  </div>
+                  <a
+                    href={`https://dashboard.razorpay.com/app/payments/${o.razorpay_payment_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-medium whitespace-nowrap transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Investigate
+                  </a>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

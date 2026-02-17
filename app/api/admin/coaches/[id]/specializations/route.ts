@@ -84,12 +84,11 @@ export async function PUT(
     .eq('coach_id', coachId);
 
   if (body.specializations.length > 0) {
-    const rows = body.specializations.map((s) => ({
+    const rows = body.specializations.map((s: any) => ({
       coach_id: coachId,
-      skill_area: s.skill_area,
+      specialization_type: s.skill_area || s.specialization_type,
+      specialization_value: s.notes || s.specialization_value || s.skill_area || '',
       proficiency_level: s.proficiency_level,
-      certified: s.certified,
-      notes: s.notes || null,
     }));
 
     const { error: insertError } = await supabase

@@ -3,15 +3,12 @@
 // PATCH /api/admin/agreements/[id] - Activate
 // DELETE /api/admin/agreements/[id] - Delete
 
+import { Database } from '@/lib/supabase/database.types';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 
+const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // PATCH - Activate this agreement version
 export async function PATCH(
@@ -96,7 +93,7 @@ export async function DELETE(
     }
 
     // Prevent deletion if coaches have signed this version
-    if (agreement.total_signatures > 0) {
+    if ((agreement.total_signatures ?? 0) > 0) {
       return NextResponse.json(
         { error: `Cannot delete. ${agreement.total_signatures} coach(es) have signed this version.` },
         { status: 400 }

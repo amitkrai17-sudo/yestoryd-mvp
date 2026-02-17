@@ -151,17 +151,16 @@ export async function GET(request: NextRequest) {
         const message = messageTemplate(childName, seasonNumber).replace('{{link}}', enrollLink);
 
         // Log the nudge (actual WhatsApp sending via existing WhatsApp infrastructure)
+        // NOTE: communication_logs schema doesn't match - missing columns: channel, template_name, message_body, status, metadata
+        // Using only available columns: recipient_type, recipient_email, recipient_phone, template_code
         await supabase
           .from('communication_logs')
           .insert({
             recipient_type: 'parent',
-            recipient_email: child.parent_email,
+            recipient_email: child.parent_email || null,
             recipient_phone: parentPhone,
-            channel: nudge.channel || 'whatsapp',
-            template_name: `re_enrollment_nudge_${nudge.nudge_number}`,
-            message_body: message,
-            status: 'queued',
-            metadata: {
+            template_code: `re_enrollment_nudge_${nudge.nudge_number}`,
+            context_data: {
               nudge_id: nudge.id,
               child_id: nudge.child_id,
               enrollment_id: nudge.enrollment_id,
@@ -203,8 +202,9 @@ export async function GET(request: NextRequest) {
       .from('activity_log')
       .insert({
         user_email: 'engage@yestoryd.com',
+        user_type: 'system',
         action: 're_enrollment_nudge_cron',
-        details: { sent, skipped, errors: errors.length, total: pendingNudges.length, durationMs: duration },
+        metadata: { sent, skipped, errors: errors.length, total: pendingNudges.length, durationMs: duration } as any,
       });
 
     return NextResponse.json({

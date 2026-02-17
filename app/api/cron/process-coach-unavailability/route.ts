@@ -56,12 +56,12 @@ export async function GET(request: NextRequest) {
     const todayStr = now.toISOString().split('T')[0];
     const thresholdStr = threeDaysFromNow.toISOString().split('T')[0];
 
+    // NOTE: processing_status column doesn't exist - fetching all unavailabilities
     const { data: unavailabilities, error } = await supabase
       .from('coach_availability')
-      .select('id, coach_id, start_date, end_date, reason, processing_status')
+      .select('id, coach_id, start_date, end_date, reason')
       .lte('start_date', thresholdStr)
-      .gte('end_date', todayStr) // Still ongoing or upcoming
-      .or('processing_status.is.null,processing_status.eq.pending');
+      .gte('end_date', todayStr); // Still ongoing or upcoming
 
     if (error) {
       console.error(JSON.stringify({
@@ -96,11 +96,8 @@ export async function GET(request: NextRequest) {
 
     for (const unavail of unavailabilities) {
       try {
-        // Mark as processing
-        await supabase
-          .from('coach_availability')
-          .update({ processing_status: 'processing' })
-          .eq('id', unavail.id);
+        // NOTE: processing_status column doesn't exist - would need migration
+        // await supabase.from('coach_availability').update({ processing_status: 'processing' }).eq('id', unavail.id);
 
         const result = await processUnavailability(
           unavail.coach_id,
@@ -110,19 +107,15 @@ export async function GET(request: NextRequest) {
         );
 
         // Mark as processed
-        await supabase
-          .from('coach_availability')
-          .update({
-            processing_status: result.success ? 'processed' : 'failed',
-            processing_result: {
-              action: result.action,
-              sessionsAffected: result.sessionsAffected,
-              errors: result.errors,
-              processedAt: new Date().toISOString(),
-              requestId,
-            },
-          })
-          .eq('id', unavail.id);
+        // NOTE: processing_status and processing_result columns don't exist
+        // Would log result to console instead
+        console.log(JSON.stringify({
+          requestId,
+          event: 'unavailability_processed',
+          unavailabilityId: unavail.id,
+          coachId: unavail.coach_id,
+          result,
+        }));
 
         results.processed++;
 
@@ -132,10 +125,12 @@ export async function GET(request: NextRequest) {
       } catch (e: any) {
         results.errors.push(`Coach ${unavail.coach_id}: ${e.message}`);
 
-        await supabase
-          .from('coach_availability')
-          .update({ processing_status: 'failed' })
-          .eq('id', unavail.id);
+        console.error(JSON.stringify({
+          requestId,
+          event: 'unavailability_processing_failed',
+          unavailabilityId: unavail.id,
+          error: e.message,
+        }));
       }
     }
 

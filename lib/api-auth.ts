@@ -8,10 +8,11 @@
 // Auth Methods: Bearer token (primary) + Cookie fallback
 // ============================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
 import { loadAuthConfig } from '@/lib/config/loader';
+import { supabase } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // ==================== TYPES ====================
 
@@ -25,13 +26,8 @@ export interface AuthResult {
 }
 
 // ==================== SERVICE CLIENT ====================
-// TODO: Add <Database> generic once all consumers handle strict types
-// import type { Database } from '@/lib/supabase/database.types';
 
-export const getServiceSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const getServiceSupabase = createAdminClient;
 
 // ==================== AUTH HELPERS ====================
 
@@ -46,11 +42,6 @@ async function getAuthenticatedUser(): Promise<{ user: any; error: string | null
     // Method 1: Bearer token (from fetch interceptor)
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      
       const { data, error } = await supabase.auth.getUser(token);
       if (!error && data?.user) {
         return { user: data.user, error: null };
@@ -59,7 +50,7 @@ async function getAuthenticatedUser(): Promise<{ user: any; error: string | null
 
     // Method 2: Cookie-based auth (SSR)
     const cookieStore = await cookies();
-    const supabase = createServerClient(
+    const ssrClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -76,7 +67,7 @@ async function getAuthenticatedUser(): Promise<{ user: any; error: string | null
       }
     );
     
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = await ssrClient.auth.getUser();
     if (!error && data?.user) {
       return { user: data.user, error: null };
     }

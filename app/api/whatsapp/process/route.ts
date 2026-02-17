@@ -92,7 +92,7 @@ async function saveBotMessage(
     sender_type: 'bot',
     content,
     message_type: messageType,
-    metadata,
+    metadata: metadata as any,
   });
 }
 
@@ -143,7 +143,7 @@ async function upsertLead(
 
   const { error } = await supabase
     .from('wa_leads')
-    .upsert(leadData, { onConflict: 'phone_number' });
+    .upsert(leadData as any, { onConflict: 'phone_number' });
 
   if (error && error.code !== '23505') {
     console.error('[WA-LeadBot] Lead upsert error:', error);

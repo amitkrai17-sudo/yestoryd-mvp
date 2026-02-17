@@ -50,14 +50,14 @@ export async function POST(request: NextRequest) {
     const { data: child } = await supabase
       .from('children')
       .select('child_name, name, parent_email, parent_phone')
-      .eq('id', session.child_id)
+      .eq('id', session.child_id!)
       .single();
 
     // 3. Get coach details
     const { data: coach } = await supabase
       .from('coaches')
       .select('name, email')
-      .eq('id', session.coach_id)
+      .eq('id', session.coach_id!)
       .single();
 
     if (!coach || !child) {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const endTime = new Date(startTime.getTime() + sbDuration * 60 * 1000);
 
     const childName = child.child_name || child.name || 'Child';
-    const focusAreaLabel = getFocusAreaLabel(session.focus_area);
+    const focusAreaLabel = getFocusAreaLabel(session.focus_area ?? '');
 
     let calendarResult;
     try {
@@ -89,7 +89,7 @@ Coach will join via Google Meet.`,
           child.parent_email,
           coach.email,
           CALENDAR_EMAIL
-        ].filter(Boolean),
+        ].filter((e): e is string => !!e),
         sessionType: 'coaching'
       });
     } catch (calError: any) {
@@ -127,8 +127,8 @@ Coach will join via Google Meet.`,
           sessionId: sessionId,
           meetingUrl: calendarResult.meetLink,
           scheduledTime: startTime.toISOString(),
-          childId: session.child_id,
-          coachId: session.coach_id,
+          childId: session.child_id!,
+          coachId: session.coach_id!,
           childName: childName,
           sessionType: 'coaching'
         })

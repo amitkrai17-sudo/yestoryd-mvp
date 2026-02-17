@@ -125,8 +125,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 9. Get videos for recommended unit
-    let unitVideos = [];
-    if (recommendedUnit?.video_ids?.length > 0) {
+    let unitVideos: any[] = [];
+    if (recommendedUnit?.video_ids && recommendedUnit.video_ids.length > 0) {
       const { data: videos } = await supabase
         .from('el_videos')
         .select('*')
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 10. Get game content for recommended unit's skill
-    let gameContent = [];
+    let gameContent: any[] = [];
     if (recommendedUnit?.skill?.id) {
       const { data: games } = await supabase
         .from('el_game_content')

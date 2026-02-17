@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       const { data: parent } = await supabase
         .from('parents')
         .select('id')
-        .eq('user_id', auth.userId)
+        .eq('user_id', auth.userId ?? '')
         .single();
 
       if (!parent || parent.id !== child.parent_id) {

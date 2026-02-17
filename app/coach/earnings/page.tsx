@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import CoachLayout from '@/components/layouts/CoachLayout';
+import { supabase } from '@/lib/supabase/client';
 import {
   IndianRupee,
   TrendingUp,
@@ -14,11 +14,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface Earning {
   id: string;
@@ -74,7 +69,7 @@ export default function CoachEarningsPage() {
       const { data: coachData } = await supabase
         .from('coaches')
         .select('*')
-        .eq('email', user.email)
+        .eq('email', user.email!)
         .single();
 
       if (!coachData) {
@@ -104,7 +99,7 @@ export default function CoachEarningsPage() {
         .in('status', ['active', 'pending_start', 'completed'])
         .order('created_at', { ascending: false });
 
-      const defaultCoachSplit = coachData.coach_split_percentage / 100;
+      const defaultCoachSplit = (coachData.coach_split_percentage || 40) / 100;
       const coachLeadSplit = 0.70; // 70% for coach leads
 
       // Calculate earnings for each enrollment

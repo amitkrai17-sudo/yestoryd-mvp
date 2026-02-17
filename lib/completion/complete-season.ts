@@ -77,7 +77,7 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
       return { success: false, error: 'Season already completed' };
     }
 
-    const childId = enrollment.child_id;
+    const childId = enrollment.child_id!;
     const seasonNumber = enrollment.season_number || 1;
     const ageBand = enrollment.age_band || 'building';
 
@@ -113,8 +113,8 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
       .maybeSingle();
 
     // 5. Compute before/after deltas
-    const diagnosticData = diagnosticEvent?.event_data?.diagnostic_data || {};
-    const exitData = exitEvent?.event_data?.exit_data || exitEvent?.event_data?.diagnostic_data || {};
+    const diagnosticData = (diagnosticEvent?.event_data as any)?.diagnostic_data || {};
+    const exitData = (exitEvent?.event_data as any)?.exit_data || (exitEvent?.event_data as any)?.diagnostic_data || {};
 
     const beforeAfter: Record<string, { before: string | null; after: string | null }> = {};
 
@@ -212,14 +212,9 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
           child_id: childId,
           enrollment_id: enrollmentId,
           season_number: nextSeasonNumber,
-          age_band: ageBand,
-          roadmap_data: {
-            season_name: nextName,
-            focus_areas: nextFocus,
-            generated_from: 'season_completion',
-            previous_season: seasonNumber,
-          },
-          generated_by: 'system',
+          season_name: nextName,
+          focus_area: Array.isArray(nextFocus) ? nextFocus[0] || 'reading' : 'reading',
+          milestone_description: `Complete Season ${nextSeasonNumber}`,
           status: 'upcoming',
         });
 

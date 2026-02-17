@@ -43,7 +43,7 @@ export async function GET(
     }
     
     // Fetch content pools referenced in sequence
-    const contentPoolIds = unit.sequence
+    const contentPoolIds = (Array.isArray(unit.sequence) ? unit.sequence : [])
       .filter((step: any) => step.content_pool_id)
       .map((step: any) => step.content_pool_id);
     

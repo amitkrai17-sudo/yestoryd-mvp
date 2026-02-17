@@ -1,15 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import ParentLayout, { useParentContext } from '@/components/parent/ParentLayout';
 import SupportForm from '@/components/support/SupportForm';
 import { HelpCircle, Clock, CheckCircle, AlertCircle, ChevronRight } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 interface Ticket {
   id: string;

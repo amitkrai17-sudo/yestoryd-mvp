@@ -16,12 +16,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { assessmentRateLimiter, getClientIP, rateLimitResponse } from '@/lib/rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
 import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,10 +39,7 @@ const AI_PROVIDERS: AIProvider[] = [
 ];
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- CONSTANTS ---
 const MAX_AUDIO_SIZE_MB = 5; // 5MB max audio file (keeps Gemini processing under 10s)
@@ -762,10 +759,10 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
             child_id: childId,
             event_type: 'assessment',
             event_date: new Date().toISOString(),
-            event_data: eventData,
+            event_data: JSON.parse(JSON.stringify(eventData)),
             ai_summary: aiSummary,
             content_for_embedding: searchableContent,
-            embedding: embedding,
+            embedding: embedding ? JSON.stringify(embedding) : null,
           });
 
         console.log(JSON.stringify({ requestId, event: 'learning_event_saved' }));

@@ -7,16 +7,13 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Schema for feedback submission
 const FeedbackSchema = z.object({
@@ -129,7 +126,7 @@ export async function GET(
         concerns_noted,
         rating_overall
       `)
-      .eq('child_id', session.child_id)
+      .eq('child_id', session.child_id!)
       .eq('status', 'completed')
       .neq('id', sessionId)
       .order('scheduled_date', { ascending: false })
@@ -139,7 +136,7 @@ export async function GET(
     const { data: learningEvents } = await supabase
       .from('learning_events')
       .select('event_type, event_data, created_at')
-      .eq('child_id', session.child_id)
+      .eq('child_id', session.child_id!)
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -246,7 +243,7 @@ export async function POST(
     await supabase
       .from('learning_events')
       .insert({
-        child_id: session.child_id,
+        child_id: session.child_id!,
         event_type: 'session_feedback',
         event_data: {
           session_id: sessionId,
@@ -260,7 +257,7 @@ export async function POST(
       const { data: child } = await supabase
         .from('children')
         .select('learning_needs')
-        .eq('id', session.child_id)
+        .eq('id', session.child_id!)
         .single();
 
       const currentNeeds = child?.learning_needs || [];
@@ -272,7 +269,7 @@ export async function POST(
           learning_needs: updatedNeeds,
           primary_focus_area: feedback.next_session_focus?.[0] || child?.learning_needs?.[0],
         })
-        .eq('id', session.child_id);
+        .eq('id', session.child_id!);
     }
 
     // If parent communication needed, create notification

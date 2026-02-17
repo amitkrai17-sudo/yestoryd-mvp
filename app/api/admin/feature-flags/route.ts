@@ -100,7 +100,7 @@ export async function PUT(request: NextRequest) {
     const { data, error } = await supabase
       .from('feature_flags')
       .update({
-        flag_value,
+        flag_value: Boolean(flag_value),
         updated_at: new Date().toISOString(),
       })
       .eq('flag_key', flag_key)
@@ -114,9 +114,10 @@ export async function PUT(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'feature_flag_updated',
-      details: {
+      metadata: {
         request_id: requestId,
         flag_key,
         previous_value: currentFlag?.flag_value,

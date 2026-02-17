@@ -37,7 +37,7 @@ export default async function CoachDashboardPage() {
   const { data: coach } = await supabase
     .from('coaches')
     .select('*')
-    .eq('email', user.email)
+    .eq('email', user.email!)
     .single();
 
   if (!coach) {

@@ -615,8 +615,8 @@ async function sendHotLeadAlert(lead: {
   parent_phone: string | null;
   age: number | null;
   latest_assessment_score: number | null;
-  lead_score: number;
-  created_at: string;
+  lead_score: number | null;
+  created_at: string | null;
 }): Promise<boolean> {
 
   const childName = lead.child_name || 'Unknown';
@@ -625,7 +625,7 @@ async function sendHotLeadAlert(lead: {
   const age = lead.age ?? 'N/A';
   const phone = lead.parent_phone || 'No phone';
   const leadScore = lead.lead_score;
-  const createdAt = new Date(lead.created_at).toLocaleString('en-IN', {
+  const createdAt = new Date(lead.created_at ?? new Date().toISOString()).toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata',
     dateStyle: 'short',
     timeStyle: 'short',

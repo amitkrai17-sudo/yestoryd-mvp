@@ -134,7 +134,7 @@ export async function GET(
     const { data: child } = await supabase
       .from('children')
       .select('id, name, child_name')
-      .eq('id', session.child_id)
+      .eq('id', session.child_id!)
       .single();
 
     // 4. Get available slots from scheduling API (respects coach availability)

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
               bio
             )
           `)
-          .eq('parent_email', user.email)
+          .eq('parent_email', user.email ?? '')
           .eq('enrollment_status', 'active')
           .single();
         return result;
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     const sessionsCompleted = completedCount || 0;
     const progressPercentage = Math.round((sessionsCompleted / totalSessions) * 100);
 
-    const programEnd = new Date(child.program_end_date);
+    const programEnd = new Date(child.program_end_date ?? new Date().toISOString());
     const today = new Date();
     const daysRemaining = Math.max(0, Math.ceil((programEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
 
@@ -101,8 +101,8 @@ export async function GET(request: NextRequest) {
         daysRemaining,
       },
       coach: child.coaches ? {
-        ...child.coaches,
-        name: capitalizeName(child.coaches.name),
+        ...(child.coaches as any),
+        name: capitalizeName((child.coaches as any).name),
       } : null,
       upcomingSessions: upcomingSessions || [],
       recentNotes: recentNotes || [],

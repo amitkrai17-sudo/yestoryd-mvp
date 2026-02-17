@@ -81,7 +81,7 @@ export default function WhatsAppTemplatesPage() {
         .eq('is_active', true)
         .order('category');
 
-      setTemplates(templatesData || []);
+      setTemplates((templatesData || []) as any);
 
       // Get students through ENROLLMENTS (single source of truth)
       const { data: enrollmentsData } = await supabase

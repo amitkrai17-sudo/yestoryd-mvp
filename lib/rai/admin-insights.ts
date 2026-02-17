@@ -84,7 +84,7 @@ export async function getInsight(insightType: InsightType): Promise<any | null> 
   }
   
   return {
-    ...data.insight_data,
+    ...(data.insight_data as Record<string, unknown>),
     _computed_at: data.computed_at
   };
 }

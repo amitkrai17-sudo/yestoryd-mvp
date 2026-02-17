@@ -46,7 +46,7 @@ export async function GET(
         video_url: video.video_url,
         thumbnail_url: video.thumbnail_url,
         duration_seconds: video.duration_seconds,
-        skill_tags: video.skill_tags,
+        key_concepts: video.key_concepts,
       },
     });
     

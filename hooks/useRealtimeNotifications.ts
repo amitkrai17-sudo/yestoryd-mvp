@@ -35,7 +35,7 @@ export function useRealtimeNotifications(userId: string, userType: string) {
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
-      setNotifications(data || []);
+      setNotifications((data || []) as any);
       setUnreadCount((data || []).filter(n => !n.is_read).length);
     } catch (err) {
       console.error('[Notifications] Fetch error:', err);

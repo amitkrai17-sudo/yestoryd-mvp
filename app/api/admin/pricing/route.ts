@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         slug: planData.slug,
         description: planData.description || null,
         original_price: planData.original_price,
-        discounted_price: planData.discounted_price || null,
+        discounted_price: planData.discounted_price || 0,
         discount_label: planData.discount_label || null,
         duration_months: planData.duration_months,
         sessions_included: planData.sessions_included,
@@ -163,9 +163,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'pricing_plan_created',
-      details: { request_id: requestId, plan_id: data.id, plan_name: planData.name, timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, plan_id: data.id, plan_name: planData.name, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 
@@ -245,9 +246,10 @@ export async function PUT(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'pricing_plan_updated',
-      details: { request_id: requestId, plan_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, plan_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 

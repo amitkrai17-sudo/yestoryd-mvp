@@ -7,7 +7,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -29,11 +28,7 @@ import {
   Users,
 } from 'lucide-react';
 import DynamicAgreementStep from '../../components/agreement/DynamicAgreementStep';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 interface CoachData {
   id: string;
@@ -85,7 +80,7 @@ export default function CoachOnboardingPage() {
         .eq('key', 'whatsapp_number')
         .single();
       if (data?.value) {
-        setWhatsappNumber(data.value.replace('+', ''));
+        setWhatsappNumber(String(data.value).replace('+', ''));
       }
     };
     fetchWhatsApp();
@@ -103,7 +98,7 @@ export default function CoachOnboardingPage() {
       const { data: coachData, error: fetchError } = await supabase
         .from('coaches')
         .select('*')
-        .eq('email', user.email)
+        .eq('email', user.email!)
         .single();
 
       if (fetchError || !coachData) {

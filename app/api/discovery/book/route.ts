@@ -8,19 +8,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { bookDiscoveryCall, deleteCalendarEvent } from '@/lib/googleCalendar';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { phoneSchemaOptional, normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION ---
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // --- 1. VALIDATION SCHEMA ---
 const BookDiscoverySchema = z.object({
   parentName: z.string()
@@ -212,14 +209,22 @@ async function assignCoachAtomically(
       }
 
       // 3. Attempt atomic update (only succeeds if last_assigned_at unchanged)
-      const { data: updated, error: updateError } = await supabase
+      let query = supabase
         .from('coaches')
         .update({
           last_assigned_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', coach.id)
-        .eq('last_assigned_at', coach.last_assigned_at) // Optimistic lock!
+        .eq('id', coach.id);
+
+      // Optimistic lock - handle null values
+      if (coach.last_assigned_at === null) {
+        query = query.is('last_assigned_at', null);
+      } else {
+        query = query.eq('last_assigned_at', coach.last_assigned_at);
+      }
+
+      const { data: updated, error: updateError } = await query
         .select('id, name, email, last_assigned_at')
         .single();
 
@@ -276,12 +281,13 @@ async function sendBookingNotification(
     await supabase.from('communication_queue').insert({
       template_code: 'P6_discovery_booked',
       recipient_type: 'parent',
-      recipient_phone: data.phone,
-      recipient_email: data.email,
-      recipient_name: data.parentName,
+      recipient_id: data.phone,
+      scheduled_for: new Date().toISOString(),
       variables: {
         parent_name: data.parentName,
         child_name: data.childName,
+        recipient_phone: data.phone,
+        recipient_email: data.email,
         scheduled_date: data.scheduledAt.toLocaleDateString('en-IN', {
           weekday: 'long',
           day: 'numeric',
@@ -293,11 +299,11 @@ async function sendBookingNotification(
           hour12: true,
         }),
         meet_link: data.meetLink || 'Link will be shared before the call',
+        request_id: requestId,
       },
       related_entity_type: 'discovery_call',
       related_entity_id: data.discoveryCallId,
       status: 'pending',
-      request_id: requestId,
     });
 
     console.log(JSON.stringify({
@@ -576,12 +582,12 @@ export async function POST(request: NextRequest) {
     if (linkedChildId) {
       const { data: childData } = await supabase
         .from('children')
-        .select('latest_assessment_score, latest_wpm')
+        .select('latest_assessment_score, assessment_wpm')
         .eq('id', linkedChildId)
         .single();
       if (childData) {
-        childAssessmentScore = childData.latest_assessment_score;
-        childWpm = childData.latest_wpm;
+        childAssessmentScore = childData.latest_assessment_score ?? undefined;
+        childWpm = childData.assessment_wpm ?? undefined;
       }
     }
 

@@ -1,13 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Radio, Send, FileText, BarChart3, RefreshCw, Bell, Mail, MessageSquare, Smartphone, Loader2 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },

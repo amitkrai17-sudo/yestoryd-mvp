@@ -6,20 +6,17 @@
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import { loadCoachConfig, loadPaymentConfig } from '@/lib/config/loader';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION ---
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET!;
 
 // --- 1. VALIDATION SCHEMAS ---
@@ -183,10 +180,7 @@ async function processPaymentCaptured(
   // 3. Find booking
   const { data: booking } = await supabase
     .from('bookings')
-    .select(`
-      id, child_id, child_name, parent_id, parent_email, parent_name, parent_phone,
-      coach_id, lead_source, lead_source_coach_id, coupon_code
-    `)
+    .select('id, child_id, parent_id, coach_id, metadata')
     .eq('razorpay_order_id', orderId)
     .maybeSingle();
 
@@ -194,6 +188,18 @@ async function processPaymentCaptured(
     console.log(JSON.stringify({ requestId, event: 'booking_not_found', orderId }));
     return { status: 'skipped', message: 'No booking found for order' };
   }
+
+  // Extract metadata
+  const meta = (booking.metadata as Record<string, any>) || {};
+  const bookingData = {
+    child_name: meta.child_name || 'Child',
+    parent_name: meta.parent_name || 'Parent',
+    parent_email: meta.parent_email || '',
+    parent_phone: meta.parent_phone || '',
+    lead_source: meta.lead_source || 'yestoryd',
+    lead_source_coach_id: meta.lead_source_coach_id || null,
+    coupon_code: meta.coupon_code || null,
+  };
 
   // 4. Get coach
   const finalCoachId = await getCoachId(booking.coach_id, requestId);
@@ -224,7 +230,7 @@ async function processPaymentCaptured(
     status: 'captured',
     captured_at: new Date().toISOString(),
     source: 'webhook',
-    coupon_code: booking.coupon_code,
+    coupon_code: bookingData.coupon_code,
   });
 
   // 7. Create enrollment (with unique constraint handling)
@@ -245,9 +251,9 @@ async function processPaymentCaptured(
       program_end: programEnd.toISOString(),
       schedule_confirmed: false,
       sessions_scheduled: 0,
-      lead_source: booking.lead_source || 'yestoryd',
-      lead_source_coach_id: booking.lead_source === 'coach' ? booking.lead_source_coach_id : null,
-      referral_code_used: booking.coupon_code,
+      lead_source: bookingData.lead_source,
+      lead_source_coach_id: bookingData.lead_source === 'coach' ? bookingData.lead_source_coach_id : null,
+      referral_code_used: bookingData.coupon_code,
       source: 'webhook',
     })
     .select('id')
@@ -322,12 +328,12 @@ async function processPaymentCaptured(
     if (coach) {
       const queueResult = await queueEnrollmentComplete({
         enrollmentId: enrollment.id,
-        childId: booking.child_id,
-        childName: booking.child_name || 'Child',
-        parentId: booking.parent_id,
-        parentEmail: booking.parent_email,
-        parentName: booking.parent_name || 'Parent',
-        parentPhone: booking.parent_phone || '',
+        childId: booking.child_id ?? '',
+        childName: bookingData.child_name,
+        parentId: booking.parent_id ?? '',
+        parentEmail: bookingData.parent_email,
+        parentName: bookingData.parent_name,
+        parentPhone: bookingData.parent_phone,
         coachId: coach.id,
         coachEmail: coach.email,
         coachName: coach.name,
@@ -392,7 +398,7 @@ async function processPaymentFailed(
   // 2. Find booking to get parent/child details
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, child_id, parent_id, parent_email, parent_name, parent_phone, child_name, amount, metadata')
+    .select('id, child_id, parent_id, amount, metadata')
     .eq('razorpay_order_id', orderId)
     .maybeSingle();
 
@@ -400,6 +406,15 @@ async function processPaymentFailed(
     console.log(JSON.stringify({ requestId, event: 'failed_payment_no_booking', orderId }));
     return { status: 'success', message: 'Failure recorded - no booking found' };
   }
+
+  // Extract metadata for failed payment handling
+  const failedMeta = (booking.metadata as Record<string, any>) || {};
+  const bookingData = {
+    child_name: failedMeta.child_name || 'Child',
+    parent_name: failedMeta.parent_name || 'Parent',
+    parent_email: failedMeta.parent_email || '',
+    parent_phone: failedMeta.parent_phone || '',
+  };
 
   // 3. Check for existing failed_payment record (increment attempt_count)
   const { data: existingFailed } = await supabase
@@ -415,7 +430,7 @@ async function processPaymentFailed(
         razorpay_payment_id: paymentId,
         error_code: error_code || null,
         error_description: error_description || null,
-        attempt_count: existingFailed.attempt_count + 1,
+        attempt_count: (existingFailed.attempt_count ?? 0) + 1,
       })
       .eq('id', existingFailed.id);
   } else {
@@ -424,7 +439,7 @@ async function processPaymentFailed(
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 48);
 
-    const productCode = booking.metadata?.product_code || 'full';
+    const productCode = (failedMeta.product_code as string) || 'full';
 
     const { data: tokenRecord } = await supabase
       .from('payment_retry_tokens')
@@ -465,14 +480,14 @@ async function processPaymentFailed(
           body: {
             templateCode: 'payment_failed_retry',
             recipientType: 'parent',
-            recipientId: booking.parent_id,
-            recipientPhone: booking.parent_phone,
-            recipientEmail: booking.parent_email,
-            recipientName: booking.parent_name || 'Parent',
+            recipientId: booking.parent_id ?? '',
+            recipientPhone: bookingData.parent_phone,
+            recipientEmail: bookingData.parent_email,
+            recipientName: bookingData.parent_name,
             variables: {
-              parent_name: booking.parent_name || 'there',
-              child_name: booking.child_name || 'your child',
-              amount: String(booking.amount),
+              parent_name: bookingData.parent_name || 'there',
+              child_name: bookingData.child_name || 'your child',
+              amount: String(booking.amount ?? 0),
               retry_link: `${APP_URL}/payment/retry?token=${retryToken}`,
               error_reason: error_description || 'Payment could not be processed',
             },
@@ -491,7 +506,7 @@ async function processPaymentFailed(
         console.log(JSON.stringify({
           requestId,
           event: 'failed_payment_notification_queued',
-          parentEmail: booking.parent_email,
+          parentEmail: bookingData.parent_email,
           retryToken,
         }));
       }

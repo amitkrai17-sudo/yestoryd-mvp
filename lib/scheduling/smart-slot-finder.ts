@@ -21,7 +21,7 @@
 //
 // ============================================================================
 
-import { Database } from '@/lib/supabase/database.types';
+import { createAdminClient } from '@/lib/supabase/admin';
 import {
   TimePreference,
   SlotMatchType,
@@ -77,7 +77,7 @@ interface SlotsApiResponse {
  */
 export async function findAvailableSlot(
   options: SlotFinderOptions,
-  supabaseClient?: ReturnType<typeof createClient<Database>>
+  supabaseClient?: ReturnType<typeof createAdminClient>
 ): Promise<SlotSearchResult> {
   const {
     coachId,
@@ -413,7 +413,7 @@ function findAnyInWeek(
 export async function findConsistentSlot(
   options: SlotFinderOptions,
   previousSlot: { date: string; time: string },
-  supabaseClient?: ReturnType<typeof createClient<Database>>
+  supabaseClient?: ReturnType<typeof createAdminClient>
 ): Promise<SlotSearchResult> {
   // Extract day of week and time from previous slot
   const prevDayOfWeek = getDayOfWeek(previousSlot.date);
@@ -455,7 +455,7 @@ export async function findSlotsForSchedule(
   durationMinutes: number,
   sessionType: 'coaching' | 'parent_checkin',
   requestId?: string,
-  supabaseClient?: ReturnType<typeof createClient<Database>>
+  supabaseClient?: ReturnType<typeof createAdminClient>
 ): Promise<Array<SlotSearchResult & { weekNumber: number }>> {
   const results: Array<SlotSearchResult & { weekNumber: number }> = [];
   let previousSlot: { date: string; time: string } | null = null;

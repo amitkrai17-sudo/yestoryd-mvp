@@ -13,7 +13,6 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
@@ -377,8 +376,9 @@ export async function POST(request: NextRequest) {
     // =================================================================
     await supabase.from('activity_log').insert({
       user_email: adminEmail || 'engage@yestoryd.com',
+      user_type: 'system',
       action: 'enrollment_revenue_calculated',
-      details: {
+      metadata: {
         request_id: requestId,
         enrollment_id,
         enrollment_revenue_id: enrollmentRevenue.id,

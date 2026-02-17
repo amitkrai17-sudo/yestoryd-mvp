@@ -264,9 +264,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'tds_marked_deposited',
-      details: {
+      metadata: {
         request_id: requestId,
         quarter: validated.quarter,
         financial_year: validated.financial_year,

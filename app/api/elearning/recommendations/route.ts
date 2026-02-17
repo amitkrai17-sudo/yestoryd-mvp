@@ -58,8 +58,9 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (cached && cached.length > 0 && cached[0].event_data?.carousel) {
-        
+      if (cached && cached.length > 0 && (cached[0].event_data as any)?.carousel) {
+        const cachedEventData = cached[0].event_data as any;
+
         // Get fresh progress data to update completion status
         const { data: progress } = await supabase
           .from('el_child_video_progress')
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
         );
 
         // Get video details for has_quiz check
-        const videoIds = cached[0].event_data.carousel.map((c: any) => c.id);
+        const videoIds = cachedEventData.carousel.map((c: any) => c.id);
         const { data: videos } = await supabase
           .from('el_videos')
           .select('id, has_quiz')
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
         const videoHasQuiz = new Map(videos?.map(v => [v.id, v.has_quiz]) || []);
 
         // Update carousel items with fresh completion status
-        const updatedCarousel = cached[0].event_data.carousel.map((item: any) => {
+        const updatedCarousel = cachedEventData.carousel.map((item: any) => {
           const isCompleted = completedVideoIds.has(item.id);
           const hasQuiz = videoHasQuiz.get(item.id);
           const needsQuizRetry = hasQuiz && quizPendingVideoIds.has(item.id);
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
         const totalXP = updatedCarousel.reduce((sum: number, r: any) => sum + (r.xp_reward || 0), 0);
 
         return NextResponse.json({
-          ...cached[0].event_data,
+          ...cachedEventData,
           carousel: updatedCarousel,
           total_xp_available: totalXP,
           cached: true,
@@ -130,6 +131,7 @@ export async function GET(request: NextRequest) {
     // Build progress lookup map
     const progressMap = new Map<string, any>();
     progress?.forEach(p => {
+      if (!p.video_id) return;
       progressMap.set(p.video_id, {
         is_completed: p.is_completed || false,
         quiz_passed: p.quiz_passed,
@@ -139,15 +141,15 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    const completedVideoIds = new Set(
-      progress?.filter(p => p.is_completed).map(p => p.video_id) || []
+    const completedVideoIds = new Set<string>(
+      (progress?.filter(p => p.is_completed).map(p => p.video_id).filter(Boolean) || []) as string[]
     );
-    
+
     // Videos needing quiz action: completed but quiz not passed yet
     // This includes: quiz never attempted OR quiz attempted but failed
-    const quizPendingVideoIds = new Set(
-      progress?.filter(p => p.is_completed && p.quiz_passed !== true)
-        .map(p => p.video_id) || []
+    const quizPendingVideoIds = new Set<string>(
+      (progress?.filter(p => p.is_completed && p.quiz_passed !== true)
+        .map(p => p.video_id).filter(Boolean) || []) as string[]
     );
 
     // STEP 4: Get all videos
@@ -181,10 +183,10 @@ export async function GET(request: NextRequest) {
 
     // Extract session context
     const sessionContext = sessions?.map(s => ({
-      date: new Date(s.created_at).toLocaleDateString(),
-      focusArea: s.event_data?.focus_area,
-      concerns: s.event_data?.concerns,
-      skillsWorked: s.event_data?.skills_worked_on,
+      date: s.created_at ? new Date(s.created_at).toLocaleDateString() : '',
+      focusArea: (s.event_data as any)?.focus_area,
+      concerns: (s.event_data as any)?.concerns,
+      skillsWorked: (s.event_data as any)?.skills_worked_on,
     })) || [];
 
     if (useAI && process.env.GEMINI_API_KEY) {

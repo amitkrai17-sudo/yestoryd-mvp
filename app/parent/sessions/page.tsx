@@ -88,7 +88,7 @@ export default function ParentSessionsPage() {
         const { data: childByEmail } = await supabase
           .from('children')
           .select('id, name')
-          .eq('parent_email', user.email)
+          .eq('parent_email', user.email ?? '')
           .eq('lead_status', 'enrolled')
           .order('enrolled_at', { ascending: false })
           .limit(1)

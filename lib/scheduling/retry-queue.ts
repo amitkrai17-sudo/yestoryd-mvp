@@ -168,7 +168,7 @@ export async function processRetry(
     }
 
     // Skip if session is already scheduled/completed
-    if (['scheduled', 'completed', 'cancelled'].includes(session.status)) {
+    if (session.status && ['scheduled', 'completed', 'cancelled'].includes(session.status)) {
       console.log(`[RetryQueue] Session ${sessionId} already ${session.status}, skipping retry`);
       await supabase
         .from('scheduled_sessions')
@@ -178,6 +178,10 @@ export async function processRetry(
     }
 
     // Attempt to find a slot and schedule
+    if (!session.enrollment_id || !session.child_id || !session.coach_id) {
+      return { success: false, error: 'Session missing required IDs for scheduling' };
+    }
+
     // Import dynamically to avoid circular deps
     const { scheduleSession } = await import('./session-manager');
 

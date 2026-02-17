@@ -84,22 +84,27 @@ export async function POST(request: NextRequest) {
       .eq('enrollment_id', enrollmentId);
 
     // 6. Get payment record for Razorpay payment ID
+    if (!enrollment.payment_id) {
+      return NextResponse.json({ error: 'No payment ID associated with enrollment' }, { status: 400 });
+    }
+
     const { data: payment } = await supabase
       .from('payments')
       .select('razorpay_payment_id, captured_at')
       .eq('razorpay_payment_id', enrollment.payment_id)
       .single();
 
-    if (!payment) {
+    if (!payment || !payment.captured_at) {
       return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
     }
 
     // 7. Calculate refund
     const revConfig = await loadRevenueSplitConfig();
-    const coachPercent = revConfig.coachCostPercent;
+    const coachPercent = revConfig.coachCostPercent ?? 0;
 
     const completed = sessionsCompleted ?? 0;
     const total = sessionsTotal ?? 0;
+    const enrollmentAmount = enrollment.amount ?? 0;
 
     const fullEligible = isFullRefundEligible(
       new Date(payment.captured_at),
@@ -107,8 +112,8 @@ export async function POST(request: NextRequest) {
     );
 
     const calc = fullEligible
-      ? { refundAmount: enrollment.amount, coachCost: 0, refundType: 'full' as const }
-      : calculateRefund(enrollment.amount, total, completed, coachPercent);
+      ? { refundAmount: enrollmentAmount, coachCost: 0, refundType: 'full' as const }
+      : calculateRefund(enrollmentAmount, total, completed, coachPercent);
 
     if (calc.refundAmount <= 0) {
       return NextResponse.json({ error: 'No refundable amount', calculation: calc }, { status: 422 });
@@ -142,16 +147,18 @@ export async function POST(request: NextRequest) {
       enrollment_id: enrollmentId,
       sessions_total: total,
       sessions_completed: completed,
-      original_amount: enrollment.amount,
-      coach_cost: calc.coachCost,
+      sessions_remaining: total - completed,
+      original_amount: enrollmentAmount,
+      coach_settlement_amount: calc.coachCost,
+      platform_retention: enrollmentAmount - calc.refundAmount - calc.coachCost,
       refund_amount: calc.refundAmount,
-      refund_type: calc.refundType,
-      razorpay_payment_id: payment.razorpay_payment_id,
+      razorpay_payment_id: payment.razorpay_payment_id!,
       razorpay_refund_id: razorpayRefund.id,
       refund_status: 'initiated',
-      initiated_by: auth.email,
+      created_by: auth.email ?? '',
+      terminated_by: auth.email ?? '',
       termination_reason: reason,
-      notes,
+      termination_notes: notes,
     });
 
     // 10. Update enrollment status

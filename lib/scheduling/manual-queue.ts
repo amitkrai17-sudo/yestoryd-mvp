@@ -45,11 +45,11 @@ export interface QueueFilters {
 }
 
 export interface EscalateContext {
-  enrollmentId?: string;
-  childId?: string;
-  coachId?: string;
-  sessionType?: string;
-  weekNumber?: number;
+  enrollmentId?: string | null;
+  childId?: string | null;
+  coachId?: string | null;
+  sessionType?: string | null;
+  weekNumber?: number | null;
 }
 
 // ============================================================================
@@ -91,11 +91,11 @@ export async function escalate(
         .single();
 
       if (session) {
-        enrollmentId = enrollmentId || session.enrollment_id;
-        childId = childId || session.child_id;
-        coachId = coachId || session.coach_id;
-        sessionType = sessionType || session.session_type;
-        weekNumber = weekNumber ?? session.week_number;
+        enrollmentId = enrollmentId || session.enrollment_id || undefined;
+        childId = childId || session.child_id || undefined;
+        coachId = coachId || session.coach_id || undefined;
+        sessionType = sessionType || session.session_type || undefined;
+        weekNumber = weekNumber ?? session.week_number ?? undefined;
       }
     }
 

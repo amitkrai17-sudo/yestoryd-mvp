@@ -133,15 +133,14 @@ export async function POST(request: NextRequest) {
       .insert({
         enrollment_id: enrollmentId,
         parent_id: enrollment.parent_id,
-        child_id: enrollment.child_id,
+        child_id: enrollment.child_id!,
         coach_id: enrollment.coach_id,
         score,
         category,
         feedback: feedback || null,
-        improvements: improvements || null,
-        would_recommend: wouldRecommend ?? (score >= 7),
+        improvement_suggestions: improvements || null,
         testimonial_consent: testimonialConsent || false,
-        testimonial_text: testimonialText || null,
+        testimonial: testimonialText || null,
         submitted_at: new Date().toISOString(),
       })
       .select()
@@ -171,15 +170,11 @@ export async function POST(request: NextRequest) {
     // If testimonial consent given and score is high, flag for marketing
     if (testimonialConsent && score >= 8 && testimonialText) {
       await supabase.from('testimonials').insert({
-        nps_response_id: nps.id,
-        enrollment_id: enrollmentId,
-        parent_id: enrollment.parent_id,
+        parent_name: (enrollment.parents as any)?.name ?? 'Parent',
         child_name: (enrollment.children as any)?.name || (enrollment.children as any)?.child_name,
-        parent_name: (enrollment.parents as any)?.name,
-        coach_name: (enrollment.coaches as any)?.name,
-        text: testimonialText,
-        score,
-        status: 'pending_review', // Admin needs to approve
+        testimonial_text: testimonialText,
+        rating: score,
+        is_active: false, // pending review
         created_at: new Date().toISOString(),
       });
     }

@@ -2,18 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import {
   Loader2, MapPin, CheckCircle, Circle, Video, Clock,
   ChevronDown, ChevronUp, Target, Sparkles, Lock,
   Calendar, Star, ArrowRight, FileText, Film, ExternalLink,
 } from 'lucide-react';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase/client';
 
 interface PlanItem {
   id: string;
@@ -79,7 +74,7 @@ export default function ParentJourneyPage() {
     const { data: parentData } = await supabase
       .from('parents')
       .select('id')
-      .eq('email', user.email)
+      .eq('email', user.email!)
       .maybeSingle();
 
     let child = null;

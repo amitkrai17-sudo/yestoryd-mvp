@@ -144,8 +144,8 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('el_child_gamification')
           .update({
-            total_xp: gamification.total_xp + 25,
-            total_coins: gamification.total_coins + 10
+            total_xp: (gamification.total_xp ?? 0) + 25,
+            total_coins: (gamification.total_coins ?? 0) + 10
           })
           .eq('child_id', childId);
       }

@@ -48,11 +48,9 @@ export async function POST(request: NextRequest) {
       .from('children')
       .select(`
         id,
-        name,
         child_name,
-        child_age,
+        age,
         latest_assessment_score,
-        assessment_feedback,
         parent_name,
         parent_email
       `)
@@ -66,8 +64,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const childName = child.name || child.child_name || 'Student';
-    const childAge = child.child_age || 0;
+    const childName = child.child_name || 'Student';
+    const childAge = child.age || 0;
     const readingLevel = child.latest_assessment_score || 5;
     const coachFirstName = coach.name.split(' ')[0];
 
@@ -147,9 +145,7 @@ export async function POST(request: NextRequest) {
         const sgMail = require('@sendgrid/mail');
         sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-        const assessmentSummary = child.assessment_feedback 
-          ? child.assessment_feedback.substring(0, 300) + '...'
-          : 'Assessment data available in dashboard.';
+        const assessmentSummary = 'Assessment data available in dashboard.';
 
         await sgMail.send({
           to: coach.email,

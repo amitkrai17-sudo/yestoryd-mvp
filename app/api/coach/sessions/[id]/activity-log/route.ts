@@ -48,6 +48,10 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    if (!session.child_id) {
+      return NextResponse.json({ error: 'Session has no child assigned' }, { status: 400 });
+    }
+
     // 2. Bulk insert activity logs
     const activityRows = activities.map((a: any) => ({
       session_id: sessionId,
@@ -154,7 +158,7 @@ export async function POST(
     const struggledActivities = activities.filter((a: any) => a.status === 'struggled');
     if (struggledActivities.length > 0) {
       const struggleEvents = struggledActivities.map((a: any) => ({
-        child_id: session.child_id,
+        child_id: session.child_id as string, // Already verified not null above
         event_type: 'activity_struggle_flag',
         event_data: {
           session_id: sessionId,
@@ -215,6 +219,11 @@ export async function POST(
 
     // 6. Increment coach.completed_sessions_with_logs
     try {
+      if (!session.coach_id) {
+        console.log(JSON.stringify({ requestId, event: 'skip_coach_count', reason: 'no_coach_id' }));
+        return NextResponse.json({ success: true, message: 'Activity log saved successfully', logCount: activities.length });
+      }
+
       // Use RPC-like approach: read + write
       const { data: coach } = await supabase
         .from('coaches')

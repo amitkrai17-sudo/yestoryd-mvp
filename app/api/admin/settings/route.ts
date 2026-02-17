@@ -186,9 +186,10 @@ export async function PATCH(request: NextRequest) {
     // Audit log
     try {
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'site_settings_updated',
-        details: {
+        metadata: {
           request_id: requestId,
           keys_updated: updated,
           keys_failed: errors,

@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
     
     let dailyGoalAchieved = false;
     if (dailyGoal && !dailyGoal.is_achieved) {
-      const newCompleted = dailyGoal.completed_activities + 1;
-      if (newCompleted >= dailyGoal.target_activities) {
+      const newCompleted = (dailyGoal.completed_activities ?? 0) + 1;
+      if (newCompleted >= (dailyGoal.target_activities ?? 0)) {
         dailyGoalAchieved = true;
         await supabase
           .from('child_daily_goals')

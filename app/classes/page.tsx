@@ -4,15 +4,12 @@
 // =============================================================================
 
 import { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import ClassesPageClient from './ClassesPageClient';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 // Create server-side Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Default metadata
 const DEFAULT_META = {
   title: 'Group Classes for Kids | Kahani Times, Read Aloud & More | Yestoryd',

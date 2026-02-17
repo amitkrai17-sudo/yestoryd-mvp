@@ -7,14 +7,10 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 
+const supabase = createAdminClient();
 // Initialize Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Level configuration
 const LEVEL_TITLES: Record<number, string> = {
   1: 'Beginner', 2: 'Explorer', 3: 'Learner', 4: 'Reader',

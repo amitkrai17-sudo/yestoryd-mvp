@@ -2,15 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { Shield, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
 
 // ==================== SUPABASE CLIENT ====================
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export default function AdminLoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);

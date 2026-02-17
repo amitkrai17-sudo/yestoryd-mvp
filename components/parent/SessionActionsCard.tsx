@@ -1,5 +1,6 @@
 'use client';
 
+import { Database } from '@/lib/supabase/database.types';
 import { useState, useEffect } from 'react';
 import {
   XCircle, CalendarClock, AlertCircle, CheckCircle,
@@ -55,7 +56,7 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
     try {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 

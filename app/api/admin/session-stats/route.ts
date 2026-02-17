@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
 }
 
 // --- HELPER FUNCTIONS ---
-function getWeeklyBreakdown(sessions: Array<{ scheduled_date: string; status: string }>) {
+function getWeeklyBreakdown(sessions: Array<{ scheduled_date: string; status: string | null }>) {
   const weeks: Record<string, { completed: number; noShow: number; partial: number; total: number }> = {};
 
   sessions.forEach(session => {

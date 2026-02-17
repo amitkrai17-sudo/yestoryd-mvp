@@ -27,7 +27,7 @@ export async function POST(
     // Get draft roadmap
     const { data: roadmap } = await supabase
       .from('season_roadmaps')
-      .select('id, status, enrollment_id, roadmap_data')
+      .select('id, status, enrollment_id, season_name')
       .eq('child_id', childId)
       .eq('status', 'draft')
       .order('created_at', { ascending: false })
@@ -54,9 +54,9 @@ export async function POST(
     // Get plan items to link templates to scheduled sessions
     const { data: planItems } = await supabase
       .from('season_learning_plans')
-      .select('id, session_number, session_template_id')
-      .eq('roadmap_id', roadmap.id)
-      .order('session_number', { ascending: true });
+      .select('id, week_number, session_template_id')
+      .eq('season_roadmap_id', roadmap.id)
+      .order('week_number', { ascending: true });
 
     // Update scheduled sessions with template assignments from the plan
     if (planItems && planItems.length > 0 && roadmap.enrollment_id) {
@@ -69,9 +69,9 @@ export async function POST(
         .order('session_number', { ascending: true });
 
       if (sessions) {
-        // Map plan items to sessions by session_number
+        // Map plan items to sessions by week_number (plan) to session_number (session)
         for (const planItem of planItems) {
-          const matchingSession = sessions.find(s => s.session_number === planItem.session_number);
+          const matchingSession = sessions.find(s => s.session_number === planItem.week_number);
           if (matchingSession && planItem.session_template_id) {
             await supabase
               .from('scheduled_sessions')
@@ -95,14 +95,14 @@ export async function POST(
         data: {
           type: 'plan_approved',
           roadmap_id: roadmap.id,
-          season_name: roadmap.roadmap_data?.season_name,
+          season_name: roadmap.season_name,
           approved_by: auth.email,
         },
         event_data: {
           type: 'plan_approved',
           roadmap_id: roadmap.id,
         },
-        content_for_embedding: `Learning plan approved: ${roadmap.roadmap_data?.season_name || 'Season'}. Templates assigned to scheduled sessions.`,
+        content_for_embedding: `Learning plan approved: ${roadmap.season_name || 'Season'}. Templates assigned to scheduled sessions.`,
         created_by: auth.email,
       });
 

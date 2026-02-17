@@ -2,16 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 import {
   CheckCircle, Circle, Clock, Flame, Trophy,
   Loader2, Star, BookOpen, Sparkles,
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // Skill labels for display
 const SKILL_COLORS: Record<string, string> = {
@@ -79,7 +74,7 @@ export default function ParentTasksPage() {
     const { data: parentData } = await supabase
       .from('parents')
       .select('id')
-      .eq('email', user.email)
+      .eq('email', user.email!)
       .maybeSingle();
 
     let child = null;

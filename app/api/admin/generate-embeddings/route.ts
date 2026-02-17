@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
 
         const { error: updateError } = await supabase
           .from('learning_events')
-          .update({ embedding })
+          .update({ embedding: JSON.stringify(embedding) })
           .eq('id', event.id);
 
         if (updateError) {
@@ -137,9 +137,10 @@ export async function GET(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'embeddings_generated',
-      details: {
+      metadata: {
         request_id: requestId,
         total: events.length,
         success_count: results.successCount,

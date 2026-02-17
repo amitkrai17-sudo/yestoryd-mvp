@@ -417,7 +417,7 @@ async function handleLearning(
       };
     }
 
-    children = parentChildren.map(c => ({ id: c.id, name: c.child_name || c.name }));
+    children = parentChildren.map(c => ({ id: c.id, name: c.child_name || c.name || 'Child' }));
 
     if (parentChildren.length === 1) {
       child = parentChildren[0] as ChildWithCache;
@@ -645,6 +645,15 @@ async function handleOperational(
 
   if (userRole === 'coach' && /how many (children|students|kids)/i.test(lowerMessage)) {
     const coachId = await getCoachId(userEmail);
+
+    if (!coachId) {
+      return {
+        response: "I couldn't find your coach profile. Please contact support.",
+        intent: 'OPERATIONAL',
+        source: 'sql',
+      };
+    }
+
     const { count } = await supabase
       .from('children')
       .select('*', { count: 'exact', head: true })
@@ -773,6 +782,14 @@ async function handleSchedule(
 
   } else if (userRole === 'coach') {
     const coachId = sessionCoachId || await getCoachId(userEmail);
+
+    if (!coachId) {
+      return {
+        response: "I couldn't find your coach profile. Please contact support.",
+        intent: 'OPERATIONAL',
+        source: 'sql',
+      };
+    }
 
     if (/today/i.test(message)) {
       const { data: sessions } = await supabase

@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
         event_date: new Date().toISOString(),
         data: quizData,
         ai_summary: aiSummary,
-        embedding,
+        embedding: embedding ? JSON.stringify(embedding) : null,
       });
 
     if (eventError) {

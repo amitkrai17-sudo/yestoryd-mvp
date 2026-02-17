@@ -87,7 +87,7 @@ export default function ParentProgressPage() {
         const { data: childByEmail } = await supabase
           .from('children')
           .select('*')
-          .eq('parent_email', user.email)
+          .eq('parent_email', user.email ?? '')
           .eq('lead_status', 'enrolled')
           .order('enrolled_at', { ascending: false })
           .limit(1)
@@ -118,7 +118,7 @@ export default function ParentProgressPage() {
         .maybeSingle();
 
       if (enrollmentData) {
-        setEnrollment(enrollmentData);
+        setEnrollment(enrollmentData as any);
       }
 
       // Count completed sessions
@@ -146,7 +146,7 @@ export default function ParentProgressPage() {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      setLearningEvents(events || []);
+      setLearningEvents((events || []) as any);
 
       setLoading(false);
     } catch (error) {

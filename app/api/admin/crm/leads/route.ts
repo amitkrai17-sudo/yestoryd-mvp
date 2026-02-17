@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${searchTerm}%,parent_email.ilike.%${searchTerm}%,parent_phone.ilike.%${searchTerm}%,parent_name.ilike.%${searchTerm}%`);
     }
 
-    const { data: leads, error } = await query;
+    const { data: leads, error } = await query as { data: any[] | null; error: any };
     if (error) throw error;
 
     const allLeads = leads || [];
@@ -184,9 +184,10 @@ export async function PATCH(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'crm_lead_updated',
-      details: { request_id: requestId, lead_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, lead_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 

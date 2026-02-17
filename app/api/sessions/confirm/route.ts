@@ -12,16 +12,13 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Day names for response messages
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -94,7 +91,7 @@ export async function POST(request: NextRequest) {
     const { data: coach, error: coachError } = await supabase
       .from('coaches')
       .select('id, name, email')
-      .eq('id', enrollment.coach_id)
+      .eq('id', enrollment.coach_id!)
       .single();
 
     if (coachError || !coach) {
@@ -177,7 +174,7 @@ export async function POST(request: NextRequest) {
         // Calculate session date based on week number
         const sessionDate = calculateSessionDateForDay(
           startDate,
-          session.week_number,
+          session.week_number ?? 1,
           parseInt(preferredDay),
           preferredTime
         );

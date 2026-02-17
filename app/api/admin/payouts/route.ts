@@ -14,7 +14,6 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
@@ -224,8 +223,8 @@ export async function GET(request: NextRequest) {
       .select(`
         id,
         coach_id,
-        enrollment_id,
-        month_number,
+        enrollment_revenue_id,
+        payout_month,
         gross_amount,
         tds_amount,
         net_amount,
@@ -254,12 +253,12 @@ export async function GET(request: NextRequest) {
       query = query.gte('scheduled_date', startDate).lte('scheduled_date', endDate);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query as { data: any[] | null; error: any };
 
     if (error) throw error;
 
     // 5. Mask sensitive data in response
-    const maskedPayouts = data?.map(payout => {
+    const maskedPayouts = data?.map((payout: any) => {
       const coach = payout.coaches as any;
       return {
         ...payout,
@@ -407,10 +406,10 @@ export async function POST(request: NextRequest) {
     // Check if payouts are in valid state for the action
     const invalidPayouts = existingPayouts.filter(p => {
       if (action === 'mark_paid') {
-        return !['scheduled', 'processing'].includes(p.status);
+        return !['scheduled', 'processing'].includes(p.status || '');
       }
       if (action === 'cancel') {
-        return !['scheduled'].includes(p.status);
+        return !['scheduled'].includes(p.status || '');
       }
       return true;
     });
@@ -443,7 +442,7 @@ export async function POST(request: NextRequest) {
       if (payoutsWithCoaches.error) throw payoutsWithCoaches.error;
 
       const tdsEntries = payoutsWithCoaches.data
-        ?.filter(p => p.tds_amount > 0)
+        ?.filter(p => (p.tds_amount || 0) > 0)
         .map(p => ({
           coach_id: p.coach_id,
           coach_name: (p.coaches as any)?.name,
@@ -453,7 +452,7 @@ export async function POST(request: NextRequest) {
           section: '194J',
           gross_amount: p.gross_amount,
           tds_rate: 10,
-          tds_amount: p.tds_amount,
+          tds_amount: p.tds_amount || 0,
           payout_id: p.id,
           deposited: false,
         })) || [];
@@ -505,9 +504,10 @@ export async function POST(request: NextRequest) {
 
       try {
         await supabase.from('activity_log').insert({
-          user_email: auth.email,
+          user_email: auth.email || 'unknown',
+      user_type: 'admin',
           action: 'payouts_marked_paid',
-          details: {
+          metadata: {
             request_id: requestId,
             payout_ids,
             payout_count: updatedPayouts?.length,
@@ -561,9 +561,10 @@ export async function POST(request: NextRequest) {
 
       // Audit log
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'payouts_cancelled',
-        details: {
+        metadata: {
           request_id: requestId,
           payout_ids,
           payout_count: data?.length,

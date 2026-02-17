@@ -12,14 +12,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Hold expiry time in minutes
 const HOLD_EXPIRY_MINUTES = 10;
@@ -71,7 +68,7 @@ export async function POST(request: NextRequest) {
     // Check if slot is already held by someone else
     const { data: existingHold } = await supabase
       .from('session_holds')
-      .select('id, held_by_email, expires_at')
+      .select('id, parent_email, expires_at')
       .eq('coach_id', coachId)
       .eq('slot_date', date)
       .eq('slot_time', time)
@@ -80,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (existingHold) {
       // If same user, extend the hold
-      if (existingHold.held_by_email === parentEmail) {
+      if (existingHold.parent_email === parentEmail) {
         const { data: updatedHold, error: updateError } = await supabase
           .from('session_holds')
           .update({ expires_at: expiresAt.toISOString() })
@@ -126,8 +123,9 @@ export async function POST(request: NextRequest) {
         slot_date: date,
         slot_time: time,
         session_type: sessionType || 'discovery',
-        held_by_email: parentEmail || null,
-        held_for_child_id: childId || null,
+        parent_email: parentEmail || null,
+        child_id: childId || null,
+        duration_minutes: 45,
         expires_at: expiresAt.toISOString(),
         status: 'active',
       })
@@ -201,7 +199,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify ownership if email provided
-    if (parentEmail && hold.held_by_email && hold.held_by_email !== parentEmail) {
+    if (parentEmail && hold.parent_email && hold.parent_email !== parentEmail) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }
@@ -270,7 +268,7 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      const isExpired = new Date(hold.expires_at) < new Date();
+      const isExpired = !hold.expires_at || new Date(hold.expires_at) < new Date();
 
       return NextResponse.json({
         success: true,
@@ -287,7 +285,7 @@ export async function GET(request: NextRequest) {
     if (coachId && date && time) {
       const { data: hold } = await supabase
         .from('session_holds')
-        .select('id, expires_at, held_by_email')
+        .select('id, expires_at, parent_email')
         .eq('coach_id', coachId)
         .eq('slot_date', date)
         .eq('slot_time', time)

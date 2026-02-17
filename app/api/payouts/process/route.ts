@@ -14,7 +14,6 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
@@ -259,7 +258,7 @@ export async function POST(request: NextRequest) {
 
       // 5b. Calculate totals
       const totalGross = coachPayouts.reduce((sum, p) => sum + p.gross_amount, 0);
-      const totalTds = coachPayouts.reduce((sum, p) => sum + p.tds_amount, 0);
+      const totalTds = coachPayouts.reduce((sum, p) => sum + (p.tds_amount ?? 0), 0);
       const totalNet = coachPayouts.reduce((sum, p) => sum + p.net_amount, 0);
 
       // 5c. IDEMPOTENCY CHECK - Skip if any payout already processed
@@ -412,7 +411,7 @@ export async function POST(request: NextRequest) {
 
           // 5i. BATCH INSERT TDS ledger entries
           const tdsEntries = coachPayouts
-            .filter(p => p.tds_amount > 0)
+            .filter(p => (p.tds_amount ?? 0) > 0)
             .map(p => ({
               coach_id: coachId,
               coach_name: coach.name,
@@ -422,7 +421,7 @@ export async function POST(request: NextRequest) {
               section: '194J',
               gross_amount: p.gross_amount,
               tds_rate: 10,
-              tds_amount: p.tds_amount,
+              tds_amount: p.tds_amount ?? 0,
               payout_id: p.id,
             }));
 
@@ -433,8 +432,9 @@ export async function POST(request: NextRequest) {
           // 5j. Audit log
           await supabase.from('activity_log').insert({
             user_email: auth.adminEmail || 'engage@yestoryd.com',
+      user_type: 'system',
             action: 'payout_processed',
-            details: {
+            metadata: {
               request_id: requestId,
               coach_id: coachId,
               coach_name: coach.name,
@@ -500,8 +500,9 @@ export async function POST(request: NextRequest) {
         // Audit log failure
         await supabase.from('activity_log').insert({
           user_email: auth.adminEmail || 'engage@yestoryd.com',
+      user_type: 'system',
           action: 'payout_failed',
-          details: {
+          metadata: {
             request_id: requestId,
             coach_id: coachId,
             coach_name: coach.name,
@@ -622,7 +623,7 @@ export async function GET(request: NextRequest) {
           name: coach?.name || 'Unknown',
           count: 0,
           amount: 0,
-          enabled: coach?.payout_enabled && !!coach?.bank_account_number,
+          enabled: !!(coach?.payout_enabled && coach?.bank_account_number),
           bank_masked: maskBankAccount(coach?.bank_account_number),
         });
       }

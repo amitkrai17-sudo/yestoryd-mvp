@@ -260,8 +260,9 @@ export async function POST(request: NextRequest) {
     try {
       await supabase.from('activity_log').insert({
         user_email: 'engage@yestoryd.com',
+      user_type: 'system',
         action: 'goals_capture_job_executed',
-        details: {
+        metadata: {
           request_id: requestId,
           source: auth.source,
           total_found: eligibleChildren.length,

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   const now = new Date().toISOString();
 
   // Get pending engagements that are due
-  const { data: pending, error } = await supabase
+  const { data: pending, error } = await (supabase as any)
     .from('coach_engagement_log')
     .select('*, coaches:coach_id(id, name, email, phone, onboarding_complete)')
     .eq('status', 'pending')
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   for (const engagement of pending) {
     const coach = engagement.coaches as any;
     if (!coach) {
-      await supabase.from('coach_engagement_log')
+      await (supabase as any).from('coach_engagement_log')
         .update({ status: 'skipped', skip_reason: 'Coach not found' })
         .eq('id', engagement.id);
       results.push({ id: engagement.id, status: 'skipped', reason: 'Coach not found' });
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Check conditions
     if (engagement.condition === 'onboarding_incomplete' && coach.onboarding_complete) {
-      await supabase.from('coach_engagement_log')
+      await (supabase as any).from('coach_engagement_log')
         .update({ status: 'skipped', skip_reason: 'Onboarding already complete' })
         .eq('id', engagement.id);
       results.push({ id: engagement.id, status: 'skipped', reason: 'Onboarding complete' });
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
         .eq('status', 'active');
 
       if ((count || 0) > 0) {
-        await supabase.from('coach_engagement_log')
+        await (supabase as any).from('coach_engagement_log')
           .update({ status: 'skipped', skip_reason: 'Coach has active assignment' })
           .eq('id', engagement.id);
         results.push({ id: engagement.id, status: 'skipped', reason: 'Has assignment' });
@@ -86,12 +86,12 @@ export async function GET(request: NextRequest) {
         await sendEngagementWhatsApp(coach, engagement.template, settings);
       }
 
-      await supabase.from('coach_engagement_log')
+      await (supabase as any).from('coach_engagement_log')
         .update({ status: 'sent', sent_at: new Date().toISOString() })
         .eq('id', engagement.id);
       results.push({ id: engagement.id, status: 'sent' });
     } catch (err: any) {
-      await supabase.from('coach_engagement_log')
+      await (supabase as any).from('coach_engagement_log')
         .update({ status: 'failed', skip_reason: err.message })
         .eq('id', engagement.id);
       results.push({ id: engagement.id, status: 'failed', reason: err.message });

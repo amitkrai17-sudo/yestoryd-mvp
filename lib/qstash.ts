@@ -508,6 +508,24 @@ export async function triggerGoalsCaptureCheck(): Promise<QueueResult> {
 }
 
 // ============================================================
+// SESSION COMPLETION NUDGE SCHEDULE
+// ============================================================
+
+/**
+ * Setup session completion nudge schedule (runs every 15 minutes)
+ * Replaced Vercel cron (Hobby plan only allows daily crons)
+ *
+ * Call this once during deployment or via admin endpoint
+ */
+export async function setupSessionCompletionNudgeSchedule(): Promise<{ success: boolean; scheduleId?: string; error?: string }> {
+  return createQStashSchedule({
+    scheduleId: 'session-completion-nudge-15min',
+    url: `${APP_URL}/api/cron/session-completion-nudge`,
+    cron: '*/15 * * * *', // Every 15 minutes
+  });
+}
+
+// ============================================================
 // DAILY LEAD DIGEST SCHEDULE
 // ============================================================
 

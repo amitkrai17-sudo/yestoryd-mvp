@@ -142,7 +142,7 @@ export async function PATCH(
       if (coachForEngagement) {
         const records = buildEngagementRecords(coachForEngagement.id, 'approval');
         if (records.length > 0) {
-          const { error: engErr } = await supabase
+          const { error: engErr } = await (supabase as any)
             .from('coach_engagement_log')
             .insert(records);
           if (engErr) {

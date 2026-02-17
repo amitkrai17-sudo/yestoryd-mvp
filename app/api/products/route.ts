@@ -5,16 +5,13 @@
 // Yestoryd - AI-Powered Reading Intelligence Platform
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 // Disable caching - always fetch fresh data
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // --- TYPES ---
 interface Product {
@@ -120,8 +117,8 @@ export async function GET(request: NextRequest) {
     const products: Product[] = (plans || []).map(plan => {
       // Parse features if stored as JSON string
       const features = typeof plan.features === 'string'
-        ? JSON.parse(plan.features)
-        : plan.features || [];
+        ? JSON.parse(plan.features) as string[]
+        : (plan.features as string[]) || [];
 
       // Calculate savings display
       const savings = plan.original_price - plan.discounted_price;
@@ -162,9 +159,9 @@ export async function GET(request: NextRequest) {
         sessions_checkin: plan.sessions_checkin || 3,
         duration_months: plan.duration_months || 3,
         features,
-        is_featured: plan.is_featured || false,
-        badge_text: plan.badge_text || null,
-        display_order: plan.display_order,
+        is_featured: plan.is_featured ?? false,
+        badge_text: null, // badge_text column doesn't exist in pricing_plans
+        display_order: plan.display_order ?? 0,
         available,
         eligibility_message: eligibilityMessage,
         // New columns

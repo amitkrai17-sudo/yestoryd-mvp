@@ -14,6 +14,7 @@
  *   - Valid enrollment + sessions in DB for the test child
  */
 
+import { Database } from '@/lib/supabase/database.types';
 import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
@@ -28,7 +29,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const TEST_CHILD_ID = '4a7c7385-21a3-47d5-a35a-cbfab50e6607'; // sita
 const TEST_COACH_EMAIL = 'rucha.rai@yestoryd.com';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(
+  SUPABASE_URL, SUPABASE_KEY);
 
 // --- HELPERS ---
 function log(label: string, data: unknown) {

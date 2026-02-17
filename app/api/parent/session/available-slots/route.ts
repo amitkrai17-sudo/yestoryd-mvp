@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   const { data: parent } = await supabase
     .from('parents')
     .select('id')
-    .eq('email', auth.email)
+    .eq('email', auth.email ?? '')
     .single();
 
   if (!parent) {
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     .eq('id', sessionId)
     .single();
 
-  if (!session || !childIds.includes(session.child_id)) {
+  if (!session || !session.child_id || !childIds.includes(session.child_id)) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
   // Use the internal scheduling slots API
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
   const slotsParams = new URLSearchParams({
-    coachId: session.coach_id,
+    coachId: session.coach_id ?? '',
     sessionType: session.session_type || 'coaching',
     childAge: String(childAge),
     days: '14',

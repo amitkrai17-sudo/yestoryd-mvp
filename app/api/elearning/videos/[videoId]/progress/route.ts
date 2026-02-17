@@ -54,14 +54,14 @@ export async function POST(
       const { data, error } = await supabase
         .from('el_child_video_progress')
         .update({
-          watch_percent: Math.max(existing.watch_percent, watchPercent),
-          watch_time_seconds: Math.max(existing.watch_time_seconds, watchTimeSeconds),
+          watch_percent: Math.max(existing.watch_percent ?? 0, watchPercent),
+          watch_time_seconds: Math.max(existing.watch_time_seconds ?? 0, watchTimeSeconds),
           completed: existing.completed || watchPercent >= 90,
-          completed_at: (watchPercent >= 90 && !existing.completed) 
-            ? new Date().toISOString() 
+          completed_at: (watchPercent >= 90 && !existing.completed)
+            ? new Date().toISOString()
             : existing.completed_at,
-          xp_earned: existing.xp_earned + xpToAward,
-          times_watched: watchPercent >= 90 ? existing.times_watched + 1 : existing.times_watched,
+          xp_earned: (existing.xp_earned ?? 0) + xpToAward,
+          times_watched: watchPercent >= 90 ? (existing.times_watched ?? 0) + 1 : (existing.times_watched ?? 0),
           updated_at: new Date().toISOString()
         })
         .eq('id', existing.id)
@@ -104,9 +104,9 @@ export async function POST(
         await supabase
           .from('el_child_gamification')
           .update({
-            total_xp: gamification.total_xp + xpToAward,
-            total_coins: gamification.total_coins + coinsToAward,
-            videos_watched: gamification.videos_watched + 1,
+            total_xp: (gamification.total_xp ?? 0) + xpToAward,
+            total_coins: (gamification.total_coins ?? 0) + coinsToAward,
+            videos_watched: (gamification.videos_watched ?? 0) + 1,
             last_activity_date: new Date().toISOString().split('T')[0]
           })
           .eq('child_id', childId);
@@ -126,9 +126,9 @@ export async function POST(
             .from('el_child_unit_progress')
             .update({
               video_watch_percent: watchPercent,
-              xp_earned: unitProgress.xp_earned + xpToAward,
-              coins_earned: unitProgress.coins_earned + coinsToAward,
-              current_step: unitProgress.current_step + 1,
+              xp_earned: (unitProgress.xp_earned ?? 0) + xpToAward,
+              coins_earned: (unitProgress.coins_earned ?? 0) + coinsToAward,
+              current_step: (unitProgress.current_step ?? 0) + 1,
               status: 'in_progress',
               started_at: unitProgress.started_at || new Date().toISOString(),
               last_activity_at: new Date().toISOString()

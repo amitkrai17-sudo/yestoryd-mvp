@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       query = query.or(`is_active.eq.false,valid_until.lt.${new Date().toISOString()}`);
     }
 
-    const { data: coupons, error } = await query;
+    const { data: coupons, error } = await query as { data: any[] | null; error: any };
 
     if (error) {
       console.error(JSON.stringify({ requestId, event: 'coupons_get_db_error', error: error.message }));
@@ -213,9 +213,10 @@ export async function POST(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'coupon_created',
-      details: {
+      metadata: {
         request_id: requestId,
         coupon_id: coupon.id,
         code: normalizedCode,
@@ -299,9 +300,10 @@ export async function PATCH(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'coupon_updated',
-      details: { request_id: requestId, coupon_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, coupon_id: id, fields_updated: Object.keys(updates), timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 
@@ -354,9 +356,10 @@ export async function DELETE(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: auth.email,
+      user_email: auth.email || 'unknown',
+      user_type: 'admin',
       action: 'coupon_deactivated',
-      details: { request_id: requestId, coupon_id: id, code: coupon?.code, timestamp: new Date().toISOString() },
+      metadata: { request_id: requestId, coupon_id: id, code: coupon?.code, timestamp: new Date().toISOString() },
       created_at: new Date().toISOString(),
     });
 

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   const { data: parent } = await supabase
     .from('parents')
     .select('id')
-    .eq('email', auth.email)
+    .eq('email', auth.email ?? '')
     .single();
 
   if (!parent) {
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     .eq('id', sessionId)
     .single();
 
-  if (!session || !childIds.includes(session.child_id)) {
+  if (!session || !session.child_id || !childIds.includes(session.child_id)) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
@@ -104,21 +104,22 @@ export async function POST(request: NextRequest) {
   }
 
   // Create change request record
-  const { data: changeRequest } = await supabase
+  const { data: changeRequest } = enrollmentId ? await supabase
     .from('session_change_requests')
     .insert({
       session_id: sessionId,
-      parent_id: parent.id,
-      request_type: 'reschedule',
+      enrollment_id: enrollmentId,
+      initiated_by: parent.id,
+      change_type: 'reschedule',
       status: 'approved',
       reason,
-      requested_date: newDate,
-      requested_time: newTime,
-      reviewed_by: parent.id,
-      reviewed_at: new Date().toISOString(),
+      original_datetime: `${session.scheduled_date}T${session.scheduled_time}`,
+      requested_new_datetime: `${newDate}T${newTime}`,
+      processed_by: parent.id,
+      processed_at: new Date().toISOString(),
     })
     .select('id')
-    .single();
+    .single() : { data: null };
 
   // Dispatch reschedule through orchestrator (updates Google Calendar etc.)
   const requestId = randomUUID();

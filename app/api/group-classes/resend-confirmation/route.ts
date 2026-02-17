@@ -230,7 +230,7 @@ async function handleResend(registrationId: string) {
     const { data: session } = await supabase
       .from('group_sessions')
       .select('id, title, scheduled_date, scheduled_time, google_meet_link')
-      .eq('id', registration.group_session_id)
+      .eq('id', registration.group_session_id!)
       .single();
 
     if (!session) {
@@ -241,14 +241,14 @@ async function handleResend(registrationId: string) {
     const { data: child } = await supabase
       .from('children')
       .select('id, name, age')
-      .eq('id', registration.child_id)
+      .eq('id', registration.child_id!)
       .single();
 
     // Get parent details
     const { data: parent } = await supabase
       .from('parents')
       .select('id, name, email, phone')
-      .eq('id', registration.parent_id)
+      .eq('id', registration.parent_id!)
       .single();
 
     if (!parent || !child) {
@@ -270,11 +270,11 @@ async function handleResend(registrationId: string) {
     // Send email
     const emailSent = await sendConfirmationEmail(
       parent.email,
-      parent.name,
-      child.name,
+      parent.name ?? 'Parent',
+      child.name ?? 'Child',
       session.title,
-      session.scheduled_date,
-      session.scheduled_time,
+      session.scheduled_date ?? '',
+      session.scheduled_time ?? '',
       session.google_meet_link,
       registration.amount_paid || 0
     );

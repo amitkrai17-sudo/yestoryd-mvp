@@ -42,7 +42,7 @@ export interface ScheduleSessionInput {
   childId: string;
   coachId: string;
   sessionType: string;
-  weekNumber?: number;
+  weekNumber?: number | null;
   durationMinutes?: number;
   scheduledDate?: string;
   scheduledTime?: string;
@@ -131,7 +131,11 @@ export async function scheduleSession(
       return { success: false, error: 'scheduledDate and scheduledTime required' };
     }
 
-    const startTime = new Date(`${input.scheduledDate}T${input.scheduledTime}`);
+    // Narrowed locals for use in closures where TS can't track the guard above
+    const scheduledDate: string = input.scheduledDate;
+    const scheduledTime: string = input.scheduledTime;
+
+    const startTime = new Date(`${scheduledDate}T${scheduledTime}`);
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + duration);
 
@@ -174,8 +178,8 @@ export async function scheduleSession(
             const { error: updateError } = await supabase
               .from('scheduled_sessions')
               .update({
-                scheduled_date: input.scheduledDate,
-                scheduled_time: input.scheduledTime,
+                scheduled_date: scheduledDate,
+                scheduled_time: scheduledTime,
                 duration_minutes: duration,
                 status: 'scheduled',
                 failure_reason: null,
@@ -196,8 +200,8 @@ export async function scheduleSession(
                 session_number: input.sessionNumber || 1,
                 session_title: input.sessionTitle || `${input.sessionType} Session`,
                 week_number: input.weekNumber,
-                scheduled_date: input.scheduledDate,
-                scheduled_time: input.scheduledTime,
+                scheduled_date: scheduledDate,
+                scheduled_time: scheduledTime,
                 duration_minutes: duration,
                 status: 'scheduled',
               })
@@ -240,9 +244,11 @@ export async function scheduleSession(
             calendarEventId = calResult.eventId;
             meetLink = calResult.meetLink;
             // Patch session with calendar info
-            await supabase.from('scheduled_sessions')
-              .update({ google_event_id: calendarEventId, google_meet_link: meetLink, updated_at: new Date().toISOString() })
-              .eq('id', sessionId);
+            if (sessionId) {
+              await supabase.from('scheduled_sessions')
+                .update({ google_event_id: calendarEventId, google_meet_link: meetLink, updated_at: new Date().toISOString() })
+                .eq('id', sessionId);
+            }
             logger.info('calendar_created', { sessionId, eventId: calendarEventId });
             return { eventId: calendarEventId, meetLink };
           } catch (calError: any) {
@@ -314,8 +320,8 @@ export async function scheduleSession(
       childId: input.childId,
       coachId: input.coachId,
       sessionType: input.sessionType,
-      date: input.scheduledDate,
-      time: input.scheduledTime,
+      date: scheduledDate,
+      time: scheduledTime,
       calendarEventId,
       recallBotId,
       isRetry: options.isRetry || false,
@@ -333,10 +339,10 @@ export async function scheduleSession(
           parentPhone: child?.parent_phone,
           parentEmail,
           parentName: child?.parent_name,
-          sessionDate: input.scheduledDate,
-          sessionTime: input.scheduledTime,
+          sessionDate: scheduledDate,
+          sessionTime: scheduledTime,
           sessionType: input.sessionType,
-          meetLink: meetLink || undefined,
+          meetLink,
         });
       } catch {
         // Non-fatal

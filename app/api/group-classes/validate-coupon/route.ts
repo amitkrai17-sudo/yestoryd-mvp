@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    const originalPrice = session.price_inr;
+    const originalPrice = session.price_inr ?? 0;
     let discountAmount = 0;
-    let finalPrice = originalPrice;
+    let finalPrice: number = originalPrice;
     let appliedCoupon: any = null;
     let isEnrolledFree = false;
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check usage limits
-        if (coupon.max_uses_total && coupon.current_uses >= coupon.max_uses_total) {
+        if (coupon.max_uses_total && (coupon.current_uses ?? 0) >= coupon.max_uses_total) {
           return NextResponse.json({ 
             error: 'Coupon usage limit reached',
             valid: false 

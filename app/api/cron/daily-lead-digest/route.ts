@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
         age: l.age || 0,
         score: l.latest_assessment_score || 0,
         lead_status: l.lead_status || 'new',
-        created_at: l.created_at,
+        created_at: l.created_at || new Date().toISOString(),
       })),
       discoveryBooked: discoveryData?.filter(d => d.status === 'scheduled').length || 0,
       discoveryCompleted: discoveryData?.filter(d => d.status === 'completed').length || 0,
@@ -268,7 +268,7 @@ export async function GET(request: NextRequest) {
     try {
       await supabase.from('activity_log').insert({
         user_email: 'engage@yestoryd.com',
-      user_type: 'system',
+        user_type: 'system',
         action: 'daily_lead_digest_sent',
         metadata: {
           request_id: requestId,
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
           digest,
           message_sent: sendResult.success,
           timestamp: new Date().toISOString(),
-        },
+        } as any,
         created_at: new Date().toISOString(),
       });
     } catch (err) {

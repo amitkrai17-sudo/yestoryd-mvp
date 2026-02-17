@@ -2,8 +2,8 @@
 // Get, Update single coach application
 // FIXED: Added logging + proper Next.js 14 params handling
 
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +15,6 @@ export async function GET(
   try {
     const { id } = await params;
     console.log('📥 GET application:', id);
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
 
     const { data, error } = await supabase
       .from('coach_applications')
@@ -51,11 +46,6 @@ export async function PATCH(
     
     console.log('📝 PATCH application:', id);
     console.log('📝 Update body:', JSON.stringify(body));
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
 
     // Build update object - only include fields that are provided
     const updateData: any = {

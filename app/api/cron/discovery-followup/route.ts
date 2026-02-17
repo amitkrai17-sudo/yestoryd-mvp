@@ -176,17 +176,20 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // 6. IDEMPOTENCY: Skip if already being processed
-      if (call.followup_processing) {
+      // Skip if no ID (shouldn't happen but required for type safety)
+      if (!call.id) {
         skipped.push({
-          id: call.id,
-          reason: 'Already being processed',
+          id: 'unknown',
+          reason: 'No call ID',
         });
         continue;
       }
 
+      // NOTE: Idempotency check disabled - followup_processing column doesn't exist
+      // Would need migration to add this column for proper idempotency
+
       // Extract child's goal from questionnaire
-      const childGoal = call.questionnaire?.parent_goal || 'improve their reading skills';
+      const childGoal = (call.questionnaire as any)?.parent_goal || 'improve their reading skills';
       const parentFirstName = call.parent_name?.split(' ')[0] || 'Parent';
 
       try {

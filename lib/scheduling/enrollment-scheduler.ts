@@ -75,7 +75,7 @@ export interface EnrollmentSchedulerResult {
  */
 export async function scheduleEnrollmentSessions(
   options: EnrollmentSchedulerOptions,
-  supabaseClient?: ReturnType<typeof createClient<Database>>
+  supabaseClient?: ReturnType<typeof createAdminClient>
 ): Promise<EnrollmentSchedulerResult> {
   const {
     enrollmentId,
@@ -87,10 +87,7 @@ export async function scheduleEnrollmentSessions(
     requestId = 'unknown',
   } = options;
 
-  const supabase = supabaseClient || createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabase = supabaseClient || createAdminClient();
 
   const errors: string[] = [];
   const sessionsToCreate: ScheduledSession[] = [];
@@ -380,7 +377,7 @@ export async function scheduleEnrollmentSessions(
  */
 export async function createSessionsSimple(
   options: EnrollmentSchedulerOptions,
-  supabaseClient?: ReturnType<typeof createClient<Database>>
+  supabaseClient?: ReturnType<typeof createAdminClient>
 ): Promise<EnrollmentSchedulerResult> {
   const {
     enrollmentId,
@@ -391,10 +388,7 @@ export async function createSessionsSimple(
     requestId = 'unknown',
   } = options;
 
-  const supabase = supabaseClient || createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabase = supabaseClient || createAdminClient();
 
   try {
     const planSchedule = await getPlanSchedule(planSlug, supabase);

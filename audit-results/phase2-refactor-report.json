@@ -1,0 +1,1716 @@
+{
+  "timestamp": "2026-02-14T06:06:00.235Z",
+  "summary": {
+    "modified": 151,
+    "skipped": 49,
+    "errors": 0,
+    "serviceRole": 108,
+    "anonKey": 43
+  },
+  "changes": [
+    {
+      "file": "app/admin/agreements/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/admin/coach-groups/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/admin/communication/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/admin/elearning/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/admin/layout.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/admin/login/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/admin/site-settings/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/ab-track/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/activity/track/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/admin/agreements/[id]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/admin/content-search/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/admin/coupons/[id]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/admin/group-classes/[sessionID]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/admin/shadow/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/age-band-config/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/agreement/active/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/agreement/config/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/agreement/sign/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/assessment/enrolled/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/assessment/final/data/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/assessment/final/submit/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/assessment/results/[childId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/auth/send-otp/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/auth/session/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/auth/verify-otp/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/certificate/generate/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/certificate/pdf/route.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/children/[id]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/availability/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/earnings/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/earnings-calculator/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/earnings-summary/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/exit/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/my-referrals/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/notify-assignment/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/profile/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/schedule-rules/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/session-prep/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/sessions/[id]/parent-update/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach/tier-change/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/coach-application/[id]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/completion/check/[enrollmentId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/completion/data/[enrollmentId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/completion/report/[enrollmentId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/completion/trigger/[enrollmentId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/cron/lead-scoring/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/discovery/book/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/discovery-call/cal-webhook/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/discovery-call/create/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/discovery-call/[id]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/avatar/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/complete/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/dashboard/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/games/[gameId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/gamification/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/progress/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/quiz/[quizId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/quiz-questions/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/recommendations/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/session/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/submit-quiz/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/unit/[unitId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/video/[videoId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/elearning/videos/[videoId]/progress/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/email/enrollment-confirmation/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/enrollment/pause/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/enrollment/[id]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/features/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/group-classes/page-settings/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/group-classes/register/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/group-classes/resend-confirmation/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/group-classes/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/group-classes/sessions/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/group-classes/sessions/[sessionID]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/group-classes/validate-coupon/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/group-classes/verify-payment/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/learning-events/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/matching/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/messages/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/nps/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/nps/[enrollmentId]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/parent/content-viewed/route.ts",
+      "changes": [
+        "removed createClient call (var: supabaseAnon)",
+        "removed @supabase/supabase-js import",
+        "added getSupabaseClient import + const supabaseAnon",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/parent/dashboard/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/parent/enrolled-child/route.ts",
+      "changes": [
+        "removed createClient call (var: supabaseAdmin)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabaseAdmin",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/parent/progress/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/parent/referral/generate/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/parent/referral/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/payment/create/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/payment/validate-retry/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/payment/verify/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/payment/webhook/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/pricing/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/products/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/quiz/bank/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/quiz/generate/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/quiz/submit/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/recall/bot/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/referral/track/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/scheduling/hold/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/scheduling/slots/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/session/[id]/audio/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/sessions/complete/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/sessions/confirm/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/sessions/parent-checkin/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/sessions/[id]/feedback/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/settings/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/skill-booster/recommend/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed createClient call (var: supabaseAuth)",
+        "removed @supabase/supabase-js import",
+        "added getSupabaseClient import + const supabaseAuth",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/skill-booster/[sessionId]/booking-options/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/skill-tags/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/support/tickets/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/support/tickets/[id]/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/testimonials/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/api/webhooks/cal/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/api/webhooks/recall/route.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/assessment/AssessmentPageClient.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/classes/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "app/coach/ai-assistant/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/coach/earnings/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/coach/layout.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/coach/login/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/coach/onboarding/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/coach/students/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/coach/students/[id]/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/coach/templates/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/enroll/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/enrollment/success/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/dashboard/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/journey/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/layout.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/login/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/progress/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/sessions/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/support/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/parent/tasks/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "app/yestoryd-academy/page.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "components/coach/CoachTierCard.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "components/coach/SkillBoosterSection.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "components/parent/ParentLayout.tsx",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "hooks/usePushNotifications.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "hooks/useRealtimeNotifications.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "lib/admin-fetch.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts",
+        "removed unused Database import"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "lib/api-auth.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added supabase import from client.ts"
+      ],
+      "isServiceRole": false
+    },
+    {
+      "file": "lib/audio-storage.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "lib/communication/index.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "lib/gamification.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "lib/learningEvents.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "lib/rai/admin-insights.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "lib/rai/hybrid-search.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "lib/rai/proactive-notifications.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    },
+    {
+      "file": "lib/recall-auto-bot.ts",
+      "changes": [
+        "removed createClient call (var: supabase)",
+        "removed @supabase/supabase-js import",
+        "added createAdminClient import + const supabase",
+        "removed unused Database import"
+      ],
+      "isServiceRole": true
+    }
+  ],
+  "skipped": [
+    {
+      "file": "app/api/admin/payouts/route.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "app/api/assessment/analyze/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/certificate/send/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/chat/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/coach/sessions/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/communication/send/route.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "app/api/coupons/calculate/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/coupons/validate/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/cron/coach-reminders-1h/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/cron/compute-insights/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/cron/discovery-followup/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/cron/enrollment-lifecycle/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/cron/monthly-payouts/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/cron/re-enrollment-nudge/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/discovery-call/assign/route.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "app/api/discovery-call/pending/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/discovery-call/[id]/questionnaire/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/discovery-call/[id]/send-followup/route.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "app/api/discovery-call/[id]/send-payment-link/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/enrollment/calculate-revenue/route.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "app/api/jobs/enrollment-complete/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/jobs/process-session/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/jobs/recall-reconciliation/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/leads/hot-alert/route.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "app/api/payouts/process/route.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "app/api/sessions/missed/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/sessions/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/whatsapp/process/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/whatsapp/send/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/api/whatsapp/webhook/route.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "app/sitemap.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/auth-options.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/completion/complete-season.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/db-utils.ts",
+      "reason": "already uses shared helper"
+    },
+    {
+      "file": "lib/hooks/useSiteSettings.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/plan-generation/generate-learning-plan.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/referral.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "lib/scheduling/coach-availability-handler.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/config-provider.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/config.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/enrollment-scheduler.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/manual-queue.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/notification-manager.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/orchestrator.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/retry-queue.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/session-manager.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/scheduling/smart-slot-finder.ts",
+      "reason": "imports createClient but no client creation found"
+    },
+    {
+      "file": "lib/tasks/generate-daily-tasks.ts",
+      "reason": "createClient pattern not matched by regex"
+    },
+    {
+      "file": "lib/whatsapp/handlers/escalate.ts",
+      "reason": "createClient pattern not matched by regex"
+    }
+  ],
+  "errors": []
+}

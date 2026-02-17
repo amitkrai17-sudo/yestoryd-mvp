@@ -42,9 +42,9 @@ export async function POST(
       .from('session_change_requests')
       .update({
         status: action === 'approve' ? 'approved' : 'rejected',
-        admin_notes: adminNotes || null,
-        reviewed_by: auth.userId || null,
-        reviewed_at: new Date().toISOString(),
+        rejection_reason: action === 'reject' ? (adminNotes || null) : null,
+        processed_by: auth.userId || null,
+        processed_at: new Date().toISOString(),
       })
       .eq('id', requestId);
 
@@ -55,18 +55,17 @@ export async function POST(
 
     // If approved, update the session
     if (action === 'approve') {
-      if (changeRequest.request_type === 'cancel') {
+      if (changeRequest.change_type === 'cancel') {
         await supabase
           .from('scheduled_sessions')
           .update({ status: 'cancelled' })
           .eq('id', changeRequest.session_id);
-      } else if (changeRequest.request_type === 'reschedule') {
+      } else if (changeRequest.change_type === 'reschedule') {
         const updateData: Record<string, string> = { status: 'rescheduled' };
-        if (changeRequest.requested_date) {
-          updateData.scheduled_date = changeRequest.requested_date;
-        }
-        if (changeRequest.requested_time) {
-          updateData.scheduled_time = changeRequest.requested_time;
+        if (changeRequest.requested_new_datetime) {
+          const dt = new Date(changeRequest.requested_new_datetime);
+          updateData.scheduled_date = dt.toISOString().split('T')[0];
+          updateData.scheduled_time = dt.toTimeString().slice(0, 5);
         }
         await supabase
           .from('scheduled_sessions')

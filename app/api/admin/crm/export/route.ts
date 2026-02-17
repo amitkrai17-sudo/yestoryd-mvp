@@ -67,9 +67,10 @@ export async function GET(request: NextRequest) {
     // AUDIT LOG - Track PII exports for DPDP Act compliance
     try {
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'crm_pii_export',
-        details: {
+        metadata: {
           request_id: requestId,
           records_exported: recordCount,
           status_filter: status || 'all',

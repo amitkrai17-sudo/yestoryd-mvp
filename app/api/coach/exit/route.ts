@@ -62,24 +62,26 @@ export async function GET(request: NextRequest) {
     // Get sessions count per child
     const childSessionCounts = new Map<string, number>();
     for (const session of futureSessions || []) {
-      const count = childSessionCounts.get(session.child_id) || 0;
-      childSessionCounts.set(session.child_id, count + 1);
+      if (session.child_id) {
+        const count = childSessionCounts.get(session.child_id) || 0;
+        childSessionCounts.set(session.child_id, count + 1);
+      }
     }
 
     // Build student list with remaining sessions
     const students = (activeEnrollments || []).map(e => ({
       name: (e.children as any)?.name || 'Unknown',
-      remainingSessions: childSessionCounts.get(e.child_id) || 0,
+      remainingSessions: e.child_id ? childSessionCounts.get(e.child_id) || 0 : 0,
     }));
 
     // Get pending payouts (if any)
     const { data: pendingPayouts } = await supabase
       .from('coach_payouts')
-      .select('amount')
+      .select('net_amount')
       .eq('coach_id', coachId)
       .eq('status', 'pending');
 
-    const totalPendingPayout = (pendingPayouts || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalPendingPayout = (pendingPayouts || []).reduce((sum, p) => sum + (p.net_amount || 0), 0);
 
     return NextResponse.json({
       success: true,

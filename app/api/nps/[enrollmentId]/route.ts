@@ -40,14 +40,14 @@ export async function GET(
     const { data: child } = await supabase
       .from('children')
       .select('child_name, parent_name, parent_email')
-      .eq('id', enrollment.child_id)
+      .eq('id', enrollment.child_id!)
       .single();
 
     // Fetch coach data separately
     const { data: coach } = await supabase
       .from('coaches')
       .select('name')
-      .eq('id', enrollment.coach_id)
+      .eq('id', enrollment.coach_id!)
       .single();
 
     return NextResponse.json({
@@ -106,7 +106,7 @@ export async function POST(
     const { data: child } = await supabase
       .from('children')
       .select('parent_id, parent_name, parent_email, child_name')
-      .eq('id', enrollment.child_id)
+      .eq('id', enrollment.child_id!)
       .single();
 
     // Insert or update NPS response
@@ -114,7 +114,7 @@ export async function POST(
       .from('nps_responses')
       .upsert({
         enrollment_id: enrollmentId,
-        child_id: enrollment.child_id,
+        child_id: enrollment.child_id!,
         parent_id: child?.parent_id,
         coach_id: enrollment.coach_id,
         score,

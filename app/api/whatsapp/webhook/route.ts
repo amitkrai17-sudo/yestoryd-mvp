@@ -11,21 +11,18 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { Client } from '@upstash/qstash';
 import crypto from 'crypto';
 import { verifyWebhookSignature } from '@/lib/whatsapp/signature';
 import { extractMessages, extractStatuses } from '@/lib/whatsapp/extract';
 import type { WebhookPayload, ExtractedMessage, ConversationState } from '@/lib/whatsapp/types';
 import { normalizePhone } from '@/lib/utils/phone';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 const getQStash = () => process.env.QSTASH_TOKEN
   ? new Client({ token: process.env.QSTASH_TOKEN })

@@ -42,6 +42,10 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    if (!session.child_id) {
+      return NextResponse.json({ error: 'Session has no child assigned' }, { status: 400 });
+    }
+
     // 2. Get child details (including streak columns from migration)
     const { data: child } = await supabase
       .from('children')
@@ -130,7 +134,9 @@ export async function GET(
             .not('coach_guidance', 'is', null)
             .limit(20);
           for (const u of units || []) {
-            guidanceBySkill.set(u.skill_id, u.coach_guidance);
+            if (u.skill_id) {
+              guidanceBySkill.set(u.skill_id, u.coach_guidance);
+            }
           }
         }
         if (unitIds.length > 0) {
@@ -249,14 +255,16 @@ export async function GET(
     // 8. Get coach session streak (Change 8)
     let coachSessionsLogged = 0;
     try {
-      const { data: coach } = await supabase
-        .from('coaches')
-        .select('completed_sessions_with_logs')
-        .eq('id', session.coach_id)
-        .single();
+      if (session.coach_id) {
+        const { data: coach } = await supabase
+          .from('coaches')
+          .select('completed_sessions_with_logs')
+          .eq('id', session.coach_id)
+          .single();
 
-      if (coach?.completed_sessions_with_logs) {
-        coachSessionsLogged = coach.completed_sessions_with_logs;
+        if (coach?.completed_sessions_with_logs) {
+          coachSessionsLogged = coach.completed_sessions_with_logs;
+        }
       }
     } catch {
       // Column may not exist yet — non-fatal
@@ -332,7 +340,7 @@ export async function GET(
       event: 'live_session_data_loaded',
       sessionId: id,
       hasTemplate: !!template,
-      activityCount: template?.activity_flow?.length || 0,
+      activityCount: Array.isArray(template?.activity_flow) ? template.activity_flow.length : 0,
       resolvedContentActivities: Object.keys(resolvedContentMap).length,
       struggleCount: recentStruggles.length,
       coachSessionsLogged,

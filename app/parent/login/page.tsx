@@ -40,7 +40,7 @@ export default function ParentLoginPage() {
           .single();
 
         if (data?.value) {
-          const parsed = JSON.parse(data.value);
+          const parsed = JSON.parse(String(data.value));
           if (parsed && parsed.startsWith('http')) {
             setVideoUrl(parsed);
           }

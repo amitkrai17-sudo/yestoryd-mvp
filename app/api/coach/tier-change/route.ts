@@ -5,15 +5,12 @@
 // Called by admin when manually changing coach tier
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { loadPricingPlan } from '@/lib/config/loader';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // AiSensy WhatsApp API
 const AISENSY_API_KEY = process.env.AISENSY_API_KEY;

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
 import CoachLayout from '@/components/layouts/CoachLayout';
+import { supabase } from '@/lib/supabase/client';
 import {
   Send,
   Loader2,
@@ -13,11 +13,6 @@ import {
   X,
   ChevronLeft,
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface Student {
   id: string;
@@ -60,7 +55,7 @@ export default function AIAssistantPage() {
       const { data: coachData } = await supabase
         .from('coaches')
         .select('*')
-        .eq('email', user.email)
+        .eq('email', user.email!)
         .single();
 
       if (!coachData) {

@@ -6,16 +6,13 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/api-auth';
 import { headers } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // =====================================================
 // GET - Get coach dashboard data (shadow view)
@@ -210,7 +207,7 @@ async function logShadowAction(
     }
 
     await supabase.from('admin_audit_log').insert({
-      admin_id: auth.userId,
+      admin_id: auth.userId || 'unknown',
       admin_email: auth.email,
       action_type: actionType,
       action_category: 'shadow',

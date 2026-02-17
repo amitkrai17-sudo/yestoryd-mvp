@@ -7,9 +7,9 @@ export interface CoachData {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  is_active: boolean;
-  photo_url?: string;
+  phone?: string | null;
+  is_active: boolean | null;
+  photo_url?: string | null;
 }
 
 export interface CoachContextType {

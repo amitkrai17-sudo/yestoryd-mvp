@@ -129,20 +129,20 @@ export async function POST(request: NextRequest) {
         const lastActivity = gamification.last_activity_date;
         const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-        let newStreak = gamification.current_streak_days;
+        let newStreak = gamification.current_streak_days ?? 0;
         if (lastActivity === yesterday) {
           newStreak += 1;
         } else if (lastActivity !== today) {
           newStreak = 1;
         }
 
-        const newTotalXP = gamification.total_xp + actualXPAwarded;
+        const newTotalXP = (gamification.total_xp ?? 0) + actualXPAwarded;
         const newQuizzesCompleted = isPassed && !previouslyPassed
-          ? gamification.total_quizzes_completed + 1 
-          : gamification.total_quizzes_completed;
+          ? (gamification.total_quizzes_completed ?? 0) + 1
+          : (gamification.total_quizzes_completed ?? 0);
         const newPerfectCount = isPerfect && !previouslyPerfect
-          ? gamification.perfect_quiz_count + 1
-          : gamification.perfect_quiz_count;
+          ? (gamification.perfect_quiz_count ?? 0) + 1
+          : (gamification.perfect_quiz_count ?? 0);
 
         const newLevel = calculateLevel(newTotalXP);
 
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
             total_xp: newTotalXP,
             current_level: newLevel,
             current_streak_days: newStreak,
-            longest_streak_days: Math.max(newStreak, gamification.longest_streak_days),
+            longest_streak_days: Math.max(newStreak, gamification.longest_streak_days ?? 0),
             last_activity_date: today,
             total_quizzes_completed: newQuizzesCompleted,
             perfect_quiz_count: newPerfectCount,

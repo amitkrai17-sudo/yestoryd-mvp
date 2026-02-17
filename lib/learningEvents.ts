@@ -63,7 +63,7 @@ Areas to improve: ${assessmentData.areas_to_improve?.join(', ') || 'None noted'}
       event_date: new Date().toISOString(),
       data: assessmentData,
       ai_summary: aiSummary,
-      embedding,
+      embedding: JSON.stringify(embedding) as any,
       created_by: createdBy,
     })
     .select()
@@ -119,7 +119,7 @@ Homework: ${sessionData.homework || 'None assigned'}`;
       event_date: new Date().toISOString(),
       data: sessionData,
       ai_summary: aiSummary,
-      embedding,
+      embedding: JSON.stringify(embedding) as any,
       created_by: createdBy,
     })
     .select()
@@ -171,7 +171,7 @@ Status: ${quizData.passed !== false ? 'Passed' : 'Needs practice'}`;
       event_date: new Date().toISOString(),
       data: quizData,
       ai_summary: aiSummary,
-      embedding,
+      embedding: JSON.stringify(embedding) as any,
       created_by: createdBy,
     })
     .select()
@@ -213,7 +213,7 @@ export async function saveMilestoneToLearningEvents(
       event_date: new Date().toISOString(),
       data: milestoneData,
       ai_summary: aiSummary,
-      embedding,
+      embedding: JSON.stringify(embedding) as any,
       created_by: createdBy,
     })
     .select()

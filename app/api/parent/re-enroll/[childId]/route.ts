@@ -78,7 +78,7 @@ export async function GET(
       const { data: parent } = await supabase
         .from('parents')
         .select('id')
-        .eq('email', auth.email)
+        .eq('email', auth.email ?? '')
         .maybeSingle();
 
       if (!parent || child.parent_id !== parent.id) {
@@ -89,10 +89,10 @@ export async function GET(
     // Get completed enrollment (season_completed or completed)
     const { data: prevEnrollment } = await supabase
       .from('enrollments')
-      .select('id, coach_id, season_number, age_band, total_sessions, status, season_completed_at, created_at')
+      .select('id, coach_id, season_number, age_band, total_sessions, status, updated_at, created_at')
       .eq('child_id', childId)
       .in('status', ['season_completed', 'completed'])
-      .order('season_completed_at', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -110,7 +110,7 @@ export async function GET(
       .limit(1)
       .maybeSingle();
 
-    const completionData = completionEvent?.event_data || {};
+    const completionData = (completionEvent?.event_data as any) || {};
     const beforeAfter = completionData.before_after || {};
     const recap = Object.entries(beforeAfter).map(([label, vals]: [string, any]) => ({
       skill: friendlySkill(label),
@@ -132,7 +132,7 @@ export async function GET(
     // Get next season preview
     const { data: nextRoadmap } = await supabase
       .from('season_roadmaps')
-      .select('season_number, roadmap_data, age_band')
+      .select('season_number, season_name, focus_area, milestone_description')
       .eq('child_id', childId)
       .eq('status', 'upcoming')
       .order('season_number', { ascending: true })
@@ -186,14 +186,14 @@ export async function GET(
         sessions_completed: completionData.sessions_completed || 0,
         sessions_total: prevEnrollment.total_sessions || config.totalSessions,
         completion_rate: completionData.completion_rate || 0,
-        completed_at: prevEnrollment.season_completed_at,
+        completed_at: prevEnrollment.updated_at,
         growth: recap,
       },
       coach: coachInfo,
       next_season: nextRoadmap ? {
         number: nextRoadmap.season_number,
-        name: nextRoadmap.roadmap_data?.season_name || `Season ${nextRoadmap.season_number}`,
-        focus_areas: (nextRoadmap.roadmap_data?.focus_areas || []).map(friendlySkill),
+        name: nextRoadmap.season_name || `Season ${nextRoadmap.season_number}`,
+        focus_areas: nextRoadmap.focus_area ? [friendlySkill(nextRoadmap.focus_area)] : [],
         age_band: ageBandTransition ? ageBandTransition.to : ageBand,
       } : {
         number: nextSeasonNumber,
@@ -255,7 +255,7 @@ export async function POST(
       const { data: parent } = await supabase
         .from('parents')
         .select('id')
-        .eq('email', auth.email)
+        .eq('email', auth.email ?? '')
         .maybeSingle();
 
       if (!parent || child.parent_id !== parent.id) {
@@ -269,7 +269,7 @@ export async function POST(
       .select('id, coach_id, season_number, age_band')
       .eq('child_id', childId)
       .in('status', ['season_completed', 'completed'])
-      .order('season_completed_at', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -298,7 +298,7 @@ export async function POST(
     const { data: parentData } = await supabase
       .from('parents')
       .select('id, name, email, phone')
-      .eq('email', auth.email)
+      .eq('email', auth.email ?? '')
       .maybeSingle();
 
     // Create Razorpay order

@@ -5,6 +5,7 @@
 
 'use client';
 
+import { Database } from '@/lib/supabase/database.types';
 import { useState, useEffect } from 'react';
 import {
   Search, Filter, Phone, Mail, MessageCircle, Calendar,
@@ -780,7 +781,7 @@ export default function AdminCRMPage() {
     try {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
       const { data: { user } } = await supabase.auth.getUser();

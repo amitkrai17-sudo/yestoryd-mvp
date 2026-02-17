@@ -299,19 +299,19 @@ export async function checkAndAwardBadges(
 
     switch (badge.criteria_type) {
       case 'videos_completed':
-        earned = stats.total_videos_completed >= badge.criteria_value;
+        earned = ( stats.total_videos_completed ?? 0) >= badge.criteria_value;
         break;
       case 'quizzes_completed':
-        earned = stats.total_quizzes_completed >= badge.criteria_value;
+        earned = (stats.total_quizzes_completed ?? 0) >= badge.criteria_value;
         break;
       case 'games_completed':
-        earned = stats.total_games_completed >= badge.criteria_value;
+        earned = (stats.total_games_completed ?? 0) >= badge.criteria_value;
         break;
       case 'readings_completed':
-        earned = stats.total_readings_completed >= badge.criteria_value;
+        earned = (stats.total_readings_completed ?? 0) >= badge.criteria_value;
         break;
       case 'perfect_quizzes':
-        earned = stats.perfect_quiz_count >= badge.criteria_value;
+        earned = (stats.perfect_quiz_count ?? 0) >= badge.criteria_value;
         break;
       case 'streak_days':
         earned = (context.streak || 0) >= badge.criteria_value;
@@ -335,10 +335,10 @@ export async function checkAndAwardBadges(
         newBadges.push({
           id: badge.id,
           name: badge.name,
-          description: badge.description,
-          icon: badge.icon,
-          category: badge.category,
-          xp_bonus: badge.xp_bonus,
+          description: badge.description ?? '',
+          icon: badge.icon ?? '',
+          category: (badge as any).category ?? '',
+          xp_bonus: (badge as any).xp_bonus ?? badge.xp_reward ?? 0,
         });
       }
     }
@@ -374,14 +374,14 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
   const { data: currentLevelInfo } = await supabase
     .from('xp_levels')
     .select('*')
-    .eq('level', gamification.current_level)
+    .eq('level', gamification.current_level ?? 1)
     .single();
 
   // Get next level info
   const { data: nextLevelInfo } = await supabase
     .from('xp_levels')
     .select('*')
-    .eq('level', gamification.current_level + 1)
+    .eq('level', (gamification.current_level ?? 1) + 1)
     .single();
 
   // Get badges
@@ -394,7 +394,7 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
   // Calculate progress to next level
   const currentLevelXP = currentLevelInfo?.xp_required || 0;
   const nextLevelXP = nextLevelInfo?.xp_required || currentLevelXP + 500;
-  const xpInCurrentLevel = gamification.total_xp - currentLevelXP;
+  const xpInCurrentLevel = (gamification.total_xp ?? 0) - currentLevelXP;
   const xpNeededForNextLevel = nextLevelXP - currentLevelXP;
   const progressToNextLevel = Math.min(100, Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100));
 
@@ -402,42 +402,42 @@ export async function getGamificationState(childId: string): Promise<Gamificatio
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const recentBadges = (badges || []).filter(b =>
-    new Date(b.created_at) >= sevenDaysAgo
+    new Date(b.earned_at ?? '') >= sevenDaysAgo
   );
 
   return {
-    xp: gamification.total_xp,
-    level: gamification.current_level,
+    xp: gamification.total_xp ?? 0,
+    level: gamification.current_level ?? 1,
     levelTitle: currentLevelInfo?.title || 'Beginner',
     levelIcon: currentLevelInfo?.icon || '🌱',
-    streak: gamification.current_streak_days,
-    longestStreak: gamification.longest_streak_days,
+    streak: gamification.current_streak_days ?? 0,
+    longestStreak: gamification.longest_streak_days ?? 0,
     nextLevelXP,
     progressToNextLevel,
     badges: (badges || []).map(b => ({
-      id: b.badge_id,
+      id: b.badge_id ?? '',
       name: b.badge?.name || '',
       description: b.badge?.description || '',
       icon: b.badge?.icon || '🏆',
-      category: b.badge?.category || 'milestone',
-      xp_bonus: b.badge?.xp_bonus || 0,
-      earnedAt: b.created_at,
+      category: (b.badge as any)?.category || 'milestone',
+      xp_bonus: (b.badge as any)?.xp_bonus ?? b.badge?.xp_reward ?? 0,
+      earnedAt: b.earned_at ?? undefined,
     })),
     recentBadges: recentBadges.map(b => ({
-      id: b.badge_id,
+      id: b.badge_id ?? '',
       name: b.badge?.name || '',
       description: b.badge?.description || '',
       icon: b.badge?.icon || '🏆',
-      category: b.badge?.category || 'milestone',
-      xp_bonus: b.badge?.xp_bonus || 0,
-      earnedAt: b.created_at,
+      category: (b.badge as any)?.category || 'milestone',
+      xp_bonus: (b.badge as any)?.xp_bonus ?? b.badge?.xp_reward ?? 0,
+      earnedAt: b.earned_at ?? undefined,
     })),
     stats: {
-      videosCompleted: gamification.total_videos_completed,
-      quizzesCompleted: gamification.total_quizzes_completed,
-      gamesCompleted: gamification.total_games_completed,
-      readingsCompleted: gamification.total_readings_completed,
-      perfectQuizzes: gamification.perfect_quiz_count,
+      videosCompleted: gamification.total_videos_completed ?? 0,
+      quizzesCompleted: gamification.total_quizzes_completed ?? 0,
+      gamesCompleted: gamification.total_games_completed ?? 0,
+      readingsCompleted: gamification.total_readings_completed ?? 0,
+      perfectQuizzes: gamification.perfect_quiz_count ?? 0,
     },
   };
 }
@@ -517,11 +517,11 @@ export async function getAllBadges(childId: string): Promise<{
   // Get child's earned badges
   const { data: earnedBadges } = await supabase
     .from('el_child_badges')
-    .select('badge_id, created_at')
+    .select('badge_id, earned_at')
     .eq('child_id', childId);
 
   const earnedIds = new Set(earnedBadges?.map(b => b.badge_id) || []);
-  const earnedMap = new Map(earnedBadges?.map(b => [b.badge_id, b.created_at]) || []);
+  const earnedMap = new Map(earnedBadges?.map(b => [b.badge_id, b.earned_at]) || []);
 
   const earned: Badge[] = [];
   const unearned: Badge[] = [];
@@ -530,14 +530,14 @@ export async function getAllBadges(childId: string): Promise<{
     const badgeData: Badge = {
       id: badge.id,
       name: badge.name,
-      description: badge.description,
-      icon: badge.icon,
-      category: badge.category,
-      xp_bonus: badge.xp_bonus,
+      description: badge.description ?? '',
+      icon: badge.icon ?? '',
+      category: (badge as any).category ?? 'milestone',
+      xp_bonus: (badge as any).xp_bonus ?? badge.xp_reward ?? 0,
     };
 
     if (earnedIds.has(badge.id)) {
-      earned.push({ ...badgeData, earnedAt: earnedMap.get(badge.id) });
+      earned.push({ ...badgeData, earnedAt: earnedMap.get(badge.id) ?? undefined });
     } else {
       unearned.push(badgeData);
     }
@@ -659,7 +659,7 @@ export async function recordReadingCompletion(
   const aboveTarget = wpm >= targetWpm;
 
   // Save reading result
-  await supabase.from('child_reading_results').insert({
+  await (supabase as any).from('child_reading_results').insert({
     child_id: childId,
     passage_id: passageId,
     wpm,

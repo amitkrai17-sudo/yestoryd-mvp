@@ -5,14 +5,10 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 
+const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,7 +79,7 @@ export async function GET(request: NextRequest) {
         .limit(100),
       supabase
         .from('el_game_content')
-        .select('id, title, skill_id, game_engine_id')
+        .select('id, skill_id, game_engine_id, difficulty, is_active')
         .in('skill_id', skillIds.length > 0 ? skillIds : ['__none__'])
         .limit(100),
     ]);
@@ -92,6 +88,7 @@ export async function GET(request: NextRequest) {
     const videosBySkill = new Map<string, any[]>();
     for (const v of videosResult.data || []) {
       const key = v.skill_id;
+      if (!key) continue;
       if (!videosBySkill.has(key)) videosBySkill.set(key, []);
       videosBySkill.get(key)!.push(v);
     }
@@ -99,6 +96,7 @@ export async function GET(request: NextRequest) {
     const worksheetsByUnit = new Map<string, any[]>();
     for (const w of worksheetsResult.data || []) {
       const key = w.unit_id;
+      if (!key) continue;
       if (!worksheetsByUnit.has(key)) worksheetsByUnit.set(key, []);
       worksheetsByUnit.get(key)!.push(w);
     }
@@ -106,6 +104,7 @@ export async function GET(request: NextRequest) {
     const gamesBySkill = new Map<string, any[]>();
     for (const g of gamesResult.data || []) {
       const key = g.skill_id;
+      if (!key) continue;
       if (!gamesBySkill.has(key)) gamesBySkill.set(key, []);
       gamesBySkill.get(key)!.push(g);
     }
@@ -113,9 +112,9 @@ export async function GET(request: NextRequest) {
     // Attach content to each unit
     const enrichedUnits = units.map(unit => ({
       ...unit,
-      videos: videosBySkill.get(unit.skill_id) || [],
+      videos: (unit.skill_id ? videosBySkill.get(unit.skill_id) : undefined) || [],
       worksheets: worksheetsByUnit.get(unit.id) || [],
-      games: gamesBySkill.get(unit.skill_id) || [],
+      games: (unit.skill_id ? gamesBySkill.get(unit.skill_id) : undefined) || [],
     }));
 
     return NextResponse.json({ success: true, units: enrichedUnits });

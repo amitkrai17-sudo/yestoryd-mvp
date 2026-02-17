@@ -14,18 +14,15 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = createAdminClient;
 
 // --- VERIFICATION ---
 async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
@@ -238,8 +235,9 @@ async function processReminders(requestId: string, source: string) {
     // Audit log
     await supabase.from('activity_log').insert({
       user_email: 'engage@yestoryd.com',
+      user_type: 'system',
       action: 'coach_reminders_1h_executed',
-      details: {
+      metadata: {
         request_id: requestId,
         source,
         target_date: targetDateStr,

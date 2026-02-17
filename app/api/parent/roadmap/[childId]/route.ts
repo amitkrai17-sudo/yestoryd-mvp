@@ -65,7 +65,7 @@ export async function GET(
       const { data: parent } = await supabase
         .from('parents')
         .select('id')
-        .eq('email', auth.email)
+        .eq('email', auth.email ?? '')
         .maybeSingle();
 
       if (!parent || child.parent_id !== parent.id) {
@@ -101,15 +101,15 @@ export async function GET(
       const { data: plans } = await supabase
         .from('season_learning_plans')
         .select(`
-          id, session_number, session_template_id, focus_area,
-          status, completed_at
+          id, week_number, session_template_id, skill_focus,
+          status
         `)
-        .eq('roadmap_id', activeRoadmap.id)
-        .order('session_number', { ascending: true });
+        .eq('season_roadmap_id', activeRoadmap.id)
+        .order('week_number', { ascending: true });
 
       if (plans && plans.length > 0) {
         // Get template details
-        const templateIds = plans.map(p => p.session_template_id).filter(Boolean);
+        const templateIds = plans.map(p => p.session_template_id).filter((id): id is string => !!id);
         let templatesMap: Record<string, any> = {};
         if (templateIds.length > 0) {
           const { data: templates } = await supabase
@@ -125,14 +125,13 @@ export async function GET(
           const template = p.session_template_id ? templatesMap[p.session_template_id] : null;
           return {
             id: p.id,
-            session_number: p.session_number,
+            session_number: p.week_number,
             title: template?.title || 'Session',
             template_code: template?.template_code || null,
             skills: (template?.skill_dimensions || []).map(friendlySkill),
             duration_minutes: template?.duration_minutes || null,
             is_finale: template?.is_season_finale || false,
             status: p.status,
-            completed_at: p.completed_at,
           };
         });
       }
@@ -200,10 +199,10 @@ export async function GET(
 
     const sessionSummaries = (recentSummaries || []).map(e => ({
       id: e.id,
-      session_number: e.event_data?.session_number || null,
-      focus: friendlySkill(e.event_data?.focus_area || ''),
-      highlights: e.event_data?.highlights || [],
-      progress: e.event_data?.progress_rating || null,
+      session_number: (e.event_data as any)?.session_number || null,
+      focus: friendlySkill((e.event_data as any)?.focus_area || ''),
+      highlights: (e.event_data as any)?.highlights || [],
+      progress: (e.event_data as any)?.progress_rating || null,
       summary: e.ai_summary || null,
       date: e.created_at,
     }));
@@ -213,7 +212,7 @@ export async function GET(
       .filter(r => r.id !== activeRoadmap?.id && r.season_number > (activeRoadmap?.season_number || 0))
       .map(r => ({
         season_number: r.season_number,
-        season_name: r.roadmap_data?.season_name || `Season ${r.season_number}`,
+        season_name: r.season_name || `Season ${r.season_number}`,
         status: r.status,
       }));
 
@@ -228,12 +227,11 @@ export async function GET(
       roadmap: activeRoadmap ? {
         id: activeRoadmap.id,
         season_number: activeRoadmap.season_number,
-        season_name: activeRoadmap.roadmap_data?.season_name || `Season ${activeRoadmap.season_number}`,
-        age_band: activeRoadmap.age_band,
+        season_name: activeRoadmap.season_name || `Season ${activeRoadmap.season_number}`,
         status: activeRoadmap.status,
-        focus_areas: (activeRoadmap.roadmap_data?.focus_areas || []).map(friendlySkill),
-        milestone_description: activeRoadmap.roadmap_data?.milestone_description || null,
-        total_planned_sessions: activeRoadmap.roadmap_data?.total_planned_sessions || planItems.length,
+        focus_areas: activeRoadmap.focus_area ? [friendlySkill(activeRoadmap.focus_area)] : [],
+        milestone_description: activeRoadmap.milestone_description || null,
+        total_planned_sessions: activeRoadmap.estimated_sessions || planItems.length,
       } : null,
       plan_items: planItems,
       completed_count: completedCount || 0,

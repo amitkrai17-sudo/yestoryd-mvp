@@ -269,8 +269,8 @@ export default function ParentLayout({
       const allChildren = childrenData || [];
 
       setUser(authUser);
-      setParent(parentData);
-      setChildren(allChildren);
+      setParent(parentData as any);
+      setChildren(allChildren as any);
       setError(null);
 
       // Restore selected child from localStorage or select first enrolled child

@@ -76,9 +76,10 @@ export async function POST(request: NextRequest) {
 
       // Audit log
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'qstash_schedule_created',
-        details: {
+        metadata: {
           request_id: requestId,
           schedule_id: schedule.scheduleId,
           cron: '0 * * * *',
@@ -127,9 +128,10 @@ export async function POST(request: NextRequest) {
 
       // Audit log
       await supabase.from('activity_log').insert({
-        user_email: auth.email,
+        user_email: auth.email || 'unknown',
+      user_type: 'admin',
         action: 'qstash_schedule_deleted',
-        details: { request_id: requestId, schedule_id: scheduleId, timestamp: new Date().toISOString() },
+        metadata: { request_id: requestId, schedule_id: scheduleId, timestamp: new Date().toISOString() },
         created_at: new Date().toISOString(),
       });
 

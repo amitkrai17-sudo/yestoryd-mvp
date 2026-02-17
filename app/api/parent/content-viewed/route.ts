@@ -7,17 +7,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { createClient } from '@supabase/supabase-js';
-
+import { getSupabaseClient } from '@/lib/supabase/client';
+const supabaseAnon = getSupabaseClient();
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
     // Auth: get parent from Supabase session token
-    const supabaseAnon = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
       const { data: { user } } = await supabaseAnon.auth.getUser(authHeader.replace('Bearer ', ''));

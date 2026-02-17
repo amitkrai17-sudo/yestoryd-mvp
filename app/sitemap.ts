@@ -47,14 +47,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     
     // Fetch published blog posts
     // Adjust table/column names based on your actual schema
-    const { data: posts, error } = await supabase
+    const { data: posts, error } = await (supabase as any)
       .from('blog_posts') // Change if your table name is different
       .select('slug, updated_at, created_at')
       .eq('is_published', true) // Change if you use different column name
       .order('created_at', { ascending: false })
 
     if (!error && posts) {
-      blogPosts = posts.map((post) => ({
+      blogPosts = posts.map((post: any) => ({
         url: `${baseUrl}/blogs/post/${post.slug}`,
         lastModified: new Date(post.updated_at || post.created_at),
         changeFrequency: 'monthly' as const,

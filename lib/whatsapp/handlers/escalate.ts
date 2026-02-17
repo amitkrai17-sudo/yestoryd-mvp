@@ -4,12 +4,8 @@
 // ============================================================
 
 import { sendText } from '@/lib/whatsapp/cloud-api';
-import { createClient } from '@supabase/supabase-js';
-
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createAdminClient } from '@/lib/supabase/admin';
+const getSupabase = createAdminClient;
 
 export interface EscalateResult {
   response: string;
