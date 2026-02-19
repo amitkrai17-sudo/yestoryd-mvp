@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const results = { processed: 0, errors: 0, errorDetails: [] as string[] };
+    const results = { processed: 0, skipped: 0, errors: 0, errorDetails: [] as string[] };
 
     // Process in batches
     for (let i = 0; i < events.length; i += BATCH_SIZE) {
@@ -71,10 +71,17 @@ export async function POST(request: NextRequest) {
 
       await Promise.all(
         batch.map(async (event) => {
-          try {
-            if (!event.content_for_embedding) return;
+          const content = event.content_for_embedding;
 
-            const embedding = await generateEmbedding(event.content_for_embedding);
+          // Skip empty/whitespace-only content
+          if (!content || !content.trim()) {
+            results.skipped++;
+            results.errorDetails.push(`${event.id}: SKIPPED — content_for_embedding is empty/whitespace`);
+            return;
+          }
+
+          try {
+            const embedding = await generateEmbedding(content);
             const { error: updateError } = await supabase
               .from('learning_events')
               .update({ embedding: JSON.stringify(embedding) })
@@ -82,14 +89,19 @@ export async function POST(request: NextRequest) {
 
             if (updateError) {
               results.errors++;
-              results.errorDetails.push(`${event.id}: ${updateError.message}`);
+              results.errorDetails.push(`${event.id}: DB update failed — ${updateError.message}`);
             } else {
               results.processed++;
             }
           } catch (err: unknown) {
             results.errors++;
-            const msg = err instanceof Error ? err.message : 'Unknown error';
-            results.errorDetails.push(`${event.id}: ${msg}`);
+            // Capture the FULL error chain, not just the wrapper message
+            const rawError = err instanceof Error ? err : new Error(String(err));
+            const causeMsg = rawError.cause ? ` | cause: ${rawError.cause}` : '';
+            const contentPreview = content.substring(0, 80).replace(/\n/g, ' ');
+            results.errorDetails.push(
+              `${event.id}: ${rawError.message}${causeMsg} | content[0:80]: "${contentPreview}"`
+            );
           }
         })
       );

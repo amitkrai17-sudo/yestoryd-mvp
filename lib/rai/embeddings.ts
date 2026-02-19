@@ -7,7 +7,18 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 export const EMBEDDING_MODEL = 'text-embedding-004';
 export const EMBEDDING_DIMENSION = 768;
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Lazy initialization — avoids empty API key at module load time in serverless
+let _genAI: GoogleGenerativeAI | null = null;
+function getGenAI(): GoogleGenerativeAI {
+  if (!_genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
+    _genAI = new GoogleGenerativeAI(apiKey);
+  }
+  return _genAI;
+}
 
 /**
  * Generate embedding vector for text using Google's text-embedding-004
@@ -17,14 +28,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
  * to ensure vector space consistency for hybrid search.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
-    const result = await model.embedContent(text);
-    return result.embedding.values;
-  } catch (error) {
-    console.error('Embedding generation error:', error);
-    throw new Error('Failed to generate embedding');
+  if (!text || !text.trim()) {
+    throw new Error('Cannot generate embedding for empty text');
   }
+
+  const genAI = getGenAI();
+  const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
 }
 
 /**
