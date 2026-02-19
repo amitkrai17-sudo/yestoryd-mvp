@@ -131,7 +131,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
     }
 
     // V2: Use enrollment.total_sessions, fallback to legacy 9
-    const totalRequired = enrollment.total_sessions || 9;
+    const totalRequired = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
 
     // Count completed sessions for this child
     const { count: completedSessions } = await supabase
@@ -224,7 +224,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
               <p style="font-size: 16px; color: #333;">Hi ${parentName},</p>
               
               <p style="color: #555; line-height: 1.6;">
-                <strong>${childName}</strong> has successfully completed all 9 sessions of the reading program! 🌟
+                <strong>${childName}</strong> has successfully completed all sessions of the reading program! 🌟
               </p>
               
               <p style="color: #555; line-height: 1.6;">

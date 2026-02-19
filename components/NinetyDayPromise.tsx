@@ -75,7 +75,7 @@ export default function NinetyDayPromise({
             ?
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            After completing just 9 sessions with our certified coaches, 
+            After completing our 12-week coaching program,
             parents consistently report these transformations:
           </p>
         </div>

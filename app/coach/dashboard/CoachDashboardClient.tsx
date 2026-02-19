@@ -82,7 +82,7 @@ export default function CoachDashboardClient({
     <CoachLayout>
       <div className="space-y-4 lg:space-y-6">
         {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white">
+        <div className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white">
           <h1 className="text-lg lg:text-2xl font-bold mb-1 lg:mb-2">
             Welcome back, {coach.name.split(' ')[0]}!
           </h1>
@@ -136,7 +136,7 @@ export default function CoachDashboardClient({
                         </span>
                         <Link
                           href={`/coach/students/${session.child_id}`}
-                          className="px-3 py-1.5 bg-[#FF0099] text-white text-xs lg:text-sm rounded-lg hover:bg-[#FF0099]/90 transition-colors"
+                          className="px-3 py-1.5 bg-[#00ABFF] text-white text-xs lg:text-sm rounded-lg hover:bg-[#00ABFF]/90 transition-colors"
                         >
                           View
                         </Link>
@@ -188,10 +188,10 @@ export default function CoachDashboardClient({
           </div>
 
           <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#FF0099]/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
-              <Wallet className="w-4 h-4 lg:w-5 lg:h-5 text-[#FF0099]" />
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
+              <Wallet className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
             </div>
-            <p className="text-xl lg:text-3xl font-bold text-[#FF0099]">
+            <p className="text-xl lg:text-3xl font-bold text-[#00ABFF]">
               ₹{Math.round(stats?.total_earnings || 0).toLocaleString('en-IN')}
             </p>
             <p className="text-xs lg:text-sm text-text-tertiary mt-0.5 lg:mt-1">Earnings</p>
@@ -227,7 +227,7 @@ export default function CoachDashboardClient({
               href="/coach/earnings"
               className="p-3 lg:p-4 bg-surface-0 rounded-xl hover:bg-surface-2/50 transition-all group text-center border border-border/50"
             >
-              <Wallet className="w-6 h-6 lg:w-7 lg:h-7 text-[#FF0099] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
+              <Wallet className="w-6 h-6 lg:w-7 lg:h-7 text-[#00ABFF] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-xs lg:text-sm text-text-secondary">Earnings</span>
             </Link>
           </div>
@@ -247,7 +247,7 @@ export default function CoachDashboardClient({
               <div className="flex flex-wrap gap-2 lg:gap-3">
                 <Link
                   href="/coach/ai-assistant"
-                  className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-[#FF0099] text-white rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-[#FF0099]/90 transition-colors"
+                  className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-[#00ABFF] text-white rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
                 >
                   <TrendingUp className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   Ask rAI

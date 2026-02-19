@@ -51,22 +51,22 @@ export default function PendingSkillBoosterCard({ session, childName }: PendingS
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold text-white mb-1">
             Skill Booster Session Recommended
           </h3>
 
-          <p className="text-gray-600 text-sm mb-3">
+          <p className="text-text-secondary text-sm mb-3">
             Coach {session.coach_name} recommends a Skill Booster session for {childName} focusing on{' '}
-            <strong className="text-gray-800">{focusAreaLabel}</strong>.
+            <strong className="text-white">{focusAreaLabel}</strong>.
           </p>
 
           {/* Info Badge */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            <span className="inline-flex items-center px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
               ✓ Free - Included in your program
             </span>
             {daysSince > 0 && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-text-tertiary">
                 Recommended {daysSince} day{daysSince > 1 ? 's' : ''} ago
               </span>
             )}

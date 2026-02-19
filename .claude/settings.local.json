@@ -67,7 +67,8 @@
       "Bash(then)",
       "Bash(else)",
       "Bash(fi)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(1)"
     ]
   }
 }

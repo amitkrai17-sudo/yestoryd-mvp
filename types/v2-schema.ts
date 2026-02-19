@@ -1,8 +1,8 @@
 // ============================================================================
-// V2 SCHEMA TYPES - Phase 1: Age Band Differentiation
+// V2/V3 SCHEMA TYPES - Age Band Differentiation + Session Architecture
 // ============================================================================
 // Supplements the auto-generated types/supabase.ts
-// These types match the v2-phase1-migration.sql additions
+// These types match the v2/v3 migration additions
 // ============================================================================
 
 export type AgeBand = 'foundation' | 'building' | 'mastery';
@@ -23,6 +23,14 @@ export interface AgeBandConfig {
   program_duration_weeks: number;
   created_at: string;
   updated_at: string;
+  // V3 additions
+  skill_booster_credits: number | null;
+  weekly_pattern: number[] | null;
+  progress_pulse_interval: number | null;
+  tagline: string | null;
+  short_description: string | null;
+  differentiators: string[] | null;
+  icon: string | null;
 }
 
 // ============================================================================
@@ -119,6 +127,27 @@ export interface AgeBandLookupResult {
 }
 
 // ============================================================================
+// V3: parent_calls table — on-demand parent calls (replaces parent_checkin)
+// ============================================================================
+export interface ParentCall {
+  id: string;
+  enrollment_id: string | null;
+  child_id: string | null;
+  coach_id: string | null;
+  initiated_by: 'parent' | 'coach' | null;
+  requested_at: string | null;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  duration_minutes: number | null;
+  status: 'requested' | 'scheduled' | 'completed' | 'cancelled' | null;
+  google_event_id: string | null;
+  google_meet_link: string | null;
+  recall_bot_id: string | null;
+  notes: string | null;
+  created_at: string | null;
+}
+
+// ============================================================================
 // Utility function type for computing age band from age
 // ============================================================================
 export function computeAgeBand(age: number): AgeBand | null {
@@ -126,4 +155,37 @@ export function computeAgeBand(age: number): AgeBand | null {
   if (age >= 7 && age <= 9) return 'building';
   if (age >= 10 && age <= 12) return 'mastery';
   return null;
+}
+
+// ============================================================================
+// V3: Helper functions for tier-based session/credit computation
+// ============================================================================
+
+/**
+ * Get number of coaching sessions for a pricing tier by slicing weekly_pattern.
+ * weekly_pattern is a per-week array (e.g. [2,1,2,1,...] for foundation).
+ * durationWeeks determines how many weeks of the pattern to include.
+ * startWeek is the 0-indexed offset (e.g. 4 for continuation starting at week 5).
+ */
+export function getSessionsForTier(
+  weeklyPattern: number[],
+  durationWeeks: number,
+  startWeek: number = 0
+): number {
+  return weeklyPattern
+    .slice(startWeek, startWeek + durationWeeks)
+    .reduce((sum, w) => sum + w, 0);
+}
+
+/**
+ * Get skill booster credits for a pricing tier (proportional to duration).
+ * totalCredits is the full-season credit count from age_band_config.
+ * totalWeeks is the full season length (typically 12).
+ */
+export function getBoosterCreditsForTier(
+  totalCredits: number,
+  durationWeeks: number,
+  totalWeeks: number = 12
+): number {
+  return Math.round((totalCredits / totalWeeks) * durationWeeks);
 }

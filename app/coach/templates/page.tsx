@@ -196,7 +196,7 @@ export default function WhatsAppTemplatesPage() {
     return (
       <CoachLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
         </div>
       </CoachLayout>
     );
@@ -228,7 +228,7 @@ export default function WhatsAppTemplatesPage() {
                   key={template.id}
                   onClick={() => setSelectedTemplate(template)}
                   className={`w-full p-4 text-left hover:bg-surface-2/50 transition-colors ${
-                    selectedTemplate?.id === template.id ? 'bg-surface-2/50 border-l-2 border-[#FF0099]' : ''
+                    selectedTemplate?.id === template.id ? 'bg-surface-2/50 border-l-2 border-[#00ABFF]' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -254,7 +254,7 @@ export default function WhatsAppTemplatesPage() {
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-surface-2 border border-border rounded-lg py-2 pl-9 pr-4 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:border-[#FF0099]"
+                  className="w-full bg-surface-2 border border-border rounded-lg py-2 pl-9 pr-4 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:border-[#00ABFF]"
                 />
               </div>
             </div>
@@ -270,11 +270,11 @@ export default function WhatsAppTemplatesPage() {
                     key={student.id}
                     onClick={() => setSelectedStudent(student)}
                     className={`w-full p-4 text-left hover:bg-surface-2/50 transition-colors ${
-                      selectedStudent?.id === student.id ? 'bg-surface-2/50 border-l-2 border-[#FF0099]' : ''
+                      selectedStudent?.id === student.id ? 'bg-surface-2/50 border-l-2 border-[#00ABFF]' : ''
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#FF0099] rounded-full flex items-center justify-center text-white font-bold">
+                      <div className="w-10 h-10 bg-[#00ABFF] rounded-full flex items-center justify-center text-white font-bold">
                         {student.child_name.charAt(0)}
                       </div>
                       <div>

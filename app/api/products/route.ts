@@ -152,8 +152,8 @@ export async function GET(request: NextRequest) {
         discounted_price: plan.discounted_price,
         price_display: formatPrice(plan.discounted_price),
         savings_display: savingsDisplay,
-        sessions_included: plan.sessions_included || 9,
-        // Session breakdown from pricing_plans
+        sessions_included: plan.sessions_included || 9, /* V1 fallback — will be replaced by age_band_config.total_sessions */
+        // Session breakdown from pricing_plans — DEPRECATED V1: use age_band_config.weekly_pattern instead
         sessions_coaching: plan.sessions_coaching || 6,
         sessions_skill_building: plan.sessions_skill_building || 0,
         sessions_checkin: plan.sessions_checkin || 3,

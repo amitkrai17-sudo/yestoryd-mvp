@@ -89,7 +89,7 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
       .eq('status', 'completed');
 
     const sessionsCompleted = completedCount || 0;
-    const sessionsTotal = enrollment.total_sessions || 9;
+    const sessionsTotal = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
     const completionRate = sessionsTotal > 0 ? sessionsCompleted / sessionsTotal : 0;
 
     // 3. Get diagnostic data (Session 1 baseline)

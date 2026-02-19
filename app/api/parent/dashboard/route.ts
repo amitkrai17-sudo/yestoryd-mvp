@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(3);
 
-    const totalSessions = child.total_sessions || 9;
+    const totalSessions = child.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
     const sessionsCompleted = completedCount || 0;
     const progressPercentage = Math.round((sessionsCompleted / totalSessions) * 100);
 

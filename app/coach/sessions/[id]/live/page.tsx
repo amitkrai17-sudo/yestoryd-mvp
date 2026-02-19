@@ -55,7 +55,7 @@ export default function LiveSessionPage() {
     return (
       <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#FF0099] mx-auto mb-3" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-3" />
           <p className="text-white/40 text-sm">Loading session...</p>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function LiveSessionPage() {
           <p className="text-white mb-2">{error}</p>
           <button
             onClick={() => router.back()}
-            className="text-[#FF0099] font-medium active:opacity-70"
+            className="text-[#00ABFF] font-medium active:opacity-70"
           >
             Go Back
           </button>

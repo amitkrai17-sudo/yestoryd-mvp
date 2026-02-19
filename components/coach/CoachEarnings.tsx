@@ -91,9 +91,9 @@ export default function CoachEarnings({ coachId, referralCode, referralLink }: C
   return (
     <div className="space-y-6">
       {/* Referral Link Card */}
-      <div className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-2xl p-6 border border-pink-500/30">
+      <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl p-6 border border-blue-500/30">
         <div className="flex items-center gap-3 mb-4">
-          <Share2 className="w-5 h-5 text-pink-400" />
+          <Share2 className="w-5 h-5 text-blue-400" />
           <h3 className="text-lg font-semibold text-white">Your Referral Link</h3>
         </div>
         <p className="text-gray-400 text-sm mb-4">
@@ -111,7 +111,7 @@ export default function CoachEarnings({ coachId, referralCode, referralLink }: C
             className={`px-4 py-3 rounded-xl font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
               copied 
                 ? 'bg-green-500 text-white' 
-                : 'bg-pink-500 text-white hover:bg-pink-600'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
             }`}
           >
             {copied ? <CheckCircle className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
@@ -120,7 +120,7 @@ export default function CoachEarnings({ coachId, referralCode, referralLink }: C
         </div>
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
           <span className="text-sm text-gray-400">
-            Code: <span className="font-mono text-pink-400">{referralCode}</span>
+            Code: <span className="font-mono text-blue-400">{referralCode}</span>
           </span>
           <span className="text-sm text-gray-400">
             {summary?.successful_referrals || 0} successful referrals
@@ -156,7 +156,7 @@ export default function CoachEarnings({ coachId, referralCode, referralLink }: C
 
         <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
           <div className="flex items-center gap-2 mb-2">
-            <Share2 className="w-4 h-4 text-pink-400" />
+            <Share2 className="w-4 h-4 text-blue-400" />
             <span className="text-xs text-gray-400">Referral Earnings</span>
           </div>
           <p className="text-2xl font-bold text-white">₹{(summary?.referral_earnings || 0).toLocaleString()}</p>
@@ -202,11 +202,11 @@ export default function CoachEarnings({ coachId, referralCode, referralLink }: C
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                     payout.payout_type === 'lead_bonus' 
-                      ? 'bg-pink-500/20' 
+                      ? 'bg-blue-500/20' 
                       : 'bg-blue-500/20'
                   }`}>
                     {payout.payout_type === 'lead_bonus' ? (
-                      <Share2 className="w-5 h-5 text-pink-400" />
+                      <Share2 className="w-5 h-5 text-blue-400" />
                     ) : (
                       <IndianRupee className="w-5 h-5 text-blue-400" />
                     )}
@@ -238,7 +238,7 @@ export default function CoachEarnings({ coachId, referralCode, referralLink }: C
         <div className="p-4 border-t border-gray-700 bg-gray-800/50">
           <a 
             href="/coach/onboarding" 
-            className="flex items-center justify-between text-sm text-gray-400 hover:text-pink-400 transition-colors"
+            className="flex items-center justify-between text-sm text-gray-400 hover:text-blue-400 transition-colors"
           >
             <span>Update Bank Details</span>
             <ChevronRight className="w-4 h-4" />

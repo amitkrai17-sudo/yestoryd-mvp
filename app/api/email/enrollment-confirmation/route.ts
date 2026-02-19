@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #6b7280;">Total Sessions</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600;">9 (6 Coaching + 3 Parent Meetings)</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 600;">${enrollmentData?.total_sessions || 'Personalized'} Coaching Sessions</td>
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #6b7280;">Start Date</td>
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
           </div>
           <div>
             <p style="margin: 0; color: #111827; font-weight: 600;">Calendar Invites Coming</p>
-            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">You'll receive Google Calendar invites for all 9 sessions within 24 hours.</p>
+            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">You'll receive Google Calendar invites for all your sessions within 24 hours.</p>
           </div>
         </div>
         

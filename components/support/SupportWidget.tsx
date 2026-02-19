@@ -24,8 +24,8 @@ export default function SupportWidget({
   const [showForm, setShowForm] = useState(false);
 
   const theme = userType === 'parent'
-    ? { primary: '#7b008b', gradient: 'from-[#7b008b] to-[#ff0099]', bg: 'bg-purple-50', border: 'border-purple-100' }
-    : { primary: '#00abff', gradient: 'from-[#00abff] to-[#0066cc]', bg: 'bg-blue-50', border: 'border-blue-100' };
+    ? { primary: '#7b008b', gradient: 'from-[#7b008b] to-[#ff0099]', bg: 'bg-[#7b008b]/10', border: 'border-[#7b008b]/20' }
+    : { primary: '#00abff', gradient: 'from-[#00abff] to-[#0066cc]', bg: 'bg-blue-500/10', border: 'border-blue-500/20' };
 
   // Card variant - full support card with rAI suggestion
   if (variant === 'card') {
@@ -40,8 +40,8 @@ export default function SupportWidget({
               <HelpCircle className="w-6 h-6" style={{ color: theme.primary }} />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-1">Need Help?</h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <h3 className="font-semibold text-white mb-1">Need Help?</h3>
+              <p className="text-sm text-text-secondary mb-4">
                 Have a question or facing an issue? We're here to help!
               </p>
               
@@ -62,7 +62,7 @@ export default function SupportWidget({
                 {/* Submit Request Button */}
                 <button
                   onClick={() => setShowForm(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-white hover:border-gray-400 transition-all text-sm font-medium"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 border border-white/[0.08] text-text-secondary rounded-xl hover:bg-surface-2 hover:border-white/20 transition-all text-sm font-medium"
                 >
                   <MessageSquare className="w-4 h-4" />
                   Submit Request
@@ -94,7 +94,7 @@ export default function SupportWidget({
       <>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 text-sm text-text-secondary hover:text-white transition-colors"
         >
           <HelpCircle className="w-4 h-4" />
           Need Help?
@@ -120,7 +120,7 @@ export default function SupportWidget({
     <>
       <button
         onClick={() => setShowForm(true)}
-        className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all group"
+        className="w-full flex items-center gap-4 p-4 bg-surface-1 rounded-xl border border-[#7b008b]/20 hover:border-[#7b008b]/30 hover:shadow-sm transition-all group"
       >
         <div 
           className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -129,10 +129,10 @@ export default function SupportWidget({
           <HelpCircle className="w-5 h-5" style={{ color: theme.primary }} />
         </div>
         <div className="flex-1 text-left">
-          <p className="font-medium text-gray-900">Need Help?</p>
-          <p className="text-xs text-gray-500">Submit a support request</p>
+          <p className="font-medium text-white">Need Help?</p>
+          <p className="text-xs text-text-tertiary">Submit a support request</p>
         </div>
-        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+        <ChevronRight className="w-5 h-5 text-text-tertiary group-hover:text-text-secondary transition-colors" />
       </button>
 
       {showForm && (

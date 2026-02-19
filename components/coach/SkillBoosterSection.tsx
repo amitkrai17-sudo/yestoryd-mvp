@@ -127,7 +127,7 @@ export default function SkillBoosterSection({
         {/* Progress Bar */}
         <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
           <div
-            className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] h-2 rounded-full transition-all duration-300"
+            className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] h-2 rounded-full transition-all duration-300"
             style={{ width: `${(skillBoosterUsed / skillBoosterMax) * 100}%` }}
           />
         </div>
@@ -140,7 +140,7 @@ export default function SkillBoosterSection({
         {canRecommend ? (
           <button
             onClick={() => setShowModal(true)}
-            className="w-full py-3 px-4 bg-gradient-to-r from-[#FF0099] to-[#7B008B]
+            className="w-full py-3 px-4 bg-gradient-to-r from-[#00ABFF] to-[#7B008B]
                        text-white font-medium rounded-xl hover:opacity-90 transition-opacity
                        flex items-center justify-center gap-2"
           >
@@ -195,13 +195,13 @@ export default function SkillBoosterSection({
                     {/* Focus Area */}
                     <div>
                       <label className="block text-sm text-gray-400 mb-2">
-                        What should this session focus on? <span className="text-[#FF0099]">*</span>
+                        What should this session focus on? <span className="text-[#00ABFF]">*</span>
                       </label>
                       <select
                         value={focusArea}
                         onChange={(e) => setFocusArea(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl
-                                 text-white focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50
+                                 text-white focus:border-[#00ABFF] focus:ring-1 focus:ring-[#00ABFF]/50
                                  focus:outline-none"
                       >
                         <option value="">Select focus area...</option>
@@ -223,7 +223,7 @@ export default function SkillBoosterSection({
                         rows={3}
                         className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl
                                  text-white placeholder-gray-500
-                                 focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50
+                                 focus:border-[#00ABFF] focus:ring-1 focus:ring-[#00ABFF]/50
                                  focus:outline-none resize-none"
                       />
                     </div>
@@ -259,7 +259,7 @@ export default function SkillBoosterSection({
                       <button
                         onClick={handleRecommend}
                         disabled={!focusArea || isSubmitting}
-                        className="h-12 px-4 bg-gradient-to-r from-[#FF0099] to-[#7B008B]
+                        className="h-12 px-4 bg-gradient-to-r from-[#00ABFF] to-[#7B008B]
                                  text-white rounded-xl hover:opacity-90 disabled:opacity-50
                                  transition-opacity flex items-center justify-center gap-2 font-medium whitespace-nowrap"
                       >

@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 // CONSTANTS
 // ============================================================
 
-const DEFAULT_TOTAL_SESSIONS = 9;
+const DEFAULT_TOTAL_SESSIONS = 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
 const API_NAME = 'coach-sessions';
 
 // ============================================================

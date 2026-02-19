@@ -143,14 +143,14 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
   return (
     <div className="space-y-6">
       {/* Header Card - Referral Link */}
-      <div className="bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-[#00abff] to-[#7b008b] rounded-2xl p-6 text-white">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Gift className="w-6 h-6" />
               <h2 className="text-xl font-bold">Earn ₹1,200 Per Referral</h2>
             </div>
-            <p className="text-pink-100">Share & earn when parents enroll!</p>
+            <p className="text-blue-100">Share & earn when parents enroll!</p>
           </div>
           <button
             onClick={fetchReferrals}
@@ -162,7 +162,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
         {/* Referral Code - FROM DATABASE */}
         <div className="bg-surface-1/10 rounded-xl p-4 mb-4">
-          <p className="text-pink-200 text-xs uppercase tracking-wide mb-2">Your Referral Code</p>
+          <p className="text-blue-200 text-xs uppercase tracking-wide mb-2">Your Referral Code</p>
           <div className="flex items-center justify-between">
             <span className="text-2xl font-mono font-bold tracking-wider">
               {coach?.referral_code || 'Loading...'}
@@ -177,7 +177,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
               </button>
               <button
                 onClick={shareOnWhatsApp}
-                className="flex items-center gap-2 px-4 py-2 bg-surface-1 text-[#ff0099] rounded-lg font-medium hover:bg-pink-50 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-surface-1 text-[#00abff] rounded-lg font-medium hover:bg-blue-50 transition"
               >
                 <Share2 className="w-4 h-4" />
                 Share on WhatsApp
@@ -188,7 +188,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
         {/* Referral Link - FROM DATABASE */}
         <div className="bg-surface-1/10 rounded-xl p-4">
-          <p className="text-pink-200 text-xs uppercase tracking-wide mb-2">Your Referral Link</p>
+          <p className="text-blue-200 text-xs uppercase tracking-wide mb-2">Your Referral Link</p>
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-surface-1/10 rounded-lg px-4 py-2 font-mono text-sm truncate">
               {coach?.referral_link || 'Loading...'}
@@ -330,7 +330,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
       {/* Empty State */}
       {referrals.length === 0 && !loading && (
         <div className="bg-surface-1 rounded-xl border border-border p-8 text-center">
-          <Gift className="w-12 h-12 text-pink-300 mx-auto mb-3" />
+          <Gift className="w-12 h-12 text-blue-300 mx-auto mb-3" />
           <h3 className="font-bold text-white mb-2">No Referrals Yet</h3>
           <p className="text-text-tertiary mb-4">
             Share your referral link to start earning ₹1,200 per enrollment!

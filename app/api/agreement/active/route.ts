@@ -53,7 +53,7 @@ function replaceVariables(html: string, config: ConfigValues, coachData?: any): 
     
     // Program details
     '{{program_fee}}': config.program_fee || '5,999',
-    '{{program_duration}}': config.program_duration || '3 months',
+    '{{program_duration}}': config.program_duration || '12 weeks',
     '{{sessions_per_month}}': config.sessions_per_month || '3',
     '{{session_duration}}': config.session_duration || '45-60 minutes',
     

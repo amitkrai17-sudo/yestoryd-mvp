@@ -9,6 +9,7 @@
 
 import HomePageClient, { ContentSettings } from './HomePageClient';
 import { supabase } from '@/lib/supabase/client';
+import { fetchPricingDisplayData } from '@/lib/pricing-display';
 
 // Disable caching - always fetch fresh data
 export const dynamic = 'force-dynamic';
@@ -340,6 +341,15 @@ async function getHomePageData() {
       sticky_mobile_cta: settings.sticky_mobile_cta as string || 'Reading Test - Free',
     };
 
+    // Fetch pricing display data (V3 age bands + per-tier derived sessions)
+    // Direct call — no HTTP self-fetch needed in server components
+    let pricingDisplayData = null;
+    try {
+      pricingDisplayData = await fetchPricingDisplayData();
+    } catch (pdErr) {
+      console.error('Pricing display fetch error:', pdErr);
+    }
+
     return {
       stats,
       pricing,
@@ -350,6 +360,7 @@ async function getHomePageData() {
       showTestimonials,
       content,
       sessionDurations,
+      pricingDisplayData,
     };
   } catch (error) {
     console.error('Error fetching homepage data:', error);
@@ -363,6 +374,7 @@ async function getHomePageData() {
       showTestimonials: DEFAULTS.showTestimonials,
       content: {} as ContentSettings,
       sessionDurations: { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 },
+      pricingDisplayData: null,
     };
   }
 }
@@ -382,6 +394,7 @@ export default async function HomePage() {
       showTestimonials={data.showTestimonials}
       content={data.content}
       sessionDurations={data.sessionDurations}
+      pricingDisplayData={data.pricingDisplayData}
     />
   );
 }

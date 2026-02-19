@@ -65,7 +65,7 @@ export default function SessionBriefPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
       </div>
     );
   }
@@ -76,7 +76,7 @@ export default function SessionBriefPage() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <p className="text-white mb-2">{error}</p>
-          <button onClick={() => router.back()} className="text-[#FF0099] font-medium">Go Back</button>
+          <button onClick={() => router.back()} className="text-[#00ABFF] font-medium">Go Back</button>
         </div>
       </div>
     );
@@ -255,7 +255,7 @@ export default function SessionBriefPage() {
         {session.status === 'scheduled' && template && (
           <a
             href={`/coach/sessions/${sessionId}/live`}
-            className="block w-full py-3.5 bg-[#FF0099] hover:bg-[#FF0099]/90 text-white rounded-xl font-semibold text-center text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+            className="block w-full py-3.5 bg-[#00ABFF] hover:bg-[#00ABFF]/90 text-white rounded-xl font-semibold text-center text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
           >
             <Play className="w-4 h-4" />
             Start Live Session
@@ -279,7 +279,7 @@ export default function SessionBriefPage() {
         {child && (
           <div className="bg-surface-1 border border-border rounded-xl p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm">
                 {child.child_name.charAt(0)}
               </div>
               <div className="flex-1">
@@ -337,7 +337,7 @@ export default function SessionBriefPage() {
                 {template.skill_dimensions?.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {template.skill_dimensions.map((s: string) => (
-                      <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF0099]/10 text-[#FF0099] border border-[#FF0099]/20">
+                      <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-[#00ABFF]/10 text-[#00ABFF] border border-[#00ABFF]/20">
                         {s.replace(/_/g, ' ')}
                       </span>
                     ))}
@@ -448,7 +448,7 @@ export default function SessionBriefPage() {
             {next_session_id && (
               <a
                 href={`/coach/sessions/${next_session_id}`}
-                className="block w-full py-3.5 bg-[#FF0099] hover:bg-[#FF0099]/90 text-white rounded-xl font-semibold text-center text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+                className="block w-full py-3.5 bg-[#00ABFF] hover:bg-[#00ABFF]/90 text-white rounded-xl font-semibold text-center text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
               >
                 Next Session
                 <ArrowRight className="w-4 h-4" />

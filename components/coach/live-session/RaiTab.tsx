@@ -86,15 +86,15 @@ export default function RaiTab({ childId, child, coachEmail }: RaiTabProps) {
             <div
               className={`max-w-[80%] px-3 py-2.5 rounded-xl text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-[#FF0099] text-white rounded-br-sm'
+                  ? 'bg-[#00ABFF] text-white rounded-br-sm'
                   : 'bg-white/5 text-white/80 border border-white/10 rounded-bl-sm'
               }`}
             >
               {msg.content}
             </div>
             {msg.role === 'user' && (
-              <div className="w-7 h-7 rounded-full bg-[#FF0099]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <User className="w-4 h-4 text-[#FF0099]" />
+              <div className="w-7 h-7 rounded-full bg-[#00ABFF]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <User className="w-4 h-4 text-[#00ABFF]" />
               </div>
             )}
           </div>

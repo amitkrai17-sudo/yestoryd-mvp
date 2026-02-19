@@ -226,7 +226,7 @@ export default function CoachEarningsPage() {
     return (
       <CoachLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
         </div>
       </CoachLayout>
     );
@@ -323,7 +323,7 @@ export default function CoachEarningsPage() {
                 <select
                   value={filterPeriod}
                   onChange={(e) => setFilterPeriod(e.target.value)}
-                  className="bg-surface-2 border border-border rounded-lg py-1.5 px-3 text-white text-sm focus:outline-none focus:border-pink-500"
+                  className="bg-surface-2 border border-border rounded-lg py-1.5 px-3 text-white text-sm focus:outline-none focus:border-blue-500"
                 >
                   <option value="all">All Time</option>
                   <option value="this_month">This Month</option>

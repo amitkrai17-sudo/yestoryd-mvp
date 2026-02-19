@@ -174,11 +174,15 @@ export async function scheduleCalendarEvent(
   }
 }
 
-// Create all sessions - returns { success, sessions, error }
+/**
+ * @deprecated LEGACY — V3 scheduling uses enrollment-scheduler.ts with weekly_pattern.
+ * This function creates a flat 6+3 schedule and is only used as a fallback.
+ */
 export async function createAllSessions(params: CreateAllSessionsParams): Promise<CreateAllSessionsResult> {
   const { childName, parentEmail, coachEmail, startDate, preferredTime, preferredHour, preferredDay } = params;
-  
+
   const sessions: ScheduledSession[] = [];
+  // LEGACY: flat 6 coaching + 3 parent_checkin schedule
   const sessionSchedule = [
     { week: 1, type: 'coaching', title: 'Session 1: Initial Assessment', number: 1 },
     { week: 2, type: 'coaching', title: 'Session 2: Phonics Foundation', number: 2 },

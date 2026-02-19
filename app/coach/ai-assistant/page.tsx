@@ -170,7 +170,7 @@ export default function AIAssistantPage() {
     return (
       <CoachLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
         </div>
       </CoachLayout>
     );
@@ -220,7 +220,7 @@ export default function AIAssistantPage() {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-surface-2 border border-border rounded-xl py-2.5 pl-9 pr-3 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50"
+              className="w-full bg-surface-2 border border-border rounded-xl py-2.5 pl-9 pr-3 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:border-[#00ABFF] focus:ring-1 focus:ring-[#00ABFF]/50"
             />
           </div>
         </div>
@@ -230,11 +230,11 @@ export default function AIAssistantPage() {
           <button
             onClick={() => handleStudentSelect(null)}
             className={`w-full p-3 text-left hover:bg-surface-2/50 transition-colors border-b border-border/50 ${
-              !selectedStudent ? 'bg-[#FF0099]/10 border-l-2 border-l-[#FF0099]' : ''
+              !selectedStudent ? 'bg-[#00ABFF]/10 border-l-2 border-l-[#00ABFF]' : ''
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#FF0099]/20 rounded-full flex items-center justify-center overflow-hidden">
+              <div className="w-10 h-10 bg-[#00ABFF]/20 rounded-full flex items-center justify-center overflow-hidden">
                 <Image
                   src="/images/rai-mascot.png"
                   alt="rAI"
@@ -256,11 +256,11 @@ export default function AIAssistantPage() {
               key={student.id}
               onClick={() => handleStudentSelect(student)}
               className={`w-full p-3 text-left hover:bg-surface-2/50 transition-colors ${
-                selectedStudent?.id === student.id ? 'bg-[#FF0099]/10 border-l-2 border-l-[#FF0099]' : ''
+                selectedStudent?.id === student.id ? 'bg-[#00ABFF]/10 border-l-2 border-l-[#00ABFF]' : ''
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold">
                   {student.child_name.charAt(0)}
                 </div>
                 <div>
@@ -292,7 +292,7 @@ export default function AIAssistantPage() {
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <div className="hidden lg:flex w-11 h-11 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-xl items-center justify-center overflow-hidden">
+            <div className="hidden lg:flex w-11 h-11 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-xl items-center justify-center overflow-hidden">
               <Image
                 src="/images/rai-mascot.png"
                 alt="rAI"
@@ -315,7 +315,7 @@ export default function AIAssistantPage() {
               <h1 className="font-semibold text-white">rAI Assistant</h1>
             </div>
 
-            <span className="ml-auto text-xs bg-[#FF0099]/20 text-[#FF0099] px-3 py-1.5 rounded-full hidden sm:block font-medium">
+            <span className="ml-auto text-xs bg-[#00ABFF]/20 text-[#00ABFF] px-3 py-1.5 rounded-full hidden sm:block font-medium">
               RAG Powered
             </span>
           </div>
@@ -325,7 +325,7 @@ export default function AIAssistantPage() {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
-              <div className="w-20 h-20 bg-[#FF0099]/20 rounded-2xl flex items-center justify-center mb-4 overflow-hidden">
+              <div className="w-20 h-20 bg-[#00ABFF]/20 rounded-2xl flex items-center justify-center mb-4 overflow-hidden">
                 <Image
                   src="/images/rai-mascot.png"
                   alt="rAI"
@@ -351,7 +351,7 @@ export default function AIAssistantPage() {
                   <button
                     key={prompt}
                     onClick={() => setInput(prompt)}
-                    className="text-xs sm:text-sm bg-surface-2/50 text-text-secondary px-3 sm:px-4 py-2 rounded-full hover:bg-surface-2 border border-border hover:border-[#FF0099]/50 transition-colors"
+                    className="text-xs sm:text-sm bg-surface-2/50 text-text-secondary px-3 sm:px-4 py-2 rounded-full hover:bg-surface-2 border border-border hover:border-[#00ABFF]/50 transition-colors"
                   >
                     {prompt}
                   </button>
@@ -365,7 +365,7 @@ export default function AIAssistantPage() {
                 className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
               >
                 {message.role === 'assistant' && (
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
                     <Image
                       src="/images/rai-mascot.png"
                       alt="rAI"
@@ -378,7 +378,7 @@ export default function AIAssistantPage() {
                 <div
                   className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
                     message.role === 'user'
-                      ? 'bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white'
+                      ? 'bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white'
                       : 'bg-surface-2/50 text-text-secondary border border-border'
                   }`}
                 >
@@ -395,7 +395,7 @@ export default function AIAssistantPage() {
 
           {sending && (
             <div className="flex gap-2 sm:gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-xl flex items-center justify-center overflow-hidden">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-xl flex items-center justify-center overflow-hidden">
                 <Image
                   src="/images/rai-mascot.png"
                   alt="rAI"
@@ -405,7 +405,7 @@ export default function AIAssistantPage() {
                 />
               </div>
               <div className="bg-surface-2/50 rounded-2xl px-4 py-3 border border-border">
-                <Loader2 className="w-5 h-5 animate-spin text-[#FF0099]" />
+                <Loader2 className="w-5 h-5 animate-spin text-[#00ABFF]" />
               </div>
             </div>
           )}
@@ -424,12 +424,12 @@ export default function AIAssistantPage() {
                   ? `Ask about ${selectedStudent.child_name}...`
                   : 'Ask me anything about coaching...'
               }
-              className="flex-1 bg-surface-2 border border-border rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-white text-sm sm:text-base placeholder:text-text-tertiary focus:outline-none focus:border-[#FF0099] focus:ring-1 focus:ring-[#FF0099]/50 transition-all"
+              className="flex-1 bg-surface-2 border border-border rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-white text-sm sm:text-base placeholder:text-text-tertiary focus:outline-none focus:border-[#00ABFF] focus:ring-1 focus:ring-[#00ABFF]/50 transition-all"
             />
             <button
               onClick={sendMessage}
               disabled={sending || !input.trim()}
-              className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] hover:opacity-90 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
+              className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] hover:opacity-90 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </button>

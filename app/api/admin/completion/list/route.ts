@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
         const completed = sessionsCompleted || 0;
 
         // V2: Use enrollment.total_sessions, fallback to legacy 9
-        const enrollmentTotal = (enrollment as any).total_sessions || 9;
+        const enrollmentTotal = (enrollment as any).total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
         const onTrackThreshold = Math.ceil(enrollmentTotal * 0.67); // ~67% complete = on track
 
         // Calculate risk level

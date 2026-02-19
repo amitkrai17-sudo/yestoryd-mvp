@@ -409,7 +409,7 @@ export default function CoachSessionsPage() {
       <CoachLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[#FF0099] mx-auto mb-4" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-4" />
             <p className="text-text-tertiary">Loading sessions...</p>
           </div>
         </div>
@@ -426,7 +426,7 @@ export default function CoachSessionsPage() {
             <p className="text-white text-lg mb-4">{error}</p>
             <button
               onClick={loadSessions}
-              className="px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/90 transition-colors"
+              className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/90 transition-colors"
             >
               Retry
             </button>
@@ -494,8 +494,8 @@ export default function CoachSessionsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
         <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
           <div className="flex items-center gap-2 lg:gap-3">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#FF0099]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Clock className="w-4 h-4 lg:w-5 lg:h-5 text-[#FF0099]" />
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Clock className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
             </div>
             <div className="min-w-0">
               <p className="text-lg lg:text-2xl font-bold text-white">{stats.today}</p>

@@ -18,7 +18,7 @@ export const PACKAGES = {
     sessions: 6,
     parentCheckins: 3,
     price: 0, // DEPRECATED: Price comes from pricing_plans table
-    description: '6 coaching sessions + 3 parent check-ins + FREE access to all services',
+    description: 'Personalized coaching sessions + FREE access to all services',
   },
   'coaching-trial': {
     name: 'Trial Session',

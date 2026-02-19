@@ -261,7 +261,7 @@ const Step4Review: FC<Step4Props> = ({
           onChange={(e) => onUpdate({ additionalNotes: e.target.value })}
           placeholder="Any other observations or notes for future reference..."
           rows={3}
-          className="w-full rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FF0099] transition-all resize-none"
+          className="w-full rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#00ABFF] transition-all resize-none"
           style={{
             background: BRAND_COLORS.darkGray,
             border: `1px solid ${BRAND_COLORS.mediumGray}`,

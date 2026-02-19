@@ -220,7 +220,7 @@ export default function InfoTab({ data }: InfoTabProps) {
       {template?.parent_involvement && (
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Users className="w-4 h-4 text-[#FF0099]" />
+            <Users className="w-4 h-4 text-[#00ABFF]" />
             <h3 className="text-white text-sm font-medium">Parent Involvement</h3>
           </div>
           <p className="text-white/70 text-xs leading-relaxed">{template.parent_involvement}</p>

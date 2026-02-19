@@ -117,7 +117,7 @@ export default function ConfirmSchedulePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
       </div>
     );
   }
@@ -131,7 +131,7 @@ export default function ConfirmSchedulePage() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Schedule Confirmed!</h1>
           <p className="text-text-tertiary mb-6">
-            All 9 sessions have been created. Calendar invites sent to parent and you.
+            All sessions have been created. Calendar invites sent to parent and you.
           </p>
           <p className="text-sm text-text-tertiary">
             {DAY_OPTIONS.find(d => d.value === selectedDay)?.label}s at{' '}
@@ -155,7 +155,7 @@ export default function ConfirmSchedulePage() {
         {enrollment && (
           <div className="bg-surface-1 rounded-xl p-6 mb-6 border border-border">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-[#FF0099]" />
+              <User className="w-5 h-5 text-[#00ABFF]" />
               Enrollment Details
             </h2>
             <div className="space-y-3 text-text-secondary">
@@ -178,7 +178,7 @@ export default function ConfirmSchedulePage() {
               {enrollment.preferredDay !== null && (
                 <div className="flex justify-between pt-2 border-t border-border">
                   <span className="text-text-tertiary">Parent's Preference</span>
-                  <span className="text-pink-400">
+                  <span className="text-blue-400">
                     {DAY_OPTIONS.find(d => d.value === enrollment.preferredDay)?.label}{' '}
                     {TIME_OPTIONS.find(t => t.value === enrollment.preferredTime)?.label}
                   </span>
@@ -205,7 +205,7 @@ export default function ConfirmSchedulePage() {
                   onClick={() => setSelectedDay(day.value)}
                   className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                     selectedDay === day.value
-                      ? 'bg-[#FF0099] text-white'
+                      ? 'bg-[#00ABFF] text-white'
                       : 'bg-surface-2 text-text-secondary hover:bg-surface-3'
                   }`}
                 >
@@ -227,7 +227,7 @@ export default function ConfirmSchedulePage() {
                   onClick={() => setSelectedTime(time.value)}
                   className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                     selectedTime === time.value
-                      ? 'bg-[#FF0099] text-white'
+                      ? 'bg-[#00ABFF] text-white'
                       : 'bg-surface-2 text-text-secondary hover:bg-surface-3'
                   }`}
                 >
@@ -241,7 +241,7 @@ export default function ConfirmSchedulePage() {
         {/* Info Box */}
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
           <p className="text-blue-400 text-sm">
-            <strong>9 sessions</strong> will be created at this slot over 12 weeks.
+            Sessions will be created at this slot based on the enrollment plan.
             Rescheduling individual sessions can be done directly in Google Calendar.
           </p>
         </div>
@@ -258,12 +258,12 @@ export default function ConfirmSchedulePage() {
         <button
           onClick={handleConfirm}
           disabled={confirming || selectedDay === null || !selectedTime}
-          className="w-full bg-[#FF0099] hover:bg-[#FF0099] disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+          className="w-full bg-[#00ABFF] hover:bg-[#00ABFF] disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           {confirming ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Creating 9 Sessions...
+              Creating Sessions...
             </>
           ) : (
             <>

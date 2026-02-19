@@ -21,6 +21,7 @@ export type StatusValue = typeof STATUS[keyof typeof STATUS];
 export const SESSION_TYPE_KEYS = {
   COACHING: 'coaching',
   PARENT_CHECKIN: 'parent_checkin',
+  PARENT_CALL: 'parent_call',
   SKILL_BOOSTER: 'skill_booster',
 } as const;
 

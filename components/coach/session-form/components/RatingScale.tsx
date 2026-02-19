@@ -31,7 +31,7 @@ const RatingScale: FC<RatingScaleProps> = ({ value, onChange, options }) => {
             className={`
               flex-1 flex flex-col items-center gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all
               ${isSelected
-                ? 'border-[#FF0099] bg-[#FF0099]/10 scale-105'
+                ? 'border-[#00ABFF] bg-[#00ABFF]/10 scale-105'
                 : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
               }
             `}
@@ -39,7 +39,7 @@ const RatingScale: FC<RatingScaleProps> = ({ value, onChange, options }) => {
             <div
               className={`
                 w-10 h-10 rounded-full flex items-center justify-center
-                ${isSelected ? 'bg-[#FF0099]/20' : 'bg-gray-700/50'}
+                ${isSelected ? 'bg-[#00ABFF]/20' : 'bg-gray-700/50'}
               `}
             >
               <Icon

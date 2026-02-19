@@ -99,7 +99,7 @@ export default function SessionComplete({ sessionId, activities, elapsedSeconds,
         </p>
         <button
           onClick={() => router.push(`/coach/sessions/${sessionId}`)}
-          className="w-full max-w-xs px-6 py-3 bg-[#FF0099] text-white rounded-xl font-medium active:scale-95 transition-transform"
+          className="w-full max-w-xs px-6 py-3 bg-[#00ABFF] text-white rounded-xl font-medium active:scale-95 transition-transform"
         >
           View Session Summary
         </button>
@@ -126,7 +126,7 @@ export default function SessionComplete({ sessionId, activities, elapsedSeconds,
     <div className="px-4 py-4 space-y-4">
       {/* Header */}
       <div className="text-center py-2">
-        <PartyPopper className="w-10 h-10 text-[#FF0099] mx-auto mb-2" />
+        <PartyPopper className="w-10 h-10 text-[#00ABFF] mx-auto mb-2" />
         <h2 className="text-white text-lg font-bold">Session Complete</h2>
         <p className="text-white/40 text-sm flex items-center justify-center gap-1 mt-1">
           <Clock className="w-3.5 h-3.5" />
@@ -213,7 +213,7 @@ export default function SessionComplete({ sessionId, activities, elapsedSeconds,
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
           placeholder="How did the session go? Any breakthroughs or concerns?"
-          className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#FF0099] resize-y min-h-[60px]"
+          className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#00ABFF] resize-y min-h-[60px]"
         />
       </div>
 
@@ -229,7 +229,7 @@ export default function SessionComplete({ sessionId, activities, elapsedSeconds,
         <button
           onClick={handleSubmit}
           disabled={saving}
-          className="w-full py-4 bg-[#FF0099] text-white rounded-xl font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 min-h-[56px]"
+          className="w-full py-4 bg-[#00ABFF] text-white rounded-xl font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 min-h-[56px]"
         >
           {saving ? (
             <>

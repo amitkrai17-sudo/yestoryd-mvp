@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import CoachLayout from '@/components/layouts/CoachLayout';
 import SkillBoosterSection from '@/components/coach/SkillBoosterSection';
+import ParentCallSection from '@/components/coach/ParentCallSection';
 import { supabase } from '@/lib/supabase/client';
 import {
   Calendar,
@@ -265,7 +266,7 @@ export default function StudentDetailPage() {
     return (
       <CoachLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
         </div>
       </CoachLayout>
     );
@@ -287,7 +288,7 @@ export default function StudentDetailPage() {
         <div className="bg-surface-1 rounded-xl border border-border p-2.5 lg:p-4 mb-3 lg:mb-6">
           <div className="flex items-center gap-2.5 lg:gap-4">
             {/* Avatar */}
-            <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center text-white text-base lg:text-xl font-bold flex-shrink-0">
+            <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white text-base lg:text-xl font-bold flex-shrink-0">
               {student.child_name?.charAt(0) || 'S'}
             </div>
 
@@ -333,7 +334,7 @@ export default function StudentDetailPage() {
           <button
             onClick={() => setActiveTab('sessions')}
             className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'sessions' ? 'bg-[#FF0099] text-white' : 'text-text-tertiary'
+              activeTab === 'sessions' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -342,7 +343,7 @@ export default function StudentDetailPage() {
           <button
             onClick={() => setActiveTab('ai')}
             className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'ai' ? 'bg-[#FF0099] text-white' : 'text-text-tertiary'
+              activeTab === 'ai' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary'
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
@@ -351,7 +352,7 @@ export default function StudentDetailPage() {
           <button
             onClick={() => setActiveTab('history')}
             className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-colors ${
-              activeTab === 'history' ? 'bg-[#FF0099] text-white' : 'text-text-tertiary'
+              activeTab === 'history' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary'
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -372,7 +373,7 @@ export default function StudentDetailPage() {
               activeTab !== 'ai' ? 'hidden lg:block' : ''
             }`}>
               <div className="p-2.5 lg:p-3 border-b border-border flex items-center gap-2">
-                <Bot className="w-4 h-4 text-[#FF0099]" />
+                <Bot className="w-4 h-4 text-[#00ABFF]" />
                 <span className="text-xs lg:text-sm font-semibold text-white">AI Assistant</span>
                 <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded">RAG</span>
               </div>
@@ -401,7 +402,7 @@ export default function StudentDetailPage() {
                   chatMessages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs ${
-                        msg.role === 'user' ? 'bg-[#FF0099] text-white' : 'bg-surface-2 text-text-secondary'
+                        msg.role === 'user' ? 'bg-[#00ABFF] text-white' : 'bg-surface-2 text-text-secondary'
                       }`}>
                         {msg.content}
                       </div>
@@ -411,7 +412,7 @@ export default function StudentDetailPage() {
                 {chatLoading && (
                   <div className="flex justify-start">
                     <div className="bg-surface-2 rounded-lg px-2.5 py-1.5">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FF0099]" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00ABFF]" />
                     </div>
                   </div>
                 )}
@@ -426,12 +427,12 @@ export default function StudentDetailPage() {
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
                   placeholder="Ask..."
-                  className="flex-1 px-2.5 py-2 bg-surface-2 border border-border rounded-lg text-white text-xs placeholder-text-tertiary focus:outline-none focus:border-[#FF0099]"
+                  className="flex-1 px-2.5 py-2 bg-surface-2 border border-border rounded-lg text-white text-xs placeholder-text-tertiary focus:outline-none focus:border-[#00ABFF]"
                 />
                 <button
                   onClick={handleSendChat}
                   disabled={!chatInput.trim() || chatLoading}
-                  className="px-3 py-2 bg-[#FF0099] disabled:opacity-50 text-white rounded-lg"
+                  className="px-3 py-2 bg-[#00ABFF] disabled:opacity-50 text-white rounded-lg"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
@@ -602,7 +603,7 @@ export default function StudentDetailPage() {
                             {details.next_session_focus && (
                               <div className="flex justify-between pt-1 border-t border-border">
                                 <span className="text-text-tertiary">Next</span>
-                                <span className="text-[#FF0099]">{details.next_session_focus}</span>
+                                <span className="text-[#00ABFF]">{details.next_session_focus}</span>
                               </div>
                             )}
                           </div>
@@ -623,6 +624,16 @@ export default function StudentDetailPage() {
                 coachId={coach.id}
                 skillBoosterUsed={enrollment.remedial_sessions_used || 0}
                 skillBoosterMax={enrollment.remedial_sessions_max || 3}
+                onSuccess={loadStudentData}
+              />
+            )}
+
+            {/* Parent Calls */}
+            {enrollment && enrollment.status === 'active' && (
+              <ParentCallSection
+                enrollmentId={enrollment.id}
+                childName={student.child_name}
+                coachId={coach.id}
                 onSuccess={loadStudentData}
               />
             )}

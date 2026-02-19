@@ -346,7 +346,7 @@ async function synthesizeLearningProfile(
         .eq('status', 'completed');
 
       sessionsCompleted = count || 0;
-      sessionsRemaining = Math.max(0, (enrollment.total_sessions || 9) - sessionsCompleted);
+      sessionsRemaining = Math.max(0, (enrollment.total_sessions || 9 /* V1 fallback */) - sessionsCompleted);
     }
   } catch {
     // Non-fatal

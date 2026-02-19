@@ -61,7 +61,7 @@ export default function CompletionPage() {
 
       // Check if actually completed
       if (!result.eligible && result.reason !== 'already_completed') {
-        setError(`Program not yet complete. ${result.progress?.completed || 0}/${result.progress?.total || 9} sessions done.`);
+        setError(`Program not yet complete. ${result.progress?.completed || 0}/${result.progress?.total || 9 /* V1 fallback */} sessions done.`);
         setLoading(false);
         return;
       }
@@ -80,7 +80,7 @@ export default function CompletionPage() {
         completedAt: enrollData.data?.completed_at || new Date().toISOString(),
         programStart: result.enrollment?.programStart || '',
         programEnd: result.enrollment?.programEnd || '',
-        sessionsCompleted: result.progress?.completed || 9,
+        sessionsCompleted: result.progress?.completed || 9, /* V1 fallback */
       });
 
       // Check for existing referral code
@@ -149,7 +149,7 @@ export default function CompletionPage() {
 
   function handleShareWhatsApp() {
     const message = encodeURIComponent(
-      `${data?.childName} just completed Yestoryd's 3-month reading program!\n\n` +
+      `${data?.childName} just completed Yestoryd's 12-week reading program!\n\n` +
       `Use my referral code *${referralCode}* to get 10% OFF when you enroll.\n\n` +
       `Take the FREE reading assessment: https://yestoryd.com/assessment?ref=${referralCode}\n\n` +
       `Trust me, it's worth it!`
@@ -230,7 +230,7 @@ export default function CompletionPage() {
             Congratulations, {data?.childName}!
           </h1>
           <p className="text-lg text-text-secondary">
-            You&apos;ve successfully completed the 3-month reading program
+            You&apos;ve successfully completed the 12-week reading program
           </p>
         </div>
 

@@ -47,7 +47,7 @@ export default function TestSessionFormPage() {
               setShowForm(true);
               setCompleted(false);
             }}
-            className="px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/80 transition-all"
+            className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/80 transition-all"
           >
             Open Form
           </button>
@@ -83,7 +83,7 @@ export default function TestSessionFormPage() {
                 }}
                 className={`px-3 py-1.5 rounded text-sm transition-all ${
                   testAge === age && showForm
-                    ? 'bg-[#FF0099] text-white'
+                    ? 'bg-[#00ABFF] text-white'
                     : 'bg-surface-2 text-text-secondary hover:bg-surface-3'
                 }`}
               >
@@ -101,27 +101,27 @@ export default function TestSessionFormPage() {
           <p className="text-sm font-semibold text-white mb-3">Features to Test:</p>
           <ul className="text-sm text-text-tertiary space-y-1">
             <li className="flex items-start gap-2">
-              <span className="text-[#FF0099]">1.</span>
+              <span className="text-[#00ABFF]">1.</span>
               <span>Step 1: Rating scale and focus area selection (filtered by age)</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#FF0099]">2.</span>
+              <span className="text-[#00ABFF]">2.</span>
               <span>Step 2: Contextual quick-picks for highlights and challenges</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#FF0099]">3.</span>
+              <span className="text-[#00ABFF]">3.</span>
               <span>Step 2: Skills grouped by level (Foundation/Building/Advanced)</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#FF0099]">4.</span>
+              <span className="text-[#00ABFF]">4.</span>
               <span>Step 3: AI suggestion based on progress level</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#FF0099]">5.</span>
+              <span className="text-[#00ABFF]">5.</span>
               <span>Step 3: Homework templates based on focus area</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#FF0099]">6.</span>
+              <span className="text-[#00ABFF]">6.</span>
               <span>Step 4: Review summary with all data</span>
             </li>
           </ul>

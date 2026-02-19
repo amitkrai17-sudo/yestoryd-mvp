@@ -112,7 +112,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
 
       // Find enrolled children - try by parent_id first, then by email
       let childrenList: ChildInfo[] = [];
-      
+
       if (parentId) {
         const { data: childrenByParentId } = await supabase
           .from('children')
@@ -120,7 +120,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
           .eq('parent_id', parentId)
           .eq('lead_status', 'enrolled')
           .order('enrolled_at', { ascending: false });
-        
+
         if (childrenByParentId && childrenByParentId.length > 0) {
           childrenList = childrenByParentId as any;
         }
@@ -134,7 +134,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
           .eq('parent_email', user.email ?? '')
           .eq('lead_status', 'enrolled')
           .order('enrolled_at', { ascending: false });
-        
+
         if (childrenByEmail && childrenByEmail.length > 0) {
           childrenList = childrenByEmail as any;
         }
@@ -145,7 +145,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
       if (childrenList.length > 0) {
         // Keep ALL enrolled children (no deduplication)
         setEnrolledChildren(childrenList);
-        
+
         // Select the first (most recent) child by default
         const selectedChild = childrenList[0];
         setSelectedChildId(selectedChild.id);
@@ -173,10 +173,10 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
           setEnrollmentId(enrollment.id);
           if (enrollment.coaches) {
             // Handle coaches - it might be an array or single object
-            const coachData = Array.isArray(enrollment.coaches) 
-              ? enrollment.coaches[0] 
+            const coachData = Array.isArray(enrollment.coaches)
+              ? enrollment.coaches[0]
               : enrollment.coaches;
-            
+
             if (coachData) {
               setCoachName(coachData.name || 'Rucha');
               setCoachPhone(coachData.phone || '918976287997');
@@ -197,7 +197,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
     setChildId(child.id);
     setChildName(child.name || 'Child');
     setShowChildSelector(false);
-    
+
     // Update enrollment info for selected child
     const { data: enrollment } = await supabase
       .from('enrollments')
@@ -216,10 +216,10 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
       setEnrollmentId(enrollment.id);
       if (enrollment.coaches) {
         // Handle coaches - it might be an array or single object
-        const coachData = Array.isArray(enrollment.coaches) 
-          ? enrollment.coaches[0] 
+        const coachData = Array.isArray(enrollment.coaches)
+          ? enrollment.coaches[0]
           : enrollment.coaches;
-        
+
         if (coachData) {
           setCoachName(coachData.name || 'Rucha');
           setCoachPhone(coachData.phone || '918976287997');
@@ -250,51 +250,51 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
 
   return (
     <ParentContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-surface-0">
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
         <aside
-          className={`fixed top-0 left-0 z-50 h-full w-72 bg-white border-r border-gray-100 shadow-lg transform transition-transform duration-300 ease-out lg:translate-x-0 ${
+          className={`fixed top-0 left-0 z-50 h-full w-72 bg-surface-1 border-r border-white/[0.08] shadow-xl shadow-black/30 transform transition-transform duration-300 ease-out lg:translate-x-0 ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
           <div className="flex flex-col h-full">
             {/* Logo */}
-            <div className="p-6 border-b border-gray-100">
+            <div className="p-6 border-b border-white/[0.08]">
               <div className="flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2">
-                  <Image 
-                    src="/images/logo.png" 
-                    alt="Yestoryd" 
-                    width={140} 
+                  <Image
+                    src="/images/logo.png"
+                    alt="Yestoryd"
+                    width={140}
                     height={40}
                     className="h-10 w-auto"
                   />
                 </Link>
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="lg:hidden p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                  className="lg:hidden p-2 text-text-tertiary hover:text-white rounded-lg hover:bg-white/[0.05]"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-[#7b008b] mt-1 font-medium">Parent Portal</p>
+              <p className="text-xs text-[#FF0099] mt-1 font-medium">Parent Portal</p>
             </div>
 
             {/* Child Selector */}
             {childName && (
               <div className="mx-4 mt-4 relative">
-                <button 
+                <button
                   onClick={() => hasMultipleChildren && setShowChildSelector(!showChildSelector)}
-                  className={`w-full p-4 bg-gradient-to-br from-[#7b008b]/5 to-[#7b008b]/10 border border-[#7b008b]/20 rounded-xl transition-all text-left ${
-                    hasMultipleChildren ? 'cursor-pointer hover:border-[#7b008b]/40' : ''
+                  className={`w-full p-4 bg-gradient-to-br from-[#FF0099]/5 to-[#FF0099]/10 border border-[#FF0099]/20 rounded-xl transition-all text-left ${
+                    hasMultipleChildren ? 'cursor-pointer hover:border-[#FF0099]/40' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -303,43 +303,43 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
                         <span className="text-xl text-white font-bold">{childName.charAt(0).toUpperCase()}</span>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{childName}</p>
-                        <p className="text-sm text-[#7b008b]">
+                        <p className="font-semibold text-white">{childName}</p>
+                        <p className="text-sm text-[#FF0099]">
                           {hasMultipleChildren ? `${enrolledChildren.length} children enrolled` : 'Active Program'}
                         </p>
                       </div>
                     </div>
                     {hasMultipleChildren && (
-                      <ChevronDown className={`w-5 h-5 text-[#7b008b] transition-transform ${showChildSelector ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-5 h-5 text-[#FF0099] transition-transform ${showChildSelector ? 'rotate-180' : ''}`} />
                     )}
                   </div>
                 </button>
-                
+
                 {/* Child dropdown */}
                 {showChildSelector && hasMultipleChildren && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
-                    <div className="p-2 bg-gray-50 border-b border-gray-100">
-                      <p className="text-xs text-gray-500 font-medium px-2">Select a child</p>
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-surface-2 border border-white/[0.08] rounded-xl shadow-xl shadow-black/20 overflow-hidden z-50">
+                    <div className="p-2 bg-surface-3 border-b border-white/[0.08]">
+                      <p className="text-xs text-text-tertiary font-medium px-2">Select a child</p>
                     </div>
                     {enrolledChildren.map((child) => (
                       <button
                         key={child.id}
                         onClick={() => handleChildSelect(child)}
-                        className={`w-full px-4 py-3 text-left hover:bg-[#7b008b]/5 transition-colors flex items-center gap-3 ${
-                          child.id === selectedChildId ? 'bg-[#7b008b]/5' : ''
+                        className={`w-full px-4 py-3 text-left hover:bg-white/[0.05] transition-colors flex items-center gap-3 ${
+                          child.id === selectedChildId ? 'bg-[#FF0099]/5' : ''
                         }`}
                       >
                         <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-full flex items-center justify-center">
                           <span className="text-sm text-white font-bold">{child.name?.charAt(0).toUpperCase()}</span>
                         </div>
                         <div className="flex-1">
-                          <span className="font-medium text-gray-700 block">{child.name}</span>
-                          <span className="text-xs text-gray-400">
+                          <span className="font-medium text-text-secondary block">{child.name}</span>
+                          <span className="text-xs text-text-tertiary">
                             Enrolled {child.enrolled_at ? new Date(child.enrolled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
                           </span>
                         </div>
                         {child.id === selectedChildId && (
-                          <span className="text-xs bg-[#7b008b] text-white px-2 py-1 rounded-full">Current</span>
+                          <span className="text-xs bg-[#FF0099] text-white px-2 py-1 rounded-full">Current</span>
                         )}
                       </button>
                     ))}
@@ -359,8 +359,8 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? 'bg-[#7b008b] text-white shadow-lg shadow-[#7b008b]/30'
-                        : 'text-gray-600 hover:bg-[#7b008b]/5 hover:text-[#7b008b]'
+                        ? 'bg-[#FF0099]/10 text-[#FF0099]'
+                        : 'text-text-secondary hover:bg-white/[0.05] hover:text-white'
                     }`}
                   >
                     <item.icon className="w-5 h-5" />
@@ -371,19 +371,19 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
             </nav>
 
             {/* User Info */}
-            <div className="p-4 border-t border-gray-100">
+            <div className="p-4 border-t border-white/[0.08]">
               <div className="flex items-center gap-3 px-4 py-3">
-                <div className="w-10 h-10 bg-[#7b008b]/10 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-[#7b008b]" />
+                <div className="w-10 h-10 bg-[#FF0099]/10 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-[#FF0099]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-800 truncate">{parentName}</p>
-                  <p className="text-xs text-[#7b008b] truncate">{parentEmail}</p>
+                  <p className="font-medium text-white truncate">{parentName}</p>
+                  <p className="text-xs text-[#FF0099] truncate">{parentEmail}</p>
                 </div>
               </div>
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors mt-2"
+                className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-colors mt-2"
               >
                 <LogOut className="w-5 h-5" />
                 <span className="font-medium">Sign Out</span>
@@ -395,19 +395,19 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
         {/* Main Content */}
         <div className="lg:pl-72">
           {/* Mobile Header */}
-          <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-100">
+          <header className="lg:hidden sticky top-0 z-30 bg-surface-1 border-b border-white/[0.08]">
             <div className="flex items-center justify-between px-4 py-3">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-2 text-gray-600 hover:text-[#7b008b] hover:bg-[#7b008b]/5 rounded-lg"
+                className="p-2 text-text-secondary hover:text-[#FF0099] hover:bg-[#FF0099]/5 rounded-lg"
               >
                 <Menu className="w-6 h-6" />
               </button>
               <Link href="/">
-                <Image 
-                  src="/images/logo.png" 
-                  alt="Yestoryd" 
-                  width={100} 
+                <Image
+                  src="/images/logo.png"
+                  alt="Yestoryd"
+                  width={100}
                   height={32}
                   className="h-8 w-auto"
                 />
@@ -416,7 +416,7 @@ export default function ParentLayout({ children }: ParentLayoutProps) {
             </div>
           </header>
 
-          <main className="p-4 lg:p-8 bg-gray-50/50 min-h-screen">{children}</main>
+          <main className="p-4 lg:p-8 min-h-screen">{children}</main>
         </div>
 
         {/* rAI Chat Widget - Shows on all pages */}

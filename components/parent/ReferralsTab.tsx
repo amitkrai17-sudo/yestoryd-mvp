@@ -54,17 +54,17 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
         body: JSON.stringify({ productType: 'coaching' }),
       });
       const result = await res.json();
-      
+
       if (result.success) {
         const programPrice = result.breakdown.originalAmount;
-        
+
         // Fetch referral percentage from settings
         const settingsRes = await fetch('/api/admin/settings?categories=referral');
         const settingsData = await settingsRes.json();
-        
+
         let creditPercent = 10;
         let discountPercent = 10;
-        
+
         settingsData.settings?.forEach((s: { key: string; value: string }) => {
           const val = String(s.value).replace(/"/g, '');
           if (s.key === 'parent_referral_credit_percent' || s.key === 'referral_credit_percent') {
@@ -74,7 +74,7 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
             discountPercent = parseInt(val) || 10;
           }
         });
-        
+
         const creditAmount = Math.round((programPrice * creditPercent) / 100);
         setConfig({ creditAmount, discountPercent });
       }
@@ -87,7 +87,7 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
     try {
       const res = await fetch(`/api/parent/referral?email=${encodeURIComponent(parentEmail)}`);
       const result = await res.json();
-      
+
       if (res.ok && result.success) {
         setData(result.data);
       } else {
@@ -104,16 +104,16 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
   async function generateReferralCode() {
     setGenerating(true);
     setError('');
-    
+
     try {
       const res = await fetch('/api/parent/referral/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: parentEmail }),
       });
-      
+
       const result = await res.json();
-      
+
       if (res.ok && result.success) {
         setData(result.data);
       } else {
@@ -163,7 +163,7 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#7b008b] mx-auto mb-4" />
-          <p className="text-gray-500">Loading referral data...</p>
+          <p className="text-text-tertiary">Loading referral data...</p>
         </div>
       </div>
     );
@@ -178,14 +178,14 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
           <div className="w-20 h-20 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Gift className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+          <h2 className="text-2xl font-bold text-white mb-3">
             Refer Friends, Earn {formatCredit(config.creditAmount)}!
           </h2>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Share your love for Yestoryd! When your friends enroll using your code, 
+          <p className="text-text-secondary mb-6 max-w-md mx-auto">
+            Share your love for Yestoryd! When your friends enroll using your code,
             you get {formatCredit(config.creditAmount)} credit and they get {config.discountPercent}% off.
           </p>
-          
+
           <button
             onClick={generateReferralCode}
             disabled={generating}
@@ -203,41 +203,41 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
               </>
             )}
           </button>
-          
+
           {error && (
-            <p className="mt-4 text-red-500 text-sm">{error}</p>
+            <p className="mt-4 text-red-400 text-sm">{error}</p>
           )}
         </div>
 
         {/* How It Works */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="font-bold text-gray-900 mb-4">How It Works</h3>
+        <div className="bg-surface-2 rounded-2xl border border-[#7b008b]/20 p-6">
+          <h3 className="font-bold text-white mb-4">How It Works</h3>
           <div className="grid gap-4">
             <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-pink-500/20 text-pink-400 rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 1
               </div>
               <div>
-                <p className="font-medium text-gray-900">Get Your Code</p>
-                <p className="text-sm text-gray-500">Generate your unique referral code</p>
+                <p className="font-medium text-white">Get Your Code</p>
+                <p className="text-sm text-text-tertiary">Generate your unique referral code</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-purple-500/20 text-purple-400 rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 2
               </div>
               <div>
-                <p className="font-medium text-gray-900">Share With Friends</p>
-                <p className="text-sm text-gray-500">They get {config.discountPercent}% off on enrollment</p>
+                <p className="font-medium text-white">Share With Friends</p>
+                <p className="text-sm text-text-tertiary">They get {config.discountPercent}% off on enrollment</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 3
               </div>
               <div>
-                <p className="font-medium text-gray-900">Earn {formatCredit(config.creditAmount)} Credit</p>
-                <p className="text-sm text-gray-500">Use for e-learning or re-enrollment</p>
+                <p className="font-medium text-white">Earn {formatCredit(config.creditAmount)} Credit</p>
+                <p className="text-sm text-text-tertiary">Use for e-learning or re-enrollment</p>
               </div>
             </div>
           </div>
@@ -256,8 +256,8 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
             <Gift className="w-6 h-6 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm text-gray-500">Your Referral Code</p>
-            <p className="text-lg sm:text-xl font-bold text-gray-900 font-mono tracking-wider break-all">{data.referralCode}</p>
+            <p className="text-sm text-text-tertiary">Your Referral Code</p>
+            <p className="text-lg sm:text-xl font-bold text-white font-mono tracking-wider break-all">{data.referralCode}</p>
           </div>
         </div>
 
@@ -265,9 +265,9 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
         <div className="flex flex-wrap gap-2">
           <button
             onClick={copyToClipboard}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-surface-2 border border-white/[0.08] rounded-xl font-medium text-text-secondary hover:bg-surface-1 transition-all"
           >
-            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
             {copied ? 'Copied!' : 'Copy Code'}
           </button>
           <button
@@ -281,7 +281,7 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
 
         <button
           onClick={copyShareLink}
-          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 text-[#7b008b] text-sm font-medium hover:bg-white/50 rounded-lg transition-all"
+          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 text-[#ff0099] text-sm font-medium hover:bg-white/5 rounded-lg transition-all"
         >
           <Share2 className="w-4 h-4" />
           Copy Share Link
@@ -291,14 +291,14 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4">
         {/* Credit Balance */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-green-600 mb-2">
+        <div className="bg-surface-2 rounded-xl border border-[#7b008b]/20 p-4">
+          <div className="flex items-center gap-2 text-green-400 mb-2">
             <IndianRupee className="w-4 h-4" />
             <span className="text-sm font-medium">Credit Balance</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">₹{data.creditBalance}</p>
+          <p className="text-2xl font-bold text-white">{formatCredit(data.creditBalance)}</p>
           {data.creditExpiry && (
-            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+            <p className="text-xs text-text-tertiary mt-1 flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Expires: {new Date(data.creditExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
             </p>
@@ -306,13 +306,13 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
         </div>
 
         {/* Successful Referrals */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-purple-600 mb-2">
+        <div className="bg-surface-2 rounded-xl border border-[#7b008b]/20 p-4">
+          <div className="flex items-center gap-2 text-purple-400 mb-2">
             <Users className="w-4 h-4" />
             <span className="text-sm font-medium">Referrals</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{data.successfulReferrals}</p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-2xl font-bold text-white">{data.successfulReferrals}</p>
+          <p className="text-xs text-text-tertiary mt-1">
             {data.pendingReferrals > 0 ? `${data.pendingReferrals} pending` : 'Successful enrollments'}
           </p>
         </div>
@@ -320,57 +320,57 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
 
       {/* Total Earned Card */}
       {data.totalEarned > 0 && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4">
+        <div className="bg-green-500/10 rounded-xl border border-green-500/30 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-600 font-medium">Total Earned</p>
-              <p className="text-3xl font-bold text-green-700">₹{data.totalEarned}</p>
+              <p className="text-sm text-green-400 font-medium">Total Earned</p>
+              <p className="text-3xl font-bold text-green-400">{formatCredit(data.totalEarned)}</p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <IndianRupee className="w-6 h-6 text-green-600" />
+            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+              <IndianRupee className="w-6 h-6 text-green-400" />
             </div>
           </div>
         </div>
       )}
 
       {/* How to Use Credit */}
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="bg-surface-2 rounded-xl border border-[#7b008b]/20 p-6">
+        <h3 className="font-bold text-white mb-4 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-[#ff0099]" />
           Use Your Credit
         </h3>
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-surface-1 rounded-lg">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Gift className="w-5 h-5 text-purple-600" />
+              <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <Gift className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">Re-enrollment</p>
-                <p className="text-xs text-gray-500">Apply to next coaching program</p>
+                <p className="font-medium text-white">Re-enrollment</p>
+                <p className="text-xs text-text-tertiary">Apply to next coaching program</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+            <ChevronRight className="w-5 h-5 text-text-tertiary" />
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-surface-1 rounded-lg">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-400" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">E-Learning</p>
-                <p className="text-xs text-gray-500">Subscribe to video library</p>
+                <p className="font-medium text-white">E-Learning</p>
+                <p className="text-xs text-text-tertiary">Subscribe to video library</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+            <ChevronRight className="w-5 h-5 text-text-tertiary" />
           </div>
         </div>
       </div>
 
       {/* Share Prompt */}
-      <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-        <p className="text-base text-yellow-800">
+      <div className="bg-yellow-500/10 rounded-xl border border-yellow-500/30 p-4 flex items-start gap-3">
+        <Sparkles className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+        <p className="text-base text-yellow-300">
           <strong>Tip:</strong> The more you share, the more you earn!
           Each successful referral = {formatCredit(config.creditAmount)} credit.
         </p>

@@ -9,6 +9,7 @@ import { timedQuery } from '@/lib/db-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
+import { queueProgressPulse } from '@/lib/qstash';
 
 export const dynamic = 'force-dynamic';
 
@@ -228,6 +229,75 @@ export async function POST(
       console.log(`[SESSION_COMPLETE] Daily tasks generated: ${taskResult.inserted}`);
     } catch (taskError) {
       console.error('[SESSION_COMPLETE] Daily task generation failed:', taskError);
+    }
+
+    // Progress Pulse check — queue report after every N sessions
+    try {
+      // Count total completed coaching sessions for this child
+      const { count: completedCount } = await supabase
+        .from('scheduled_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('child_id', session.child_id!)
+        .eq('status', 'completed')
+        .in('session_type', ['coaching', 'online']);
+
+      if (completedCount && completedCount > 0) {
+        // Get enrollment + age_band_config to find pulse interval
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('id, age_band')
+          .eq('child_id', session.child_id!)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+
+        if (enrollment?.age_band) {
+          const { data: bandConfig } = await supabase
+            .from('age_band_config')
+            .select('progress_pulse_interval')
+            .eq('id', enrollment.age_band)
+            .single();
+
+          const pulseInterval = bandConfig?.progress_pulse_interval;
+
+          if (pulseInterval && pulseInterval > 0 && completedCount % pulseInterval === 0) {
+            // Fetch child + parent details for the pulse job
+            const { data: childInfo } = await supabase
+              .from('children')
+              .select('child_name, parent_phone, parent_email, parent_id')
+              .eq('id', session.child_id!)
+              .single();
+
+            let parentName: string | undefined;
+            if (childInfo?.parent_id) {
+              const { data: parent } = await supabase
+                .from('parents')
+                .select('name')
+                .eq('id', childInfo.parent_id)
+                .single();
+              parentName = parent?.name ?? undefined;
+            }
+
+            await queueProgressPulse({
+              enrollmentId: enrollment.id,
+              childId: session.child_id!,
+              childName: childInfo?.child_name || 'Student',
+              coachId: session.coach_id!,
+              completedCount,
+              pulseInterval,
+              parentPhone: childInfo?.parent_phone ?? undefined,
+              parentEmail: childInfo?.parent_email ?? undefined,
+              parentName,
+              requestId: crypto.randomUUID(),
+            });
+
+            console.log(`[SESSION_COMPLETE] Progress Pulse queued: session ${completedCount}, interval ${pulseInterval}`);
+          }
+        }
+      }
+    } catch (pulseError) {
+      // Non-blocking — pulse failure should never block session completion
+      console.error('[SESSION_COMPLETE] Progress Pulse check failed:', pulseError);
     }
 
     const duration = Date.now() - startTime;

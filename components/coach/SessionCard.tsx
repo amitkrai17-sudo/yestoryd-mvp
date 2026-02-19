@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
+import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';
 
 interface Session {
   id: string;
@@ -57,16 +58,8 @@ function isWithinMinutes(dateStr: string, timeStr: string, minutes: number): boo
 }
 
 function getSessionTypeLabel(type: string): string {
-  switch (type) {
-    case 'coaching':
-      return 'Coaching';
-    case 'parent_checkin':
-      return 'Parent Check-in';
-    case 'remedial':
-      return 'Skill Booster';
-    default:
-      return type;
-  }
+  if (type === 'remedial') return _getLabel('skill_booster');
+  return _getLabel(type);
 }
 
 export function SessionCard({
@@ -110,7 +103,7 @@ export function SessionCard({
       return (
         <button
           onClick={onParentUpdate}
-          className="flex items-center gap-1.5 lg:gap-2 bg-[#FF0099] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-[#FF0099]/90 transition-colors"
+          className="flex items-center gap-1.5 lg:gap-2 bg-[#00ABFF] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
         >
           <MessageSquare className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span className="hidden sm:inline">Update</span>
@@ -215,7 +208,7 @@ export function SessionCard({
     <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-3 hover:border-gray-700 transition-colors w-full overflow-hidden">
       <div className="flex items-center gap-2.5 w-full">
         {/* Avatar - smaller on mobile */}
-        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0">
+        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0">
           {session.child_name.charAt(0).toUpperCase()}
         </div>
 

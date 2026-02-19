@@ -17,7 +17,7 @@ import {
 
 // YESTORYD BRAND COLORS
 const COLORS = {
-  hotPink: '#FF0099',
+  hotPink: '#00ABFF',
   electricBlue: '#00ABFF',
   yellow: '#FFDE00',
   deepPurple: '#7B008B',

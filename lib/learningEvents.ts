@@ -226,3 +226,60 @@ export async function saveMilestoneToLearningEvents(
 
   return data;
 }
+
+/**
+ * Save progress pulse to learning_events for RAG + parent display
+ */
+export async function saveProgressPulseToLearningEvents(
+  childId: string,
+  pulseData: {
+    pulse_number: number;
+    completed_sessions: number;
+    overall_progress: string;
+    confidence_trend: string;
+    headline: string;
+    parent_summary: string;
+    strengths: string[];
+    focus_areas: string[];
+    home_activities: string[];
+    coach_notes: string;
+    milestone_reached?: string;
+    enrollment_id: string;
+  },
+  coachId?: string
+) {
+  const summaryPrompt = `Summarize this progress report in 1-2 sentences:
+Progress: ${pulseData.overall_progress}
+Headline: ${pulseData.headline}
+Strengths: ${pulseData.strengths.join(', ')}
+Focus areas: ${pulseData.focus_areas.join(', ')}
+${pulseData.milestone_reached ? `Milestone: ${pulseData.milestone_reached}` : ''}`;
+
+  const aiSummary = await generateAISummary(summaryPrompt);
+
+  const searchableText = `progress pulse report ${pulseData.headline} progress ${pulseData.overall_progress} confidence ${pulseData.confidence_trend} strengths ${pulseData.strengths.join(' ')} focus ${pulseData.focus_areas.join(' ')} ${pulseData.milestone_reached || ''} ${aiSummary}`;
+
+  const embedding = await generateEmbedding(searchableText);
+
+  const { data, error } = await supabase
+    .from('learning_events')
+    .insert({
+      child_id: childId,
+      coach_id: coachId,
+      event_type: 'progress_pulse',
+      event_date: new Date().toISOString(),
+      data: pulseData,
+      event_data: pulseData,
+      ai_summary: aiSummary,
+      embedding: JSON.stringify(embedding) as any,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Failed to save progress pulse to learning_events:', error);
+    throw error;
+  }
+
+  return data;
+}

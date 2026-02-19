@@ -96,7 +96,7 @@ export default function DiagnosticForm({
                   onClick={() => toggleMultiSelect(field.key, opt.value)}
                   className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
                     selected
-                      ? 'bg-[#FF0099]/20 text-[#FF0099] border-[#FF0099]/30'
+                      ? 'bg-[#00ABFF]/20 text-[#00ABFF] border-[#00ABFF]/30'
                       : 'bg-surface-2 text-text-tertiary border-border'
                   }`}
                 >
@@ -208,7 +208,7 @@ export default function DiagnosticForm({
       <button
         type="submit"
         disabled={saving}
-        className="w-full py-3 bg-[#FF0099] hover:bg-[#FF0099]/90 text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+        className="w-full py-3 bg-[#00ABFF] hover:bg-[#00ABFF]/90 text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
       >
         {saving ? (
           <>

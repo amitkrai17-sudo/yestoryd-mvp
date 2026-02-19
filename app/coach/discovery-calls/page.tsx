@@ -68,7 +68,7 @@ export default function CoachDiscoveryCallsPage() {
     if (call.converted_to_enrollment) return { text: 'Enrolled ?', color: 'text-green-600' };
     if (call.followup_sent_at) return { text: 'Followed Up', color: 'text-purple-600' };
     if (call.payment_link_sent_at) return { text: 'Payment Sent', color: 'text-blue-600' };
-    if (call.status === 'completed') return { text: 'Fill Form', color: 'text-[#FF0099]' };
+    if (call.status === 'completed') return { text: 'Fill Form', color: 'text-[#00ABFF]' };
     if (call.status === 'scheduled') return { text: 'View', color: 'text-blue-600' };
     return { text: 'View', color: 'text-gray-400' };
   };
@@ -80,8 +80,8 @@ export default function CoachDiscoveryCallsPage() {
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-lg lg:text-xl font-bold text-white flex items-center gap-2">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#FF0099]/20 rounded-lg lg:rounded-xl flex items-center justify-center">
-              <Phone className="w-4 h-4 lg:w-5 lg:h-5 text-[#FF0099]" />
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg lg:rounded-xl flex items-center justify-center">
+              <Phone className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
             </div>
             Discovery Calls
           </h1>
@@ -102,7 +102,7 @@ export default function CoachDiscoveryCallsPage() {
           { label: 'Total', value: calls.length, icon: Users, color: 'bg-blue-500' },
           { label: 'Scheduled', value: calls.filter(c => c.status === 'scheduled').length, icon: Calendar, color: 'bg-purple-500' },
           { label: 'Completed', value: calls.filter(c => c.status === 'completed').length, icon: Clock, color: 'bg-green-500' },
-          { label: 'Converted', value: calls.filter(c => c.converted_to_enrollment).length, icon: Users, color: 'bg-[#FF0099]' },
+          { label: 'Converted', value: calls.filter(c => c.converted_to_enrollment).length, icon: Users, color: 'bg-[#00ABFF]' },
         ].map((s, i) => (
           <div key={i} className="bg-surface-1 rounded-xl border border-border p-2.5 lg:p-4 flex items-center gap-2 lg:gap-3">
             <div className={`w-8 h-8 lg:w-10 lg:h-10 ${s.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -128,7 +128,7 @@ export default function CoachDiscoveryCallsPage() {
             onClick={() => setFilter(tab.key)}
             className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg font-medium whitespace-nowrap text-xs lg:text-sm transition-colors flex-shrink-0 ${
               filter === tab.key
-                ? 'bg-[#FF0099] text-white'
+                ? 'bg-[#00ABFF] text-white'
                 : 'bg-surface-1 text-text-tertiary hover:bg-surface-2 border border-border'
             }`}
           >
@@ -140,7 +140,7 @@ export default function CoachDiscoveryCallsPage() {
       {/* Loading */}
       {loading && (
         <div className="flex justify-center py-8 lg:py-12">
-          <RefreshCw className="w-5 h-5 lg:w-6 lg:h-6 animate-spin text-[#FF0099]" />
+          <RefreshCw className="w-5 h-5 lg:w-6 lg:h-6 animate-spin text-[#00ABFF]" />
         </div>
       )}
 
@@ -161,10 +161,10 @@ export default function CoachDiscoveryCallsPage() {
                   <div className="flex items-center gap-2.5 lg:gap-3">
                     {/* Left: Score */}
                     <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      call.converted_to_enrollment ? 'bg-green-500/20' : 'bg-[#FF0099]/20'
+                      call.converted_to_enrollment ? 'bg-green-500/20' : 'bg-[#00ABFF]/20'
                     }`}>
                       <span className={`text-sm lg:text-lg font-bold ${
-                        call.converted_to_enrollment ? 'text-green-400' : 'text-[#FF0099]'
+                        call.converted_to_enrollment ? 'text-green-400' : 'text-[#00ABFF]'
                       }`}>
                         {call.assessment_score || '-'}
                       </span>

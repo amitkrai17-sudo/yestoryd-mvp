@@ -141,13 +141,13 @@ async function createCalendarEvent(
 
   const sessionTitle = session.sessionType === 'coaching'
     ? `📚 Coaching Session ${session.sessionNumber} - ${session.childName}`
-    : `👨‍👩‍👧 Parent Check-in ${session.sessionNumber} - ${session.childName}`;
+    : `👨‍👩‍👧 Parent Check-in - ${session.childName}`;
 
   const description = session.sessionType === 'coaching'
     ? `Yestoryd Reading Coaching Session
-    
+
 Child: ${session.childName}
-Session: ${session.sessionNumber} of 6
+Session: ${session.sessionNumber}
 Week: ${session.weekNumber}
 
 Join via Google Meet link above.
@@ -155,7 +155,6 @@ Coach notes will be shared after the session.`
     : `Yestoryd Parent Check-in
 
 Child: ${session.childName}
-Check-in: ${session.sessionNumber} of 3
 Week: ${session.weekNumber}
 
 Discuss your child's progress and address any questions.`;
@@ -349,7 +348,8 @@ export async function cancelAllChildSessions(
 // ==================== SCHEDULE GENERATION ====================
 
 /**
- * Generate session schedule for a 12-week program
+ * @deprecated LEGACY — V3 scheduling uses enrollment-scheduler.ts with weekly_pattern
+ * Generate session schedule for a 12-week program (legacy flat 6+3 layout)
  */
 export function generateSessionSchedule(
   enrollmentDate: Date,
@@ -359,10 +359,8 @@ export function generateSessionSchedule(
 ): Date[] {
   const sessions: Date[] = [];
   const startDate = new Date(enrollmentDate);
-  
-  // 12-week program: 6 coaching sessions + 3 parent check-ins
-  // Coaching: Weeks 1, 2, 4, 6, 8, 10
-  // Parent check-in: Weeks 4, 8, 12
+
+  // LEGACY: 6 coaching + 3 parent check-ins over 12 weeks
   const coachingWeeks = [1, 2, 4, 6, 8, 10];
   const checkinWeeks = [4, 8, 12];
   const allWeeks = Array.from(new Set([...coachingWeeks, ...checkinWeeks])).sort((a, b) => a - b);

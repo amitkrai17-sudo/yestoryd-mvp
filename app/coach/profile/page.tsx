@@ -158,7 +158,7 @@ export default function CoachProfilePage() {
       <CoachLayout>
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
-            <Loader2 className="w-10 h-10 animate-spin text-[#FF0099] mx-auto mb-4" />
+            <Loader2 className="w-10 h-10 animate-spin text-[#00ABFF] mx-auto mb-4" />
             <p className="text-gray-400">Loading profile...</p>
           </div>
         </div>
@@ -174,7 +174,7 @@ export default function CoachProfilePage() {
             <p className="text-red-400 mb-4">{error || 'Failed to load profile'}</p>
             <button
               onClick={fetchProfile}
-              className="px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/90"
+              className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/90"
             >
               Retry
             </button>
@@ -202,7 +202,7 @@ export default function CoachProfilePage() {
               className={`
                 flex-1 flex items-center justify-center gap-1.5 px-3 lg:px-4 py-2 lg:py-2.5 rounded-md text-xs lg:text-sm font-medium whitespace-nowrap transition-colors
                 ${activeTab === id
-                  ? 'bg-[#FF0099] text-white'
+                  ? 'bg-[#00ABFF] text-white'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                 }
               `}
@@ -234,7 +234,7 @@ export default function CoachProfilePage() {
         {activeTab === 'profile' && (
           <div className="space-y-4 lg:space-y-6">
             <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
-              <h2 className="text-sm lg:text-lg font-semibold mb-3 lg:mb-4 text-[#FF0099]">Basic Information</h2>
+              <h2 className="text-sm lg:text-lg font-semibold mb-3 lg:mb-4 text-[#00ABFF]">Basic Information</h2>
 
               <div className="space-y-4">
                 {/* Name */}
@@ -244,7 +244,7 @@ export default function CoachProfilePage() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => updateField('name', e.target.value)}
-                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#00ABFF] focus:border-[#00ABFF]"
                   />
                 </div>
 
@@ -256,7 +256,7 @@ export default function CoachProfilePage() {
                     onChange={(e) => updateField('bio', e.target.value)}
                     rows={3}
                     placeholder="Tell parents about your teaching experience..."
-                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099] resize-none"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#00ABFF] focus:border-[#00ABFF] resize-none"
                   />
                   <p className="text-[10px] lg:text-xs text-gray-500 mt-1">
                     {formData.bio.length}/500 characters
@@ -271,7 +271,7 @@ export default function CoachProfilePage() {
                     value={formData.whatsapp_number}
                     onChange={(e) => updateField('whatsapp_number', e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                    className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#00ABFF] focus:border-[#00ABFF]"
                   />
                 </div>
 
@@ -284,7 +284,7 @@ export default function CoachProfilePage() {
                       value={formData.city}
                       onChange={(e) => updateField('city', e.target.value)}
                       placeholder="Mumbai"
-                      className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                      className="w-full px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#00ABFF] focus:border-[#00ABFF]"
                     />
                   </div>
                   <div>
@@ -295,7 +295,7 @@ export default function CoachProfilePage() {
                       onChange={(e) => updateField('years_experience', parseInt(e.target.value) || 0)}
                       min={0}
                       max={50}
-                      className="w-full sm:w-32 px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                      className="w-full sm:w-32 px-3 lg:px-4 py-2.5 bg-surface-0 border border-border rounded-lg text-sm focus:ring-2 focus:ring-[#00ABFF] focus:border-[#00ABFF]"
                     />
                   </div>
                 </div>
@@ -304,7 +304,7 @@ export default function CoachProfilePage() {
 
             {/* Availability Status */}
             <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
-              <h2 className="text-sm lg:text-lg font-semibold mb-3 lg:mb-4 text-[#FF0099]">Availability Status</h2>
+              <h2 className="text-sm lg:text-lg font-semibold mb-3 lg:mb-4 text-[#00ABFF]">Availability Status</h2>
 
               <div className="space-y-3 lg:space-y-4">
                 {/* Is Available */}
@@ -362,7 +362,7 @@ export default function CoachProfilePage() {
           <div className="space-y-4 lg:space-y-6">
             {/* Skill Tags */}
             <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
-              <h2 className="text-sm lg:text-lg font-semibold mb-1 lg:mb-2 text-[#FF0099]">Teaching Skills</h2>
+              <h2 className="text-sm lg:text-lg font-semibold mb-1 lg:mb-2 text-[#00ABFF]">Teaching Skills</h2>
               <p className="text-xs lg:text-sm text-gray-400 mb-3 lg:mb-4">
                 Select skills to match with students who need your expertise.
               </p>
@@ -388,7 +388,7 @@ export default function CoachProfilePage() {
             <div className="bg-[#1a1a24] rounded-xl border border-gray-800 p-4 lg:p-6">
               <div className="flex items-center justify-between mb-3 lg:mb-4 gap-2">
                 <div className="min-w-0">
-                  <h2 className="text-sm lg:text-lg font-semibold text-[#FF0099]">Certifications</h2>
+                  <h2 className="text-sm lg:text-lg font-semibold text-[#00ABFF]">Certifications</h2>
                   <p className="text-xs lg:text-sm text-gray-400">Add your teaching certifications</p>
                 </div>
                 <button
@@ -448,7 +448,7 @@ export default function CoachProfilePage() {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full lg:w-auto lg:ml-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#FF0099] text-white text-sm lg:text-base font-medium rounded-xl hover:bg-[#FF0099]/90 disabled:bg-pink-800 disabled:cursor-not-allowed transition-colors"
+              className="w-full lg:w-auto lg:ml-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#00ABFF] text-white text-sm lg:text-base font-medium rounded-xl hover:bg-[#00ABFF]/90 disabled:bg-blue-800 disabled:cursor-not-allowed transition-colors"
             >
               {isSaving ? (
                 <>

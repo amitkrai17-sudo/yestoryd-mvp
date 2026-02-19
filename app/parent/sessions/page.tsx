@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import SessionActionsCard from '@/components/parent/SessionActionsCard';
+import { getSessionTypeLabel } from '@/lib/utils/session-labels';
 import { supabase } from '@/lib/supabase/client';
 
 interface Session {
@@ -112,7 +113,7 @@ export default function ParentSessionsPage() {
           .limit(1)
           .maybeSingle();
 
-        const total = enrollment?.total_sessions || 9;
+        const total = enrollment?.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
 
         const { data: sessionsData } = await supabase
           .from('scheduled_sessions')
@@ -195,7 +196,7 @@ export default function ParentSessionsPage() {
     if (session.is_diagnostic) return 'Diagnostic Session';
     if (session.session_type === 'remedial') return 'Skill Booster Session';
     if (session.session_type === 'coaching') return 'Coaching Session';
-    if (session.session_type === 'parent_checkin') return 'Parent Check-in';
+    if (session.session_type === 'parent_checkin') return getSessionTypeLabel('parent_checkin');
     return 'Session';
   }
 
@@ -442,7 +443,7 @@ export default function ParentSessionsPage() {
             </div>
             <div className="flex items-center gap-2 text-text-secondary">
               <Users className="w-4 h-4 text-[#FF0099]" />
-              <span><strong>Parent Check-in</strong> - 15 min</span>
+              <span><strong>Check-in (Legacy)</strong> - 15 min</span>
             </div>
             <div className="flex items-center gap-2 text-amber-400">
               <Zap className="w-4 h-4" />

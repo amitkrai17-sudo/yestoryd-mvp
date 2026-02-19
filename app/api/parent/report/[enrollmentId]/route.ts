@@ -144,7 +144,7 @@ export async function GET(
     }));
 
     const seasonNumber = enrollment.season_number || 1;
-    const totalSessions = enrollment.total_sessions || 9;
+    const totalSessions = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
 
     return NextResponse.json({
       success: true,

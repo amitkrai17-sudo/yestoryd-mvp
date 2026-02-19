@@ -55,7 +55,7 @@ const FAQ_DATA = [
   },
   {
     question: "How much time do I need to commit?",
-    answer: "Minimum 15-20 hours per month. Each child requires about 3-4 hours monthly (9 sessions over 3 months). You can start with just 5 children and grow from there."
+    answer: "Minimum 15-20 hours per month. Each child requires about 3-4 hours monthly (sessions spread over 12 weeks, tailored to age band). You can start with just 5 children and grow from there."
   },
   {
     question: "How does the revenue sharing work?",

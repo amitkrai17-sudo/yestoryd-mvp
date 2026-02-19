@@ -338,7 +338,7 @@ const Step3Planning: FC<Step3Props> = ({
               homeworkAssigned: e.target.checked,
               homeworkItems: e.target.checked ? formState.homeworkItems : [],
             })}
-            className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-[#FF0099] focus:ring-[#FF0099]"
+            className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-[#00ABFF] focus:ring-[#00ABFF]"
           />
           <div className="flex items-center gap-2">
             <Home className="w-5 h-5" style={{ color: BRAND_COLORS.yellow }} />
@@ -379,7 +379,7 @@ const Step3Planning: FC<Step3Props> = ({
               parentUpdateNeeded: e.target.checked,
               parentUpdateType: e.target.checked ? formState.parentUpdateType : null,
             })}
-            className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-[#FF0099] focus:ring-[#FF0099]"
+            className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-[#00ABFF] focus:ring-[#00ABFF]"
           />
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5" style={{ color: BRAND_COLORS.hotPink }} />

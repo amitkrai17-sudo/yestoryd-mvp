@@ -28,7 +28,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     key: 'elearning_quarterly_price',
     value: '999',
     label: 'E-Learning Quarterly',
-    description: '3-month e-learning subscription',
+    description: '12-week e-learning subscription',
     type: 'number',
     suffix: '₹',
     category: 'pricing',

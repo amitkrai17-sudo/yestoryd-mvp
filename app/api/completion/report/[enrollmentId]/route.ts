@@ -168,7 +168,7 @@ export async function POST(
     // Generate report using Gemini
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
-    const prompt = `You are an expert reading coach and child development specialist. Generate a comprehensive, warm, and encouraging progress report for a child who completed a 3-month reading coaching program.
+    const prompt = `You are an expert reading coach and child development specialist. Generate a comprehensive, warm, and encouraging progress report for a child who completed a 12-week reading coaching program.
 
 ## Child Information
 - Name: ${reportData.child.name}

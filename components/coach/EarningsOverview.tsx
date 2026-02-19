@@ -30,7 +30,7 @@ export default function EarningsOverview({
     return (
       <div className={`bg-gray-900 rounded-2xl p-8 ${className}`}>
         <div className="flex items-center justify-center gap-3 py-12">
-          <Loader2 className="w-6 h-6 text-pink-400 animate-spin" />
+          <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
           <span className="text-gray-400">Loading earnings data...</span>
         </div>
       </div>
@@ -106,8 +106,8 @@ export default function EarningsOverview({
       {/* Split Configuration */}
       <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 border border-gray-700/50">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center">
-            <Award className="w-6 h-6 text-pink-400" />
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+            <Award className="w-6 h-6 text-blue-400" />
           </div>
           <div>
             <h3 className="text-xl font-semibold text-white">Revenue Split Structure</h3>
@@ -198,13 +198,13 @@ export default function EarningsOverview({
               {products.map((product, index) => (
                 <tr
                   key={product.slug}
-                  className={`border-b border-gray-800 ${product.slug === 'full' ? 'bg-pink-500/5' : ''}`}
+                  className={`border-b border-gray-800 ${product.slug === 'full' ? 'bg-blue-500/5' : ''}`}
                 >
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white">{product.name}</span>
                       {product.slug === 'full' && (
-                        <span className="text-xs bg-pink-500/20 text-pink-400 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
                           Popular
                         </span>
                       )}
@@ -251,16 +251,16 @@ export default function EarningsOverview({
                 key={students}
                 className={`rounded-xl p-5 text-center transition-all ${
                   students === 10
-                    ? 'bg-gradient-to-br from-pink-500/20 to-purple-500/20 border-2 border-pink-500/30 scale-105'
+                    ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-blue-500/30 scale-105'
                     : 'bg-gray-800/50 border border-gray-700/50'
                 }`}
               >
                 <p className="text-sm text-gray-400 mb-1">{students} students/mo</p>
-                <p className={`text-2xl font-bold ${students === 10 ? 'text-pink-400' : 'text-white'}`}>
+                <p className={`text-2xl font-bold ${students === 10 ? 'text-blue-400' : 'text-white'}`}>
                   {scenarios.earnings[index].toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
                 </p>
                 {students === 10 && (
-                  <p className="text-xs text-pink-400 mt-2 font-medium">Recommended Target</p>
+                  <p className="text-xs text-blue-400 mt-2 font-medium">Recommended Target</p>
                 )}
               </div>
             ))}
@@ -276,7 +276,7 @@ export default function EarningsOverview({
       <div className="text-center">
         <a
           href="/coach/apply"
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all shadow-lg shadow-pink-500/25"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/25"
         >
           Start Your Coach Journey
           <ChevronRight className="w-5 h-5" />

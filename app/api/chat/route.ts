@@ -681,7 +681,7 @@ async function handleOperational(
         : 'recently';
 
       return {
-        response: `${child.child_name}'s enrollment is active. Enrolled on ${enrolledDate}. Progress: ${child.sessions_completed || 0}/${child.total_sessions || 9} sessions completed. You have Master Key access to all Yestoryd services.`,
+        response: `${child.child_name}'s enrollment is active. Enrolled on ${enrolledDate}. Progress: ${child.sessions_completed || 0}/${child.total_sessions || 9 /* V1 fallback */} sessions completed. You have Master Key access to all Yestoryd services.`,
         intent: 'OPERATIONAL',
         source: 'sql',
       };

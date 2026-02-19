@@ -339,7 +339,7 @@ export default function CoachingSessionForm({
           
           <button
             onClick={onClose}
-            className="w-full py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#e6008a] transition mt-4"
+            className="w-full py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#e6008a] transition mt-4"
           >
             Done
           </button>
@@ -356,7 +356,7 @@ export default function CoachingSessionForm({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#FF0099]" />
+                <BookOpen className="w-5 h-5 text-[#00ABFF]" />
                 Complete Session
               </h2>
               <p className="text-sm text-text-tertiary">
@@ -377,7 +377,7 @@ export default function CoachingSessionForm({
               <div
                 key={i}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  i + 1 <= step ? 'bg-[#FF0099]' : 'bg-gray-200'
+                  i + 1 <= step ? 'bg-[#00ABFF]' : 'bg-gray-200'
                 }`}
               />
             ))}
@@ -410,7 +410,7 @@ export default function CoachingSessionForm({
                       onClick={() => setFocusArea(area.value)}
                       className={`p-3 rounded-xl border-2 text-left transition ${
                         focusArea === area.value
-                          ? 'border-[#FF0099] bg-[#FF0099]/5'
+                          ? 'border-[#00ABFF] bg-[#00ABFF]/5'
                           : 'border-border hover:border-border'
                       }`}
                     >
@@ -458,7 +458,7 @@ export default function CoachingSessionForm({
                       onClick={() => setEngagementLevel(level.value)}
                       className={`w-full p-3 rounded-xl border-2 text-left transition ${
                         engagementLevel === level.value
-                          ? 'border-[#FF0099] bg-[#FF0099]/5'
+                          ? 'border-[#00ABFF] bg-[#00ABFF]/5'
                           : 'border-border hover:border-border'
                       }`}
                     >
@@ -482,7 +482,7 @@ export default function CoachingSessionForm({
                       onClick={() => setConfidenceLevel(level)}
                       className={`flex-1 p-3 rounded-xl border-2 text-center transition ${
                         confidenceLevel === level
-                          ? 'border-[#FF0099] bg-[#FF0099]/5'
+                          ? 'border-[#00ABFF] bg-[#00ABFF]/5'
                           : 'border-border hover:border-border'
                       }`}
                     >
@@ -517,7 +517,7 @@ export default function CoachingSessionForm({
                           onClick={() => toggleSkill(skill.code)}
                           className={`px-4 py-2 rounded-full border transition ${
                             skillsWorkedOn.includes(skill.code)
-                              ? 'bg-[#FF0099] text-white border-[#FF0099]'
+                              ? 'bg-[#00ABFF] text-white border-[#00ABFF]'
                               : 'bg-surface-2 text-text-secondary border-border hover:border-border'
                           }`}
                         >
@@ -568,7 +568,7 @@ export default function CoachingSessionForm({
           {step === 3 && (
             <div className="space-y-5">
               <div className="text-center">
-                <Volume2 className="w-8 h-8 text-[#FF0099] mx-auto mb-3" />
+                <Volume2 className="w-8 h-8 text-[#00ABFF] mx-auto mb-3" />
                 <h3 className="font-medium text-white mb-2">Quick Voice Note</h3>
                 <p className="text-sm text-text-tertiary mb-6">
                   What went well? Any concerns? What to focus on next?
@@ -582,7 +582,7 @@ export default function CoachingSessionForm({
                         className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto transition ${
                           isRecording
                             ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                            : 'bg-[#FF0099] hover:bg-[#e6008a]'
+                            : 'bg-[#00ABFF] hover:bg-[#e6008a]'
                         }`}
                       >
                         {isRecording ? (
@@ -643,7 +643,7 @@ export default function CoachingSessionForm({
                     type="checkbox"
                     checked={homeworkAssigned}
                     onChange={(e) => setHomeworkAssigned(e.target.checked)}
-                    className="w-5 h-5 rounded border-border text-[#FF0099] focus:ring-[#FF0099]"
+                    className="w-5 h-5 rounded border-border text-[#00ABFF] focus:ring-[#00ABFF]"
                   />
                 </label>
 
@@ -652,7 +652,7 @@ export default function CoachingSessionForm({
                     <select
                       value={homeworkTopic}
                       onChange={(e) => setHomeworkTopic(e.target.value)}
-                      className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                      className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                     >
                       <option value="">Select topic...</option>
                       {HOMEWORK_TOPICS.map((topic) => (
@@ -663,7 +663,7 @@ export default function CoachingSessionForm({
                       value={homeworkDescription}
                       onChange={(e) => setHomeworkDescription(e.target.value)}
                       placeholder="Describe the homework..."
-                      className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                      className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                       rows={2}
                     />
                   </div>
@@ -681,7 +681,7 @@ export default function CoachingSessionForm({
                     type="checkbox"
                     checked={quizAssigned}
                     onChange={(e) => setQuizAssigned(e.target.checked)}
-                    className="w-5 h-5 rounded border-border text-[#FF0099] focus:ring-[#FF0099]"
+                    className="w-5 h-5 rounded border-border text-[#00ABFF] focus:ring-[#00ABFF]"
                   />
                 </label>
 
@@ -690,7 +690,7 @@ export default function CoachingSessionForm({
                     <select
                       value={quizTopic}
                       onChange={(e) => setQuizTopic(e.target.value)}
-                      className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                      className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                     >
                       <option value="">Select quiz topic...</option>
                       {QUIZ_TOPICS.map((topic) => (
@@ -742,7 +742,7 @@ export default function CoachingSessionForm({
                   value={breakthroughMoment}
                   onChange={(e) => setBreakthroughMoment(e.target.value)}
                   placeholder="E.g., Read a full sentence without help!"
-                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                 />
               </div>
 
@@ -755,7 +755,7 @@ export default function CoachingSessionForm({
                   value={concerns}
                   onChange={(e) => setConcerns(e.target.value)}
                   placeholder="Note any concerns for follow-up..."
-                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                   rows={2}
                 />
               </div>
@@ -780,7 +780,7 @@ export default function CoachingSessionForm({
               <button
                 onClick={() => setStep(step + 1)}
                 disabled={!canProceed()}
-                className="flex-1 py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
@@ -789,7 +789,7 @@ export default function CoachingSessionForm({
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex-1 py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>

@@ -460,7 +460,7 @@ export async function generateLearningPlan(
       return { success: false, error: 'No active enrollment found' };
     }
 
-    const totalSessions = enrollment.total_sessions || 9;
+    const totalSessions = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
 
     // 3. Fetch templates for this age band
     const { data: templates, error: templatesError } = await supabase

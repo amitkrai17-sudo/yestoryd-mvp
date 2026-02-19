@@ -108,11 +108,12 @@ export default function TermsOfServicePage() {
 
               <h3 className="text-lg font-semibold text-[#FF0099] mt-6 mb-3">3.2 Coaching Program</h3>
               <ul className="list-disc pl-6 space-y-2">
-                <li>3-month program with 6 coaching sessions + 3 parent check-ins</li>
+                <li>12-week program with personalized coaching sessions tailored to your child&apos;s age band</li>
                 <li>1:1 personalized coaching sessions with certified coaches</li>
                 <li>AI-powered progress tracking and recommendations</li>
                 <li>Parent dashboard with real-time progress updates</li>
-                <li>Sessions conducted online via Google Meet (coaching: {durations.coaching} min, check-ins: {durations.checkin} min)</li>
+                <li>On-demand parent calls with your child&apos;s coach</li>
+                <li>Sessions conducted online via Google Meet ({durations.coaching} min)</li>
               </ul>
             </section>
 

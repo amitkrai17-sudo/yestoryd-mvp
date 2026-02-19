@@ -286,12 +286,12 @@ export async function getPlanSchedule(
       durationWeeks: plan.duration_weeks || ((plan.duration_months || 3) * 4),
       durationMonths: plan.duration_months || 3,
       coaching: {
-        count: plan.sessions_coaching || 6,
+        count: plan.sessions_coaching || 6, // DEPRECATED V1 — use age_band_config.weekly_pattern
         weekSchedule: coachingWeekSchedule,
         durationMinutes: plan.duration_coaching_mins || DEFAULT_DURATIONS.coaching,
       },
       checkin: {
-        count: plan.sessions_checkin || 3,
+        count: plan.sessions_checkin || 3, // DEPRECATED V1 — use age_band_config.weekly_pattern
         weekSchedule: checkinWeekSchedule,
         durationMinutes: plan.duration_checkin_mins || DEFAULT_DURATIONS.checkin,
       },

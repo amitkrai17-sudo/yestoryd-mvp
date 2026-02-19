@@ -90,11 +90,11 @@ export default async function CoachPage({ params }: Props) {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-br from-[#FF0099]/10 via-purple-900/20 to-surface-0 py-20">
+        <section className="bg-gradient-to-br from-[#00ABFF]/10 via-purple-900/20 to-surface-0 py-20">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-10">
               <div className="md:w-1/3 text-center">
-                <div className="w-40 h-40 bg-gradient-to-br from-[#FF0099] to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#FF0099]/30">
+                <div className="w-40 h-40 bg-gradient-to-br from-[#00ABFF] to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#00ABFF]/30">
                   <span className="text-7xl">👩‍🏫</span>
                 </div>
                 <div className="flex items-center justify-center gap-1 mb-2">
@@ -106,7 +106,7 @@ export default async function CoachPage({ params }: Props) {
               </div>
 
               <div className="md:w-2/3 text-center md:text-left">
-                <Badge className="mb-4 bg-[#FF0099]/20 text-[#FF0099] border-[#FF0099]/30">Reading Specialist</Badge>
+                <Badge className="mb-4 bg-[#00ABFF]/20 text-[#00ABFF] border-[#00ABFF]/30">Reading Specialist</Badge>
                 <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
                   {coach.name}
                 </h1>
@@ -123,13 +123,13 @@ export default async function CoachPage({ params }: Props) {
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                   <Link href="/assessment">
-                    <Button size="lg" className="bg-gradient-to-r from-[#FF0099] to-purple-600 hover:from-[#FF0099]/90 hover:to-purple-700 text-white rounded-full px-8">
+                    <Button size="lg" className="bg-gradient-to-r from-[#00ABFF] to-purple-600 hover:from-[#00ABFF]/90 hover:to-purple-700 text-white rounded-full px-8">
                       Reading Test - Free
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </Link>
                   <Link href="/book">
-                    <Button size="lg" variant="outline" className="border-2 border-[#FF0099]/50 text-[#FF0099] hover:bg-[#FF0099]/10 rounded-full px-8">
+                    <Button size="lg" variant="outline" className="border-2 border-[#00ABFF]/50 text-[#00ABFF] hover:bg-[#00ABFF]/10 rounded-full px-8">
                       <Calendar className="w-5 h-5 mr-2" />
                       Book Free Session
                     </Button>
@@ -153,21 +153,21 @@ export default async function CoachPage({ params }: Props) {
             <div className="grid md:grid-cols-3 gap-6">
               <Card className="border-border bg-surface-2">
                 <CardContent className="p-6 text-center">
-                  <Award className="w-10 h-10 text-[#FF0099] mx-auto mb-3" />
+                  <Award className="w-10 h-10 text-[#00ABFF] mx-auto mb-3" />
                   <h3 className="font-semibold mb-2 text-white">Certified Specialist</h3>
                   <p className="text-sm text-text-tertiary">Expert training in reading development</p>
                 </CardContent>
               </Card>
               <Card className="border-border bg-surface-2">
                 <CardContent className="p-6 text-center">
-                  <BookOpen className="w-10 h-10 text-[#FF0099] mx-auto mb-3" />
+                  <BookOpen className="w-10 h-10 text-[#00ABFF] mx-auto mb-3" />
                   <h3 className="font-semibold mb-2 text-white">{coach.totalSessions}+ Sessions</h3>
                   <p className="text-sm text-text-tertiary">Proven track record of success</p>
                 </CardContent>
               </Card>
               <Card className="border-border bg-surface-2">
                 <CardContent className="p-6 text-center">
-                  <Star className="w-10 h-10 text-[#FF0099] mx-auto mb-3" />
+                  <Star className="w-10 h-10 text-[#00ABFF] mx-auto mb-3" />
                   <h3 className="font-semibold mb-2 text-white">{coach.rating} Rating</h3>
                   <p className="text-sm text-text-tertiary">Loved by parents and children</p>
                 </CardContent>
@@ -183,10 +183,10 @@ export default async function CoachPage({ params }: Props) {
               What's Included with Coaching
             </h2>
 
-            <Card className="border-2 border-[#FF0099]/30 bg-surface-1">
+            <Card className="border-2 border-[#00ABFF]/30 bg-surface-1">
               <CardContent className="p-8">
                 <div className="text-center mb-8">
-                  <p className="text-sm text-[#FF0099] font-medium mb-2">6-SESSION PACKAGE</p>
+                  <p className="text-sm text-[#00ABFF] font-medium mb-2">6-SESSION PACKAGE</p>
                   <p className="text-4xl font-bold text-white">₹5,999</p>
                   <p className="text-text-tertiary">Everything you need for reading success</p>
                 </div>
@@ -211,7 +211,7 @@ export default async function CoachPage({ params }: Props) {
 
                 <div className="mt-8 text-center">
                   <Link href="/assessment">
-                    <Button size="lg" className="bg-gradient-to-r from-[#FF0099] to-purple-600 hover:from-[#FF0099]/90 hover:to-purple-700 text-white rounded-full px-10">
+                    <Button size="lg" className="bg-gradient-to-r from-[#00ABFF] to-purple-600 hover:from-[#00ABFF]/90 hover:to-purple-700 text-white rounded-full px-10">
                       Reading Test - Free
                     </Button>
                   </Link>
@@ -253,7 +253,7 @@ export default async function CoachPage({ params }: Props) {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 bg-gradient-to-r from-[#FF0099] to-purple-600 text-white">
+        <section className="py-16 bg-gradient-to-r from-[#00ABFF] to-purple-600 text-white">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl font-bold mb-4">
               Ready to Get Started?
@@ -263,7 +263,7 @@ export default async function CoachPage({ params }: Props) {
               consultation to discuss a personalized plan.
             </p>
             <Link href="/assessment">
-              <Button size="lg" className="bg-white text-[#FF0099] hover:bg-white/90 rounded-full px-10">
+              <Button size="lg" className="bg-white text-[#00ABFF] hover:bg-white/90 rounded-full px-10">
                 Reading Test - Free
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>

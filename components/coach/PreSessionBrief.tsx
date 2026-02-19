@@ -96,7 +96,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-[#1a1f2e] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] p-5">
+        <div className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] p-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-white">Session Prep</h2>
@@ -112,7 +112,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
             </div>
             <div>
               <p className="text-white font-semibold text-lg">{session.child_name || 'Unknown'}</p>
-              <p className="text-white/70 text-sm">{session.child_age || '?'} years - Session {sessionNumber}/{session.total_sessions || 9}</p>
+              <p className="text-white/70 text-sm">{session.child_age || '?'} years - Session {sessionNumber}/{session.total_sessions || 9 /* V1 fallback */}</p>
             </div>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === tab ? 'text-[#FF0099] border-b-2 border-[#FF0099]' : 'text-gray-400 hover:text-white'}`}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === tab ? 'text-[#00ABFF] border-b-2 border-[#00ABFF]' : 'text-gray-400 hover:text-white'}`}
             >
               {tab === 'overview' ? 'Overview' : tab === 'history' ? 'Last Session' : 'Tips'}
             </button>
@@ -152,7 +152,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
                   <span className="text-white font-medium">{session.sessions_completed}/{session.total_sessions}</span>
                 </div>
                 <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-[#FF0099] to-[#00ABFF] rounded-full" style={{ width: `${progress}%` }} />
+                  <div className="h-full bg-gradient-to-r from-[#00ABFF] to-[#00ABFF] rounded-full" style={{ width: `${progress}%` }} />
                 </div>
               </div>
               {favoriteTopics.length > 0 && (
@@ -198,7 +198,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
                   )}
                   <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                     <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                      <BookOpen className="w-4 h-4 text-[#FF0099]" />Summary
+                      <BookOpen className="w-4 h-4 text-[#00ABFF]" />Summary
                     </div>
                     <p className="text-white/90 text-sm leading-relaxed">{session.last_session_summary}</p>
                   </div>
@@ -219,7 +219,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
             <>
               {loadingInsights ? (
                 <div className="text-center py-8">
-                  <div className="w-8 h-8 border-2 border-[#FF0099] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                  <div className="w-8 h-8 border-2 border-[#00ABFF] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
                   <p className="text-gray-400 text-sm">Generating AI insights...</p>
                 </div>
               ) : (
@@ -267,11 +267,11 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
                     </div>
                   )}
                   {aiInsights?.session_focus && (
-                    <div className="bg-[#FF0099]/10 border border-[#FF0099]/30 rounded-xl p-4">
-                      <div className="flex items-center gap-2 text-[#FF0099] text-sm mb-2">
+                    <div className="bg-[#00ABFF]/10 border border-[#00ABFF]/30 rounded-xl p-4">
+                      <div className="flex items-center gap-2 text-[#00ABFF] text-sm mb-2">
                         <Target className="w-4 h-4" />Session Focus
                       </div>
-                      <p className="text-[#FF0099]/80 text-sm">{aiInsights.session_focus}</p>
+                      <p className="text-[#00ABFF]/80 text-sm">{aiInsights.session_focus}</p>
                     </div>
                   )}
                   <div className="bg-[#00ABFF]/10 border border-[#00ABFF]/30 rounded-xl p-4">

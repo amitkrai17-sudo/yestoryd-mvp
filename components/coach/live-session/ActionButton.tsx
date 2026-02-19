@@ -88,7 +88,7 @@ export default function ActionButton({ onAction, isLastActivity, disabled }: Act
           onPointerUp={handlePressEnd}
           onPointerLeave={handlePressCancel}
           onContextMenu={(e) => e.preventDefault()}
-          className="w-full py-4 bg-[#FF0099] hover:bg-[#FF0099]/90 active:scale-[0.98] text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:pointer-events-none select-none min-h-[56px]"
+          className="w-full py-4 bg-[#00ABFF] hover:bg-[#00ABFF]/90 active:scale-[0.98] text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:pointer-events-none select-none min-h-[56px]"
         >
           <Check className="w-5 h-5" />
           {isLastActivity ? 'Done — Finish' : 'Done — Next'}

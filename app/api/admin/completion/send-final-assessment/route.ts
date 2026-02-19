@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #FF0099;">Congratulations! 🎉</h2>
             <p>Hi there,</p>
-            <p><strong>${childName}</strong> has almost completed the 3-month reading program! It's time to see how much they've improved.</p>
+            <p><strong>${childName}</strong> has almost completed the 12-week reading program! It's time to see how much they've improved.</p>
             <p>Please complete the final reading assessment so we can create a personalized progress report comparing their journey from Day 1 to now.</p>
             <div style="text-align: center; margin: 30px 0;">
               <a href="${assessmentLink}"

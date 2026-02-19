@@ -16,7 +16,7 @@ import { FocusAreaKey, ProgressLevel, EngagementLevel, OverallRating } from './t
 // BRAND COLORS
 // =============================================================================
 export const BRAND_COLORS = {
-  hotPink: '#FF0099',
+  hotPink: '#00ABFF',
   electricBlue: '#00ABFF',
   yellow: '#FFDE00',
   deepPurple: '#7B008B',
@@ -471,7 +471,7 @@ export const RATING_OPTIONS: RatingOption[] = [
   { value: 2, label: 'Challenging', icon: RefreshCw, color: 'text-orange-400' },
   { value: 3, label: 'Okay', icon: ArrowRight, color: 'text-yellow-400' },
   { value: 4, label: 'Good', icon: TrendingUp, color: 'text-green-400' },
-  { value: 5, label: 'Excellent', icon: Rocket, color: 'text-[#FF0099]' },
+  { value: 5, label: 'Excellent', icon: Rocket, color: 'text-[#00ABFF]' },
 ];
 
 // =============================================================================

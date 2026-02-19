@@ -24,7 +24,7 @@ COACH INFO:
 
 YESTORYD PROGRAM INFO:
 - Program: 3-Month 1:1 Reading Coaching for children aged 4-12
-- Sessions: 9 total (6 coaching + 3 parent check-ins)
+- Sessions: Personalized 1:1 coaching sessions (count varies by age band)
 - Master Key: Enrolled families get FREE access to e-learning, storytelling workshops, and group classes
 - Support WhatsApp: 918976287997
 
@@ -136,7 +136,7 @@ No markdown formatting. Use natural prose with clear organization.`;
 }
 
 export const OPERATIONAL_RESPONSES = {
-  program_info: `The Yestoryd program is a 3-month 1:1 reading coaching program for children aged 4-12. It includes 9 sessions (6 coaching + 3 parent check-ins) and Master Key access which gives your family FREE access to e-learning, storytelling workshops, and group classes.`,
+  program_info: `The Yestoryd program is a 12-week 1:1 reading coaching program for children aged 4-12. The number of coaching sessions is tailored to your child's age band. Enrolled families also get Master Key access — FREE e-learning, storytelling workshops, and group classes.`,
   
   master_key: `Master Key is a special benefit for enrolled families. It gives you FREE access to all Yestoryd services including e-learning modules, storytelling workshops, and group reading classes - all at no extra cost during your program.`,
   

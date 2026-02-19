@@ -92,7 +92,7 @@ const DEFAULT_VARIABLES: ConfigVariable[] = [
   
   // Program Details
   { key: 'program_fee', value: '5,999', description: 'Program fee (₹)', category: 'program' },
-  { key: 'program_duration', value: '3 months', description: 'Program duration', category: 'program' },
+  { key: 'program_duration', value: '12 weeks', description: 'Program duration', category: 'program' },
   { key: 'sessions_per_month', value: '3', description: 'Sessions per month', category: 'program' },
   { key: 'session_duration', value: '45-60 minutes', description: 'Session duration', category: 'program' },
   

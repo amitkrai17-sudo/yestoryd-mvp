@@ -101,9 +101,9 @@ export default function ActivityTab({ activities, currentIndex, materials }: Act
 
       {/* Current activity hero */}
       {current && (
-        <div className="bg-[#FF0099]/10 border border-[#FF0099]/30 rounded-xl p-4">
+        <div className="bg-[#00ABFF]/10 border border-[#00ABFF]/30 rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[#FF0099] text-xs font-medium">
+            <span className="text-[#00ABFF] text-xs font-medium">
               Activity {currentIndex + 1} of {activities.length}
             </span>
             <span className="flex items-center gap-1 text-xs text-white/50">
@@ -158,7 +158,7 @@ export default function ActivityTab({ activities, currentIndex, materials }: Act
                 key={i}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                   isCurrent
-                    ? 'bg-[#FF0099]/10 border border-[#FF0099]/20'
+                    ? 'bg-[#00ABFF]/10 border border-[#00ABFF]/20'
                     : isDone
                     ? 'bg-white/[0.02]'
                     : 'opacity-40'
@@ -169,7 +169,7 @@ export default function ActivityTab({ activities, currentIndex, materials }: Act
                   {isDone ? (
                     STATUS_ICON[a.status!]
                   ) : isCurrent ? (
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#FF0099] animate-pulse" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#00ABFF] animate-pulse" />
                   ) : (
                     <span className="text-white/30">{i + 1}</span>
                   )}

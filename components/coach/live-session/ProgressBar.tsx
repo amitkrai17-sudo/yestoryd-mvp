@@ -23,7 +23,7 @@ export default function ProgressBar({ activities, currentIndex }: ProgressBarPro
             default: bg = 'bg-white/10';
           }
         } else if (i === currentIndex) {
-          bg = 'bg-[#FF0099] animate-pulse';
+          bg = 'bg-[#00ABFF] animate-pulse';
         }
 
         return (

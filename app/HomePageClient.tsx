@@ -216,6 +216,7 @@ interface HomePageClientProps {
   abTestConfig?: ABTestConfig;
   content: ContentSettings;
   sessionDurations: SessionDurations;
+  pricingDisplayData?: any;
 }
 
 // ==================== A/B TEST UTILITIES ====================
@@ -254,13 +255,14 @@ const trackABEvent = async (testName: string, variant: string, eventType: string
 // Default FAQ data - function to inject session durations
 const getDefaultFaqData = (durations: { coaching: number; checkin: number }) => [
   { question: "What device do I need for the assessment?", answer: "Any smartphone, tablet, or laptop with a microphone works! The assessment runs in your browser — no app download needed. 80% of our parents use their phone." },
-  { question: "How long is each coaching session?", answer: `Each coaching session is ${durations.coaching} minutes, which is the optimal duration for effective learning with engagement breaks built in. Parent check-ins are ${durations.checkin} minutes. Sessions are scheduled at times convenient for you — weekdays or weekends.` },
+  { question: "How many sessions does my child get?", answer: "Your program runs for 12 weeks. The number and length of sessions are tailored to your child's age — younger children (4-6) get shorter, more frequent sessions while older children (10-12) get longer, focused sessions. Every child receives personalized 1:1 coaching totalling about 12 hours." },
+  { question: "How long is each coaching session?", answer: `Session length depends on your child's age band: 30 minutes for ages 4-6, 45 minutes for ages 7-9, and 60 minutes for ages 10-12. This is the optimal duration for each age group with engagement breaks built in. Sessions are scheduled at times convenient for you — weekdays or weekends.` },
   { question: "Is this a subscription? Will I be charged monthly?", answer: "No subscriptions! It's a one-time payment. Choose from Starter Pack, Continuation, or Full Program based on your needs. No hidden fees, no recurring charges." },
   { question: "What if my child doesn't improve?", answer: "We offer a 100% satisfaction guarantee. If you don't see improvement after completing the program, we'll either continue working with you at no extra cost or provide a full refund." },
+  { question: "How will I know my child is improving?", answer: "You'll receive automated Progress Pulse reports after every few sessions showing your child's specific improvements, strengths, and home activities to try. Plus, you can request a coach call once a month for a personal update." },
   { question: "Is the AI safe for my child?", answer: "Absolutely. Unlike ChatGPT which guesses, rAI (our Reading Intelligence) only references our expert-verified knowledge base built on 7+ years of phonics expertise." },
   { question: "Are the coaches certified?", answer: "Our coaches are experienced educators with diverse specializations — including Jolly Phonics certification, ADHD expertise, and child development training. Above all, they excel at connecting with and managing children effectively." },
-  { question: "Should parents attend the sessions?", answer: "We recommend parents assist initially, but sessions work best when focused on the coach-child interaction. If we need your help, we'll ask! We also have dedicated Parent Check-in calls to discuss progress and home support strategies." },
-  { question: "What age group is this for?", answer: "Yestoryd is designed for children aged 4-12 years. Our AI adapts the assessment based on your child's age, and coaches personalize sessions accordingly." }
+  { question: "What age group is this for?", answer: "Yestoryd is designed for children aged 4-12 years, across three age bands: Foundation (4-6), Building (7-9), and Mastery (10-12). Our AI adapts the assessment based on your child's age, and coaches personalize sessions accordingly." }
 ];
 
 // Default testimonials
@@ -282,6 +284,7 @@ export default function HomePageClient({
   abTestConfig = { enabled: true, testName: 'homepage_hero_jan2026', split: 0.5 },
   content,
   sessionDurations,
+  pricingDisplayData,
 }: HomePageClientProps) {
   const [scrolled, setScrolled] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -452,6 +455,7 @@ export default function HomePageClient({
         products={products}
         onCTAClick={handleCTAClick}
         sessionDurations={durations}
+        pricingDisplayData={pricingDisplayData}
       />
 
       <FaqSection

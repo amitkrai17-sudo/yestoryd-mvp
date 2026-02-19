@@ -325,7 +325,7 @@ function EnrollContent() {
             const verifyData = await verifyRes.json();
             if (verifyData.success && verifyData.redirectUrl) { window.location.href = verifyData.redirectUrl; return; }
             if (verifyData.success && verifyData.enrollmentId) {
-              const successParams = new URLSearchParams({ childName: formData.childName, enrollmentId: verifyData.enrollmentId || '', coachName: verifyData.data?.coachName || '', sessions: String(pricing?.sessionsIncluded || 9), product: selectedProduct?.name || 'Full Program' });
+              const successParams = new URLSearchParams({ childName: formData.childName, enrollmentId: verifyData.enrollmentId || '', coachName: verifyData.data?.coachName || '', sessions: String(pricing?.sessionsIncluded || 9 /* V1 fallback */), product: selectedProduct?.name || 'Full Program' });
               if (startOption === 'later' && startDate) { successParams.set('startDate', startDate); successParams.set('delayed', 'true'); }
               if (discountBreakdown?.totalDiscount) { successParams.set('saved', discountBreakdown.totalDiscount.toString()); }
               window.location.href = `/enrollment/success?${successParams.toString()}`;

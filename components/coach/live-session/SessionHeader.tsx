@@ -36,7 +36,7 @@ export default function SessionHeader({ session, child, elapsedSeconds, isLive, 
         {/* Row 1: Child info + Meet button */}
         <div className="flex items-center gap-3">
           {/* Avatar */}
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
             {child.child_name.charAt(0)}
           </div>
 

@@ -231,7 +231,7 @@ export default function PlanReviewPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
       </div>
     );
   }
@@ -242,7 +242,7 @@ export default function PlanReviewPage() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <p className="text-white mb-2">{error}</p>
-          <button onClick={() => router.back()} className="text-[#FF0099] font-medium">Go Back</button>
+          <button onClick={() => router.back()} className="text-[#00ABFF] font-medium">Go Back</button>
         </div>
       </div>
     );
@@ -265,7 +265,7 @@ export default function PlanReviewPage() {
           <p className="text-text-tertiary text-sm">Complete a diagnostic session to generate a personalized plan.</p>
           <button
             onClick={() => router.back()}
-            className="mt-4 text-[#FF0099] font-medium text-sm"
+            className="mt-4 text-[#00ABFF] font-medium text-sm"
           >
             ← Back to Student
           </button>
@@ -287,7 +287,7 @@ export default function PlanReviewPage() {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-white text-sm lg:text-base flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#FF0099]" />
+              <Sparkles className="w-4 h-4 text-[#00ABFF]" />
               {roadmap.season_name || `Season ${roadmap.season_number}`}
             </h1>
             <p className="text-xs text-text-tertiary">
@@ -320,7 +320,7 @@ export default function PlanReviewPage() {
         {/* Plan Overview Card */}
         <div className="bg-surface-1 border border-border rounded-xl p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm">
               {child?.child_name?.charAt(0) || '?'}
             </div>
             <div className="flex-1">
@@ -340,7 +340,7 @@ export default function PlanReviewPage() {
                 {roadmap.focus_areas.map(area => (
                   <span
                     key={area}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF0099]/10 text-[#FF0099] border border-[#FF0099]/20"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-[#00ABFF]/10 text-[#00ABFF] border border-[#00ABFF]/20"
                   >
                     {area.replace(/_/g, ' ')}
                   </span>
@@ -358,7 +358,7 @@ export default function PlanReviewPage() {
               </div>
               <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#FF0099] to-[#00ABFF] rounded-full transition-all"
+                  className="h-full bg-gradient-to-r from-[#00ABFF] to-[#00ABFF] rounded-full transition-all"
                   style={{ width: `${planItems.length > 0 ? (completedCount / planItems.length) * 100 : 0}%` }}
                 />
               </div>
@@ -417,7 +417,7 @@ export default function PlanReviewPage() {
                   item.status === 'completed'
                     ? 'bg-green-500/20 text-green-400'
                     : item.template?.is_season_finale
-                    ? 'bg-[#FF0099]/20 text-[#FF0099]'
+                    ? 'bg-[#00ABFF]/20 text-[#00ABFF]'
                     : 'bg-[#00ABFF]/20 text-[#00ABFF]'
                 }`}>
                   {item.session_number}
@@ -436,7 +436,7 @@ export default function PlanReviewPage() {
                       </span>
                     )}
                     {item.template?.is_season_finale && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FF0099]/20 text-[#FF0099]">Finale</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00ABFF]/20 text-[#00ABFF]">Finale</span>
                     )}
                   </div>
                 </div>
@@ -624,7 +624,7 @@ export default function PlanReviewPage() {
             <button
               onClick={handleApprove}
               disabled={approving || planItems.length === 0}
-              className="flex items-center gap-2 bg-[#FF0099] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#FF0099]/90 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 bg-[#00ABFF] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#00ABFF]/90 disabled:opacity-50 transition-colors"
             >
               {approving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

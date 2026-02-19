@@ -17,9 +17,12 @@ import {
   Sparkles, Star, Rocket, Trophy
 } from 'lucide-react';
 import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
+import ParentCallCard from '@/components/parent/ParentCallCard';
+import ProgressPulseCard from '@/components/parent/ProgressPulseCard';
 import SupportWidget from '@/components/support/SupportWidget';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ReferralsTab from '@/components/parent/ReferralsTab';
+import { getSessionTypeLabel } from '@/lib/utils/session-labels';
 import { supabase } from '@/lib/supabase/client';
 
 // Default WhatsApp number (fetched from site_settings)
@@ -104,9 +107,12 @@ export default function ParentDashboardPage() {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [completedSessions, setCompletedSessions] = useState<number>(0);
-  const [totalSessions, setTotalSessions] = useState<number>(9);
+  const [totalSessions, setTotalSessions] = useState<number>(9); /* V1 fallback — will be replaced by age_band_config.total_sessions */
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [pendingSkillBooster, setPendingSkillBooster] = useState<PendingSkillBoosterSession | null>(null);
+  const [parentCalls, setParentCalls] = useState<any[]>([]);
+  const [parentCallQuota, setParentCallQuota] = useState({ used: 0, max: 1, remaining: 1 });
+  const [latestPulse, setLatestPulse] = useState<any>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -274,6 +280,47 @@ export default function ParentDashboardPage() {
         setPendingSkillBooster(null);
       }
 
+      // Fetch parent calls for this enrollment
+      if (enrollmentData) {
+        try {
+          const pcRes = await fetch(`/api/parent-call/${enrollmentData.id}`);
+          const pcData = await pcRes.json();
+          if (pcData.success) {
+            setParentCalls(pcData.calls || []);
+            setParentCallQuota(pcData.quota || { used: 0, max: 1, remaining: 1 });
+          }
+        } catch (pcErr) {
+          console.error('Parent call fetch exception:', pcErr);
+        }
+      }
+
+      // Fetch latest Progress Pulse
+      if (enrolledChild?.id) {
+        try {
+          const { data: pulseData } = await supabase
+            .from('learning_events')
+            .select('id, event_date, data, event_data')
+            .eq('child_id', enrolledChild.id)
+            .eq('event_type', 'progress_pulse')
+            .order('event_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pulseData) {
+            setLatestPulse({
+              id: pulseData.id,
+              event_date: pulseData.event_date,
+              data: pulseData.event_data || pulseData.data,
+            });
+          } else {
+            setLatestPulse(null);
+          }
+        } catch (pulseErr) {
+          console.error('Progress Pulse fetch exception:', pulseErr);
+          setLatestPulse(null);
+        }
+      }
+
       // Fetch upcoming sessions
       const today = new Date().toISOString().split('T')[0];
       const { data: sessions, error: sessionsError } = await supabase
@@ -315,7 +362,7 @@ export default function ParentDashboardPage() {
         console.error('Total count error:', totalError);
       }
 
-      setTotalSessions(total || 9);
+      setTotalSessions(total || 9); /* V1 fallback */
       setLoading(false);
     } catch (err: any) {
       console.error('Error fetching data:', err);
@@ -450,6 +497,9 @@ export default function ParentDashboardPage() {
           parentEmail={parentEmail}
           parentName={parentName}
           pendingSkillBooster={pendingSkillBooster}
+          parentCalls={parentCalls}
+          parentCallQuota={parentCallQuota}
+          latestPulse={latestPulse}
         />
       </main>
 
@@ -560,6 +610,9 @@ function OverviewTab({
   parentEmail,
   parentName,
   pendingSkillBooster,
+  parentCalls,
+  parentCallQuota,
+  latestPulse,
 }: {
   childName: string;
   enrollment: Enrollment | null;
@@ -573,6 +626,9 @@ function OverviewTab({
   parentEmail: string;
   parentName: string;
   pendingSkillBooster: PendingSkillBoosterSession | null;
+  parentCalls: any[];
+  parentCallQuota: { used: number; max: number; remaining: number };
+  latestPulse: any;
 }) {
   function formatDate(dateStr: string): string {
     try {
@@ -714,6 +770,22 @@ function OverviewTab({
         <PendingSkillBoosterCard session={pendingSkillBooster} childName={childName} />
       )}
 
+      {/* PARENT CALL CARD */}
+      {enrollment && enrollment.status === 'active' && (
+        <ParentCallCard
+          enrollmentId={enrollment.id}
+          coachName={enrollment.coaches?.name || 'Your Coach'}
+          calls={parentCalls}
+          quota={parentCallQuota}
+          onRefresh={onRefresh}
+        />
+      )}
+
+      {/* PROGRESS PULSE CARD */}
+      {latestPulse && (
+        <ProgressPulseCard pulse={latestPulse} childName={childName} />
+      )}
+
       {/* Pause/Resume Card */}
       {enrollment && (
         <PauseEnrollmentCard
@@ -726,7 +798,7 @@ function OverviewTab({
       {/* Stats Grid - 2x2 on mobile */}
       <div className="grid grid-cols-2 gap-4">
         {/* Progress Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
           <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center mb-3">
             <Target className="w-5 h-5 text-[#FF0099]" />
           </div>
@@ -741,7 +813,7 @@ function OverviewTab({
         </div>
 
         {/* Sessions Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
           <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center mb-3">
             <CheckCircle className="w-5 h-5 text-green-400" />
           </div>
@@ -752,7 +824,7 @@ function OverviewTab({
         </div>
 
         {/* Score Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
           <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center mb-3">
             <TrendingUp className="w-5 h-5 text-blue-400" />
           </div>
@@ -761,7 +833,7 @@ function OverviewTab({
         </div>
 
         {/* Days Left Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 border border-border">
+        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
           <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center mb-3">
             <Clock className="w-5 h-5 text-amber-400" />
           </div>
@@ -773,8 +845,8 @@ function OverviewTab({
       {/* Sessions & Coach - Stack on mobile */}
       <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
         {/* Upcoming Sessions */}
-        <div className="lg:col-span-2 bg-surface-1 rounded-2xl border border-border shadow-lg shadow-black/20 overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <div className="lg:col-span-2 bg-surface-1 rounded-2xl border border-[#7b008b]/20 shadow-lg shadow-black/20 shadow-[#7b008b]/5 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
             <h2 className="font-semibold text-white flex items-center gap-2 text-base">
               <Calendar className="w-5 h-5 text-[#FF0099]" />
               Upcoming Sessions
@@ -787,7 +859,7 @@ function OverviewTab({
             </Link>
           </div>
           {upcomingSessions.length > 0 ? (
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-white/[0.08]">
               {upcomingSessions.slice(0, 3).map((session) => (
                 <div key={session.id} className="p-4 flex items-center justify-between hover:bg-surface-2/50 transition-colors gap-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -796,7 +868,7 @@ function OverviewTab({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-white text-base truncate">
-                        {session.title || (session.session_type === 'coaching' ? 'Coaching Session' : 'Parent Check-in')}
+                        {session.title || getSessionTypeLabel(session.session_type)}
                       </p>
                       <p className="text-sm text-text-tertiary">
                         {formatDate(session.scheduled_date)} • {formatTime(session.scheduled_time)}
@@ -826,8 +898,8 @@ function OverviewTab({
         </div>
 
         {/* Coach Card */}
-        <div className="bg-surface-1 rounded-2xl border border-border shadow-lg shadow-black/20 overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
+        <div className="bg-surface-1 rounded-2xl border border-[#7b008b]/20 shadow-lg shadow-black/20 shadow-[#7b008b]/5 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/[0.08]">
             <h2 className="font-semibold text-white flex items-center gap-2 text-base">
               <User className="w-5 h-5 text-[#FF0099]" />
               Your Coach
@@ -871,8 +943,8 @@ function OverviewTab({
       />
 
       {/* Referrals Card */}
-      <div className="bg-surface-1 rounded-2xl border border-border shadow-lg shadow-black/20 overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+      <div className="bg-surface-1 rounded-2xl border border-[#7b008b]/20 shadow-lg shadow-black/20 shadow-[#7b008b]/5 overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
           <h2 className="font-semibold text-white flex items-center gap-2 text-base">
             <Gift className="w-5 h-5 text-[#FF0099]" />
             Refer Friends & Earn

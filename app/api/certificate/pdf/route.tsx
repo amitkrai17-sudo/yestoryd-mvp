@@ -450,7 +450,7 @@ async function generateGeminiFeedback(data: {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
-    const prompt = `You are a reading coach writing a certificate feedback for a child who completed a 3-month reading program.
+    const prompt = `You are a reading coach writing a certificate feedback for a child who completed a 12-week reading program.
 
 CHILD DETAILS:
 - Name: ${data.childName}
@@ -496,7 +496,7 @@ Return ONLY valid JSON, no markdown.`;
     console.error('Gemini feedback error:', error);
     // Return default feedback
     return {
-      summary: `${data.childName} has shown remarkable progress in their reading journey! Their dedication and hard work over the past 3 months have resulted in significant improvements across all reading skills.`,
+      summary: `${data.childName} has shown remarkable progress in their reading journey! Their dedication and hard work over the past 12 weeks have resulted in significant improvements across all reading skills.`,
       strengths: [
         'Consistent effort throughout the program',
         'Improved reading confidence',
@@ -639,7 +639,7 @@ export async function GET(request: NextRequest) {
       finalScores,
       initialFeedback,
       finalFeedback,
-      sessionsCompleted: sessionsCompleted || 9,
+      sessionsCompleted: sessionsCompleted || 9, /* V1 fallback */
     });
 
     // Generate PDF
@@ -651,7 +651,7 @@ export async function GET(request: NextRequest) {
         certificateNumber={certificateNumber}
         completedDate={completedDate}
         programDuration={programDuration}
-        sessionsCompleted={sessionsCompleted || 9}
+        sessionsCompleted={sessionsCompleted || 9 /* V1 fallback */}
         initialScores={initialScores}
         finalScores={finalScores}
         geminiFeedback={geminiFeedback}

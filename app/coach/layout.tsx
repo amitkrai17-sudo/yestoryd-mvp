@@ -5,7 +5,7 @@
 // Yestoryd - AI-Powered Reading Intelligence Platform
 //
 // DARK THEME with Brand Colors:
-// - Primary CTA: #FF0099 (pink)
+// - Primary CTA: #00ABFF (pink)
 // - Secondary: #00ABFF (blue)
 // - Dark BG: #0f1419
 // - Card BG: bg-gray-800
@@ -216,7 +216,7 @@ export default function CoachLayout({
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#FF0099] to-[#00ABFF] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#00ABFF] to-[#00ABFF] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
           <p className="text-text-tertiary">Verifying access...</p>
@@ -240,7 +240,7 @@ export default function CoachLayout({
           </p>
           <button
             onClick={handleSignOut}
-            className="w-full py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#FF0099]/90 transition-colors"
+            className="w-full py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#00ABFF]/90 transition-colors"
           >
             Sign Out
           </button>

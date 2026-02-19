@@ -128,7 +128,7 @@ export default function DiagnosticPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
       </div>
     );
   }
@@ -139,7 +139,7 @@ export default function DiagnosticPage() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <p className="text-white mb-2">{error}</p>
-          <button onClick={() => router.back()} className="text-[#FF0099] font-medium">
+          <button onClick={() => router.back()} className="text-[#00ABFF] font-medium">
             Go Back
           </button>
         </div>
@@ -160,7 +160,7 @@ export default function DiagnosticPage() {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-white flex items-center gap-2">
-              <ClipboardCheck className="w-5 h-5 text-[#FF0099]" />
+              <ClipboardCheck className="w-5 h-5 text-[#00ABFF]" />
               Diagnostic Assessment
             </h1>
             <p className="text-xs text-text-tertiary">
@@ -172,9 +172,9 @@ export default function DiagnosticPage() {
 
       <div className="px-4 py-4 max-w-2xl mx-auto">
         {/* Diagnostic Banner */}
-        <div className="bg-[#FF0099]/10 border border-[#FF0099]/30 rounded-xl p-4 mb-4">
+        <div className="bg-[#00ABFF]/10 border border-[#00ABFF]/30 rounded-xl p-4 mb-4">
           <div className="flex items-start gap-3">
-            <ClipboardCheck className="w-5 h-5 text-[#FF0099] flex-shrink-0 mt-0.5" />
+            <ClipboardCheck className="w-5 h-5 text-[#00ABFF] flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-white text-sm font-medium">Diagnostic Session</p>
               <p className="text-text-tertiary text-xs mt-0.5">
@@ -188,7 +188,7 @@ export default function DiagnosticPage() {
         {child && (
           <div className="bg-surface-1 border border-border rounded-xl p-4 mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm">
                 {child.child_name.charAt(0)}
               </div>
               <div className="flex-1">

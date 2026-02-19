@@ -303,7 +303,7 @@ export default function ParentCheckinForm({
           )}
           <button
             onClick={onClose}
-            className="w-full py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#e6008a] transition"
+            className="w-full py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#e6008a] transition"
           >
             Done
           </button>
@@ -321,7 +321,7 @@ export default function ParentCheckinForm({
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <User className="w-5 h-5 text-[#00ABFF]" />
-                Parent Check-in
+                Check-in (Legacy)
               </h2>
               <p className="text-sm text-text-tertiary">{parentName} • {childName}</p>
             </div>
@@ -339,7 +339,7 @@ export default function ParentCheckinForm({
               <div
                 key={i}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  i + 1 <= step ? 'bg-[#FF0099]' : 'bg-gray-200'
+                  i + 1 <= step ? 'bg-[#00ABFF]' : 'bg-gray-200'
                 }`}
               />
             ))}
@@ -371,7 +371,7 @@ export default function ParentCheckinForm({
                       onClick={() => setParentSentiment(option.value)}
                       className={`flex flex-col items-center p-3 rounded-xl border-2 transition ${
                         parentSentiment === option.value
-                          ? 'border-[#FF0099] bg-[#FF0099]/5'
+                          ? 'border-[#00ABFF] bg-[#00ABFF]/5'
                           : 'border-border hover:border-border'
                       }`}
                     >
@@ -422,7 +422,7 @@ export default function ParentCheckinForm({
                       onClick={() => setHomePracticeFrequency(option.value)}
                       className={`w-full p-4 rounded-xl border-2 text-left transition ${
                         homePracticeFrequency === option.value
-                          ? 'border-[#FF0099] bg-[#FF0099]/5'
+                          ? 'border-[#00ABFF] bg-[#00ABFF]/5'
                           : 'border-border hover:border-border'
                       }`}
                     >
@@ -496,7 +496,7 @@ export default function ParentCheckinForm({
                     value={concernDetails}
                     onChange={(e) => setConcernDetails(e.target.value)}
                     placeholder="What specific concern did the parent raise?"
-                    className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                    className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                     rows={3}
                   />
                 </div>
@@ -510,7 +510,7 @@ export default function ParentCheckinForm({
                   value={actionItems}
                   onChange={(e) => setActionItems(e.target.value)}
                   placeholder="What did you agree to do? E.g., Send extra worksheets, schedule extra session..."
-                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                  className="w-full p-3 border border-border rounded-xl text-white placeholder:text-text-tertiary focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                   rows={2}
                 />
               </div>
@@ -533,7 +533,7 @@ export default function ParentCheckinForm({
                         className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto transition ${
                           isRecording
                             ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                            : 'bg-[#FF0099] hover:bg-[#e6008a]'
+                            : 'bg-[#00ABFF] hover:bg-[#e6008a]'
                         }`}
                       >
                         {isRecording ? (
@@ -584,7 +584,7 @@ export default function ParentCheckinForm({
                     onChange={(e) => setFollowUpNeeded(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[#FF0099]/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-1 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF0099]"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[#00ABFF]/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-1 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ABFF]"></div>
                 </label>
               </div>
 
@@ -598,7 +598,7 @@ export default function ParentCheckinForm({
                     value={followUpDate}
                     onChange={(e) => setFollowUpDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#FF0099]/20 focus:border-[#FF0099]"
+                    className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                   />
                 </div>
               )}
@@ -634,7 +634,7 @@ export default function ParentCheckinForm({
                       onClick={() => setRenewalLikelihood(option.value)}
                       className={`p-4 rounded-xl border-2 text-center transition ${
                         renewalLikelihood === option.value
-                          ? 'border-[#FF0099] bg-[#FF0099]/5'
+                          ? 'border-[#00ABFF] bg-[#00ABFF]/5'
                           : 'border-border hover:border-border'
                       }`}
                     >
@@ -666,7 +666,7 @@ export default function ParentCheckinForm({
               <button
                 onClick={() => setStep(step + 1)}
                 disabled={!canProceed()}
-                className="flex-1 py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
@@ -675,7 +675,7 @@ export default function ParentCheckinForm({
               <button
                 onClick={handleSubmit}
                 disabled={loading || !canProceed()}
-                className="flex-1 py-3 bg-[#FF0099] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#e6008a] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>

@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ab_test_events: {
@@ -192,17 +217,24 @@ export type Database = {
           created_at: string
           curriculum_start: string
           daily_nudge_target: string
+          differentiators: Json | null
           display_name: string
           estimated_total_seasons: number
+          icon: string | null
           id: string
           is_active: boolean
           parent_role: string
           primary_mode: string
+          progress_pulse_interval: number | null
           season_duration_weeks: number
           session_duration_minutes: number
           sessions_per_season: number
           sessions_per_week: number
+          short_description: string | null
+          skill_booster_credits: number | null
+          tagline: string | null
           updated_at: string
+          weekly_pattern: Json | null
         }
         Insert: {
           age_max: number
@@ -210,17 +242,24 @@ export type Database = {
           created_at?: string
           curriculum_start: string
           daily_nudge_target: string
+          differentiators?: Json | null
           display_name: string
           estimated_total_seasons: number
+          icon?: string | null
           id: string
           is_active?: boolean
           parent_role: string
           primary_mode: string
+          progress_pulse_interval?: number | null
           season_duration_weeks?: number
           session_duration_minutes: number
           sessions_per_season: number
           sessions_per_week: number
+          short_description?: string | null
+          skill_booster_credits?: number | null
+          tagline?: string | null
           updated_at?: string
+          weekly_pattern?: Json | null
         }
         Update: {
           age_max?: number
@@ -228,17 +267,24 @@ export type Database = {
           created_at?: string
           curriculum_start?: string
           daily_nudge_target?: string
+          differentiators?: Json | null
           display_name?: string
           estimated_total_seasons?: number
+          icon?: string | null
           id?: string
           is_active?: boolean
           parent_role?: string
           primary_mode?: string
+          progress_pulse_interval?: number | null
           season_duration_weeks?: number
           session_duration_minutes?: number
           sessions_per_season?: number
           sessions_per_week?: number
+          short_description?: string | null
+          skill_booster_credits?: number | null
+          tagline?: string | null
           updated_at?: string
+          weekly_pattern?: Json | null
         }
         Relationships: []
       }
@@ -7677,6 +7723,131 @@ export type Database = {
           },
         ]
       }
+      parent_calls: {
+        Row: {
+          child_id: string | null
+          coach_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          enrollment_id: string | null
+          google_event_id: string | null
+          google_meet_link: string | null
+          id: string
+          initiated_by: string | null
+          notes: string | null
+          recall_bot_id: string | null
+          requested_at: string | null
+          scheduled_at: string | null
+          status: string | null
+        }
+        Insert: {
+          child_id?: string | null
+          coach_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          enrollment_id?: string | null
+          google_event_id?: string | null
+          google_meet_link?: string | null
+          id?: string
+          initiated_by?: string | null
+          notes?: string | null
+          recall_bot_id?: string | null
+          requested_at?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          child_id?: string | null
+          coach_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          enrollment_id?: string | null
+          google_event_id?: string | null
+          google_meet_link?: string | null
+          id?: string
+          initiated_by?: string | null
+          notes?: string | null
+          recall_bot_id?: string | null
+          requested_at?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_calls_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "parent_calls_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_activity_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_workload"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches_with_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_calls_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
+          },
+        ]
+      }
       parent_communications: {
         Row: {
           action_items: string[] | null
@@ -13063,8 +13234,8 @@ export type Database = {
           filter_date_to?: string | null
           filter_event_type?: string | null
           filter_keywords?: string[] | null
-          match_count?: number
-          match_threshold?: number
+          match_count?: number | null
+          match_threshold?: number | null
           query_embedding: string
         }
         Returns: {
@@ -13113,8 +13284,8 @@ export type Database = {
           filter_min_age?: number | null
           filter_skill_id?: string | null
           filter_tags?: string[] | null
-          match_count?: number
-          match_threshold?: number
+          match_count?: number | null
+          match_threshold?: number | null
           query_embedding: string
         }
         Returns: {
@@ -13335,6 +13506,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

@@ -18,6 +18,7 @@ import {
 } from '@/lib/scheduling';
 import { loadCoachConfig, loadRevenueSplitConfig, loadPaymentConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getSessionsForTier, getBoosterCreditsForTier } from '@/types/v2-schema';
 
 const supabase = createAdminClient();
 
@@ -113,6 +114,9 @@ interface AgeBandConfig {
   session_duration_minutes: number;
   sessions_per_week: number;
   frequency_label: string;
+  weekly_pattern: number[];
+  skill_booster_credits: number;
+  program_duration_weeks: number;
 }
 
 /**
@@ -124,12 +128,25 @@ async function getAgeBandConfig(
   requestId: string
 ): Promise<AgeBandConfig | null> {
   try {
+    // V3 columns (weekly_pattern, skill_booster_credits, program_duration_weeks) are not in
+    // the auto-generated Supabase types yet, so we cast the result to include them.
     const { data, error } = await supabase
       .from('age_band_config')
-      .select('display_name, age_min, age_max, sessions_per_season, session_duration_minutes, sessions_per_week, primary_mode')
+      .select('display_name, age_min, age_max, sessions_per_season, session_duration_minutes, sessions_per_week, primary_mode, weekly_pattern, skill_booster_credits, program_duration_weeks')
       .lte('age_min', childAge)
       .gte('age_max', childAge)
-      .single();
+      .single() as { data: {
+        display_name: string | null;
+        age_min: number;
+        age_max: number;
+        sessions_per_season: number;
+        session_duration_minutes: number;
+        sessions_per_week: number;
+        primary_mode: string | null;
+        weekly_pattern: unknown;
+        skill_booster_credits: number | null;
+        program_duration_weeks: number | null;
+      } | null; error: any };
 
     if (error || !data) {
       console.warn(JSON.stringify({
@@ -147,6 +164,16 @@ async function getAgeBandConfig(
                           data.sessions_per_week === 2 ? 'twice-weekly' :
                           `${data.sessions_per_week}x/week`;
 
+    // Parse weekly_pattern from JSONB
+    let weeklyPattern: number[] = [];
+    if (data.weekly_pattern) {
+      if (Array.isArray(data.weekly_pattern)) {
+        weeklyPattern = data.weekly_pattern;
+      } else if (typeof data.weekly_pattern === 'string') {
+        try { weeklyPattern = JSON.parse(data.weekly_pattern); } catch { /* fallback empty */ }
+      }
+    }
+
     console.log(JSON.stringify({
       requestId,
       event: 'age_band_config_loaded',
@@ -155,6 +182,8 @@ async function getAgeBandConfig(
       totalSessions: data.sessions_per_season,
       durationMinutes: data.session_duration_minutes,
       sessionsPerWeek: data.sessions_per_week,
+      weeklyPattern,
+      skillBoosterCredits: data.skill_booster_credits,
     }));
 
     return {
@@ -165,6 +194,9 @@ async function getAgeBandConfig(
       session_duration_minutes: data.session_duration_minutes,
       sessions_per_week: data.sessions_per_week,
       frequency_label: frequencyLabel,
+      weekly_pattern: weeklyPattern,
+      skill_booster_credits: data.skill_booster_credits ?? 3,
+      program_duration_weeks: data.program_duration_weeks ?? 12,
     };
   } catch (err: any) {
     console.error(JSON.stringify({
@@ -268,13 +300,14 @@ async function getProductDetails(
   id: string;
   sessions_included: number;
   duration_months: number;
-  sessions_coaching: number;
+  duration_weeks: number;
+  sessions_coaching: number; // DEPRECATED V1 — use age_band_config.weekly_pattern
   sessions_skill_building: number;
-  sessions_checkin: number;
+  sessions_checkin: number; // DEPRECATED V1 — use age_band_config.weekly_pattern
 } | null> {
   const { data: product, error } = await supabase
     .from('pricing_plans')
-    .select('id, sessions_included, duration_months, sessions_coaching, sessions_skill_building, sessions_checkin')
+    .select('id, sessions_included, duration_months, duration_weeks, sessions_coaching, sessions_skill_building, sessions_checkin')
     .eq('slug', productCode)
     .eq('is_active', true)
     .single();
@@ -289,10 +322,14 @@ async function getProductDetails(
     return null;
   }
 
+  // Derive duration_weeks from slug if not set in DB
+  const defaultWeeks = productCode === 'starter' ? 4 : productCode === 'continuation' ? 8 : 12;
+
   return {
     id: product.id,
     sessions_included: product.sessions_included ?? 9,
     duration_months: product.duration_months ?? 3,
+    duration_weeks: product.duration_weeks ?? defaultWeeks,
     sessions_coaching: product.sessions_coaching ?? 6,
     sessions_skill_building: product.sessions_skill_building ?? 3,
     sessions_checkin: product.sessions_checkin ?? 3,
@@ -1098,35 +1135,107 @@ export async function POST(request: NextRequest) {
 
     // 10. Create Enrollment
     const startImmediately = !body.requestedStartDate;
-    const programStart = startImmediately ? new Date() : new Date(body.requestedStartDate!);
+    let programStart = startImmediately ? new Date() : new Date(body.requestedStartDate!);
     const programEnd = new Date(programStart);
 
     // Set duration based on product type
     const durationMonths = productDetails?.duration_months ||
       (productInfo.productCode === 'starter' ? 1 : 3);
+    const durationWeeks = productDetails?.duration_weeks ||
+      (productInfo.productCode === 'starter' ? 4 : productInfo.productCode === 'continuation' ? 8 : 12);
     programEnd.setMonth(programEnd.getMonth() + durationMonths);
 
-    // 10.V2: Fetch age_band_config for V2 age-differentiated sessions
+    // 10.V3: Fetch age_band_config for weekly_pattern-based scheduling
     const ageBandConfig = await getAgeBandConfig(body.childAge, requestId);
-
-    // Get sessions count: prefer age_band_config, fallback to product details, then legacy default
-    const sessionsCount = ageBandConfig?.total_sessions
-      || productDetails?.sessions_included
-      || productInfo.sessionsTotal
-      || 9;
 
     // 10a. Handle continuation-specific logic
     let starterEnrollmentId: string | null = null;
+    let startWeek = 0; // 0-indexed offset into weekly_pattern
     if (productInfo.productCode === 'continuation') {
+      startWeek = 4; // Continuation starts at week 5 (index 4)
       const starterEnrollment = await getStarterEnrollment(child.id, requestId);
       if (starterEnrollment) {
         starterEnrollmentId = starterEnrollment.id;
         // Mark starter as completed
         await markStarterCompleted(starterEnrollment.id, requestId);
+
+        // Find starter's last session date to determine continuation start
+        const { data: lastSession } = await supabase
+          .from('scheduled_sessions')
+          .select('scheduled_date')
+          .eq('enrollment_id', starterEnrollment.id)
+          .order('scheduled_date', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (lastSession?.scheduled_date) {
+          // Start continuation from the week after starter's last session
+          const lastDate = new Date(lastSession.scheduled_date);
+          const nextWeekStart = new Date(lastDate);
+          nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+          // Only override if no explicit start date was requested
+          if (startImmediately) {
+            programStart = nextWeekStart;
+            programEnd.setTime(nextWeekStart.getTime());
+            programEnd.setMonth(programEnd.getMonth() + durationMonths);
+          }
+          console.log(JSON.stringify({
+            requestId,
+            event: 'continuation_start_from_starter',
+            lastStarterSessionDate: lastSession.scheduled_date,
+            continuationStart: programStart.toISOString().split('T')[0],
+          }));
+        }
+      } else {
+        // No starter enrollment found — log warning but proceed
+        console.warn(JSON.stringify({
+          requestId,
+          event: 'continuation_no_starter_found',
+          childId: child.id,
+          message: 'Proceeding with continuation without starter reference',
+        }));
       }
     }
 
-    // 10b. Calculate continuation deadline for starter enrollments (7 days after completion)
+    // 10b.V3: Derive session count from weekly_pattern + duration_weeks
+    const weeklyPattern = ageBandConfig?.weekly_pattern || [];
+    let sessionsCount: number;
+    let remedialSessionsMax: number;
+
+    if (weeklyPattern.length > 0) {
+      // V3 path: derive from weekly_pattern
+      sessionsCount = getSessionsForTier(weeklyPattern, durationWeeks, startWeek);
+      remedialSessionsMax = getBoosterCreditsForTier(
+        ageBandConfig!.skill_booster_credits,
+        durationWeeks,
+        ageBandConfig!.program_duration_weeks
+      );
+      console.log(JSON.stringify({
+        requestId,
+        event: 'v3_session_count_derived',
+        weeklyPattern,
+        durationWeeks,
+        startWeek,
+        sessionsCount,
+        remedialSessionsMax,
+        sessionDurationMinutes: ageBandConfig!.session_duration_minutes,
+      }));
+    } else {
+      // Legacy fallback: use flat counts from age_band_config or product
+      sessionsCount = ageBandConfig?.total_sessions
+        || productDetails?.sessions_included
+        || productInfo.sessionsTotal
+        || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+      remedialSessionsMax = productDetails?.sessions_skill_building ?? 3;
+      console.log(JSON.stringify({
+        requestId,
+        event: 'legacy_session_count_fallback',
+        sessionsCount,
+        remedialSessionsMax,
+      }));
+    }
+
+    // 10c. Calculate continuation deadline for starter enrollments (7 days after completion)
     let continuationDeadline: string | null = null;
     if (productInfo.productCode === 'starter') {
       const deadline = new Date(programEnd);
@@ -1134,12 +1243,9 @@ export async function POST(request: NextRequest) {
       continuationDeadline = deadline.toISOString();
     }
 
-    // 10c. Create enrollment with new columns
-    // sessions_purchased = total paid for (12: 6 coaching + 3 skill booster + 3 checkin)
-    // sessions_scheduled will be set to 9 (6 coaching + 3 checkin) - skill boosters are on-demand
-    // remedial_sessions_max = skill booster credits available (3)
-    const remedialSessionsMax = productDetails?.sessions_skill_building ?? 3;
-
+    // 10d. Create enrollment with V3 columns
+    // total_sessions = coaching sessions derived from weekly_pattern (no parent_checkin)
+    // remedial_sessions_max = booster credits proportional to tier+band
     const enrollmentData: Record<string, unknown> = {
       child_id: child.id,
       parent_id: parent.id,
@@ -1156,10 +1262,10 @@ export async function POST(request: NextRequest) {
       referral_code_used: couponUsed,
       requested_start_date: body.requestedStartDate || null,
       actual_start_date: startImmediately ? new Date().toISOString().split('T')[0] : null,
-      // New columns for multi-product support
+      // Multi-product support
       enrollment_type: productInfo.productCode,
       product_id: productInfo.productId || productDetails?.id || null,
-      sessions_purchased: sessionsCount, // Total paid for (includes skill booster credits)
+      sessions_purchased: sessionsCount,
       // Skill booster (remedial) sessions - booked on-demand via /api/skill-booster/request
       remedial_sessions_max: remedialSessionsMax,
       remedial_sessions_used: 0,
@@ -1168,7 +1274,7 @@ export async function POST(request: NextRequest) {
       preference_days: body.preferenceDays || null,
       preference_start_type: body.requestedStartDate ? 'later' : 'immediate',
       preference_start_date: body.requestedStartDate || null,
-      // V2: Age-band differentiated sessions
+      // V3: Age-band differentiated sessions
       age_band: ageBandConfig?.age_band || null,
       season_number: 1,
       total_sessions: sessionsCount,
@@ -1234,19 +1340,27 @@ export async function POST(request: NextRequest) {
         preferredDays: body.preferenceDays || undefined,
       };
 
+      // V3: Pass weekly_pattern data to scheduler for pattern-based scheduling
+      const schedulerOptions = {
+        enrollmentId: enrollment.id,
+        childId: child.id,
+        coachId: coach.id,
+        planSlug: productInfo.productCode,
+        programStart,
+        preference,
+        requestId,
+        // V3 weekly-pattern-based scheduling
+        weeklyPattern: weeklyPattern.length > 0 ? weeklyPattern : undefined,
+        sessionDurationMinutes: ageBandConfig?.session_duration_minutes,
+        startWeek,
+        durationWeeks,
+      };
+
       // Use unified scheduler with smart slot finding
       // Falls back to simple scheduling if smart finder unavailable
       let schedulerResult;
       try {
-        schedulerResult = await scheduleEnrollmentSessions({
-          enrollmentId: enrollment.id,
-          childId: child.id,
-          coachId: coach.id,
-          planSlug: productInfo.productCode,
-          programStart,
-          preference,
-          requestId,
-        }, supabase as any);
+        schedulerResult = await scheduleEnrollmentSessions(schedulerOptions, supabase as any);
       } catch (smartErr: any) {
         console.warn(JSON.stringify({
           requestId,
@@ -1254,14 +1368,7 @@ export async function POST(request: NextRequest) {
           error: smartErr.message,
         }));
         // Fallback to simple scheduling without API calls
-        schedulerResult = await createSessionsSimple({
-          enrollmentId: enrollment.id,
-          childId: child.id,
-          coachId: coach.id,
-          planSlug: productInfo.productCode,
-          programStart,
-          requestId,
-        }, supabase as any);
+        schedulerResult = await createSessionsSimple(schedulerOptions, supabase as any);
       }
 
       if (schedulerResult.success) {

@@ -17,7 +17,7 @@ export async function GET(
   try {
     const { enrollmentId } = await params;
 
-    // Get enrollment
+    // Get enrollment with total_sessions for V3 dynamic completion
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
       .select(`
@@ -27,7 +27,8 @@ export async function GET(
         program_start,
         program_end,
         child_id,
-        coach_id
+        coach_id,
+        total_sessions
       `)
       .eq('id', enrollmentId)
       .single();
@@ -36,7 +37,7 @@ export async function GET(
       return NextResponse.json({
         eligible: false,
         reason: 'Enrollment not found',
-        sessionsCompleted: { coaching: 0, parent: 0 }
+        sessionsCompleted: { coaching: 0, total: 0 }
       });
     }
 
@@ -45,7 +46,7 @@ export async function GET(
         eligible: false,
         reason: 'Completion already triggered',
         triggeredAt: enrollment.completion_triggered_at,
-        sessionsCompleted: { coaching: 6, parent: 3 }
+        sessionsCompleted: { coaching: 0, total: 0 }
       });
     }
 
@@ -53,11 +54,11 @@ export async function GET(
       return NextResponse.json({
         eligible: false,
         reason: `Enrollment status is ${enrollment.status}`,
-        sessionsCompleted: { coaching: 0, parent: 0 }
+        sessionsCompleted: { coaching: 0, total: 0 }
       });
     }
 
-    // Count completed sessions
+    // Count completed coaching sessions (V3: coaching-only completion)
     const { data: sessions } = await supabase
       .from('scheduled_sessions')
       .select('session_type, status')
@@ -67,22 +68,20 @@ export async function GET(
       s => s.session_type === 'coaching' && s.status === 'completed'
     ).length || 0;
 
-    const parentCompleted = sessions?.filter(
-      s => s.session_type === 'parent_checkin' && s.status === 'completed'
-    ).length || 0;
-
-    // Session 9 = 6 coaching + 3 parent check-ins
-    const isEligible = coachingCompleted >= 6 && parentCompleted >= 3;
+    // V3: completion based on coaching sessions vs enrollment.total_sessions
+    const totalExpected = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+    const isEligible = coachingCompleted >= totalExpected;
 
     return NextResponse.json({
       eligible: isEligible,
-      reason: isEligible 
-        ? 'All sessions completed' 
-        : `Need ${Math.max(0, 6 - coachingCompleted)} more coaching and ${Math.max(0, 3 - parentCompleted)} more check-ins`,
+      reason: isEligible
+        ? 'All coaching sessions completed'
+        : `Need ${Math.max(0, totalExpected - coachingCompleted)} more coaching sessions`,
       sessionsCompleted: {
         coaching: coachingCompleted,
-        parent: parentCompleted
+        total: coachingCompleted,
       },
+      totalExpected,
       enrollmentId,
       childId: enrollment.child_id,
       coachId: enrollment.coach_id,

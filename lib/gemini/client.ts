@@ -282,6 +282,106 @@ OUTPUT FORMAT: JSON only
 }
 
 /**
+ * Progress Pulse report result
+ */
+export interface ProgressPulseResult {
+  overall_progress: 'emerging' | 'developing' | 'proficient' | 'advanced';
+  confidence_trend: 'rising' | 'steady' | 'needs_attention';
+  headline: string;
+  parent_summary: string;
+  strengths: string[];
+  focus_areas: string[];
+  home_activities: string[];
+  coach_notes: string;
+  milestone_reached?: string;
+}
+
+/**
+ * Generate a Progress Pulse report from session data
+ */
+export async function generateProgressPulse(
+  childName: string,
+  age: number,
+  sessionsSummary: string,
+  completedCount: number,
+  pulseNumber: number
+): Promise<ProgressPulseResult> {
+  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+  const prompt = `
+You are a warm, knowledgeable reading coach generating a progress report for a parent.
+
+CHILD: ${childName}, Age ${age}
+SESSIONS COMPLETED: ${completedCount}
+PROGRESS REPORT #: ${pulseNumber}
+
+SESSION DATA FROM RECENT SESSIONS:
+${sessionsSummary}
+
+Generate a Progress Pulse report. Be warm, specific, and encouraging while being honest about areas that need work.
+
+GUIDELINES:
+- Use the child's name naturally
+- Reference specific skills and activities from the sessions
+- Make home activities practical and fun (5-10 minutes each)
+- Be age-appropriate in language and expectations
+- Celebrate progress, no matter how small
+- If there are challenges, frame them positively as growth opportunities
+
+OUTPUT FORMAT: Return ONLY valid JSON, no markdown formatting:
+{
+  "overall_progress": "<emerging|developing|proficient|advanced>",
+  "confidence_trend": "<rising|steady|needs_attention>",
+  "headline": "<One compelling sentence about the child's progress, e.g. 'Arjun is reading with more expression and confidence!'>",
+  "parent_summary": "<3-4 sentences summarizing progress for the parent. Warm, specific, encouraging.>",
+  "strengths": ["<specific strength 1>", "<specific strength 2>", "<specific strength 3>"],
+  "focus_areas": ["<area needing attention 1>", "<area needing attention 2>"],
+  "home_activities": ["<fun 5-10 min activity 1>", "<fun 5-10 min activity 2>", "<fun 5-10 min activity 3>"],
+  "coach_notes": "<Brief professional note about what the coach plans to focus on next>",
+  "milestone_reached": "<Optional: specific milestone if achieved, e.g. 'Can read 3-letter words independently'. null if none>"
+}
+`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const cleanedText = responseText.replace(/```json\n?|```\n?/g, '').trim();
+    const parsed: ProgressPulseResult = JSON.parse(cleanedText);
+
+    // Validate required fields
+    return {
+      overall_progress: parsed.overall_progress || 'developing',
+      confidence_trend: parsed.confidence_trend || 'steady',
+      headline: parsed.headline || `${childName} is making progress in reading!`,
+      parent_summary: parsed.parent_summary || `${childName} has been working hard in coaching sessions.`,
+      strengths: parsed.strengths || ['Consistent effort in sessions'],
+      focus_areas: parsed.focus_areas || ['Continue building reading fluency'],
+      home_activities: parsed.home_activities || ['Read together for 10 minutes daily'],
+      coach_notes: parsed.coach_notes || 'Will continue building on current progress.',
+      milestone_reached: parsed.milestone_reached || undefined,
+    };
+  } catch (error) {
+    console.error('[ProgressPulse] Gemini generation error:', error);
+
+    // Fallback response
+    return {
+      overall_progress: 'developing',
+      confidence_trend: 'steady',
+      headline: `${childName} is making steady progress in reading!`,
+      parent_summary: `${childName} has completed ${completedCount} coaching sessions and is showing consistent effort. The coach is working on building key reading skills appropriate for their age.`,
+      strengths: ['Consistent attendance and effort', 'Engaged during sessions'],
+      focus_areas: ['Continue building reading confidence'],
+      home_activities: [
+        'Read aloud together for 10 minutes daily',
+        'Practice sight words with flashcards',
+        'Let your child choose books they enjoy',
+      ],
+      coach_notes: 'Will continue building on current progress in upcoming sessions.',
+    };
+  }
+}
+
+/**
  * Generate pre-session agenda
  */
 export async function generateAgenda(

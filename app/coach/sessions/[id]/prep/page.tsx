@@ -146,7 +146,7 @@ export default function SessionPrepHub() {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-pink-500 mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 animate-spin text-blue-500 mx-auto mb-4" />
           <p className="text-text-tertiary">Loading session data...</p>
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function SessionPrepHub() {
           <p className="text-red-400 mb-4">{error || 'Session not found'}</p>
           <button
             onClick={() => router.back()}
-            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Go Back
           </button>
@@ -213,7 +213,7 @@ export default function SessionPrepHub() {
               {isCompleted && (
                 <button
                   onClick={() => setShowFeedbackForm(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   <FileText className="w-4 h-4" />
                   Add Feedback
@@ -231,7 +231,7 @@ export default function SessionPrepHub() {
             {/* Child Overview */}
             <div className="bg-surface-1 rounded-xl border border-border p-6">
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-2xl font-bold">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-2xl font-bold">
                   {child.child_name.charAt(0)}
                 </div>
                 <div className="flex-1">
@@ -242,7 +242,7 @@ export default function SessionPrepHub() {
                   <div className="flex gap-6 mt-3">
                     {child.latest_assessment_score && (
                       <div>
-                        <p className="text-2xl font-bold text-pink-400">{child.latest_assessment_score}</p>
+                        <p className="text-2xl font-bold text-blue-400">{child.latest_assessment_score}</p>
                         <p className="text-xs text-text-tertiary">Assessment Score</p>
                       </div>
                     )}
@@ -265,10 +265,10 @@ export default function SessionPrepHub() {
               )}
 
               {child.primary_focus_area && (
-                <div className="mt-3 p-3 bg-pink-900/20 border border-pink-800/30 rounded-lg">
+                <div className="mt-3 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-pink-400" />
-                    <span className="text-sm text-pink-400">Primary Focus:</span>
+                    <Target className="w-4 h-4 text-blue-400" />
+                    <span className="text-sm text-blue-400">Primary Focus:</span>
                     <span className="font-medium">{child.primary_focus_area}</span>
                   </div>
                 </div>
@@ -451,7 +451,7 @@ export default function SessionPrepHub() {
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-1/50"
               >
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-pink-400" />
+                  <BookOpen className="w-5 h-5 text-blue-400" />
                   <span className="font-semibold">Session Notes</span>
                 </div>
                 {expandedSections.notes ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -464,7 +464,7 @@ export default function SessionPrepHub() {
                     onChange={(e) => setPrepNotes(e.target.value)}
                     placeholder="Add your notes for this session..."
                     rows={6}
-                    className="w-full px-4 py-3 bg-surface-0 border border-border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none"
+                    className="w-full px-4 py-3 bg-surface-0 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   />
                   <button
                     onClick={saveNotes}

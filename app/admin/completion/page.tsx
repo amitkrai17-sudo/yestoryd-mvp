@@ -90,7 +90,7 @@ export default function CompletionManagementPage() {
 
   async function triggerCompletion(enrollmentId: string, force: boolean = false) {
     const confirmMsg = force 
-      ? 'This enrollment has less than 9 sessions. Mark as complete anyway?' 
+      ? 'This enrollment has fewer sessions than expected. Mark as complete anyway?'
       : 'Mark this program as complete?';
     if (!confirm(confirmMsg)) return;
     
@@ -171,7 +171,7 @@ export default function CompletionManagementPage() {
     overdue: enrollments.filter(e => e.riskLevel === 'overdue').length,
     atRisk: enrollments.filter(e => e.riskLevel === 'at_risk').length,
     inactive: enrollments.filter(e => e.riskLevel === 'inactive').length,
-    ready: enrollments.filter(e => e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9) && e.status !== 'completed')).length,
+    ready: enrollments.filter(e => e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback */) && e.status !== 'completed')).length,
     onTrack: enrollments.filter(e => e.riskLevel === 'on_track' || e.riskLevel === 'active').length,
     completed: enrollments.filter(e => e.status === 'completed').length,
   };
@@ -198,7 +198,7 @@ export default function CompletionManagementPage() {
       case 'inactive':
         return e.riskLevel === 'inactive';
       case 'ready':
-        return e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9) && e.status !== 'completed');
+        return e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback */) && e.status !== 'completed');
       case 'on_track':
         return e.riskLevel === 'on_track' || e.riskLevel === 'active';
       case 'completed':
@@ -558,7 +558,7 @@ export default function CompletionManagementPage() {
                           )}
 
                           {/* Send Final Assessment */}
-                          {!enrollment.hasFinalAssessment && enrollment.sessionsCompleted >= Math.ceil((enrollment.sessionsTotal || 9) * 0.67) && enrollment.status !== 'completed' && (
+                          {!enrollment.hasFinalAssessment && enrollment.sessionsCompleted >= Math.ceil((enrollment.sessionsTotal || 9 /* V1 fallback */) * 0.67) && enrollment.status !== 'completed' && (
                             <button
                               onClick={() => sendFinalAssessment(enrollment.id, enrollment.parentEmail, enrollment.childName)}
                               disabled={actionLoading === enrollment.id + '_assessment'}
@@ -580,14 +580,14 @@ export default function CompletionManagementPage() {
                           {/* Mark Complete */}
                           {enrollment.status !== 'completed' && (
                             <button
-                              onClick={() => triggerCompletion(enrollment.id, enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9))}
+                              onClick={() => triggerCompletion(enrollment.id, enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback */))}
                               disabled={actionLoading === enrollment.id + '_complete'}
                               className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                                enrollment.sessionsCompleted >= (enrollment.sessionsTotal || 9)
+                                enrollment.sessionsCompleted >= (enrollment.sessionsTotal || 9 /* V1 fallback */)
                                   ? 'text-green-400 hover:bg-green-500/20'
                                   : 'text-text-tertiary hover:bg-surface-2'
                               }`}
-                              title={enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9) ? `Force Complete (${enrollment.sessionsCompleted}/${enrollment.sessionsTotal || 9})` : 'Mark Complete'}
+                              title={enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback */) ? `Force Complete (${enrollment.sessionsCompleted}/${enrollment.sessionsTotal || 9 /* V1 fallback */})` : 'Mark Complete'}
                             >
                               {actionLoading === enrollment.id + '_complete' ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -664,7 +664,7 @@ export default function CompletionManagementPage() {
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Overdue: Program ended, sessions incomplete</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" /> At Risk: Ending within 7 days</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500" /> Inactive: No session in 14+ days</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Ready: 9 sessions done</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Ready: All sessions done</span>
       </div>
     </div>
   );

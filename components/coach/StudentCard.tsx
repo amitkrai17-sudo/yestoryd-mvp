@@ -35,7 +35,7 @@ export default function StudentCard({ student }: StudentCardProps) {
       {/* Single Row: Avatar | Info | Actions */}
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
           {student.child_name?.charAt(0) || 'S'}
         </div>
 
@@ -48,7 +48,7 @@ export default function StudentCard({ student }: StudentCardProps) {
             <span className="text-[10px] text-gray-500">{student.age}y</span>
             <AgeBandBadge ageBand={student.age_band} age={student.age} />
             {student.is_coach_lead && (
-              <span className="px-1.5 py-0.5 bg-[#FF0099]/20 text-[#FF0099] text-[9px] rounded font-medium">
+              <span className="px-1.5 py-0.5 bg-[#00ABFF]/20 text-[#00ABFF] text-[9px] rounded font-medium">
                 70%
               </span>
             )}
@@ -73,7 +73,7 @@ export default function StudentCard({ student }: StudentCardProps) {
         {/* Action Button */}
         <Link
           href={`/coach/students/${student.id}`}
-          className="h-8 px-3 bg-[#FF0099] hover:bg-[#FF0099]/80 text-white text-xs font-medium rounded-lg flex items-center gap-1 flex-shrink-0 transition-colors"
+          className="h-8 px-3 bg-[#00ABFF] hover:bg-[#00ABFF]/80 text-white text-xs font-medium rounded-lg flex items-center gap-1 flex-shrink-0 transition-colors"
         >
           View
           <ChevronRight className="w-3 h-3" />
@@ -83,7 +83,7 @@ export default function StudentCard({ student }: StudentCardProps) {
       {/* Progress Bar */}
       <div className="mt-2 h-1 bg-gray-800 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-[#FF0099] to-[#00ABFF] rounded-full transition-all"
+          className="h-full bg-gradient-to-r from-[#00ABFF] to-[#00ABFF] rounded-full transition-all"
           style={{ width: `${progress}%` }}
         />
       </div>

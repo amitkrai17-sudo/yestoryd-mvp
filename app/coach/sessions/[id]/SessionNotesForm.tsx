@@ -294,7 +294,7 @@ export default function SessionNotesForm({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface-1 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#ff0099] to-[#7B008B] p-4 text-white">
+        <div className="bg-gradient-to-r from-[#00abff] to-[#7B008B] p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-bold">Session Notes</h2>
             <button onClick={onClose} className="p-1 hover:bg-surface-1/20 rounded-lg transition">
@@ -507,7 +507,7 @@ export default function SessionNotesForm({
                           onClick={startRecording}
                           className="flex flex-col items-center gap-2 p-4 hover:bg-surface-2 rounded-xl transition"
                         >
-                          <div className="w-14 h-14 bg-[#ff0099] rounded-full flex items-center justify-center">
+                          <div className="w-14 h-14 bg-[#00abff] rounded-full flex items-center justify-center">
                             <Mic className="w-7 h-7 text-white" />
                           </div>
                           <span className="text-sm text-text-secondary">Tap to record</span>
@@ -625,7 +625,7 @@ export default function SessionNotesForm({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex-1 py-3 bg-[#ff0099] text-white rounded-xl font-semibold hover:bg-[#e6008a] transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-3 bg-[#00abff] text-white rounded-xl font-semibold hover:bg-[#e6008a] transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

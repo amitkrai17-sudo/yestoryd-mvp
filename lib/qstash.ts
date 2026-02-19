@@ -665,6 +665,56 @@ export async function queueWaLeadBotProcess(data: WaLeadBotProcessData): Promise
 }
 
 // ============================================================
+// PROGRESS PULSE
+// ============================================================
+
+interface ProgressPulseJobData {
+  enrollmentId: string;
+  childId: string;
+  childName: string;
+  coachId: string;
+  completedCount: number;
+  pulseInterval: number;
+  parentPhone?: string;
+  parentEmail?: string;
+  parentName?: string;
+  requestId: string;
+}
+
+/**
+ * Queue Progress Pulse generation job via QStash
+ * Triggered after every N coaching sessions (N = age_band_config.progress_pulse_interval)
+ */
+export async function queueProgressPulse(data: ProgressPulseJobData): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping progress-pulse job');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/jobs/progress-pulse`,
+      body: data,
+      retries: 3,
+      delay: 5, // 5 second delay to let session data settle
+    });
+
+    console.log('[QSTASH] Queued progress-pulse job:', {
+      messageId: response.messageId,
+      enrollmentId: data.enrollmentId,
+      childName: data.childName,
+      completedCount: data.completedCount,
+      pulseInterval: data.pulseInterval,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: any) {
+    console.error('[QSTASH] Failed to queue progress-pulse:', error.message);
+    return { success: false, messageId: null, error: error.message };
+  }
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 

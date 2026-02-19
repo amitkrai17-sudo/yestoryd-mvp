@@ -38,9 +38,9 @@ const COLOR_MAP = {
     hover: BRAND_COLORS.electricBlue,
   },
   pink: {
-    bg: 'bg-[#FF0099]/20',
-    border: 'border-[#FF0099]/50',
-    text: 'text-[#FF0099]',
+    bg: 'bg-[#00ABFF]/20',
+    border: 'border-[#00ABFF]/50',
+    text: 'text-[#00ABFF]',
     hover: BRAND_COLORS.hotPink,
   },
 };
@@ -102,7 +102,7 @@ const QuickPickInput: FC<QuickPickInputProps> = ({
                   ? `${colors.bg} ${colors.border} ${colors.text}`
                   : isDisabled
                     ? 'bg-gray-800/50 border-gray-700 text-gray-600 cursor-not-allowed'
-                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-[#FF0099] hover:text-white cursor-pointer'
+                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-[#00ABFF] hover:text-white cursor-pointer'
                 }
               `}
             >
@@ -133,7 +133,7 @@ const QuickPickInput: FC<QuickPickInputProps> = ({
           disabled={!canAddMore}
           className={`
             flex-1 px-4 py-2.5 rounded-xl text-white placeholder-gray-500
-            focus:outline-none focus:ring-2 focus:ring-[#FF0099] transition-all
+            focus:outline-none focus:ring-2 focus:ring-[#00ABFF] transition-all
             ${canAddMore
               ? 'bg-gray-800 border border-gray-700'
               : 'bg-gray-800/50 border border-gray-700/50 cursor-not-allowed'
@@ -147,7 +147,7 @@ const QuickPickInput: FC<QuickPickInputProps> = ({
           className={`
             px-4 py-2.5 rounded-xl font-semibold transition-all
             ${customInput.trim() && canAddMore
-              ? 'bg-[#FF0099] text-white hover:bg-[#FF0099]/80'
+              ? 'bg-[#00ABFF] text-white hover:bg-[#00ABFF]/80'
               : 'bg-gray-700 text-gray-500 cursor-not-allowed'
             }
           `}

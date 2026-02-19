@@ -367,7 +367,7 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
                 </div>
                 <button
                   onClick={startSession}
-                  className="px-3 py-1.5 bg-[#FF0099] text-white text-xs font-medium rounded-lg active:scale-95"
+                  className="px-3 py-1.5 bg-[#00ABFF] text-white text-xs font-medium rounded-lg active:scale-95"
                 >
                   Start Now
                 </button>
@@ -395,7 +395,7 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
               {template.skill_dimensions && template.skill_dimensions.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-3">
                   {template.skill_dimensions.map((s) => (
-                    <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF0099]/10 text-[#FF0099] border border-[#FF0099]/20">
+                    <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-[#00ABFF]/10 text-[#00ABFF] border border-[#00ABFF]/20">
                       {s.replace(/_/g, ' ')}
                     </span>
                   ))}
@@ -444,7 +444,7 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
             )}
             <button
               onClick={startSession}
-              className="w-full py-4 bg-[#FF0099] text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-transform min-h-[56px]"
+              className="w-full py-4 bg-[#00ABFF] text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-transform min-h-[56px]"
             >
               <Play className="w-5 h-5" />
               Start Session
@@ -507,7 +507,7 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors min-h-[44px] ${
               activeTab === tab.key
-                ? 'text-[#FF0099] border-b-2 border-[#FF0099]'
+                ? 'text-[#00ABFF] border-b-2 border-[#00ABFF]'
                 : 'text-white/40'
             }`}
           >
