@@ -4,7 +4,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const EMBEDDING_MODEL = 'text-embedding-004';
+export const EMBEDDING_MODEL = 'gemini-embedding-001';
 export const EMBEDDING_DIMENSION = 768;
 
 // Lazy initialization — avoids empty API key at module load time in serverless
