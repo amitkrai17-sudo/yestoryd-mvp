@@ -268,67 +268,27 @@ Return JSON with: clarity_score, fluency_score, speed_score, overall_score (1-10
 
 // ==================== EMBEDDINGS ====================
 
+import { generateEmbedding as generateRaiEmbedding } from '@/lib/rai/embeddings';
+
 /**
- * Generate embeddings for RAG with automatic fallback
+ * Generate embeddings for RAG — delegates to centralized lib/rai/embeddings.ts
+ * Uses text-embedding-004 (768-dim) as the single model for all embeddings.
  */
 export async function generateEmbedding(text: string): Promise<EmbeddingResult> {
-  const errors: string[] = [];
-
-  // Try Gemini embedding first
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-      
-      const result = await embeddingModel.embedContent(text);
-      const embedding = result.embedding.values;
-      
-      return {
-        success: true,
-        provider: 'gemini-embedding',
-        embedding,
-      };
-    }
+    const embedding = await generateRaiEmbedding(text);
+    return {
+      success: true,
+      provider: 'gemini-embedding',
+      embedding,
+    };
   } catch (error: any) {
-    errors.push(`gemini: ${error.message}`);
+    return {
+      success: false,
+      embedding: new Array(768).fill(0),
+      error: error.message,
+    };
   }
-
-  // Try OpenAI embeddings
-  try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (apiKey) {
-      const response = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-3-small',
-          input: text,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          success: true,
-          provider: 'openai-embedding',
-          embedding: data.data[0].embedding,
-        };
-      }
-    }
-  } catch (error: any) {
-    errors.push(`openai: ${error.message}`);
-  }
-
-  // Return empty embedding as fallback (search will still work, just less accurate)
-  return {
-    success: false,
-    embedding: new Array(768).fill(0),
-    error: errors.join('; '),
-  };
 }
 
 // ==================== SESSION SUMMARIES ====================

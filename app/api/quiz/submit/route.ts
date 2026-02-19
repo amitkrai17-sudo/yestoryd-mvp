@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 const supabase = createAdminClient();
 
@@ -23,13 +24,6 @@ interface QuizSubmitRequest {
     answer: string;
   }>;
   timeTakenSeconds: number;
-}
-
-// Generate embedding for RAG
-async function generateEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  const result = await model.embedContent(text);
-  return result.embedding.values;
 }
 
 export async function POST(request: NextRequest) {

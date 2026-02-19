@@ -2,7 +2,7 @@
 // rAI v2.0 - Two-tier intent classification
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Intent, IntentClassification, UserRole } from './types';
+import { Complexity, Intent, IntentClassification, UserRole } from './types';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -103,11 +103,16 @@ SCHEDULE: Session times, calendar, when is next session, schedule today/week, up
 
 OFF_LIMITS: Earnings, payouts, other users' data, platform revenue metrics, financial information.
 
+Also rate the complexity:
+- "low": Single fact, simple lookup, basic greeting or question
+- "medium": Requires some context, 1-2 data points, session summary
+- "high": Requires multiple data points, trend analysis, pedagogical reasoning, comparison across sessions, or detailed recommendations
+
 User role: {role}
 Query: "{message}"
 
 Respond ONLY with JSON (no markdown, no backticks):
-{"intent": "LEARNING|OPERATIONAL|SCHEDULE|OFF_LIMITS", "entities": ["extracted names or topics"], "confidence": 0.0-1.0}`;
+{"intent": "LEARNING|OPERATIONAL|SCHEDULE|OFF_LIMITS", "complexity": "low|medium|high", "entities": ["extracted names or topics"], "confidence": 0.0-1.0}`;
 
 export async function tier1Classifier(
   message: string,
@@ -133,18 +138,20 @@ export async function tier1Classifier(
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      const complexity = (['low', 'medium', 'high'].includes(parsed.complexity) ? parsed.complexity : 'medium') as Complexity;
       return {
         intent: parsed.intent as Intent,
         entities: parsed.entities || [],
         confidence: parsed.confidence || 0.8,
+        complexity,
       };
     }
-    
-    return { intent: 'LEARNING', entities: [], confidence: 0.5 };
-    
+
+    return { intent: 'LEARNING', entities: [], confidence: 0.5, complexity: 'medium' };
+
   } catch (error) {
     console.error('Intent classification error:', error);
-    return { intent: 'LEARNING', entities: [], confidence: 0.5 };
+    return { intent: 'LEARNING', entities: [], confidence: 0.5, complexity: 'medium' };
   }
 }
 
@@ -155,23 +162,25 @@ export async function tier1Classifier(
 export async function classifyIntent(
   message: string,
   userRole: UserRole
-): Promise<{ intent: Intent; entities: string[]; tier0Match: boolean }> {
+): Promise<{ intent: Intent; entities: string[]; tier0Match: boolean; complexity: Complexity }> {
   const tier0Intent = tier0Router(message);
-  
+
   if (tier0Intent) {
     return {
       intent: tier0Intent,
       entities: [],
       tier0Match: true,
+      complexity: 'low', // Tier 0 matches are always simple/canned
     };
   }
-  
+
   const tier1Result = await tier1Classifier(message, userRole);
-  
+
   return {
     intent: tier1Result.intent,
     entities: tier1Result.entities,
     tier0Match: false,
+    complexity: tier1Result.complexity,
   };
 }
 

@@ -12,7 +12,9 @@ import {
   Users,
   X,
   ChevronLeft,
+  RotateCw,
 } from 'lucide-react';
+import { readChatSSE } from '@/lib/rai/sse-client';
 
 interface Student {
   id: string;
@@ -26,6 +28,8 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  isStreaming?: boolean;
+  isError?: boolean;
 }
 
 export default function AIAssistantPage() {
@@ -36,6 +40,8 @@ export default function AIAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -101,23 +107,29 @@ export default function AIAssistantPage() {
   const sendMessage = async () => {
     if (!input.trim()) return;
 
+    const content = input.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setSending(true);
+    setStatusMessage(null);
+    setLastFailedMessage(null);
+
+    const assistantId = (Date.now() + 1).toString();
+    let isStreaming = false;
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: input,
+          message: content,
           childId: selectedStudent?.id || null,
           userRole: 'coach',
           userEmail: coach.email,
@@ -125,27 +137,91 @@ export default function AIAssistantPage() {
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response || 'Sorry, I could not generate a response.',
-        timestamp: new Date(),
-      };
+      await readChatSSE(response, {
+        onStatus: (msg) => setStatusMessage(msg),
 
-      setMessages((prev) => [...prev, assistantMessage]);
+        onChunk: (text) => {
+          if (!isStreaming) {
+            isStreaming = true;
+            setStatusMessage(null);
+            setMessages(prev => [...prev, {
+              id: assistantId,
+              role: 'assistant',
+              content: text,
+              timestamp: new Date(),
+              isStreaming: true,
+            }]);
+          } else {
+            setMessages(prev => prev.map(m =>
+              m.id === assistantId ? { ...m, content: m.content + text } : m
+            ));
+          }
+        },
+
+        onResponse: (responseContent) => {
+          setStatusMessage(null);
+          setMessages(prev => [...prev, {
+            id: assistantId,
+            role: 'assistant',
+            content: responseContent,
+            timestamp: new Date(),
+          }]);
+          isStreaming = true;
+        },
+
+        onChildren: () => {},
+
+        onDone: () => {
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId ? { ...m, isStreaming: false } : m
+          ));
+          setStatusMessage(null);
+        },
+
+        onError: (errorMsg) => {
+          setStatusMessage(null);
+          if (!isStreaming) {
+            setMessages(prev => [...prev, {
+              id: assistantId,
+              role: 'assistant',
+              content: errorMsg,
+              timestamp: new Date(),
+              isError: true,
+            }]);
+          }
+          setLastFailedMessage(content);
+        },
+      });
     } catch (error) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, there was an error. Please try again.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      setStatusMessage(null);
+      if (!isStreaming) {
+        setMessages(prev => [...prev, {
+          id: assistantId,
+          role: 'assistant',
+          content: 'Sorry, there was an error. Please try again.',
+          timestamp: new Date(),
+          isError: true,
+        }]);
+      }
+      setLastFailedMessage(content);
     } finally {
       setSending(false);
+      setStatusMessage(null);
     }
+  };
+
+  const handleRetry = () => {
+    if (!lastFailedMessage) return;
+    setMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (last?.isError) return prev.slice(0, -1);
+      return prev;
+    });
+    setInput(lastFailedMessage);
+    setLastFailedMessage(null);
+    setTimeout(() => sendMessage(), 100);
   };
 
   const quickPrompts = selectedStudent
@@ -375,14 +451,30 @@ export default function AIAssistantPage() {
                     />
                   </div>
                 )}
-                <div
-                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white'
-                      : 'bg-surface-2/50 text-text-secondary border border-border'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap text-sm sm:text-base">{message.content}</p>
+                <div className="flex flex-col gap-1">
+                  <div
+                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white'
+                        : message.isError
+                          ? 'bg-red-500/10 text-red-400 border border-red-500/30'
+                          : 'bg-surface-2/50 text-text-secondary border border-border'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap text-sm sm:text-base">{message.content}</p>
+                    {message.isStreaming && (
+                      <span className="inline-block w-1.5 h-4 ml-0.5 bg-[#00ABFF] animate-pulse rounded-sm" />
+                    )}
+                  </div>
+                  {message.isError && lastFailedMessage && (
+                    <button
+                      onClick={handleRetry}
+                      className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 ml-1 transition-colors"
+                    >
+                      <RotateCw className="w-3 h-3" />
+                      <span>Retry</span>
+                    </button>
+                  )}
                 </div>
                 {message.role === 'user' && (
                   <div className="w-8 h-8 bg-surface-2 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -393,7 +485,7 @@ export default function AIAssistantPage() {
             ))
           )}
 
-          {sending && (
+          {sending && !messages.some(m => m.isStreaming) && (
             <div className="flex gap-2 sm:gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-xl flex items-center justify-center overflow-hidden">
                 <Image
@@ -405,7 +497,15 @@ export default function AIAssistantPage() {
                 />
               </div>
               <div className="bg-surface-2/50 rounded-2xl px-4 py-3 border border-border">
-                <Loader2 className="w-5 h-5 animate-spin text-[#00ABFF]" />
+                {statusMessage ? (
+                  <p className="text-xs text-text-tertiary animate-pulse">{statusMessage}</p>
+                ) : (
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-[#00ABFF] rounded-full animate-bounce [animation-delay:0ms]" />
+                    <span className="w-2 h-2 bg-[#00ABFF] rounded-full animate-bounce [animation-delay:150ms]" />
+                    <span className="w-2 h-2 bg-[#00ABFF] rounded-full animate-bounce [animation-delay:300ms]" />
+                  </div>
+                )}
               </div>
             </div>
           )}

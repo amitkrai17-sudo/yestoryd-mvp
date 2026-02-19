@@ -12,27 +12,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // --- VALIDATION SCHEMA ---
 const querySchema = z.object({
   limit: z.coerce.number().min(1).max(200).default(50),
   dry_run: z.enum(['true', 'false']).default('false'),
 });
-
-// --- HELPER: Generate embedding ---
-async function generateEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-embedding-001' });
-  const result = await model.embedContent({
-    content: { parts: [{ text }] },
-    outputDimensionality: 768,
-  } as any);
-  return result.embedding.values;
-}
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();

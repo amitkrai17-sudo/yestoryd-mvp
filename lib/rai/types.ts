@@ -5,6 +5,8 @@ export type UserRole = 'parent' | 'coach' | 'admin';
 
 export type Intent = 'LEARNING' | 'OPERATIONAL' | 'SCHEDULE' | 'OFF_LIMITS';
 
+export type Complexity = 'low' | 'medium' | 'high';
+
 export type ResponseSource = 'cache' | 'rag' | 'sql' | 'redirect';
 
 export interface ChatMessage {
@@ -42,6 +44,7 @@ export interface IntentClassification {
   intent: Intent;
   entities: string[];
   confidence: number;
+  complexity: Complexity;
 }
 
 export interface QueryFilters {

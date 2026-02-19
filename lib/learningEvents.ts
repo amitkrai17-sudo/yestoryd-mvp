@@ -1,16 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 const supabase = createAdminClient();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-// Generate embedding
-async function generateEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  const result = await model.embedContent(text);
-  return result.embedding.values;
-}
 
 // Generate AI summary
 async function generateAISummary(prompt: string): Promise<string> {

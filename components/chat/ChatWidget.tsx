@@ -1,13 +1,16 @@
-﻿'use client';
+'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Loader2, Sparkles, Minimize2, Copy, MessageCircle, Check } from 'lucide-react';
+import { X, Send, Loader2, Sparkles, Minimize2, Copy, MessageCircle, Check, RotateCw } from 'lucide-react';
+import { readChatSSE } from '@/lib/rai/sse-client';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  isStreaming?: boolean;
+  isError?: boolean;
 }
 
 interface ChatWidgetProps {
@@ -15,7 +18,6 @@ interface ChatWidgetProps {
   childName?: string;
   userRole: 'parent' | 'coach' | 'admin';
   userEmail: string;
-  // NEW: For One-Click Parent Update
   initialPrompt?: string;
   autoSend?: boolean;
   onMessageSent?: (message: string) => void;
@@ -90,26 +92,25 @@ export function ChatWidget({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasAutoSent = useRef(false);
 
   const theme = themes[userRole] || themes.parent;
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, statusMessage]);
 
-  // Focus input when chat opens
   useEffect(() => {
     if (isOpen && !isMinimized) {
       inputRef.current?.focus();
     }
   }, [isOpen, isMinimized]);
 
-  // Handle initial prompt - open widget and optionally auto-send
   useEffect(() => {
     if (initialPrompt && !hasAutoSent.current) {
       setIsOpen(true);
@@ -118,7 +119,6 @@ export function ChatWidget({
 
       if (autoSend) {
         hasAutoSent.current = true;
-        // Small delay to show the widget first
         setTimeout(() => {
           handleSendWithContent(initialPrompt);
         }, 300);
@@ -136,9 +136,14 @@ export function ChatWidget({
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setStatusMessage(null);
+    setLastFailedMessage(null);
+
+    const assistantId = (Date.now() + 1).toString();
+    let isStreaming = false;
 
     try {
       const response = await fetch('/api/chat', {
@@ -148,38 +153,112 @@ export function ChatWidget({
           message: content.trim(),
           childId,
           userRole,
-          userEmail: userEmail,
-          chatHistory: messages.slice(-10),
+          userEmail,
+          chatHistory: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response || 'Sorry, I could not process that request.',
-        timestamp: new Date(),
-      };
+      const fullText = await readChatSSE(response, {
+        onStatus: (msg) => {
+          setStatusMessage(msg);
+        },
 
-      setMessages((prev) => [...prev, assistantMessage]);
-      onMessageSent?.(assistantMessage.content);
+        onChunk: (text) => {
+          if (!isStreaming) {
+            isStreaming = true;
+            setStatusMessage(null);
+            setMessages(prev => [...prev, {
+              id: assistantId,
+              role: 'assistant',
+              content: text,
+              timestamp: new Date(),
+              isStreaming: true,
+            }]);
+          } else {
+            setMessages(prev => prev.map(m =>
+              m.id === assistantId ? { ...m, content: m.content + text } : m
+            ));
+          }
+        },
+
+        onResponse: (responseContent) => {
+          setStatusMessage(null);
+          setMessages(prev => [...prev, {
+            id: assistantId,
+            role: 'assistant',
+            content: responseContent,
+            timestamp: new Date(),
+          }]);
+          isStreaming = true; // Prevent duplicate addition
+        },
+
+        onChildren: () => {
+          // Could be used for child selection UI in the future
+        },
+
+        onDone: () => {
+          // Finalize streaming message
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId ? { ...m, isStreaming: false } : m
+          ));
+          setStatusMessage(null);
+        },
+
+        onError: (errorMsg) => {
+          setStatusMessage(null);
+          if (!isStreaming) {
+            setMessages(prev => [...prev, {
+              id: assistantId,
+              role: 'assistant',
+              content: errorMsg,
+              timestamp: new Date(),
+              isError: true,
+            }]);
+          }
+          setLastFailedMessage(content.trim());
+        },
+      });
+
+      if (fullText) {
+        onMessageSent?.(fullText);
+      }
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      setStatusMessage(null);
+      if (!isStreaming) {
+        setMessages(prev => [...prev, {
+          id: assistantId,
+          role: 'assistant',
+          content: 'Sorry, something went wrong. Please try again.',
+          timestamp: new Date(),
+          isError: true,
+        }]);
+      }
+      setLastFailedMessage(content.trim());
     } finally {
       setIsLoading(false);
+      setStatusMessage(null);
     }
   };
 
   const handleSend = () => {
     handleSendWithContent(input);
+  };
+
+  const handleRetry = () => {
+    if (lastFailedMessage) {
+      // Remove the error message
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.isError) return prev.slice(0, -1);
+        return prev;
+      });
+      handleSendWithContent(lastFailedMessage);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -189,7 +268,6 @@ export function ChatWidget({
     }
   };
 
-  // Copy message to clipboard
   const handleCopy = async (messageId: string, content: string) => {
     try {
       await navigator.clipboard.writeText(content);
@@ -200,10 +278,8 @@ export function ChatWidget({
     }
   };
 
-  // Send via WhatsApp
   const handleWhatsAppSend = async (content: string) => {
     if (!sessionContext) {
-      // No session context, just copy to clipboard
       await navigator.clipboard.writeText(content);
       alert('Message copied! No phone number available.');
       return;
@@ -211,11 +287,8 @@ export function ChatWidget({
 
     const phone = '91' + sessionContext.parentPhone.replace(/\D/g, '');
     const encodedMessage = encodeURIComponent(content);
-
-    // Open WhatsApp
     window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
 
-    // Mark session as updated
     try {
       await fetch(`/api/coach/sessions/${sessionContext.sessionId}/parent-update`, {
         method: 'POST',
@@ -296,7 +369,7 @@ export function ChatWidget({
             </div>
             <h4 className="text-gray-800 font-semibold mb-2">How can I help?</h4>
             <p className="text-gray-500 text-sm mb-4">
-              {childName 
+              {childName
                 ? `Ask me about ${childName}'s reading progress`
                 : 'Ask me anything about reading development'
               }
@@ -331,14 +404,30 @@ export function ChatWidget({
                     className={`rounded-2xl px-4 py-2.5 ${
                       message.role === 'user'
                         ? `bg-gradient-to-r ${theme.gradient} text-white`
-                        : 'bg-white text-gray-800 border border-gray-100 shadow-sm'
+                        : message.isError
+                          ? 'bg-red-50 text-red-700 border border-red-200'
+                          : 'bg-white text-gray-800 border border-gray-100 shadow-sm'
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.isStreaming && (
+                      <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-400 animate-pulse rounded-sm" />
+                    )}
                   </div>
 
+                  {/* Error retry button */}
+                  {message.isError && lastFailedMessage && (
+                    <button
+                      onClick={handleRetry}
+                      className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 ml-1 transition-colors"
+                    >
+                      <RotateCw className="w-3 h-3" />
+                      <span>Retry</span>
+                    </button>
+                  )}
+
                   {/* Action buttons for coach on AI responses */}
-                  {message.role === 'assistant' && userRole === 'coach' && (
+                  {message.role === 'assistant' && !message.isError && !message.isStreaming && userRole === 'coach' && (
                     <div className="flex items-center gap-2 ml-1">
                       <button
                         onClick={() => handleCopy(message.id, message.content)}
@@ -373,13 +462,23 @@ export function ChatWidget({
                 </div>
               </div>
             ))}
-            {isLoading && (
+
+            {/* Typing/Status indicator */}
+            {isLoading && !messages.some(m => m.isStreaming) && (
               <div className="flex gap-2 justify-start">
                 <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center`}>
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
-                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.accent }} />
+                  {statusMessage ? (
+                    <p className="text-xs text-gray-500 animate-pulse">{statusMessage}</p>
+                  ) : (
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:0ms]" style={{ backgroundColor: theme.accent }} />
+                      <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:150ms]" style={{ backgroundColor: theme.accent }} />
+                      <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:300ms]" style={{ backgroundColor: theme.accent }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

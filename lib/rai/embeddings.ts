@@ -1,21 +1,25 @@
 // file: lib/rai/embeddings.ts
 // rAI v2.0 - Embedding generation utilities
+// SINGLE SOURCE OF TRUTH for all embedding generation across the platform
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export const EMBEDDING_MODEL = 'text-embedding-004';
+export const EMBEDDING_DIMENSION = 768;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 /**
- * Generate embedding vector for text using Google's gemini-embedding-001
- * Returns 768-dimensional vector (via outputDimensionality)
+ * Generate embedding vector for text using Google's text-embedding-004
+ * Returns 768-dimensional vector
+ *
+ * ALL embedding generation across the platform MUST go through this function
+ * to ensure vector space consistency for hybrid search.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-embedding-001' });
-    const result = await model.embedContent({
-      content: { parts: [{ text }] },
-      outputDimensionality: 768,
-    } as any);
+    const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
+    const result = await model.embedContent(text);
     return result.embedding.values;
   } catch (error) {
     console.error('Embedding generation error:', error);

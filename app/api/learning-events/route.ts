@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 const supabase = createAdminClient();
 
@@ -17,13 +18,6 @@ interface LearningEventInput {
   event_date?: string;
   data: Record<string, any>;
   created_by?: string;
-}
-
-// Generate embedding for the event
-async function generateEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-  const result = await model.embedContent(text);
-  return result.embedding.values;
 }
 
 // Generate AI summary for the event

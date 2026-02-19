@@ -3,7 +3,7 @@
 
 export * from './types';
 
-export { generateEmbedding, buildSearchableContent, buildSessionSearchableContent } from './embeddings';
+export { generateEmbedding, buildSearchableContent, buildSessionSearchableContent, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from './embeddings';
 
 export { tier0Router, tier1Classifier, classifyIntent, isRecentSessionQuery } from './intent-classifier';
 
@@ -16,12 +16,14 @@ export {
   formatEventsForContext 
 } from './hybrid-search';
 
-export { 
-  buildParentPrompt, 
-  buildCoachPrompt, 
+export {
+  buildParentPrompt,
+  buildCoachPrompt,
   buildSessionPrepPrompt,
   buildAdminPrompt,
   getSystemPrompt,
   OPERATIONAL_RESPONSES,
   OFF_LIMITS_RESPONSES,
 } from './prompts';
+
+export { selectModel, selectTokenCap, generateWithFallback } from './model-router';
