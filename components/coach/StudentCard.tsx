@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
 
 interface StudentCardProps {
@@ -15,6 +15,8 @@ interface StudentCardProps {
     total_sessions: number;
     status: string;
     is_coach_lead?: boolean;
+    trend?: string;
+    focus_area?: string;
   };
 }
 
@@ -67,7 +69,24 @@ export default function StudentCard({ student }: StudentCardProps) {
             <span className="text-[10px] text-gray-500">
               {student.sessions_completed}/{student.total_sessions} sessions
             </span>
+            {student.trend && (
+              <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${
+                student.trend === 'improving' ? 'text-green-400' :
+                student.trend === 'declining' ? 'text-amber-400' :
+                'text-blue-400'
+              }`}>
+                {student.trend === 'improving' ? <TrendingUp className="w-3 h-3" /> :
+                 student.trend === 'declining' ? <TrendingDown className="w-3 h-3" /> :
+                 <ArrowRight className="w-3 h-3" />}
+                {student.trend === 'improving' ? '↑' : student.trend === 'declining' ? '↓' : '→'}
+              </span>
+            )}
           </div>
+          {student.focus_area && (
+            <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+              Focus: {student.focus_area}
+            </p>
+          )}
         </div>
 
         {/* Action Button */}

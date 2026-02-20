@@ -18,7 +18,10 @@ import {
   Gift,
   HelpCircle,
   TrendingUp,
+  TrendingDown,
   MessageCircle,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import CoachLayout from '@/components/coach/CoachLayout';
@@ -56,19 +59,54 @@ const FOCUS_AREA_LABELS: Record<string, string> = {
   other: 'Special Focus',
 };
 
+interface TodaySession {
+  id: string;
+  child_id: string;
+  child_name: string;
+  session_number: number | null;
+  session_type: string;
+  scheduled_time: string;
+  focus_area: string | null;
+  trend: string | null;
+}
+
+interface NeedsAttentionStudent {
+  child_id: string;
+  child_name: string;
+  reason: string;
+}
+
 interface CoachDashboardClientProps {
   coach: Coach;
   initialStats: DashboardStats;
   initialPendingSkillBoosters: PendingSkillBooster[];
+  initialTodaySessions?: TodaySession[];
+  initialNeedsAttention?: NeedsAttentionStudent[];
+}
+
+function formatTime(time: string): string {
+  if (!time) return '';
+  try {
+    const [hours, minutes] = time.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+  } catch {
+    return time;
+  }
 }
 
 export default function CoachDashboardClient({
   coach,
   initialStats,
   initialPendingSkillBoosters,
+  initialTodaySessions = [],
+  initialNeedsAttention = [],
 }: CoachDashboardClientProps) {
   const [stats] = useState<DashboardStats | null>(initialStats);
   const [pendingSkillBoosters] = useState<PendingSkillBooster[]>(initialPendingSkillBoosters);
+  const [todaySessions] = useState<TodaySession[]>(initialTodaySessions);
+  const [needsAttention] = useState<NeedsAttentionStudent[]>(initialNeedsAttention);
 
   useActivityTracker({
     userType: 'coach',
@@ -151,6 +189,85 @@ export default function CoachDashboardClient({
                   <span className="sm:hidden">Follow up if pending 3+ days</span>
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Needs Attention — only show if students need attention */}
+        {needsAttention.length > 0 && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl lg:rounded-2xl p-3 lg:p-5">
+            <h3 className="font-bold text-amber-400 text-sm lg:text-base flex items-center gap-2 mb-3">
+              <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5" />
+              Needs Attention
+            </h3>
+            <div className="space-y-2">
+              {needsAttention.map((student) => (
+                <div
+                  key={student.child_id}
+                  className="bg-surface-1/60 rounded-lg lg:rounded-xl p-2.5 lg:p-3 flex items-center justify-between gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-white text-sm">{student.child_name}</span>
+                    <p className="text-xs text-amber-400/80 mt-0.5">{student.reason}</p>
+                  </div>
+                  <Link
+                    href={`/coach/students/${student.child_id}`}
+                    className="px-3 py-1.5 bg-amber-500/20 text-amber-400 text-xs rounded-lg hover:bg-amber-500/30 transition-colors flex items-center gap-1 flex-shrink-0"
+                  >
+                    View <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Today's Sessions with Intelligence */}
+        {todaySessions.length > 0 && (
+          <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl border border-border p-3 lg:p-5">
+            <h3 className="font-bold text-white text-sm lg:text-base flex items-center gap-2 mb-3">
+              <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
+              Today&apos;s Sessions
+            </h3>
+            <div className="space-y-2">
+              {todaySessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="bg-surface-0/50 rounded-lg lg:rounded-xl p-2.5 lg:p-3 flex items-center gap-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-gray-400 font-medium">
+                        {formatTime(session.scheduled_time)}
+                      </span>
+                      <span className="font-medium text-white text-sm">{session.child_name}</span>
+                      {session.session_number && (
+                        <span className="text-[10px] text-gray-500">
+                          Session {session.session_number}
+                        </span>
+                      )}
+                      {session.trend === 'declining' && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400 font-medium">
+                          <TrendingDown className="w-3 h-3" />
+                          Attention
+                        </span>
+                      )}
+                    </div>
+                    {session.focus_area && (
+                      <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                        Focus: {session.focus_area}
+                      </p>
+                    )}
+                  </div>
+                  <Link
+                    href={`/coach/ai-assistant?studentId=${session.child_id}&prompt=${encodeURIComponent(`Prepare me for my session with ${session.child_name} today. What should I focus on?`)}`}
+                    className="px-2.5 py-1.5 bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white text-[10px] lg:text-xs font-medium rounded-lg hover:opacity-90 transition-all flex items-center gap-1 flex-shrink-0"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Prep
+                  </Link>
+                </div>
+              ))}
             </div>
           </div>
         )}

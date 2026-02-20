@@ -116,11 +116,83 @@ export default async function CoachDashboardPage() {
   });
 
 
+  // Fetch today's sessions with child info + learning_profile
+  const today = new Date().toISOString().split('T')[0];
+  const { data: todaySessions } = await supabase
+    .from('scheduled_sessions')
+    .select(`
+      id,
+      child_id,
+      session_type,
+      session_number,
+      scheduled_time,
+      status,
+      children:child_id (
+        id,
+        child_name,
+        learning_profile
+      )
+    `)
+    .eq('coach_id', coach.id)
+    .eq('scheduled_date', today)
+    .in('status', ['scheduled', 'rescheduled'])
+    .order('scheduled_time', { ascending: true });
+
+  const initialTodaySessions = (todaySessions || []).map((s: any) => {
+    const child = Array.isArray(s.children) ? s.children[0] : s.children;
+    const profile = child?.learning_profile;
+    return {
+      id: s.id,
+      child_id: s.child_id,
+      child_name: child?.child_name || 'Student',
+      session_number: s.session_number,
+      session_type: s.session_type,
+      scheduled_time: s.scheduled_time,
+      focus_area: profile?.recommended_focus_next_session || null,
+      trend: profile?.reading_level?.trend || null,
+    };
+  });
+
+  // Identify students needing attention (declining trajectory)
+  const { data: activeEnrollments } = await supabase
+    .from('enrollments')
+    .select(`
+      child:children (
+        id,
+        child_name,
+        learning_profile
+      )
+    `)
+    .eq('coach_id', coach.id)
+    .in('status', ['active', 'pending_start']);
+
+  const needsAttention = (activeEnrollments || [])
+    .map((e: any) => {
+      const child = Array.isArray(e.child) ? e.child[0] : e.child;
+      if (!child?.learning_profile) return null;
+      const profile = child.learning_profile;
+      const trend = profile?.reading_level?.trend;
+      const engagement = profile?.parent_engagement?.level;
+      if (trend === 'declining' || engagement === 'low') {
+        return {
+          child_id: child.id,
+          child_name: child.child_name,
+          reason: trend === 'declining'
+            ? 'Declining trajectory over recent sessions'
+            : 'Low parent engagement',
+        };
+      }
+      return null;
+    })
+    .filter(Boolean) as { child_id: string; child_name: string; reason: string }[];
+
   return (
     <CoachDashboardClient
       coach={coach}
       initialStats={initialStats}
       initialPendingSkillBoosters={initialPendingSkillBoosters}
+      initialTodaySessions={initialTodaySessions}
+      initialNeedsAttention={needsAttention}
     />
   );
 }

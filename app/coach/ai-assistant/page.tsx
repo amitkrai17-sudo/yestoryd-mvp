@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import CoachLayout from '@/components/layouts/CoachLayout';
 import { supabase } from '@/lib/supabase/client';
@@ -21,6 +22,7 @@ interface Student {
   child_name: string;
   age: number;
   latest_assessment_score: number | null;
+  learning_profile?: any;
 }
 
 interface Message {
@@ -33,6 +35,7 @@ interface Message {
 }
 
 export default function AIAssistantPage() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [coach, setCoach] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -44,6 +47,8 @@ export default function AIAssistantPage() {
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasSentAutoPrompt, setHasSentAutoPrompt] = useState(false);
+  const autoPromptRef = useRef(false);
 
   useEffect(() => {
     loadData();
@@ -79,7 +84,8 @@ export default function AIAssistantPage() {
             id,
             child_name,
             age,
-            latest_assessment_score
+            latest_assessment_score,
+            learning_profile
           )
         `)
         .eq('coach_id', coachData.id)
@@ -99,9 +105,115 @@ export default function AIAssistantPage() {
     }
   };
 
+  // Auto-select student and auto-send prompt from URL params
+  useEffect(() => {
+    if (loading || students.length === 0 || autoPromptRef.current) return;
+
+    const urlStudentId = searchParams.get('studentId');
+    const urlPrompt = searchParams.get('prompt');
+
+    if (urlStudentId) {
+      const matched = students.find(s => s.id === urlStudentId);
+      if (matched) {
+        setSelectedStudent(matched);
+      }
+    }
+
+    if (urlPrompt && urlStudentId && !hasSentAutoPrompt) {
+      // Small delay to let selectedStudent state settle
+      const matched = students.find(s => s.id === urlStudentId);
+      if (matched) {
+        autoPromptRef.current = true;
+        setHasSentAutoPrompt(true);
+        // Set input and trigger send after a tick
+        setTimeout(() => {
+          setInput(urlPrompt);
+          // Programmatically trigger send
+          const syntheticInput = urlPrompt;
+          const userMessage: Message = {
+            id: Date.now().toString(),
+            role: 'user',
+            content: syntheticInput,
+            timestamp: new Date(),
+          };
+          setMessages([userMessage]);
+          setInput('');
+          // Will be sent via the sendMessageWithContent helper
+          sendMessageWithContent(syntheticInput, matched);
+        }, 300);
+      }
+    }
+  }, [loading, students, searchParams, hasSentAutoPrompt]);
+
   const handleStudentSelect = (student: Student | null) => {
     setSelectedStudent(student);
     setSidebarOpen(false);
+  };
+
+  /** Send a message with explicit content and optional student override (for auto-prompt) */
+  const sendMessageWithContent = async (content: string, studentOverride?: Student | null) => {
+    const targetStudent = studentOverride !== undefined ? studentOverride : selectedStudent;
+    setSending(true);
+    setStatusMessage(null);
+    setLastFailedMessage(null);
+
+    const assistantId = (Date.now() + 1).toString();
+    let isStreaming = false;
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: content,
+          childId: targetStudent?.id || null,
+          userRole: 'coach',
+          userEmail: coach?.email,
+          chatHistory: [],
+        }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      await readChatSSE(response, {
+        onStatus: (msg) => setStatusMessage(msg),
+        onChunk: (text) => {
+          if (!isStreaming) {
+            isStreaming = true;
+            setStatusMessage(null);
+            setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: text, timestamp: new Date(), isStreaming: true }]);
+          } else {
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: m.content + text } : m));
+          }
+        },
+        onResponse: (responseContent) => {
+          setStatusMessage(null);
+          setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: responseContent, timestamp: new Date() }]);
+          isStreaming = true;
+        },
+        onChildren: () => {},
+        onDone: () => {
+          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, isStreaming: false } : m));
+          setStatusMessage(null);
+        },
+        onError: (errorMsg) => {
+          setStatusMessage(null);
+          if (!isStreaming) {
+            setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: errorMsg, timestamp: new Date(), isError: true }]);
+          }
+          setLastFailedMessage(content);
+        },
+      });
+    } catch {
+      setStatusMessage(null);
+      if (!isStreaming) {
+        setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: 'Sorry, there was an error. Please try again.', timestamp: new Date(), isError: true }]);
+      }
+      setLastFailedMessage(content);
+    } finally {
+      setSending(false);
+      setStatusMessage(null);
+    }
   };
 
   const sendMessage = async () => {
@@ -224,19 +336,39 @@ export default function AIAssistantPage() {
     setTimeout(() => sendMessage(), 100);
   };
 
-  const quickPrompts = selectedStudent
-    ? [
-        `How is ${selectedStudent.child_name} progressing?`,
-        `What should I focus on in ${selectedStudent.child_name}'s next session?`,
-        `Prepare parent update for ${selectedStudent.child_name}`,
-        `What are ${selectedStudent.child_name}'s strengths and weaknesses?`,
-      ]
-    : [
+  const quickPrompts = (() => {
+    if (!selectedStudent) {
+      return [
         'How are my students doing overall?',
-        'What teaching strategies work best for struggling readers?',
-        'How can I improve engagement in sessions?',
+        'Which students need the most attention?',
+        'Tips for improving reading fluency',
         'Tips for communicating progress to parents',
       ];
+    }
+
+    const name = selectedStudent.child_name;
+    const profile = selectedStudent.learning_profile;
+    const prompts: string[] = [];
+
+    prompts.push(`Prepare me for my next session with ${name}`);
+
+    if (profile?.struggle_areas?.length) {
+      const area = profile.struggle_areas[0].skill?.replace(/_/g, ' ');
+      prompts.push(`How can I help ${name} with ${area}?`);
+    } else {
+      prompts.push(`What should ${name} work on next?`);
+    }
+
+    prompts.push(`Summarize ${name}'s progress so far`);
+
+    if (profile?.parent_engagement?.level === 'low') {
+      prompts.push(`${name}'s parent seems disengaged — how can I help?`);
+    } else {
+      prompts.push(`Prepare parent update for ${name}`);
+    }
+
+    return prompts;
+  })();
 
   const filteredStudents = students.filter((s) =>
     s.child_name.toLowerCase().includes(searchTerm.toLowerCase())

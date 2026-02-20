@@ -26,6 +26,8 @@ interface Student {
   total_sessions: number;
   status: string;
   is_coach_lead: boolean;
+  trend?: string;
+  focus_area?: string;
 }
 
 export default function CoachStudentsPage() {
@@ -76,7 +78,8 @@ export default function CoachStudentsPage() {
             id,
             child_name,
             age,
-            latest_assessment_score
+            latest_assessment_score,
+            learning_profile
           )
         `)
         .eq('coach_id', coachData.id)
@@ -95,6 +98,7 @@ export default function CoachStudentsPage() {
             .eq('enrollment_id', enrollment.id)
             .eq('status', 'completed');
 
+          const profile = (child as any).learning_profile;
           return {
             id: child.id,
             child_name: child.child_name,
@@ -105,6 +109,8 @@ export default function CoachStudentsPage() {
             total_sessions: enrollment.total_sessions || enrollment.sessions_scheduled || 9, /* V1 fallback */
             status: enrollment.status === 'pending_start' ? 'active' : enrollment.status,
             is_coach_lead: enrollment.lead_source === 'coach',
+            trend: profile?.reading_level?.trend || null,
+            focus_area: profile?.recommended_focus_next_session || null,
           };
         })
       );

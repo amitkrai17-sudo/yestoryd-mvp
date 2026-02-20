@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import CoachLayout from '@/components/layouts/CoachLayout';
 import SkillBoosterSection from '@/components/coach/SkillBoosterSection';
 import ParentCallSection from '@/components/coach/ParentCallSection';
+import StudentIntelligenceCard from '@/components/coach/StudentIntelligenceCard';
 import { supabase } from '@/lib/supabase/client';
 import {
   Calendar,
@@ -20,7 +21,9 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
+  Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
 
 // Types
 interface Student {
@@ -88,6 +91,7 @@ export default function StudentDetailPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [learningProfile, setLearningProfile] = useState<any>(null);
 
   // UI state
   const [activeTab, setActiveTab] = useState<TabType>('sessions');
@@ -149,6 +153,7 @@ export default function StudentDetailPage() {
       }
 
       setStudent(enrollmentData.child as any);
+      setLearningProfile((enrollmentData.child as any)?.learning_profile || null);
       setEnrollment(enrollmentData as any);
 
       // Get sessions
@@ -327,6 +332,23 @@ export default function StudentDetailPage() {
               </a>
             </div>
           </div>
+        </div>
+
+        {/* Student Intelligence Card */}
+        <div className="mb-3 lg:mb-6 space-y-2">
+          <StudentIntelligenceCard
+            learningProfile={learningProfile}
+            childName={student.child_name}
+            sessionsCompleted={sessions.filter(s => s.status === 'completed').length}
+            totalSessions={sessions.length}
+          />
+          <Link
+            href={`/coach/ai-assistant?studentId=${studentId}&prompt=${encodeURIComponent(`Prepare me for my next session with ${student.child_name}. What should I focus on and how should I structure the 30 minutes?`)}`}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white text-sm font-medium rounded-xl hover:opacity-90 transition-all"
+          >
+            <Sparkles className="w-4 h-4" />
+            Prep with rAI
+          </Link>
         </div>
 
         {/* Mobile Tabs - Short text, no truncation */}
