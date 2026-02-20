@@ -45,6 +45,7 @@ import {
   getSystemPrompt,
   OPERATIONAL_RESPONSES,
   OFF_LIMITS_RESPONSES,
+  ChildMeta,
 } from '@/lib/rai/prompts';
 import { handleAdminInsightQuery } from '@/lib/rai/admin-insights';
 import { selectModel, selectTokenCap, generateWithFallback } from '@/lib/rai/model-router';
@@ -248,7 +249,7 @@ export async function POST(request: NextRequest) {
         typeof msg.role === 'string' &&
         typeof msg.content === 'string'
       )
-      .slice(-6)
+      .slice(-10)
       .reverse();
 
     for (const msg of reversedHistory) {
@@ -479,16 +480,24 @@ async function handleLearningStreaming(
   }
 
   // --- BUILD PROMPT ---
+  const childMeta: ChildMeta | undefined = child ? {
+    age: child.age,
+    sessionsCompleted: child.sessions_completed,
+    totalSessions: child.total_sessions,
+  } : undefined;
+
   const systemPrompt = getSystemPrompt(
     userRole,
     childName,
     eventsContext,
-    coach ? { name: coach.name, phone: coach.phone || '918976287997', email: coach.email } : null
+    coach ? { name: coach.name, phone: coach.phone || '918976287997', email: coach.email } : null,
+    undefined,
+    childMeta
   );
 
-  const conversationContext = chatHistory?.slice(-6).map(msg =>
+  const conversationContext = chatHistory.map(msg =>
     `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
-  ).join('\n') || '';
+  ).join('\n');
 
   const fullSystemPrompt = contentContext
     ? `${systemPrompt}${contentContext}`

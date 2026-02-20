@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Loader2, Sparkles, Minimize2, Copy, MessageCircle, Check, RotateCw } from 'lucide-react';
+import { X, Send, Loader2, Sparkles, Minimize2, Copy, MessageCircle, Check, RotateCw, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { readChatSSE } from '@/lib/rai/sse-client';
 
 interface Message {
@@ -95,6 +95,9 @@ export function ChatWidget({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'positive' | 'negative'>>({});
+  const [pendingChildren, setPendingChildren] = useState<Array<{ id: string; name: string }> | null>(null);
+  const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasAutoSent = useRef(false);
@@ -151,7 +154,7 @@ export function ChatWidget({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: content.trim(),
-          childId,
+          childId: activeChildId || childId,
           userRole,
           userEmail,
           chatHistory: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
@@ -196,8 +199,8 @@ export function ChatWidget({
           isStreaming = true; // Prevent duplicate addition
         },
 
-        onChildren: () => {
-          // Could be used for child selection UI in the future
+        onChildren: (children) => {
+          setPendingChildren(children);
         },
 
         onDone: () => {
@@ -275,6 +278,41 @@ export function ChatWidget({
       setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleChildSelect = (child: { id: string; name: string }) => {
+    setActiveChildId(child.id);
+    setPendingChildren(null);
+    // Re-send the last user message with the selected child context
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMsg) {
+      handleSendWithContent(lastUserMsg.content);
+    }
+  };
+
+  const submitFeedback = async (messageId: string, rating: 'positive' | 'negative') => {
+    const msgIndex = messages.findIndex(m => m.id === messageId);
+    const assistantMsg = messages[msgIndex];
+    const userMsg = messages.slice(0, msgIndex).reverse().find(m => m.role === 'user');
+
+    setFeedbackGiven(prev => ({ ...prev, [messageId]: rating }));
+
+    try {
+      await fetch('/api/chat/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageContent: assistantMsg?.content || '',
+          userQuery: userMsg?.content || '',
+          rating,
+          userRole,
+          userId: userEmail,
+          childId: activeChildId || childId,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
     }
   };
 
@@ -459,9 +497,62 @@ export function ChatWidget({
                       )}
                     </div>
                   )}
+
+                  {/* Feedback buttons (all roles) */}
+                  {message.role === 'assistant' && !message.isError && !message.isStreaming && (
+                    <div className="flex items-center gap-1 ml-1 mt-0.5">
+                      {feedbackGiven[message.id] ? (
+                        <span className="text-xs text-gray-400">
+                          {feedbackGiven[message.id] === 'positive' ? 'Thanks!' : 'Thanks for the feedback'}
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => submitFeedback(message.id, 'positive')}
+                            className="text-gray-400 hover:text-green-500 p-1 transition-colors"
+                            title="Helpful"
+                          >
+                            <ThumbsUp size={14} />
+                          </button>
+                          <button
+                            onClick={() => submitFeedback(message.id, 'negative')}
+                            className="text-gray-400 hover:text-red-400 p-1 transition-colors"
+                            title="Not helpful"
+                          >
+                            <ThumbsDown size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+
+            {/* Child selection buttons */}
+            {pendingChildren && pendingChildren.length > 0 && (
+              <div className="flex flex-wrap gap-2 ml-9">
+                {pendingChildren.map(child => (
+                  <button
+                    key={child.id}
+                    onClick={() => handleChildSelect(child)}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors`}
+                    style={{
+                      borderColor: theme.accent,
+                      color: theme.accent,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = `${theme.accent}15`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    {child.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Typing/Status indicator */}
             {isLoading && !messages.some(m => m.isStreaming) && (
