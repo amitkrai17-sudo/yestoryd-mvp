@@ -19,9 +19,12 @@ import {
 import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
 import ParentCallCard from '@/components/parent/ParentCallCard';
 import ProgressPulseCard from '@/components/parent/ProgressPulseCard';
+import AIInsightCard from '@/components/parent/AIInsightCard';
+import SkillProgressCard from '@/components/parent/SkillProgressCard';
 import SupportWidget from '@/components/support/SupportWidget';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ReferralsTab from '@/components/parent/ReferralsTab';
+import type { LearningProfile } from '@/components/parent/AIInsightCard';
 import { getSessionTypeLabel } from '@/lib/utils/session-labels';
 import { supabase } from '@/lib/supabase/client';
 
@@ -93,6 +96,27 @@ function safeGetItem(key: string): string | null {
   return null;
 }
 
+/** Build contextual quick prompts for ChatWidget based on child's learning profile */
+function buildContextualPrompts(childName: string, profile: LearningProfile): string[] {
+  const prompts: string[] = [];
+  prompts.push(`How is ${childName} doing?`);
+
+  if (profile.struggle_areas && profile.struggle_areas.length > 0) {
+    const area = profile.struggle_areas[0].skill?.replace(/_/g, ' ');
+    prompts.push(`How can we help with ${area}?`);
+  } else {
+    prompts.push(`What should ${childName} practice?`);
+  }
+
+  if (profile.sessions_remaining && profile.sessions_remaining <= 3) {
+    prompts.push('What to focus on in remaining sessions?');
+  } else {
+    prompts.push(`Explain ${childName}'s reading level`);
+  }
+
+  return prompts;
+}
+
 export default function ParentDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -113,6 +137,7 @@ export default function ParentDashboardPage() {
   const [parentCalls, setParentCalls] = useState<any[]>([]);
   const [parentCallQuota, setParentCallQuota] = useState({ used: 0, max: 1, remaining: 1 });
   const [latestPulse, setLatestPulse] = useState<any>(null);
+  const [learningProfile, setLearningProfile] = useState<LearningProfile | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -209,6 +234,7 @@ export default function ParentDashboardPage() {
       setChildId(enrolledChild.id);
       setChildName(enrolledChild.name || enrolledChild.child_name || 'Your Child');
       setLatestScore(enrolledChild.latest_assessment_score);
+      setLearningProfile(enrolledChild.learning_profile as LearningProfile | null);
 
       // Fetch enrollment with coach details
       const { data: enrollmentData, error: enrollmentError } = await supabase
@@ -500,11 +526,18 @@ export default function ParentDashboardPage() {
           parentCalls={parentCalls}
           parentCallQuota={parentCallQuota}
           latestPulse={latestPulse}
+          learningProfile={learningProfile}
         />
       </main>
 
       {/* Floating rAI Chat Widget */}
-      <ChatWidget userRole="parent" userEmail={parentEmail} />
+      <ChatWidget
+        userRole="parent"
+        userEmail={parentEmail}
+        childId={childId || undefined}
+        childName={childName || undefined}
+        contextualPrompts={learningProfile ? buildContextualPrompts(childName, learningProfile) : undefined}
+      />
     </div>
   );
 }
@@ -613,6 +646,7 @@ function OverviewTab({
   parentCalls,
   parentCallQuota,
   latestPulse,
+  learningProfile,
 }: {
   childName: string;
   enrollment: Enrollment | null;
@@ -629,6 +663,7 @@ function OverviewTab({
   parentCalls: any[];
   parentCallQuota: { used: number; max: number; remaining: number };
   latestPulse: any;
+  learningProfile: LearningProfile | null;
 }) {
   function formatDate(dateStr: string): string {
     try {
@@ -730,6 +765,21 @@ function OverviewTab({
           )}
         </div>
       </div>
+
+      {/* AI INSIGHT CARD — surfaces learning_profile intelligence */}
+      {learningProfile && (
+        <AIInsightCard learningProfile={learningProfile} childName={childName} />
+      )}
+
+      {/* SKILL PROGRESS CARD — visual skill breakdown */}
+      {learningProfile && (
+        <SkillProgressCard
+          masteredSkills={learningProfile.mastered_skills || []}
+          activeSkills={learningProfile.active_skills || []}
+          struggleAreas={learningProfile.struggle_areas || []}
+          childName={childName}
+        />
+      )}
 
       {/* STARTER COMPLETION CTA - Show when starter is completed */}
       {isStarterCompleted && (
@@ -959,7 +1009,7 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* rAI Tip */}
+      {/* rAI Tip — dynamic from learning profile or fallback */}
       <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -968,7 +1018,9 @@ function OverviewTab({
           <div className="min-w-0">
             <h3 className="font-semibold text-lg">rAI says</h3>
             <p className="text-white/90 text-base mt-1">
-              Set aside 15-20 minutes of quiet reading time daily. Consistency matters more than duration!
+              {learningProfile?.what_works && learningProfile.what_works.length > 0
+                ? `Tip: ${learningProfile.what_works[0]}. Keep it up!`
+                : 'Set aside 15-20 minutes of quiet reading time daily. Consistency matters more than duration!'}
             </p>
           </div>
         </div>

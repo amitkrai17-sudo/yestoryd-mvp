@@ -21,6 +21,7 @@ interface ChatWidgetProps {
   initialPrompt?: string;
   autoSend?: boolean;
   onMessageSent?: (message: string) => void;
+  contextualPrompts?: string[];
   sessionContext?: {
     sessionId: string;
     parentPhone: string;
@@ -85,6 +86,7 @@ export function ChatWidget({
   initialPrompt,
   autoSend = false,
   onMessageSent,
+  contextualPrompts,
   sessionContext
 }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -413,7 +415,7 @@ export function ChatWidget({
               }
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
-              {quickPrompts[userRole]?.map((prompt) => (
+              {(contextualPrompts || quickPrompts[userRole])?.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => handleSendWithContent(prompt)}
