@@ -49,8 +49,7 @@ export default function SupportWidget({
                 {/* Ask rAI Button */}
                 <button
                   onClick={() => {
-                    // Try to find and click the rAI chat widget button
-                    const chatButton = document.querySelector('[aria-label*="rAI"]') as HTMLButtonElement;
+                    const chatButton = document.querySelector('[data-chat-toggle]') as HTMLButtonElement;
                     if (chatButton) chatButton.click();
                   }}
                   className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#7b008b] to-[#ff0099] text-white rounded-xl hover:shadow-lg transition-all text-sm font-medium"

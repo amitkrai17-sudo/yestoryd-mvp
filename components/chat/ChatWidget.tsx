@@ -343,6 +343,8 @@ export function ChatWidget({
     return (
       <button
         onClick={() => setIsOpen(true)}
+        data-chat-toggle
+        aria-label="Open rAI chat"
         className={`fixed bottom-24 lg:bottom-6 right-6 w-14 h-14 bg-gradient-to-r ${theme.gradient} rounded-full shadow-lg ${theme.gradientHover} hover:shadow-xl transition-all flex items-center justify-center z-50`}
       >
         <Sparkles className="w-6 h-6 text-white" />
