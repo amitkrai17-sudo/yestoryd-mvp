@@ -49,6 +49,7 @@ import {
 } from '@/lib/rai/prompts';
 import { handleAdminInsightQuery } from '@/lib/rai/admin-insights';
 import { selectModel, selectTokenCap, generateWithFallback } from '@/lib/rai/model-router';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -533,6 +534,32 @@ async function handleLearningStreaming(
 
   const latency = Date.now() - startTime;
   trackAIUsage(requestId, userEmail, userRole, intent, 'rag', latency, modelName);
+
+  // Fire-and-forget: log parent LEARNING queries as learning_events for RAG
+  if (userRole === 'parent' && intent === 'LEARNING' && child?.id) {
+    (async () => {
+      try {
+        const inquiryContent = `Parent asked about ${childName}: "${message}"`;
+        const embedding = await generateEmbedding(inquiryContent);
+        await supabase.from('learning_events').insert({
+          child_id: child.id,
+          event_type: 'parent_inquiry',
+          event_date: new Date().toISOString(),
+          event_data: {
+            query: message,
+            intent,
+            complexity,
+            model_used: modelName,
+          },
+          ai_summary: `Parent asked: "${message.substring(0, 200)}"`,
+          content_for_embedding: inquiryContent,
+          embedding: JSON.stringify(embedding),
+        });
+      } catch (e) {
+        console.error('Failed to log parent inquiry:', e);
+      }
+    })();
+  }
 
   console.log(JSON.stringify({
     requestId,

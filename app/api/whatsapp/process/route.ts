@@ -27,6 +27,7 @@ import { handleAssessmentCta } from '@/lib/whatsapp/handlers/assessment-cta';
 import { handleBooking } from '@/lib/whatsapp/handlers/booking';
 import { handleEscalate } from '@/lib/whatsapp/handlers/escalate';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { summarizeLeadConversation } from '@/lib/rai/pipelines/whatsapp-to-rag';
 
 export const dynamic = 'force-dynamic';
 
@@ -261,6 +262,10 @@ export async function POST(request: NextRequest) {
       nextState = result.nextState;
       messageType = 'buttons';
       await upsertLead(phone, conversationId, mergedData, newLeadScore, 'discovery_booked');
+      // Fire-and-forget: summarize conversation into RAG brain
+      summarizeLeadConversation(conversationId, phone).catch(e =>
+        console.error('WhatsApp→RAG pipeline failed:', e)
+      );
     }
 
     // --- State-based routing ---

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 const supabase = createAdminClient();
 
@@ -166,6 +167,44 @@ export async function POST(request: NextRequest) {
       },
       triggered_by: 'parent',
     });
+
+    // Feed RAG brain — NPS feedback as learning_event (non-blocking)
+    const npsChildId = enrollment.child_id!;
+    const npsCoachId = enrollment.coach_id;
+    if (npsChildId) {
+      const childName = (enrollment.children as any)?.child_name || (enrollment.children as any)?.name || 'child';
+      const npsContent = [
+        `NPS survey for ${childName}`,
+        `Score: ${score}/10`,
+        score >= 9 ? 'Promoter' : score >= 7 ? 'Passive' : 'Detractor',
+        feedback ? `Feedback: ${feedback}` : '',
+        improvements ? `Improvements suggested: ${improvements}` : '',
+      ].filter(Boolean).join('. ');
+
+      (async () => {
+        try {
+          const embedding = await generateEmbedding(npsContent);
+          await supabase.from('learning_events').insert({
+            child_id: npsChildId,
+            coach_id: npsCoachId,
+            event_type: 'nps_feedback',
+            event_date: new Date().toISOString(),
+            event_data: {
+              nps_score: score,
+              category,
+              feedback: feedback || null,
+              improvements: improvements || null,
+              enrollment_id: enrollmentId,
+            },
+            ai_summary: `Parent rated ${score}/10 (${category}). ${feedback ? `Said: "${feedback.substring(0, 200)}"` : 'No written feedback.'}`,
+            content_for_embedding: npsContent,
+            embedding: JSON.stringify(embedding),
+          });
+        } catch (e) {
+          console.error('Failed to create NPS learning_event:', e);
+        }
+      })();
+    }
 
     // If testimonial consent given and score is high, flag for marketing
     if (testimonialConsent && score >= 8 && testimonialText) {

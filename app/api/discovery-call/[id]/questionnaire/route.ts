@@ -18,6 +18,7 @@ import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,6 +182,59 @@ export async function POST(
         .from('children')
         .update({ lead_status: 'discovery_completed' })
         .eq('id', existingCall.child_id);
+    }
+
+    // 9. Feed RAG brain — create learning_event from discovery notes (non-blocking)
+    const discoveryChildId = existingCall.child_id;
+    const discoveryCoachId = existingCall.assigned_coach_id;
+    const discoveryChildName = existingCall.child_name;
+    if (callStatus === 'completed' && discoveryChildId) {
+      const q = questionnaire;
+      const discoveryContent = [
+        `Discovery call for ${discoveryChildName}`,
+        q.reading_frequency ? `Reading frequency: ${q.reading_frequency}` : '',
+        q.parent_goal ? `Parent goal: ${q.parent_goal}` : '',
+        q.child_attitude ? `Child attitude toward reading: ${q.child_attitude}` : '',
+        q.specific_concerns ? `Specific concerns: ${q.specific_concerns}` : '',
+        q.likelihood_to_enroll ? `Enrollment likelihood: ${q.likelihood_to_enroll}` : '',
+        q.objections?.length ? `Objections: ${q.objections.join(', ')}` : '',
+        q.objection_details ? `Objection details: ${q.objection_details}` : '',
+        q.coach_notes ? `Coach notes: ${q.coach_notes}` : '',
+        q.recommended_focus_areas?.length ? `Recommended focus: ${q.recommended_focus_areas.join(', ')}` : '',
+        q.previous_support ? `Previous support: ${q.previous_support}` : '',
+      ].filter(Boolean).join('. ');
+
+      if (discoveryContent.length > 50) {
+        (async () => {
+          try {
+            const embedding = await generateEmbedding(discoveryContent);
+            await supabase.from('learning_events').insert({
+              child_id: discoveryChildId,
+              coach_id: discoveryCoachId,
+              event_type: 'discovery_notes',
+              event_date: new Date().toISOString(),
+              event_data: {
+                discovery_call_id: id,
+                reading_frequency: q.reading_frequency,
+                parent_goal: q.parent_goal,
+                child_attitude: q.child_attitude,
+                specific_concerns: q.specific_concerns,
+                previous_support: q.previous_support,
+                likelihood_to_enroll: q.likelihood_to_enroll,
+                objections: q.objections,
+                coach_notes: q.coach_notes,
+                recommended_focus_areas: q.recommended_focus_areas,
+              },
+              ai_summary: `Discovery call: Parent goal is ${q.parent_goal || 'not specified'}. Child attitude: ${q.child_attitude || 'not specified'}. ${q.coach_notes ? `Coach notes: ${q.coach_notes.substring(0, 150)}` : ''}`,
+              content_for_embedding: discoveryContent,
+              embedding: JSON.stringify(embedding),
+            });
+            console.log(JSON.stringify({ requestId, event: 'discovery_learning_event_created', childId: discoveryChildId }));
+          } catch (e) {
+            console.error('Failed to create discovery learning_event:', e);
+          }
+        })();
+      }
     }
 
     const duration = Date.now() - startTime;

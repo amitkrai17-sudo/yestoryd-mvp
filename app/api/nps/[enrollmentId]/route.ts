@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 const supabase = createAdminClient();
 
@@ -152,6 +153,47 @@ export async function POST(
 
     // Determine category
     const category = score >= 9 ? 'promoter' : score >= 7 ? 'passive' : 'detractor';
+
+    // Feed RAG brain — NPS feedback as learning_event (non-blocking)
+    const npsChildId = enrollment.child_id!;
+    const npsCoachId = enrollment.coach_id;
+    if (npsChildId) {
+      const childName = child?.child_name || 'child';
+      const npsContent = [
+        `NPS survey for ${childName}`,
+        `Score: ${score}/10`,
+        category === 'promoter' ? 'Promoter' : category === 'passive' ? 'Passive' : 'Detractor',
+        feedback ? `Feedback: ${feedback}` : '',
+        highlight ? `Highlight: ${highlight}` : '',
+      ].filter(Boolean).join('. ');
+
+      (async () => {
+        try {
+          const embedding = await generateEmbedding(npsContent);
+          await supabase.from('learning_events').insert({
+            child_id: npsChildId,
+            coach_id: npsCoachId,
+            event_type: 'nps_feedback',
+            event_date: new Date().toISOString(),
+            event_data: {
+              nps_score: score,
+              category,
+              feedback: feedback || null,
+              highlight: highlight || null,
+              coach_rating: coachRating,
+              platform_rating: platformRating,
+              content_rating: contentRating,
+              enrollment_id: enrollmentId,
+            },
+            ai_summary: `Parent rated ${score}/10 (${category}). ${feedback ? `Said: "${feedback.substring(0, 200)}"` : 'No written feedback.'}`,
+            content_for_embedding: npsContent,
+            embedding: JSON.stringify(embedding),
+          });
+        } catch (e) {
+          console.error('Failed to create NPS learning_event:', e);
+        }
+      })();
+    }
 
     return NextResponse.json({
       success: true,
