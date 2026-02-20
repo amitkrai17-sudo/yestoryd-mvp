@@ -48,6 +48,13 @@ export function tier0Router(message: string): Intent | null {
   const operationalPatterns = [
     /how many (children|students|kids) do i have/,
     /how many sessions? (have i|did i|completed)/,
+    // Session count queries — informal variations
+    /no\.?\s*of\s+sessions?/,
+    /number\s+of\s+sessions?/,
+    /(how many|total|count)\s*(sessions?|classes?|meetings?)/,
+    /sessions?\s*(count|total|number|left|remaining|completed|done|finished)/,
+    /(sessions?|classes?)\s+(for|of)\s+\w+/,
+    /how many\s+(sessions?|classes?|meetings?)/,
     /who is my coach/,
     /my coach('?s)? (name|email|phone|number|contact)/,
     /what('?s| is| did) (the )?(program )?(cost|price|fee)/,
@@ -97,11 +104,11 @@ Classify the query into exactly ONE category:
 
 LEARNING: Questions about child progress, development, teaching strategies, session summaries, recommendations, what to work on next, how the child is doing, reading skills, phonics, fluency, comprehension.
 
-OPERATIONAL: Counts, coach info, program info, payment status, enrollment status, what's included, pricing, Master Key benefits, reschedule info, contact info.
+OPERATIONAL: Session counts, enrollment status, coach info, program details, payment status, what's included, pricing, Master Key benefits, reschedule info, contact info. Includes "how many sessions", "no of sessions for [child]", "sessions left", "sessions completed", "total classes". ANY question about a child's session count or enrollment details is OPERATIONAL.
 
 SCHEDULE: Session times, calendar, when is next session, schedule today/week, upcoming sessions.
 
-OFF_LIMITS: Earnings, payouts, other users' data, platform revenue metrics, financial information.
+OFF_LIMITS: Coach/platform earnings, payouts, other users' private data, platform revenue metrics. NOTE: Questions about a child's session count, program status, or enrollment details are NOT off-limits — those are OPERATIONAL.
 
 Also rate the complexity:
 - "low": Single fact, simple lookup, basic greeting or question

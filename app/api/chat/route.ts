@@ -593,7 +593,33 @@ async function handleOperational(
     return { response: OPERATIONAL_RESPONSES.master_key, intent: 'OPERATIONAL', source: 'sql' };
   }
 
-  if (/program|what('?s| is) included|how many sessions/i.test(lowerMessage)) {
+  // Session count queries — return actual data, not generic program info
+  if (/no\.?\s*of\s+sessions?|number\s+of\s+sessions?|(how many|total|count)\s*(sessions?|classes?)|sessions?\s*(count|total|number|left|remaining|completed|done|finished)|(sessions?|classes?)\s+(for|of)\s+\w+/i.test(lowerMessage)) {
+    const { data: children } = await supabase
+      .from('children')
+      .select('child_name, sessions_completed, total_sessions, status')
+      .eq('parent_email', userEmail)
+      .in('status', ['enrolled', 'assessment_complete']);
+
+    if (children && children.length > 0) {
+      // Try to match a child name from the message
+      const matchedChild = children.length === 1
+        ? children[0]
+        : children.find(c => c.child_name && lowerMessage.includes(c.child_name.toLowerCase())) || children[0];
+
+      const completed = matchedChild.sessions_completed || 0;
+      const total = matchedChild.total_sessions || 0;
+      const remaining = Math.max(0, total - completed);
+      return {
+        response: `${matchedChild.child_name} has completed ${completed} out of ${total} sessions. ${remaining} session${remaining !== 1 ? 's' : ''} remaining.`,
+        intent: 'OPERATIONAL',
+        source: 'sql',
+      };
+    }
+    return { response: "I couldn't find an active enrollment for your account. Please contact support at 918976287997 if you need help.", intent: 'OPERATIONAL', source: 'sql' };
+  }
+
+  if (/program|what('?s| is) included/i.test(lowerMessage)) {
     return { response: OPERATIONAL_RESPONSES.program_info, intent: 'OPERATIONAL', source: 'sql' };
   }
 
