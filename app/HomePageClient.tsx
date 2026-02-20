@@ -17,6 +17,9 @@ import {
   FooterSection,
   FloatingElements,
 } from './(home)/_components';
+import SocialProofBar from '@/components/website/SocialProofBar';
+import AICredibilitySection from '@/components/website/AICredibilitySection';
+import AssessmentPreview from '@/components/website/AssessmentPreview';
 
 // ==================== TYPES ====================
 interface StatsData {
@@ -378,6 +381,8 @@ export default function HomePageClient({
         </div>
       </section>
 
+      <SocialProofBar />
+
       <ProblemSection
         title={c.problem_section_title || "What Schools Don't Tell You"}
         subtitle={c.problem_section_subtitle || 'About why your child struggles with reading'}
@@ -423,6 +428,8 @@ export default function HomePageClient({
         explanation={{ intro: c.rai_explanation_intro || "Most AI makes things up. We couldn't risk that with your child's education.", analogy: c.rai_explanation_analogy || "Imagine rAI as a librarian with a manual written by Rucha.", detail: c.rai_explanation_detail || "When your child makes a mistake, rAI doesn't guess." }}
       />
 
+      <AICredibilitySection />
+
       <TestimonialsSection
         badge={c.testimonials_section_badge || 'Real Results'}
         title={c.testimonials_section_title || 'Parents See the Difference'}
@@ -440,6 +447,8 @@ export default function HomePageClient({
         insightText={c.journey_insight_text || 'In 90 days, your child masters reading fluency.'}
         insightDetail={c.journey_insight_detail || 'This becomes the foundation for grammar, comprehension, writing, and eventually — confident English communication.'}
       />
+
+      <AssessmentPreview />
 
       <PricingSection
         badge={c.pricing_section_badge || 'Start Your ARC Journey'}

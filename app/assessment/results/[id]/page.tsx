@@ -276,6 +276,22 @@ _Assessed by rAI | yestoryd.com_`);
 
   const shareOnWhatsApp = () => window.open(`https://wa.me/?text=${getWhatsAppMessage()}`, '_blank');
 
+  const nativeShare = async () => {
+    if (!data) return;
+    const reportLink = `https://yestoryd.com/assessment/results/${childId}`;
+    const text = `${data.childName}'s Reading Assessment: ${data.overall_score}/10. Check out the full report!`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: `${data.childName}'s Reading Report`, text, url: reportLink });
+      } catch {
+        // User cancelled or share failed — fall back to WhatsApp
+        shareOnWhatsApp();
+      }
+    } else {
+      shareOnWhatsApp();
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-surface-0">
       <div className="text-center">
@@ -618,21 +634,73 @@ _Assessed by rAI | yestoryd.com_`);
           </div>
         )}
 
-        {/* Let's Talk CTA Section */}
-        <div className="mt-6 p-5 bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 rounded-2xl border border-[#ff0099]/20 print:hidden">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-white mb-2 break-words">
-              Want to improve {data.childName}&apos;s reading?
+        {/* What Happens Next — Bridging Score → Coaching */}
+        <div className="mt-6 bg-surface-1 rounded-2xl border border-border overflow-hidden print:hidden">
+          <div className="bg-gradient-to-r from-[#ff0099]/10 to-[#7b008b]/10 p-5 border-b border-border">
+            <h3 className="text-lg font-semibold text-white text-center">
+              What Happens Next?
             </h3>
-            <p className="text-text-secondary text-sm mb-4">
-              Book a FREE 15-minute call with our reading coach to discuss these results and create a personalized improvement plan.
+            <p className="text-text-secondary text-sm text-center mt-1">
+              From assessment to confident reader in 90 days
             </p>
+          </div>
+          <div className="p-5 space-y-4">
+            {[
+              {
+                step: '1',
+                title: 'You just completed this',
+                desc: `rAI identified ${data.areas_to_improve?.length || 'key'} areas where ${data.childName} can improve.`,
+                color: '#FF0099',
+                done: true,
+              },
+              {
+                step: '2',
+                title: 'Talk to a reading coach',
+                desc: 'A 15-min FREE call to discuss results and create a personalized plan.',
+                color: '#00ABFF',
+                done: false,
+              },
+              {
+                step: '3',
+                title: `${data.childName} starts coaching`,
+                desc: ageBandConfig
+                  ? `${ageBandConfig.total_sessions} sessions, ${ageBandConfig.frequency_label}/week, ${ageBandConfig.session_duration_minutes} min each.`
+                  : '1:1 sessions with an expert phonics coach, tailored to their exact gaps.',
+                color: '#c847f4',
+                done: false,
+              },
+            ].map((item) => (
+              <div key={item.step} className="flex items-start gap-3">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+                    item.done
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'border-2 text-white'
+                  }`}
+                  style={!item.done ? { borderColor: item.color, color: item.color } : undefined}
+                >
+                  {item.done ? <CheckCircle className="w-4 h-4" /> : item.step}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-medium">{item.title}</p>
+                  <p className="text-text-tertiary text-xs mt-0.5">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="px-5 pb-5 flex flex-col gap-3">
             <Link
-              href={`/lets-talk?childId=${childId}&childName=${encodeURIComponent(data.childName)}&score=${data.overall_score}&source=results_cta`}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#ff0099] hover:bg-[#ff0099]/90 text-white font-semibold rounded-full transition-colors min-h-[44px]"
+              href={bookCallUrl}
+              className="w-full py-3 bg-[#ff0099] hover:bg-[#ff0099]/90 text-white font-semibold rounded-full flex items-center justify-center gap-2 transition-colors min-h-[44px]"
             >
               <Calendar className="w-5 h-5" />
-              Book FREE Call
+              Book FREE Coach Call
+            </Link>
+            <Link
+              href={enrollUrl}
+              className="w-full py-3 bg-surface-2 text-text-secondary font-medium rounded-full flex items-center justify-center gap-2 border border-border hover:bg-surface-1 transition-colors min-h-[44px] text-sm"
+            >
+              Skip Call — Enroll Directly
             </Link>
           </div>
         </div>
@@ -643,12 +711,15 @@ _Assessed by rAI | yestoryd.com_`);
         </button>
 
         {/* Action Buttons */}
-        <div className="mt-4 grid grid-cols-2 gap-3 print:hidden">
+        <div className="mt-4 grid grid-cols-3 gap-3 print:hidden">
+          <button onClick={nativeShare} className="flex flex-col items-center gap-1.5 p-3 bg-surface-1 border border-border text-text-secondary rounded-2xl text-sm font-medium hover:bg-surface-2 min-h-[44px]">
+            <Share2 className="w-5 h-5" /> Share
+          </button>
           <button onClick={() => window.print()} className="flex flex-col items-center gap-1.5 p-3 bg-surface-1 border border-border text-text-secondary rounded-2xl text-sm font-medium hover:bg-surface-2 min-h-[44px]">
             <Download className="w-5 h-5" /> Download
           </button>
           <Link href="/assessment" className="flex flex-col items-center gap-1.5 p-3 bg-surface-1 border border-border text-text-secondary rounded-2xl text-sm font-medium hover:bg-surface-2 min-h-[44px]">
-            <Share2 className="w-5 h-5" /> Try Again
+            <BookOpen className="w-5 h-5" /> Retake
           </Link>
         </div>
       </main>
