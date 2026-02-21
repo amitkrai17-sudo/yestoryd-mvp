@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User } from 'lucide-react';
-import type { ChatMessage, ChildData } from './types';
+import { Send, Loader2, Bot, User, Film, FileText, Gamepad2, Headphones, Monitor, BookOpen, ChevronDown } from 'lucide-react';
+import type { ChatMessage, ChildData, RecommendedContentItem } from './types';
 
 interface RaiTabProps {
   childId: string;
@@ -16,6 +16,24 @@ const QUICK_PROMPTS = [
   'Any parent concerns?',
   'Suggest an activity',
 ];
+
+const CONTENT_TYPE_ICONS: Record<string, typeof Film> = {
+  video: Film,
+  worksheet: FileText,
+  game: Gamepad2,
+  audio: Headphones,
+  interactive: Monitor,
+  parent_guide: BookOpen,
+};
+
+const CONTENT_TYPE_COLORS: Record<string, string> = {
+  video: 'text-blue-400 bg-blue-400/10',
+  worksheet: 'text-green-400 bg-green-400/10',
+  game: 'text-purple-400 bg-purple-400/10',
+  audio: 'text-orange-400 bg-orange-400/10',
+  interactive: 'text-teal-400 bg-teal-400/10',
+  parent_guide: 'text-pink-400 bg-pink-400/10',
+};
 
 export default function RaiTab({ childId, child, coachEmail }: RaiTabProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -56,7 +74,11 @@ export default function RaiTab({ childId, child, coachEmail }: RaiTabProps) {
 
       const data = await res.json();
       const reply = data.suggestion || 'Sorry, I couldn\'t generate a suggestion right now.';
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: reply,
+        recommended_content: data.recommended_content || undefined,
+      }]);
     } catch {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }]);
     } finally {
@@ -77,25 +99,32 @@ export default function RaiTab({ childId, child, coachEmail }: RaiTabProps) {
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-full bg-[#00ABFF]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Bot className="w-4 h-4 text-[#00ABFF]" />
+          <div key={i}>
+            <div className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {msg.role === 'assistant' && (
+                <div className="w-7 h-7 rounded-full bg-[#00ABFF]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Bot className="w-4 h-4 text-[#00ABFF]" />
+                </div>
+              )}
+              <div
+                className={`max-w-[80%] px-3 py-2.5 rounded-xl text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-[#00ABFF] text-white rounded-br-sm'
+                    : 'bg-white/5 text-white/80 border border-white/10 rounded-bl-sm'
+                }`}
+              >
+                {msg.content}
               </div>
-            )}
-            <div
-              className={`max-w-[80%] px-3 py-2.5 rounded-xl text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-[#00ABFF] text-white rounded-br-sm'
-                  : 'bg-white/5 text-white/80 border border-white/10 rounded-bl-sm'
-              }`}
-            >
-              {msg.content}
+              {msg.role === 'user' && (
+                <div className="w-7 h-7 rounded-full bg-[#00ABFF]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <User className="w-4 h-4 text-[#00ABFF]" />
+                </div>
+              )}
             </div>
-            {msg.role === 'user' && (
-              <div className="w-7 h-7 rounded-full bg-[#00ABFF]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <User className="w-4 h-4 text-[#00ABFF]" />
-              </div>
+
+            {/* Content Cards */}
+            {msg.role === 'assistant' && msg.recommended_content && msg.recommended_content.length > 0 && (
+              <ContentCards items={msg.recommended_content} />
             )}
           </div>
         ))}
@@ -148,6 +177,58 @@ export default function RaiTab({ childId, child, coachEmail }: RaiTabProps) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ==================== CONTENT CARDS ====================
+
+function ContentCards({ items }: { items: RecommendedContentItem[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleItems = expanded ? items : items.slice(0, 3);
+  const hasMore = items.length > 3;
+
+  return (
+    <div className="ml-9 mt-2 space-y-1.5">
+      <p className="text-[10px] text-white/30 uppercase tracking-wider font-medium">Recommended Content</p>
+      {visibleItems.map((item) => {
+        const Icon = CONTENT_TYPE_ICONS[item.content_type] || FileText;
+        const colorClass = CONTENT_TYPE_COLORS[item.content_type] || 'text-white/40 bg-white/5';
+
+        return (
+          <div
+            key={item.id}
+            className="flex items-center gap-2.5 px-2.5 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg"
+          >
+            <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+              <Icon className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-white/70 truncate">{item.title}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {item.skills.slice(0, 2).map((skill, i) => (
+                  <span key={i} className="text-[9px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded">
+                    {skill}
+                  </span>
+                ))}
+                {item.yrl_level && (
+                  <span className="text-[9px] text-white/20 font-mono">{item.yrl_level}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {hasMore && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="flex items-center gap-1 text-[10px] text-[#00ABFF]/60 hover:text-[#00ABFF] transition-colors pl-1"
+        >
+          <ChevronDown className="w-3 h-3" />
+          Show {items.length - 3} more
+        </button>
+      )}
     </div>
   );
 }

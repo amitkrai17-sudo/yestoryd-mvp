@@ -120,8 +120,9 @@ SYNTHESIZED LEARNING PROFILE (updated after each session):
       }
     }
 
-    // 2b. Search content library for relevant units
+    // 2b. Search content library for relevant units + individual content items
     let contentContext = '';
+    let recommendedContent: { id: string; title: string; content_type: string; skills: string[]; yrl_level: string | null; similarity?: number }[] = [];
     try {
       // Build search query from session context
       const searchParts: string[] = [];
@@ -137,16 +138,69 @@ SYNTHESIZED LEARNING PROFILE (updated after each session):
       }
 
       if (searchParts.length > 0) {
-        const contentUnits = await searchContentUnits({
-          query: searchParts.join(' '),
-          childAge: childAge || null,
-          limit: 3,
-          threshold: 0.25,
-        });
+        const searchQuery = searchParts.join(' ');
+
+        // Parallel: search learning units AND content items
+        const [contentUnits, contentItemsResult] = await Promise.all([
+          searchContentUnits({
+            query: searchQuery,
+            childAge: childAge || null,
+            limit: 3,
+            threshold: 0.25,
+          }),
+          // Search el_content_items via text match (no RPC needed)
+          (async () => {
+            try {
+              const keywords = searchQuery.split(/\s+/).filter(w => w.length > 2).slice(0, 3);
+              if (keywords.length === 0) return [];
+
+              // Text search on search_text
+              let query = (supabaseAdmin as any)
+                .from('el_content_items')
+                .select('id, title, content_type, yrl_level, search_text')
+                .eq('is_active', true)
+                .limit(5);
+
+              // Use ilike with first keyword for broadest match
+              query = query.ilike('search_text', `%${keywords[0]}%`);
+
+              const { data } = await query;
+              if (!data || data.length === 0) return [];
+
+              // Fetch skill tags for these items
+              const ids = data.map((d: any) => d.id);
+              const { data: tags } = await (supabaseAdmin as any)
+                .from('el_content_tags')
+                .select('content_item_id, el_skills(name)')
+                .in('content_item_id', ids);
+
+              const skillsByContent: Record<string, string[]> = {};
+              for (const tag of tags || []) {
+                if (!skillsByContent[tag.content_item_id]) skillsByContent[tag.content_item_id] = [];
+                if (tag.el_skills?.name) skillsByContent[tag.content_item_id].push(tag.el_skills.name);
+              }
+
+              return data.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                content_type: item.content_type,
+                skills: skillsByContent[item.id] || [],
+                yrl_level: item.yrl_level,
+              }));
+            } catch {
+              return [];
+            }
+          })(),
+        ]);
 
         if (contentUnits.length > 0) {
           contentContext = '\n\n' + formatContentUnitsForContext(contentUnits);
           console.log(`Content units found: ${contentUnits.length}`);
+        }
+
+        if (contentItemsResult.length > 0) {
+          recommendedContent = contentItemsResult;
+          console.log(`Content items found: ${contentItemsResult.length}`);
         }
       }
     } catch (err) {
@@ -229,6 +283,7 @@ Respond with ONLY the recommendation, no preamble or explanation.`;
       success: true,
       suggestion,
       recommendedActivities,
+      recommended_content: recommendedContent.length > 0 ? recommendedContent : undefined,
       context: {
         previousSessionsAnalyzed: childId ? 5 : 0,
         processingTimeMs: duration,

@@ -80,116 +80,137 @@ export async function GET(
       template = t;
     }
 
-    // 4b. Resolve content_refs → fetch asset details from el_* tables
+    // 4b. Resolve content_refs → fetch asset details
+    // Primary: single query to el_content_items (coach_guidance is directly on the item)
+    // Fallback: legacy el_videos/el_worksheets/el_game_content tables
     let resolvedContentMap: Record<number, any[]> = {};
     if (template?.activity_flow && Array.isArray(template.activity_flow)) {
       try {
-        // Collect all content_ref IDs grouped by type
-        const videoIds: string[] = [];
-        const gameIds: string[] = [];
-        const worksheetIds: string[] = [];
+        // Collect all content_ref IDs
+        const allContentIds: string[] = [];
+        const refTypes: Record<string, string> = {}; // id → type
 
         for (const step of template.activity_flow as any[]) {
           if (!step.content_refs || !Array.isArray(step.content_refs)) continue;
           for (const ref of step.content_refs) {
-            if (ref.type === 'video') videoIds.push(ref.id);
-            else if (ref.type === 'game') gameIds.push(ref.id);
-            else if (ref.type === 'worksheet') worksheetIds.push(ref.id);
+            allContentIds.push(ref.id);
+            refTypes[ref.id] = ref.type;
           }
         }
 
-        // Fetch all assets in parallel (only if IDs exist)
-        const [videosRes, gamesRes, worksheetsRes] = await Promise.all([
-          videoIds.length > 0
-            ? supabase.from('el_videos').select('id, title, thumbnail_url, video_url, duration_seconds, skill_id').in('id', videoIds)
-            : { data: [] },
-          gameIds.length > 0
-            ? supabase.from('el_game_content').select('id, title, skill_id').in('id', gameIds)
-            : { data: [] },
-          worksheetIds.length > 0
-            ? supabase.from('el_worksheets').select('id, title, thumbnail_url, asset_url, asset_format, unit_id').in('id', worksheetIds)
-            : { data: [] },
-        ]);
+        if (allContentIds.length > 0) {
+          // Try el_content_items first
+          const { data: contentItems } = await (supabase as any)
+            .from('el_content_items')
+            .select('id, content_type, title, asset_url, asset_format, thumbnail_url, metadata, coach_guidance')
+            .in('id', allContentIds)
+            .eq('is_active', true);
 
-        // Build lookup maps
-        const videoMap = new Map((videosRes.data || []).map((v: any) => [v.id, v]));
-        const gameMap = new Map((gamesRes.data || []).map((g: any) => [g.id, g]));
-        const worksheetMap = new Map((worksheetsRes.data || []).map((w: any) => [w.id, w]));
+          const contentMap = new Map<string, any>((contentItems || []).map((c: any) => [c.id, c]));
 
-        // Fetch coach_guidance from el_learning_units for relevant skills/units
-        const skillIds = [
-          ...(videosRes.data || []).map((v: any) => v.skill_id),
-          ...(gamesRes.data || []).map((g: any) => g.skill_id),
-        ].filter(Boolean);
-        const unitIds = (worksheetsRes.data || []).map((w: any) => w.unit_id).filter(Boolean);
+          // Check which IDs were NOT found in el_content_items (need legacy fallback)
+          const missingIds = allContentIds.filter(id => !contentMap.has(id));
 
-        let guidanceBySkill = new Map<string, any>();
-        let guidanceByUnit = new Map<string, any>();
+          // Legacy fallback for missing IDs
+          if (missingIds.length > 0) {
+            const videoIds = missingIds.filter(id => refTypes[id] === 'video');
+            const gameIds = missingIds.filter(id => refTypes[id] === 'game');
+            const worksheetIds = missingIds.filter(id => refTypes[id] === 'worksheet');
 
-        if (skillIds.length > 0) {
-          const { data: units } = await supabase
-            .from('el_learning_units')
-            .select('skill_id, coach_guidance')
-            .in('skill_id', Array.from(new Set(skillIds)))
-            .not('coach_guidance', 'is', null)
-            .limit(20);
-          for (const u of units || []) {
-            if (u.skill_id) {
-              guidanceBySkill.set(u.skill_id, u.coach_guidance);
+            const [videosRes, gamesRes, worksheetsRes] = await Promise.all([
+              videoIds.length > 0
+                ? supabase.from('el_videos').select('id, title, thumbnail_url, video_url, duration_seconds, skill_id').in('id', videoIds)
+                : { data: [] },
+              gameIds.length > 0
+                ? supabase.from('el_game_content').select('id, title, skill_id').in('id', gameIds)
+                : { data: [] },
+              worksheetIds.length > 0
+                ? supabase.from('el_worksheets').select('id, title, thumbnail_url, asset_url, asset_format, unit_id').in('id', worksheetIds)
+                : { data: [] },
+            ]);
+
+            // Fetch coach_guidance from el_learning_units for legacy content
+            const skillIds = [
+              ...(videosRes.data || []).map((v: any) => v.skill_id),
+              ...(gamesRes.data || []).map((g: any) => g.skill_id),
+            ].filter(Boolean);
+            const unitIds = (worksheetsRes.data || []).map((w: any) => w.unit_id).filter(Boolean);
+
+            let guidanceBySkill = new Map<string, any>();
+            let guidanceByUnit = new Map<string, any>();
+
+            if (skillIds.length > 0) {
+              const { data: units } = await supabase
+                .from('el_learning_units')
+                .select('skill_id, coach_guidance')
+                .in('skill_id', Array.from(new Set(skillIds)))
+                .not('coach_guidance', 'is', null)
+                .limit(20);
+              for (const u of units || []) {
+                if (u.skill_id) guidanceBySkill.set(u.skill_id, u.coach_guidance);
+              }
             }
-          }
-        }
-        if (unitIds.length > 0) {
-          const { data: units } = await supabase
-            .from('el_learning_units')
-            .select('id, coach_guidance')
-            .in('id', Array.from(new Set(unitIds)))
-            .not('coach_guidance', 'is', null)
-            .limit(20);
-          for (const u of units || []) {
-            guidanceByUnit.set(u.id, u.coach_guidance);
-          }
-        }
+            if (unitIds.length > 0) {
+              const { data: units } = await supabase
+                .from('el_learning_units')
+                .select('id, coach_guidance')
+                .in('id', Array.from(new Set(unitIds)))
+                .not('coach_guidance', 'is', null)
+                .limit(20);
+              for (const u of units || []) {
+                guidanceByUnit.set(u.id, u.coach_guidance);
+              }
+            }
 
-        // Resolve per activity step
-        (template.activity_flow as any[]).forEach((step: any, index: number) => {
-          if (!step.content_refs || !Array.isArray(step.content_refs)) return;
-          const resolved = step.content_refs.map((ref: any) => {
-            if (ref.type === 'video') {
-              const v = videoMap.get(ref.id);
-              return v ? {
-                type: 'video', id: ref.id, label: ref.label,
-                title: v.title, thumbnail_url: v.thumbnail_url,
-                asset_url: v.video_url, asset_format: null,
-                duration_seconds: v.duration_seconds,
+            // Add legacy items to contentMap in a normalized format
+            for (const v of (videosRes.data || []) as any[]) {
+              contentMap.set(v.id, {
+                id: v.id, content_type: 'video', title: v.title,
+                thumbnail_url: v.thumbnail_url, asset_url: v.video_url,
+                asset_format: null, duration_seconds: v.duration_seconds,
                 coach_guidance: guidanceBySkill.get(v.skill_id) || null,
-              } : null;
-            } else if (ref.type === 'game') {
-              const g = gameMap.get(ref.id);
-              return g ? {
-                type: 'game', id: ref.id, label: ref.label,
-                title: g.title, thumbnail_url: null,
-                asset_url: null, asset_format: null,
-                duration_seconds: null,
-                coach_guidance: guidanceBySkill.get(g.skill_id) || null,
-              } : null;
-            } else if (ref.type === 'worksheet') {
-              const w = worksheetMap.get(ref.id);
-              return w ? {
-                type: 'worksheet', id: ref.id, label: ref.label,
-                title: w.title, thumbnail_url: w.thumbnail_url,
-                asset_url: w.asset_url, asset_format: w.asset_format,
-                duration_seconds: null,
-                coach_guidance: guidanceByUnit.get(w.unit_id) || null,
-              } : null;
+              });
             }
-            return null;
-          }).filter(Boolean);
-
-          if (resolved.length > 0) {
-            resolvedContentMap[index] = resolved;
+            for (const g of (gamesRes.data || []) as any[]) {
+              contentMap.set(g.id, {
+                id: g.id, content_type: 'game', title: g.title,
+                thumbnail_url: null, asset_url: null,
+                asset_format: null, duration_seconds: null,
+                coach_guidance: guidanceBySkill.get(g.skill_id) || null,
+              });
+            }
+            for (const w of (worksheetsRes.data || []) as any[]) {
+              contentMap.set(w.id, {
+                id: w.id, content_type: 'worksheet', title: w.title,
+                thumbnail_url: w.thumbnail_url, asset_url: w.asset_url,
+                asset_format: w.asset_format, duration_seconds: null,
+                coach_guidance: guidanceByUnit.get(w.unit_id) || null,
+              });
+            }
           }
-        });
+
+          // Resolve per activity step — response shape stays identical
+          (template.activity_flow as any[]).forEach((step: any, index: number) => {
+            if (!step.content_refs || !Array.isArray(step.content_refs)) return;
+            const resolved = step.content_refs.map((ref: any) => {
+              const item = contentMap.get(ref.id);
+              if (!item) return null;
+              return {
+                type: ref.type, id: ref.id, label: ref.label,
+                title: item.title,
+                thumbnail_url: item.thumbnail_url || null,
+                asset_url: item.asset_url || null,
+                asset_format: item.asset_format || null,
+                duration_seconds: item.metadata?.duration_seconds || null,
+                coach_guidance: item.coach_guidance || null,
+              };
+            }).filter(Boolean);
+
+            if (resolved.length > 0) {
+              resolvedContentMap[index] = resolved;
+            }
+          });
+        }
       } catch (contentError: any) {
         console.error(JSON.stringify({ requestId, event: 'content_resolution_error', error: contentError.message }));
         // Non-fatal — panel works without resolved content

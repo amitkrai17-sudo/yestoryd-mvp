@@ -130,6 +130,7 @@ Write a SHORT (2-3 sentences max) parent-friendly summary of this session for Wh
       });
 
     // 5b. Extract practice materials from session template content_refs
+    // Primary: single query to el_content_items; Fallback: legacy tables
     let practiceItems: { type: string; id: string; title: string; asset_url: string | null }[] = [];
     try {
       if ((session as any).session_template_id) {
@@ -140,31 +141,58 @@ Write a SHORT (2-3 sentences max) parent-friendly summary of this session for Wh
           .single();
 
         if (tmpl?.activity_flow && Array.isArray(tmpl.activity_flow)) {
-          const videoIds: string[] = [];
-          const worksheetIds: string[] = [];
+          const allIds: string[] = [];
+          const refTypes: Record<string, string> = {};
 
           for (const step of tmpl.activity_flow as any[]) {
             if (!step.content_refs || !Array.isArray(step.content_refs)) continue;
             for (const ref of step.content_refs) {
-              if (ref.type === 'video') videoIds.push(ref.id);
-              else if (ref.type === 'worksheet') worksheetIds.push(ref.id);
+              if (ref.type === 'video' || ref.type === 'worksheet') {
+                allIds.push(ref.id);
+                refTypes[ref.id] = ref.type;
+              }
             }
           }
 
-          const [videosRes, worksheetsRes] = await Promise.all([
-            videoIds.length > 0
-              ? supabase.from('el_videos').select('id, title, video_url, thumbnail_url').in('id', videoIds)
-              : { data: [] },
-            worksheetIds.length > 0
-              ? supabase.from('el_worksheets').select('id, title, asset_url, thumbnail_url').in('id', worksheetIds)
-              : { data: [] },
-          ]);
+          if (allIds.length > 0) {
+            // Try el_content_items first
+            const { data: items } = await (supabase as any)
+              .from('el_content_items')
+              .select('id, content_type, title, asset_url')
+              .in('id', allIds)
+              .eq('is_active', true);
 
-          for (const v of (videosRes.data || []) as any[]) {
-            practiceItems.push({ type: 'video', id: v.id, title: v.title, asset_url: v.video_url });
-          }
-          for (const w of (worksheetsRes.data || []) as any[]) {
-            practiceItems.push({ type: 'worksheet', id: w.id, title: w.title, asset_url: w.asset_url });
+            const foundIds = new Set((items || []).map((i: any) => i.id));
+            for (const item of items || []) {
+              practiceItems.push({
+                type: item.content_type,
+                id: item.id,
+                title: item.title,
+                asset_url: item.asset_url,
+              });
+            }
+
+            // Fallback for IDs not found in el_content_items
+            const missingVideoIds = allIds.filter(id => !foundIds.has(id) && refTypes[id] === 'video');
+            const missingWorksheetIds = allIds.filter(id => !foundIds.has(id) && refTypes[id] === 'worksheet');
+
+            if (missingVideoIds.length > 0 || missingWorksheetIds.length > 0) {
+              const [videosRes, worksheetsRes] = await Promise.all([
+                missingVideoIds.length > 0
+                  ? supabase.from('el_videos').select('id, title, video_url').in('id', missingVideoIds)
+                  : { data: [] },
+                missingWorksheetIds.length > 0
+                  ? supabase.from('el_worksheets').select('id, title, asset_url').in('id', missingWorksheetIds)
+                  : { data: [] },
+              ]);
+
+              for (const v of (videosRes.data || []) as any[]) {
+                practiceItems.push({ type: 'video', id: v.id, title: v.title, asset_url: v.video_url });
+              }
+              for (const w of (worksheetsRes.data || []) as any[]) {
+                practiceItems.push({ type: 'worksheet', id: w.id, title: w.title, asset_url: w.asset_url });
+              }
+            }
           }
         }
       }

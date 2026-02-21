@@ -140,7 +140,16 @@ export interface LiveSessionData {
 export type SessionPhase = 'pre' | 'live' | 'complete';
 export type LiveTab = 'flow' | 'info' | 'rai';
 
+export interface RecommendedContentItem {
+  id: string;
+  title: string;
+  content_type: string;
+  skills: string[];
+  yrl_level: string | null;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  recommended_content?: RecommendedContentItem[];
 }

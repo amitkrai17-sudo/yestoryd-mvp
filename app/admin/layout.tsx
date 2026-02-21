@@ -33,6 +33,7 @@ import {
   Database,
   Radio,
   ClipboardList,
+  Upload,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { NotificationBell } from '@/components/ui/NotificationBell';
@@ -95,6 +96,14 @@ const NAV_ITEMS = [
     href: '/admin/templates',
     icon: ClipboardList,
     description: 'Manage session templates',
+    ready: true,
+    section: 'core',
+  },
+  {
+    label: 'Content',
+    href: '/admin/content-upload',
+    icon: Upload,
+    description: 'Manage content warehouse',
     ready: true,
     section: 'core',
   },
