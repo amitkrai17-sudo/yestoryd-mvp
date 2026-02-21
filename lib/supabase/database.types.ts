@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ab_test_events: {
@@ -4795,6 +4770,136 @@ export type Database = {
           },
         ]
       }
+      el_content_items: {
+        Row: {
+          arc_stage: string | null
+          asset_format: string | null
+          asset_url: string | null
+          child_label: string | null
+          coach_guidance: string | null
+          content_type: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          difficulty_level: string | null
+          embedding: string | null
+          id: string
+          intelligence_tags: Json | null
+          is_active: boolean | null
+          is_placeholder: boolean | null
+          metadata: Json | null
+          parent_instruction: string | null
+          search_text: string | null
+          standards_alignment: Json | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          yrl_level: string | null
+        }
+        Insert: {
+          arc_stage?: string | null
+          asset_format?: string | null
+          asset_url?: string | null
+          child_label?: string | null
+          coach_guidance?: string | null
+          content_type: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          embedding?: string | null
+          id?: string
+          intelligence_tags?: Json | null
+          is_active?: boolean | null
+          is_placeholder?: boolean | null
+          metadata?: Json | null
+          parent_instruction?: string | null
+          search_text?: string | null
+          standards_alignment?: Json | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          yrl_level?: string | null
+        }
+        Update: {
+          arc_stage?: string | null
+          asset_format?: string | null
+          asset_url?: string | null
+          child_label?: string | null
+          coach_guidance?: string | null
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          embedding?: string | null
+          id?: string
+          intelligence_tags?: Json | null
+          is_active?: boolean | null
+          is_placeholder?: boolean | null
+          metadata?: Json | null
+          parent_instruction?: string | null
+          search_text?: string | null
+          standards_alignment?: Json | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          yrl_level?: string | null
+        }
+        Relationships: []
+      }
+      el_content_tags: {
+        Row: {
+          content_item_id: string
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          relevance_score: number | null
+          skill_id: string
+          sub_skill_tag: string | null
+        }
+        Insert: {
+          content_item_id: string
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          relevance_score?: number | null
+          skill_id: string
+          sub_skill_tag?: string | null
+        }
+        Update: {
+          content_item_id?: string
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          relevance_score?: number | null
+          skill_id?: string
+          sub_skill_tag?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "el_content_tags_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "el_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_content_tags_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_content_with_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_content_tags_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "el_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       el_game_content: {
         Row: {
           content_data: Json
@@ -5299,6 +5404,58 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      el_unit_content: {
+        Row: {
+          content_item_id: string
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_required: boolean | null
+          notes: string | null
+          unit_id: string
+        }
+        Insert: {
+          content_item_id: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_required?: boolean | null
+          notes?: string | null
+          unit_id: string
+        }
+        Update: {
+          content_item_id?: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_required?: boolean | null
+          notes?: string | null
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "el_unit_content_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "el_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_unit_content_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_content_with_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "el_unit_content_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "el_learning_units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       el_videos: {
         Row: {
@@ -8728,6 +8885,45 @@ export type Database = {
         }
         Relationships: []
       }
+      rai_chat_feedback: {
+        Row: {
+          child_id: string | null
+          created_at: string | null
+          id: string
+          intent: string | null
+          model: string | null
+          rai_response: string
+          rating: string
+          user_id: string
+          user_query: string
+          user_role: string
+        }
+        Insert: {
+          child_id?: string | null
+          created_at?: string | null
+          id?: string
+          intent?: string | null
+          model?: string | null
+          rai_response: string
+          rating: string
+          user_id: string
+          user_query: string
+          user_role: string
+        }
+        Update: {
+          child_id?: string | null
+          created_at?: string | null
+          id?: string
+          intent?: string | null
+          model?: string | null
+          rai_response?: string
+          rating?: string
+          user_id?: string
+          user_query?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
       re_enrollment_nudges: {
         Row: {
           channel: string | null
@@ -9475,7 +9671,7 @@ export type Database = {
           created_at: string | null
           duration_minutes: number
           duration_seconds: number | null
-          engagement_level: string | null
+          engagement_level: number | null
           enrollment_id: string | null
           escalate_to_admin: boolean | null
           failure_reason: string | null
@@ -9513,7 +9709,7 @@ export type Database = {
           partial_reason: string | null
           prep_content_ids: string[] | null
           prep_notes: string | null
-          progress_rating: string | null
+          progress_rating: number | null
           quiz_assigned: boolean | null
           quiz_assigned_id: string | null
           quiz_topic: string | null
@@ -9591,7 +9787,7 @@ export type Database = {
           created_at?: string | null
           duration_minutes: number
           duration_seconds?: number | null
-          engagement_level?: string | null
+          engagement_level?: number | null
           enrollment_id?: string | null
           escalate_to_admin?: boolean | null
           failure_reason?: string | null
@@ -9629,7 +9825,7 @@ export type Database = {
           partial_reason?: string | null
           prep_content_ids?: string[] | null
           prep_notes?: string | null
-          progress_rating?: string | null
+          progress_rating?: number | null
           quiz_assigned?: boolean | null
           quiz_assigned_id?: string | null
           quiz_topic?: string | null
@@ -9707,7 +9903,7 @@ export type Database = {
           created_at?: string | null
           duration_minutes?: number
           duration_seconds?: number | null
-          engagement_level?: string | null
+          engagement_level?: number | null
           enrollment_id?: string | null
           escalate_to_admin?: boolean | null
           failure_reason?: string | null
@@ -9745,7 +9941,7 @@ export type Database = {
           partial_reason?: string | null
           prep_content_ids?: string[] | null
           prep_notes?: string | null
-          progress_rating?: string | null
+          progress_rating?: number | null
           quiz_assigned?: boolean | null
           quiz_assigned_id?: string | null
           quiz_topic?: string | null
@@ -12891,6 +13087,35 @@ export type Database = {
         }
         Relationships: []
       }
+      v_content_with_skills: {
+        Row: {
+          arc_stage: string | null
+          asset_format: string | null
+          asset_url: string | null
+          child_label: string | null
+          coach_guidance: string | null
+          content_type: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          difficulty_level: string | null
+          embedding: string | null
+          id: string | null
+          intelligence_tags: Json | null
+          is_active: boolean | null
+          is_placeholder: boolean | null
+          metadata: Json | null
+          parent_instruction: string | null
+          search_text: string | null
+          skills: Json | null
+          standards_alignment: Json | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string | null
+          yrl_level: string | null
+        }
+        Relationships: []
+      }
       v_remedial_eligibility: {
         Row: {
           child_id: string | null
@@ -13228,14 +13453,14 @@ export type Database = {
       }
       hybrid_match_learning_events: {
         Args: {
-          filter_child_id?: string | null
-          filter_coach_id?: string | null
-          filter_date_from?: string | null
-          filter_date_to?: string | null
-          filter_event_type?: string | null
-          filter_keywords?: string[] | null
-          match_count?: number | null
-          match_threshold?: number | null
+          filter_child_id?: string
+          filter_coach_id?: string
+          filter_date_from?: string
+          filter_date_to?: string
+          filter_event_type?: string
+          filter_keywords?: string[]
+          match_count?: number
+          match_threshold?: number
           query_embedding: string
         }
         Returns: {
@@ -13279,13 +13504,13 @@ export type Database = {
       }
       match_content_units: {
         Args: {
-          filter_arc_stage?: string | null
-          filter_max_age?: number | null
-          filter_min_age?: number | null
-          filter_skill_id?: string | null
-          filter_tags?: string[] | null
-          match_count?: number | null
-          match_threshold?: number | null
+          filter_arc_stage?: string
+          filter_max_age?: number
+          filter_min_age?: number
+          filter_skill_id?: string
+          filter_tags?: string[]
+          match_count?: number
+          match_threshold?: number
           query_embedding: string
         }
         Returns: {
@@ -13336,6 +13561,39 @@ export type Database = {
       }
       refresh_leaderboard: { Args: never; Returns: undefined }
       release_expired_holds: { Args: never; Returns: number }
+      search_content_items: {
+        Args: {
+          filter_arc_stage?: string
+          filter_content_type?: string
+          filter_skill_id?: string
+          filter_yrl_level?: string
+          match_count?: number
+          query_embedding: string
+          query_text?: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          arc_stage: string
+          asset_format: string
+          asset_url: string
+          child_label: string
+          coach_guidance: string
+          combined_score: number
+          content_type: string
+          description: string
+          difficulty_level: string
+          id: string
+          intelligence_tags: Json
+          metadata: Json
+          parent_instruction: string
+          semantic_score: number
+          skills: Json
+          text_score: number
+          thumbnail_url: string
+          title: string
+          yrl_level: string
+        }[]
+      }
       sync_children_enrollment_status: { Args: never; Returns: undefined }
       update_communication_analytics: {
         Args: { p_action?: string; p_channel: string; p_cost?: number }
@@ -13506,9 +13764,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

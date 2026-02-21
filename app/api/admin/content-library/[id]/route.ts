@@ -45,7 +45,7 @@ export async function PATCH(
     const supabase = getServiceSupabase();
 
     // Fetch existing item
-    const { data: existing, error: fetchError } = await (supabase as any)
+    const { data: existing, error: fetchError } = await supabase
       .from('el_content_items')
       .select('*')
       .eq('id', id)
@@ -74,13 +74,14 @@ export async function PATCH(
     }
 
     // Check if searchable fields changed → re-embed
-    const needsReEmbed = SEARCHABLE_FIELDS.some(f => updates[f] !== undefined && updates[f] !== existing[f]);
+    const existingRecord = existing as Record<string, any>;
+    const needsReEmbed = SEARCHABLE_FIELDS.some(f => updates[f] !== undefined && updates[f] !== existingRecord[f]);
 
     if (needsReEmbed) {
       const merged = { ...existing, ...updates };
 
       // Fetch skill names for this content
-      const { data: tags } = await (supabase as any)
+      const { data: tags } = await supabase
         .from('el_content_tags')
         .select('el_skills(name)')
         .eq('content_item_id', id);
@@ -95,7 +96,7 @@ export async function PATCH(
 
     updates.updated_at = new Date().toISOString();
 
-    const { data: updated, error: updateError } = await (supabase as any)
+    const { data: updated, error: updateError } = await supabase
       .from('el_content_items')
       .update(updates)
       .eq('id', id)
@@ -138,7 +139,7 @@ export async function DELETE(
     const supabase = getServiceSupabase();
 
     // Soft delete: set is_active = false
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('el_content_items')
       .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', id);

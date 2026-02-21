@@ -155,7 +155,7 @@ SYNTHESIZED LEARNING PROFILE (updated after each session):
               if (keywords.length === 0) return [];
 
               // Text search on search_text
-              let query = (supabaseAdmin as any)
+              let query = supabaseAdmin
                 .from('el_content_items')
                 .select('id, title, content_type, yrl_level, search_text')
                 .eq('is_active', true)
@@ -169,7 +169,7 @@ SYNTHESIZED LEARNING PROFILE (updated after each session):
 
               // Fetch skill tags for these items
               const ids = data.map((d: any) => d.id);
-              const { data: tags } = await (supabaseAdmin as any)
+              const { data: tags } = await supabaseAdmin
                 .from('el_content_tags')
                 .select('content_item_id, el_skills(name)')
                 .in('content_item_id', ids);

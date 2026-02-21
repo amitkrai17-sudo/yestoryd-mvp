@@ -100,7 +100,7 @@ export async function GET(
 
         if (allContentIds.length > 0) {
           // Try el_content_items first
-          const { data: contentItems } = await (supabase as any)
+          const { data: contentItems } = await supabase
             .from('el_content_items')
             .select('id, content_type, title, asset_url, asset_format, thumbnail_url, metadata, coach_guidance')
             .in('id', allContentIds)

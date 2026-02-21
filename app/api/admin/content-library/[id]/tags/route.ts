@@ -52,7 +52,7 @@ export async function POST(
     const supabase = getServiceSupabase();
 
     // Verify content item exists
-    const { data: item, error: fetchError } = await (supabase as any)
+    const { data: item, error: fetchError } = await supabase
       .from('el_content_items')
       .select('*')
       .eq('id', id)
@@ -63,7 +63,7 @@ export async function POST(
     }
 
     if (action === 'add') {
-      const { error: insertError } = await (supabase as any)
+      const { error: insertError } = await supabase
         .from('el_content_tags')
         .insert({
           content_item_id: id,
@@ -79,7 +79,7 @@ export async function POST(
         return NextResponse.json({ error: insertError.message }, { status: 500 });
       }
     } else {
-      const { error: deleteError } = await (supabase as any)
+      const { error: deleteError } = await supabase
         .from('el_content_tags')
         .delete()
         .eq('content_item_id', id)
@@ -91,7 +91,7 @@ export async function POST(
     }
 
     // Re-compose search_text with updated skill names and re-embed
-    const { data: updatedTags } = await (supabase as any)
+    const { data: updatedTags } = await supabase
       .from('el_content_tags')
       .select('el_skills(name)')
       .eq('content_item_id', id);
@@ -100,7 +100,7 @@ export async function POST(
     const searchText = composeSearchText(item, skillNames);
     const embedding = await generateEmbedding(searchText);
 
-    await (supabase as any)
+    await supabase
       .from('el_content_items')
       .update({
         search_text: searchText,

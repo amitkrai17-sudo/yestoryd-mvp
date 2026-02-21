@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     const unitIds = units.map(u => u.id);
-    const skillIds = Array.from(new Set(units.map(u => u.skill_id).filter(Boolean)));
+    const skillIds = Array.from(new Set(units.map(u => u.skill_id).filter((id): id is string => !!id)));
 
     // Try new el_content_items approach first
     let useNewTables = false;
@@ -71,13 +71,13 @@ export async function GET(request: NextRequest) {
 
     try {
       // Fetch content linked to units via el_unit_content
-      const { data: unitContent } = await (supabase as any)
+      const { data: unitContent } = await supabase
         .from('el_unit_content')
         .select('unit_id, content_item_id')
         .in('unit_id', unitIds);
 
       // Fetch content tagged with relevant skills via el_content_tags
-      const { data: taggedContent } = await (supabase as any)
+      const { data: taggedContent } = await supabase
         .from('el_content_tags')
         .select('content_item_id, skill_id')
         .in('skill_id', skillIds.length > 0 ? skillIds : ['__none__']);
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
 
       if (allContentIds.size > 0) {
         // Fetch all content items
-        const { data: contentItems } = await (supabase as any)
+        const { data: contentItems } = await supabase
           .from('el_content_items')
           .select('id, content_type, title, asset_url, asset_format, thumbnail_url, metadata, is_active')
           .in('id', Array.from(allContentIds))

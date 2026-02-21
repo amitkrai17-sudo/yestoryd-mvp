@@ -265,8 +265,8 @@ export async function POST(request: NextRequest) {
 
         // Form data
         focus_area: data.focusArea,
-        progress_rating: data.progressRating || null,
-        engagement_level: data.engagementLevel || null,
+        progress_rating: data.progressRating ? Number(data.progressRating) : null,
+        engagement_level: data.engagementLevel ? Number(data.engagementLevel) : null,
         confidence_level: data.confidenceLevel,
         skills_worked_on: data.skillsWorkedOn,
         

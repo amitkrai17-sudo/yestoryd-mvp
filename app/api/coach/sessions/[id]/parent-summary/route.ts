@@ -156,7 +156,7 @@ Write a SHORT (2-3 sentences max) parent-friendly summary of this session for Wh
 
           if (allIds.length > 0) {
             // Try el_content_items first
-            const { data: items } = await (supabase as any)
+            const { data: items } = await supabase
               .from('el_content_items')
               .select('id, content_type, title, asset_url')
               .in('id', allIds)

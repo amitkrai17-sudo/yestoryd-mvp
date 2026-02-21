@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Use select('*') to avoid column-not-found errors if table schema differs.
     // We strip embedding/search_text from the response (they're large).
-    let query = (supabase as any)
+    let query = supabase
       .from('el_content_items')
       .select('*', { count: 'exact' });
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     // If filtering by skill, we need a subquery via el_content_tags
     if (skillId) {
       try {
-        const { data: taggedIds } = await (supabase as any)
+        const { data: taggedIds } = await supabase
           .from('el_content_tags')
           .select('content_item_id')
           .eq('skill_id', skillId);
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     if (itemIds.length > 0) {
       try {
         // First try with FK join
-        const { data: tags, error: tagError } = await (supabase as any)
+        const { data: tags, error: tagError } = await supabase
           .from('el_content_tags')
           .select('content_item_id, skill_id, sub_skill_tag, is_primary, el_skills(id, name, skill_tag)')
           .in('content_item_id', itemIds);
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
         if (tagError) {
           // FK join failed — try without it
           console.warn('el_content_tags join failed, trying plain query:', tagError.message);
-          const { data: plainTags } = await (supabase as any)
+          const { data: plainTags } = await supabase
             .from('el_content_tags')
             .select('content_item_id, skill_id, sub_skill_tag, is_primary')
             .in('content_item_id', itemIds);
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
           // Resolve skill names separately
           if (plainTags && plainTags.length > 0) {
             const skillIds = Array.from(new Set(plainTags.map((t: any) => t.skill_id)));
-            const { data: skillRows } = await (supabase as any)
+            const { data: skillRows } = await supabase
               .from('el_skills')
               .select('id, name, skill_tag')
               .in('id', skillIds);

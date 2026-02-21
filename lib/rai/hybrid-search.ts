@@ -73,12 +73,12 @@ export async function hybridSearch(
   try {
     const { data: events, error } = await supabase.rpc('hybrid_match_learning_events', {
       query_embedding: JSON.stringify(queryEmbedding),
-      filter_child_id: childId || null,
-      filter_coach_id: userRole === 'coach' ? coachId : null,
-      filter_date_from: filters.dateRange?.from?.toISOString() || null,
-      filter_date_to: filters.dateRange?.to?.toISOString() || null,
-      filter_event_type: filters.eventType || null,
-      filter_keywords: filters.keywords.length > 0 ? filters.keywords : null,
+      filter_child_id: childId || undefined,
+      filter_coach_id: userRole === 'coach' ? (coachId || undefined) : undefined,
+      filter_date_from: filters.dateRange?.from?.toISOString() || undefined,
+      filter_date_to: filters.dateRange?.to?.toISOString() || undefined,
+      filter_event_type: filters.eventType || undefined,
+      filter_keywords: filters.keywords.length > 0 ? filters.keywords : undefined,
       match_threshold: threshold,
       match_count: limit,
     });
@@ -250,11 +250,11 @@ export async function searchContentUnits(
 
     const { data, error } = await supabase.rpc('match_content_units', {
       query_embedding: JSON.stringify(queryEmbedding),
-      filter_skill_id: skillId || null,
-      filter_min_age: childAge || null,
-      filter_max_age: childAge || null,
-      filter_arc_stage: arcStage || null,
-      filter_tags: tags?.length ? tags : null,
+      filter_skill_id: skillId || undefined,
+      filter_min_age: childAge || undefined,
+      filter_max_age: childAge || undefined,
+      filter_arc_stage: arcStage || undefined,
+      filter_tags: tags?.length ? tags : undefined,
       match_threshold: threshold,
       match_count: limit,
     });

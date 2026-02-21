@@ -45,7 +45,7 @@ interface NotificationResult {
 interface PreviousSession {
   id: string;
   focus_area: string | null;
-  progress_rating: string | null;
+  progress_rating: number | null;
   concerns_noted: string | null;
   skills_worked_on: string[] | null;
   scheduled_date: string;
@@ -232,7 +232,7 @@ function detectSmartTriggers(
 
   // PROGRESS DECLINED
   if (analysis.progress_rating === 'declined') {
-    const prevDeclines = previousSessions.filter(s => s.progress_rating === 'declined').length;
+    const prevDeclines = previousSessions.filter(s => String(s.progress_rating) === 'declined').length;
     triggers.push({
       type: 'progress_drop',
       reason: prevDeclines > 0

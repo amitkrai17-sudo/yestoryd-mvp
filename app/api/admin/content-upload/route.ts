@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     console.log(JSON.stringify({ requestId, event: 'content_upload_start', count: items.length, admin: auth.email }));
 
     // Pre-fetch all skills for tag resolution
-    const { data: allSkills } = await (supabase as any)
+    const { data: allSkills } = await supabase
       .from('el_skills')
       .select('id, name, skill_tag');
 
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
         const embedding = await generateEmbedding(searchText);
 
         // INSERT el_content_items
-        const { data: inserted, error: insertError } = await (supabase as any)
+        const { data: inserted, error: insertError } = await supabase
           .from('el_content_items')
           .insert({
             title: row.title.trim(),
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
             is_primary: skill.isPrimary,
           }));
 
-          const { error: tagError } = await (supabase as any)
+          const { error: tagError } = await supabase
             .from('el_content_tags')
             .insert(tagRows);
 
