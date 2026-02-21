@@ -426,18 +426,23 @@ async function scheduleCalendarForExistingSessions(
       endDate.setMinutes(endDate.getMinutes() + duration);
 
       // Build event title and description
+      const isOffline = session.session_mode === 'offline';
       const eventTitle = isCoaching
         ? `Yestoryd: ${data.childName} - Coaching Session ${session.session_number}`
         : `Yestoryd: ${data.childName} - Parent Check-in`;
 
-      const eventDescription = isCoaching
+      const baseDescription = isCoaching
         ? `1:1 Reading Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`
         : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`;
+
+      const eventDescription = isOffline
+        ? baseDescription + '\n\n[OFFLINE SESSION - In Person]'
+        : baseDescription;
 
       // Create Google Calendar event
       const event = await calendar.events.insert({
         calendarId: data.coachEmail, // Coach's calendar (coach is organizer)
-        conferenceDataVersion: 1,
+        conferenceDataVersion: isOffline ? 0 : 1,
         sendUpdates: 'all',
         requestBody: {
           summary: eventTitle,
@@ -448,12 +453,15 @@ async function scheduleCalendarForExistingSessions(
             { email: data.parentEmail, displayName: data.parentName },
             { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
           ],
-          conferenceData: {
-            createRequest: {
-              requestId: `yestoryd-${enrollmentId}-session-${session.id}-${Date.now()}`,
-              conferenceSolutionKey: { type: 'hangoutsMeet' },
+          ...(isOffline ? {} : {
+            conferenceData: {
+              createRequest: {
+                requestId: `yestoryd-${enrollmentId}-session-${session.id}-${Date.now()}`,
+                conferenceSolutionKey: { type: 'hangoutsMeet' },
+              },
             },
-          },
+          }),
+          ...(isOffline && session.offline_location ? { location: session.offline_location } : {}),
           reminders: {
             useDefault: false,
             overrides: [
@@ -466,9 +474,9 @@ async function scheduleCalendarForExistingSessions(
         },
       });
 
-      const meetLink = event.data.conferenceData?.entryPoints?.find(
+      const meetLink = isOffline ? '' : (event.data.conferenceData?.entryPoints?.find(
         (ep: any) => ep.entryPointType === 'video'
-      )?.uri || '';
+      )?.uri || '');
 
       // UPDATE existing session with calendar details (NOT INSERT!)
       const { error: updateError } = await supabase

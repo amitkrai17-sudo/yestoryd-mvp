@@ -9754,6 +9754,19 @@ export type Database = {
           voice_note_transcript: string | null
           voice_note_url: string | null
           week_number: number | null
+          session_mode: string
+          offline_request_status: string | null
+          offline_request_reason: string | null
+          offline_reason_detail: string | null
+          offline_location: string | null
+          offline_location_type: string | null
+          offline_approved_by: string | null
+          offline_approved_at: string | null
+          report_submitted_at: string | null
+          report_deadline: string | null
+          report_late: boolean | null
+          coach_voice_note_path: string | null
+          child_reading_clip_path: string | null
         }
         Insert: {
           action_items?: string | null
@@ -9870,6 +9883,19 @@ export type Database = {
           voice_note_transcript?: string | null
           voice_note_url?: string | null
           week_number?: number | null
+          session_mode?: string
+          offline_request_status?: string | null
+          offline_request_reason?: string | null
+          offline_reason_detail?: string | null
+          offline_location?: string | null
+          offline_location_type?: string | null
+          offline_approved_by?: string | null
+          offline_approved_at?: string | null
+          report_submitted_at?: string | null
+          report_deadline?: string | null
+          report_late?: boolean | null
+          coach_voice_note_path?: string | null
+          child_reading_clip_path?: string | null
         }
         Update: {
           action_items?: string | null
@@ -9986,6 +10012,19 @@ export type Database = {
           voice_note_transcript?: string | null
           voice_note_url?: string | null
           week_number?: number | null
+          session_mode?: string
+          offline_request_status?: string | null
+          offline_request_reason?: string | null
+          offline_reason_detail?: string | null
+          offline_location?: string | null
+          offline_location_type?: string | null
+          offline_approved_by?: string | null
+          offline_approved_at?: string | null
+          report_submitted_at?: string | null
+          report_deadline?: string | null
+          report_late?: boolean | null
+          coach_voice_note_path?: string | null
+          child_reading_clip_path?: string | null
         }
         Relationships: [
           {

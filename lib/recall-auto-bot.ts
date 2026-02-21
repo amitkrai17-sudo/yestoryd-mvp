@@ -149,6 +149,7 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
         scheduled_date,
         scheduled_time,
         google_meet_link,
+        session_mode,
         children (name)
       `)
       .eq('enrollment_id', enrollmentId)
@@ -174,6 +175,12 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
       // Skip sessions in the past
       if (scheduledDateTime < new Date()) {
         console.log(`Skipping past session: ${session.id}`);
+        continue;
+      }
+
+      // Skip offline sessions (defense-in-depth — they also have no Meet link)
+      if (session.session_mode === 'offline') {
+        console.log(`Skipping offline session: ${session.id}`);
         continue;
       }
 

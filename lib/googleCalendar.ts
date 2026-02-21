@@ -444,6 +444,52 @@ export async function deleteCalendarEvent(eventId: string, organizerEmail?: stri
   }
 }
 
+/**
+ * Update a calendar event for offline mode:
+ * - Remove conference data (Meet link)
+ * - Add physical location if provided
+ * - Update description to indicate offline
+ */
+export async function updateCalendarEventForOffline(
+  eventId: string,
+  organizerEmail: string,
+  location?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const calendar = getCalendarClient(organizerEmail);
+
+    // Fetch current event to get description
+    const current = await calendar.events.get({
+      calendarId: organizerEmail,
+      eventId,
+    });
+
+    const currentDescription = current.data.description || '';
+    const updatedDescription = currentDescription.includes('[OFFLINE SESSION')
+      ? currentDescription
+      : currentDescription + '\n\n[OFFLINE SESSION - In Person]';
+
+    await calendar.events.patch({
+      calendarId: organizerEmail,
+      eventId,
+      conferenceDataVersion: 0,
+      requestBody: {
+        description: updatedDescription,
+        ...(location ? { location } : {}),
+      },
+      sendUpdates: 'all',
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating event for offline:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update calendar event',
+    };
+  }
+}
+
 // Get event details
 export async function getEventDetails(eventId: string, organizerEmail?: string) {
   try {

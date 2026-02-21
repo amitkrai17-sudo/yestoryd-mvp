@@ -25,11 +25,27 @@ export async function POST(
     const { id: sessionId } = await params;
     const supabase = getServiceSupabase();
 
+    // Parse QStash body for offline context (if present)
+    let offlineContext: {
+      session_mode?: string;
+      voice_note_transcript?: string | null;
+      reading_clip_analysis?: Record<string, unknown> | null;
+      confidence_level?: string;
+      words_struggled?: string[];
+      words_mastered?: string[];
+    } | null = null;
+    try {
+      const body = await request.json();
+      offlineContext = body.offlineContext || null;
+    } catch {
+      // QStash may send empty body or non-JSON — that's fine
+    }
+
     // 1. Get session + child + activity logs
     const { data: session, error: sessionError } = await supabase
       .from('scheduled_sessions')
       .select(`
-        id, child_id, session_number, session_type,
+        id, child_id, session_number, session_type, session_mode,
         coach_notes, session_timer_seconds, session_template_id,
         children (id, child_name, age, parent_name, parent_phone, parent_email)
       `)
@@ -84,6 +100,28 @@ export async function POST(
         throw new Error('GEMINI_API_KEY not configured');
       }
 
+      const isOffline = session.session_mode === 'offline' || offlineContext?.session_mode === 'offline';
+
+      // Build offline-specific context for the prompt
+      let offlineSection = '';
+      if (isOffline) {
+        const parts: string[] = ['SESSION TYPE: In-person (offline) session'];
+        if (offlineContext?.voice_note_transcript) {
+          parts.push(`COACH VOICE NOTE TRANSCRIPT:\n${offlineContext.voice_note_transcript}`);
+        }
+        if (offlineContext?.reading_clip_analysis) {
+          const ra = offlineContext.reading_clip_analysis;
+          parts.push(`READING CLIP ANALYSIS:\nWPM: ${ra.wpm || 'N/A'}, Accuracy: ${ra.accuracy_percent || 'N/A'}%, Fluency: ${ra.fluency_score || 'N/A'}/10\nStrengths: ${(ra.strengths as string[] || []).join(', ')}\nAreas: ${(ra.areas_for_improvement as string[] || []).join(', ')}`);
+        }
+        if (offlineContext?.words_struggled && (offlineContext.words_struggled as string[]).length > 0) {
+          parts.push(`WORDS STRUGGLED: ${(offlineContext.words_struggled as string[]).join(', ')}`);
+        }
+        if (offlineContext?.words_mastered && (offlineContext.words_mastered as string[]).length > 0) {
+          parts.push(`WORDS MASTERED: ${(offlineContext.words_mastered as string[]).join(', ')}`);
+        }
+        offlineSection = '\n\n' + parts.join('\n\n');
+      }
+
       const prompt = `You are a warm, encouraging assistant helping parents understand their child's reading coaching session.
 
 CHILD: ${child.child_name}, age ${child.age}
@@ -94,9 +132,9 @@ ACTIVITIES:
 ${activitySummary}
 
 RESULTS: ${statusCounts.completed} completed, ${statusCounts.partial} partial, ${statusCounts.struggled} struggled, ${statusCounts.skipped} skipped
-${session.coach_notes ? 'COACH NOTES: ' + session.coach_notes : ''}
+${session.coach_notes ? 'COACH NOTES: ' + session.coach_notes : ''}${offlineSection}
 
-Write a SHORT (2-3 sentences max) parent-friendly summary of this session for WhatsApp. Be warm, highlight positives, mention any struggles gently as "areas we'll keep working on". Use the child's first name. Do NOT use emojis. Keep it under 300 characters.`;
+Write a SHORT (2-3 sentences max) parent-friendly summary of this session for WhatsApp. Be warm, highlight positives, mention any struggles gently as "areas we'll keep working on". Use the child's first name. Do NOT use emojis. Keep it under 300 characters.${isOffline ? ' Mention that the session was conducted in person.' : ''}`;
 
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
       const result = await model.generateContent(prompt);
