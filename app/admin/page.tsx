@@ -21,6 +21,9 @@ import {
   RefreshCw,
   UserX,
   Bot,
+  MapPin,
+  FileText,
+  Mic,
 } from 'lucide-react';
 
 // ============================================================
@@ -361,6 +364,179 @@ function SessionIntelligenceCard() {
 }
 
 // ============================================================
+// IN-PERSON SESSIONS WIDGET
+// ============================================================
+
+interface OfflineOverview {
+  total_offline_sessions: number;
+  total_online_sessions: number;
+  overall_offline_ratio: number;
+  pending_requests_count: number;
+  overdue_reports_count: number;
+  reading_clip_rate: number;
+  coaches_with_high_offline_ratio: { coach_id: string; coach_name: string; offline_ratio: number }[];
+}
+
+function InPersonSessionsCard() {
+  const [data, setData] = useState<OfflineOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/offline-overview');
+      if (!res.ok) throw new Error('Failed');
+      setData(await res.json());
+    } catch {
+      // Silent fail — widget is secondary
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-surface-1 rounded-2xl border border-border p-4 sm:p-6">
+        <div className="animate-pulse">
+          <div className="h-5 bg-surface-3 rounded w-40 mb-4" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-surface-2 rounded-xl" />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const hasIssues = data.pending_requests_count > 0 || data.overdue_reports_count > 0;
+
+  return (
+    <div className={`bg-surface-1 rounded-2xl border overflow-hidden ${
+      hasIssues ? 'border-amber-500/30' : 'border-border'
+    }`}>
+      <div className="p-3 sm:p-4 lg:p-6 border-b border-border/50">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-white truncate">In-Person Sessions</h2>
+              <p className="text-xs text-text-tertiary">Offline session monitoring</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {data.pending_requests_count > 0 && (
+              <Link
+                href="/admin/in-person-requests"
+                className="text-xs font-medium text-amber-400 hover:text-amber-300 flex items-center gap-1"
+              >
+                {data.pending_requests_count} pending
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
+            <button onClick={fetchData} className="p-1.5 sm:p-2 hover:bg-surface-2 rounded-lg transition-colors">
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-text-tertiary" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-3 sm:p-4 lg:p-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          {/* Pending Requests */}
+          <Link
+            href="/admin/in-person-requests"
+            className={`rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border transition-colors hover:opacity-80 ${
+              data.pending_requests_count > 0
+                ? 'bg-amber-500/10 border-amber-500/30'
+                : 'bg-surface-2 border-border'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <Clock className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${data.pending_requests_count > 0 ? 'text-amber-400' : 'text-text-tertiary'}`} />
+              <span className={`text-[10px] sm:text-xs font-medium ${data.pending_requests_count > 0 ? 'text-amber-400' : 'text-text-tertiary'}`}>
+                Pending
+              </span>
+            </div>
+            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${data.pending_requests_count > 0 ? 'text-amber-400' : 'text-text-tertiary'}`}>
+              {data.pending_requests_count}
+            </p>
+            <p className={`text-[10px] sm:text-xs mt-0.5 ${data.pending_requests_count > 0 ? 'text-amber-400/70' : 'text-text-tertiary'}`}>
+              {data.pending_requests_count > 0 ? 'Needs review' : 'All clear'}
+            </p>
+          </Link>
+
+          {/* Overdue Reports */}
+          <div className={`rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border ${
+            data.overdue_reports_count > 0
+              ? 'bg-red-500/10 border-red-500/30'
+              : 'bg-surface-2 border-border'
+          }`}>
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <FileText className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${data.overdue_reports_count > 0 ? 'text-red-400' : 'text-text-tertiary'}`} />
+              <span className={`text-[10px] sm:text-xs font-medium ${data.overdue_reports_count > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
+                Overdue
+              </span>
+            </div>
+            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${data.overdue_reports_count > 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
+              {data.overdue_reports_count}
+            </p>
+            <p className={`text-[10px] sm:text-xs mt-0.5 ${data.overdue_reports_count > 0 ? 'text-red-400/70' : 'text-text-tertiary'}`}>
+              {data.overdue_reports_count > 0 ? 'Reports missing' : 'All submitted'}
+            </p>
+          </div>
+
+          {/* In-Person Ratio */}
+          <div className="bg-purple-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-purple-500/30">
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
+              <span className="text-[10px] sm:text-xs font-medium text-purple-400">In-Person</span>
+            </div>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400">{data.overall_offline_ratio}%</p>
+            <p className="text-[10px] sm:text-xs text-purple-400/70 mt-0.5">
+              {data.total_offline_sessions} of {data.total_offline_sessions + data.total_online_sessions}
+            </p>
+          </div>
+
+          {/* Reading Clip Rate */}
+          <div className="bg-blue-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-blue-500/30">
+            <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+              <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+              <span className="text-[10px] sm:text-xs font-medium text-blue-400">Clips</span>
+            </div>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{data.reading_clip_rate}%</p>
+            <p className="text-[10px] sm:text-xs text-blue-400/70 mt-0.5">Reading clip rate</p>
+          </div>
+        </div>
+
+        {/* High offline ratio coaches warning */}
+        {data.coaches_with_high_offline_ratio.length > 0 && (
+          <div className="mt-3 sm:mt-4 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+            <p className="text-xs font-medium text-amber-400 mb-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
+              Coaches with high in-person ratio (&gt;50%)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {data.coaches_with_high_offline_ratio.map((c) => (
+                <span key={c.coach_id} className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded">
+                  {c.coach_name} ({Math.round(c.offline_ratio * 100)}%)
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN ADMIN DASHBOARD PAGE
 // ============================================================
 
@@ -504,6 +680,9 @@ export default function AdminDashboardPage() {
 
         {/* SESSION INTELLIGENCE CARD */}
         <SessionIntelligenceCard />
+
+        {/* IN-PERSON SESSIONS MONITORING */}
+        <InPersonSessionsCard />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Quick Actions */}

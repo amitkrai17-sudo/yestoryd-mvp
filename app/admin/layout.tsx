@@ -34,6 +34,7 @@ import {
   Radio,
   ClipboardList,
   Upload,
+  MapPin,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
 import { NotificationBell } from '@/components/ui/NotificationBell';
@@ -183,6 +184,14 @@ const NAV_ITEMS = [
   },
   // ===== OPERATIONS =====
   {
+    label: 'In-Person Requests',
+    href: '/admin/in-person-requests',
+    icon: MapPin,
+    description: 'Review offline session requests',
+    ready: true,
+    section: 'ops',
+  },
+  {
     label: 'Completion Mgmt',
     href: '/admin/completion',
     icon: CheckCircle,
@@ -211,7 +220,7 @@ const NAV_ITEMS = [
     href: '/admin/coaches',
     icon: Users,
     description: 'Manage coaches',
-    ready: false,
+    ready: true,
     section: 'ops',
   },
   {

@@ -48,6 +48,11 @@ interface SessionData {
   status: string | null;
   google_meet_link: string | null;
   coach_notes: string | null;
+  session_mode: string | null;
+  offline_request_status: string | null;
+  report_submitted_at: string | null;
+  report_deadline: string | null;
+  enrollment_id: string | null;
   children: ChildData | null;
 }
 
@@ -83,6 +88,11 @@ interface FormattedSession {
   total_sessions: number;
   duration_minutes: number | null;
   is_diagnostic: boolean;
+  session_mode: string;
+  offline_request_status: string | null;
+  report_submitted_at: string | null;
+  report_deadline: string | null;
+  enrollment_id: string | null;
 }
 
 // ============================================================
@@ -155,6 +165,11 @@ async function getSessionsWithChildren(
       status,
       google_meet_link,
       coach_notes,
+      session_mode,
+      offline_request_status,
+      report_submitted_at,
+      report_deadline,
+      enrollment_id,
       children!scheduled_sessions_child_id_fkey (
         id,
         child_name,
@@ -266,6 +281,11 @@ function formatSession(
     total_sessions: sessionCounts?.total || DEFAULT_TOTAL_SESSIONS,
     duration_minutes: session.duration_minutes,
     is_diagnostic: session.is_diagnostic || false,
+    session_mode: safeString(session.session_mode, 'online'),
+    offline_request_status: session.offline_request_status,
+    report_submitted_at: session.report_submitted_at,
+    report_deadline: session.report_deadline,
+    enrollment_id: session.enrollment_id,
   };
 }
 

@@ -8,6 +8,7 @@ import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { getSetting } from '@/lib/settings/getSettings';
 import { updateCalendarEventForOffline } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function POST(
     // 2. Fetch session with pending offline request
     const { data: session, error: sessionError } = await supabase
       .from('scheduled_sessions')
-      .select('id, coach_id, enrollment_id, offline_request_status, offline_location, session_mode, google_event_id, recall_bot_id, scheduled_date, scheduled_time')
+      .select('id, child_id, coach_id, enrollment_id, offline_request_status, offline_location, session_mode, google_event_id, recall_bot_id, scheduled_date, scheduled_time')
       .eq('id', sessionId)
       .single();
 
@@ -107,6 +108,45 @@ export async function POST(
       if (session.recall_bot_id) {
         const cancelled = await cancelRecallBot(session.recall_bot_id);
         console.log(JSON.stringify({ requestId, event: 'recall_bot_cancel', botId: session.recall_bot_id, success: cancelled }));
+      }
+
+      // Notify parent about in-person session (fire-and-forget)
+      const childIdForNotify = session.child_id;
+      if (childIdForNotify) {
+        (async () => {
+          try {
+            const { data: child } = await supabase
+              .from('children')
+              .select('child_name, parent_phone, parent_name')
+              .eq('id', childIdForNotify)
+              .single();
+
+            if (child?.parent_phone) {
+              const parentFirst = (child.parent_name || 'Parent').split(' ')[0];
+              const childFirst = (child.child_name || 'Student').split(' ')[0];
+              const sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}`)
+                .toLocaleString('en-IN', {
+                  timeZone: 'Asia/Kolkata',
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                });
+
+              await sendWhatsAppMessage({
+                to: child.parent_phone,
+                templateName: 'offline_parent_notification',
+                variables: [parentFirst, childFirst, sessionDate],
+              });
+
+              console.log(JSON.stringify({ requestId, event: 'parent_offline_notified', sessionId }));
+            }
+          } catch (err) {
+            console.error(JSON.stringify({ requestId, event: 'parent_offline_notify_error', error: err instanceof Error ? err.message : 'Unknown' }));
+          }
+        })();
       }
 
       console.log(JSON.stringify({

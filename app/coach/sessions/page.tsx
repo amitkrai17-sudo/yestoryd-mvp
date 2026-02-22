@@ -11,6 +11,7 @@ import { ParentUpdateButton } from '@/components/coach/ParentUpdateButton';
 import SessionForm from '@/components/coach/session-form';
 import { RescheduleModal } from '@/components/shared';
 import type { RescheduleSession } from '@/components/shared';
+import { RequestOfflineModal } from '@/components/coach/RequestOfflineModal';
 import {
   Calendar,
   Filter,
@@ -88,6 +89,12 @@ interface Session {
   duration_minutes: number | null;
   is_diagnostic: boolean;
   parent_update_sent_at?: string | null;
+  // Offline fields
+  session_mode?: string;
+  offline_request_status?: string | null;
+  report_submitted_at?: string | null;
+  report_deadline?: string | null;
+  enrollment_id?: string | null;
 }
 
 type FilterValue = typeof FILTER_OPTIONS[number]['value'];
@@ -212,6 +219,9 @@ export default function CoachSessionsPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState<string | null>(null);
 
+  // Offline request state
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
+
   // ============================================================
   // DATA LOADING
   // ============================================================
@@ -315,6 +325,11 @@ export default function CoachSessionsPage() {
     setSelectedSession(session);
     setCancelReason('');
     setShowCancelConfirm(true);
+  }, []);
+
+  const openOfflineModal = useCallback((session: Session) => {
+    setSelectedSession(session);
+    setShowOfflineModal(true);
   }, []);
 
   const handleMarkMissed = useCallback(async () => {
@@ -600,6 +615,7 @@ export default function CoachSessionsPage() {
                           onReschedule={() => openRescheduleModal(session)}
                           onCancel={() => openCancelConfirm(session)}
                           onMissed={() => openMissedConfirm(session)}
+                          onRequestOffline={() => openOfflineModal(session)}
                           coachEmail={coach?.email}
                         />
                       ))}
@@ -794,6 +810,30 @@ export default function CoachSessionsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Request Offline Modal */}
+      {showOfflineModal && selectedSession && (
+        <RequestOfflineModal
+          isOpen={showOfflineModal}
+          session={{
+            id: selectedSession.id,
+            child_name: selectedSession.child_name,
+            session_number: selectedSession.session_number,
+            scheduled_date: selectedSession.scheduled_date,
+            scheduled_time: selectedSession.scheduled_time,
+            enrollment_id: selectedSession.enrollment_id ?? null,
+          }}
+          onClose={() => {
+            setShowOfflineModal(false);
+            setSelectedSession(null);
+          }}
+          onSuccess={() => {
+            setShowOfflineModal(false);
+            setSelectedSession(null);
+            loadSessions();
+          }}
+        />
       )}
 
       {/* Cancel Confirmation Modal */}

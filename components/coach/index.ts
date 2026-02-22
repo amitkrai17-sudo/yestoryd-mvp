@@ -4,3 +4,5 @@ export { default as EarningsOverview } from './EarningsOverview';
 export { StatusBadge, getStatusConfig } from './StatusBadge';
 export { ActionDropdown, ActionIcons } from './ActionDropdown';
 export { SessionCard } from './SessionCard';
+export { AudioRecorder } from './AudioRecorder';
+export { RequestOfflineModal } from './RequestOfflineModal';

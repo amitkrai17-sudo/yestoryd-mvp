@@ -94,13 +94,12 @@ export async function POST(
     };
 
     // 4. Generate summary via Gemini
+    const isOffline = session.session_mode === 'offline' || offlineContext?.session_mode === 'offline';
     let summary: string;
     try {
       if (!process.env.GEMINI_API_KEY) {
         throw new Error('GEMINI_API_KEY not configured');
       }
-
-      const isOffline = session.session_mode === 'offline' || offlineContext?.session_mode === 'offline';
 
       // Build offline-specific context for the prompt
       let offlineSection = '';
@@ -147,7 +146,8 @@ Write a SHORT (2-3 sentences max) parent-friendly summary of this session for Wh
       console.warn(JSON.stringify({ requestId, event: 'gemini_fallback', error: aiError.message }));
       // Fallback: simple template
       const firstName = child.child_name.split(' ')[0];
-      summary = `${firstName} had a great session today! We covered ${activityLogs.length} activities with ${statusCounts.completed} completed successfully.${statusCounts.struggled > 0 ? ` We'll keep working on ${statusCounts.struggled} area${statusCounts.struggled > 1 ? 's' : ''} that need more practice.` : ''}`;
+      const sessionTypeText = isOffline ? 'a wonderful in-person coaching session' : 'a great session';
+      summary = `${firstName} had ${sessionTypeText} today! We covered ${activityLogs.length} activities with ${statusCounts.completed} completed successfully.${statusCounts.struggled > 0 ? ` We'll keep working on ${statusCounts.struggled} area${statusCounts.struggled > 1 ? 's' : ''} that need more practice.` : ''}`;
     }
 
     // 5. Store summary in learning_events

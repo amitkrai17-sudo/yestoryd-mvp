@@ -1,10 +1,11 @@
 // components/coach/SessionCard.tsx
 // Clean session card component with smart primary action
+// Supports offline session badges and status indicators
 
 'use client';
 
 import Link from 'next/link';
-import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck } from 'lucide-react';
+import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck, MapPin, Clock, Send, ClipboardList } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
 import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';
@@ -25,6 +26,10 @@ interface Session {
   parent_update_sent_at?: string | null;
   parent_phone?: string;
   parent_name?: string;
+  // Offline fields
+  session_mode?: string;
+  offline_request_status?: string | null;
+  report_submitted_at?: string | null;
 }
 
 interface SessionCardProps {
@@ -38,6 +43,7 @@ interface SessionCardProps {
   onCancel: () => void;
   onMissed: () => void;
   onParentUpdate?: () => void;
+  onRequestOffline?: () => void;
   coachEmail?: string;
 }
 
@@ -62,6 +68,42 @@ function getSessionTypeLabel(type: string): string {
   return _getLabel(type);
 }
 
+// In-person status badge helper
+function getInPersonStatusInfo(session: Session, isPast: boolean): { label: string; className: string; icon: 'mappin' | 'clipboard' | 'check' | 'clock' } | null {
+  if (session.session_mode !== 'offline') return null;
+
+  if (session.report_submitted_at) {
+    return { label: 'Report Submitted', className: 'bg-green-500/20 text-green-400 border-green-500/30', icon: 'check' };
+  }
+
+  if (session.offline_request_status === 'pending') {
+    return { label: 'In-Person Request Pending', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: 'clock' };
+  }
+
+  const isApproved = session.offline_request_status === 'approved' || session.offline_request_status === 'auto_approved';
+
+  if (isApproved && isPast && session.status !== 'completed') {
+    return { label: 'Report Due', className: 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse', icon: 'clipboard' };
+  }
+
+  if (isApproved) {
+    return { label: 'In-Person Session', className: 'bg-green-500/20 text-green-400 border-green-500/30', icon: 'mappin' };
+  }
+
+  return null;
+}
+
+// Status icon component
+function StatusIcon({ icon, className }: { icon: 'mappin' | 'clipboard' | 'check' | 'clock'; className?: string }) {
+  const cls = className || 'w-2.5 h-2.5';
+  switch (icon) {
+    case 'mappin': return <MapPin className={cls} />;
+    case 'clipboard': return <ClipboardList className={cls} />;
+    case 'check': return <CheckCircle className={cls} />;
+    case 'clock': return <Clock className={cls} />;
+  }
+}
+
 export function SessionCard({
   session,
   isPast,
@@ -73,17 +115,38 @@ export function SessionCard({
   onCancel,
   onMissed,
   onParentUpdate,
+  onRequestOffline,
 }: SessionCardProps) {
+  const isOffline = session.session_mode === 'offline';
   const isPending = session.status === 'scheduled' || session.status === 'pending' || session.status === 'confirmed';
   const isCompleted = session.status === 'completed';
   const isCancelled = session.status === 'cancelled';
   const canTakeAction = !isCompleted && !isCancelled; // Can reschedule, cancel, complete
-  const showJoin = isToday && session.google_meet_link && isPending &&
+  const showJoin = !isOffline && isToday && session.google_meet_link && isPending &&
     isWithinMinutes(session.scheduled_date, session.scheduled_time, 15);
   const needsParentUpdate = isCompleted && !session.parent_update_sent_at;
+  const inPersonStatus = getInPersonStatusInfo(session, isPast);
+
+  // Offline: needs report (approved, past, not completed)
+  const isApprovedOffline = isOffline &&
+    (session.offline_request_status === 'approved' || session.offline_request_status === 'auto_approved');
+  const needsReport = isApprovedOffline && isPast && !session.report_submitted_at && session.status !== 'completed';
 
   // Determine primary action
   const getPrimaryAction = () => {
+    // Offline session needing report — show Submit Report CTA
+    if (needsReport) {
+      return (
+        <Link
+          href={`/coach/sessions/${session.id}/report`}
+          className="flex items-center gap-1.5 lg:gap-2 bg-red-500 text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-red-600 transition-colors animate-pulse"
+        >
+          <Send className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span className="hidden sm:inline">Report</span>
+        </Link>
+      );
+    }
+
     if (showJoin) {
       return (
         <a
@@ -138,7 +201,7 @@ export function SessionCard({
   const dropdownActions = [];
 
   // Join meeting link (if available and not already showing as primary action)
-  if (canTakeAction && !showJoin && session.google_meet_link) {
+  if (canTakeAction && !showJoin && session.google_meet_link && !isOffline) {
     dropdownActions.push({
       label: 'Join Meeting',
       icon: ActionIcons.view,
@@ -146,8 +209,18 @@ export function SessionCard({
     });
   }
 
+  // Submit Report — for offline sessions that need it
+  if (needsReport) {
+    dropdownActions.push({
+      label: 'Submit Report',
+      icon: <Send className="w-4 h-4" />,
+      onClick: () => { window.location.href = `/coach/sessions/${session.id}/report`; },
+    });
+  }
+
   // Mark as Complete - show for all pending/scheduled sessions (not completed/cancelled)
-  if (canTakeAction) {
+  // For offline sessions, completion happens through the report flow
+  if (canTakeAction && !isOffline) {
     dropdownActions.push({
       label: 'Mark as Complete',
       icon: ActionIcons.complete,
@@ -156,6 +229,15 @@ export function SessionCard({
       disabledReason: canComplete.blockedBy
         ? `Complete Session #${canComplete.blockedBy} first`
         : undefined,
+    });
+  }
+
+  // Request Offline — for online, upcoming, scheduled sessions
+  if (onRequestOffline && !isOffline && canTakeAction && !isPast && isPending) {
+    dropdownActions.push({
+      label: 'Switch to In-Person',
+      icon: <MapPin className="w-4 h-4" />,
+      onClick: onRequestOffline,
     });
   }
 
@@ -193,7 +275,7 @@ export function SessionCard({
     dropdownActions.push({
       label: isCompleted ? 'View Diagnostic' : 'Diagnostic Form',
       icon: <ClipboardCheck className="w-4 h-4" />,
-      onClick: () => window.location.href = `/coach/sessions/${session.id}/diagnostic`,
+      onClick: () => { window.location.href = `/coach/sessions/${session.id}/diagnostic`; },
     });
   }
 
@@ -201,7 +283,7 @@ export function SessionCard({
   dropdownActions.push({
     label: 'View Student',
     icon: ActionIcons.view,
-    onClick: () => window.location.href = `/coach/students/${session.child_id}`,
+    onClick: () => { window.location.href = `/coach/students/${session.child_id}`; },
   });
 
   return (
@@ -214,24 +296,40 @@ export function SessionCard({
 
         {/* Content - compact single line on mobile */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <h3 className="font-medium text-sm text-white truncate max-w-[100px] sm:max-w-[140px] lg:max-w-none">
               {session.child_name}
             </h3>
             <StatusBadge status={session.status} size="sm" />
+            {/* In-Person badge */}
+            {isOffline && (
+              <span className="px-1.5 py-0.5 text-[9px] rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-medium flex items-center gap-0.5">
+                <MapPin className="w-2.5 h-2.5" />
+                In-Person
+              </span>
+            )}
             {session.is_diagnostic && (
               <span className="px-1.5 py-0.5 text-[9px] rounded bg-red-500/20 text-red-400 border border-red-500/30 font-medium">
                 Diagnostic
               </span>
             )}
           </div>
-          <p className="text-gray-500 text-[11px] lg:text-xs mt-0.5 truncate">
-            {getSessionTypeLabel(session.session_type)}
-            {session.session_number && ` #${session.session_number}`}
-            {session.session_number && session.total_sessions && ` of ${session.total_sessions}`}
-            {session.duration_minutes && ` • ${session.duration_minutes}m`}
-            <span className="sm:hidden"> • {formatTime(session.scheduled_time)}</span>
-          </p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <p className="text-gray-500 text-[11px] lg:text-xs truncate">
+              {getSessionTypeLabel(session.session_type)}
+              {session.session_number && ` #${session.session_number}`}
+              {session.session_number && session.total_sessions && ` of ${session.total_sessions}`}
+              {session.duration_minutes && ` • ${session.duration_minutes}m`}
+              <span className="sm:hidden"> • {formatTime(session.scheduled_time)}</span>
+            </p>
+            {/* In-person status indicator */}
+            {inPersonStatus && (
+              <span className={`px-1.5 py-0.5 text-[9px] rounded border font-medium whitespace-nowrap flex items-center gap-0.5 ${inPersonStatus.className}`}>
+                <StatusIcon icon={inPersonStatus.icon} />
+                {inPersonStatus.label}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Time - visible on larger screens */}
