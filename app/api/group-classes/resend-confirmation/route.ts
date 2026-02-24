@@ -8,11 +8,12 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 
 const supabase = createAdminClient();
 
 // =============================================================================
-// SEND CONFIRMATION EMAIL via SendGrid
+// SEND CONFIRMATION EMAIL via Resend
 // =============================================================================
 async function sendConfirmationEmail(
   parentEmail: string,
@@ -25,8 +26,8 @@ async function sendConfirmationEmail(
   priceInr: number
 ): Promise<boolean> {
   try {
-    if (!process.env.SENDGRID_API_KEY) {
-      console.error('SendGrid API key not configured');
+    if (!isEmailConfigured()) {
+      console.error('Resend API key not configured');
       return false;
     }
 
@@ -131,38 +132,18 @@ async function sendConfirmationEmail(
 </html>
     `;
 
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        personalizations: [
-          {
-            to: [{ email: parentEmail, name: parentName }],
-            subject: `🎉 ${childName} is registered for ${sessionTitle}!`,
-          },
-        ],
-        from: {
-          email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
-          name: 'Yestoryd',
-        },
-        content: [
-          {
-            type: 'text/html',
-            value: emailContent,
-          },
-        ],
-      }),
+    const result = await sendEmail({
+      to: parentEmail,
+      subject: `🎉 ${childName} is registered for ${sessionTitle}!`,
+      html: emailContent,
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
     });
 
-    if (response.ok) {
+    if (result.success) {
       console.log('✅ Confirmation email sent to:', parentEmail);
       return true;
     } else {
-      const error = await response.text();
-      console.error('❌ SendGrid error:', error);
+      console.error('❌ Email error:', result.error);
       return false;
     }
   } catch (error) {
@@ -294,7 +275,7 @@ async function handleResend(registrationId: string) {
     } else {
       return NextResponse.json({
         success: false,
-        message: 'Failed to send email - check SendGrid config',
+        message: 'Failed to send email - check Resend config',
       }, { status: 500 });
     }
   } catch (error: any) {

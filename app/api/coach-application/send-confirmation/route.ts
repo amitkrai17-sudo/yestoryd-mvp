@@ -12,10 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
-import sgMail from '@sendgrid/mail';
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
-
+import { sendEmail } from '@/lib/email/resend-client';
 import { loadAuthConfig, loadEmailConfig } from '@/lib/config/loader';
 
 export const dynamic = 'force-dynamic';
@@ -180,8 +177,20 @@ Review at: https://yestoryd.com/admin/coach-applications
 
     // Send both emails
     await Promise.all([
-      sgMail.send(applicantEmailContent),
-      sgMail.send(adminEmailContent),
+      sendEmail({
+        to: applicantEmailContent.to,
+        subject: applicantEmailContent.subject,
+        html: applicantEmailContent.html,
+        text: applicantEmailContent.text,
+        from: applicantEmailContent.from,
+      }),
+      sendEmail({
+        to: adminEmailContent.to,
+        subject: adminEmailContent.subject,
+        html: adminEmailContent.html,
+        text: adminEmailContent.text,
+        from: adminEmailContent.from,
+      }),
     ]);
 
     // Audit log

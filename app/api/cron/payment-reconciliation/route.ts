@@ -100,19 +100,13 @@ async function sendOrphanAlert(orphans: OrphanedPayment[], requestId: string) {
     </tr>
   `).join('');
 
-  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: 'engage@yestoryd.com', name: 'Yestoryd Admin' }] }],
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd System' },
-      subject: `⚠️ ${orphans.length} Orphaned Payment${orphans.length > 1 ? 's' : ''} Detected — ₹${totalAmount.toLocaleString('en-IN')}`,
-      content: [{
-        type: 'text/html',
-        value: `
+  const { sendEmail } = require('@/lib/email/resend-client');
+
+  const result = await sendEmail({
+    to: 'engage@yestoryd.com',
+    from: { email: 'engage@yestoryd.com', name: 'Yestoryd System' },
+    subject: `⚠️ ${orphans.length} Orphaned Payment${orphans.length > 1 ? 's' : ''} Detected — ₹${totalAmount.toLocaleString('en-IN')}`,
+    html: `
           <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:20px;">
             <h2 style="color:#dc2626;">Orphaned Payments Detected</h2>
             <p style="color:#475569;">
@@ -149,12 +143,10 @@ async function sendOrphanAlert(orphans: OrphanedPayment[], requestId: string) {
               Request ID: ${requestId} | Run at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
             </p>
           </div>`,
-      }],
-    }),
   });
 
-  if (!response.ok) {
-    console.error(`SendGrid orphan alert error: ${response.status}`);
+  if (!result.success) {
+    console.error(`Email orphan alert error: ${result.error}`);
   }
 }
 

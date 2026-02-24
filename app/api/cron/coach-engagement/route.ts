@@ -172,22 +172,17 @@ async function sendEngagementEmail(
       </div>`,
   };
 
-  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: coach.email, name: coach.name }] }],
-      from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
-      subject: subjects[template] || 'Yestoryd Academy Update',
-      content: [{ type: 'text/html', value: bodies[template] || '<p>Update from Yestoryd Academy</p>' }],
-    }),
+  const { sendEmail } = require('@/lib/email/resend-client');
+
+  const result = await sendEmail({
+    to: coach.email,
+    subject: subjects[template] || 'Yestoryd Academy Update',
+    html: bodies[template] || '<p>Update from Yestoryd Academy</p>',
+    from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
   });
 
-  if (!response.ok) {
-    throw new Error(`SendGrid error: ${response.status}`);
+  if (!result.success) {
+    throw new Error(`Email error: ${result.error}`);
   }
 }
 

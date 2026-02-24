@@ -621,27 +621,18 @@ async function sendConfirmationEmail(
       })
       .join('');
 
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: data.parentEmail, name: data.parentName }] }],
-        from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
-        reply_to: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
-        subject: `Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
-        content: [{
-          type: 'text/html',
-          value: generateEmailHtml(data, sessionList, sessions.length),
-        }],
-      }),
+    const { sendEmail } = require('@/lib/email/resend-client');
+
+    const result = await sendEmail({
+      to: data.parentEmail,
+      subject: `Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
+      html: generateEmailHtml(data, sessionList, sessions.length),
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+      replyTo: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`SendGrid error: ${response.status} - ${errorText}`);
+    if (!result.success) {
+      throw new Error(`Email error: ${result.error}`);
     }
 
     return { success: true };

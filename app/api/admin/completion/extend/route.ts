@@ -138,10 +138,9 @@ export async function POST(request: NextRequest) {
 
     if (parentEmail) {
       try {
-        const sgMail = require('@sendgrid/mail');
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        const { sendEmail } = require('@/lib/email/resend-client');
 
-        await sgMail.send({
+        await sendEmail({
           to: parentEmail,
           from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
           subject: `Good News! ${childName}'s Program Extended`,

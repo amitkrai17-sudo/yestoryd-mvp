@@ -2,13 +2,11 @@
 // Save post-interview assessment feedback
 
 import { NextRequest, NextResponse } from 'next/server';
-import sgMail from '@sendgrid/mail';
+import { sendEmail } from '@/lib/email/resend-client';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { loadEmailConfig } from '@/lib/config/loader';
 
 export const dynamic = 'force-dynamic';
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,7 +80,7 @@ export async function POST(request: NextRequest) {
     // Send appropriate email based on outcome
     if (outcome === 'proceed') {
       // Send approval email
-      await sgMail.send({
+      await sendEmail({
         to: application.email,
         from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: '🎉 Welcome to Yestoryd Academy!',
@@ -127,7 +125,7 @@ export async function POST(request: NextRequest) {
       });
     } else if (outcome === 'reject') {
       // Send rejection email
-      await sgMail.send({
+      await sendEmail({
         to: application.email,
         from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: 'Yestoryd Academy - Application Update',

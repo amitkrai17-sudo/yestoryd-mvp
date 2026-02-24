@@ -114,52 +114,37 @@ async function sendWhatsAppOTP(phone: string, otp: string): Promise<boolean> {
 }
 
 async function sendEmailOTP(email: string, otp: string): Promise<boolean> {
-  const sendgridKey = process.env.SENDGRID_API_KEY;
-  
-  if (!sendgridKey) {
-    console.error('[OTP] SENDGRID_API_KEY not configured');
+  const { sendEmail, isEmailConfigured } = require('@/lib/email/resend-client');
+
+  if (!isEmailConfigured()) {
+    console.error('[OTP] RESEND_API_KEY not configured');
     return false;
   }
-  
+
   try {
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${sendgridKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        personalizations: [{
-          to: [{ email }],
-          subject: `Your Yestoryd verification code: ${otp}`,
-        }],
-        from: { 
-          email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
-          name: 'Yestoryd'
-        },
-        content: [{
-          type: 'text/html',
-          value: `
-            <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
-              <h2 style="color: #FF0099;">Yestoryd Verification Code</h2>
-              <p>Your verification code is:</p>
-              <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #333; padding: 20px; background: #f5f5f5; border-radius: 8px; text-align: center;">
-                ${otp}
-              </div>
-              <p style="color: #666; margin-top: 20px;">This code expires in 5 minutes.</p>
-              <p style="color: #999; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
-            </div>
-          `,
-        }],
-      }),
+    const result = await sendEmail({
+      to: email,
+      subject: `Your Yestoryd verification code: ${otp}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color: #FF0099;">Yestoryd Verification Code</h2>
+          <p>Your verification code is:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #333; padding: 20px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+            ${otp}
+          </div>
+          <p style="color: #666; margin-top: 20px;">This code expires in 5 minutes.</p>
+          <p style="color: #999; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
+        </div>
+      `,
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
     });
-    
-    if (response.ok) {
+
+    if (result.success) {
       console.log(`[OTP] Email sent to ${email}`);
       return true;
     }
-    
-    console.error('[OTP] SendGrid error:', await response.text());
+
+    console.error('[OTP] Email error:', result.error);
     return false;
   } catch (error) {
     console.error('[OTP] Email send failed:', error);

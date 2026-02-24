@@ -84,17 +84,12 @@ const ENV_VARS: EnvVar[] = [
     description: 'Razorpay Webhook Secret (for payment verification)',
   },
 
-  // SendGrid (Required for emails)
+  // Resend (Required for emails)
   {
-    name: 'SENDGRID_API_KEY',
+    name: 'RESEND_API_KEY',
     required: true,
-    description: 'SendGrid API key',
-    validator: (v) => v.startsWith('SG.'),
-  },
-  {
-    name: 'SENDGRID_FROM_EMAIL',
-    required: false,
-    description: 'SendGrid sender email address',
+    description: 'Resend API key',
+    validator: (v) => v.startsWith('re_'),
   },
 
   // Application URLs

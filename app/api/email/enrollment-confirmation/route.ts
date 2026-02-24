@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sgMail from '@sendgrid/mail';
+import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
-
-// Initialize SendGrid
-const sendgridApiKey = process.env.SENDGRID_API_KEY;
-if (sendgridApiKey) {
-  sgMail.setApiKey(sendgridApiKey);
-}
 
 // Initialize Supabase
 export async function POST(request: NextRequest) {
@@ -190,22 +184,17 @@ export async function POST(request: NextRequest) {
 `;
 
     // Send email
-    if (!sendgridApiKey) {
-      console.log('SendGrid not configured, skipping email');
-      return NextResponse.json({ success: true, message: 'Email skipped (SendGrid not configured)' });
+    if (!isEmailConfigured()) {
+      console.log('Email not configured, skipping email');
+      return NextResponse.json({ success: true, message: 'Email skipped (Resend not configured)' });
     }
 
-    const msg = {
+    await sendEmail({
       to: parentEmail,
-      from: {
-        email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
-        name: 'Yestoryd',
-      },
       subject: `🎉 Welcome! ${childName} is enrolled in Reading Coaching`,
       html: htmlContent,
-    };
-
-    await sgMail.send(msg);
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+    });
     console.log(`✅ Enrollment confirmation email sent to ${parentEmail}`);
 
     return NextResponse.json({ success: true, message: 'Confirmation email sent' });

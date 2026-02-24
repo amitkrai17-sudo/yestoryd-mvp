@@ -2,16 +2,12 @@
 // Update support ticket status, assignment, and resolution
 
 import { NextRequest, NextResponse } from 'next/server';
-import sgMail from '@sendgrid/mail';
+import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 interface UpdateTicketRequest {
   status?: 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -22,18 +18,12 @@ interface UpdateTicketRequest {
 
 // Send resolution notification to user
 async function sendResolutionNotification(ticket: any) {
-  if (!process.env.SENDGRID_API_KEY || ticket.status !== 'resolved') {
+  if (!isEmailConfigured() || ticket.status !== 'resolved') {
     return;
   }
 
-  const msg = {
-    to: ticket.user_email,
-    from: {
-      email: 'engage@yestoryd.com',
-      name: 'Yestoryd Support',
-    },
-    subject: `Your request ${ticket.ticket_number} has been resolved`,
-    html: `
+  const subject = `Your request ${ticket.ticket_number} has been resolved`;
+  const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -78,11 +68,15 @@ async function sendResolutionNotification(ticket: any) {
         </div>
       </body>
       </html>
-    `,
-  };
+    `;
 
   try {
-    await sgMail.send(msg);
+    await sendEmail({
+      to: ticket.user_email,
+      subject,
+      html,
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
+    });
     console.log('✅ Resolution notification sent to:', ticket.user_email);
   } catch (error) {
     console.error('Failed to send resolution notification:', error);

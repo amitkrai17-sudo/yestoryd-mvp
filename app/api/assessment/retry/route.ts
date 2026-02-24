@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ success: true, aiProviderUsed, overallScore, childId });
 }
 
-// --- Send results email via SendGrid ---
+// --- Send results email via Resend ---
 async function sendResultsEmail(
   parentEmail: string,
   parentName: string,
@@ -318,44 +318,36 @@ async function sendResultsEmail(
     areas_to_improve: string[];
   }
 ) {
-  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: parentEmail, name: parentName }] }],
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
-      subject: `${childName}'s Reading Assessment Results Are Ready!`,
-      content: [{
-        type: 'text/html',
-        value: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-            <h2 style="color:#1e293b;">Reading Assessment Results for ${childName}</h2>
-            <p>Hi ${parentName},</p>
-            <p>${childName}'s reading assessment has been analyzed. Here are the results:</p>
-            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-              <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Overall Score</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.overallScore}/10</td></tr>
-              <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Clarity</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.clarityScore}/10</td></tr>
-              <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Fluency</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.fluencyScore}/10</td></tr>
-              <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Speed</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.speedScore}/10</td></tr>
-              <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Words/Min</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.wpm}</td></tr>
-            </table>
-            <p><strong>Feedback:</strong> ${scores.feedback}</p>
-            ${scores.strengths.length ? `<p><strong>Strengths:</strong> ${scores.strengths.join(', ')}</p>` : ''}
-            ${scores.areas_to_improve.length ? `<p><strong>Areas to Improve:</strong> ${scores.areas_to_improve.join(', ')}</p>` : ''}
-            <p style="margin-top:24px;">
-              <a href="https://yestoryd.com/lets-talk?source=retry_email" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Talk to a Coach</a>
-            </p>
-            <p style="color:#64748b;margin-top:16px;">Team Yestoryd</p>
-          </div>`,
-      }],
-    }),
+  const { sendEmail } = require('@/lib/email/resend-client');
+
+  const result = await sendEmail({
+    to: parentEmail,
+    subject: `${childName}'s Reading Assessment Results Are Ready!`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+        <h2 style="color:#1e293b;">Reading Assessment Results for ${childName}</h2>
+        <p>Hi ${parentName},</p>
+        <p>${childName}'s reading assessment has been analyzed. Here are the results:</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Overall Score</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.overallScore}/10</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Clarity</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.clarityScore}/10</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Fluency</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.fluencyScore}/10</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Speed</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.speedScore}/10</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:bold;">Words/Min</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${scores.wpm}</td></tr>
+        </table>
+        <p><strong>Feedback:</strong> ${scores.feedback}</p>
+        ${scores.strengths.length ? `<p><strong>Strengths:</strong> ${scores.strengths.join(', ')}</p>` : ''}
+        ${scores.areas_to_improve.length ? `<p><strong>Areas to Improve:</strong> ${scores.areas_to_improve.join(', ')}</p>` : ''}
+        <p style="margin-top:24px;">
+          <a href="https://yestoryd.com/lets-talk?source=retry_email" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Talk to a Coach</a>
+        </p>
+        <p style="color:#64748b;margin-top:16px;">Team Yestoryd</p>
+      </div>`,
+    from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
   });
 
-  if (!response.ok) {
-    throw new Error(`SendGrid error: ${response.status}`);
+  if (!result.success) {
+    throw new Error(`Email error: ${result.error}`);
   }
 }
 

@@ -416,24 +416,19 @@ Excited to meet you!
     // ==================== SEND EMAIL ====================
     let emailSent = false;
     try {
-      const emailResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: coachEmail, name: coachName }] }],
-          from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
-          reply_to: { email: settings.adminEmail, name: 'Yestoryd Team' },
-          subject: emailSubject,
-          content: [{ type: 'text/html', value: emailHtml }],
-        }),
+      const { sendEmail } = require('@/lib/email/resend-client');
+
+      const emailResult = await sendEmail({
+        to: coachEmail,
+        subject: emailSubject,
+        html: emailHtml,
+        from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
+        replyTo: { email: settings.adminEmail, name: 'Yestoryd Team' },
       });
 
-      emailSent = emailResponse.ok;
+      emailSent = emailResult.success;
       if (!emailSent) {
-        console.error('SendGrid error:', await emailResponse.text());
+        console.error('Email error:', emailResult.error);
       } else {
         console.log(`✅ ${status} email sent to ${coachEmail}`);
       }

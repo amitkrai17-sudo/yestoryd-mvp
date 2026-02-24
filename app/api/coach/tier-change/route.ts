@@ -16,8 +16,8 @@ export const dynamic = 'force-dynamic';
 const AISENSY_API_KEY = process.env.AISENSY_API_KEY;
 const AISENSY_API_URL = 'https://backend.aisensy.com/campaign/t1/api/v2';
 
-// SendGrid
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+// Email (Resend)
+import { sendEmail as resendSendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 
 interface TierChangeRequest {
   coachId: string;
@@ -82,9 +82,9 @@ export async function POST(request: NextRequest) {
     const tierEmoji = TIER_EMOJIS[newTierName] || '🎯';
 
     // ==========================================
-    // SEND EMAIL (SendGrid)
+    // SEND EMAIL (Resend)
     // ==========================================
-    if (coach.email && SENDGRID_API_KEY) {
+    if (coach.email && isEmailConfigured()) {
       try {
         const subject = isPromotion
           ? `🎉 Congratulations! You've been promoted to ${newTierDisplayName}`
@@ -94,35 +94,16 @@ export async function POST(request: NextRequest) {
           ? generatePromotionEmail(coach.name, newTierDisplayName, newCoachPercent, newLeadPercent, coachEarnings, coachEarningsWithLead)
           : generateDemotionEmail(coach.name, newTierDisplayName, newCoachPercent, reason);
 
-        const emailResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${SENDGRID_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            personalizations: [
-              {
-                to: [{ email: coach.email, name: coach.name }],
-              },
-            ],
-            from: {
-              email: 'engage@yestoryd.com',
-              name: 'Yestoryd Team',
-            },
-            subject,
-            content: [
-              {
-                type: 'text/html',
-                value: htmlContent,
-              },
-            ],
-          }),
+        const emailResult = await resendSendEmail({
+          to: coach.email,
+          subject,
+          html: htmlContent,
+          from: { email: 'engage@yestoryd.com', name: 'Yestoryd Team' },
         });
 
-        results.email.sent = emailResponse.ok;
-        if (!emailResponse.ok) {
-          results.email.error = `SendGrid error: ${emailResponse.status}`;
+        results.email.sent = emailResult.success;
+        if (!emailResult.success) {
+          results.email.error = emailResult.error || 'Email send failed';
         }
       } catch (emailError: any) {
         results.email.error = emailError.message;

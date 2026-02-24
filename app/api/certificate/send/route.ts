@@ -13,18 +13,13 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import sgMail from '@sendgrid/mail';
+import { sendEmail } from '@/lib/email/resend-client';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
-
-// --- CONFIGURATION (Lazy initialization) ---
-const initSendGrid = () => {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
-};
 
 const getSupabase = createAdminClient;
 
@@ -556,16 +551,11 @@ export async function POST(request: NextRequest) {
     });
 
     // 8. Send email
-    initSendGrid();
-
-    await sgMail.send({
+    await sendEmail({
       to: email,
-      from: {
-        email: process.env.SENDGRID_FROM_EMAIL || 'engage@yestoryd.com',
-        name: 'Yestoryd - Reading Coach'
-      },
       subject: `⭐ ${childName}'s Reading Assessment Report - Score: ${finalScore}/10`,
       html: emailHtml,
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd - Reading Coach' },
     });
 
     console.log(`[Certificate] Email sent to ${email} for child ${childId || 'unknown'}`);

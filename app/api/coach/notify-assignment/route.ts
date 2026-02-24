@@ -139,20 +139,16 @@ export async function POST(request: NextRequest) {
       results.errors.push('Coach has no phone number');
     }
 
-    // 2. Send Email via SendGrid
+    // 2. Send Email via Resend
     if (coach.email) {
       try {
-        const sgMail = require('@sendgrid/mail');
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        const { sendEmail } = require('@/lib/email/resend-client');
 
         const assessmentSummary = 'Assessment data available in dashboard.';
 
-        await sgMail.send({
+        await sendEmail({
           to: coach.email,
-          from: {
-            email: 'engage@yestoryd.com',
-            name: 'Yestoryd',
-          },
+          from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
           subject: `👋 New Student Assigned: ${childName}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

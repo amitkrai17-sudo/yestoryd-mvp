@@ -4,17 +4,11 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import sgMail from '@sendgrid/mail';
+import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { loadAuthConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const supabase = createAdminClient();
-
-// Initialize Supabase
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 // Support categories
 const CATEGORIES = {
@@ -60,8 +54,8 @@ function detectPriority(description: string, category: string): string {
 
 // Send email notification to admin
 async function sendAdminNotification(ticket: any) {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.log('SendGrid not configured, skipping email notification');
+  if (!isEmailConfigured()) {
+    console.log('Email not configured, skipping email notification');
     return;
   }
 
@@ -169,7 +163,12 @@ async function sendAdminNotification(ticket: any) {
   };
 
   try {
-    await sgMail.send(msg);
+    await sendEmail({
+      to: msg.to,
+      subject: msg.subject,
+      html: msg.html,
+      from: msg.from,
+    });
     console.log('✅ Admin notification sent for ticket:', ticket.ticket_number);
   } catch (error) {
     console.error('Failed to send admin notification:', error);
@@ -178,18 +177,12 @@ async function sendAdminNotification(ticket: any) {
 
 // Send confirmation email to user
 async function sendUserConfirmation(ticket: any) {
-  if (!process.env.SENDGRID_API_KEY) {
+  if (!isEmailConfigured()) {
     return;
   }
 
-  const msg = {
-    to: ticket.user_email,
-    from: {
-      email: 'engage@yestoryd.com',
-      name: 'Yestoryd Support',
-    },
-    subject: `We received your request - ${ticket.ticket_number}`,
-    html: `
+  const subject = `We received your request - ${ticket.ticket_number}`;
+  const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -232,11 +225,15 @@ async function sendUserConfirmation(ticket: any) {
         </div>
       </body>
       </html>
-    `,
-  };
+    `;
 
   try {
-    await sgMail.send(msg);
+    await sendEmail({
+      to: ticket.user_email,
+      subject,
+      html,
+      from: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
+    });
     console.log('✅ User confirmation sent to:', ticket.user_email);
   } catch (error) {
     console.error('Failed to send user confirmation:', error);

@@ -3,13 +3,11 @@
 
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
-import sgMail from '@sendgrid/mail';
+import { sendEmail } from '@/lib/email/resend-client';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
 
 export const dynamic = 'force-dynamic';
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 // Google Calendar setup (same as enrollment scheduling)
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -154,7 +152,7 @@ This meeting is being recorded by tl;dv for review purposes.
 
     // Send confirmation email to applicant
     try {
-      await sgMail.send({
+      await sendEmail({
         to: application.email,
         from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: '📅 Interview Scheduled - Yestoryd Academy',
@@ -222,7 +220,7 @@ This meeting is being recorded by tl;dv for review purposes.
 
     // Send notification to interviewer
     try {
-      await sgMail.send({
+      await sendEmail({
         to: settings.ruchaEmail,
         from: { email: settings.adminEmail, name: 'Yestoryd Academy' },
         subject: `📅 Coach Interview: ${application.name} - ${startTime.toLocaleDateString('en-IN')}`,

@@ -101,13 +101,12 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
     });
 
-    // Send via SendGrid
+    // Send via Resend
     let emailSent = false;
     try {
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      const { sendEmail } = require('@/lib/email/resend-client');
 
-      await sgMail.send({
+      await sendEmail({
         to: parentEmail,
         from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
         subject: `🎉 ${childName}'s Final Reading Assessment - See How Far They've Come!`,

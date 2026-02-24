@@ -156,8 +156,8 @@ async function sendConfirmationEmail(
   version: string,
   signatureUrl: string
 ) {
-  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-  if (!SENDGRID_API_KEY) return;
+  const { sendEmail, isEmailConfigured } = require('@/lib/email/resend-client');
+  if (!isEmailConfigured()) return;
 
   const referralCode = coach.id.substring(0, 8).toUpperCase();
   const referralLink = `https://yestoryd.com/coach-apply?ref=${referralCode}`;
@@ -270,17 +270,10 @@ async function sendConfirmationEmail(
     </html>
   `;
 
-  await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: coach.email }] }],
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
-      subject: '🎉 Welcome to Yestoryd! Your Coach Agreement is Active',
-      content: [{ type: 'text/html', value: emailHtml }]
-    })
+  await sendEmail({
+    to: coach.email,
+    subject: '🎉 Welcome to Yestoryd! Your Coach Agreement is Active',
+    html: emailHtml,
+    from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
   });
 }

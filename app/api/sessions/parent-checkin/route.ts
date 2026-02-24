@@ -201,17 +201,13 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
       triggered_by: 'system',
     });
 
-    // Send email via SendGrid
+    // Send email via Resend
     try {
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      const { sendEmail } = require('@/lib/email/resend-client');
 
-      await sgMail.send({
+      await sendEmail({
         to: parentEmail,
-        from: {
-          email: 'engage@yestoryd.com',
-          name: 'Yestoryd',
-        },
+        from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
         subject: `🎉 ${childName}'s Final Reading Assessment - See Their Amazing Progress!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
