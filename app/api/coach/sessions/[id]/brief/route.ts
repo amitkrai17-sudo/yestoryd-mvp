@@ -102,6 +102,15 @@ export async function GET(
       .order('created_at', { ascending: false })
       .limit(2);
 
+    // 5b. Get recent group class activity for this child (observations + micro-insights)
+    const { data: groupClassEvents } = await supabase
+      .from('learning_events')
+      .select('id, event_type, event_date, event_data, ai_summary, created_at')
+      .eq('child_id', session.child_id)
+      .in('event_type', ['group_class_observation', 'group_class_micro_insight'])
+      .order('created_at', { ascending: false })
+      .limit(5);
+
     // 6. Check if diagnostic was already completed
     let diagnosticCompleted = false;
     if (session.is_diagnostic) {
@@ -243,6 +252,14 @@ export async function GET(
       companion_log_notes: companionLogNotes,
       next_session_id: nextSessionId,
       parent_content_engagement: parentContentEngagement,
+      group_class_activity: (groupClassEvents || []).map(e => ({
+        id: e.id,
+        event_type: e.event_type,
+        event_date: e.event_date,
+        summary: e.ai_summary || null,
+        data: e.event_data || null,
+        created_at: e.created_at,
+      })),
     });
   } catch (error: any) {
     console.error(JSON.stringify({ requestId, event: 'session_brief_error', error: error.message }));

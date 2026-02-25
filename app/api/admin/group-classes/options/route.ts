@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = getServiceSupabase();
 
-    const [classTypesRes, coachesRes, booksRes] = await Promise.all([
+    const [classTypesRes, coachesRes, booksRes, blueprintsRes, skillsRes] = await Promise.all([
       supabase
         .from('group_class_types')
         .select('id, slug, name, icon_emoji, color_hex, price_inr, duration_minutes, age_min, age_max, max_participants, requires_book')
@@ -55,6 +55,16 @@ export async function GET(request: NextRequest) {
         .select('id, title, author, age_min, age_max, cover_image_url')
         .eq('is_active', true)
         .order('title'),
+      supabase
+        .from('group_class_blueprints')
+        .select('id, name, age_band, class_type_id, total_duration_minutes, status')
+        .eq('status', 'published')
+        .order('name'),
+      supabase
+        .from('el_skills')
+        .select('id, name, skill_tag')
+        .eq('is_active', true)
+        .order('name'),
     ]);
 
     const duration = Date.now() - startTime;
@@ -64,6 +74,8 @@ export async function GET(request: NextRequest) {
       classTypes: classTypesRes.data?.length || 0,
       coaches: coachesRes.data?.length || 0,
       books: booksRes.data?.length || 0,
+      blueprints: blueprintsRes.data?.length || 0,
+      skills: skillsRes.data?.length || 0,
       duration: `${duration}ms`,
     }));
 
@@ -73,6 +85,8 @@ export async function GET(request: NextRequest) {
       classTypes: classTypesRes.data || [],
       coaches: coachesRes.data || [],
       books: booksRes.data || [],
+      blueprints: blueprintsRes.data || [],
+      skills: skillsRes.data || [],
     });
 
   } catch (error: any) {

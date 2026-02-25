@@ -46,6 +46,15 @@ interface Book {
   cover_image_url: string | null;
 }
 
+interface BlueprintOption {
+  id: string;
+  name: string;
+  age_band: string;
+  class_type_id: string;
+  total_duration_minutes: number | null;
+  status: string;
+}
+
 interface Session {
   id: string;
   title: string;
@@ -70,6 +79,7 @@ interface Session {
 
 interface FormData {
   classTypeId: string;
+  blueprintId: string;
   title: string;
   description: string;
   scheduledDate: string;
@@ -361,12 +371,13 @@ function SessionModal({
   isOpen: boolean;
   onClose: () => void;
   session: Session | null;
-  options: { classTypes: ClassType[]; coaches: Coach[]; books: Book[] };
+  options: { classTypes: ClassType[]; coaches: Coach[]; books: Book[]; blueprints: BlueprintOption[] };
   onSave: () => void;
   onAddInstructor: () => void;
 }) {
   const [formData, setFormData] = useState<FormData>({
     classTypeId: '',
+    blueprintId: '',
     title: '',
     description: '',
     scheduledDate: new Date().toISOString().split('T')[0],
@@ -389,6 +400,7 @@ function SessionModal({
     if (session) {
       setFormData({
         classTypeId: session.class_type?.id || '',
+        blueprintId: '',
         title: session.title,
         description: session.description || '',
         scheduledDate: session.scheduled_date,
@@ -405,6 +417,7 @@ function SessionModal({
     } else {
       setFormData({
         classTypeId: options.classTypes[0]?.id || '',
+        blueprintId: '',
         title: '',
         description: '',
         scheduledDate: new Date().toISOString().split('T')[0],
@@ -427,6 +440,7 @@ function SessionModal({
       setFormData(prev => ({
         ...prev,
         classTypeId,
+        blueprintId: '',
         durationMinutes: ct.duration_minutes,
         maxParticipants: ct.max_participants,
         priceInr: ct.price_inr,
@@ -434,6 +448,28 @@ function SessionModal({
         ageMax: ct.age_max,
         title: prev.title || `${ct.name} Session`,
       }));
+    }
+  };
+
+  const handleBlueprintChange = (blueprintId: string) => {
+    const bp = options.blueprints.find(b => b.id === blueprintId);
+    if (bp) {
+      const ageMap: Record<string, { min: number; max: number }> = {
+        '4-6': { min: 4, max: 6 },
+        '7-9': { min: 7, max: 9 },
+        '10-12': { min: 10, max: 12 },
+      };
+      const ages = ageMap[bp.age_band] || { min: 4, max: 12 };
+      setFormData(prev => ({
+        ...prev,
+        blueprintId,
+        title: prev.title || bp.name,
+        durationMinutes: bp.total_duration_minutes || prev.durationMinutes,
+        ageMin: ages.min,
+        ageMax: ages.max,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, blueprintId: '' }));
     }
   };
 
@@ -471,6 +507,9 @@ function SessionModal({
       }
       if (formData.bookId && formData.bookId.trim() !== '') {
         payload.bookId = formData.bookId;
+      }
+      if (formData.blueprintId && formData.blueprintId.trim() !== '') {
+        payload.blueprintId = formData.blueprintId;
       }
       if (formData.notes && formData.notes.trim() !== '') {
         payload.notes = formData.notes;
@@ -547,6 +586,28 @@ function SessionModal({
               ))}
             </div>
           </div>
+
+          {/* Blueprint */}
+          {options.blueprints.filter(b => !formData.classTypeId || b.class_type_id === formData.classTypeId).length > 0 && (
+            <div>
+              <label className="block text-sm font-semibold text-text-secondary mb-2">Blueprint (optional)</label>
+              <select
+                value={formData.blueprintId}
+                onChange={(e) => handleBlueprintChange(e.target.value)}
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white"
+              >
+                <option value="">No blueprint</option>
+                {options.blueprints
+                  .filter(b => !formData.classTypeId || b.class_type_id === formData.classTypeId)
+                  .map((bp) => (
+                    <option key={bp.id} value={bp.id}>
+                      {bp.name} ({bp.age_band} yrs{bp.total_duration_minutes ? ` • ${bp.total_duration_minutes}min` : ''})
+                    </option>
+                  ))}
+              </select>
+              <p className="text-xs text-text-tertiary mt-1">Auto-fills duration and age range from the blueprint</p>
+            </div>
+          )}
 
           {/* Title */}
           <div>
@@ -845,10 +906,11 @@ function AddInstructorModal({
 export default function AdminGroupClassesClient() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const [options, setOptions] = useState<{ classTypes: ClassType[]; coaches: Coach[]; books: Book[] }>({
+  const [options, setOptions] = useState<{ classTypes: ClassType[]; coaches: Coach[]; books: Book[]; blueprints: BlueprintOption[] }>({
     classTypes: [],
     coaches: [],
     books: [],
+    blueprints: [],
   });
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
@@ -890,6 +952,7 @@ export default function AdminGroupClassesClient() {
         classTypes: data.classTypes || [],
         coaches: data.coaches || [],
         books: data.books || [],
+        blueprints: data.blueprints || [],
       });
     } catch (err) {
       console.error('Error fetching options:', err);

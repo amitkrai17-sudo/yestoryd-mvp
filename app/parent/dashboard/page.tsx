@@ -24,6 +24,8 @@ import SkillProgressCard from '@/components/parent/SkillProgressCard';
 import SupportWidget from '@/components/support/SupportWidget';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ReferralsTab from '@/components/parent/ReferralsTab';
+import GroupClassesSection from '@/components/parent/GroupClassesSection';
+import ChildTimeline from '@/components/parent/ChildTimeline';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
 import { getSessionTypeLabel } from '@/lib/utils/session-labels';
 import { supabase } from '@/lib/supabase/client';
@@ -511,6 +513,7 @@ export default function ParentDashboardPage() {
       <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         {/* Overview Content - Navigation handled by BottomNav and Sidebar */}
         <OverviewTab
+          childId={childId}
           childName={childName}
           enrollment={enrollment}
           upcomingSessions={upcomingSessions}
@@ -631,6 +634,7 @@ function PendingSkillBoosterCard({
 // OVERVIEW TAB
 // ============================================================
 function OverviewTab({
+  childId,
   childName,
   enrollment,
   upcomingSessions,
@@ -648,6 +652,7 @@ function OverviewTab({
   latestPulse,
   learningProfile,
 }: {
+  childId: string;
   childName: string;
   enrollment: Enrollment | null;
   upcomingSessions: Session[];
@@ -892,6 +897,9 @@ function OverviewTab({
         </div>
       </div>
 
+      {/* Group Classes Section */}
+      <GroupClassesSection childId={childId} />
+
       {/* Sessions & Coach - Stack on mobile */}
       <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
         {/* Upcoming Sessions */}
@@ -982,6 +990,9 @@ function OverviewTab({
           </div>
         </div>
       </div>
+
+      {/* Child Timeline — unified learning journey */}
+      <ChildTimeline childId={childId} childName={childName} />
 
       {/* Support Widget */}
       <SupportWidget

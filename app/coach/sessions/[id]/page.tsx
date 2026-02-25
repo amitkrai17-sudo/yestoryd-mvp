@@ -82,7 +82,7 @@ export default function SessionBriefPage() {
     );
   }
 
-  const { session, child, template, recent_sessions, diagnostic_completed, activity_logs, companion_log_notes, next_session_id } = data;
+  const { session, child, template, recent_sessions, diagnostic_completed, activity_logs, companion_log_notes, next_session_id, group_class_activity } = data;
 
   const isCompleted = session.status === 'completed' && session.companion_panel_completed;
   const isInProgress = session.status === 'in_progress';
@@ -439,6 +439,70 @@ export default function SessionBriefPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Group Class Activity */}
+        {group_class_activity?.length > 0 && (
+          <div className="bg-surface-1 border border-border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-purple-400" />
+                <span className="text-white text-sm font-medium">Group Class Activity</span>
+                <span className="text-[10px] text-text-tertiary bg-surface-2 px-1.5 py-0.5 rounded">
+                  {group_class_activity.length}
+                </span>
+              </div>
+            </div>
+            <div className="px-4 py-3 space-y-3">
+              {group_class_activity.map((evt: any) => {
+                const d = evt.data || {};
+                const isInsight = evt.event_type === 'group_class_micro_insight';
+                return (
+                  <div key={evt.id} className="bg-surface-2 rounded-lg p-3 border border-border">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        isInsight
+                          ? 'bg-purple-500/20 text-purple-400'
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {isInsight ? 'Insight' : 'Observation'}
+                      </span>
+                      {d.class_type_name && (
+                        <span className="text-[10px] text-text-tertiary">{d.class_type_name}</span>
+                      )}
+                      {evt.event_date && (
+                        <span className="text-[10px] text-text-tertiary ml-auto">
+                          {new Date(evt.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                    </div>
+                    {isInsight && d.insight_text && (
+                      <p className="text-xs text-white leading-relaxed">{d.insight_text}</p>
+                    )}
+                    {!isInsight && d.engagement_level && (
+                      <p className="text-xs text-text-tertiary">
+                        Engagement: <span className="text-white">{d.engagement_level}</span>
+                      </p>
+                    )}
+                    {Array.isArray(d.skill_tags) && d.skill_tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {d.skill_tags.slice(0, 4).map((tag: string, i: number) => (
+                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {Array.isArray(d.badges_earned) && d.badges_earned.length > 0 && (
+                      <p className="text-[10px] text-amber-300 mt-1">
+                        Badges: {d.badges_earned.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

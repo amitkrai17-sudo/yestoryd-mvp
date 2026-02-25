@@ -232,6 +232,14 @@ const NAV_ITEMS = [
     section: 'ops',
   },
   {
+    label: 'Blueprints',
+    href: '/admin/group-classes/blueprints',
+    icon: FileText,
+    description: 'Session blueprints',
+    ready: true,
+    section: 'ops',
+  },
+  {
     label: 'Payments',
     href: '/admin/payments',
     icon: IndianRupee,

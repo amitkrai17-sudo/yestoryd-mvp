@@ -715,6 +715,120 @@ export async function queueProgressPulse(data: ProgressPulseJobData): Promise<Qu
 }
 
 // ============================================================
+// GROUP CLASS PIPELINE JOBS
+// ============================================================
+
+interface GroupClassInsightsJobData {
+  session_id: string;
+  ratings: Array<{
+    childId: string;
+    childName: string;
+    engagement: string;
+    skillTags: string[];
+    note?: string;
+  }>;
+  newly_earned_badges: Array<{ child_id: string; child_name: string; badge_name: string }>;
+  class_type_name: string;
+  session_date: string;
+}
+
+/**
+ * Queue micro-insight generation for group class session
+ * Runs immediately after session completion
+ */
+export async function queueGroupClassInsights(data: GroupClassInsightsJobData): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping group-class-insights job');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/cron/group-class-insights`,
+      body: data,
+      retries: 3,
+      delay: 0,
+    });
+
+    console.log('[QSTASH] Queued group-class-insights job:', {
+      messageId: response.messageId,
+      sessionId: data.session_id,
+      childCount: data.ratings.length,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[QSTASH] Failed to queue group-class-insights:', msg);
+    return { success: false, messageId: null, error: msg };
+  }
+}
+
+/**
+ * Queue parent notification delivery for group class session
+ * Delayed 5 minutes to allow insights to generate first
+ */
+export async function queueGroupClassNotifications(data: { session_id: string }): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping group-class-notifications job');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/cron/group-class-notifications`,
+      body: data,
+      retries: 3,
+      delay: 300, // 5 minutes
+    });
+
+    console.log('[QSTASH] Queued group-class-notifications job:', {
+      messageId: response.messageId,
+      sessionId: data.session_id,
+      delay: '300s',
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[QSTASH] Failed to queue group-class-notifications:', msg);
+    return { success: false, messageId: null, error: msg };
+  }
+}
+
+/**
+ * Queue parent feedback request for group class session
+ * Delayed 2 hours to let the child tell parents about the class
+ */
+export async function queueGroupClassFeedbackRequest(data: { session_id: string }): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping group-class-feedback-request job');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/cron/group-class-feedback-request`,
+      body: data,
+      retries: 3,
+      delay: 7200, // 2 hours
+    });
+
+    console.log('[QSTASH] Queued group-class-feedback-request job:', {
+      messageId: response.messageId,
+      sessionId: data.session_id,
+      delay: '7200s',
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[QSTASH] Failed to queue group-class-feedback-request:', msg);
+    return { success: false, messageId: null, error: msg };
+  }
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 

@@ -4245,6 +4245,7 @@ export type Database = {
       }
       el_badges: {
         Row: {
+          badge_context: string | null
           coins_reward: number | null
           created_at: string | null
           criteria_extra: Json | null
@@ -4262,6 +4263,7 @@ export type Database = {
           xp_reward: number | null
         }
         Insert: {
+          badge_context?: string | null
           coins_reward?: number | null
           created_at?: string | null
           criteria_extra?: Json | null
@@ -4279,6 +4281,7 @@ export type Database = {
           xp_reward?: number | null
         }
         Update: {
+          badge_context?: string | null
           coins_reward?: number | null
           created_at?: string | null
           criteria_extra?: Json | null
@@ -4406,8 +4409,11 @@ export type Database = {
           current_streak_days: number | null
           games_played: number | null
           games_won: number | null
+          group_class_streak: number | null
+          group_class_total_attended: number | null
           id: string
           last_activity_date: string | null
+          last_group_class_date: string | null
           longest_streak_days: number | null
           perfect_quiz_count: number | null
           perfect_scores: number | null
@@ -4431,8 +4437,11 @@ export type Database = {
           current_streak_days?: number | null
           games_played?: number | null
           games_won?: number | null
+          group_class_streak?: number | null
+          group_class_total_attended?: number | null
           id?: string
           last_activity_date?: string | null
+          last_group_class_date?: string | null
           longest_streak_days?: number | null
           perfect_quiz_count?: number | null
           perfect_scores?: number | null
@@ -4456,8 +4465,11 @@ export type Database = {
           current_streak_days?: number | null
           games_played?: number | null
           games_won?: number | null
+          group_class_streak?: number | null
+          group_class_total_attended?: number | null
           id?: string
           last_activity_date?: string | null
+          last_group_class_date?: string | null
           longest_streak_days?: number | null
           perfect_quiz_count?: number | null
           perfect_scores?: number | null
@@ -6516,6 +6528,105 @@ export type Database = {
         }
         Relationships: []
       }
+      group_class_blueprints: {
+        Row: {
+          age_band: string
+          avg_instructor_rating: number | null
+          class_type_id: string
+          content_refs: Json | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          guided_questions: Json | null
+          id: string
+          individual_moment_config: Json
+          name: string
+          quiz_refs: Json | null
+          segments: Json
+          skill_tags: Json | null
+          status: string | null
+          times_used: number | null
+          total_duration_minutes: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          age_band: string
+          avg_instructor_rating?: number | null
+          class_type_id: string
+          content_refs?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          guided_questions?: Json | null
+          id?: string
+          individual_moment_config: Json
+          name: string
+          quiz_refs?: Json | null
+          segments: Json
+          skill_tags?: Json | null
+          status?: string | null
+          times_used?: number | null
+          total_duration_minutes?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          age_band?: string
+          avg_instructor_rating?: number | null
+          class_type_id?: string
+          content_refs?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          guided_questions?: Json | null
+          id?: string
+          individual_moment_config?: Json
+          name?: string
+          quiz_refs?: Json | null
+          segments?: Json
+          skill_tags?: Json | null
+          status?: string | null
+          times_used?: number | null
+          total_duration_minutes?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_class_blueprints_class_type_id_fkey"
+            columns: ["class_type_id"]
+            isOneToOne: false
+            referencedRelation: "group_class_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_class_blueprints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "coach_activity_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_class_blueprints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "coach_workload"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_class_blueprints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_class_blueprints_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "coaches_with_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_class_certificates: {
         Row: {
           certificate_number: string | null
@@ -6689,6 +6800,7 @@ export type Database = {
           name: string
           price_inr: number
           requires_book: boolean | null
+          skill_tags: Json | null
           slug: string
           tagline: string | null
           typical_days: string[] | null
@@ -6716,6 +6828,7 @@ export type Database = {
           name: string
           price_inr?: number
           requires_book?: boolean | null
+          skill_tags?: Json | null
           slug: string
           tagline?: string | null
           typical_days?: string[] | null
@@ -6743,6 +6856,7 @@ export type Database = {
           name?: string
           price_inr?: number
           requires_book?: boolean | null
+          skill_tags?: Json | null
           slug?: string
           tagline?: string | null
           typical_days?: string[] | null
@@ -6874,6 +6988,7 @@ export type Database = {
           refund_amount: number | null
           refund_status: string | null
           registration_date: string | null
+          response_submitted_at: string | null
           updated_at: string | null
         }
         Insert: {
@@ -6903,6 +7018,7 @@ export type Database = {
           refund_amount?: number | null
           refund_status?: string | null
           registration_date?: string | null
+          response_submitted_at?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -6932,6 +7048,7 @@ export type Database = {
           refund_amount?: number | null
           refund_status?: string | null
           registration_date?: string | null
+          response_submitted_at?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -7018,6 +7135,7 @@ export type Database = {
         Row: {
           age_max: number | null
           age_min: number | null
+          blueprint_id: string | null
           book_id: string | null
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -7050,6 +7168,7 @@ export type Database = {
         Insert: {
           age_max?: number | null
           age_min?: number | null
+          blueprint_id?: string | null
           book_id?: string | null
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -7082,6 +7201,7 @@ export type Database = {
         Update: {
           age_max?: number | null
           age_min?: number | null
+          blueprint_id?: string | null
           book_id?: string | null
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -7112,6 +7232,13 @@ export type Database = {
           waitlist_enabled?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "group_sessions_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "group_class_blueprints"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "group_sessions_book_id_fkey"
             columns: ["book_id"]
@@ -9655,12 +9782,14 @@ export type Database = {
           breakthrough_moment: string | null
           cal_booking_id: string | null
           child_id: string | null
+          child_reading_clip_path: string | null
           coach_id: string | null
           coach_notes: string | null
           coach_reminder_1h_sent: boolean | null
           coach_reminder_1h_sent_at: string | null
           coach_reminder_24h_sent: boolean | null
           coach_reminder_24h_sent_at: string | null
+          coach_voice_note_path: string | null
           companion_panel_completed: boolean | null
           completed_at: string | null
           completion_nudge_sent_at: string | null
@@ -9698,6 +9827,13 @@ export type Database = {
           next_session_focus: string[] | null
           no_show_detected_at: string | null
           no_show_reason: string | null
+          offline_approved_at: string | null
+          offline_approved_by: string | null
+          offline_location: string | null
+          offline_location_type: string | null
+          offline_reason_detail: string | null
+          offline_request_reason: string | null
+          offline_request_status: string | null
           parent_change_status: string | null
           parent_communication_needed: boolean | null
           parent_feedback: string | null
@@ -9720,11 +9856,15 @@ export type Database = {
           recording_url: string | null
           remedial_trigger_source: string | null
           reminder_sent: boolean | null
+          report_deadline: string | null
+          report_late: boolean | null
+          report_submitted_at: string | null
           request_id: string | null
           scheduled_date: string
           scheduled_time: string
           scheduling_attempts: number | null
           session_highlights: Json | null
+          session_mode: string
           session_notes: string | null
           session_number: number | null
           session_started_at: string | null
@@ -9754,19 +9894,6 @@ export type Database = {
           voice_note_transcript: string | null
           voice_note_url: string | null
           week_number: number | null
-          session_mode: string
-          offline_request_status: string | null
-          offline_request_reason: string | null
-          offline_reason_detail: string | null
-          offline_location: string | null
-          offline_location_type: string | null
-          offline_approved_by: string | null
-          offline_approved_at: string | null
-          report_submitted_at: string | null
-          report_deadline: string | null
-          report_late: boolean | null
-          coach_voice_note_path: string | null
-          child_reading_clip_path: string | null
         }
         Insert: {
           action_items?: string | null
@@ -9784,12 +9911,14 @@ export type Database = {
           breakthrough_moment?: string | null
           cal_booking_id?: string | null
           child_id?: string | null
+          child_reading_clip_path?: string | null
           coach_id?: string | null
           coach_notes?: string | null
           coach_reminder_1h_sent?: boolean | null
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
+          coach_voice_note_path?: string | null
           companion_panel_completed?: boolean | null
           completed_at?: string | null
           completion_nudge_sent_at?: string | null
@@ -9827,6 +9956,13 @@ export type Database = {
           next_session_focus?: string[] | null
           no_show_detected_at?: string | null
           no_show_reason?: string | null
+          offline_approved_at?: string | null
+          offline_approved_by?: string | null
+          offline_location?: string | null
+          offline_location_type?: string | null
+          offline_reason_detail?: string | null
+          offline_request_reason?: string | null
+          offline_request_status?: string | null
           parent_change_status?: string | null
           parent_communication_needed?: boolean | null
           parent_feedback?: string | null
@@ -9849,11 +9985,15 @@ export type Database = {
           recording_url?: string | null
           remedial_trigger_source?: string | null
           reminder_sent?: boolean | null
+          report_deadline?: string | null
+          report_late?: boolean | null
+          report_submitted_at?: string | null
           request_id?: string | null
           scheduled_date: string
           scheduled_time: string
           scheduling_attempts?: number | null
           session_highlights?: Json | null
+          session_mode?: string
           session_notes?: string | null
           session_number?: number | null
           session_started_at?: string | null
@@ -9883,19 +10023,6 @@ export type Database = {
           voice_note_transcript?: string | null
           voice_note_url?: string | null
           week_number?: number | null
-          session_mode?: string
-          offline_request_status?: string | null
-          offline_request_reason?: string | null
-          offline_reason_detail?: string | null
-          offline_location?: string | null
-          offline_location_type?: string | null
-          offline_approved_by?: string | null
-          offline_approved_at?: string | null
-          report_submitted_at?: string | null
-          report_deadline?: string | null
-          report_late?: boolean | null
-          coach_voice_note_path?: string | null
-          child_reading_clip_path?: string | null
         }
         Update: {
           action_items?: string | null
@@ -9913,12 +10040,14 @@ export type Database = {
           breakthrough_moment?: string | null
           cal_booking_id?: string | null
           child_id?: string | null
+          child_reading_clip_path?: string | null
           coach_id?: string | null
           coach_notes?: string | null
           coach_reminder_1h_sent?: boolean | null
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
+          coach_voice_note_path?: string | null
           companion_panel_completed?: boolean | null
           completed_at?: string | null
           completion_nudge_sent_at?: string | null
@@ -9956,6 +10085,13 @@ export type Database = {
           next_session_focus?: string[] | null
           no_show_detected_at?: string | null
           no_show_reason?: string | null
+          offline_approved_at?: string | null
+          offline_approved_by?: string | null
+          offline_location?: string | null
+          offline_location_type?: string | null
+          offline_reason_detail?: string | null
+          offline_request_reason?: string | null
+          offline_request_status?: string | null
           parent_change_status?: string | null
           parent_communication_needed?: boolean | null
           parent_feedback?: string | null
@@ -9978,11 +10114,15 @@ export type Database = {
           recording_url?: string | null
           remedial_trigger_source?: string | null
           reminder_sent?: boolean | null
+          report_deadline?: string | null
+          report_late?: boolean | null
+          report_submitted_at?: string | null
           request_id?: string | null
           scheduled_date?: string
           scheduled_time?: string
           scheduling_attempts?: number | null
           session_highlights?: Json | null
+          session_mode?: string
           session_notes?: string | null
           session_number?: number | null
           session_started_at?: string | null
@@ -10012,19 +10152,6 @@ export type Database = {
           voice_note_transcript?: string | null
           voice_note_url?: string | null
           week_number?: number | null
-          session_mode?: string
-          offline_request_status?: string | null
-          offline_request_reason?: string | null
-          offline_reason_detail?: string | null
-          offline_location?: string | null
-          offline_location_type?: string | null
-          offline_approved_by?: string | null
-          offline_approved_at?: string | null
-          report_submitted_at?: string | null
-          report_deadline?: string | null
-          report_late?: boolean | null
-          coach_voice_note_path?: string | null
-          child_reading_clip_path?: string | null
         }
         Relationships: [
           {
@@ -10386,6 +10513,7 @@ export type Database = {
           id: string
           planned_duration_minutes: number | null
           session_id: string
+          source: string | null
           started_at: string | null
           status: string
         }
@@ -10400,6 +10528,7 @@ export type Database = {
           id?: string
           planned_duration_minutes?: number | null
           session_id: string
+          source?: string | null
           started_at?: string | null
           status: string
         }
@@ -10414,6 +10543,7 @@ export type Database = {
           id?: string
           planned_duration_minutes?: number | null
           session_id?: string
+          source?: string | null
           started_at?: string | null
           status?: string
         }

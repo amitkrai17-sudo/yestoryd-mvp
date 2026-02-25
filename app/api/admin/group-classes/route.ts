@@ -36,6 +36,7 @@ const createSessionSchema = z.object({
   ageMax: z.number().min(3).max(18).optional(),
   instructorId: z.string().uuid().optional(),
   bookId: z.string().uuid().optional(),
+  blueprintId: z.string().uuid().optional(),
   notes: z.string().max(1000).optional(),
 });
 
@@ -301,6 +302,7 @@ WhatsApp: +91 89762 87997`;
       instructor_id: sessionData.instructorId || null,
       instructor_split_percent: classType.default_instructor_split_percent || 50,
       book_id: sessionData.bookId || null,
+      blueprint_id: sessionData.blueprintId || null,
       status: 'scheduled',
       notes: sessionData.notes || null,
       google_meet_link: googleMeetLink,
@@ -334,6 +336,7 @@ WhatsApp: +91 89762 87997`;
         session_id: session.id,
         title: sessionData.title,
         scheduled_date: sessionData.scheduledDate,
+        blueprint_id: sessionData.blueprintId || null,
         google_meet: !!googleMeetLink,
         recall_bot: !!recallBotId,
         timestamp: new Date().toISOString(),
