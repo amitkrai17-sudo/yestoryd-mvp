@@ -5339,6 +5339,7 @@ export type Database = {
           module_id: string | null
           name: string
           order_index: number
+          scope: string | null
           skill_tag: string
         }
         Insert: {
@@ -5351,6 +5352,7 @@ export type Database = {
           module_id?: string | null
           name: string
           order_index: number
+          scope?: string | null
           skill_tag: string
         }
         Update: {
@@ -5363,6 +5365,7 @@ export type Database = {
           module_id?: string | null
           name?: string
           order_index?: number
+          scope?: string | null
           skill_tag?: string
         }
         Relationships: [

@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         .from('el_skills')
         .select('id, name, skill_tag')
         .eq('is_active', true)
+        .in('scope', ['observation', 'both'])
         .order('name'),
     ]);
 

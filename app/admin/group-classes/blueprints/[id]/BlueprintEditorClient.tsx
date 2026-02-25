@@ -829,24 +829,50 @@ export default function BlueprintEditorClient() {
         {skills.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-lg font-bold text-white">Skill Tags</h2>
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill) => {
-                const isSelected = form.skillTags.includes(skill.skill_tag);
-                return (
-                  <button
-                    key={skill.id}
-                    onClick={() => toggleSkillTag(skill.skill_tag)}
-                    className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                      isSelected
-                        ? 'bg-[#ff0099]/20 text-[#ff0099] border-[#ff0099]/40'
-                        : 'bg-surface-1 text-text-secondary border-border hover:border-text-tertiary'
-                    }`}
-                  >
-                    {skill.name}
-                  </button>
-                );
-              })}
-            </div>
+            {(() => {
+              const SKILL_CATEGORIES: { label: string; tags: string[] }[] = [
+                { label: 'Reading Skills', tags: ['comprehension', 'vocabulary', 'fluency', 'phonics', 'phonemic awareness', 'phonemic_awareness'] },
+                { label: 'Expression Skills', tags: ['creativity', 'expression', 'pronunciation', 'confidence', 'listening', 'retelling', 'sentence formation', 'sentence_formation'] },
+                { label: 'Thinking Skills', tags: ['reasoning', 'critical thinking', 'critical_thinking', 'spelling', 'grammar'] },
+              ];
+
+              const categorized = SKILL_CATEGORIES.map(cat => ({
+                ...cat,
+                skills: skills.filter(s =>
+                  cat.tags.some(t => s.skill_tag.toLowerCase().includes(t) || s.name.toLowerCase().includes(t))
+                ),
+              }));
+
+              const categorizedIds = new Set(categorized.flatMap(c => c.skills.map(s => s.id)));
+              const uncategorized = skills.filter(s => !categorizedIds.has(s.id));
+              if (uncategorized.length > 0) {
+                categorized.push({ label: 'Other', tags: [], skills: uncategorized });
+              }
+
+              return categorized.filter(c => c.skills.length > 0).map(cat => (
+                <div key={cat.label}>
+                  <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">{cat.label}</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {cat.skills.map((skill) => {
+                      const isSelected = form.skillTags.includes(skill.skill_tag);
+                      return (
+                        <button
+                          key={skill.id}
+                          onClick={() => toggleSkillTag(skill.skill_tag)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all text-center ${
+                            isSelected
+                              ? 'bg-[#ff0099]/20 text-[#ff0099] border-[#ff0099]/40'
+                              : 'bg-surface-1 text-text-secondary border-border hover:border-text-tertiary'
+                          }`}
+                        >
+                          {skill.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
           </section>
         )}
 
