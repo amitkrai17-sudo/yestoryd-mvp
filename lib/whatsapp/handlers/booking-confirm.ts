@@ -43,7 +43,8 @@ export async function handleBookingConfirm(
   const { date, time } = parsed;
 
   // 2. Validate slot is still in the future (with 15 min buffer)
-  const slotDateTime = new Date(`${date}T${time}:00`);
+  // Slot times are IST — use +05:30 offset so the comparison with UTC "now" is correct
+  const slotDateTime = new Date(`${date}T${time}:00+05:30`);
   const minBookingTime = new Date(Date.now() + 15 * 60 * 1000);
   if (slotDateTime < minBookingTime) {
     const expiredMsg = `Oops, that slot just passed! Let me find other available times...`;

@@ -829,6 +829,51 @@ export async function queueGroupClassFeedbackRequest(data: { session_id: string 
 }
 
 // ============================================================
+// AGENT NURTURE SCHEDULE
+// ============================================================
+
+/**
+ * Setup agent nurture schedule (runs every 2 hours)
+ * Enrolls silent leads into nurture sequences and sends timed messages
+ *
+ * Call this once during deployment or via admin endpoint
+ */
+export async function setupAgentNurtureSchedule(): Promise<{ success: boolean; scheduleId?: string; error?: string }> {
+  return createQStashSchedule({
+    scheduleId: 'agent-nurture-2h',
+    url: `${APP_URL}/api/cron/agent-nurture`,
+    cron: '0 */2 * * *', // Every 2 hours
+  });
+}
+
+/**
+ * Manually trigger agent nurture (for testing)
+ */
+export async function triggerAgentNurture(): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, cannot trigger agent nurture');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/cron/agent-nurture`,
+      body: { manual: true, timestamp: new Date().toISOString() },
+      retries: 1,
+    });
+
+    console.log('[QSTASH] Triggered agent nurture:', {
+      messageId: response.messageId,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: any) {
+    console.error('[QSTASH] Failed to trigger agent nurture:', error.message);
+    return { success: false, messageId: null, error: error.message };
+  }
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 

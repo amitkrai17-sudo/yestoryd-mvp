@@ -771,6 +771,58 @@ Respond ONLY with valid JSON. No markdown, no explanation.`;
       }
     }
 
+    // 9b. Link WhatsApp lead to child record (fire-and-forget, never blocks assessment)
+    // Enables Agent Brain to include assessment results in future WhatsApp conversations
+    if (childId && parentPhone) {
+      const linkPhone = parentPhone; // capture for async closure (TS can't narrow inside IIFE)
+      const linkChildId = childId;
+      (async () => {
+        try {
+          // wa_leads stores phone without + prefix (WhatsApp format: 919687606177)
+          const waPhone = linkPhone.replace(/^\+/, '');
+
+          const { data: waLead } = await supabase
+            .from('wa_leads')
+            .select('id, child_id')
+            .eq('phone_number', waPhone)
+            .maybeSingle();
+
+          // No WhatsApp lead (parent didn't come from WA) or already linked
+          if (!waLead || waLead.child_id) return;
+
+          await Promise.all([
+            supabase
+              .from('wa_leads')
+              .update({ child_id: linkChildId, updated_at: new Date().toISOString() })
+              .eq('id', waLead.id),
+            supabase
+              .from('wa_lead_conversations')
+              .update({ child_id: linkChildId, updated_at: new Date().toISOString() })
+              .eq('phone_number', waPhone),
+            supabase
+              .from('lead_lifecycle')
+              .update({ child_id: linkChildId, current_state: 'assessed' })
+              .eq('wa_lead_id', waLead.id)
+              .in('current_state', ['new', 'engaging', 'qualifying']),
+          ]);
+
+          console.log(JSON.stringify({
+            requestId,
+            event: 'wa_lead_linked_to_child',
+            phone: maskPhone(linkPhone),
+            childId: linkChildId,
+            waLeadId: waLead.id,
+          }));
+        } catch (linkError) {
+          console.error(JSON.stringify({
+            requestId,
+            event: 'wa_lead_link_failed',
+            error: linkError instanceof Error ? linkError.message : 'Unknown error',
+          }));
+        }
+      })();
+    }
+
     // 10. Lead scoring
     if (childId) {
       try {

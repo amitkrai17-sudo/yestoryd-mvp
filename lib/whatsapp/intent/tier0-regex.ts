@@ -9,6 +9,7 @@ export type Intent =
   | 'QUALIFICATION'
   | 'ASSESSMENT_CTA'
   | 'BOOKING'
+  | 'RESCHEDULE'
   | 'ESCALATE'
   | 'SLOT_SELECT'
   | 'GENERAL';
@@ -41,6 +42,14 @@ const PATTERNS: Array<{ intent: Intent; patterns: RegExp[] }> = [
     ],
   },
   {
+    intent: 'RESCHEDULE',
+    patterns: [
+      /(cancel|reschedule|change\s*time|different\s*time|can'?t\s*make\s*it|not\s*available)/i,
+      /(time\s*doesn'?t\s*work|time\s*doesnt\s*work|badal\s*do|cancel\s*karo|doosra\s*time)/i,
+      /(change\s*slot|another\s*time|shift|postpone|alag\s*time)/i,
+    ],
+  },
+  {
     intent: 'BOOKING',
     patterns: [
       /(book|schedule|slot|discovery\s*call|free\s*call|baat\s*kar)/i,
@@ -60,7 +69,7 @@ const PATTERNS: Array<{ intent: Intent; patterns: RegExp[] }> = [
     patterns: [
       /(price|cost|fee|kitna|kharcha|paisa|how\s*much|fees|₹|rs\.?\s*\d|rupee)/i,
       /(how\s*(long|many)\s*(session|month|week|class))/i,
-      /(refund|money\s*back|cancel|guarantee)/i,
+      /(refund|money\s*back|cancel\s*(subscription|membership|plan|payment)|guarantee)/i,
       /(who|which|kaun).*(coach|teacher|tutor)/i,
       /(what\s*is|tell\s*me\s*about|kya\s*hai|what\s*does).*yestoryd/i,
       /(online|offline|in[\s.-]?person|video\s*call|format|kaise\s*hota)/i,

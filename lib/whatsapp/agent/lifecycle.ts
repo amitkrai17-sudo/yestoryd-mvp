@@ -13,9 +13,19 @@ type TypedClient = SupabaseClient<Database>;
 export async function updateLifecycle(
   supabase: TypedClient,
   lifecycleId: string,
-  decision: AgentDecision
+  decision: AgentDecision,
+  currentState?: string
 ): Promise<void> {
   const update: Record<string, unknown> = {};
+
+  // Re-engagement detection: if lead was nurturing and this is a real
+  // inbound interaction (not a nurture action), clear nurture and reactivate
+  if (currentState === 'nurturing' && decision.action !== 'ENTER_NURTURE') {
+    update.nurture_sequence = null;
+    update.nurture_step = 0;
+    update.next_nurture_at = null;
+    update.current_state = 'engaging';
+  }
 
   // State transition (trigger auto-sets previous_state + state_changed_at)
   if (decision.stateTransition) {

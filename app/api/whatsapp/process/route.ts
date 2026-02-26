@@ -37,6 +37,7 @@ import { handleBooking } from '@/lib/whatsapp/handlers/booking';
 import { handleEscalate } from '@/lib/whatsapp/handlers/escalate';
 import { handleSlotSelection } from '@/lib/whatsapp/handlers/slot-selection';
 import { handleBookingConfirm } from '@/lib/whatsapp/handlers/booking-confirm';
+import { handleReschedule } from '@/lib/whatsapp/handlers/reschedule';
 import { loadAgentContext } from '@/lib/whatsapp/agent/context-loader';
 import { makeDecision } from '@/lib/whatsapp/agent/brain';
 import { logDecision } from '@/lib/whatsapp/agent/decision-log';
@@ -320,6 +321,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    else if (isTier0 && intent === 'RESCHEDULE') {
+      const result = await handleReschedule(phone, conversationId, mergedData, newLeadScore, supabase);
+      response = result.response;
+      nextState = result.nextState;
+      messageType = 'list';
+      if (result.cancelledCallId) {
+        leadStatus = 'qualified';
+      }
+    }
+
     else if (isTier0 && intent === 'ESCALATE') {
       // Priority override: escalation (handler updates DB directly → early return)
       const result = await handleEscalate(phone, conversationId, mergedData, newLeadScore, text || undefined);
@@ -420,7 +431,7 @@ export async function POST(request: NextRequest) {
               brain_used: true, brain_action: decision.action, brain_confidence: decision.confidence,
             }),
             logDecision(supabase, decision, agentContext, brainMs),
-            lifecycleId ? updateLifecycle(supabase, lifecycleId, decision) : Promise.resolve(),
+            lifecycleId ? updateLifecycle(supabase, lifecycleId, decision, agentContext.lifecycle?.current_state) : Promise.resolve(),
             upsertLead(phone, conversationId, mergedData, newLeadScore, 'escalated'),
           ]).catch(() => {});
 
@@ -507,6 +518,19 @@ export async function POST(request: NextRequest) {
           leadStatus = 'qualifying';
         }
 
+        // RESCHEDULE: cancel existing booking and re-offer slots
+        else if (decision.action === 'RESCHEDULE') {
+          const result = await handleReschedule(
+            phone, conversationId, mergedData, newLeadScore, supabase
+          );
+          response = result.response;
+          nextState = result.nextState;
+          messageType = 'list';
+          if (result.cancelledCallId) {
+            leadStatus = 'qualified';
+          }
+        }
+
         // ENTER_NURTURE: send brain's message, move to nurturing
         else if (decision.action === 'ENTER_NURTURE') {
           response = decision.responseMessage
@@ -549,7 +573,7 @@ export async function POST(request: NextRequest) {
         const lifecycleId = agentContext.lifecycle?.id;
         Promise.allSettled([
           logDecision(supabase, decision, agentContext, brainMs),
-          lifecycleId ? updateLifecycle(supabase, lifecycleId, decision) : Promise.resolve(),
+          lifecycleId ? updateLifecycle(supabase, lifecycleId, decision, agentContext.lifecycle?.current_state) : Promise.resolve(),
         ]).catch(() => {});
 
       } catch (brainError) {

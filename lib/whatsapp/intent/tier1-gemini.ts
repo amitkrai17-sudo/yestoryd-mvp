@@ -30,6 +30,7 @@ Classify the user message into exactly ONE intent:
 - QUALIFICATION: User sharing info about their child (name, age, concerns, school, city)
 - ASSESSMENT_CTA: Wanting to test/assess their child's reading level
 - BOOKING: Wanting to book a call or meeting
+- RESCHEDULE: Wanting to cancel, reschedule, change time, or can't make an existing booking
 - ESCALATE: Wanting to talk to a real person, complaints, frustration
 - GENERAL: Anything that doesn't fit above (thank you, ok, yes, no, random)
 
@@ -74,7 +75,7 @@ export async function classifyTier1(
     const parsed = JSON.parse(responseText) as GeminiClassification;
 
     // Validate intent is one of the known types
-    const validIntents: Intent[] = ['GREETING', 'FAQ', 'QUALIFICATION', 'ASSESSMENT_CTA', 'BOOKING', 'ESCALATE', 'SLOT_SELECT', 'GENERAL'];
+    const validIntents: Intent[] = ['GREETING', 'FAQ', 'QUALIFICATION', 'ASSESSMENT_CTA', 'BOOKING', 'RESCHEDULE', 'ESCALATE', 'SLOT_SELECT', 'GENERAL'];
     if (!validIntents.includes(parsed.intent)) {
       parsed.intent = 'GENERAL';
     }

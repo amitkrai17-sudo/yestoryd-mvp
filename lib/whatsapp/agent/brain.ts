@@ -209,7 +209,7 @@ function buildSystemPrompt(ctx: AgentContext): string {
     .reverse()
     .map(m => {
       const role = m.direction === 'inbound' ? 'Parent' : 'Bot';
-      const time = new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const time = new Date(m.created_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
       return `[${time}] ${role}: ${m.content}`;
     })
     .join('\n');
@@ -272,6 +272,11 @@ If parent shows hesitation:
 - "Is it online?" → "Yes, 1:1 on Google Meet, 45-minute sessions"
 - Complex objection → ESCALATE_OBJECTION
 
+If parent wants to cancel or reschedule:
+- Acknowledge warmly — never make them feel bad about cancelling
+- Action: RESCHEDULE
+- This applies when they mention: cancel, reschedule, change time, can't make it, different time
+
 Escalation triggers (ALWAYS escalate):
 - Parent mentions learning disability, dyslexia, or special needs
 - Lead asks for school/bulk pricing
@@ -289,7 +294,7 @@ Escalation triggers (ALWAYS escalate):
 - If parent writes in Hindi, respond in Hindi. If English, respond in English. If Hinglish, respond in Hinglish.
 
 ## Valid Actions
-GREETING, FAQ, RESPOND_QUALIFY, SEND_ASSESSMENT, OFFER_DISCOVERY, OFFER_SLOTS, BOOK_DISCOVERY, SHARE_PRICING, SEND_TESTIMONIAL, ENTER_NURTURE, ESCALATE_HOT, ESCALATE_OBJECTION, CLOSE_COLD
+GREETING, FAQ, RESPOND_QUALIFY, SEND_ASSESSMENT, OFFER_DISCOVERY, OFFER_SLOTS, BOOK_DISCOVERY, RESCHEDULE, SHARE_PRICING, SEND_TESTIMONIAL, ENTER_NURTURE, ESCALATE_HOT, ESCALATE_OBJECTION, CLOSE_COLD
 
 Respond ONLY with valid JSON (no markdown, no backticks):
 {"action":"<AgentAction>","response_message":"<WhatsApp message to send>","state_transition":"<new lifecycle state or null>","confidence":0.0,"reasoning":"<1-line explanation>","escalate":false,"escalation_reason":null,"qualification_extracted":{"child_name":null,"child_age":null,"parent_concerns":null,"urgency_signal":"medium","budget_signal":"unknown"},"schedule_followup":null}`;
@@ -406,6 +411,8 @@ function getResponseType(action: AgentAction): 'text' | 'buttons' | 'list' {
     case 'OFFER_SLOTS':
     case 'BOOK_DISCOVERY':
       return 'buttons';
+    case 'RESCHEDULE':
+      return 'list';
     default:
       return 'text';
   }

@@ -9,6 +9,10 @@ import type { Database } from '@/lib/supabase/database.types';
 
 type TypedClient = SupabaseClient<Database>;
 
+// All slot times from the scheduling API are IST (Asia/Kolkata).
+// Always use the +05:30 offset when constructing Date objects from slot date/time.
+const IST_OFFSET = '+05:30';
+
 // ============================================================
 // Types
 // ============================================================
@@ -45,7 +49,7 @@ export async function getAvailableSlots(supabase: TypedClient): Promise<Discover
   // Return cached slots if fresh (filter out any that became past)
   if (cachedSlots && now - cacheTimestamp < CACHE_TTL_MS) {
     const cutoff = new Date(now + 30 * 60 * 1000); // 30 min buffer
-    return cachedSlots.filter(s => new Date(`${s.date}T${s.time}:00`) > cutoff);
+    return cachedSlots.filter(s => new Date(`${s.date}T${s.time}:00${IST_OFFSET}`) > cutoff);
   }
 
   try {
@@ -144,14 +148,19 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 /** Format: "Thu Feb 27, 10:00 AM" — max 21 chars, fits WhatsApp 24-char title limit */
 function formatSlotTitle(date: string, time: string): string {
-  const d = new Date(`${date}T${time}:00`);
-  const day = DAYS[d.getDay()];
-  const month = MONTHS[d.getMonth()];
-  const dayNum = d.getDate();
+  // Use noon IST to safely derive day-of-week (avoids date-boundary issues)
+  const d = new Date(`${date}T12:00:00${IST_OFFSET}`);
+  const day = DAYS[d.getUTCDay()];
+
+  // Month and day parsed directly from the IST date string
+  const [, mm, dd] = date.split('-').map(Number);
+  const month = MONTHS[mm - 1];
+
+  // Time from raw string (already IST)
   const [h, m] = time.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
-  return `${day} ${month} ${dayNum}, ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  return `${day} ${month} ${dd}, ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
 /** Format for confirmation message: "Thursday, 27 February at 10:00 AM" */
@@ -160,12 +169,17 @@ export function formatSlotLong(date: string, time: string): string {
   const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
 
-  const d = new Date(`${date}T${time}:00`);
-  const dayName = FULL_DAYS[d.getDay()];
-  const month = FULL_MONTHS[d.getMonth()];
-  const dayNum = d.getDate();
+  // Use noon IST to safely derive day-of-week
+  const d = new Date(`${date}T12:00:00${IST_OFFSET}`);
+  const dayName = FULL_DAYS[d.getUTCDay()];
+
+  // Month and day parsed directly from the IST date string
+  const [, mm, dd] = date.split('-').map(Number);
+  const month = FULL_MONTHS[mm - 1];
+
+  // Time from raw string (already IST)
   const [h, m] = time.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
-  return `${dayName}, ${dayNum} ${month} at ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  return `${dayName}, ${dd} ${month} at ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
