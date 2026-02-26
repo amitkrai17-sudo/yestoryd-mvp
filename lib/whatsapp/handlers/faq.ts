@@ -6,6 +6,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendText } from '@/lib/whatsapp/cloud-api';
 import { getSettings } from '@/lib/settings/getSettings';
+import { getLeadBotUrls } from '@/lib/whatsapp/urls';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL_NAME = 'gemini-2.5-flash';
@@ -83,7 +84,8 @@ Parent's question: "${question}"`;
     responseText = result.response.text().trim();
   } catch (error) {
     console.error('[WA-LeadBot] FAQ Gemini error:', error);
-    responseText = `Great question! Let me connect you with our team who can give you the best answer.\n\nIn the meantime, try our free 3-min reading assessment:\nhttps://www.yestoryd.com/assessment`;
+    const { assessmentUrl } = await getLeadBotUrls();
+    responseText = `Great question! Let me connect you with our team who can give you the best answer.\n\nIn the meantime, try our free 3-min reading assessment:\n${assessmentUrl}`;
   }
 
   await sendText(phone, responseText);

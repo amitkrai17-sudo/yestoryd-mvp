@@ -10,6 +10,7 @@ export type Intent =
   | 'ASSESSMENT_CTA'
   | 'BOOKING'
   | 'ESCALATE'
+  | 'SLOT_SELECT'
   | 'GENERAL';
 
 // --- Button ID → Intent mapping ---
@@ -80,6 +81,11 @@ export function classifyTier0(
   // 1. Button tap → direct mapping
   if (interactiveId && BUTTON_INTENT_MAP[interactiveId]) {
     return BUTTON_INTENT_MAP[interactiveId];
+  }
+
+  // 1b. Slot selection (list_reply with slot_ prefix)
+  if (interactiveId && interactiveId.startsWith('slot_')) {
+    return 'SLOT_SELECT';
   }
 
   if (!text || text.trim().length === 0) {

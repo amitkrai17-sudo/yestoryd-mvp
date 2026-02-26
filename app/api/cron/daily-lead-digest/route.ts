@@ -11,9 +11,10 @@
 // - Lazy Supabase initialization
 //
 // Features:
-// - Last 24 hours lead summary
+// - Last 24 hours lead summary (children table)
 // - Groups by lead temperature (Hot/Warm/Cool)
 // - Discovery call bookings summary
+// - WhatsApp lead summary (wa_leads table)
 // - WhatsApp message to admin
 //
 // QStash Schedule:
@@ -25,6 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import { sendDailyDigest, type DailyDigestData } from '@/lib/notifications/admin-alerts';
+import { sendText } from '@/lib/whatsapp/cloud-api';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -85,6 +87,17 @@ interface LeadDigestData {
   discoveryBooked: number;
   discoveryCompleted: number;
 }
+
+interface WaLeadDigestData {
+  newCount: number;
+  totalActive: number;
+  byStatus: { new: number; qualifying: number; qualified: number; discovery_booked: number };
+  hotLeads: Array<{ parent_name: string; child_age: number | null; lead_score: number; current_state: string }>;
+  stuckCount: number;
+  escalatedCount: number;
+}
+
+const ADMIN_PHONE = process.env.ADMIN_WHATSAPP_PHONE || '+919687606177';
 
 // --- MAIN HANDLER ---
 export async function GET(request: NextRequest) {
@@ -177,8 +190,14 @@ export async function GET(request: NextRequest) {
       ...digest,
     }));
 
-    // 6. Skip if no activity
-    if (digest.total === 0 && digest.discoveryBooked === 0) {
+    // 5b. Quick count of new WhatsApp leads (for skip check)
+    const { count: newWaLeadCount } = await supabase
+      .from('wa_leads')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', twentyFourHoursAgo);
+
+    // 6. Skip if no activity at all (website leads, discovery calls, OR WhatsApp leads)
+    if (digest.total === 0 && digest.discoveryBooked === 0 && (newWaLeadCount || 0) === 0) {
       console.log(JSON.stringify({
         requestId,
         event: 'no_activity_skip',
@@ -246,6 +265,34 @@ export async function GET(request: NextRequest) {
     const sendSuccess = await sendDailyDigest(digestData);
     const sendResult = { success: sendSuccess, error: sendSuccess ? undefined : 'Send failed' };
 
+    // 9b. Fetch WhatsApp lead stats and send follow-up message
+    const waDigest = await fetchWaLeadDigest(supabase, twentyFourHoursAgo, requestId);
+    let waSendSuccess = false;
+
+    if (waDigest) {
+      const waMessage = formatWaLeadDigestMessage(date, waDigest);
+
+      try {
+        const waResult = await sendText(ADMIN_PHONE, waMessage);
+        waSendSuccess = waResult.success;
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'wa_lead_digest_sent',
+          success: waResult.success,
+          error: waResult.error,
+          newCount: waDigest.newCount,
+          totalActive: waDigest.totalActive,
+        }));
+      } catch (err: any) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'wa_lead_digest_send_error',
+          error: err.message,
+        }));
+      }
+    }
+
     // 10. Log the digest (non-blocking)
     try {
       await supabase.from('communication_logs').insert({
@@ -254,6 +301,7 @@ export async function GET(request: NextRequest) {
         template_code: 'daily_lead_digest',
         variables: {
           ...digest,
+          wa_leads: waDigest || null,
           request_id: requestId,
         },
         status: sendResult.success ? 'sent' : 'failed',
@@ -274,7 +322,9 @@ export async function GET(request: NextRequest) {
           request_id: requestId,
           source: auth.source,
           digest,
+          wa_leads: waDigest || null,
           message_sent: sendResult.success,
+          wa_message_sent: waSendSuccess,
           timestamp: new Date().toISOString(),
         } as any,
         created_at: new Date().toISOString(),
@@ -290,10 +340,13 @@ export async function GET(request: NextRequest) {
       event: 'daily_lead_digest_complete',
       duration: `${duration}ms`,
       messageSent: sendResult.success,
+      waMessageSent: waSendSuccess,
       total: digest.total,
       hot: digest.hot,
       warm: digest.warm,
       cool: digest.cool,
+      waNewCount: waDigest?.newCount || 0,
+      waTotalActive: waDigest?.totalActive || 0,
     }));
 
     return NextResponse.json({
@@ -301,7 +354,9 @@ export async function GET(request: NextRequest) {
       requestId,
       message: sendResult.success ? 'Daily digest sent successfully' : 'Digest computed but send failed',
       digest,
+      wa_leads: waDigest || null,
       messageSent: sendResult.success,
+      waMessageSent: waSendSuccess,
     });
 
   } catch (error: any) {
@@ -319,6 +374,148 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// ============================================================
+// WhatsApp Lead Digest — Query + Format
+// ============================================================
+
+async function fetchWaLeadDigest(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  twentyFourHoursAgo: string,
+  requestId: string
+): Promise<WaLeadDigestData | null> {
+  try {
+    // 1. All active wa_leads (not enrolled)
+    const { data: allWaLeads, error: allError } = await supabase
+      .from('wa_leads')
+      .select('id, parent_name, child_age, lead_score, status, conversation_id, created_at')
+      .not('status', 'eq', 'enrolled');
+
+    if (allError) {
+      console.error(JSON.stringify({ requestId, event: 'wa_digest_fetch_error', error: allError.message }));
+      return null;
+    }
+
+    const leads = allWaLeads || [];
+
+    // 2. Count new in last 24h
+    const newCount = leads.filter(l => l.created_at && l.created_at >= twentyFourHoursAgo).length;
+
+    // 3. Group by status
+    const byStatus = { new: 0, qualifying: 0, qualified: 0, discovery_booked: 0 };
+    for (const lead of leads) {
+      const s = lead.status as keyof typeof byStatus;
+      if (s in byStatus) byStatus[s]++;
+    }
+
+    // 4. Top 3 hottest leads by lead_score — need conversation state
+    const sortedByScore = [...leads].sort((a, b) => (b.lead_score || 0) - (a.lead_score || 0));
+    const top3Ids = sortedByScore.slice(0, 3);
+
+    // Fetch conversation states for top leads
+    const topConvIds = top3Ids
+      .map(l => l.conversation_id)
+      .filter((id): id is string => id !== null);
+
+    let convStateMap = new Map<string, string>();
+    if (topConvIds.length > 0) {
+      const { data: convos } = await supabase
+        .from('wa_lead_conversations')
+        .select('id, current_state')
+        .in('id', topConvIds);
+
+      for (const c of convos || []) {
+        convStateMap.set(c.id, c.current_state);
+      }
+    }
+
+    const hotLeads = top3Ids.map(l => ({
+      parent_name: l.parent_name || 'Unknown',
+      child_age: l.child_age,
+      lead_score: l.lead_score || 0,
+      current_state: l.conversation_id ? (convStateMap.get(l.conversation_id) || '?') : '?',
+    }));
+
+    // 5. Stuck in QUALIFYING >48h
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const { count: stuckCount } = await supabase
+      .from('wa_lead_conversations')
+      .select('*', { count: 'exact', head: true })
+      .eq('current_state', 'QUALIFYING')
+      .eq('is_bot_active', true)
+      .lt('last_message_at', fortyEightHoursAgo);
+
+    // 6. Escalated (bot inactive)
+    const { count: escalatedCount } = await supabase
+      .from('wa_lead_conversations')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_bot_active', false);
+
+    const result: WaLeadDigestData = {
+      newCount,
+      totalActive: leads.length,
+      byStatus,
+      hotLeads,
+      stuckCount: stuckCount || 0,
+      escalatedCount: escalatedCount || 0,
+    };
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'wa_digest_computed',
+      ...result,
+    }));
+
+    return result;
+  } catch (err: any) {
+    console.error(JSON.stringify({
+      requestId,
+      event: 'wa_digest_error',
+      error: err.message,
+    }));
+    return null;
+  }
+}
+
+function formatWaLeadDigestMessage(date: string, wa: WaLeadDigestData): string {
+  const lines: string[] = [];
+
+  lines.push(`💬 WhatsApp Leads — ${date}`);
+  lines.push(`New: ${wa.newCount} | Total active: ${wa.totalActive}`);
+  lines.push('');
+
+  // Status breakdown
+  const statParts: string[] = [];
+  if (wa.byStatus.qualifying > 0) statParts.push(`Qualifying: ${wa.byStatus.qualifying}`);
+  if (wa.byStatus.qualified > 0) statParts.push(`Qualified: ${wa.byStatus.qualified}`);
+  if (wa.byStatus.discovery_booked > 0) statParts.push(`Booked: ${wa.byStatus.discovery_booked}`);
+  if (wa.byStatus.new > 0) statParts.push(`New: ${wa.byStatus.new}`);
+  if (statParts.length > 0) {
+    lines.push(statParts.join(' | '));
+  }
+
+  // Hot leads
+  if (wa.hotLeads.length > 0 && wa.hotLeads[0].lead_score > 0) {
+    lines.push('');
+    lines.push('🔥 Top leads:');
+    for (const lead of wa.hotLeads) {
+      if (lead.lead_score === 0) continue;
+      const age = lead.child_age ? `, age ${lead.child_age}` : '';
+      lines.push(`• ${lead.parent_name}${age} — score ${lead.lead_score} (${lead.current_state})`);
+    }
+  }
+
+  // Alerts
+  const alerts: string[] = [];
+  if (wa.stuckCount > 0) alerts.push(`⚠️ Stuck >48h: ${wa.stuckCount} leads`);
+  if (wa.escalatedCount > 0) alerts.push(`🚨 Escalated (needs human): ${wa.escalatedCount}`);
+  if (alerts.length > 0) {
+    lines.push('');
+    lines.push(alerts.join('\n'));
+  }
+
+  return lines.join('\n');
 }
 
 // Support POST for QStash

@@ -3,8 +3,7 @@
 // ============================================================
 
 import { sendButtons } from '@/lib/whatsapp/cloud-api';
-
-const BOOKING_URL = 'https://www.yestoryd.com/book-call';
+import { getLeadBotUrls } from '@/lib/whatsapp/urls';
 
 export interface BookingResult {
   response: string;
@@ -15,11 +14,12 @@ export async function handleBooking(
   phone: string,
   collectedData: Record<string, unknown>
 ): Promise<BookingResult> {
+  const { bookingUrl } = await getLeadBotUrls();
   const childName = (collectedData.child_name as string) || 'your child';
 
   const body =
     `Great! Our reading coaches would love to chat about ${childName}'s reading journey.\n\n` +
-    `Book a free 15-minute discovery call here:\n${BOOKING_URL}\n\n` +
+    `Book a free 15-minute discovery call here:\n${bookingUrl}\n\n` +
     `They'll answer all your questions and suggest the best plan.`;
 
   await sendButtons(phone, body, [

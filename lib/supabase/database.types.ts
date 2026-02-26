@@ -116,6 +116,78 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_actions: {
+        Row: {
+          action_type: string
+          agent_id: string
+          confidence_score: number | null
+          context_json: Json | null
+          created_at: string
+          decision: string | null
+          escalated_to_human: boolean
+          escalation_reason: string | null
+          execution_ms: number | null
+          human_override: string | null
+          id: string
+          lead_lifecycle_id: string | null
+          outcome: string
+          outcome_details: Json | null
+          reasoning: string | null
+          wa_lead_id: string | null
+        }
+        Insert: {
+          action_type: string
+          agent_id?: string
+          confidence_score?: number | null
+          context_json?: Json | null
+          created_at?: string
+          decision?: string | null
+          escalated_to_human?: boolean
+          escalation_reason?: string | null
+          execution_ms?: number | null
+          human_override?: string | null
+          id?: string
+          lead_lifecycle_id?: string | null
+          outcome?: string
+          outcome_details?: Json | null
+          reasoning?: string | null
+          wa_lead_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          agent_id?: string
+          confidence_score?: number | null
+          context_json?: Json | null
+          created_at?: string
+          decision?: string | null
+          escalated_to_human?: boolean
+          escalation_reason?: string | null
+          execution_ms?: number | null
+          human_override?: string | null
+          id?: string
+          lead_lifecycle_id?: string | null
+          outcome?: string
+          outcome_details?: Json | null
+          reasoning?: string | null
+          wa_lead_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_actions_lead_lifecycle_id_fkey"
+            columns: ["lead_lifecycle_id"]
+            isOneToOne: false
+            referencedRelation: "lead_lifecycle"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_actions_wa_lead_id_fkey"
+            columns: ["wa_lead_id"]
+            isOneToOne: false
+            referencedRelation: "wa_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_audit_log: {
         Row: {
           action_category: string | null
@@ -7655,6 +7727,106 @@ export type Database = {
           },
           {
             foreignKeyName: "lead_status_history_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+        ]
+      }
+      lead_lifecycle: {
+        Row: {
+          ai_lead_score: number
+          budget_signal: string | null
+          child_age: number | null
+          child_id: string | null
+          child_name: string | null
+          created_at: string
+          current_state: string
+          id: string
+          lead_source: string
+          next_nurture_at: string | null
+          nurture_sequence: string | null
+          nurture_step: number
+          parent_concerns: string[] | null
+          previous_state: string | null
+          reading_level_estimate: string | null
+          score_factors: Json
+          state_changed_at: string
+          updated_at: string
+          urgency_score: number | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          wa_lead_id: string | null
+        }
+        Insert: {
+          ai_lead_score?: number
+          budget_signal?: string | null
+          child_age?: number | null
+          child_id?: string | null
+          child_name?: string | null
+          created_at?: string
+          current_state?: string
+          id?: string
+          lead_source?: string
+          next_nurture_at?: string | null
+          nurture_sequence?: string | null
+          nurture_step?: number
+          parent_concerns?: string[] | null
+          previous_state?: string | null
+          reading_level_estimate?: string | null
+          score_factors?: Json
+          state_changed_at?: string
+          updated_at?: string
+          urgency_score?: number | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          wa_lead_id?: string | null
+        }
+        Update: {
+          ai_lead_score?: number
+          budget_signal?: string | null
+          child_age?: number | null
+          child_id?: string | null
+          child_name?: string | null
+          created_at?: string
+          current_state?: string
+          id?: string
+          lead_source?: string
+          next_nurture_at?: string | null
+          nurture_sequence?: string | null
+          nurture_step?: number
+          parent_concerns?: string[] | null
+          previous_state?: string | null
+          reading_level_estimate?: string | null
+          score_factors?: Json
+          state_changed_at?: string
+          updated_at?: string
+          urgency_score?: number | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          wa_lead_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_lifecycle_wa_lead_id_fkey"
+            columns: ["wa_lead_id"]
+            isOneToOne: false
+            referencedRelation: "wa_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_lifecycle_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_lifecycle_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: false
             referencedRelation: "v_remedial_eligibility"

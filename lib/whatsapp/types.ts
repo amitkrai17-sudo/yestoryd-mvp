@@ -21,6 +21,8 @@ export type ConversationState =
   | 'COLLECTING_CONCERNS'
   | 'ASSESSMENT_OFFERED'
   | 'DISCOVERY_OFFERED'
+  | 'SLOT_SELECTION'
+  | 'BOOKED'
   | 'NURTURING'
   | 'ESCALATED'
   | 'COMPLETED';
