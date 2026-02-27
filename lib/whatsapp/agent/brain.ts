@@ -49,14 +49,19 @@ function tryShortcut(ctx: AgentContext): AgentDecision | null {
     if (buttonDecision) return buttonDecision;
   }
 
-  // 3. Affirmative reply in offer states
+  // 3. Affirmative reply — check both state AND last bot message content
   const state = ctx.lifecycle?.current_state || ctx.conversation.current_state;
-  const affirmatives = /^(yes|yeah|yep|ok|okay|sure|book|interested|haan|ha|ji|call karo|book karo|theek hai)$/i;
+  const isAffirmative = /^(yes|yeah|yep|ok|okay|sure|book|interested|haan|ha|ji|let's do it|call karo|book karo|theek hai)$/i.test(currentMessage.trim());
+  const lastBotMessage = recentMessages.find(m => m.direction === 'outbound');
+  const lastBotAskedForBooking = lastBotMessage?.content?.toLowerCase().includes('discovery call')
+    || lastBotMessage?.content?.toLowerCase().includes('book');
+
   if (
-    affirmatives.test(currentMessage.trim()) &&
+    isAffirmative &&
     (state === 'assessed' || state === 'qualified' ||
      ctx.conversation.current_state === 'ASSESSMENT_OFFERED' ||
-     ctx.conversation.current_state === 'DISCOVERY_OFFERED')
+     ctx.conversation.current_state === 'DISCOVERY_OFFERED' ||
+     lastBotAskedForBooking)
   ) {
     return {
       action: 'OFFER_SLOTS',
@@ -64,7 +69,7 @@ function tryShortcut(ctx: AgentContext): AgentDecision | null {
       responseType: 'buttons',
       stateTransition: 'slot_offered',
       confidence: 0.95,
-      reasoning: 'Affirmative reply in offer state — offer slots',
+      reasoning: 'Affirmative reply (state or last bot asked for booking) — offer slots',
       escalate: false,
       qualificationExtracted: {},
       scheduleFollowup: null,
@@ -190,7 +195,18 @@ async function callGemini(ctx: AgentContext): Promise<AgentDecision> {
     const result = await model.generateContent(systemPrompt);
     const responseText = result.response.text().trim();
 
-    return parseGeminiResponse(responseText);
+    const decision = parseGeminiResponse(responseText);
+
+    // --- Duplicate check: if brain's response is too similar to last bot message, force progression ---
+    const lastBotMsg = ctx.recentMessages.find(m => m.direction === 'outbound');
+    if (lastBotMsg && decision.responseMessage && isTooSimilar(decision.responseMessage, lastBotMsg.content)) {
+      if (ctx.conversation.current_state === 'DISCOVERY_OFFERED' ||
+          decision.action === 'OFFER_DISCOVERY') {
+        return createOfferSlotsDecision('Duplicate response detected — forcing slot offer');
+      }
+    }
+
+    return decision;
   } catch (error) {
     console.error(JSON.stringify({
       event: 'agent2_brain_gemini_error',
@@ -217,10 +233,16 @@ function buildSystemPrompt(ctx: AgentContext): string {
   return `You are the Lead Response Agent for Yestoryd, a children's reading intelligence platform for ages 4-12 in India. Your job is to convert leads into discovery call bookings through intelligent WhatsApp conversation.
 
 ## Your Personality
-- Warm, knowledgeable, parent-friendly
-- You understand Indian parents' concerns about reading and education
-- You speak naturally in English (with Hindi words where appropriate)
-- You're helpful but never pushy — you guide, not sell
+- Professional, warm, and knowledgeable
+- You are a reading consultant, not a casual friend
+- Always address parents by first name only (e.g., "Hi Amit!" not "Amit ji")
+- NEVER use Hindi honorifics (ji, beta, etc.) or Hinglish unless the parent writes in Hindi first
+- Default language: Professional English
+- If the parent writes in Hindi → respond in Hindi
+- If the parent writes in Hinglish → respond in Hinglish
+- If the parent writes in English → respond in English ONLY, no Hindi mixing
+- Keep tone confident and helpful, like a school counselor — not salesy, not overly casual
+- Use the child's name to personalize (e.g., "Ira's reading journey" not "your child")
 - You acknowledge the parent's specific concern before offering solutions
 
 ## Current Lead Context
@@ -239,6 +261,21 @@ ${history || '(no prior messages)'}
 
 ## Latest Message
 "${currentMessage}"
+
+## Anti-Repetition Rule
+CRITICAL: Never repeat the same message you just sent. Check the conversation history above.
+If your last message already asked "Would you like to book a discovery call?" and the
+parent said "Yes", do NOT ask again. Instead, PROGRESS the conversation:
+- If they said Yes to booking → action: OFFER_SLOTS (show available times)
+- If they said Yes to assessment → action: SEND_ASSESSMENT
+- If they said Ok/Yes as acknowledgment → ask the NEXT qualifying question
+- If you're about to send the same message as your last one, STOP and choose a different action
+
+## Progression Rules (CRITICAL — never loop)
+- If you already asked "would you like to book/schedule" in your last message AND the parent said Yes/Sure/Ok → DO NOT ask again. Action: OFFER_SLOTS
+- If you already asked for the child's age AND the parent gave it → DO NOT ask age again. Move to the next question.
+- Maximum 1 booking question per conversation turn. If parent hasn't responded to your booking question yet, wait for their response before asking again.
+- Track conversation momentum — each message should ADVANCE the conversation, not repeat the same step.
 
 ## Decision Framework
 
@@ -416,6 +453,51 @@ function getResponseType(action: AgentAction): 'text' | 'buttons' | 'list' {
     default:
       return 'text';
   }
+}
+
+// ============================================================
+// Duplicate detection helpers
+// ============================================================
+
+function isTooSimilar(newMsg: string, lastMsg: string): boolean {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+  const newNorm = normalize(newMsg);
+  const lastNorm = normalize(lastMsg);
+
+  // Exact or near-exact match
+  if (newNorm === lastNorm) return true;
+
+  // Both mention "discovery call" + "book" — it's the same offer repeated
+  const bothMentionBooking =
+    newNorm.includes('discovery call') && lastNorm.includes('discovery call') &&
+    (newNorm.includes('book') || newNorm.includes('schedule')) &&
+    (lastNorm.includes('book') || lastNorm.includes('schedule'));
+  if (bothMentionBooking) return true;
+
+  // Word overlap check (>60% overlap = too similar)
+  const newWordsArr = newNorm.split(/\s+/).filter(w => w.length > 2);
+  const lastWordsSet = new Set(lastNorm.split(/\s+/).filter(w => w.length > 2));
+  if (newWordsArr.length === 0 || lastWordsSet.size === 0) return false;
+  let overlap = 0;
+  for (let i = 0; i < newWordsArr.length; i++) {
+    if (lastWordsSet.has(newWordsArr[i])) overlap++;
+  }
+  const uniqueNewWords = new Set(newWordsArr).size;
+  return overlap / Math.min(uniqueNewWords, lastWordsSet.size) > 0.6;
+}
+
+function createOfferSlotsDecision(reasoning: string): AgentDecision {
+  return {
+    action: 'OFFER_SLOTS',
+    responseMessage: '',
+    responseType: 'buttons',
+    stateTransition: 'slot_offered',
+    confidence: 0.9,
+    reasoning,
+    escalate: false,
+    qualificationExtracted: {},
+    scheduleFollowup: null,
+  };
 }
 
 // ============================================================

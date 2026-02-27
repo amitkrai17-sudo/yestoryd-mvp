@@ -33,7 +33,6 @@ import { handleGreeting } from '@/lib/whatsapp/handlers/greeting';
 import { handleFaq } from '@/lib/whatsapp/handlers/faq';
 import { handleQualification } from '@/lib/whatsapp/handlers/qualification';
 import { handleAssessmentCta } from '@/lib/whatsapp/handlers/assessment-cta';
-import { handleBooking } from '@/lib/whatsapp/handlers/booking';
 import { handleEscalate } from '@/lib/whatsapp/handlers/escalate';
 import { handleSlotSelection } from '@/lib/whatsapp/handlers/slot-selection';
 import { handleBookingConfirm } from '@/lib/whatsapp/handlers/booking-confirm';
@@ -346,14 +345,13 @@ export async function POST(request: NextRequest) {
     }
 
     else if (isTier0 && intent === 'BOOKING') {
-      const result = await handleBooking(phone, mergedData);
+      const result = await handleSlotSelection(
+        phone, conversationId, mergedData, newLeadScore, supabase
+      );
       response = result.response;
       nextState = result.nextState;
-      messageType = 'buttons';
-      leadStatus = 'discovery_booked';
-      summarizeLeadConversation(conversationId, phone).catch(e =>
-        console.error('WhatsApp→RAG pipeline failed:', e)
-      );
+      messageType = 'list';
+      leadStatus = 'qualifying';
     }
 
     else if (isTier0 && intent === 'ASSESSMENT_CTA') {
@@ -608,14 +606,13 @@ export async function POST(request: NextRequest) {
         }
 
         if (intent === 'BOOKING') {
-          const result = await handleBooking(phone, mergedData);
+          const result = await handleSlotSelection(
+            phone, conversationId, mergedData, newLeadScore, supabase
+          );
           response = result.response;
           nextState = result.nextState;
-          messageType = 'buttons';
-          leadStatus = 'discovery_booked';
-          summarizeLeadConversation(conversationId, phone).catch(e =>
-            console.error('WhatsApp→RAG pipeline failed:', e)
-          );
+          messageType = 'list';
+          leadStatus = 'qualifying';
         }
 
         // --- State-based routing (mirror original) ---
