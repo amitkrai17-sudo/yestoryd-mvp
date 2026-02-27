@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -23,7 +24,7 @@ interface LearningEventInput {
 // Generate AI summary for the event
 async function generateAISummary(eventType: EventType, data: Record<string, any>): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('story_summarization') });
 
     let prompt = '';
     switch (eventType) {

@@ -7,6 +7,7 @@ import { hybridSearch, formatEventsForContext } from '@/lib/rai/hybrid-search';
 import { buildSessionPrepPrompt } from '@/lib/rai/prompts';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -84,7 +85,7 @@ Additionally, extract and return a JSON object with these fields:
 Return ONLY the JSON object, no other text.`;
 
     // Call Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
     const result = await model.generateContent(structuredPrompt);
     const responseText = result.response.text();
 

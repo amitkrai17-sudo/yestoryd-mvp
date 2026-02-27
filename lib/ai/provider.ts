@@ -12,6 +12,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 // ==================== CONFIGURATION ====================
 
@@ -24,14 +25,14 @@ interface AIProviderConfig {
 
 const AI_PROVIDERS: AIProviderConfig[] = [
   {
-    name: 'gemini-flash-lite',
-    model: 'gemini-2.5-flash-lite',
+    name: 'gemini-flash',
+    model: getGeminiModel('default'),
     apiKey: process.env.GEMINI_API_KEY,
     enabled: true,
   },
   {
-    name: 'gemini-flash',
-    model: 'gemini-2.5-flash',
+    name: 'gemini-pro',
+    model: getGeminiModel('assessment_analysis'),
     apiKey: process.env.GEMINI_API_KEY,
     enabled: true,
   },

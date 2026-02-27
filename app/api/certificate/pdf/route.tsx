@@ -16,6 +16,7 @@ import {
 } from '@react-pdf/renderer';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -448,7 +449,7 @@ async function generateGeminiFeedback(data: {
   recommendation: string;
 }> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
 
     const prompt = `You are a reading coach writing a certificate feedback for a child who completed a 12-week reading program.
 

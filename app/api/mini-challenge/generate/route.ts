@@ -11,6 +11,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { getMiniChallengeSettings, getMiniChallengeVideo, type GoalArea } from '@/lib/mini-challenge';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +33,8 @@ interface AIProvider {
 }
 
 const AI_PROVIDERS: AIProvider[] = [
-  { name: 'gemini-flash', model: 'gemini-2.5-flash', type: 'gemini' },
-  { name: 'gemini-flash-lite', model: 'gemini-2.5-flash-lite', type: 'gemini' },
+  { name: 'gemini-flash', model: getGeminiModel('question_generation'), type: 'gemini' },
+  { name: 'gemini-flash-lite', model: getGeminiModel('default'), type: 'gemini' },
   { name: 'openai-gpt4o-mini', model: 'gpt-4o-mini', type: 'openai' },
 ];
 

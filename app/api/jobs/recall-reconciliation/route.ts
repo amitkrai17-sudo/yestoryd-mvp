@@ -20,6 +20,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embeddings';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -200,7 +201,7 @@ SAFETY: Set "safety_flag": true only for genuine signs of distress, anxiety, fea
 Respond ONLY with valid JSON. No markdown, no backticks.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('session_analysis') });
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.3, maxOutputTokens: 2000 },

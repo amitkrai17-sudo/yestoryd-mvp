@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -40,7 +41,7 @@ function getStrictnessForAge(age: number) {
 // Generate AI summary for the assessment
 async function generateAISummary(childName: string, data: any): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
     
     const prompt = `Summarize this reading assessment in 1-2 encouraging sentences for a parent:
 Child: ${childName}
@@ -141,7 +142,7 @@ FEEDBACK REQUIREMENTS (must be 60-80 words, exactly 3 sentences):
 Respond ONLY with valid JSON. No additional text.`;
 
     // Use Gemini model for analysis
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
 
     // Extract base64 audio data
     const audioData = audio.split(',')[1] || audio;

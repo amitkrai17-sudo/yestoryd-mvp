@@ -18,6 +18,7 @@ import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embe
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -252,7 +253,7 @@ SAFETY: Set "safety_flag": true only for genuine signs of distress, anxiety, fea
 Respond ONLY with valid JSON. No markdown, no backticks.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('session_analysis') });
 
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],

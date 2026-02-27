@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze with Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
 
     const analysisPrompt = `You are an expert reading assessment specialist. Analyze this audio recording of a child reading.
 

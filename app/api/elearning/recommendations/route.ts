@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -347,7 +348,7 @@ async function getGeminiRecommendations(
   quizPendingCount: number
 ): Promise<{ videoIds: string[]; focusArea: string; focusReason: string } | null> {
   
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
 
   // Determine focus area from sessions
   const focusFromSession = sessions[0]?.focusArea?.toLowerCase() || '';

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -44,7 +45,7 @@ interface ParentCheckinRequest {
 // Transcribe voice note using Gemini
 async function transcribeVoiceNote(audioBase64: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
     const audioData = audioBase64.split(',')[1] || audioBase64;
 
     const result = await model.generateContent([
@@ -72,7 +73,7 @@ async function generateCheckinSummary(
   voiceTranscript?: string
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
 
     const prompt = `
 You are summarizing a parent check-in call for a children's reading coaching program.

@@ -10,6 +10,7 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,7 +136,7 @@ ${session.coach_notes ? 'COACH NOTES: ' + session.coach_notes : ''}${offlineSect
 
 Write a SHORT (2-3 sentences max) parent-friendly summary of this session for WhatsApp. Be warm, highlight positives, mention any struggles gently as "areas we'll keep working on". Use the child's first name. Do NOT use emojis. Keep it under 300 characters.${isOffline ? ' Mention that the session was conducted in person.' : ''}`;
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+      const model = genAI.getGenerativeModel({ model: getGeminiModel('feedback_generation') });
       const result = await model.generateContent(prompt);
       summary = result.response.text().trim();
 
@@ -487,7 +488,7 @@ RULES:
     return;
   }
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('feedback_generation') });
   const result = await model.generateContent(prompt);
   let responseText = result.response.text().trim();
 

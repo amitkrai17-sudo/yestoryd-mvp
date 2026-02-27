@@ -3,6 +3,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Complexity, UserRole } from './types';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -17,11 +18,13 @@ export function selectModel(
   complexity: Complexity,
   role: UserRole
 ): string {
-  if (role === 'coach' && intent === 'LEARNING') return 'gemini-2.5-flash';
-  if (complexity === 'high') return 'gemini-2.5-flash';
-  if (complexity === 'medium' && role === 'parent') return 'gemini-2.5-flash';
-  if (complexity === 'medium') return 'gemini-2.5-flash-lite';
-  return 'gemini-2.5-flash-lite';
+  const flash = getGeminiModel('content_generation');
+  const flashLight = getGeminiModel('classification');
+  if (role === 'coach' && intent === 'LEARNING') return flash;
+  if (complexity === 'high') return flash;
+  if (complexity === 'medium' && role === 'parent') return flash;
+  if (complexity === 'medium') return flashLight;
+  return flashLight;
 }
 
 /**
@@ -87,11 +90,12 @@ export async function* generateWithFallback(
     console.error(`Primary model ${primaryModel} failed:`, e instanceof Error ? e.message : e);
   }
 
-  // Tier 2: Flash Lite fallback (only if primary wasn't already flash-lite)
-  if (primaryModel !== 'gemini-2.5-flash-lite') {
+  // Tier 2: Flash fallback (only if primary wasn't already the fallback model)
+  const fallbackModel = getGeminiModel('default');
+  if (primaryModel !== fallbackModel) {
     try {
       const fallback = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash-lite',
+        model: fallbackModel,
         generationConfig: { maxOutputTokens: Math.min(maxTokens, 400), temperature: 0.3 },
       });
       const result = await fallback.generateContentStream({
@@ -103,7 +107,7 @@ export async function* generateWithFallback(
       }
       return;
     } catch (e) {
-      console.error('Fallback model (flash-lite) failed:', e instanceof Error ? e.message : e);
+      console.error('Fallback model failed:', e instanceof Error ? e.message : e);
     }
   }
 

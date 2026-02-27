@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/utils/rate-limiter';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,8 +144,8 @@ export async function POST(request: NextRequest) {
       parts: [{ text: msg.content }]
     }));
 
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash-lite',
+    const model = genAI.getGenerativeModel({
+      model: getGeminiModel('content_generation'),
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 500,

@@ -19,6 +19,7 @@ import { sendText } from '@/lib/whatsapp/cloud-api';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import crypto from 'crypto';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,7 +116,7 @@ async function generateReadingTip(childAge: number | null, concern: string | nul
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
+      model: getGeminiModel('content_generation'),
       generationConfig: { temperature: 0.7, maxOutputTokens: 100 },
     });
 

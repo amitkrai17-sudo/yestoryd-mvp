@@ -7,8 +7,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Intent } from './tier0-regex';
 import type { ConversationState } from '@/lib/whatsapp/types';
 
+import { getGeminiModel } from '@/lib/gemini-config';
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_NAME = 'gemini-2.5-flash';
 
 export interface GeminiClassification {
   intent: Intent;
@@ -53,7 +54,7 @@ export async function classifyTier1(
 ): Promise<GeminiClassification> {
   try {
     const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
+      model: getGeminiModel('classification'),
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 150,

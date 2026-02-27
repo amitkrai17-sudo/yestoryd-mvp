@@ -8,6 +8,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 import { searchContentUnits, formatContentUnitsForContext } from '@/lib/rai/hybrid-search';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -252,7 +253,7 @@ Respond with ONLY the recommendation, no preamble or explanation.`;
         throw new Error('GEMINI_API_KEY not configured');
       }
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+      const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
       const result = await model.generateContent(prompt);
       suggestion = result.response.text().trim();
 

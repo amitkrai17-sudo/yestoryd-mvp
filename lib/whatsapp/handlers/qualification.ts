@@ -7,8 +7,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendText, sendButtons } from '@/lib/whatsapp/cloud-api';
 import type { ConversationState } from '@/lib/whatsapp/types';
 
+import { getGeminiModel } from '@/lib/gemini-config';
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_NAME = 'gemini-2.5-flash';
 
 export interface QualificationResult {
   response: string;
@@ -54,7 +55,7 @@ export async function handleQualification(
   // 2. Use Gemini to extract data and generate conversational response
   try {
     const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
+      model: getGeminiModel('content_generation'),
       generationConfig: {
         temperature: 0.5,
         maxOutputTokens: 250,

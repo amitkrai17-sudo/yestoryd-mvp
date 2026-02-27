@@ -11,9 +11,9 @@ import type {
   QualificationExtracted,
 } from './types';
 import { isValidAgentAction } from './types';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_NAME = 'gemini-2.5-flash-lite';
 
 // ============================================================
 // Main entry point
@@ -184,7 +184,7 @@ function mapButtonClick(ctx: AgentContext, message: string): AgentDecision | nul
 async function callGemini(ctx: AgentContext): Promise<AgentDecision> {
   try {
     const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
+      model: getGeminiModel('classification'),
       generationConfig: {
         temperature: 0.2,
         maxOutputTokens: 500,

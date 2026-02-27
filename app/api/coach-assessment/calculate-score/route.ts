@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/utils/rate-limiter';
 import { loadCoachConfig } from '@/lib/config/loader';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,8 +105,8 @@ export async function POST(request: NextRequest) {
           const audioBase64 = Buffer.from(audioBuffer).toString('base64');
           const contentType = audioResponse.headers.get('content-type') || 'audio/webm';
           
-          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-          
+          const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
+
           const voicePrompt = `You are evaluating a voice statement from someone applying to be a children's reading coach at Yestoryd.
 
 THE QUESTION THEY WERE ASKED:
@@ -254,8 +255,8 @@ Return ONLY valid JSON (no markdown, no explanation):
 
           console.log('💬 Conversation length:', conversationText.length, 'chars');
 
-          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-          
+          const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
+
           const chatPrompt = `You are evaluating a coaching applicant's responses. They want to become a children's reading coach at Yestoryd.
 
 Here is the COMPLETE conversation between rAI (interviewer) and the Applicant:
@@ -390,7 +391,7 @@ Return ONLY this JSON structure (no other text):
         combinedScore,
         isQualified,
         calculatedAt: new Date().toISOString(),
-        model: 'gemini-2.5-flash'
+        model: getGeminiModel('assessment_analysis')
       },
       updated_at: new Date().toISOString()
     };

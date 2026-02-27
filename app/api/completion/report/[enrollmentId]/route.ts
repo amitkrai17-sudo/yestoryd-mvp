@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { capitalizeName } from '@/lib/utils';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
@@ -166,7 +167,7 @@ export async function POST(
     };
 
     // Generate report using Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('feedback_generation') });
 
     const prompt = `You are an expert reading coach and child development specialist. Generate a comprehensive, warm, and encouraging progress report for a child who completed a 12-week reading coaching program.
 

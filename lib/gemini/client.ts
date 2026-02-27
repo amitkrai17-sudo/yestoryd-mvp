@@ -4,12 +4,10 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-// Model configuration
-const MODEL_NAME = 'gemini-2.5-flash';
 
 /**
  * Assessment analysis result
@@ -75,7 +73,7 @@ export async function analyzeReading(
   passage: string,
   audioBase64: string
 ): Promise<AssessmentResult> {
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('reading_level') });
 
   const ageGuidance = getAgeGuidance(age);
 
@@ -224,7 +222,7 @@ export async function generateSessionNotes(
   recommendations: string[];
   progressNotes: string;
 }> {
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
 
   const prompt = `
 You are analyzing a coaching session recording between a reading coach and a parent.
@@ -306,7 +304,7 @@ export async function generateProgressPulse(
   completedCount: number,
   pulseNumber: number
 ): Promise<ProgressPulseResult> {
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('feedback_generation') });
 
   const prompt = `
 You are a warm, knowledgeable reading coach generating a progress report for a parent.
@@ -395,7 +393,7 @@ export async function generateAgenda(
   focusAreas: string[];
   preparedQuestions: string[];
 }> {
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
 
   const prompt = `
 Generate a personalized 60-minute coaching session agenda.

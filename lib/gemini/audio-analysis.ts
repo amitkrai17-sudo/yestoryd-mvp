@@ -7,9 +7,9 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 
 const STORAGE_BUCKET = 'session-audio';
-const MODEL_NAME = 'gemini-2.5-flash';
 
 function getGenAI(): GoogleGenerativeAI {
   if (!process.env.GEMINI_API_KEY) {
@@ -64,7 +64,7 @@ export async function transcribeVoiceNote(storagePath: string): Promise<string> 
   const { base64, mimeType } = await downloadAsBase64(storagePath);
 
   const genAI = getGenAI();
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('reading_level') });
 
   const prompt = `You are transcribing a reading coach's voice note recorded after an in-person coaching session with a child.
 
@@ -131,7 +131,7 @@ export async function analyzeChildReading(
   const previousWpm = (learningProfile as Record<string, { wpm?: number }> | null)?.reading_level?.wpm;
 
   const genAI = getGenAI();
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const model = genAI.getGenerativeModel({ model: getGeminiModel('reading_level') });
 
   const prompt = `You are an expert reading assessment analyst. Analyze this child's reading audio clip.
 

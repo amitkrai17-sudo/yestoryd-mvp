@@ -7,6 +7,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { getGeminiModel } from '@/lib/gemini-config';
 import { sendWhatsAppCloudMessage, markMessageAsRead } from '@/lib/communication/whatsapp-cloud';
 import {
   WHATSAPP_PROSPECT_PROMPT,
@@ -195,7 +196,7 @@ async function processMessage(
     });
 
     // 5. Call Gemini with tone-only prompt + DB context
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
 
     const result = await model.generateContent({
       contents: [

@@ -12,6 +12,7 @@ import { Receiver } from '@upstash/qstash';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGeminiModel } from '@/lib/gemini-config';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
         let insightText: string;
         try {
           const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash-lite',
+            model: getGeminiModel('story_summarization'),
             generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
           });
 
