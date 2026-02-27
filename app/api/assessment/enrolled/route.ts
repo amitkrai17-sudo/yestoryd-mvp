@@ -3,40 +3,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { buildLiteAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-function getStrictnessForAge(age: number) {
-  if (age <= 5) {
-    return {
-      level: "ENCOURAGING",
-      guidance: "Be warm and encouraging. Focus on effort over perfection. Allow developmental speech patterns. Minimum score 5 if 60%+ completed.",
-      minCompleteness: 60
-    };
-  } else if (age <= 8) {
-    return {
-      level: "BALANCED",
-      guidance: "Balance encouragement with constructive feedback. Allow age-appropriate pauses. Minimum score 5 if 70%+ completed.",
-      minCompleteness: 70
-    };
-  } else if (age <= 11) {
-    return {
-      level: "MODERATELY STRICT",
-      guidance: "Expect good fluency and clear pronunciation. Be fair but firm. Minimum score 6 if 75%+ completed.",
-      minCompleteness: 75
-    };
-  } else {
-    return {
-      level: "STRICT",
-      guidance: "Expect excellent fluency, expression, and accuracy. High scores (8+) reserved for exceptional reading. Maximum score 4 for incomplete passages.",
-      minCompleteness: 80
-    };
-  }
-}
 
 // Generate AI summary for the assessment
 async function generateAISummary(childName: string, data: any): Promise<string> {
@@ -101,45 +74,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const childName = child.child_name || child.name;
+    const childName = child.child_name || child.name || 'Child';
     const childAge = child.age || 8;
 
-    // Get age-appropriate strictness
-    const strictness = getStrictnessForAge(childAge);
-
-    // Build the analysis prompt
-    const analysisPrompt = `Role: Expert Phonics & Reading Specialist.
-Task: Analyze audio of a ${childAge}-year-old child named ${childName} reading the passage below.
-
-PASSAGE CONTEXT:
-"${passage}"
-(Approx. Word Count: ${passage.split(' ').length} words)
-
-AGE-BASED ASSESSMENT (${strictness.level}):
-${strictness.guidance}
-
-CRITICAL SCORING RULES:
-1. COMPLETENESS CHECK: If the child reads less than ${strictness.minCompleteness}% of the text, the 'reading_score' MUST be 4 or lower.
-2. EVIDENCE REQUIRED: Do not be generic. You must quote specific misread words (e.g., "Read 'Hop' as 'hobbed'").
-3. ACCURACY: Note substitutions, omissions, and mispronunciations with exact examples.
-
-Generate a JSON response with this EXACT structure:
-{
-    "reading_score": (integer 1-10 based on accuracy & completeness),
-    "wpm": (integer estimated words per minute),
-    "fluency_rating": (string: "Smooth", "Choppy", "Monotone", or "Fast"),
-    "pronunciation_rating": (string: "Clear", "Slurred", or "Inconsistent"),
-    "completeness_percentage": (integer 0-100),
-    "feedback": (string, exactly 3 sentences, 60-80 words total),
-    "errors": (list of specific words missed or misread with format "Read 'X' as 'Y'" or "Skipped 'X'")
-}
-
-FEEDBACK REQUIREMENTS (must be 60-80 words, exactly 3 sentences):
-- Sentence 1: Comment on completeness and overall fluency (e.g., "${childName} read 90% of the passage with good pace.").
-- Sentence 2: Cite specific evidence of errors OR praise accuracy if minimal errors.
-- Sentence 3: Give one actionable technical tip for improvement.
-
-Respond ONLY with valid JSON. No additional text.`;
+    // Build the analysis prompt (shared standardized lite prompt)
+    const analysisPrompt = buildLiteAssessmentPrompt({
+      childName,
+      childAge,
+      passage,
+      wordCount: passage.split(' ').length,
+    });
 
     // Use Gemini model for analysis
     const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
@@ -175,9 +119,11 @@ Respond ONLY with valid JSON. No additional text.`;
       analysisResult = {
         reading_score: 5,
         wpm: 60,
-        fluency_rating: 'Choppy',
-        pronunciation_rating: 'Inconsistent',
+        fluency_rating: 'Fair',
+        pronunciation_rating: 'Fair',
         errors: [],
+        self_corrections: [],
+        hesitations: [],
         completeness_percentage: 80,
         feedback: `${childName} completed the reading assessment with moderate fluency and acceptable pace. The reading showed engagement with the passage content, though some words required additional effort. Continue practicing daily with finger-tracking to build smoother word recognition and confidence.`
       };
@@ -188,9 +134,12 @@ Respond ONLY with valid JSON. No additional text.`;
       score: analysisResult.reading_score,
       wpm: analysisResult.wpm,
       fluency: analysisResult.fluency_rating,
+      fluency_rating: analysisResult.fluency_rating,
       pronunciation: analysisResult.pronunciation_rating,
       completeness: analysisResult.completeness_percentage,
       errors: analysisResult.errors,
+      self_corrections: analysisResult.self_corrections || [],
+      hesitations: analysisResult.hesitations || [],
       feedback: analysisResult.feedback,
       passage_title: passageTitle || 'Reading Assessment',
       passage_word_count: passage.split(' ').length,

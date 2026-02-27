@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { buildFullAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
 
 const supabase = createAdminClient();
 
@@ -85,48 +86,24 @@ export async function POST(request: NextRequest) {
       console.error('Audio upload error:', uploadError);
     }
 
-    // Analyze with Gemini
+    // Analyze with Gemini (shared standardized prompt with comparison mode)
     const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
 
-    const analysisPrompt = `You are an expert reading assessment specialist. Analyze this audio recording of a child reading.
-
-Child Information:
-- Name: ${child?.child_name || 'Child'}
-- Age: ${child?.age || 8} years
-- Grade: ${child?.grade || 'Not specified'}
-
-Previous Assessment Scores (Initial):
-- Clarity: ${profile?.clarity_score || 'N/A'}/10
-- Fluency: ${profile?.fluency_score || 'N/A'}/10
-- Speed: ${profile?.speed_score || 'N/A'}/10
-- WPM: ${child?.assessment_wpm || 'N/A'}
-- Strengths: ${profile?.strengths?.join(', ') || 'N/A'}
-- Areas to Improve: ${profile?.areas_of_improvement?.join(', ') || 'N/A'}
-
-Passage Text (${passageText?.split(' ').length || 0} words):
-"${passageText}"
-
-Evaluate this FINAL assessment recording and provide scores showing improvement from the initial assessment.
-
-Return ONLY a valid JSON object with these exact fields:
-{
-  "clarity_score": <number 1-10>,
-  "fluency_score": <number 1-10>,
-  "speed_score": <number 1-10>,
-  "wpm": <number>,
-  "pronunciation_rating": "<excellent|good|fair|needs_improvement>",
-  "expression_rating": "<excellent|good|fair|needs_improvement>",
-  "strengths": ["<strength1>", "<strength2>", "<strength3>"],
-  "areas_to_improve": ["<area1>", "<area2>"],
-  "feedback": "<detailed encouraging feedback about their progress>",
-  "completeness_percentage": <number 0-100>,
-  "improvement_summary": "<1-2 sentences about how they improved since initial assessment>"
-}
-
-IMPORTANT:
-- Be encouraging but accurate for a ${child?.age || 8}-year-old
-- Compare to their initial scores and highlight improvements
-- Celebrate their progress!`;
+    const analysisPrompt = buildFullAssessmentPrompt({
+      childName: child?.child_name || 'Child',
+      childAge: child?.age || 8,
+      passage: passageText || '',
+      wordCount: passageText?.split(' ').length || 0,
+      previousScores: {
+        clarity: profile?.clarity_score,
+        fluency: profile?.fluency_score,
+        speed: profile?.speed_score,
+        wpm: child?.assessment_wpm,
+        strengths: profile?.strengths,
+        areasToImprove: profile?.areas_of_improvement,
+      },
+      comparisonMode: true,
+    });
 
     const result = await model.generateContent([
       { text: analysisPrompt },
@@ -147,16 +124,19 @@ IMPORTANT:
       analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
     } catch (parseError) {
       console.error('Failed to parse Gemini response:', parseError);
-      // Provide default scores
+      // Provide default scores (matches full assessment schema)
       analysis = {
         clarity_score: Math.min(10, (profile?.clarity_score || 5) + 1),
         fluency_score: Math.min(10, (profile?.fluency_score || 5) + 1),
         speed_score: Math.min(10, (profile?.speed_score || 5) + 1),
         wpm: (child?.assessment_wpm || 50) + 15,
+        completeness_percentage: 90,
         strengths: ['Completed the program', 'Showed dedication'],
         areas_to_improve: ['Continue practicing'],
         feedback: 'Great job completing the program!',
         improvement_summary: 'Made wonderful progress throughout the program.',
+        self_corrections: [],
+        hesitations: [],
       };
     }
 

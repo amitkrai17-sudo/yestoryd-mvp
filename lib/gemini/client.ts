@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { buildFullAssessmentPrompt, type FullAssessmentResult } from '@/lib/gemini/assessment-prompts';
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -24,48 +25,7 @@ export interface AssessmentResult {
 }
 
 /**
- * Get age-appropriate assessment guidance
- */
-function getAgeGuidance(age: number): string {
-  if (age <= 5) {
-    return `
-      STRICTNESS: NEUTRAL/ENCOURAGING
-      - Focus on effort over perfection
-      - Allow developmental speech patterns
-      - Celebrate attempts and partial success
-      - Minimum score 5 if 60%+ completed
-      - Feedback should be warm and encouraging
-    `;
-  }
-  if (age <= 8) {
-    return `
-      STRICTNESS: BALANCED
-      - Balance encouragement with constructive feedback
-      - Expect reasonable fluency
-      - Allow some hesitations
-      - Minimum score 5 if 70%+ completed
-    `;
-  }
-  if (age <= 11) {
-    return `
-      STRICTNESS: MODERATELY STRICT
-      - Expect good fluency and clear pronunciation
-      - Assess comprehension indicators
-      - Note pacing and expression
-      - Minimum score 6 if 75%+ completed
-    `;
-  }
-  return `
-    STRICTNESS: STRICT
-    - Expect excellent fluency, expression, comprehension
-    - Strict about pronunciation and completion
-    - High scores (8+) reserved for exceptional reading
-    - Assess sophisticated reading skills
-  `;
-}
-
-/**
- * Analyze a reading assessment using Gemini
+ * Analyze a reading assessment using Gemini (shared standardized prompt)
  */
 export async function analyzeReading(
   childName: string,
@@ -75,73 +35,12 @@ export async function analyzeReading(
 ): Promise<AssessmentResult> {
   const model = genAI.getGenerativeModel({ model: getGeminiModel('reading_level') });
 
-  const ageGuidance = getAgeGuidance(age);
-
-  const prompt = `
-You are an expert reading coach analyzing a child's reading performance.
-
-CHILD INFORMATION:
-- Name: ${childName}
-- Age: ${age} years old
-
-PASSAGE TO READ:
-"${passage}"
-
-AUDIO RECORDING: [attached audio file]
-
-AGE-APPROPRIATE ASSESSMENT GUIDELINES:
-${ageGuidance}
-
-ANALYZE THE RECORDING AND PROVIDE:
-
-1. OVERALL SCORE (1-10)
-   Consider: age-appropriate expectations, effort, completion, accuracy
-
-2. WORDS PER MINUTE (WPM)
-   Count words in passage and estimate reading speed
-
-3. FLUENCY RATING
-   - Poor: Very choppy, word-by-word reading, many long pauses
-   - Fair: Some fluency but frequent hesitations
-   - Good: Smooth reading with natural pauses
-   - Excellent: Expressive reading with perfect pacing
-
-4. PRONUNCIATION
-   - Poor: Many significant errors affecting understanding
-   - Fair: Some errors but mostly understandable
-   - Good: Clear and mostly correct
-   - Excellent: Very clear and accurate
-
-5. STRENGTHS (list 3-5 specific positive points)
-   What did the child do well?
-
-6. AREAS FOR IMPROVEMENT (list 3-5 specific points)
-   What needs work? Be constructive and age-appropriate.
-
-7. RECOMMENDED NEXT STEPS (list 3-5 actionable items)
-   Specific exercises or practice recommendations
-
-8. SUMMARY (150-200 words)
-   Overall assessment with encouragement
-
-IMPORTANT:
-- Be encouraging but honest
-- Focus on growth and improvement
-- Adjust expectations for the child's age
-- Provide actionable feedback
-
-OUTPUT FORMAT: Return ONLY valid JSON, no markdown formatting:
-{
-  "score": <number 1-10>,
-  "wpm": <number>,
-  "fluency": "<Poor|Fair|Good|Excellent>",
-  "pronunciation": "<Poor|Fair|Good|Excellent>",
-  "strengths": ["<strength1>", "<strength2>", ...],
-  "improvements": ["<area1>", "<area2>", ...],
-  "nextSteps": ["<step1>", "<step2>", ...],
-  "summary": "<summary text>"
-}
-`;
+  const prompt = buildFullAssessmentPrompt({
+    childName,
+    childAge: age,
+    passage,
+    wordCount: passage.split(' ').length,
+  });
 
   try {
     const result = await model.generateContent([
@@ -155,31 +54,44 @@ OUTPUT FORMAT: Return ONLY valid JSON, no markdown formatting:
     ]);
 
     const responseText = result.response.text();
-    
+
     // Clean up response (remove markdown if present)
-    let cleanedText = responseText
+    const cleanedText = responseText
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
 
-    // Parse JSON
-    const analysis: AssessmentResult = JSON.parse(cleanedText);
+    // Parse JSON — full schema, then map to AssessmentResult interface
+    const full: FullAssessmentResult = JSON.parse(cleanedText);
 
-    // Validate and ensure required fields
+    const clarityScore = Math.min(10, Math.max(1, full.clarity_score || 5));
+    const fluencyScore = Math.min(10, Math.max(1, full.fluency_score || 5));
+    const speedScore = Math.min(10, Math.max(1, full.speed_score || 5));
+    const overallScore = Math.round((clarityScore * 0.35) + (fluencyScore * 0.40) + (speedScore * 0.25));
+
+    const toRating = (score: number): 'Poor' | 'Fair' | 'Good' | 'Excellent' =>
+      score >= 8 ? 'Excellent' : score >= 6 ? 'Good' : score >= 4 ? 'Fair' : 'Poor';
+
+    const nextSteps: string[] = [];
+    if (full.practice_recommendations) {
+      if (full.practice_recommendations.phonics_focus) nextSteps.push(full.practice_recommendations.phonics_focus);
+      if (full.practice_recommendations.suggested_activity) nextSteps.push(full.practice_recommendations.suggested_activity);
+      if (full.practice_recommendations.daily_words?.length) nextSteps.push(`Practice these words daily: ${full.practice_recommendations.daily_words.join(', ')}`);
+    }
+
     return {
-      score: Math.min(10, Math.max(1, analysis.score)),
-      wpm: Math.max(0, analysis.wpm),
-      fluency: analysis.fluency || 'Fair',
-      pronunciation: analysis.pronunciation || 'Fair',
-      strengths: analysis.strengths || ['Completed the reading'],
-      improvements: analysis.improvements || ['Practice daily'],
-      nextSteps: analysis.nextSteps || ['Read for 10 minutes each day'],
-      summary: analysis.summary || 'Thank you for completing the assessment.',
+      score: overallScore,
+      wpm: Math.max(0, full.wpm || 0),
+      fluency: toRating(fluencyScore),
+      pronunciation: toRating(clarityScore),
+      strengths: full.strengths || ['Completed the reading'],
+      improvements: full.areas_to_improve || ['Practice daily'],
+      nextSteps: nextSteps.length ? nextSteps : ['Read for 10 minutes each day'],
+      summary: full.feedback || 'Thank you for completing the assessment.',
     };
   } catch (error) {
     console.error('Gemini analysis error:', error);
-    
-    // Return fallback response if analysis fails
+
     return {
       score: 5,
       wpm: 50,

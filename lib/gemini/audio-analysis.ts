@@ -8,6 +8,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { getAgeConfig, getAntiHallucinationRules } from '@/lib/gemini/assessment-prompts';
 
 const STORAGE_BUCKET = 'session-audio';
 
@@ -130,15 +131,24 @@ export async function analyzeChildReading(
   const learningProfile = child?.learning_profile as Record<string, unknown> | null;
   const previousWpm = (learningProfile as Record<string, { wpm?: number }> | null)?.reading_level?.wpm;
 
+  const childName = child?.child_name || 'Unknown';
+  const childAge = child?.age || 8;
+  const ageConfig = getAgeConfig(childAge);
+
   const genAI = getGenAI();
   const model = genAI.getGenerativeModel({ model: getGeminiModel('reading_level') });
 
   const prompt = `You are an expert reading assessment analyst. Analyze this child's reading audio clip.
 
 CHILD CONTEXT:
-- Name: ${child?.child_name || 'Unknown'}
-- Age: ${child?.age || 'Unknown'} years old
+- Name: ${childName}
+- Age: ${childAge} years old
 ${previousWpm ? `- Previous WPM: ${previousWpm}` : '- No previous WPM data'}
+
+AGE CONTEXT (${ageConfig.level}):
+${ageConfig.guidance}
+- Be ${ageConfig.tone} in your assessment
+- WPM expectation: ${ageConfig.expectedWPM} WPM typical
 
 AUDIO: [attached reading clip recorded during an in-person coaching session]
 
@@ -153,7 +163,7 @@ Analyze the reading and provide:
 7. STRENGTHS — what the child did well (3-5 points)
 8. AREAS FOR IMPROVEMENT — specific areas to work on (3-5 points)
 
-Be age-appropriate in your assessment. For younger children (5-7), expect slower reading and more errors.
+${getAntiHallucinationRules(childName)}
 
 Return ONLY valid JSON, no markdown:
 {

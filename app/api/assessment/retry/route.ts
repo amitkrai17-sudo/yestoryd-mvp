@@ -12,6 +12,7 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
 import crypto from 'crypto';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { buildFullAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,11 +96,16 @@ export async function POST(request: NextRequest) {
     attempt: pending.retry_count + 1,
   }));
 
-  // Build prompt (same as analyze/route.ts)
+  // Build prompt (shared standardized prompt)
   const { child_name: name, child_age: age, passage, audio_data: audioData } = pending;
   const wordCount = passage.split(' ').length;
 
-  const analysisPrompt = buildAnalysisPrompt(name, age, passage, wordCount);
+  const analysisPrompt = buildFullAssessmentPrompt({
+    childName: name,
+    childAge: age,
+    passage,
+    wordCount,
+  });
 
   // Try provider chain
   let analysisResult: any = null;
@@ -352,74 +358,3 @@ async function sendResultsEmail(
   }
 }
 
-// --- Build analysis prompt (mirrors analyze/route.ts) ---
-function buildAnalysisPrompt(name: string, age: number, passage: string, wordCount: number): string {
-  let guidance: string;
-  if (age <= 5) {
-    guidance = `Assessment context: ${age}-year-old (early reader). Expected skills: letter recognition, simple CVC words, basic sight words. Benchmark: Reading 60%+ of age-appropriate passage with support is typical.`;
-  } else if (age <= 8) {
-    guidance = `Assessment context: ${age}-year-old (developing reader). Expected skills: Blending sounds, common sight words, simple sentences. Benchmark: Reading 70%+ of passage with developing fluency is typical.`;
-  } else if (age <= 11) {
-    guidance = `Assessment context: ${age}-year-old (intermediate reader). Expected skills: Multi-syllable words, expression, self-correction. Benchmark: Reading 75%+ of passage with reasonable fluency is expected.`;
-  } else {
-    guidance = `Assessment context: ${age}-year-old (advancing reader). Expected skills: Complex vocabulary, expression, comprehension. Benchmark: Reading 80%+ of passage fluently is expected.`;
-  }
-
-  return `
-You are a reading assessment specialist. Your task is to ACCURATELY analyze a ${age}-year-old child named ${name} reading aloud.
-
-PASSAGE THE CHILD WAS ASKED TO READ:
-"${passage}"
-(Word count: ${wordCount} words)
-
-PRIMARY OBJECTIVE: ACCURACY
-
-AGE CONTEXT:
-${guidance}
-
-SCORING SCALE (1-10):
-- 9-10: Reads fluently with minimal errors
-- 7-8: Reads well with occasional errors
-- 5-6: Developing reader, noticeable errors
-- 3-4: Struggling reader, frequent errors
-- 1-2: Early emergent reader
-
-Respond ONLY with valid JSON:
-{
-    "clarity_score": <integer 1-10>,
-    "fluency_score": <integer 1-10>,
-    "speed_score": <integer 1-10>,
-    "wpm": <integer>,
-    "completeness_percentage": <integer 0-100>,
-    "error_classification": {
-        "substitutions": [{"original": "word", "read_as": "what_said"}],
-        "omissions": ["words skipped"],
-        "insertions": ["words added"],
-        "reversals": [{"original": "was", "read_as": "saw"}],
-        "mispronunciations": [{"word": "word", "issue": "description"}]
-    },
-    "phonics_analysis": {
-        "struggling_phonemes": [],
-        "phoneme_details": [{"phoneme": "th", "examples": [], "frequency": "frequent"}],
-        "strong_phonemes": [],
-        "recommended_focus": "Primary area to practice"
-    },
-    "skill_breakdown": {
-        "decoding": {"score": 1, "notes": ""},
-        "sight_words": {"score": 1, "notes": ""},
-        "blending": {"score": 1, "notes": ""},
-        "segmenting": {"score": 1, "notes": ""},
-        "expression": {"score": 1, "notes": ""},
-        "comprehension_indicators": {"score": 1, "notes": ""}
-    },
-    "practice_recommendations": {
-        "daily_words": [],
-        "phonics_focus": "",
-        "suggested_activity": ""
-    },
-    "feedback": "4 sentences about ${name}'s performance",
-    "errors": [],
-    "strengths": [],
-    "areas_to_improve": []
-}`;
-}

@@ -13,6 +13,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { getAgeConfig, buildFullAssessmentPrompt, type FullAssessmentResult } from '@/lib/gemini/assessment-prompts';
 
 // ==================== CONFIGURATION ====================
 
@@ -54,10 +55,16 @@ export interface ReadingAnalysisResult {
   speed_score: number;
   overall_score: number;
   wpm: number;
+  completeness_percentage?: number;
+  error_classification?: FullAssessmentResult['error_classification'];
+  phonics_analysis?: FullAssessmentResult['phonics_analysis'];
+  skill_breakdown?: FullAssessmentResult['skill_breakdown'];
+  practice_recommendations?: FullAssessmentResult['practice_recommendations'];
   strengths: string[];
   areas_to_improve: string[];
   feedback: string;
-  encouragement: string;
+  self_corrections?: string[];
+  hesitations?: string[];
   requiresManualReview?: boolean;
   error?: string;
 }
@@ -103,9 +110,6 @@ export async function analyzeReading(
 ): Promise<ReadingAnalysisResult> {
   const errors: string[] = [];
 
-  // Get age-appropriate strictness
-  const strictness = getAgeStrictness(childAge);
-
   for (const provider of AI_PROVIDERS) {
     if (!provider.enabled || !provider.apiKey) continue;
 
@@ -118,8 +122,7 @@ export async function analyzeReading(
           audioBase64,
           passageText,
           childAge,
-          childName,
-          strictness
+          childName
         );
         console.log(`[AI] Success with ${provider.name}`);
         return { ...result, success: true, provider: provider.name };
@@ -130,8 +133,7 @@ export async function analyzeReading(
           audioBase64,
           passageText,
           childAge,
-          childName,
-          strictness
+          childName
         );
         console.log(`[AI] Success with ${provider.name}`);
         return { ...result, success: true, provider: provider.name };
@@ -156,7 +158,6 @@ export async function analyzeReading(
     strengths: [],
     areas_to_improve: [],
     feedback: 'Assessment requires manual review due to technical issues.',
-    encouragement: 'Great effort! Your coach will review this personally.',
     error: errors.join('; '),
   };
 }
@@ -166,38 +167,16 @@ async function analyzeWithGemini(
   audioBase64: string,
   passageText: string,
   childAge: number,
-  childName: string,
-  strictness: StrictnessConfig
+  childName: string
 ): Promise<Omit<ReadingAnalysisResult, 'success' | 'provider'>> {
   const gemini = getGeminiClient(model);
 
-  const prompt = `You are Vedant, an expert AI reading coach for children. Analyze this child's reading.
-
-CHILD: ${childName}, Age ${childAge}
-PASSAGE: "${passageText}"
-
-SCORING GUIDELINES (Age ${childAge}):
-- Be ${strictness.tone} in your assessment
-- Score Range Expectation: ${strictness.scoreRange}
-- ${strictness.instructions}
-
-IMPORTANT RULES:
-1. If the child reads less than 50% of the passage, maximum overall score is 4/10
-2. If the child struggles significantly, be encouraging but honest
-3. WPM should be realistic for the age group (${strictness.expectedWPM} WPM typical)
-
-Respond ONLY with valid JSON:
-{
-  "clarity_score": <1-10>,
-  "fluency_score": <1-10>,
-  "speed_score": <1-10>,
-  "overall_score": <1-10>,
-  "wpm": <number>,
-  "strengths": ["strength1", "strength2"],
-  "areas_to_improve": ["area1", "area2"],
-  "feedback": "Detailed feedback for parents",
-  "encouragement": "Motivating message for the child"
-}`;
+  const prompt = buildFullAssessmentPrompt({
+    childName,
+    childAge,
+    passage: passageText,
+    wordCount: passageText.split(' ').length,
+  });
 
   const result = await gemini.generateContent([
     { text: prompt },
@@ -210,29 +189,53 @@ Respond ONLY with valid JSON:
   ]);
 
   const responseText = result.response.text();
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  
+  const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+
   if (!jsonMatch) {
     throw new Error('Invalid JSON response from Gemini');
   }
 
-  return JSON.parse(jsonMatch[0]);
+  const full: FullAssessmentResult = JSON.parse(jsonMatch[0]);
+
+  // Compute overall_score server-side
+  const clarityScore = Math.min(10, Math.max(1, full.clarity_score || 5));
+  const fluencyScore = Math.min(10, Math.max(1, full.fluency_score || 5));
+  const speedScore = Math.min(10, Math.max(1, full.speed_score || 5));
+  const overallScore = Math.round((clarityScore * 0.35) + (fluencyScore * 0.40) + (speedScore * 0.25));
+
+  return {
+    clarity_score: clarityScore,
+    fluency_score: fluencyScore,
+    speed_score: speedScore,
+    overall_score: overallScore,
+    wpm: full.wpm || 0,
+    completeness_percentage: full.completeness_percentage,
+    error_classification: full.error_classification,
+    phonics_analysis: full.phonics_analysis,
+    skill_breakdown: full.skill_breakdown,
+    practice_recommendations: full.practice_recommendations,
+    strengths: full.strengths || [],
+    areas_to_improve: full.areas_to_improve || [],
+    feedback: full.feedback || '',
+    self_corrections: full.self_corrections || [],
+    hesitations: full.hesitations || [],
+  };
 }
 
 async function analyzeWithOpenAI(
   audioBase64: string,
   passageText: string,
   childAge: number,
-  childName: string,
-  strictness: StrictnessConfig
+  childName: string
 ): Promise<Omit<ReadingAnalysisResult, 'success' | 'provider'>> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OpenAI API key not configured');
 
+  const ageConfig = getAgeConfig(childAge);
+
   // Note: OpenAI doesn't support audio directly in the same way
   // This is a text-based fallback for when audio transcription is available
-  // In production, you'd use Whisper API first, then GPT-4
-  
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -244,15 +247,16 @@ async function analyzeWithOpenAI(
       messages: [
         {
           role: 'system',
-          content: `You are Vedant, an expert AI reading coach. Analyze children's reading ability.`,
+          content: 'You are a reading assessment specialist. Respond ONLY with valid JSON.',
         },
         {
           role: 'user',
-          content: `Analyze reading for ${childName}, age ${childAge}.
-Passage: "${passageText}"
-Guidelines: ${strictness.instructions}
-
-Return JSON with: clarity_score, fluency_score, speed_score, overall_score (1-10), wpm, strengths[], areas_to_improve[], feedback, encouragement`,
+          content: buildFullAssessmentPrompt({
+            childName,
+            childAge,
+            passage: passageText,
+            wordCount: passageText.split(' ').length,
+          }),
         },
       ],
       response_format: { type: 'json_object' },
@@ -264,7 +268,27 @@ Return JSON with: clarity_score, fluency_score, speed_score, overall_score (1-10
   }
 
   const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
+  const full: FullAssessmentResult = JSON.parse(data.choices[0].message.content);
+
+  // Compute overall_score server-side
+  const clarityScore = Math.min(10, Math.max(1, full.clarity_score || 5));
+  const fluencyScore = Math.min(10, Math.max(1, full.fluency_score || 5));
+  const speedScore = Math.min(10, Math.max(1, full.speed_score || 5));
+  const overallScore = Math.round((clarityScore * 0.35) + (fluencyScore * 0.40) + (speedScore * 0.25));
+
+  return {
+    clarity_score: clarityScore,
+    fluency_score: fluencyScore,
+    speed_score: speedScore,
+    overall_score: overallScore,
+    wpm: full.wpm || 0,
+    completeness_percentage: full.completeness_percentage,
+    strengths: full.strengths || [],
+    areas_to_improve: full.areas_to_improve || [],
+    feedback: full.feedback || '',
+    self_corrections: full.self_corrections || [],
+    hesitations: full.hesitations || [],
+  };
 }
 
 // ==================== EMBEDDINGS ====================
@@ -351,60 +375,7 @@ Generate summaries in this JSON format:
   };
 }
 
-// ==================== AGE STRICTNESS CONFIGURATION ====================
-
-interface StrictnessConfig {
-  tone: string;
-  scoreRange: string;
-  instructions: string;
-  expectedWPM: string;
-}
-
-function getAgeStrictness(age: number): StrictnessConfig {
-  if (age <= 5) {
-    return {
-      tone: 'very encouraging and gentle',
-      scoreRange: '6-10 for any genuine attempt',
-      instructions: 'Focus on effort and participation. Any reading attempt deserves praise. Score generously.',
-      expectedWPM: '20-40',
-    };
-  }
-  
-  if (age <= 7) {
-    return {
-      tone: 'encouraging with gentle guidance',
-      scoreRange: '5-10 based on effort and basic accuracy',
-      instructions: 'Acknowledge effort while noting areas for improvement. Be supportive.',
-      expectedWPM: '40-70',
-    };
-  }
-  
-  if (age <= 9) {
-    return {
-      tone: 'balanced - encouraging but with clear feedback',
-      scoreRange: '4-10 based on accuracy and fluency',
-      instructions: 'Balance praise with constructive feedback. Expect reasonable fluency.',
-      expectedWPM: '70-100',
-    };
-  }
-  
-  if (age <= 11) {
-    return {
-      tone: 'constructive and growth-oriented',
-      scoreRange: '3-10 based on overall performance',
-      instructions: 'Provide specific, actionable feedback. Higher expectations for fluency and comprehension.',
-      expectedWPM: '100-130',
-    };
-  }
-  
-  // Age 12+
-  return {
-    tone: 'direct but supportive',
-    scoreRange: '2-10 with honest assessment',
-    instructions: 'Be honest about performance. Expect near-adult reading capability. Focus on refinement.',
-    expectedWPM: '130-180',
-  };
-}
+// Age strictness now provided by shared getAgeConfig() from lib/gemini/assessment-prompts.ts
 
 // ==================== HEALTH CHECK ====================
 
