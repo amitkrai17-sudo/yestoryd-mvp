@@ -2,6 +2,36 @@
 // Handler: FAQ - Answer questions with verified site_settings data
 // Anti-hallucination: Gemini only formats facts from DB
 // ============================================================
+//
+// Required site_settings keys (populate these in DB for FAQ to work):
+//
+//   PRICING:
+//     pricing_amount          — e.g. "₹6,999"
+//     pricing_original_price  — e.g. "₹9,999"
+//     pricing_discounted_price — e.g. "₹6,999"
+//     pricing_duration_months — e.g. "3"
+//     pricing_sessions_included — e.g. "12"
+//     pricing_currency        — e.g. "INR"
+//     pricing_subtitle        — e.g. "Personalized 1:1 reading coaching"
+//
+//   PROGRAM:
+//     coaching_duration_mins  — e.g. "45"
+//     session_format          — e.g. "1:1 on Google Meet"
+//     program_age_range       — e.g. "4-12 years"
+//     program_description     — e.g. "AI-powered personalized reading program"
+//
+//   POLICIES:
+//     refund_policy           — e.g. "Full refund within 7 days"
+//
+//   TEAM:
+//     coach_info              — e.g. "Certified reading coaches with 5+ years experience"
+//
+//   CONTENT:
+//     assessment_description  — e.g. "Free 3-minute AI reading assessment"
+//     hero_title              — e.g. "Transform Your Child's Reading"
+//     hero_subtitle           — e.g. "Personalized 1:1 coaching for ages 4-12"
+//
+// ============================================================
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendText } from '@/lib/whatsapp/cloud-api';
@@ -53,6 +83,20 @@ export async function handleFaq(
 ): Promise<FaqResult> {
   // 1. Fetch verified facts from site_settings
   const settings = await getSettings(FAQ_SETTING_KEYS);
+
+  const keysFound = Object.keys(settings).filter(k => settings[k] && settings[k].trim().length > 0);
+  const keysMissing = FAQ_SETTING_KEYS.filter(k => !settings[k] || settings[k].trim().length === 0);
+
+  console.log(JSON.stringify({
+    event: 'faq_settings_loaded',
+    keysRequested: FAQ_SETTING_KEYS,
+    keysFound,
+    keysMissing,
+    settingsValues: Object.fromEntries(
+      FAQ_SETTING_KEYS.map(k => [k, settings[k] || null])
+    ),
+  }));
+
   const availableFacts = Object.entries(settings)
     .filter(([, v]) => v && v.trim().length > 0)
     .map(([k, v]) => `${k}: ${v}`)
@@ -67,7 +111,7 @@ export async function handleFaq(
     event: 'wa_faq_handler_start',
     question: question.slice(0, 80),
     isPricingQuestion,
-    settingsFound: Object.keys(settings).filter(k => settings[k] && settings[k].trim().length > 0).length,
+    settingsFoundCount: keysFound.length,
     availableFactsLength: availableFacts.length,
   }));
 
@@ -107,19 +151,27 @@ Parent's question: "${question}"`;
     console.log(JSON.stringify({
       event: 'wa_faq_gemini_response',
       responseLength: responseText.length,
-      responsePreview: responseText.slice(0, 100),
+      responsePreview: responseText.slice(0, 150),
     }));
   } catch (error) {
     console.error('[WA-LeadBot] FAQ Gemini error:', error);
     responseText = '';
   }
 
-  // 3. Fallback: if Gemini returned a stub (<30 chars) or empty, use static response
-  if (!responseText || responseText.length < 30) {
+  // 3. Fallback logic
+  //    - Pricing questions: if response <150 chars, ALWAYS use static fallback (too important to risk)
+  //    - Other questions: if response <80 chars, use generic fallback
+  const needsFallback =
+    !responseText ||
+    (isPricingQuestion && responseText.length < 150) ||
+    (!isPricingQuestion && responseText.length < 80);
+
+  if (needsFallback) {
     console.log(JSON.stringify({
       event: 'wa_faq_fallback_triggered',
-      reason: !responseText ? 'empty_response' : 'too_short',
+      reason: !responseText ? 'empty_response' : isPricingQuestion ? 'pricing_too_short' : 'too_short',
       originalLength: responseText?.length || 0,
+      threshold: isPricingQuestion ? 150 : 80,
       isPricingQuestion,
     }));
 
@@ -137,6 +189,6 @@ Parent's question: "${question}"`;
 
   return {
     response: responseText,
-    settingsUsed: Object.keys(settings).filter(k => settings[k]),
+    settingsUsed: keysFound,
   };
 }
