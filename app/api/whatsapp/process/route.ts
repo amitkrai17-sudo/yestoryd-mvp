@@ -33,7 +33,7 @@ import { handleGreeting } from '@/lib/whatsapp/handlers/greeting';
 import { handleFaq } from '@/lib/whatsapp/handlers/faq';
 import { handleQualification } from '@/lib/whatsapp/handlers/qualification';
 import { handleAssessmentCta } from '@/lib/whatsapp/handlers/assessment-cta';
-import { handleEscalate } from '@/lib/whatsapp/handlers/escalate';
+import { handleEscalate, notifyAdmin } from '@/lib/whatsapp/handlers/escalate';
 import { handleSlotSelection } from '@/lib/whatsapp/handlers/slot-selection';
 import { handleBookingConfirm } from '@/lib/whatsapp/handlers/booking-confirm';
 import { handleReschedule } from '@/lib/whatsapp/handlers/reschedule';
@@ -331,17 +331,39 @@ export async function POST(request: NextRequest) {
     }
 
     else if (isTier0 && intent === 'ESCALATE') {
-      // Priority override: escalation (handler updates DB directly → early return)
-      const result = await handleEscalate(phone, conversationId, mergedData, newLeadScore, text || undefined);
-      response = result.response;
-      nextState = result.nextState;
-      await saveBotMessage(conversationId, response, 'text', {
-        intent, tier: 0, state_transition: `${liveState} → ${nextState}`, brain_used: false,
-      });
-      await upsertLead(phone, conversationId, mergedData, newLeadScore, 'escalated');
-      const duration = Date.now() - startTime;
-      console.log(JSON.stringify({ requestId, event: 'wa_leadbot_process_complete', intent, nextState, mode: 1, duration: `${duration}ms` }));
-      return NextResponse.json({ status: 'processed', intent, nextState, mode: 1 });
+      // Try discovery call booking first (instead of immediate escalation)
+      const introMsg = `We'd love to connect you with a reading coach! Let me find available times for a free discovery call.`;
+      await sendText(phone, introMsg);
+
+      const slotResult = await handleSlotSelection(phone, conversationId, mergedData, newLeadScore, supabase);
+
+      if (!slotResult.escalated) {
+        // Slots found — user sees slot list
+        response = slotResult.response;
+        nextState = slotResult.nextState;
+        messageType = 'list';
+        leadStatus = 'qualifying';
+        // Falls through to post-handler
+      } else {
+        // No slots — slot handler sent "fully booked" message
+        // Deactivate bot + fire admin notification as backup
+        await supabase.from('wa_lead_conversations').update({
+          is_bot_active: false,
+          current_state: 'ESCALATED',
+          updated_at: new Date().toISOString(),
+        }).eq('id', conversationId);
+
+        notifyAdmin(phone, conversationId, mergedData, newLeadScore, text || undefined).catch(() => {});
+
+        await saveBotMessage(conversationId, slotResult.response, 'text', {
+          intent, tier: 0, state_transition: `${liveState} → ESCALATED`, brain_used: false,
+          escalate_reason: 'no_slots_available',
+        });
+        await upsertLead(phone, conversationId, mergedData, newLeadScore, 'escalated');
+        const duration = Date.now() - startTime;
+        console.log(JSON.stringify({ requestId, event: 'wa_leadbot_process_complete', intent, nextState: 'ESCALATED', mode: 1, duration: `${duration}ms` }));
+        return NextResponse.json({ status: 'processed', intent, nextState: 'ESCALATED', mode: 1 });
+      }
     }
 
     else if (isTier0 && intent === 'BOOKING') {
@@ -413,36 +435,59 @@ export async function POST(request: NextRequest) {
 
         // --- Execute brain action ---
 
-        // ESCALATE: handler updates DB directly → early return
+        // ESCALATE: try discovery call booking first, fall back to admin notification
         if (decision.action === 'ESCALATE_HOT' || decision.action === 'ESCALATE_OBJECTION') {
-          const result = await handleEscalate(
-            phone, conversationId, mergedData, newLeadScore,
-            decision.escalationReason || text || undefined
-          );
+          const introMsg = `We'd love to connect you with a reading coach! Let me find available times for a free discovery call.`;
+          await sendText(phone, introMsg);
 
-          // Fire-and-forget: save, log, lifecycle, upsert (parallel, non-blocking)
+          const slotResult = await handleSlotSelection(phone, conversationId, mergedData, newLeadScore, supabase);
           const lifecycleId = agentContext.lifecycle?.id;
-          Promise.allSettled([
-            saveBotMessage(conversationId, result.response, 'text', {
-              intent, tier: classification.tier,
-              state_transition: `${liveState} → ${result.nextState}`,
-              brain_used: true, brain_action: decision.action, brain_confidence: decision.confidence,
-            }),
-            logDecision(supabase, decision, agentContext, brainMs),
-            lifecycleId ? updateLifecycle(supabase, lifecycleId, decision, agentContext.lifecycle?.current_state) : Promise.resolve(),
-            upsertLead(phone, conversationId, mergedData, newLeadScore, 'escalated'),
-          ]).catch(() => {});
 
-          const duration = Date.now() - startTime;
-          console.log(JSON.stringify({
-            requestId, event: 'wa_leadbot_process_complete',
-            intent, mode: 2, brainAction: decision.action,
-            nextState: result.nextState, duration: `${duration}ms`,
-          }));
-          return NextResponse.json({
-            status: 'processed', intent, nextState: result.nextState,
-            mode: 2, brainAction: decision.action,
-          });
+          if (!slotResult.escalated) {
+            // Slots found — user sees slot list, proceed normally (no early return)
+            response = slotResult.response;
+            nextState = slotResult.nextState;
+            messageType = 'list';
+            leadStatus = 'qualifying';
+
+            Promise.allSettled([
+              logDecision(supabase, decision, agentContext, brainMs),
+              lifecycleId ? updateLifecycle(supabase, lifecycleId, decision, agentContext.lifecycle?.current_state) : Promise.resolve(),
+            ]).catch(() => {});
+          } else {
+            // No slots — slot handler sent "fully booked" message
+            // Deactivate bot + admin notification as backup
+            await supabase.from('wa_lead_conversations').update({
+              is_bot_active: false,
+              current_state: 'ESCALATED',
+              updated_at: new Date().toISOString(),
+            }).eq('id', conversationId);
+
+            notifyAdmin(phone, conversationId, mergedData, newLeadScore, decision.escalationReason || text || undefined).catch(() => {});
+
+            Promise.allSettled([
+              saveBotMessage(conversationId, slotResult.response, 'text', {
+                intent, tier: classification.tier,
+                state_transition: `${liveState} → ESCALATED`,
+                brain_used: true, brain_action: decision.action, brain_confidence: decision.confidence,
+                escalate_reason: 'no_slots_available',
+              }),
+              logDecision(supabase, decision, agentContext, brainMs),
+              lifecycleId ? updateLifecycle(supabase, lifecycleId, decision, agentContext.lifecycle?.current_state) : Promise.resolve(),
+              upsertLead(phone, conversationId, mergedData, newLeadScore, 'escalated'),
+            ]).catch(() => {});
+
+            const duration = Date.now() - startTime;
+            console.log(JSON.stringify({
+              requestId, event: 'wa_leadbot_process_complete',
+              intent, mode: 2, brainAction: decision.action,
+              nextState: 'ESCALATED', duration: `${duration}ms`,
+            }));
+            return NextResponse.json({
+              status: 'processed', intent, nextState: 'ESCALATED',
+              mode: 2, brainAction: decision.action,
+            });
+          }
         }
 
         // GREETING: send brain's message (with buttons if available)
@@ -589,20 +634,40 @@ export async function POST(request: NextRequest) {
 
         // --- Priority overrides (mirror original) ---
         if (intent === 'ESCALATE') {
-          const result = await handleEscalate(phone, conversationId, mergedData, newLeadScore, text || undefined);
-          response = result.response;
-          nextState = result.nextState;
-          await saveBotMessage(conversationId, response, 'text', {
-            intent, tier: classification.tier,
-            state_transition: `${liveState} → ${nextState}`, brain_used: false,
-          });
-          await upsertLead(phone, conversationId, mergedData, newLeadScore, 'escalated');
-          const duration = Date.now() - startTime;
-          console.log(JSON.stringify({
-            requestId, event: 'wa_leadbot_process_complete',
-            intent, nextState, mode: 'fallback', duration: `${duration}ms`,
-          }));
-          return NextResponse.json({ status: 'processed', intent, nextState, mode: 'fallback' });
+          // Try discovery call booking first
+          const introMsg = `We'd love to connect you with a reading coach! Let me find available times for a free discovery call.`;
+          await sendText(phone, introMsg);
+
+          const slotResult = await handleSlotSelection(phone, conversationId, mergedData, newLeadScore, supabase);
+
+          if (!slotResult.escalated) {
+            response = slotResult.response;
+            nextState = slotResult.nextState;
+            messageType = 'list';
+            leadStatus = 'qualifying';
+          } else {
+            // No slots — deactivate bot + admin notification
+            await supabase.from('wa_lead_conversations').update({
+              is_bot_active: false,
+              current_state: 'ESCALATED',
+              updated_at: new Date().toISOString(),
+            }).eq('id', conversationId);
+
+            notifyAdmin(phone, conversationId, mergedData, newLeadScore, text || undefined).catch(() => {});
+
+            await saveBotMessage(conversationId, slotResult.response, 'text', {
+              intent, tier: classification.tier,
+              state_transition: `${liveState} → ESCALATED`, brain_used: false,
+              escalate_reason: 'no_slots_available',
+            });
+            await upsertLead(phone, conversationId, mergedData, newLeadScore, 'escalated');
+            const duration = Date.now() - startTime;
+            console.log(JSON.stringify({
+              requestId, event: 'wa_leadbot_process_complete',
+              intent, nextState: 'ESCALATED', mode: 'fallback', duration: `${duration}ms`,
+            }));
+            return NextResponse.json({ status: 'processed', intent, nextState: 'ESCALATED', mode: 'fallback' });
+          }
         }
 
         if (intent === 'BOOKING') {

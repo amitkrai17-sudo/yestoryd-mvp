@@ -74,7 +74,7 @@ export async function handleEscalate(
 // Admin notification — WhatsApp + in-app
 // ============================================================
 
-async function notifyAdmin(
+export async function notifyAdmin(
   phone: string,
   conversationId: string,
   collectedData: Record<string, unknown>,
