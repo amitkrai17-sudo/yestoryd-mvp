@@ -297,14 +297,14 @@ import { generateEmbedding as generateRaiEmbedding } from '@/lib/rai/embeddings'
 
 /**
  * Generate embeddings for RAG — delegates to centralized lib/rai/embeddings.ts
- * Uses text-embedding-004 (768-dim) as the single model for all embeddings.
+ * Uses gemini-embedding-001 (768-dim) as the single model for all embeddings.
  */
 export async function generateEmbedding(text: string): Promise<EmbeddingResult> {
   try {
     const embedding = await generateRaiEmbedding(text);
     return {
       success: true,
-      provider: 'text-embedding-004',
+      provider: 'gemini-embedding-001',
       embedding,
     };
   } catch (error: any) {

@@ -1,7 +1,7 @@
 // ============================================================
 // FILE: app/api/admin/generate-content-embeddings/route.ts
 // PURPOSE: Generate embeddings for el_learning_units content
-// Uses: Google text-embedding-004 (768-dim) via lib/rai/embeddings
+// Uses: Google gemini-embedding-001 (768-dim) via lib/rai/embeddings
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';

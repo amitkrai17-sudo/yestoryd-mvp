@@ -1,7 +1,7 @@
 // ============================================================
 // FILE: app/api/admin/backfill-embeddings/route.ts
 // ============================================================
-// Re-embed all learning_events with text-embedding-004 (unified model)
+// Re-embed all learning_events with gemini-embedding-001 (unified model)
 // Idempotent — safe to re-run. Processes in batches of 10 with 1s delay.
 // ============================================================
 
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         processed: results.processed,
         errors: results.errors,
         duration_ms: duration,
-        model: 'text-embedding-004',
+        model: 'gemini-embedding-001',
         timestamp: new Date().toISOString(),
       },
       created_at: new Date().toISOString(),
