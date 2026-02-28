@@ -50,7 +50,7 @@ export async function handleSlotSelection(
   const rows = slots.map(s => ({
     id: s.slotId,
     title: s.displayText,
-    description: `with Coach ${s.coachName}`,
+    description: '30-min free Google Meet call',
   }));
 
   await sendList(

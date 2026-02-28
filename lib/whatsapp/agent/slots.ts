@@ -74,55 +74,62 @@ export async function getAvailableSlots(supabase: TypedClient): Promise<Discover
     const data = await response.json();
     if (!data.success || !data.slots?.length) return [];
 
-    // Collect unique coach IDs for name lookup
-    const allCoachIds = new Set<string>();
-    for (const slot of data.slots) {
-      if (slot.available && slot.coachIds) {
-        for (const id of slot.coachIds) allCoachIds.add(id);
-      }
-    }
-
-    // Batch-fetch coach names
-    const coachMap = new Map<string, string>();
-    if (allCoachIds.size > 0) {
-      const { data: coaches } = await supabase
-        .from('coaches')
-        .select('id, name')
-        .in('id', Array.from(allCoachIds));
-
-      for (const c of coaches || []) {
-        coachMap.set(c.id, c.name.split(' ')[0]); // First name only
-      }
-    }
-
     // Past-slot filter: 30 min buffer so we don't show slots that are about to pass
     const cutoff = new Date(now + 30 * 60 * 1000);
+    // Today-slot threshold: 3 hours from now (today slots must be well in the future)
+    const todayThreshold = new Date(now + 3 * 60 * 60 * 1000);
+    // Derive today's IST date (UTC + 5:30)
+    const todayIST = new Date(now + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // Build slot list (max 6 — WhatsApp list limit is 10 rows, 6 is cleaner)
-    const slots: DiscoverySlot[] = [];
+    // Group all valid future slots by date for smart spacing
+    const slotsByDate = new Map<string, Array<{ date: string; time: string; coachId: string }>>();
     let totalAvailable = 0;
 
     for (const s of data.slots) {
       if (!s.available) continue;
       totalAvailable++;
 
-      // Filter out past/imminent slots
       const slotDateTime = new Date(`${s.date}T${s.time}:00${IST_OFFSET}`);
       if (slotDateTime <= cutoff) continue;
 
-      if (slots.length >= 6) continue; // keep counting totalAvailable
-
       const coachId = s.coachIds?.[0] || 'unassigned';
-      const coachName = coachMap.get(coachId) || 'Coach';
+      if (!slotsByDate.has(s.date)) slotsByDate.set(s.date, []);
+      slotsByDate.get(s.date)!.push({ date: s.date, time: s.time, coachId });
+    }
 
-      slots.push({
-        date: s.date,
-        time: s.time,
-        coachId,
-        coachName,
-        displayText: formatSlotTitle(s.date, s.time),
-        slotId: `slot_${s.date}_${s.time}_${coachId}`,
-      });
+    // Smart spacing: pick max 2 per date (1 morning, 1 afternoon), max 6 total
+    // Today: only 1 slot if 3+ hours away
+    const slots: DiscoverySlot[] = [];
+    const sortedDates = Array.from(slotsByDate.keys()).sort();
+
+    for (const date of sortedDates) {
+      if (slots.length >= 6) break;
+      const dateSlots = slotsByDate.get(date)!;
+      const isToday = date === todayIST;
+
+      if (isToday) {
+        // Today: pick 1 slot that's 3+ hours from now
+        const todaySlot = dateSlots.find(s => {
+          const dt = new Date(`${s.date}T${s.time}:00${IST_OFFSET}`);
+          return dt > todayThreshold;
+        });
+        if (todaySlot) {
+          slots.push(buildSlot(todaySlot));
+        }
+      } else {
+        // Future dates: earliest morning (9-12) + earliest afternoon (14-18)
+        const morning = dateSlots.find(s => {
+          const h = parseInt(s.time.split(':')[0]);
+          return h >= 9 && h < 12;
+        });
+        const afternoon = dateSlots.find(s => {
+          const h = parseInt(s.time.split(':')[0]);
+          return h >= 14 && h < 18;
+        });
+
+        if (morning && slots.length < 6) slots.push(buildSlot(morning));
+        if (afternoon && slots.length < 6) slots.push(buildSlot(afternoon));
+      }
     }
 
     console.log(JSON.stringify({
@@ -130,6 +137,7 @@ export async function getAvailableSlots(supabase: TypedClient): Promise<Discover
       total: totalAvailable,
       afterFilter: slots.length,
       cutoffIST: cutoff.toISOString(),
+      dates: sortedDates.length,
     }));
 
     // Cache
@@ -144,6 +152,23 @@ export async function getAvailableSlots(supabase: TypedClient): Promise<Discover
     }));
     return [];
   }
+}
+
+// ============================================================
+// Build a DiscoverySlot from raw slot data
+// Note: coachName is not shown to users — booking API assigns
+// its own coach via round-robin, so displaying a name here is misleading.
+// ============================================================
+
+function buildSlot(s: { date: string; time: string; coachId: string }): DiscoverySlot {
+  return {
+    date: s.date,
+    time: s.time,
+    coachId: s.coachId,
+    coachName: '',
+    displayText: formatSlotTitle(s.date, s.time),
+    slotId: `slot_${s.date}_${s.time}_${s.coachId}`,
+  };
 }
 
 // ============================================================

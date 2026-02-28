@@ -304,7 +304,7 @@ export async function generateEmbedding(text: string): Promise<EmbeddingResult> 
     const embedding = await generateRaiEmbedding(text);
     return {
       success: true,
-      provider: 'gemini-embedding',
+      provider: 'text-embedding-004',
       embedding,
     };
   } catch (error: any) {

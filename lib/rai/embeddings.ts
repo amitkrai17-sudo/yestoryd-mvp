@@ -4,8 +4,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const EMBEDDING_MODEL = 'gemini-embedding-001';
-export const EMBEDDING_DIMENSION = 768; // gemini-embedding-001 natively outputs 3072, truncated to 768 for storage efficiency
+export const EMBEDDING_MODEL = 'text-embedding-004';
+export const EMBEDDING_DIMENSION = 768; // text-embedding-004 natively outputs 768-dim
 
 // Lazy initialization — avoids empty API key at module load time in serverless
 let _genAI: GoogleGenerativeAI | null = null;
@@ -21,8 +21,8 @@ function getGenAI(): GoogleGenerativeAI {
 }
 
 /**
- * Generate embedding vector for text using Google's gemini-embedding-001
- * Returns 768-dimensional vector (truncated from native 3072 for storage efficiency)
+ * Generate embedding vector for text using Google's text-embedding-004
+ * Returns 768-dimensional vector (native output dimension)
  *
  * ALL embedding generation across the platform MUST go through this function
  * to ensure vector space consistency for hybrid search.
