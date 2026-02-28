@@ -73,10 +73,10 @@ async function buildPricingFallback(): Promise<string> {
   const perWeek = getPerWeekPrice(config);
   const starter = config.tiers.find(t => t.slug === 'starter');
   const continuation = config.tiers.find(t => t.slug === 'continuation');
-  const full = config.tiers.find(t => t.slug === 'full_season');
+  const full = config.tiers.find(t => t.slug === 'full');
   const starterRange = getSessionRangeForTier(config, 'starter');
   const contRange = getSessionRangeForTier(config, 'continuation');
-  const fullRange = getSessionRangeForTier(config, 'full_season');
+  const fullRange = getSessionRangeForTier(config, 'full');
   const durRange = getDurationRange(config);
 
   const fmtRange = (r: { min: number; max: number }) =>

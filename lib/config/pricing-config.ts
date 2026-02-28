@@ -36,7 +36,7 @@ export interface AgeBandConfig {
 }
 
 export interface PricingTier {
-  slug: string;                      // 'starter' | 'continuation' | 'full_season'
+  slug: string;                      // 'starter' | 'continuation' | 'full'
   name: string;
   durationWeeks: number;             // 4 / 8 / 12
   startWeek: number;                 // 0 for starter/full, 4 for continuation
@@ -120,12 +120,12 @@ const FALLBACK_TIERS: PricingTier[] = [
     displayOrder: 2,
   },
   {
-    slug: 'full_season',
-    name: 'Full Season',
+    slug: 'full',
+    name: 'Full Program',
     durationWeeks: 12,
     startWeek: 0,
     originalPrice: 11999,
-    discountedPrice: 9999,
+    discountedPrice: 6999,
     currency: 'INR',
     isFeatured: false,
     displayOrder: 3,
@@ -172,7 +172,7 @@ function parseNumberArray(value: unknown): number[] | null {
 const TIER_START_WEEKS: Record<string, number> = {
   starter: 0,
   continuation: 4,
-  full_season: 0,
+  full: 0,
 };
 
 // =============================================================================

@@ -66,9 +66,9 @@ export default async function CoachPage({ params }: Props) {
 
   // Load pricing config for dynamic package display
   const pricingConfig = await getPricingConfig();
-  const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full_season');
+  const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full');
   const packagePrice = fullSeasonTier?.discountedPrice || 5999;
-  const sessionRange = getSessionRangeForTier(pricingConfig, 'full_season');
+  const sessionRange = getSessionRangeForTier(pricingConfig, 'full');
   const durationRange = getDurationRange(pricingConfig);
   const sessionLabel = sessionRange.min === sessionRange.max
     ? `${sessionRange.min}`

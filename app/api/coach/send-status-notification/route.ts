@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const settings = { siteBaseUrl: integrationsConfig.siteBaseUrl, adminEmail: emailConfig.fromEmail };
 
     // Compute earnings from base price × split percentages
-    const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full_season') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
+    const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
     const basePrice = fullSeasonTier?.discountedPrice || 5999;
     const coachPercent = splitConfig.coachCostPercent;
     const ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;

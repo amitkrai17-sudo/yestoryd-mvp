@@ -105,9 +105,10 @@ export async function fetchPricingDisplayData(): Promise<PricingDisplayData | nu
 
       const tiers: PricingTier[] = plans.map(plan => {
         const durationWeeks = plan.duration_weeks || totalSeasonWeeks;
+        const startWeek = plan.slug === 'continuation' ? 4 : 0;
 
         const sessionsCoaching = weeklyPattern.length > 0
-          ? getSessionsForTier(weeklyPattern, durationWeeks)
+          ? getSessionsForTier(weeklyPattern, durationWeeks, startWeek)
           : plan.sessions_coaching || 0;
 
         const skillBoosterCredits = totalBoosterCredits > 0

@@ -624,7 +624,7 @@ async function handleOperational(
     let fullProgramWeeks = 12;
     try {
       const pConfig = await getPricingConfig();
-      const fullTier = pConfig.tiers.find(t => t.slug === 'full_season');
+      const fullTier = pConfig.tiers.find(t => t.slug === 'full');
       if (fullTier) fullProgramWeeks = fullTier.durationWeeks;
     } catch { /* keep default */ }
     return { response: OPERATIONAL_RESPONSES.program_info(fullProgramWeeks), intent: 'OPERATIONAL', source: 'sql' };
@@ -673,7 +673,7 @@ async function handleOperational(
       if (!totalSessions && child.age) {
         try {
           const pConfig = await getPricingConfig();
-          totalSessions = getSessionCountForChild(pConfig, child.age, 'full_season');
+          totalSessions = getSessionCountForChild(pConfig, child.age, 'full');
         } catch { /* fall through */ }
       }
       if (!totalSessions) totalSessions = 9;

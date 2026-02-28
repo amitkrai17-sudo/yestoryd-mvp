@@ -168,7 +168,7 @@ async function sendConfirmationEmail(
   let ownLeadEarningsStr = '4,200';
   try {
     const [pricingConfig, splitConfig] = await Promise.all([getPricingConfig(), loadRevenueSplitConfig()]);
-    const tier = pricingConfig.tiers.find(t => t.slug === 'full_season') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
+    const tier = pricingConfig.tiers.find(t => t.slug === 'full') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
     const basePrice = tier?.discountedPrice || 5999;
     coachPercent = splitConfig.coachCostPercent;
     ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;

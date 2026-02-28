@@ -57,7 +57,7 @@ export default function CompletionPage() {
       .then(res => res.json())
       .then(data => {
         if (data?.tiers) {
-          const fullSeason = data.tiers.find((t: any) => t.slug === 'full_season');
+          const fullSeason = data.tiers.find((t: any) => t.slug === 'full');
           const price = fullSeason?.discountedPrice || 0;
           if (price > 0) setReferralCredit(Math.round(price * 10 / 100));
         }
