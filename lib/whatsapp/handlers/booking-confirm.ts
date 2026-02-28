@@ -49,6 +49,7 @@ export async function handleBookingConfirm(
   if (slotDateTime < minBookingTime) {
     const expiredMsg = `Oops, that slot just passed! Let me find other available times...`;
     await sendText(phone, expiredMsg);
+    invalidateSlotCache(); // Force fresh fetch — cached slots may all be stale
     const retry = await handleSlotSelection(phone, conversationId, collectedData, leadScore, supabase);
     return { response: retry.response, nextState: retry.nextState, success: false };
   }

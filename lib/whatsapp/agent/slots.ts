@@ -59,7 +59,7 @@ export async function getAvailableSlots(supabase: TypedClient): Promise<Discover
       || 'http://localhost:3000';
 
     const response = await fetch(
-      `${baseUrl}/api/scheduling/slots?sessionType=discovery&days=5`,
+      `${baseUrl}/api/scheduling/slots?sessionType=discovery&days=7`,
       { cache: 'no-store' }
     );
 
@@ -95,11 +95,22 @@ export async function getAvailableSlots(supabase: TypedClient): Promise<Discover
       }
     }
 
+    // Past-slot filter: 30 min buffer so we don't show slots that are about to pass
+    const cutoff = new Date(now + 30 * 60 * 1000);
+
     // Build slot list (max 6 — WhatsApp list limit is 10 rows, 6 is cleaner)
     const slots: DiscoverySlot[] = [];
+    let totalAvailable = 0;
 
     for (const s of data.slots) {
-      if (!s.available || slots.length >= 6) break;
+      if (!s.available) continue;
+      totalAvailable++;
+
+      // Filter out past/imminent slots
+      const slotDateTime = new Date(`${s.date}T${s.time}:00${IST_OFFSET}`);
+      if (slotDateTime <= cutoff) continue;
+
+      if (slots.length >= 6) continue; // keep counting totalAvailable
 
       const coachId = s.coachIds?.[0] || 'unassigned';
       const coachName = coachMap.get(coachId) || 'Coach';
@@ -113,6 +124,13 @@ export async function getAvailableSlots(supabase: TypedClient): Promise<Discover
         slotId: `slot_${s.date}_${s.time}_${coachId}`,
       });
     }
+
+    console.log(JSON.stringify({
+      event: 'slots_filtered',
+      total: totalAvailable,
+      afterFilter: slots.length,
+      cutoffIST: cutoff.toISOString(),
+    }));
 
     // Cache
     cachedSlots = slots;
