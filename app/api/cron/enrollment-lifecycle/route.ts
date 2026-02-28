@@ -452,7 +452,7 @@ export async function GET(request: NextRequest) {
           const completedCount = countsMap[enrollment.id] || 0;
           
           // V2: Use enrollment.total_sessions, fallback to legacy 9
-          const enrollmentTotal = (enrollment as any).total_sessions || 9; // V1 fallback — will be replaced by age_band_config.total_sessions
+          const enrollmentTotal = (enrollment as any).total_sessions || 9; // V1 fallback – enrollment.total_sessions is authoritative (DISABLED code)
           if (completedCount < enrollmentTotal) {
             try {
               await supabase.from('admin_alerts').insert({

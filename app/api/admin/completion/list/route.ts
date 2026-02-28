@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -103,6 +104,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to fetch enrollments' }, { status: 500 });
     }
 
+    // Load pricing config for age-band-aware session count fallbacks
+    const pricingConfig = await getPricingConfig();
+
     // Enrich each enrollment with session data and risk calculation
     const enrichedEnrollments: EnrichedEnrollment[] = await Promise.all(
       (enrollments || []).map(async (enrollment: any) => {
@@ -161,8 +165,10 @@ export async function GET(request: NextRequest) {
 
         const completed = sessionsCompleted || 0;
 
-        // V2: Use enrollment.total_sessions, fallback to legacy 9
-        const enrollmentTotal = (enrollment as any).total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+        // V2: Use enrollment.total_sessions, fallback to age-band-aware session count
+        const ageBand = (enrollment as any).age_band || 'building';
+        const bandSessions = pricingConfig.ageBands.find(b => b.id === ageBand)?.sessionsPerSeason;
+        const enrollmentTotal = (enrollment as any).total_sessions || bandSessions || 9;
         const onTrackThreshold = Math.ceil(enrollmentTotal * 0.67); // ~67% complete = on track
 
         // Calculate risk level

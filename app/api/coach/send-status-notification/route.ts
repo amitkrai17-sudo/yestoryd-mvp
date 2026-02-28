@@ -5,7 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
-import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
+import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig, loadRevenueSplitConfig } from '@/lib/config/loader';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,10 +28,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [coachConfig, integrationsConfig, emailConfig] = await Promise.all([
-      loadCoachConfig(), loadIntegrationsConfig(), loadEmailConfig(),
+    const [coachConfig, integrationsConfig, emailConfig, splitConfig, pricingConfig] = await Promise.all([
+      loadCoachConfig(), loadIntegrationsConfig(), loadEmailConfig(), loadRevenueSplitConfig(), getPricingConfig(),
     ]);
     const settings = { siteBaseUrl: integrationsConfig.siteBaseUrl, adminEmail: emailConfig.fromEmail };
+
+    // Compute earnings from base price × split percentages
+    const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full_season') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
+    const basePrice = fullSeasonTier?.discountedPrice || 5999;
+    const coachPercent = splitConfig.coachCostPercent;
+    const ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;
+    const ownLeadEarnings = Math.round(basePrice * ownLeadPercent / 100);
+    const ownLeadEarningsStr = ownLeadEarnings.toLocaleString('en-IN');
     const onboardingLink = `${settings.siteBaseUrl}/coach/onboarding?coachId=${coachId}`;
     const websiteLink = settings.siteBaseUrl;
     const reapplyLink = `${settings.siteBaseUrl}/yestoryd-academy/apply`;
@@ -89,9 +98,9 @@ export async function POST(request: NextRequest) {
       <div style="background: linear-gradient(135deg, #fdf4ff, #fce7f3); border-radius: 12px; padding: 20px; margin-top: 20px;">
         <h3 style="color: #7b008b; font-size: 16px; margin: 0 0 12px 0;">💰 Your Earning Potential</h3>
         <p style="color: #6b21a8; font-size: 14px; line-height: 1.6; margin: 0;">
-          <strong>50%</strong> of every enrollment you coach<br>
-          <strong>70%</strong> when you bring your own students<br>
-          <em>That's up to ₹4,200 per student!</em>
+          <strong>${coachPercent}%</strong> of every enrollment you coach<br>
+          <strong>${ownLeadPercent}%</strong> when you bring your own students<br>
+          <em>That's up to ₹${ownLeadEarningsStr} per student!</em>
         </p>
       </div>
       
@@ -127,9 +136,9 @@ Your passion for helping children read better truly impressed us, and we can't w
 👉 ${onboardingLink}
 
 💰 *What you can earn:*
-• 50% per student you coach
-• 70% when you bring your own students
-• Up to ₹4,200 per enrollment!
+• ${coachPercent}% per student you coach
+• ${ownLeadPercent}% when you bring your own students
+• Up to ₹${ownLeadEarningsStr} per enrollment!
 
 Let's create confident readers together! 📚✨
 

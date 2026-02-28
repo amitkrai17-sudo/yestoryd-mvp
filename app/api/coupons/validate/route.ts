@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
           ? settingsResult.data.value.replace(/"/g, '')
           : String(settingsResult.data?.value || 10))
       );
-      const programPrice = pricingResult.data?.discounted_price || 5999;
+      const programPrice = pricingResult.data?.discounted_price || 5999; // V1 fallback – pricing_plans.discounted_price is authoritative
 
       response.referralImpact = {
         leadSource: 'parent',

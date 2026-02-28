@@ -28,6 +28,7 @@ interface SiteSettingsContextType {
 // DEFAULT VALUES
 // =============================================================================
 
+// V1 fallback – site_settings scheduling_duration_* is authoritative
 const DEFAULT_DURATIONS: SessionDurations = {
   coaching: 45,
   skillBuilding: 45,

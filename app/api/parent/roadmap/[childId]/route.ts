@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -235,7 +236,9 @@ export async function GET(
       } : null,
       plan_items: planItems,
       completed_count: completedCount || 0,
-      total_sessions: enrollment?.total_sessions || planItems.length || 9, /* V1 fallback */
+      total_sessions: enrollment?.total_sessions || planItems.length
+        || (await getPricingConfig()).ageBands.find(b => b.id === child.age_band)?.sessionsPerSeason
+        || 9,
       next_session: nextSessionData,
       recent_summaries: sessionSummaries,
       future_seasons: futureSeasons,

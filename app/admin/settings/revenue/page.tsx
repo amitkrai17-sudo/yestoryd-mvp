@@ -49,7 +49,7 @@ export default function RevenueSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Preview amount
+  // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
   const previewAmount = 5999;
 
   // Calculate preview splits

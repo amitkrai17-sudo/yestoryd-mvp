@@ -255,11 +255,23 @@ const trackABEvent = async (testName: string, variant: string, eventType: string
   }
 };
 
+// Build session duration FAQ answer from pricing display data (age bands)
+function buildDurationFaqAnswer(pricingDisplayData?: any): string {
+  const ageBands = pricingDisplayData?.ageBands;
+  if (ageBands?.length > 0) {
+    const parts = ageBands.map((b: any) =>
+      `${b.sessionDurationMinutes} minutes for ages ${b.ageMin}-${b.ageMax}`
+    );
+    return `Session length depends on your child's age band: ${parts.join(', ')}. This is the optimal duration for each age group with engagement breaks built in. Sessions are scheduled at times convenient for you — weekdays or weekends.`;
+  }
+  return `Session length depends on your child's age band: 30 minutes for ages 4-6, 45 minutes for ages 7-9, and 60 minutes for ages 10-12. This is the optimal duration for each age group with engagement breaks built in. Sessions are scheduled at times convenient for you — weekdays or weekends.`;
+}
+
 // Default FAQ data - function to inject session durations
-const getDefaultFaqData = (durations: { coaching: number; checkin: number }) => [
+const getDefaultFaqData = (durations: { coaching: number; checkin: number }, pricingDisplayData?: any) => [
   { question: "What device do I need for the assessment?", answer: "Any smartphone, tablet, or laptop with a microphone works! The assessment runs in your browser — no app download needed. 80% of our parents use their phone." },
   { question: "How many sessions does my child get?", answer: "Your program runs for 12 weeks. The number and length of sessions are tailored to your child's age — younger children (4-6) get shorter, more frequent sessions while older children (10-12) get longer, focused sessions. Every child receives personalized 1:1 coaching totalling about 12 hours." },
-  { question: "How long is each coaching session?", answer: `Session length depends on your child's age band: 30 minutes for ages 4-6, 45 minutes for ages 7-9, and 60 minutes for ages 10-12. This is the optimal duration for each age group with engagement breaks built in. Sessions are scheduled at times convenient for you — weekdays or weekends.` },
+  { question: "How long is each coaching session?", answer: buildDurationFaqAnswer(pricingDisplayData) },
   { question: "Is this a subscription? Will I be charged monthly?", answer: "No subscriptions! It's a one-time payment. Choose from Starter Pack, Continuation, or Full Program based on your needs. No hidden fees, no recurring charges." },
   { question: "What if my child doesn't improve?", answer: "We offer a 100% satisfaction guarantee. If you don't see improvement after completing the program, we'll either continue working with you at no extra cost or provide a full refund." },
   { question: "How will I know my child is improving?", answer: "You'll receive automated Progress Pulse reports after every few sessions showing your child's specific improvements, strengths, and home activities to try. Plus, you can request a coach call once a month for a personal update." },
@@ -298,8 +310,27 @@ export default function HomePageClient({
   const whatsappNumber = contact.whatsappNumber;
   const whatsappMessage = "Hi! I'd like to know more about the reading program for my child.";
   const storyVideoUrl = videos?.homepageStoryVideoUrl || 'https://www.youtube.com/embed/Dz94bVuWH_A';
-  const durations = sessionDurations || { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 };
-  const faqItems = c.faq_items?.length > 0 ? c.faq_items : getDefaultFaqData(durations);
+  const durations = sessionDurations || { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 }; // V1 fallback – SiteSettingsContext is authoritative
+
+  // Compute session range label from pricing display data (e.g., "6–18 coaching sessions (1:1)")
+  const sessionRangeLabel = (() => {
+    const bands = pricingDisplayData?.ageBands;
+    if (!bands?.length) return '6 coaching sessions (1:1)';
+    // Get session count range across all age bands for the continuation tier (building arc)
+    const contTier = bands[0]?.tiers?.find((t: any) => t.slug === 'continuation');
+    if (!contTier) return '6 coaching sessions (1:1)';
+    const counts = bands.map((b: any) => {
+      const tier = b.tiers?.find((t: any) => t.slug === 'continuation');
+      return tier?.sessionsCoaching || 0;
+    }).filter((n: number) => n > 0);
+    if (counts.length === 0) return '6 coaching sessions (1:1)';
+    const min = Math.min(...counts);
+    const max = Math.max(...counts);
+    const range = min === max ? `${min}` : `${min}–${max}`;
+    return `${range} coaching sessions (1:1)`;
+  })();
+
+  const faqItems = c.faq_items?.length > 0 ? c.faq_items : getDefaultFaqData(durations, pricingDisplayData);
   const displayTestimonials = testimonials.length > 0 ? testimonials : defaultTestimonials;
 
   useEffect(() => {
@@ -402,7 +433,7 @@ export default function HomePageClient({
         subtitle={c.arc_section_subtitle || 'A clear path from struggling reader to confident communicator'}
         phases={{
           assess: { letter: 'A', weeks: c.arc_assess_weeks || 'Week 1-4', title: c.arc_assess_title || 'Assess', subtitle: c.arc_assess_subtitle || 'Foundation Arc', description: c.arc_assess_description || 'AI listens to your child read and identifies exact gaps in 40+ sound patterns.', features: c.arc_assess_features || ['5-minute AI assessment', 'Detailed gap report', 'Personalized learning path'], icon: 'brain', color: '#00ABFF' },
-          remediate: { letter: 'R', weeks: c.arc_remediate_weeks || 'Week 5-8', title: c.arc_remediate_title || 'Remediate', subtitle: c.arc_remediate_subtitle || 'Building Arc', description: c.arc_remediate_description || 'Expert coaches fill gaps with personalized 1:1 sessions covering phonics, grammar, comprehension, and vocabulary — tailored for ages 4-12.', features: c.arc_remediate_features || ['6 coaching sessions (1:1)', 'Practice activities at home', 'Weekly WhatsApp updates'], icon: 'heart', color: '#FF0099' },
+          remediate: { letter: 'R', weeks: c.arc_remediate_weeks || 'Week 5-8', title: c.arc_remediate_title || 'Remediate', subtitle: c.arc_remediate_subtitle || 'Building Arc', description: c.arc_remediate_description || 'Expert coaches fill gaps with personalized 1:1 sessions covering phonics, grammar, comprehension, and vocabulary — tailored for ages 4-12.', features: c.arc_remediate_features || [sessionRangeLabel, 'Practice activities at home', 'Weekly WhatsApp updates'], icon: 'heart', color: '#FF0099' },
           celebrate: { letter: 'C', weeks: c.arc_celebrate_weeks || 'Week 9-12', title: c.arc_celebrate_title || 'Celebrate', subtitle: c.arc_celebrate_subtitle || 'Confidence Arc', description: c.arc_celebrate_description || 'Your child reads with confidence. Measurable improvement you can see.', features: c.arc_celebrate_features || ['Before/after comparison', 'Progress certificate', 'Continuation roadmap'], icon: 'award', color: '#c44dff' },
         }}
         promise={{ title: c.arc_promise_title || 'The 90-Day Promise', description: c.arc_promise_description || 'In 90 days, your child reads more fluently.', badges: [c.arc_promise_badge_1 || 'Measurable Growth', c.arc_promise_badge_2 || '100% Refund Guarantee', c.arc_promise_badge_3 || 'Full Transparency'] }}

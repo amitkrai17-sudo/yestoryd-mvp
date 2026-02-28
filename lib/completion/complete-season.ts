@@ -4,6 +4,7 @@
 // ============================================================
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 const getSupabase = createAdminClient;
 
 // ============================================================
@@ -28,12 +29,7 @@ export interface SeasonCompletionResult {
   error?: string;
 }
 
-// Age band config for estimated seasons
-const AGE_BAND_SEASONS: Record<string, number> = {
-  foundation: 4, // 24 sessions × 4 = 96 sessions potential
-  building: 3,   // 18 sessions × 3 = 54 sessions
-  mastery: 2,    // 12 sessions × 2 = 24 sessions
-};
+// Age band max seasons — loaded dynamically from getPricingConfig() at runtime
 
 // Season name templates for next season
 const NEXT_SEASON_NAMES: Record<string, string[]> = {
@@ -81,6 +77,10 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
     const seasonNumber = enrollment.season_number || 1;
     const ageBand = enrollment.age_band || 'building';
 
+    // Load pricing config for age-band-aware fallbacks
+    const pricingConfig = await getPricingConfig();
+    const bandConfig = pricingConfig.ageBands.find(b => b.id === ageBand);
+
     // 2. Count completed sessions
     const { count: completedCount } = await supabase
       .from('scheduled_sessions')
@@ -89,7 +89,7 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
       .eq('status', 'completed');
 
     const sessionsCompleted = completedCount || 0;
-    const sessionsTotal = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+    const sessionsTotal = enrollment.total_sessions || bandConfig?.sessionsPerSeason || 9;
     const completionRate = sessionsTotal > 0 ? sessionsCompleted / sessionsTotal : 0;
 
     // 3. Get diagnostic data (Session 1 baseline)
@@ -191,7 +191,8 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
 
     // 9. Generate next season preview (if applicable)
     let nextSeasonPreview = null;
-    const maxSeasons = AGE_BAND_SEASONS[ageBand] || 3;
+    // Max seasons per age band — derived from NEXT_SEASON_NAMES curriculum structure
+    const maxSeasons = (NEXT_SEASON_NAMES[ageBand]?.length) || 3;
 
     if (seasonNumber < maxSeasons) {
       const nextSeasonNumber = seasonNumber + 1;

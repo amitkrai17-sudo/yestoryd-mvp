@@ -44,9 +44,26 @@ export default function CompletionPage() {
   const [referralCode, setReferralCode] = useState('');
   const [generatingCode, setGeneratingCode] = useState(false);
 
+  // Dynamic referral credit from pricing
+  const [referralCredit, setReferralCredit] = useState(0);
+
   useEffect(() => {
     fetchCompletionData();
   }, [enrollmentId]);
+
+  // Fetch pricing to compute parent referral credit (10% of enrollment price)
+  useEffect(() => {
+    fetch('/api/pricing-display')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.tiers) {
+          const fullSeason = data.tiers.find((t: any) => t.slug === 'full_season');
+          const price = fullSeason?.discountedPrice || 0;
+          if (price > 0) setReferralCredit(Math.round(price * 10 / 100));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function fetchCompletionData() {
     try {
@@ -61,7 +78,7 @@ export default function CompletionPage() {
 
       // Check if actually completed
       if (!result.eligible && result.reason !== 'already_completed') {
-        setError(`Program not yet complete. ${result.progress?.completed || 0}/${result.progress?.total || 9 /* V1 fallback */} sessions done.`);
+        setError(`Program not yet complete. ${result.progress?.completed || 0}/${result.progress?.total || 9 /* V1 fallback – enrollment.total_sessions is authoritative */} sessions done.`);
         setLoading(false);
         return;
       }
@@ -80,7 +97,7 @@ export default function CompletionPage() {
         completedAt: enrollData.data?.completed_at || new Date().toISOString(),
         programStart: result.enrollment?.programStart || '',
         programEnd: result.enrollment?.programEnd || '',
-        sessionsCompleted: result.progress?.completed || 9, /* V1 fallback */
+        sessionsCompleted: result.progress?.completed || 9, // V1 fallback – enrollment.total_sessions is authoritative
       });
 
       // Check for existing referral code
@@ -330,9 +347,9 @@ export default function CompletionPage() {
               <Gift className="w-6 h-6 text-green-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-white mb-1">Refer a Friend, Earn ₹600!</h3>
+              <h3 className="font-bold text-white mb-1">Refer a Friend, Earn {referralCredit > 0 ? `₹${referralCredit.toLocaleString('en-IN')}` : '₹...'}!</h3>
               <p className="text-text-secondary text-sm mb-4">
-                Share your success! Friends get 10% off, you get ₹600 credit.
+                Share your success! Friends get 10% off, you get {referralCredit > 0 ? `₹${referralCredit.toLocaleString('en-IN')}` : '₹...'} credit.
               </p>
 
               {referralCode ? (

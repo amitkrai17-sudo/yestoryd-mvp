@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 
 const supabase = createAdminClient();
 
@@ -28,7 +29,8 @@ export async function GET(
         program_end,
         child_id,
         coach_id,
-        total_sessions
+        total_sessions,
+        age_band
       `)
       .eq('id', enrollmentId)
       .single();
@@ -69,7 +71,9 @@ export async function GET(
     ).length || 0;
 
     // V3: completion based on coaching sessions vs enrollment.total_sessions
-    const totalExpected = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+    const pricingConfig = await getPricingConfig();
+    const bandSessions = pricingConfig.ageBands.find(b => b.id === ((enrollment as any).age_band || 'building'))?.sessionsPerSeason;
+    const totalExpected = enrollment.total_sessions || bandSessions || 9;
     const isEligible = coachingCompleted >= totalExpected;
 
     return NextResponse.json({

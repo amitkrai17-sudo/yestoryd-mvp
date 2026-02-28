@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
+import { loadRevenueSplitConfig } from '@/lib/config/loader';
 
 const supabase = createAdminClient();
 
@@ -159,6 +161,23 @@ async function sendConfirmationEmail(
   const { sendEmail, isEmailConfigured } = require('@/lib/email/resend-client');
   if (!isEmailConfigured()) return;
 
+  // Compute earnings from base price × split percentages
+  let coachPercent = 50;
+  let ownLeadPercent = 70;
+  let platformLeadEarningsStr = '3,000';
+  let ownLeadEarningsStr = '4,200';
+  try {
+    const [pricingConfig, splitConfig] = await Promise.all([getPricingConfig(), loadRevenueSplitConfig()]);
+    const tier = pricingConfig.tiers.find(t => t.slug === 'full_season') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
+    const basePrice = tier?.discountedPrice || 5999;
+    coachPercent = splitConfig.coachCostPercent;
+    ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;
+    platformLeadEarningsStr = Math.round(basePrice * coachPercent / 100).toLocaleString('en-IN');
+    ownLeadEarningsStr = Math.round(basePrice * ownLeadPercent / 100).toLocaleString('en-IN');
+  } catch (e) {
+    console.error('[agreement/sign] Failed to load pricing config for email:', e);
+  }
+
   const referralCode = coach.id.substring(0, 8).toUpperCase();
   const referralLink = `https://yestoryd.com/coach-apply?ref=${referralCode}`;
   const dashboardLink = 'https://yestoryd.com/coach/dashboard';
@@ -217,11 +236,11 @@ async function sendConfirmationEmail(
               <table style="width: 100%;">
                 <tr>
                   <td style="padding: 8px 0; color: #666;">Yestoryd-sourced student:</td>
-                  <td style="padding: 8px 0; color: #333; font-weight: bold; text-align: right;">₹3,000 (50%)</td>
+                  <td style="padding: 8px 0; color: #333; font-weight: bold; text-align: right;">₹${platformLeadEarningsStr} (${coachPercent}%)</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #666;">Your referral student:</td>
-                  <td style="padding: 8px 0; color: #FF0099; font-weight: bold; text-align: right;">₹4,200 (70%)</td>
+                  <td style="padding: 8px 0; color: #FF0099; font-weight: bold; text-align: right;">₹${ownLeadEarningsStr} (${ownLeadPercent}%)</td>
                 </tr>
               </table>
             </div>

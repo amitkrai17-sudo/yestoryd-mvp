@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
@@ -120,7 +121,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
     // Get enrollment for this child (includes V2 total_sessions)
     const { data: enrollment } = await supabase
       .from('enrollments')
-      .select('id, status, parent_id, child_id, total_sessions')
+      .select('id, status, parent_id, child_id, total_sessions, age_band')
       .eq('child_id', childId)
       .in('status', ['active', 'pending_start'])
       .order('created_at', { ascending: false })
@@ -131,8 +132,10 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
       return { triggered: false, message: 'No active enrollment found' };
     }
 
-    // V2: Use enrollment.total_sessions, fallback to legacy 9
-    const totalRequired = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+    // V2: Use enrollment.total_sessions, fallback to age-band-aware session count
+    const pricingConfig = await getPricingConfig();
+    const bandSessions = pricingConfig.ageBands.find(b => b.id === ((enrollment as any).age_band || 'building'))?.sessionsPerSeason;
+    const totalRequired = enrollment.total_sessions || bandSessions || 9;
 
     // Count completed sessions for this child
     const { count: completedSessions } = await supabase

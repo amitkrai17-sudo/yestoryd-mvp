@@ -112,7 +112,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
             </div>
             <div>
               <p className="text-white font-semibold text-lg">{session.child_name || 'Unknown'}</p>
-              <p className="text-white/70 text-sm">{session.child_age || '?'} years - Session {sessionNumber}/{session.total_sessions || 9 /* V1 fallback */}</p>
+              <p className="text-white/70 text-sm">{session.child_age || '?'} years - Session {sessionNumber}/{session.total_sessions || 9 /* V1 fallback – enrollment.total_sessions is authoritative */}</p>
             </div>
           </div>
         </div>

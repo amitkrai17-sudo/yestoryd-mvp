@@ -238,7 +238,7 @@ function getScoreContext(
 
   // Fallback defaults
   if (score <= 4) {
-    return `Many children at ${ageGroup} start here. With 6 coaching sessions, most improve by 3-4 points.`;
+    return `Many children at ${ageGroup} start here. With dedicated coaching sessions, most improve by 3-4 points.`;
   } else if (score <= 6) {
     return `This is a common starting point for ${ageGroup}. Most children improve by 2-3 points with focused coaching.`;
   } else if (score <= 8) {

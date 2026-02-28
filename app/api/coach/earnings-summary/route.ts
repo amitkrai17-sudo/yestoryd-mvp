@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 
     const programFee = priceSetting?.value
       ? parseInt(String(priceSetting.value).replace(/[^0-9]/g, ''))
-      : 5999;
+      : 5999; // V1 fallback – site_settings 'program_price' is authoritative
 
     const defaultCoachSplit = (coach.coach_split_percentage || 50) / 100;
     const coachLeadSplit = 0.70; // 70% for coach leads

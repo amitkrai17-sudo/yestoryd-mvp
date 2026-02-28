@@ -76,7 +76,7 @@ export default function AdminCoachGroupsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [assigningCoach, setAssigningCoach] = useState<string | null>(null);
 
-  // TODO: Fetch from site_settings 'program_price'
+  // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
   const ENROLLMENT_AMOUNT = 5999;
 
   useEffect(() => {

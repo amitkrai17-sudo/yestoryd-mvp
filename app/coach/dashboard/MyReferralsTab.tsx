@@ -1,11 +1,10 @@
 // file: app/coach/dashboard/MyReferralsTab.tsx
-// Coach Referrals Tab - FIXED to use database values
-// Shows referral code, link, stats, and earnings
-// TODO: Move referral amount (₹1,200) to site_settings
+// Coach Referrals Tab - uses dynamic pricing from earnings calculator API
 
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
 import {
   Gift,
   Copy,
@@ -64,6 +63,17 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
   const [copied, setCopied] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Dynamic referral bonus from pricing × split config
+  const { data: earningsData } = useEarningsCalculator();
+  const referralBonus = earningsData
+    ? Math.round(
+        (earningsData.products.find(p => p.slug === 'full')?.price || 0) *
+        (earningsData.split_config?.lead_cost_percent || 0) / 100
+      )
+    : 0;
+  const referralBonusStr = referralBonus > 0 ? `₹${referralBonus.toLocaleString('en-IN')}` : '₹...';
+  const leadPercent = earningsData?.split_config?.lead_cost_percent || 20;
 
   useEffect(() => {
     if (coachEmail) {
@@ -148,7 +158,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Gift className="w-6 h-6" />
-              <h2 className="text-xl font-bold">Earn ₹1,200 Per Referral</h2>
+              <h2 className="text-xl font-bold">Earn {referralBonusStr} Per Referral</h2>
             </div>
             <p className="text-blue-100">Share & earn when parents enroll!</p>
           </div>
@@ -283,7 +293,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
         <div className="flex items-center gap-2 text-sm text-text-tertiary bg-surface-2 rounded-lg p-3">
           <span className="text-amber-500">✨</span>
-          <span>₹1,200 (20% lead bonus) per enrollment • Paid monthly on 7th</span>
+          <span>{referralBonusStr} ({leadPercent}% lead bonus) per enrollment • Paid monthly on 7th</span>
         </div>
       </div>
 
@@ -316,7 +326,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
                     </span>
                     {(referral.lead_status === 'enrolled' || referral.lead_status === 'active') && (
                       <p className="text-sm text-emerald-600 font-medium mt-1">
-                        +₹{referral.expected_earning?.toLocaleString('en-IN') || '1,200'}
+                        +₹{referral.expected_earning?.toLocaleString('en-IN') || (referralBonus > 0 ? referralBonus.toLocaleString('en-IN') : '...')}
                       </p>
                     )}
                   </div>
@@ -333,7 +343,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
           <Gift className="w-12 h-12 text-blue-300 mx-auto mb-3" />
           <h3 className="font-bold text-white mb-2">No Referrals Yet</h3>
           <p className="text-text-tertiary mb-4">
-            Share your referral link to start earning ₹1,200 per enrollment!
+            Share your referral link to start earning {referralBonusStr} per enrollment!
           </p>
           <button
             onClick={shareOnWhatsApp}
@@ -359,7 +369,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500">3.</span>
-            <span>When they enroll, you earn ₹1,200 lead bonus</span>
+            <span>When they enroll, you earn {referralBonusStr} lead bonus</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500">4.</span>

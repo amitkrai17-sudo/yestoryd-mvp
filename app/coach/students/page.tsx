@@ -106,7 +106,7 @@ export default function CoachStudentsPage() {
             age_band: (enrollment as any).age_band || null,
             assessment_score: child.latest_assessment_score,
             sessions_completed: count || 0,
-            total_sessions: enrollment.total_sessions || enrollment.sessions_scheduled || 9, /* V1 fallback */
+            total_sessions: enrollment.total_sessions || enrollment.sessions_scheduled || 9, // V1 fallback – enrollment.total_sessions is authoritative
             status: enrollment.status === 'pending_start' ? 'active' : enrollment.status,
             is_coach_lead: enrollment.lead_source === 'coach',
             trend: profile?.reading_level?.trend || null,

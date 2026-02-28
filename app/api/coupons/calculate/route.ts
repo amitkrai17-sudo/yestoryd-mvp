@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
       settingsMap[s.key] = s.value?.toString().replace(/"/g, '') || '';
     });
 
-    let originalAmount = customAmount || 5999;
+    let originalAmount = customAmount || 5999; // V1 fallback – pricing_plans.discounted_price is authoritative
 
     if (productType === 'coaching') {
       // Use pricing_plans table (single source of truth)

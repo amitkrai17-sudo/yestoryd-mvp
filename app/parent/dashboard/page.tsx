@@ -133,7 +133,7 @@ export default function ParentDashboardPage() {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [completedSessions, setCompletedSessions] = useState<number>(0);
-  const [totalSessions, setTotalSessions] = useState<number>(9); /* V1 fallback — will be replaced by age_band_config.total_sessions */
+  const [totalSessions, setTotalSessions] = useState<number>(9); // V1 fallback – enrollment.total_sessions is authoritative
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [pendingSkillBooster, setPendingSkillBooster] = useState<PendingSkillBoosterSession | null>(null);
   const [parentCalls, setParentCalls] = useState<any[]>([]);
@@ -390,7 +390,7 @@ export default function ParentDashboardPage() {
         console.error('Total count error:', totalError);
       }
 
-      setTotalSessions(total || 9); /* V1 fallback */
+      setTotalSessions(total || 9); // V1 fallback – enrollment.total_sessions is authoritative
       setLoading(false);
     } catch (err: any) {
       console.error('Error fetching data:', err);

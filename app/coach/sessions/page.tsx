@@ -7,8 +7,8 @@ import Link from 'next/link';
 import CoachLayout from '@/components/layouts/CoachLayout';
 import { PreSessionBrief, SessionCard } from '@/components/coach';
 import { ParentUpdateButton } from '@/components/coach/ParentUpdateButton';
-// New structured session form (v2.0) with contextual suggestions
-import SessionForm from '@/components/coach/session-form';
+// Structured capture form (v3.0) with intelligence scoring
+import StructuredCaptureForm from '@/components/coach/structured-capture';
 import { RescheduleModal } from '@/components/shared';
 import type { RescheduleSession } from '@/components/shared';
 import { RequestOfflineModal } from '@/components/coach/RequestOfflineModal';
@@ -724,18 +724,39 @@ export default function CoachSessionsPage() {
 
       {/* Modals */}
       {showCompleteModal && selectedSession && coach && (
-        <SessionForm
+        <StructuredCaptureForm
           sessionId={selectedSession.id}
           childId={selectedSession.child_id}
           childName={selectedSession.child_name}
           childAge={selectedSession.child_age}
           coachId={coach.id}
           sessionNumber={selectedSession.session_number || 1}
+          modality="online_1on1"
           onClose={() => {
             setShowCompleteModal(false);
             setSelectedSession(null);
           }}
-          onComplete={handleCompleteSuccess}
+          onComplete={async (result) => {
+            try {
+              // Mark session as completed
+              const res = await fetch(`/api/coach/sessions/${selectedSession.id}/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  status: 'completed',
+                  completedAt: new Date().toISOString(),
+                  captureId: result.captureId,
+                  intelligenceScore: result.intelligenceScore,
+                }),
+              });
+              if (!res.ok) {
+                console.error('Failed to complete session:', await res.text());
+              }
+            } catch (err) {
+              console.error('Error completing session:', err);
+            }
+            handleCompleteSuccess();
+          }}
         />
       )}
 

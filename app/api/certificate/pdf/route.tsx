@@ -640,7 +640,7 @@ export async function GET(request: NextRequest) {
       finalScores,
       initialFeedback,
       finalFeedback,
-      sessionsCompleted: sessionsCompleted || 9, /* V1 fallback */
+      sessionsCompleted: sessionsCompleted || 9, // V1 fallback – enrollment.total_sessions is authoritative
     });
 
     // Generate PDF
@@ -652,7 +652,7 @@ export async function GET(request: NextRequest) {
         certificateNumber={certificateNumber}
         completedDate={completedDate}
         programDuration={programDuration}
-        sessionsCompleted={sessionsCompleted || 9 /* V1 fallback */}
+        sessionsCompleted={sessionsCompleted || 9 /* V1 fallback – enrollment.total_sessions is authoritative */}
         initialScores={initialScores}
         finalScores={finalScores}
         geminiFeedback={geminiFeedback}

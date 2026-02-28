@@ -20,6 +20,7 @@ import { formatForWhatsApp } from '@/lib/utils/phone';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import crypto from 'crypto';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { getPricingConfig, getPerWeekPrice } from '@/lib/config/pricing-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +59,8 @@ const SEQUENCES: Record<string, SequenceConfig> = {
 function getStaticMessage(
   sequence: string,
   step: number,
-  vars: { parentName: string; childName: string; childAge: number | null; concern: string | null }
+  vars: { parentName: string; childName: string; childAge: number | null; concern: string | null },
+  perWeek: number
 ): string | null {
   const name = vars.parentName || 'there';
   const child = vars.childName || 'your child';
@@ -85,7 +87,7 @@ function getStaticMessage(
       case 1:
         return null; // Gemini tip — handled separately
       case 2:
-        return `Hi ${name}! Quick thought 💡\n\nDid you know that children who get early reading support show 2x faster improvement? Our personalized coaching starts at just ₹375/week.\n\nWant to try a free discovery call to see if it's right for ${child}?`;
+        return `Hi ${name}! Quick thought 💡\n\nDid you know that children who get early reading support show 2x faster improvement? Our personalized coaching starts at just ₹${perWeek}/week.\n\nWant to try a free discovery call to see if it's right for ${child}?`;
       case 3:
         return `Hi ${name}, just a final check-in! 🙏\n\nWe're here whenever you're ready to explore reading support for ${child}. Just reply "Hi" and we'll help you get started.\n\nHappy reading! 📚`;
     }
@@ -94,7 +96,7 @@ function getStaticMessage(
   if (sequence === 'post_discovery') {
     switch (step) {
       case 0:
-        return `Hi ${name}! 🎉\n\nGreat news — your discovery call gave us wonderful insights about ${child}'s reading journey.\n\nWould you like to know more about how our coaching program works? We have flexible plans starting at ₹375/week.`;
+        return `Hi ${name}! 🎉\n\nGreat news — your discovery call gave us wonderful insights about ${child}'s reading journey.\n\nWould you like to know more about how our coaching program works? We have flexible plans starting at ₹${perWeek}/week.`;
       case 1:
         return `Hi ${name}! Just wanted to share — parents who start coaching within a week of their discovery call see the fastest results for their children.\n\nShall I help you pick a plan that works for ${child}?`;
       case 2:
@@ -201,6 +203,8 @@ export async function GET(request: NextRequest) {
     }));
 
     const supabase = getServiceSupabase();
+    const pricingConfig = await getPricingConfig();
+    const perWeek = getPerWeekPrice(pricingConfig);
     const now = new Date().toISOString();
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
@@ -409,7 +413,7 @@ export async function GET(request: NextRequest) {
             concern: lead.parent_concerns?.[0] || null,
           };
 
-          let message: string | null = getStaticMessage(sequence, step, vars);
+          let message: string | null = getStaticMessage(sequence, step, vars, perWeek);
 
           // Step 1 in post_assessment and post_conversation uses Gemini tip
           if (message === null && step === 1 && (sequence === 'post_assessment' || sequence === 'post_conversation')) {

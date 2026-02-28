@@ -26,7 +26,7 @@ export default function PaymentGuard({
   onClose,
   onProceed,
   prefillData = {},
-  amount = 5999,
+  amount = 5999, // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
 }: PaymentGuardProps) {
   const [form, setForm] = useState<PaymentData>({
     parentName: prefillData.parentName || '',

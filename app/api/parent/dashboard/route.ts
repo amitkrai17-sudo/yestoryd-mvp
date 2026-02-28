@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timedQuery } from '@/lib/db-utils';
 import { capitalizeName } from '@/lib/utils';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 
 const supabase = createAdminClient();
 
@@ -77,7 +78,9 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(3);
 
-    const totalSessions = child.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+    const pricingConfig = await getPricingConfig();
+    const bandSessions = pricingConfig.ageBands.find(b => b.id === (child.age_band || 'building'))?.sessionsPerSeason;
+    const totalSessions = child.total_sessions || bandSessions || 9;
     const sessionsCompleted = completedCount || 0;
     const progressPercentage = Math.round((sessionsCompleted / totalSessions) * 100);
 

@@ -9,7 +9,22 @@ import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 export default function TermsOfServicePage() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [fullProgramWeeks, setFullProgramWeeks] = useState(12);
   const durations = useSessionDurations();
+
+  // Load full program duration from pricing display data
+  useEffect(() => {
+    fetch('/api/pricing-display')
+      .then(r => r.json())
+      .then(data => {
+        const tiers = data?.ageBands?.[0]?.tiers;
+        if (tiers?.length > 0) {
+          const maxWeeks = Math.max(...tiers.map((t: any) => t.durationWeeks || 0));
+          if (maxWeeks > 0) setFullProgramWeeks(maxWeeks);
+        }
+      })
+      .catch(() => { /* keep default 12 */ });
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -108,7 +123,7 @@ export default function TermsOfServicePage() {
 
               <h3 className="text-lg font-semibold text-[#FF0099] mt-6 mb-3">3.2 Coaching Program</h3>
               <ul className="list-disc pl-6 space-y-2">
-                <li>12-week program with personalized coaching sessions tailored to your child&apos;s age band</li>
+                <li>{fullProgramWeeks}-week program with personalized coaching sessions tailored to your child&apos;s age band</li>
                 <li>1:1 personalized coaching sessions with certified coaches</li>
                 <li>AI-powered progress tracking and recommendations</li>
                 <li>Parent dashboard with real-time progress updates</li>

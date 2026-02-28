@@ -220,6 +220,7 @@ export async function createAllSessions(params: CreateAllSessionsParams): Promis
       }
 
       // V2: Use schedule's own duration if provided, fallback to type-based defaults
+      // V1 fallback – age_band_config.session_duration_minutes is authoritative
       const durationMinutes = (schedule as any).durationMinutes || (schedule.type === 'coaching' ? 45 : 30);
       const endTime = new Date(sessionDate);
       endTime.setMinutes(endTime.getMinutes() + durationMinutes);
@@ -345,7 +346,7 @@ export async function getAvailableSlots(
 export async function rescheduleEvent(
   eventId: string,
   newDateTime: Date,
-  durationMinutes: number = 45,
+  durationMinutes: number = 45, // V1 fallback – age_band_config.session_duration_minutes is authoritative
   organizerEmail?: string
 ): Promise<{ success: boolean; error?: string; meetLink?: string }> {
   try {

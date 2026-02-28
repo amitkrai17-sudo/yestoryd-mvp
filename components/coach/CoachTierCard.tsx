@@ -144,7 +144,7 @@ export default function CoachTierCard({ coachId, coachEmail }: CoachTierCardProp
   if (!tierData) return null;
 
   const TierIcon = TIER_CONFIG[tierData.group_name]?.icon || Sprout;
-  const ENROLLMENT_AMOUNT = 5999;
+  const ENROLLMENT_AMOUNT = 5999; // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
   const coachEarnings = Math.round(ENROLLMENT_AMOUNT * tierData.coach_cost_percent / 100);
   const coachEarningsWithLead = Math.round(
     ENROLLMENT_AMOUNT * (tierData.coach_cost_percent + tierData.lead_cost_percent) / 100

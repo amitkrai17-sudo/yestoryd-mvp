@@ -47,8 +47,8 @@ import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 import { supabase } from '@/lib/supabase/client';
 
-// FAQ Data
-const FAQ_DATA = [
+// Static FAQ items (no pricing data)
+const STATIC_FAQ_DATA = [
   {
     question: "What qualifications do I need?",
     answer: "No specific teaching degree required. We look for patience, empathy, and genuine care for children. Experience with children (as a parent, tutor, or caregiver) is helpful but not mandatory. We provide all the training you need."
@@ -56,10 +56,6 @@ const FAQ_DATA = [
   {
     question: "How much time do I need to commit?",
     answer: "Minimum 15-20 hours per month. Each child requires about 3-4 hours monthly (sessions spread over 12 weeks, tailored to age band). You can start with just 5 children and grow from there."
-  },
-  {
-    question: "How does the revenue sharing work?",
-    answer: "For every ₹5,999 enrollment: 20% goes to lead cost (whoever brought the student), 50% goes to the coach (you), and 30% is the platform fee. If Yestoryd assigns you a student, you earn ₹3,000. If you bring the student yourself, you earn ₹4,200."
   },
   {
     question: "How does the partnership work?",
@@ -72,14 +68,6 @@ const FAQ_DATA = [
   {
     question: "How do I grow as a coach?",
     answer: "Start as a Rising Coach, progress to Expert Coach (after 30+ children with strong NPS), and eventually Master Coach (75+ children). Higher tiers get priority assignments, featured profiles, and leadership opportunities."
-  },
-  {
-    question: "What if I bring students but can't coach them?",
-    answer: "You can refer students and earn ₹1,200 per enrollment even if another coach teaches them. Great for those at full capacity or building a network."
-  },
-  {
-    question: "What if I bring my own students?",
-    answer: "You keep 70% (₹4,200) for students you bring and coach yourself. The 20% lead cost goes to you since you sourced the student."
   },
   {
     question: "Is there a joining fee?",
@@ -159,6 +147,25 @@ export default function YestorydAcademyPage() {
   const platformFeeAmount = Math.round(programPrice * platformFeePercent / 100);
   const ownLeadTotal = fullProgram?.coach_earnings_own_lead || Math.round(programPrice * ownLeadTotalPercent / 100);
   const platformLeadTotal = fullProgram?.coach_earnings_platform_lead || coachCostAmount;
+
+  // Build FAQ data with dynamic pricing values
+  const faqData = [
+    ...STATIC_FAQ_DATA.slice(0, 2),
+    {
+      question: "How does the revenue sharing work?",
+      answer: `For every ₹${programPrice.toLocaleString('en-IN')} enrollment: ${leadCostPercent}% goes to lead cost (whoever brought the student), ${coachCostPercent}% goes to the coach (you), and ${platformFeePercent}% is the platform fee. If Yestoryd assigns you a student, you earn ₹${platformLeadTotal.toLocaleString('en-IN')}. If you bring the student yourself, you earn ₹${ownLeadTotal.toLocaleString('en-IN')}.`
+    },
+    ...STATIC_FAQ_DATA.slice(2, 4),
+    {
+      question: "What if I bring students but can't coach them?",
+      answer: `You can refer students and earn ₹${leadCostAmount.toLocaleString('en-IN')} per enrollment even if another coach teaches them. Great for those at full capacity or building a network.`
+    },
+    {
+      question: "What if I bring my own students?",
+      answer: `You keep ${ownLeadTotalPercent}% (₹${ownLeadTotal.toLocaleString('en-IN')}) for students you bring and coach yourself. The ${leadCostPercent}% lead cost goes to you since you sourced the student.`
+    },
+    ...STATIC_FAQ_DATA.slice(4),
+  ];
 
   return (
     <div className="min-h-screen bg-surface-0">
@@ -717,7 +724,7 @@ export default function YestorydAcademyPage() {
           </div>
 
           <div className="space-y-4">
-            {FAQ_DATA.map((faq, i) => (
+            {faqData.map((faq, i) => (
               <div
                 key={i}
                 className="bg-surface-0 rounded-2xl border border-border overflow-hidden"

@@ -70,6 +70,7 @@ export type SlotMatchType =
 // DEFAULT CONFIGURATION (fallbacks if DB unavailable)
 // ============================================================================
 
+// V1 fallback – site_settings scheduling_duration_* is authoritative
 export const DEFAULT_DURATIONS: SchedulingDurations = {
   coaching: 45,
   checkin: 45,
@@ -296,10 +297,10 @@ export async function getPlanSchedule(
         durationMinutes: plan.duration_checkin_mins || DEFAULT_DURATIONS.checkin,
       },
       skillBooster: {
-        credits: plan.sessions_skill_building || 3,
+        credits: plan.sessions_skill_building || 3, // V1 fallback – age_band_config is authoritative
         durationMinutes: plan.duration_skill_mins || DEFAULT_DURATIONS.skillBooster,
       },
-      totalAutoScheduled: (plan.sessions_coaching || 6) + (plan.sessions_checkin || 3),
+      totalAutoScheduled: (plan.sessions_coaching || 6) + (plan.sessions_checkin || 3), // V1 fallback – age_band_config is authoritative
     };
 
     console.log(`[SchedulingConfig] Loaded plan '${planSlug}':`, {

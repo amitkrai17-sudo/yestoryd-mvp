@@ -107,7 +107,7 @@ export default function CoachEarningsPage() {
         const child = enrollment.child as any;
         if (!child) return null;
 
-        // TODO: Fetch from pricing_plans table instead of hardcoding
+        // V1 fallback – enrollment.amount is authoritative, 5999 is last-resort
         const programFee = enrollment.amount || 5999;
         const isCoachLead = enrollment.lead_source === 'coach';
         const splitPercentage = child.custom_coach_split

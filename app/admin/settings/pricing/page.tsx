@@ -375,6 +375,7 @@ export default function PricingSettingsPage() {
             Calculated Values
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {/* V1 fallback '5999' below – site_settings 'coaching_program_price' is authoritative */}
             <div className="bg-surface-1 rounded-xl p-4">
               <div className="text-2xl font-bold text-pink-400">
                 ₹{Math.round(

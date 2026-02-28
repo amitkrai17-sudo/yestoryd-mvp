@@ -50,6 +50,7 @@ import {
 import { handleAdminInsightQuery } from '@/lib/rai/admin-insights';
 import { selectModel, selectTokenCap, generateWithFallback } from '@/lib/rai/model-router';
 import { generateEmbedding } from '@/lib/rai/embeddings';
+import { getPricingConfig, getSessionCountForChild } from '@/lib/config/pricing-config';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -620,7 +621,13 @@ async function handleOperational(
   }
 
   if (/program|what('?s| is) included/i.test(lowerMessage)) {
-    return { response: OPERATIONAL_RESPONSES.program_info, intent: 'OPERATIONAL', source: 'sql' };
+    let fullProgramWeeks = 12;
+    try {
+      const pConfig = await getPricingConfig();
+      const fullTier = pConfig.tiers.find(t => t.slug === 'full_season');
+      if (fullTier) fullProgramWeeks = fullTier.durationWeeks;
+    } catch { /* keep default */ }
+    return { response: OPERATIONAL_RESPONSES.program_info(fullProgramWeeks), intent: 'OPERATIONAL', source: 'sql' };
   }
 
   if (/reschedule|change.*session|move.*session/i.test(lowerMessage)) {
@@ -656,16 +663,24 @@ async function handleOperational(
   if (/payment|enrollment|subscription/i.test(lowerMessage)) {
     const { data: children } = await supabase
       .from('children')
-      .select('child_name, status, enrolled_at, sessions_completed, total_sessions')
+      .select('child_name, status, enrolled_at, sessions_completed, total_sessions, age')
       .eq('parent_email', userEmail)
       .eq('status', 'enrolled');
 
     if (children && children.length > 0) {
       const child = children[0];
+      let totalSessions = child.total_sessions;
+      if (!totalSessions && child.age) {
+        try {
+          const pConfig = await getPricingConfig();
+          totalSessions = getSessionCountForChild(pConfig, child.age, 'full_season');
+        } catch { /* fall through */ }
+      }
+      if (!totalSessions) totalSessions = 9;
       const enrolledDate = child.enrolled_at
         ? new Date(child.enrolled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'recently';
-      return { response: `${child.child_name}'s enrollment is active. Enrolled on ${enrolledDate}. Progress: ${child.sessions_completed || 0}/${child.total_sessions || 9} sessions completed. You have Master Key access to all Yestoryd services.`, intent: 'OPERATIONAL', source: 'sql' };
+      return { response: `${child.child_name}'s enrollment is active. Enrolled on ${enrolledDate}. Progress: ${child.sessions_completed || 0}/${totalSessions} sessions completed. You have Master Key access to all Yestoryd services.`, intent: 'OPERATIONAL', source: 'sql' };
     }
     return { response: "I couldn't find an active enrollment for your account. If you've recently paid, it may take a few minutes to update. Contact support at 918976287997 if you need help.", intent: 'OPERATIONAL', source: 'sql' };
   }

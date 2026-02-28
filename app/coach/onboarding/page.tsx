@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import DynamicAgreementStep from '../../components/agreement/DynamicAgreementStep';
 import { supabase } from '@/lib/supabase/client';
+import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
 
 interface CoachData {
   id: string;
@@ -57,6 +58,18 @@ export default function CoachOnboardingPage() {
   
   // WhatsApp number from site_settings
   const [whatsappNumber, setWhatsappNumber] = useState('918976287997');
+
+  // Dynamic earnings from pricing × split config
+  const { data: earningsData } = useEarningsCalculator();
+  const splitConfig = earningsData?.split_config;
+  const fullProgram = earningsData?.products.find(p => p.slug === 'full');
+  const basePrice = fullProgram?.price || 0;
+  const coachPercent = splitConfig?.coach_cost_percent || 50;
+  const ownLeadPercent = splitConfig?.own_lead_total_percent || 70;
+  const platformLeadEarnings = basePrice > 0 ? Math.round(basePrice * coachPercent / 100) : 0;
+  const ownLeadEarnings = basePrice > 0 ? Math.round(basePrice * ownLeadPercent / 100) : 0;
+  const platformLeadStr = platformLeadEarnings > 0 ? `₹${platformLeadEarnings.toLocaleString('en-IN')}` : '₹...';
+  const ownLeadStr = ownLeadEarnings > 0 ? `₹${ownLeadEarnings.toLocaleString('en-IN')}` : '₹...';
 
   // Bank details form
   const [bankForm, setBankForm] = useState({
@@ -430,9 +443,9 @@ export default function CoachOnboardingPage() {
                         <Gift className="w-5 h-5" />
                         <span className="font-semibold">Your Referral Link</span>
                       </div>
-                      <p className="text-sm text-blue-100">Share this link to earn 70% on every enrollment!</p>
+                      <p className="text-sm text-blue-100">Share this link to earn {ownLeadPercent}% on every enrollment!</p>
                     </div>
-                    <span className="bg-surface-1/20 px-3 py-1 rounded-full text-sm font-bold">70% Earnings</span>
+                    <span className="bg-surface-1/20 px-3 py-1 rounded-full text-sm font-bold">{ownLeadPercent}% Earnings</span>
                   </div>
                   
                   <div className="bg-surface-1/10 rounded-xl p-3 flex items-center gap-3">
@@ -481,13 +494,13 @@ export default function CoachOnboardingPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="bg-surface-1 rounded-lg p-4">
                     <p className="text-sm text-text-tertiary">Platform-sourced Students</p>
-                    <p className="text-2xl font-bold text-purple-600">50%</p>
-                    <p className="text-xs text-text-tertiary">≈ ₹2,500 per student</p>
+                    <p className="text-2xl font-bold text-purple-600">{coachPercent}%</p>
+                    <p className="text-xs text-text-tertiary">≈ {platformLeadStr} per student</p>
                   </div>
                   <div className="bg-surface-1 rounded-lg p-4 ring-2 ring-blue-400">
                     <p className="text-sm text-text-tertiary">Your Referral Students</p>
-                    <p className="text-2xl font-bold text-[#00ABFF]">70%</p>
-                    <p className="text-xs text-text-tertiary">≈ ₹3,500 per student</p>
+                    <p className="text-2xl font-bold text-[#00ABFF]">{ownLeadPercent}%</p>
+                    <p className="text-xs text-text-tertiary">≈ {ownLeadStr} per student</p>
                   </div>
                 </div>
                 <p className="text-xs text-purple-700 mt-3 flex items-center gap-1">

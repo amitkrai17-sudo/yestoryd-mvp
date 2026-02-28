@@ -10,6 +10,7 @@
 import HomePageClient, { ContentSettings } from './HomePageClient';
 import { supabase } from '@/lib/supabase/client';
 import { fetchPricingDisplayData } from '@/lib/pricing-display';
+import { getPricingConfig, getGenericSessionRange, getDurationRange } from '@/lib/config/pricing-config';
 
 // Disable caching - always fetch fresh data
 export const dynamic = 'force-dynamic';
@@ -136,6 +137,14 @@ async function getHomePageData() {
       discovery: parseInt(String(settings.session_discovery_duration_mins || '45')),
     };
 
+    // Load pricing config for dynamic session/duration values in content defaults
+    let sessionRangeLabel = '6 coaching sessions (1:1)';
+    try {
+      const pConfig = await getPricingConfig();
+      const contRange = getGenericSessionRange(pConfig, 'building');
+      sessionRangeLabel = `${contRange} coaching sessions (1:1)`;
+    } catch { /* keep defaults */ }
+
     // Build products array from pricing_plans
     const products = (productsResult.data || []).map(plan => ({
       id: plan.id,
@@ -248,7 +257,7 @@ async function getHomePageData() {
       arc_remediate_title: settings.arc_remediate_title as string || 'Remediate',
       arc_remediate_subtitle: settings.arc_remediate_subtitle as string || 'Building Arc',
       arc_remediate_description: settings.arc_remediate_description as string || 'Expert coaches fill gaps with personalized 1:1 sessions covering phonics, grammar, comprehension, and vocabulary — tailored for ages 4-12.',
-      arc_remediate_features: settings.arc_remediate_features as string[] || ['6 coaching sessions (1:1)', 'Practice activities at home', 'Weekly WhatsApp updates'],
+      arc_remediate_features: settings.arc_remediate_features as string[] || [`${sessionRangeLabel}`, 'Practice activities at home', 'Weekly WhatsApp updates'],
       arc_celebrate_weeks: settings.arc_celebrate_weeks as string || 'Week 9-12',
       arc_celebrate_title: settings.arc_celebrate_title as string || 'Celebrate',
       arc_celebrate_subtitle: settings.arc_celebrate_subtitle as string || 'Confidence Arc',
@@ -364,6 +373,12 @@ async function getHomePageData() {
     };
   } catch (error) {
     console.error('Error fetching homepage data:', error);
+    // Try to get coaching duration from pricing config (has built-in fallbacks)
+    let dur = 45;
+    try {
+      const fb = await getPricingConfig();
+      dur = fb.ageBands.find(b => b.id === 'building')?.sessionDurationMinutes ?? 45;
+    } catch { /* keep 45 */ }
     return {
       stats: DEFAULTS.stats,
       pricing: DEFAULTS.pricing,
@@ -373,7 +388,7 @@ async function getHomePageData() {
       testimonials: DEFAULTS.testimonials,
       showTestimonials: DEFAULTS.showTestimonials,
       content: {} as ContentSettings,
-      sessionDurations: { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 },
+      sessionDurations: { coaching: dur, skillBuilding: dur, checkin: dur, discovery: dur },
       pricingDisplayData: null,
     };
   }

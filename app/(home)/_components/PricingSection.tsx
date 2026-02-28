@@ -149,7 +149,7 @@ export function PricingSection({
   sessionDurations,
   pricingDisplayData,
 }: PricingSectionProps) {
-  const durations = sessionDurations || { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 };
+  const durations = sessionDurations || { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 }; // V1 fallback – SiteSettingsContext is authoritative
   const bands = pricingDisplayData?.ageBands || [];
   const hasBands = bands.length > 0;
 

@@ -4,6 +4,7 @@
 // ============================================================
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 const getSupabase = () => createAdminClient();
 
 // ============================================================
@@ -460,7 +461,9 @@ export async function generateLearningPlan(
       return { success: false, error: 'No active enrollment found' };
     }
 
-    const totalSessions = enrollment.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+    const pricingConfig = await getPricingConfig();
+    const bandSessions = pricingConfig.ageBands.find(b => b.id === ageBand)?.sessionsPerSeason;
+    const totalSessions = enrollment.total_sessions || bandSessions || 9;
 
     // 3. Fetch templates for this age band
     const { data: templates, error: templatesError } = await supabase

@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
@@ -413,7 +414,9 @@ async function synthesizeLearningProfile(
         .eq('status', 'completed');
 
       sessionsCompleted = count || 0;
-      sessionsRemaining = Math.max(0, (enrollment.total_sessions || 9 /* V1 fallback */) - sessionsCompleted);
+      const pricingConfig = await getPricingConfig();
+      const bandSessions = pricingConfig.ageBands.find(b => b.id === (childRow?.age_band || 'building'))?.sessionsPerSeason;
+      sessionsRemaining = Math.max(0, (enrollment.total_sessions || bandSessions || 9) - sessionsCompleted);
     }
   } catch {
     // Non-fatal

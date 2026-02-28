@@ -37,6 +37,7 @@ function isPublicLandingPage(pathname: string): boolean {
     '/coach/ai-assistant',
     '/coach/onboarding',
     '/coach/profile',
+    '/coach/capture',
   ];
   
   if (protectedPaths.some(p => pathname.startsWith(p))) {

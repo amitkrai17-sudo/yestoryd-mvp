@@ -61,6 +61,16 @@ interface DiscountBreakdown {
   savings: { amount: number; percent: number };
 }
 
+interface V3SessionData {
+  ageBand: string | null;
+  ageBandName: string | null;
+  sessionDurationMinutes: number | null;
+  coachingSessions: number | null;
+  boosterCredits: number | null;
+  sessionRange: { min: number; max: number };
+  durationRange: { min: number; max: number };
+}
+
 interface Product {
   id: string;
   slug: string;
@@ -91,6 +101,8 @@ interface Product {
   duration_skill_mins?: number;
   duration_checkin_mins?: number;
   phase_number?: number | null;
+  // V3 age-band-aware data
+  v3?: V3SessionData;
 }
 
 // Default coach settings (fallback)
@@ -325,7 +337,7 @@ function EnrollContent() {
             const verifyData = await verifyRes.json();
             if (verifyData.success && verifyData.redirectUrl) { window.location.href = verifyData.redirectUrl; return; }
             if (verifyData.success && verifyData.enrollmentId) {
-              const successParams = new URLSearchParams({ childName: formData.childName, enrollmentId: verifyData.enrollmentId || '', coachName: verifyData.data?.coachName || '', sessions: String(pricing?.sessionsIncluded || 9 /* V1 fallback */), product: selectedProduct?.name || 'Full Program' });
+              const successParams = new URLSearchParams({ childName: formData.childName, enrollmentId: verifyData.enrollmentId || '', coachName: verifyData.data?.coachName || '', sessions: String(pricing?.sessionsIncluded || 9 /* V1 fallback – enrollment.total_sessions is authoritative */), product: selectedProduct?.name || 'Full Program' });
               if (startOption === 'later' && startDate) { successParams.set('startDate', startDate); successParams.set('delayed', 'true'); }
               if (discountBreakdown?.totalDiscount) { successParams.set('saved', discountBreakdown.totalDiscount.toString()); }
               window.location.href = `/enrollment/success?${successParams.toString()}`;
@@ -346,12 +358,14 @@ function EnrollContent() {
   const getFeatures = () => {
     if (!selectedProduct) return [];
 
-    // Get session counts and durations (use product-specific durations if available, else context)
-    const coachingSessions = selectedProduct?.sessions_coaching ?? selectedProduct?.coaching_sessions ?? 6;
-    const skillBuildingSessions = selectedProduct?.sessions_skill_building ?? 0;
+    const v3 = selectedProduct.v3;
+
+    // V3: prefer exact age-band-aware counts when available, fall back to V1
+    const coachingSessions = v3?.coachingSessions ?? selectedProduct?.sessions_coaching ?? selectedProduct?.coaching_sessions ?? 6;
+    const skillBuildingSessions = v3?.boosterCredits ?? selectedProduct?.sessions_skill_building ?? 0;
     const checkinSessions = selectedProduct?.sessions_checkin ?? selectedProduct?.parent_sessions ?? 3;
-    const coachingMins = selectedProduct?.duration_coaching_mins ?? durations.coaching;
-    const skillMins = selectedProduct?.duration_skill_mins ?? durations.skillBuilding;
+    const coachingMins = v3?.sessionDurationMinutes ?? selectedProduct?.duration_coaching_mins ?? durations.coaching;
+    const skillMins = v3?.sessionDurationMinutes ?? selectedProduct?.duration_skill_mins ?? durations.skillBuilding;
     const checkinMins = selectedProduct?.duration_checkin_mins ?? durations.checkin;
 
     const featuresList: Array<{ icon: typeof Video; text: string }> = [];
@@ -397,7 +411,12 @@ function EnrollContent() {
     async function fetchProducts() {
       try {
         setProductsLoading(true);
-        const url = childId ? `/api/products?childId=${childId}` : '/api/products';
+        const params = new URLSearchParams();
+        if (childId) params.set('childId', childId);
+        // V3: pass child age so API returns exact session counts for the age band
+        const age = parseInt(formData.childAge);
+        if (age > 0) params.set('age', String(age));
+        const url = `/api/products${params.toString() ? `?${params}` : ''}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data.success && data.products) {
@@ -410,7 +429,7 @@ function EnrollContent() {
       finally { setProductsLoading(false); }
     }
     fetchProducts();
-  }, [childId, productParam]);
+  }, [childId, productParam, formData.childAge]);
 
   useEffect(() => {
     if (selectedProduct) {

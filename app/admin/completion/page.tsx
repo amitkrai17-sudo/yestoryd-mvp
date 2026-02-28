@@ -171,7 +171,7 @@ export default function CompletionManagementPage() {
     overdue: enrollments.filter(e => e.riskLevel === 'overdue').length,
     atRisk: enrollments.filter(e => e.riskLevel === 'at_risk').length,
     inactive: enrollments.filter(e => e.riskLevel === 'inactive').length,
-    ready: enrollments.filter(e => e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback */) && e.status !== 'completed')).length,
+    ready: enrollments.filter(e => e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) && e.status !== 'completed')).length,
     onTrack: enrollments.filter(e => e.riskLevel === 'on_track' || e.riskLevel === 'active').length,
     completed: enrollments.filter(e => e.status === 'completed').length,
   };
@@ -198,7 +198,7 @@ export default function CompletionManagementPage() {
       case 'inactive':
         return e.riskLevel === 'inactive';
       case 'ready':
-        return e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback */) && e.status !== 'completed');
+        return e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) && e.status !== 'completed');
       case 'on_track':
         return e.riskLevel === 'on_track' || e.riskLevel === 'active';
       case 'completed':
@@ -558,7 +558,7 @@ export default function CompletionManagementPage() {
                           )}
 
                           {/* Send Final Assessment */}
-                          {!enrollment.hasFinalAssessment && enrollment.sessionsCompleted >= Math.ceil((enrollment.sessionsTotal || 9 /* V1 fallback */) * 0.67) && enrollment.status !== 'completed' && (
+                          {!enrollment.hasFinalAssessment && enrollment.sessionsCompleted >= Math.ceil((enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) * 0.67) && enrollment.status !== 'completed' && (
                             <button
                               onClick={() => sendFinalAssessment(enrollment.id, enrollment.parentEmail, enrollment.childName)}
                               disabled={actionLoading === enrollment.id + '_assessment'}
@@ -580,14 +580,14 @@ export default function CompletionManagementPage() {
                           {/* Mark Complete */}
                           {enrollment.status !== 'completed' && (
                             <button
-                              onClick={() => triggerCompletion(enrollment.id, enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback */))}
+                              onClick={() => triggerCompletion(enrollment.id, enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */))}
                               disabled={actionLoading === enrollment.id + '_complete'}
                               className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                                enrollment.sessionsCompleted >= (enrollment.sessionsTotal || 9 /* V1 fallback */)
+                                enrollment.sessionsCompleted >= (enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */)
                                   ? 'text-green-400 hover:bg-green-500/20'
                                   : 'text-text-tertiary hover:bg-surface-2'
                               }`}
-                              title={enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback */) ? `Force Complete (${enrollment.sessionsCompleted}/${enrollment.sessionsTotal || 9 /* V1 fallback */})` : 'Mark Complete'}
+                              title={enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) ? `Force Complete (${enrollment.sessionsCompleted}/${enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */})` : 'Mark Complete'}
                             >
                               {actionLoading === enrollment.id + '_complete' ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

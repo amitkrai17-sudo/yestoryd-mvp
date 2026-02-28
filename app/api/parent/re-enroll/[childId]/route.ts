@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 
@@ -38,12 +39,7 @@ function friendlySkill(skill: string): string {
   return SKILL_LABELS[skill] || skill.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-// Age band config
-const AGE_BAND_CONFIG: Record<string, { totalSessions: number; durationMinutes: number; maxSeasons: number }> = {
-  foundation: { totalSessions: 24, durationMinutes: 45, maxSeasons: 4 },
-  building: { totalSessions: 18, durationMinutes: 45, maxSeasons: 3 },
-  mastery: { totalSessions: 12, durationMinutes: 45, maxSeasons: 2 },
-};
+// Age band config is now loaded dynamically via getPricingConfig()
 
 // ============================================================
 // GET: Load re-enrollment data (recap + preview + pricing)
@@ -160,7 +156,8 @@ export async function GET(
     }
 
     const ageBand = child.age_band || prevEnrollment.age_band || 'building';
-    const config = AGE_BAND_CONFIG[ageBand] || AGE_BAND_CONFIG.building;
+    const pricingConfig = await getPricingConfig();
+    const bandConfig = pricingConfig.ageBands.find(b => b.id === ageBand);
     const nextSeasonNumber = (prevEnrollment.season_number || 1) + 1;
 
     // Check if age band might transition (child aged up)
@@ -184,7 +181,7 @@ export async function GET(
         number: prevEnrollment.season_number || 1,
         enrollment_id: prevEnrollment.id,
         sessions_completed: completionData.sessions_completed || 0,
-        sessions_total: prevEnrollment.total_sessions || config.totalSessions,
+        sessions_total: prevEnrollment.total_sessions || bandConfig?.sessionsPerSeason || 9,
         completion_rate: completionData.completion_rate || 0,
         completed_at: prevEnrollment.updated_at,
         growth: recap,
@@ -206,7 +203,7 @@ export async function GET(
         plan_id: pricingPlan.id,
         name: pricingPlan.name,
         price: pricingPlan.discounted_price,
-        sessions: pricingPlan.sessions_included || config.totalSessions,
+        sessions: pricingPlan.sessions_included || bandConfig?.sessionsPerSeason || 9,
         duration_months: pricingPlan.duration_months,
         is_locked: pricingPlan.is_locked || false,
         lock_message: pricingPlan.lock_message || null,

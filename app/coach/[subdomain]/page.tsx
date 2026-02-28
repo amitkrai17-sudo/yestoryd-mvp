@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { 
-  Star, 
-  CheckCircle, 
-  ArrowRight, 
+import {
+  Star,
+  CheckCircle,
+  ArrowRight,
   Calendar,
   BookOpen,
   Award
 } from 'lucide-react';
+import { getPricingConfig, getSessionRangeForTier, getDurationRange } from '@/lib/config/pricing-config';
 
 interface Props {
   params: {
@@ -62,6 +63,19 @@ export default async function CoachPage({ params }: Props) {
   if (!coach) {
     notFound();
   }
+
+  // Load pricing config for dynamic package display
+  const pricingConfig = await getPricingConfig();
+  const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full_season');
+  const packagePrice = fullSeasonTier?.discountedPrice || 5999;
+  const sessionRange = getSessionRangeForTier(pricingConfig, 'full_season');
+  const durationRange = getDurationRange(pricingConfig);
+  const sessionLabel = sessionRange.min === sessionRange.max
+    ? `${sessionRange.min}`
+    : `${sessionRange.min}–${sessionRange.max}`;
+  const durationLabel = durationRange.min === durationRange.max
+    ? `${durationRange.min}-minute`
+    : `${durationRange.min}–${durationRange.max} minute`;
 
   const testimonials = [
     {
@@ -186,14 +200,14 @@ export default async function CoachPage({ params }: Props) {
             <Card className="border-2 border-[#00ABFF]/30 bg-surface-1">
               <CardContent className="p-8">
                 <div className="text-center mb-8">
-                  <p className="text-sm text-[#00ABFF] font-medium mb-2">6-SESSION PACKAGE</p>
-                  <p className="text-4xl font-bold text-white">₹5,999</p>
+                  <p className="text-sm text-[#00ABFF] font-medium mb-2">{sessionLabel}-SESSION COACHING PACKAGE</p>
+                  <p className="text-4xl font-bold text-white">₹{packagePrice.toLocaleString('en-IN')}</p>
                   <p className="text-text-tertiary">Everything you need for reading success</p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   {[
-                    '6 one-hour personalized coaching sessions',
+                    `${sessionLabel} personalized ${durationLabel} coaching sessions`,
                     'AI-powered reading assessment',
                     'Custom learning plan',
                     'Progress tracking & reports',

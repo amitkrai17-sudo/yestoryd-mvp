@@ -19,7 +19,7 @@ function getStageName(age?: number): string {
 
 function getSessionProgress(childName: string, meta?: ChildMeta): string {
   if (meta?.sessionsCompleted == null) return '';
-  const total = meta.totalSessions || 9;
+  const total = meta.totalSessions || 9; // V1 fallback – enrollment.total_sessions is authoritative
   return `\n${childName} has completed ${meta.sessionsCompleted} of ${total} coaching sessions in the ${getStageName(meta.age)} stage.`;
 }
 
@@ -211,7 +211,8 @@ No markdown formatting. Use natural prose with clear organization.`;
 // ============================================================
 
 export const OPERATIONAL_RESPONSES = {
-  program_info: `The Yestoryd program is a 12-week 1:1 reading coaching program for children aged 4-12. The number of coaching sessions is tailored to your child's age band. Enrolled families also get Master Key access — FREE e-learning, storytelling workshops, and group reading classes.`,
+  program_info: (fullProgramWeeks: number = 12) =>
+    `The Yestoryd program is a ${fullProgramWeeks}-week 1:1 reading coaching program for children aged 4-12. The number of coaching sessions is tailored to your child's age band. Enrolled families also get Master Key access — FREE e-learning, storytelling workshops, and group reading classes.`,
 
   master_key: `Master Key is a special benefit for enrolled families. It gives you FREE access to all Yestoryd services including e-learning modules, storytelling workshops, and group reading classes - all at no extra cost during your program.`,
 

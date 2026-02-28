@@ -113,7 +113,7 @@ export default function ParentSessionsPage() {
           .limit(1)
           .maybeSingle();
 
-        const total = enrollment?.total_sessions || 9; /* V1 fallback — will be replaced by age_band_config.total_sessions */
+        const total = enrollment?.total_sessions || 9; // V1 fallback – enrollment.total_sessions is authoritative
 
         const { data: sessionsData } = await supabase
           .from('scheduled_sessions')
@@ -226,7 +226,7 @@ export default function ParentSessionsPage() {
     const sessionDateTime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
     const timeDiff = sessionDateTime.getTime() - now.getTime();
     const minutesDiff = timeDiff / (1000 * 60);
-    return minutesDiff <= 10 && minutesDiff >= -(session.duration_minutes || 45);
+    return minutesDiff <= 10 && minutesDiff >= -(session.duration_minutes || 45); // V1 fallback – session.duration_minutes is authoritative
   }
 
   if (loading) {
@@ -374,7 +374,7 @@ export default function ParentSessionsPage() {
                       {!isSkillBooster && session.session_number && session.total_sessions
                         ? `Session ${session.session_number} of ${session.total_sessions} · `
                         : ''}
-                      {formatDate(session.scheduled_date)} · {formatTime(session.scheduled_time)} · {session.duration_minutes || 45} min
+                      {formatDate(session.scheduled_date)} · {formatTime(session.scheduled_time)} · {session.duration_minutes || 45 /* V1 fallback */} min
                       {isSkillBooster && session.focus_area && ` · ${session.focus_area.replace(/_/g, ' ')}`}
                     </p>
                   </div>

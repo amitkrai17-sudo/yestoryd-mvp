@@ -33,6 +33,10 @@ interface ResultsDisplayProps {
   result: AssessmentResult;
   coachName?: string;
   coachSubdomain?: string;
+  /** Price for the featured package (continuation tier). Falls back to 5999. */
+  packagePrice?: number;
+  /** Label for sessions, e.g. "6–12 coaching sessions". Falls back to "6 one-hour coaching sessions". */
+  sessionLabel?: string;
 }
 
 export function ResultsDisplay({
@@ -42,6 +46,8 @@ export function ResultsDisplay({
   result,
   coachName = 'Rucha Rai',
   coachSubdomain = 'rucha',
+  packagePrice = 5999, // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
+  sessionLabel = '6 one-hour coaching sessions',
 }: ResultsDisplayProps) {
   const scoreCategory = getScoreCategory(result.score);
 
@@ -226,12 +232,12 @@ export function ResultsDisplay({
           <div className="grid md:grid-cols-2 gap-4">
             <div className="p-4 border-2 border-primary-200 rounded-lg bg-primary-50 relative">
               <Badge className="absolute -top-2 -right-2 bg-primary-600">Popular</Badge>
-              <h4 className="font-semibold text-lg">6 Sessions Package</h4>
+              <h4 className="font-semibold text-lg">Coaching Package</h4>
               <p className="text-3xl font-bold text-primary-600 my-2">
-                {formatCurrency(5999)}
+                {formatCurrency(packagePrice)}
               </p>
               <ul className="text-sm text-gray-600 space-y-1">
-                <li>✓ 6 one-hour coaching sessions</li>
+                <li>✓ {sessionLabel}</li>
                 <li>✓ FREE eLearning access</li>
                 <li>✓ FREE storytelling sessions</li>
                 <li>✓ FREE physical classes</li>

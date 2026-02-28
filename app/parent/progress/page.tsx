@@ -39,7 +39,7 @@ export default function ParentProgressPage() {
   const [childName, setChildName] = useState('');
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
-  const [totalSessions, setTotalSessions] = useState(9); /* V1 fallback — will be replaced by age_band_config.total_sessions */
+  const [totalSessions, setTotalSessions] = useState(9); // V1 fallback – enrollment.total_sessions is authoritative
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [learningEvents, setLearningEvents] = useState<LearningEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,7 +136,7 @@ export default function ParentProgressPage() {
         .select('*', { count: 'exact', head: true })
         .eq('child_id', enrolledChild.id);
 
-      setTotalSessions(total || 9); /* V1 fallback */
+      setTotalSessions(total || 9); // V1 fallback – enrollment.total_sessions is authoritative
 
       // Fetch learning events (assessments, achievements, etc.)
       const { data: events } = await supabase

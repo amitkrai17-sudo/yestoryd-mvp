@@ -12,6 +12,7 @@ import type {
 } from './types';
 import { isValidAgentAction } from './types';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { getPricingConfig, getDurationRange, getPerWeekPrice } from '@/lib/config/pricing-config';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -191,7 +192,7 @@ async function callGemini(ctx: AgentContext): Promise<AgentDecision> {
       },
     });
 
-    const systemPrompt = buildSystemPrompt(ctx);
+    const systemPrompt = await buildSystemPrompt(ctx);
     const result = await model.generateContent(systemPrompt);
     const responseText = result.response.text().trim();
 
@@ -216,9 +217,17 @@ async function callGemini(ctx: AgentContext): Promise<AgentDecision> {
   }
 }
 
-function buildSystemPrompt(ctx: AgentContext): string {
+async function buildSystemPrompt(ctx: AgentContext): Promise<string> {
   const { waLead, conversation, recentMessages, lifecycle, assessmentData, currentMessage } = ctx;
   const collectedData = (conversation as any).collected_data || {};
+
+  // Load pricing config for dynamic values
+  const pricingConfig = await getPricingConfig();
+  const perWeek = getPerWeekPrice(pricingConfig);
+  const durRange = getDurationRange(pricingConfig);
+  const durationStr = durRange.min === durRange.max
+    ? `${durRange.min}-minute`
+    : `${durRange.min}-${durRange.max} minute`;
 
   // Format conversation history
   const history = [...recentMessages]
@@ -297,16 +306,16 @@ If state is 'assessed' (assessment done):
 - Action: OFFER_DISCOVERY or OFFER_SLOTS
 
 If parent asks about pricing:
-- Frame as investment: "Starting at ₹375/week for personalized 1:1 coaching"
+- Frame as investment: "Starting at ₹${perWeek}/week for personalized 1:1 coaching"
 - Mention free discovery call first — no commitment
 - Never dump raw pricing, always connect to value
 - Action: SHARE_PRICING then OFFER_DISCOVERY
 
 If parent shows hesitation:
-- "Too expensive" → "₹375/week — less than most tuition classes, but 1:1 personalized"
+- "Too expensive" → "₹${perWeek}/week — less than most tuition classes, but 1:1 personalized"
 - "Need to think" → "Totally understand! The discovery call is free and no commitment"
 - "My child is too young/old" → "We work with ages 4-12 with age-appropriate methods"
-- "Is it online?" → "Yes, 1:1 on Google Meet, 45-minute sessions"
+- "Is it online?" → "Yes, 1:1 on Google Meet, ${durationStr} sessions"
 - Complex objection → ESCALATE_OBJECTION
 
 If parent wants to cancel or reschedule:

@@ -5,11 +5,14 @@ import { ShieldCheck, CheckCircle, Lock, Star } from 'lucide-react';
 interface MoneyBackGuaranteeProps {
   variant?: 'badge' | 'card' | 'inline';
   className?: string;
+  /** Number of sessions for the guarantee threshold. Defaults to 3. */
+  guaranteeSessions?: number;
 }
 
 export default function MoneyBackGuarantee({
   variant = 'card',
   className = '',
+  guaranteeSessions = 3,
 }: MoneyBackGuaranteeProps) {
   // Badge variant - small, for checkout buttons
   if (variant === 'badge') {
@@ -30,7 +33,7 @@ export default function MoneyBackGuarantee({
         <ShieldCheck className="w-6 h-6 text-green-600 flex-shrink-0" />
         <p className="text-sm text-green-800">
           <span className="font-bold">100% Satisfaction Guarantee:</span>{' '}
-          No improvement after 3 sessions? Full refund, no questions asked.
+          No improvement after {guaranteeSessions} sessions? Full refund, no questions asked.
         </p>
       </div>
     );
@@ -64,7 +67,7 @@ export default function MoneyBackGuarantee({
         {/* Main text */}
         <p className="text-green-800 mb-4">
           If you don't see improvement in your child's reading confidence after{' '}
-          <strong>3 sessions</strong>, we'll refund your full payment.{' '}
+          <strong>{guaranteeSessions} sessions</strong>, we'll refund your full payment.{' '}
           <strong>No questions asked.</strong>
         </p>
 

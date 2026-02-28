@@ -37,8 +37,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendText } from '@/lib/whatsapp/cloud-api';
 import { getSettings } from '@/lib/settings/getSettings';
 import { getLeadBotUrls } from '@/lib/whatsapp/urls';
-
 import { getGeminiModel } from '@/lib/gemini-config';
+import {
+  getPricingConfig,
+  getSessionRangeForTier,
+  getDurationRange,
+  getPerWeekPrice,
+} from '@/lib/config/pricing-config';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -62,14 +67,30 @@ const FAQ_SETTING_KEYS = [
   'hero_subtitle',
 ];
 
-// Static fallback when Gemini fails or returns a stub
-const STATIC_PRICING_FALLBACK =
-  `Our personalized 1:1 coaching starts at ₹375/week.\n\n` +
-  `📦 Starter: ₹1,499 (4 sessions)\n` +
-  `📦 Continuation: ₹5,999 (9 sessions)\n` +
-  `📦 Full Program: ₹6,999 (12 sessions)\n\n` +
-  `Each session is 45 minutes with a certified reading coach on Google Meet.\n\n` +
-  `Would you like to book a free discovery call to learn more?`;
+// Dynamic pricing fallback — loads from DB via shared config loader
+async function buildPricingFallback(): Promise<string> {
+  const config = await getPricingConfig();
+  const perWeek = getPerWeekPrice(config);
+  const starter = config.tiers.find(t => t.slug === 'starter');
+  const continuation = config.tiers.find(t => t.slug === 'continuation');
+  const full = config.tiers.find(t => t.slug === 'full_season');
+  const starterRange = getSessionRangeForTier(config, 'starter');
+  const contRange = getSessionRangeForTier(config, 'continuation');
+  const fullRange = getSessionRangeForTier(config, 'full_season');
+  const durRange = getDurationRange(config);
+
+  const fmtRange = (r: { min: number; max: number }) =>
+    r.min === r.max ? `${r.min}` : `${r.min}–${r.max}`;
+
+  return (
+    `Our personalized 1:1 coaching starts at ₹${perWeek}/week.\n\n` +
+    `📦 Starter: ₹${(starter?.discountedPrice ?? 3999).toLocaleString('en-IN')} (${fmtRange(starterRange)} sessions)\n` +
+    `📦 Continuation: ₹${(continuation?.discountedPrice ?? 7499).toLocaleString('en-IN')} (${fmtRange(contRange)} sessions)\n` +
+    `📦 Full Program: ₹${(full?.discountedPrice ?? 9999).toLocaleString('en-IN')} (${fmtRange(fullRange)} sessions)\n\n` +
+    `Each session is ${fmtRange(durRange)} minutes with a certified reading coach on Google Meet.\n\n` +
+    `Would you like to book a free discovery call to learn more?`
+  );
+}
 
 export interface FaqResult {
   response: string;
@@ -176,7 +197,7 @@ Parent's question: "${question}"`;
     }));
 
     if (isPricingQuestion) {
-      responseText = STATIC_PRICING_FALLBACK;
+      responseText = await buildPricingFallback();
     } else {
       const { assessmentUrl } = await getLeadBotUrls();
       responseText =
