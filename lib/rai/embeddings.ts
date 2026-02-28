@@ -33,7 +33,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   const genAI = getGenAI();
-  const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
+  // text-embedding-004 requires v1 API (SDK defaults to v1beta)
+  const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL }, { apiVersion: 'v1' });
   // outputDimensionality is supported by the API but missing from @google/generative-ai@0.21.0 types
   const result = await model.embedContent({
     content: { role: 'user', parts: [{ text }] },
