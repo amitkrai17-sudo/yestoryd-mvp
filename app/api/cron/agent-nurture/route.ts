@@ -347,7 +347,7 @@ export async function GET(request: NextRequest) {
       for (const lead of dueLeads) {
         try {
           const sequence = lead.nurture_sequence!;
-          const step = lead.nurture_step;
+          const step = lead.nurture_step ?? 0;
           const seqConfig = SEQUENCES[sequence];
 
           if (!seqConfig) {
