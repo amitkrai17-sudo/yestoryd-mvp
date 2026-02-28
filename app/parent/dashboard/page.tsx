@@ -21,6 +21,7 @@ import ParentCallCard from '@/components/parent/ParentCallCard';
 import ProgressPulseCard from '@/components/parent/ProgressPulseCard';
 import AIInsightCard from '@/components/parent/AIInsightCard';
 import SkillProgressCard from '@/components/parent/SkillProgressCard';
+import IntelligenceWidget from '@/components/parent/IntelligenceWidget';
 import SupportWidget from '@/components/support/SupportWidget';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ReferralsTab from '@/components/parent/ReferralsTab';
@@ -785,6 +786,9 @@ function OverviewTab({
           childName={childName}
         />
       )}
+
+      {/* INTELLIGENCE WIDGET — UIP-powered reading intelligence */}
+      <IntelligenceWidget childId={childId} childName={childName} />
 
       {/* STARTER COMPLETION CTA - Show when starter is completed */}
       {isStarterCompleted && (

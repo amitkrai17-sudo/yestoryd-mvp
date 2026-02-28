@@ -98,12 +98,52 @@ export async function GET(
       reading: 'Reading',
     };
 
-    const enrichedTasks = (weekTasks || []).map(t => ({
-      ...t,
-      skill_label: SKILL_LABELS[t.linked_skill ?? ''] || t.linked_skill,
-      is_today: t.task_date === todayStr,
-      is_past: t.task_date < todayStr,
-    }));
+    // Fetch intelligence profile for recommendation context
+    let recommendationContext: Record<string, string> = {};
+    try {
+      const { data: profile } = await supabase
+        .from('child_intelligence_profiles')
+        .select('skill_ratings, narrative_profile')
+        .eq('child_id', childId)
+        .maybeSingle();
+
+      if (profile?.skill_ratings) {
+        const skillRatings = profile.skill_ratings as Record<string, { skillName?: string; rating?: string }>;
+        for (const [key, val] of Object.entries(skillRatings)) {
+          if (val.rating === 'struggling' || val.rating === 'developing') {
+            const friendlyRating = val.rating === 'struggling' ? 'building' : 'growing';
+            recommendationContext[key] = `Recommended because ${child.child_name || child.name} is ${friendlyRating} ${val.skillName || key} skills`;
+          }
+        }
+      }
+    } catch {
+      // Non-fatal — intelligence context is optional
+    }
+
+    const enrichedTasks = (weekTasks || []).map(t => {
+      // Find recommendation reason from intelligence profile
+      let recommended_reason: string | null = null;
+      if (t.linked_skill) {
+        const matchKey = Object.keys(recommendationContext).find(k =>
+          k.includes(t.linked_skill!) || (t.linked_skill!).includes(k)
+        );
+        if (matchKey) recommended_reason = recommendationContext[matchKey];
+      }
+
+      // Also check if task description already contains a recommendation reason
+      if (!recommended_reason && t.description?.includes('Recommended because')) {
+        const match = t.description.match(/\(Recommended because .+\)/);
+        if (match) recommended_reason = match[0].replace(/[()]/g, '');
+      }
+
+      return {
+        ...t,
+        skill_label: SKILL_LABELS[t.linked_skill ?? ''] || t.linked_skill,
+        is_today: t.task_date === todayStr,
+        is_past: t.task_date < todayStr,
+        recommended_reason,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -111,6 +151,7 @@ export async function GET(
       today_task: todayTask ? {
         ...todayTask,
         skill_label: SKILL_LABELS[todayTask.linked_skill ?? ''] || todayTask.linked_skill,
+        recommended_reason: enrichedTasks.find(t => t.id === todayTask.id)?.recommended_reason || null,
       } : null,
       week_tasks: enrichedTasks,
       stats: {
