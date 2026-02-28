@@ -440,6 +440,34 @@ async function handleLearningStreaming(
 
   const childName = child?.child_name || child?.name || 'your child';
 
+  // --- FETCH INTELLIGENCE PROFILE ---
+  let intelligenceProfile: ChildMeta['intelligenceProfile'] = null;
+  if (child?.id) {
+    try {
+      const { data: profile } = await supabase
+        .from('child_intelligence_profiles')
+        .select('skill_ratings, narrative_profile, overall_reading_level, overall_confidence, freshness_status, engagement_pattern')
+        .eq('child_id', child.id)
+        .maybeSingle();
+
+      if (profile && profile.freshness_status && profile.freshness_status !== 'none') {
+        const narrativeProfile = profile.narrative_profile as { summary?: string; strengths?: string[]; areasForGrowth?: string[]; nextSessionFocus?: string } | null;
+        intelligenceProfile = {
+          skillRatings: (profile.skill_ratings || {}) as ChildMeta['intelligenceProfile'] extends null ? never : NonNullable<ChildMeta['intelligenceProfile']>['skillRatings'],
+          narrativeSummary: narrativeProfile?.summary || '',
+          keyStrengths: narrativeProfile?.strengths || [],
+          keyStruggles: narrativeProfile?.areasForGrowth || [],
+          recommendedFocus: narrativeProfile?.nextSessionFocus || '',
+          freshnessStatus: profile.freshness_status || 'unknown',
+          overallReadingLevel: profile.overall_reading_level || null,
+          overallConfidence: profile.overall_confidence || 'insufficient',
+        };
+      }
+    } catch (err) {
+      console.warn('Intelligence profile fetch failed (non-blocking):', err);
+    }
+  }
+
   // --- CACHE CHECK ---
   if (userRole === 'parent' && child && isRecentSessionQuery(message)) {
     const cache = await getSessionCache(child.id);
@@ -486,6 +514,7 @@ async function handleLearningStreaming(
     age: child.age,
     sessionsCompleted: child.sessions_completed,
     totalSessions: child.total_sessions,
+    intelligenceProfile,
   } : undefined;
 
   const systemPrompt = getSystemPrompt(

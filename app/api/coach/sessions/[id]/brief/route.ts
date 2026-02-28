@@ -66,6 +66,48 @@ export async function GET(
       // Column doesn't exist yet — that's fine
     }
 
+    // Fetch intelligence profile (UIP)
+    let intelligenceProfile: any = null;
+    try {
+      const { data: uipRow } = await supabase
+        .from('child_intelligence_profiles')
+        .select('skill_ratings, narrative_profile, overall_reading_level, overall_confidence, freshness_status, modality_coverage, last_high_confidence_signal_at')
+        .eq('child_id', session.child_id)
+        .maybeSingle();
+
+      if (uipRow && uipRow.freshness_status) {
+        const skillRatings = (uipRow.skill_ratings || {}) as Record<string, { rating?: string; skillName?: string; confidence?: string; trend?: string }>;
+        const sortedSkills = Object.values(skillRatings)
+          .sort((a, b) => {
+            const order: Record<string, number> = { advanced: 0, proficient: 1, developing: 2, struggling: 3 };
+            return (order[a.rating || ''] ?? 4) - (order[b.rating || ''] ?? 4);
+          });
+        const topStrengths = sortedSkills
+          .filter(s => s.rating === 'advanced' || s.rating === 'proficient')
+          .slice(0, 5)
+          .map(s => ({ skill: s.skillName, rating: s.rating, confidence: s.confidence }));
+        const topStruggles = sortedSkills
+          .filter(s => s.rating === 'struggling' || s.rating === 'developing')
+          .slice(0, 5)
+          .map(s => ({ skill: s.skillName, rating: s.rating, confidence: s.confidence }));
+
+        const narrativeProfile = uipRow.narrative_profile as { summary?: string } | null;
+
+        intelligenceProfile = {
+          overall_reading_level: uipRow.overall_reading_level,
+          overall_confidence: uipRow.overall_confidence,
+          freshness_status: uipRow.freshness_status,
+          last_high_confidence_signal_at: uipRow.last_high_confidence_signal_at,
+          modality_coverage: uipRow.modality_coverage,
+          narrative_summary: narrativeProfile?.summary || null,
+          top_strengths: topStrengths,
+          top_struggles: topStruggles,
+        };
+      }
+    } catch {
+      // Non-fatal — intelligence profile may not exist
+    }
+
     // 3. Get enrollment details (total_sessions)
     let totalSessions = 9;
     if (session.enrollment_id) {
@@ -238,7 +280,7 @@ export async function GET(
         companion_panel_completed: session.companion_panel_completed || false,
         parent_summary: session.parent_summary || null,
       },
-      child: child ? { ...child, learning_profile: learningProfile } : null,
+      child: child ? { ...child, learning_profile: learningProfile, intelligence_profile: intelligenceProfile } : null,
       template: template || null,
       recent_sessions: (recentEvents || []).map(e => ({
         id: e.id,

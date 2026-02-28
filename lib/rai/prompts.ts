@@ -4,10 +4,22 @@
 import { UserRole } from './types';
 
 // --- Child metadata for prompt personalization ---
+export interface IntelligenceProfileMeta {
+  skillRatings: Record<string, { skill_name: string; rating: string; confidence: string; trend: string }>;
+  narrativeSummary: string;
+  keyStrengths: string[];
+  keyStruggles: string[];
+  recommendedFocus: string;
+  freshnessStatus: string;
+  overallReadingLevel: string | null;
+  overallConfidence: string;
+}
+
 export interface ChildMeta {
   age?: number;
   sessionsCompleted?: number;
   totalSessions?: number;
+  intelligenceProfile?: IntelligenceProfileMeta | null;
 }
 
 function getStageName(age?: number): string {
@@ -21,6 +33,54 @@ function getSessionProgress(childName: string, meta?: ChildMeta): string {
   if (meta?.sessionsCompleted == null) return '';
   const total = meta.totalSessions || 9; // V1 fallback – enrollment.total_sessions is authoritative
   return `\n${childName} has completed ${meta.sessionsCompleted} of ${total} coaching sessions in the ${getStageName(meta.age)} stage.`;
+}
+
+// ============================================================
+// INTELLIGENCE CONTEXT FORMATTER
+// ============================================================
+
+function formatIntelligenceContext(profile: IntelligenceProfileMeta, childName: string): string {
+  const lines: string[] = [];
+  lines.push(`${childName}'s INTELLIGENCE PROFILE:`);
+
+  if (profile.overallReadingLevel) {
+    lines.push(`Reading Level: ${profile.overallReadingLevel} (confidence: ${profile.overallConfidence})`);
+  }
+
+  if (profile.narrativeSummary) {
+    lines.push(`Summary: ${profile.narrativeSummary}`);
+  }
+
+  if (profile.keyStrengths.length > 0) {
+    lines.push(`Key Strengths: ${profile.keyStrengths.join(', ')}`);
+  }
+
+  if (profile.keyStruggles.length > 0) {
+    lines.push(`Areas for Growth: ${profile.keyStruggles.join(', ')}`);
+  }
+
+  // Top 8 skill ratings sorted by rating level (advanced first)
+  const ratingOrder: Record<string, number> = { advanced: 0, proficient: 1, developing: 2, struggling: 3 };
+  const sortedSkills = Object.values(profile.skillRatings)
+    .sort((a, b) => (ratingOrder[a.rating] ?? 4) - (ratingOrder[b.rating] ?? 4))
+    .slice(0, 8);
+
+  if (sortedSkills.length > 0) {
+    const skillLines = sortedSkills.map(
+      s => `  ${s.skill_name}: ${s.rating} (${s.confidence} confidence, ${s.trend})`
+    );
+    lines.push(`Skill Ratings:\n${skillLines.join('\n')}`);
+  }
+
+  if (profile.recommendedFocus) {
+    lines.push(`Recommended Focus: ${profile.recommendedFocus}`);
+  }
+
+  if (profile.freshnessStatus === 'aging' || profile.freshnessStatus === 'stale') {
+    lines.push(`Note: This profile is ${profile.freshnessStatus} — some data may not reflect recent sessions.`);
+  }
+
+  return lines.join('\n');
 }
 
 // ============================================================
@@ -39,6 +99,10 @@ export function buildParentPrompt(
   const ageInfo = childMeta?.age ? ` (age ${childMeta.age})` : '';
   const progress = getSessionProgress(childName, childMeta);
 
+  const intelligenceBlock = childMeta?.intelligenceProfile
+    ? `\n${formatIntelligenceContext(childMeta.intelligenceProfile, childName)}\n`
+    : '';
+
   return `You are rAI, the reading intelligence assistant for Yestoryd — an AI-powered reading program for children aged 4-12 in India.
 
 You are speaking with the parent of ${childName}${ageInfo}.${progress}
@@ -49,7 +113,7 @@ YOUR PERSONALITY
 - You make reading development feel exciting, not clinical
 - You use ${childName}'s name naturally in conversation
 - You speak in simple, clear language (many parents are not native English speakers)
-
+${intelligenceBlock}
 ${childName}'s LEARNING DATA:
 ${eventsContext}
 
@@ -100,6 +164,10 @@ export function buildCoachPrompt(
     ? `You are assisting Coach ${coachName}`
     : 'You are assisting the coach';
 
+  const intelligenceBlock = childMeta?.intelligenceProfile
+    ? `\n${formatIntelligenceContext(childMeta.intelligenceProfile, childName)}\n`
+    : '';
+
   return `You are rAI, the pedagogical intelligence assistant for Yestoryd reading coaches.
 
 ${coachGreeting} with student ${childName}${ageInfo}.${progress}
@@ -125,7 +193,7 @@ STEP 3: FORMULATE ACTIONABLE RECOMMENDATIONS
 - Reference what worked before in the data
 - Reference the ARC method (Assess, Remediate, Celebrate) stages when applicable
 - For session prep, structure as: review, warm-up (5 min), main activity (15 min), cool-down (5 min), parent note
-
+${intelligenceBlock}
 STUDENT'S LEARNING DATA:
 ${eventsContext}
 
