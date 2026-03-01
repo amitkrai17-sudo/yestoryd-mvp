@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Shield } from 'lucide-react';
+import { Shield, LogOut } from 'lucide-react';
 import { CoachContext, CoachData, CoachContextType } from './context';
 import BottomNav from '@/components/navigation/BottomNav';
 import { coachNavItems } from '@/lib/config/navigation';
@@ -248,6 +248,38 @@ export default function CoachLayout({
   return (
     <CoachContext.Provider value={contextValue}>
       <div className="min-h-screen bg-surface-0 pb-20 lg:pb-0">
+        {/* Top Bar - Coach info + Logout */}
+        <div className="sticky top-0 z-40 bg-surface-1/95 backdrop-blur-sm border-b border-border">
+          <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
+            <div className="flex items-center gap-3 min-w-0">
+              {coach?.photo_url ? (
+                <img
+                  src={coach.photo_url}
+                  alt={coach.name}
+                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#0066cc] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                  {coach?.name?.charAt(0).toUpperCase() || 'C'}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="font-medium text-white text-sm truncate">
+                  {coach?.name || 'Coach'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="p-2 text-text-tertiary hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-colors flex-shrink-0"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
         {children}
       </div>
       {/* Mobile Bottom Navigation */}
