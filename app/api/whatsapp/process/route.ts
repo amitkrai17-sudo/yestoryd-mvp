@@ -385,8 +385,14 @@ export async function POST(request: NextRequest) {
     }
 
     else if (isTier0 && intent === 'FAQ') {
-      const result = await handleFaq(phone, text || interactiveTitle || 'pricing', mergedData);
-      response = result.response;
+      if (interactiveId === 'btn_more_questions') {
+        // "Ask a Question" button → encourage free-text questions, keep bot active
+        response = `Sure! Ask me anything about our reading program — I'm happy to help.`;
+        await sendText(phone, response);
+      } else {
+        const result = await handleFaq(phone, text || interactiveTitle || 'pricing', mergedData);
+        response = result.response;
+      }
       // Stay in current state after FAQ
     }
 

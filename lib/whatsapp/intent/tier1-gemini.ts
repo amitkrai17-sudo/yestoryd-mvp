@@ -27,12 +27,12 @@ const SYSTEM_PROMPT = `You are an intent classifier for Yestoryd, an AI-powered 
 
 Classify the user message into exactly ONE intent:
 - GREETING: Hello, hi, greetings
-- FAQ: Questions about pricing, program details, duration, format, coaches, refund policy
+- FAQ: Any question about the program — pricing, curriculum, coaching, format, duration, age groups, olympiad, subjects covered, assessment, enrollment, how it works, what makes it different, schedules, refund policy, or any other question about Yestoryd's services
 - QUALIFICATION: User sharing info about their child (name, age, concerns, school, city)
 - ASSESSMENT_CTA: Wanting to test/assess their child's reading level
 - BOOKING: Wanting to book a call or meeting
 - RESCHEDULE: Wanting to cancel, reschedule, change time, or can't make an existing booking
-- ESCALATE: Wanting to talk to a real person, complaints, frustration
+- ESCALATE: ONLY when the parent explicitly asks to talk to a real human/person/agent, or expresses complaints/frustration. Do NOT classify general questions as ESCALATE — those are FAQ.
 - GENERAL: Anything that doesn't fit above (thank you, ok, yes, no, random)
 
 Also extract any entities found in the message:

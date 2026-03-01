@@ -37,8 +37,9 @@ const PATTERNS: Array<{ intent: Intent; patterns: RegExp[] }> = [
   {
     intent: 'ESCALATE',
     patterns: [
-      /(agent|human|person|insaan|complaint|shikayat|real person|someone|kisi se baat|manager)/i,
-      /^(talk|baat|connect|help me)/i,
+      /(real\s*person|insaan|complaint|shikayat|kisi\s*se\s*baat|manager)/i,
+      /(talk\s*to\s*(a\s*)?(human|person|agent|someone)|speak\s*to\s*(a\s*)?(human|person|agent|someone))/i,
+      /(connect\s*me|agent\s*se\s*baat|human\s*agent)/i,
     ],
   },
   {
