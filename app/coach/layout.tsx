@@ -92,41 +92,32 @@ export default function CoachLayout({
       return;
     }
 
-    checkAuth();
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Single source of truth: onAuthStateChange handles INITIAL_SESSION,
+    // TOKEN_REFRESHED, and SIGNED_OUT — no separate getSession() call
+    // to avoid race conditions that cause redirect loops.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
       if (isPublicRoute(pathname)) return;
-      
+
       if (session?.user) {
         validateCoach(session.user);
-      } else {
+      } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+        // Only redirect on definitive "no session" events
         setUser(null);
         setCoach(null);
         setIsAuthorized(false);
         setLoading(false);
+        router.push('/coach/login');
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [pathname]);
-
-  const checkAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push('/coach/login');
-        setLoading(false);
-        return;
-      }
-
-      validateCoach(session.user);
-    } catch (error) {
-      console.error('Auth error:', error);
-      setLoading(false);
-      router.push('/coach/login');
-    }
-  };
 
   const validateCoach = async (authUser: any) => {
     const email = authUser.email?.toLowerCase();

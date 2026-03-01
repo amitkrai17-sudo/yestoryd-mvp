@@ -17,20 +17,28 @@ const PROTECTED_ROUTES = [
   '/coach/sessions',
   '/coach/students',
   '/coach/payouts',
+  '/coach/earnings',
+  '/coach/profile',
+  '/coach/capture',
+  '/coach/onboarding',
+  '/coach/templates',
+  '/coach/ai-assistant',
+  '/coach/discovery-calls',
   '/parent/dashboard',
   '/parent/progress',
   '/parent/sessions',
+  '/parent/journey',
+  '/parent/tasks',
+  '/parent/support',
 ];
 
-// Routes that are always public
+// Routes that are always public (use exact prefixes, not broad catch-alls)
 const PUBLIC_ROUTES = [
   '/admin/login',
-  '/admin',
   '/coach/login',
-    '/coach',
-    '/parent/login',
-    '/parent',
-    '/login',
+  '/coach/confirm',
+  '/parent/login',
+  '/login',
   '/register',
   '/assessment',
   '/discovery',
@@ -79,10 +87,9 @@ function isAdminRoute(pathname: string): boolean {
 }
 
 function isCoachRoute(pathname: string): boolean {
-  return pathname.startsWith('/coach/dashboard') ||
-         pathname.startsWith('/coach/sessions') ||
-         pathname.startsWith('/coach/students') ||
-         pathname.startsWith('/coach/payouts');
+  return pathname.startsWith('/coach/') &&
+         !pathname.startsWith('/coach/login') &&
+         !pathname.startsWith('/coach/confirm');
 }
 
 function isPublicRoute(pathname: string): boolean {
@@ -157,15 +164,32 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  console.log('[Middleware] Checking auth for:', pathname);
-  console.log('[Middleware] Cookies:', request.cookies.getAll().map(c => c.name));
   try {
-    // 6. Get User (Use getUser instead of getSession for better security)
-    const { data: { user }, error } = await supabase.auth.getUser();
-    console.log('[Middleware] User:', user?.email || 'NO USER');
-    console.log('[Middleware] Error:', error?.message || 'NO ERROR');
+    // 6. Exchange PKCE code if present (OAuth / magic link callback)
+    // When Supabase redirects back with ?code=..., we must exchange it
+    // for a session BEFORE calling getUser(). This sets auth cookies.
+    const code = request.nextUrl.searchParams.get('code');
+    if (code) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) {
+        console.error('[Middleware] Code exchange failed:', exchangeError.message);
+      } else {
+        // Strip the code param and redirect to clean URL.
+        // Copy auth cookies from the current response to the redirect.
+        const cleanUrl = request.nextUrl.clone();
+        cleanUrl.searchParams.delete('code');
+        const redirectResponse = NextResponse.redirect(cleanUrl);
+        response.cookies.getAll().forEach(cookie => {
+          redirectResponse.cookies.set(cookie.name, cookie.value);
+        });
+        return redirectResponse;
+      }
+    }
 
-    // 7. No session → redirect to login
+    // 7. Get User (Use getUser instead of getSession for better security)
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    // 8. No session → redirect to login
     if (error || !user) {
       const loginUrl = getLoginUrl(pathname, request.nextUrl);
       return NextResponse.redirect(loginUrl);
@@ -212,10 +236,21 @@ export async function middleware(request: NextRequest) {
     // 11. All checks passed
     return response;
 
-  } catch (error) {
+  } catch (error: any) {
+    // Fail-open on network errors (ECONNRESET, ECONNREFUSED, timeouts).
+    // Better to let an unauthenticated user see a page (client layout
+    // will redirect) than to lock everyone out during a Supabase outage.
+    const isNetworkError = ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT']
+      .some(code => error?.code === code || error?.cause?.code === code || String(error).includes(code));
+
+    if (isNetworkError) {
+      console.error('[Middleware] Network error during auth check, failing open:', error?.code || error?.message);
+      return response;
+    }
+
     console.error('[Middleware] Auth check error:', error);
-    // On critical error, redirect to login
-    return NextResponse.redirect(new URL('/login', request.url));
+    const loginUrl = getLoginUrl(pathname, request.nextUrl);
+    return NextResponse.redirect(loginUrl);
   }
 }
 

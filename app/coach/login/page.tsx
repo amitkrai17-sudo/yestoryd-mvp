@@ -16,6 +16,7 @@ export default function CoachLoginPage() {
   const [message, setMessage] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('918976287997');
+  const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
 
   // WhatsApp OTP states
@@ -56,25 +57,31 @@ export default function CoachLoginPage() {
     fetchSiteSettings();
   }, []);
 
-  // Handle OAuth callback
+  // Handle OAuth/magic link callback and existing sessions.
+  // With createBrowserClient, tokens are stored in cookies so server
+  // components can read them — no more client/server mismatch.
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        router.push('/coach/dashboard');
-        return;
-      }
-    };
-    handleAuthCallback();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        router.push('/coach/dashboard');
+        setTimeout(() => { window.location.href = '/coach/dashboard'; }, 500);
+      }
+      if (event === 'INITIAL_SESSION') {
+        setCheckingSession(false);
+      }
+    });
+
+    // Check existing session on mount (handles already-logged-in users)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setTimeout(() => { window.location.href = '/coach/dashboard'; }, 500);
+      } else {
+        setCheckingSession(false);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Countdown timer for OTP
   useEffect(() => {
@@ -266,6 +273,17 @@ export default function CoachLoginPage() {
     } finally {
       setOtpLoading(false);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // RENDER: CHECKING SESSION (loading state)
+  // ─────────────────────────────────────────────────────────
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a1628] to-gray-900 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#00abff] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   // ─────────────────────────────────────────────────────────

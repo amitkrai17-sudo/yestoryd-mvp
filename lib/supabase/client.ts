@@ -1,16 +1,15 @@
 /**
  * Supabase Client - Browser/Client Components
- * 
- * Use this for:
- * - Client components ('use client')
- * - React hooks
- * - Browser-side data fetching
- * 
+ *
+ * Uses @supabase/ssr createBrowserClient which stores auth tokens
+ * in cookies (via document.cookie) instead of localStorage.
+ * This ensures server components and middleware can read the session.
+ *
  * Usage:
  * import { supabase } from '@/lib/supabase/client';
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 import { Database } from './database.types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -21,22 +20,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Singleton pattern - only create one instance
-let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
+let supabaseInstance: ReturnType<typeof createBrowserClient<Database>> | null = null;
 
 export function getSupabaseClient() {
   if (!supabaseInstance) {
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    });
+    supabaseInstance = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
   }
   return supabaseInstance;
 }
 
 // Default export for convenience
 export const supabase = getSupabaseClient();
-
-// Re-export createClient for cases where a fresh instance is needed
-export { createClient };
