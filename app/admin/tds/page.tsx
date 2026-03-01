@@ -142,7 +142,7 @@ export default function TdsPage() {
   if (loading && !data) {
     return (
       <div className="bg-surface-0 flex items-center justify-center min-h-[400px]">
-        <RefreshCw className="w-8 h-8 animate-spin text-violet-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -153,8 +153,8 @@ export default function TdsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/25 flex-shrink-0">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-[#121217] border border-white/[0.08] rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-gray-300" />
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">TDS Compliance</h1>
@@ -165,7 +165,7 @@ export default function TdsPage() {
             <select
               value={selectedFY}
               onChange={(e) => setSelectedFY(e.target.value)}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-border rounded-lg sm:rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-border rounded-lg sm:rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10] focus:border-transparent"
             >
               {fyOptions().map(fy => (
                 <option key={fy} value={fy}>FY {fy}</option>
@@ -224,7 +224,7 @@ export default function TdsPage() {
                     <tr key={q.quarter} className="hover:bg-surface-2 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                          <div className="w-10 h-10 bg-[#121217] border border-white/[0.08] rounded-xl flex items-center justify-center text-white font-bold text-sm">
                             {q.quarter}
                           </div>
                           <span className="font-medium text-white">
@@ -268,7 +268,7 @@ export default function TdsPage() {
                               setDepositQuarter(q.quarter);
                               setShowDepositModal(true);
                             }}
-                            className="px-3 py-1.5 bg-violet-500/20 text-violet-400 rounded-lg text-sm font-medium hover:bg-violet-500/30 transition-colors"
+                            className="px-3 py-1.5 bg-white/[0.08] text-gray-400 rounded-lg text-sm font-medium hover:bg-white/[0.12] transition-colors"
                           >
                             Mark Deposited
                           </button>
@@ -356,7 +356,7 @@ export default function TdsPage() {
                     <tr key={coach.coach_id} className="hover:bg-surface-2 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 bg-[#121217] border border-white/[0.08] rounded-xl flex items-center justify-center text-white font-bold">
                             {coach.coach_name.charAt(0)}
                           </div>
                           <span className="font-medium text-white">{coach.coach_name}</span>
@@ -374,7 +374,7 @@ export default function TdsPage() {
                       <td className="px-6 py-4 text-right font-medium text-white">
                         ₹{coach.total_paid.toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-right font-bold text-violet-400">
+                      <td className="px-6 py-4 text-right font-bold text-gray-300">
                         ₹{coach.tds_deducted.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-right text-text-tertiary">
@@ -390,14 +390,14 @@ export default function TdsPage() {
 
         {/* Info Card */}
         {/* TODO: Move TDS threshold (₹30,000/year) to site_settings */}
-        <div className="mt-8 p-6 bg-violet-500/20 rounded-2xl border border-violet-500/30">
+        <div className="mt-8 p-6 bg-white/[0.08] rounded-2xl border border-white/[0.08]">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 bg-violet-500/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Info className="w-5 h-5 text-violet-400" />
+            <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center flex-shrink-0">
+              <Info className="w-5 h-5 text-gray-300" />
             </div>
             <div>
-              <h3 className="font-semibold text-violet-400">TDS Compliance Reminder</h3>
-              <ul className="mt-2 text-sm text-violet-400/80 space-y-1">
+              <h3 className="font-semibold text-gray-300">TDS Compliance Reminder</h3>
+              <ul className="mt-2 text-sm text-gray-400 space-y-1">
                 <li>• TDS must be deposited by 7th of following month (30th April for Q4)</li>
                 <li>• Form 26Q must be filed quarterly on TRACES portal</li>
                 <li>• Issue Form 16A to coaches after filing 26Q</li>
@@ -427,7 +427,7 @@ export default function TdsPage() {
                     value={challanNumber}
                     onChange={(e) => setChallanNumber(e.target.value)}
                     placeholder="e.g., 12345678901"
-                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-white/[0.10] focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -438,7 +438,7 @@ export default function TdsPage() {
                     type="date"
                     value={depositDate}
                     onChange={(e) => setDepositDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10] focus:border-transparent"
                   />
                 </div>
 
@@ -452,7 +452,7 @@ export default function TdsPage() {
                   <button
                     onClick={handleMarkDeposited}
                     disabled={processing || !challanNumber}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {processing ? (
                       <RefreshCw className="w-5 h-5 animate-spin" />

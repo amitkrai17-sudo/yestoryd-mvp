@@ -218,10 +218,10 @@ export default function BookSkillBoosterPage() {
   // Loading State
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#FF0099] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-secondary">Loading available slots...</p>
+          <p className="text-gray-600">Loading available slots...</p>
         </div>
       </div>
     );
@@ -230,11 +230,11 @@ export default function BookSkillBoosterPage() {
   // Error State
   if (error && !sessionData) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
-        <div className="text-center max-w-md bg-surface-1 rounded-2xl p-8 shadow-lg shadow-black/30 border border-border">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">Unable to Load</h2>
-          <p className="text-text-tertiary mb-6">{error}</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load</h2>
+          <p className="text-gray-500 mb-6">{error}</p>
           <Link
             href="/parent/dashboard"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF0099] text-white rounded-xl font-medium"
@@ -250,16 +250,16 @@ export default function BookSkillBoosterPage() {
   // Success State
   if (bookingSuccess) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
-        <div className="text-center max-w-md bg-surface-1 rounded-2xl p-8 shadow-lg shadow-black/30 border border-border">
-          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-10 h-10 text-green-400" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-10 h-10 text-emerald-700" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2 flex items-center justify-center gap-2">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
             Session Booked!
             <Sparkles className="w-6 h-6 text-amber-400" />
           </h2>
-          <p className="text-text-tertiary mb-6">
+          <p className="text-gray-500 mb-6">
             Your Skill Booster session for {sessionData?.childName} has been confirmed.
             You'll receive a confirmation on WhatsApp.
           </p>
@@ -278,7 +278,7 @@ export default function BookSkillBoosterPage() {
 
           <Link
             href="/parent/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-border text-text-secondary rounded-xl font-medium w-full justify-center hover:bg-surface-2 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-medium w-full justify-center hover:bg-gray-100 transition-colors"
           >
             Back to Dashboard
           </Link>
@@ -288,22 +288,22 @@ export default function BookSkillBoosterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-surface-1 border-b border-border sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <Link
               href="/parent/dashboard"
-              className="p-2 hover:bg-surface-2 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-text-secondary" />
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-lg flex items-center justify-center">
                 <StarIcon className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-white">Yestoryd</span>
+              <span className="font-bold text-gray-900">Yestoryd</span>
             </div>
           </div>
         </div>
@@ -312,26 +312,26 @@ export default function BookSkillBoosterPage() {
       <main className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
         {/* Page Header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-yellow-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-yellow-500/30">
-            <Zap className="w-7 h-7 text-yellow-400" />
+          <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-amber-200">
+            <Zap className="w-7 h-7 text-amber-700" />
           </div>
-          <h1 className="text-xl font-bold text-white mb-1">
+          <h1 className="text-xl font-bold text-gray-900 mb-1">
             Book Skill Booster Session
           </h1>
-          <p className="text-text-tertiary text-sm">
-            For <span className="font-medium text-text-secondary">{sessionData?.childName}</span> with Coach <span className="font-medium text-text-secondary">{sessionData?.coachName}</span>
+          <p className="text-gray-500 text-sm">
+            For <span className="font-medium text-gray-600">{sessionData?.childName}</span> with Coach <span className="font-medium text-gray-600">{sessionData?.coachName}</span>
           </p>
         </div>
 
         {/* Focus Area Card - Compact */}
-        <div className="bg-surface-1 rounded-xl p-4 border border-border shadow-sm mb-5">
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#FF0099]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 bg-pink-50 rounded-lg flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-4 h-4 text-[#FF0099]" />
             </div>
             <div>
-              <p className="text-xs text-text-tertiary">Session Focus</p>
-              <p className="font-semibold text-white">
+              <p className="text-xs text-gray-500">Session Focus</p>
+              <p className="font-semibold text-gray-900">
                 {sessionData?.focusAreaLabel}
               </p>
             </div>
@@ -339,16 +339,16 @@ export default function BookSkillBoosterPage() {
         </div>
 
         {/* STEP 1: Date Selection - Horizontal Scroll */}
-        <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-border">
-            <h2 className="font-bold text-white flex items-center gap-2 text-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-[#FF0099]" />
               Step 1: Pick a Date
             </h2>
           </div>
 
           <div className="p-3">
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
               {uniqueDates.map((date) => {
                 const dateInfo = availableSlots.find(s => s.date === date);
                 const isSelected = selectedDate === date;
@@ -357,19 +357,19 @@ export default function BookSkillBoosterPage() {
                   <button
                     key={date}
                     onClick={() => handleDateSelect(date)}
-                    className={`flex-shrink-0 w-16 py-3 rounded-xl border-2 transition-all text-center
+                    className={`flex-shrink-0 w-16 py-3 rounded-xl border-2 transition-all text-center snap-start
                       ${isSelected
                         ? 'border-[#FF0099] bg-[#FF0099] text-white'
-                        : 'border-border hover:border-[#FF0099]/50 bg-surface-2'
+                        : 'border-gray-200 hover:border-[#FF0099]/50 bg-gray-50'
                       }`}
                   >
-                    <p className={`text-xs font-medium ${isSelected ? 'text-white/80' : 'text-text-tertiary'}`}>
+                    <p className={`text-xs font-medium ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
                       {dateInfo?.dayShort}
                     </p>
-                    <p className={`text-xl font-bold ${isSelected ? 'text-white' : 'text-white'}`}>
+                    <p className={`text-xl font-bold ${isSelected ? 'text-white' : 'text-gray-900'}`}>
                       {dateInfo?.dayNum}
                     </p>
-                    <p className={`text-xs ${isSelected ? 'text-white/80' : 'text-text-muted'}`}>
+                    <p className={`text-xs ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
                       {dateInfo?.monthShort}
                     </p>
                   </button>
@@ -380,14 +380,14 @@ export default function BookSkillBoosterPage() {
         </div>
 
         {/* STEP 2: Time Selection - Grid for Selected Date */}
-        <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden mb-5">
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <h2 className="font-bold text-white flex items-center gap-2 text-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-[#FF0099]" />
               Step 2: Pick a Time
             </h2>
             {selectedDateInfo && (
-              <span className="text-xs text-text-tertiary bg-surface-2 px-2 py-1 rounded-full">
+              <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
                 {selectedDateInfo.dateLabel}
               </span>
             )}
@@ -395,8 +395,8 @@ export default function BookSkillBoosterPage() {
 
           {slotsForSelectedDate.length === 0 ? (
             <div className="p-6 text-center">
-              <Clock className="w-10 h-10 text-text-muted mx-auto mb-2" />
-              <p className="text-text-tertiary text-sm">No slots available</p>
+              <Clock className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-500 text-sm">No slots available</p>
             </div>
           ) : (
             <div className="p-3">
@@ -410,12 +410,12 @@ export default function BookSkillBoosterPage() {
                       onClick={() => setSelectedSlot(slot.datetime)}
                       className={`h-12 rounded-xl border-2 transition-all relative
                         ${isSelected
-                          ? 'border-[#FF0099] bg-[#FF0099]/10'
-                          : 'border-border hover:border-[#FF0099]/50 bg-surface-2'
+                          ? 'border-[#FF0099] bg-pink-50'
+                          : 'border-gray-200 hover:border-[#FF0099]/50 bg-gray-50'
                         }`}
                     >
                       <span className={`font-semibold text-sm ${
-                        isSelected ? 'text-[#FF0099]' : 'text-text-secondary'
+                        isSelected ? 'text-[#FF0099]' : 'text-gray-600'
                       }`}>
                         {slot.timeLabel}
                       </span>
@@ -432,9 +432,9 @@ export default function BookSkillBoosterPage() {
 
         {/* Selected Summary */}
         {selectedSlot && selectedDateInfo && (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 mb-4 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-            <p className="text-sm text-green-300">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-700 flex-shrink-0" />
+            <p className="text-sm text-emerald-700">
               <span className="font-medium">Selected:</span>{' '}
               {availableSlots.find(s => s.datetime === selectedSlot)?.dateLabel} at{' '}
               {availableSlots.find(s => s.datetime === selectedSlot)?.timeLabel}
@@ -444,7 +444,7 @@ export default function BookSkillBoosterPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4 flex items-center gap-3">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <p className="text-sm text-red-400">{error}</p>
           </div>
@@ -473,7 +473,7 @@ export default function BookSkillBoosterPage() {
         </button>
 
         {/* Free Notice */}
-        <p className="text-center text-xs text-text-muted mt-3 flex items-center justify-center gap-1">
+        <p className="text-center text-xs text-gray-400 mt-3 flex items-center justify-center gap-1">
           <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
           Included in your program at no extra cost
         </p>

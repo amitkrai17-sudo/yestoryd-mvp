@@ -165,7 +165,7 @@ export default function PendingAssessmentsPage() {
         <button
           onClick={fetchAssessments}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -231,8 +231,8 @@ export default function PendingAssessmentsPage() {
             onClick={() => setFilter(f)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filter === f
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                ? 'bg-white text-[#0a0a0f]'
+                : 'bg-surface-2 text-text-secondary border border-border hover:bg-surface-3'
             }`}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -249,7 +249,7 @@ export default function PendingAssessmentsPage() {
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : filteredAssessments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -336,7 +336,7 @@ export default function PendingAssessmentsPage() {
                         <button
                           onClick={() => handleAction(assessment.id, 'retry')}
                           disabled={actionLoading === assessment.id}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white text-[#0a0a0f] text-xs font-medium rounded hover:bg-gray-200 disabled:opacity-50"
                         >
                           {actionLoading === assessment.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -363,12 +363,12 @@ export default function PendingAssessmentsPage() {
       </div>
 
       {/* Info Panel */}
-      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="mt-6 bg-white/[0.06] border border-white/[0.08] rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-900">
+          <AlertCircle className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-gray-300">
             <p className="font-semibold mb-1">How it works:</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-800">
+            <ul className="list-disc list-inside space-y-1 text-gray-400">
               <li>When Gemini API fails, assessments are automatically queued for retry (5-min delay)</li>
               <li>System retries up to 3 times with exponential backoff</li>
               <li>After 3 failed retries, assessments are marked as "failed" and appear here</li>

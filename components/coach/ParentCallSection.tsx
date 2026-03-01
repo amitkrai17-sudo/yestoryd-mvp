@@ -342,7 +342,7 @@ export default function ParentCallSection({
               <h3 className="text-lg font-semibold text-white">
                 {scheduleCallId ? 'Confirm Parent Call' : 'Schedule Parent Call'}
               </h3>
-              <button onClick={() => { setShowSchedule(false); setScheduleCallId(null); setActionResult(null); }} className="p-1 hover:bg-surface-2 rounded-lg">
+              <button onClick={() => { setShowSchedule(false); setScheduleCallId(null); setActionResult(null); }} className="p-1 hover:bg-surface-2 rounded-xl">
                 <X className="w-5 h-5 text-text-tertiary" />
               </button>
             </div>
@@ -411,7 +411,7 @@ export default function ParentCallSection({
           <div className="w-full sm:max-w-md bg-surface-1 rounded-t-2xl sm:rounded-2xl p-6 border border-border shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">Mark Call Complete</h3>
-              <button onClick={() => setCompletingId(null)} className="p-1 hover:bg-surface-2 rounded-lg">
+              <button onClick={() => setCompletingId(null)} className="p-1 hover:bg-surface-2 rounded-xl">
                 <X className="w-5 h-5 text-text-tertiary" />
               </button>
             </div>

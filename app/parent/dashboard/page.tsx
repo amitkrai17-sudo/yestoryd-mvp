@@ -1,6 +1,6 @@
 // =============================================================================
 // FILE: app/parent/dashboard/page.tsx
-// VERSION: 3.2 - Premium Dark UI + Dynamic WhatsApp
+// VERSION: 3.3 - Light Theme UI + Dynamic WhatsApp
 // PURPOSE: Parent Dashboard with Skill Booster Session Support
 // =============================================================================
 
@@ -13,7 +13,7 @@ import {
   Calendar, TrendingUp, HelpCircle,
   ChevronRight, Video,
   Clock, CheckCircle, Target, User, MessageCircle,
-  BookOpen, Zap, Gift, AlertCircle, RefreshCw,
+  BookOpen, Zap, AlertCircle, RefreshCw,
   Sparkles, Star, Rocket, Trophy
 } from 'lucide-react';
 import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
@@ -24,7 +24,9 @@ import SkillProgressCard from '@/components/parent/SkillProgressCard';
 import IntelligenceWidget from '@/components/parent/IntelligenceWidget';
 import SupportWidget from '@/components/support/SupportWidget';
 import ChatWidget from '@/components/chat/ChatWidget';
-import ReferralsTab from '@/components/parent/ReferralsTab';
+import ProgressCelebration from '@/components/parent/ProgressCelebration';
+import ReEnrollmentBanner from '@/components/parent/ReEnrollmentBanner';
+import ReferralCard from '@/components/parent/ReferralCard';
 import GroupClassesSection from '@/components/parent/GroupClassesSection';
 import ChildTimeline from '@/components/parent/ChildTimeline';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
@@ -141,6 +143,10 @@ export default function ParentDashboardPage() {
   const [parentCallQuota, setParentCallQuota] = useState({ used: 0, max: 1, remaining: 1 });
   const [latestPulse, setLatestPulse] = useState<any>(null);
   const [learningProfile, setLearningProfile] = useState<LearningProfile | null>(null);
+  const [taskStats, setTaskStats] = useState<{ current_streak: number; longest_streak: number; completed_this_week: number; total_this_week: number } | null>(null);
+  const [todayTask, setTodayTask] = useState<any>(null);
+  const [previousPulse, setPreviousPulse] = useState<any>(null);
+  const [croSettings, setCroSettings] = useState<Record<string, string>>({});
 
   const fetchData = useCallback(async () => {
     try {
@@ -323,24 +329,32 @@ export default function ParentDashboardPage() {
         }
       }
 
-      // Fetch latest Progress Pulse
+      // Fetch latest Progress Pulse (2 for CRO comparison)
       if (enrolledChild?.id) {
         try {
-          const { data: pulseData } = await supabase
+          const { data: pulseHistory } = await supabase
             .from('learning_events')
             .select('id, event_date, data, event_data')
             .eq('child_id', enrolledChild.id)
             .eq('event_type', 'progress_pulse')
             .order('event_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .limit(2);
 
-          if (pulseData) {
+          if (pulseHistory && pulseHistory.length > 0) {
+            const latest = pulseHistory[0];
             setLatestPulse({
-              id: pulseData.id,
-              event_date: pulseData.event_date,
-              data: pulseData.event_data || pulseData.data,
+              id: latest.id,
+              event_date: latest.event_date,
+              data: latest.event_data || latest.data,
             });
+            if (pulseHistory.length > 1) {
+              const prev = pulseHistory[1];
+              setPreviousPulse({
+                id: prev.id,
+                event_date: prev.event_date,
+                data: prev.event_data || prev.data,
+              });
+            }
           } else {
             setLatestPulse(null);
           }
@@ -349,6 +363,25 @@ export default function ParentDashboardPage() {
           setLatestPulse(null);
         }
       }
+
+      // Fetch task stats for CRO
+      try {
+        const taskRes = await fetch(`/api/parent/tasks/${enrolledChild.id}`);
+        const taskData = await taskRes.json();
+        if (taskData.success) {
+          setTaskStats(taskData.stats || null);
+          setTodayTask(taskData.today_task || null);
+        }
+      } catch (taskErr) {
+        console.error('Task stats fetch error:', taskErr);
+      }
+
+      // Fetch CRO site settings
+      try {
+        const croRes = await fetch('/api/parent/cro-settings');
+        const croData = await croRes.json();
+        if (croData.settings) setCroSettings(croData.settings);
+      } catch {}
 
       // Fetch upcoming sessions
       const today = new Date().toISOString().split('T')[0];
@@ -453,10 +486,10 @@ export default function ParentDashboardPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-secondary">Loading your dashboard...</p>
+          <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -465,11 +498,11 @@ export default function ParentDashboardPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
-        <div className="text-center max-w-md bg-surface-1 rounded-2xl p-6 shadow-xl shadow-black/30 border border-border">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="text-center max-w-md bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">Something went wrong</h2>
-          <p className="text-text-tertiary mb-6 text-sm">{error}</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-500 mb-6 text-sm">{error}</p>
           <button
             onClick={() => {
               setLoading(true);
@@ -489,12 +522,12 @@ export default function ParentDashboardPage() {
   // No enrollment state
   if (!childId) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
-        <div className="text-center max-w-md bg-surface-1 rounded-2xl p-6 shadow-xl shadow-black/30 border border-border">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="text-center max-w-md bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
           <BookOpen className="w-16 h-16 text-[#7b008b]/30 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">No Active Enrollment</h2>
-          <p className="text-text-tertiary mb-2 text-sm">Logged in as: <span className="text-[#7b008b]">{parentEmail}</span></p>
-          <p className="text-text-tertiary mb-6 text-sm">You don&apos;t have an active enrollment yet.</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Active Enrollment</h2>
+          <p className="text-gray-500 mb-2 text-sm">Logged in as: <span className="text-[#7b008b]">{parentEmail}</span></p>
+          <p className="text-gray-500 mb-6 text-sm">You don&apos;t have an active enrollment yet.</p>
           <a
             href="/assessment"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all min-h-[48px]"
@@ -508,8 +541,7 @@ export default function ParentDashboardPage() {
   }
 
   return (
-    // CRITICAL: overflow-x-hidden prevents horizontal scroll
-    <div className="min-h-screen bg-surface-0 overflow-x-hidden">
+    <div>
       {/* Main Content - No separate header, uses layout's navigation */}
       <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         {/* Overview Content - Navigation handled by BottomNav and Sidebar */}
@@ -531,6 +563,10 @@ export default function ParentDashboardPage() {
           parentCallQuota={parentCallQuota}
           latestPulse={latestPulse}
           learningProfile={learningProfile}
+          taskStats={taskStats}
+          todayTask={todayTask}
+          previousPulse={previousPulse}
+          croSettings={croSettings}
         />
       </main>
 
@@ -564,9 +600,9 @@ function PendingSkillBoosterCard({
 
   return (
     <div
-      className="bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-amber-500/20
+      className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50
                  border-2 border-yellow-400/40 rounded-2xl p-5
-                 shadow-lg shadow-black/20 w-full"
+                 shadow-sm w-full"
       role="alert"
       aria-label="Skill Booster session recommended"
     >
@@ -582,31 +618,31 @@ function PendingSkillBoosterCard({
 
           {/* Title & Description */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-white leading-tight">
+            <h3 className="text-lg font-bold text-gray-900 leading-tight">
               Skill Booster Session
             </h3>
-            <p className="text-sm text-text-secondary mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               Coach <span className="font-semibold text-[#7B008B]">{session.coach_name}</span> recommends
-              extra practice for <span className="font-semibold text-white">{childName}</span>
+              extra practice for <span className="font-semibold text-gray-900">{childName}</span>
             </p>
           </div>
         </div>
 
         {/* Focus Area Highlight */}
-        <div className="bg-surface-1/70 rounded-xl p-4 border border-yellow-500/30">
-          <p className="text-sm text-text-tertiary uppercase tracking-wide font-medium mb-1">Focus Area</p>
+        <div className="bg-white/70 rounded-xl p-4 border border-yellow-500/30">
+          <p className="text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Focus Area</p>
           <p className="text-lg font-bold text-[#FF0099]">{focusAreaLabel}</p>
         </div>
 
         {/* Info Badges */}
         <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-400
-                         rounded-full text-sm font-semibold border border-green-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700
+                         rounded-full text-sm font-semibold border border-emerald-200">
             <CheckCircle className="w-4 h-4" />
             FREE - Included
           </span>
           {daysSince > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm text-text-tertiary">
+            <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
               <Clock className="w-4 h-4" />
               {daysSince}d ago
             </span>
@@ -652,6 +688,10 @@ function OverviewTab({
   parentCallQuota,
   latestPulse,
   learningProfile,
+  taskStats,
+  todayTask,
+  previousPulse,
+  croSettings,
 }: {
   childId: string;
   childName: string;
@@ -670,6 +710,10 @@ function OverviewTab({
   parentCallQuota: { used: number; max: number; remaining: number };
   latestPulse: any;
   learningProfile: LearningProfile | null;
+  taskStats: { current_streak: number; longest_streak: number; completed_this_week: number; total_this_week: number } | null;
+  todayTask: any;
+  previousPulse: any;
+  croSettings: Record<string, string>;
 }) {
   function formatDate(dateStr: string): string {
     try {
@@ -713,25 +757,25 @@ function OverviewTab({
       case 'starter':
         return {
           label: 'Starter Pack',
-          color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+          color: 'bg-blue-50 text-blue-700 border-blue-200',
           Icon: Rocket,
         };
       case 'continuation':
         return {
           label: 'Continuation',
-          color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+          color: 'bg-purple-50 text-purple-700 border-purple-200',
           Icon: TrendingUp,
         };
       case 'full':
         return {
           label: 'Full Program',
-          color: 'bg-green-500/20 text-green-400 border-green-500/30',
+          color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
           Icon: Star,
         };
       default:
         return {
           label: 'Program',
-          color: 'bg-surface-2 text-text-secondary border-border',
+          color: 'bg-gray-50 text-gray-600 border-gray-200',
           Icon: BookOpen,
         };
     }
@@ -753,15 +797,16 @@ function OverviewTab({
 
   return (
     <div className="space-y-6 w-full">
-      {/* Welcome Banner with Enrollment Type Badge */}
-      <div className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-2xl p-5 text-white">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Personalized Welcome */}
+      <div className="bg-gradient-to-r from-pink-50/50 to-white rounded-2xl p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              Welcome back!
-              <Sparkles className="w-5 h-5 text-yellow-300" />
+            <p className="text-gray-600 text-sm">
+              {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}, {parentName ? parentName.split(' ')[0] : 'there'}
+            </p>
+            <h1 className="text-xl font-bold text-gray-900 mt-0.5">
+              {childName}&apos;s Learning Journey
             </h1>
-            <p className="text-white/80 mt-1">Track {childName}&apos;s reading journey</p>
           </div>
           {enrollment?.enrollment_type && (
             <span className={`px-4 py-2 rounded-xl text-sm font-semibold border flex items-center justify-center gap-2 whitespace-nowrap ${enrollmentTypeInfo.color}`}>
@@ -771,6 +816,80 @@ function OverviewTab({
           )}
         </div>
       </div>
+
+      {/* RE-ENROLLMENT BANNER — show when sessions remaining <= 2 */}
+      {enrollment && childId && (() => {
+        const sessionsRemaining = (enrollment.sessions_purchased || totalSessions) - completedSessions;
+        return sessionsRemaining <= 2 && sessionsRemaining >= 0 ? (
+          <ReEnrollmentBanner
+            childId={childId}
+            childName={childName}
+            sessionsRemaining={sessionsRemaining}
+            croSettings={croSettings}
+          />
+        ) : null;
+      })()}
+
+      {/* TODAY'S PRIORITY CARD */}
+      {todayTask && !todayTask.is_completed && (
+        <div className="bg-white border-l-4 border-[#FF0099] rounded-2xl shadow-sm p-4">
+          <p className="text-xs font-semibold text-[#FF0099] uppercase tracking-wider">Today&apos;s Practice</p>
+          <p className="text-base font-medium text-gray-900 mt-1">{todayTask.title}</p>
+          {taskStats && (taskStats.total_this_week - taskStats.completed_this_week) > 0 && (
+            <p className="text-sm text-gray-500 mt-0.5">
+              {taskStats.total_this_week - taskStats.completed_this_week} {taskStats.total_this_week - taskStats.completed_this_week === 1 ? 'activity' : 'activities'} remaining this week
+            </p>
+          )}
+          <Link
+            href="/parent/tasks"
+            className="mt-3 inline-flex items-center gap-2 bg-[#FF0099] text-white rounded-xl h-10 px-6 text-sm font-medium hover:bg-[#CC007A] transition-all duration-200"
+          >
+            Start Practice
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
+      {todayTask && todayTask.is_completed && taskStats && taskStats.total_this_week > 0 && (
+        <div className="bg-white border-l-4 border-emerald-400 rounded-2xl shadow-sm p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <p className="text-sm font-medium text-gray-700">All caught up! Great work.</p>
+        </div>
+      )}
+
+      {/* NEXT SESSION COUNTDOWN — within 48 hours */}
+      {(() => {
+        const nextSession = upcomingSessions[0];
+        if (!nextSession) return null;
+        try {
+          const sessionDateTime = new Date(`${nextSession.scheduled_date}T${nextSession.scheduled_time}`);
+          const diffMs = sessionDateTime.getTime() - Date.now();
+          if (diffMs < 0 || diffMs > 48 * 60 * 60 * 1000) return null;
+          const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+          let countdownText = '';
+          if (diffHours < 1) {
+            countdownText = `in ${Math.max(1, Math.floor(diffMs / 60000))} minutes`;
+          } else if (diffHours < 24) {
+            countdownText = `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+          } else {
+            countdownText = `tomorrow at ${formatTime(nextSession.scheduled_time)}`;
+          }
+          return (
+            <p className="text-sm text-gray-600 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              Session with {getCoachName()} {countdownText}
+            </p>
+          );
+        } catch { return null; }
+      })()}
+
+      {/* PROGRESS CELEBRATION — streak, improvement, milestone */}
+      <ProgressCelebration
+        currentProgress={latestPulse?.data?.overall_progress}
+        previousProgress={previousPulse?.data?.overall_progress}
+        currentStreak={taskStats?.current_streak || 0}
+        milestoneReached={latestPulse?.data?.milestone_reached}
+        childName={childName}
+      />
 
       {/* AI INSIGHT CARD — surfaces learning_profile intelligence */}
       {learningProfile && (
@@ -792,17 +911,17 @@ function OverviewTab({
 
       {/* STARTER COMPLETION CTA - Show when starter is completed */}
       {isStarterCompleted && (
-        <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-2 border-purple-500/30 rounded-2xl p-5">
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-5">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-white mb-2 flex items-center gap-2 text-lg">
+              <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2 text-lg">
                 <Trophy className="w-5 h-5 text-amber-400" />
                 Starter Pack Completed!
               </h3>
-              <p className="text-text-secondary text-base mb-4">
+              <p className="text-gray-600 text-base mb-4">
                 {childName} has made great progress! Continue the journey with 9 more sessions.
               </p>
               {daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
@@ -857,13 +976,13 @@ function OverviewTab({
       {/* Stats Grid - 2x2 on mobile */}
       <div className="grid grid-cols-2 gap-4">
         {/* Progress Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
-          <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center mb-3">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center mb-3">
             <Target className="w-5 h-5 text-[#FF0099]" />
           </div>
-          <p className="text-2xl font-bold text-white">{getProgressPercentage()}%</p>
-          <p className="text-sm text-text-tertiary mt-1">Progress</p>
-          <div className="mt-3 h-2 bg-surface-2 rounded-full overflow-hidden">
+          <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
+          <p className="text-sm text-gray-500 mt-1">Progress</p>
+          <div className="mt-3 h-2 bg-gray-50 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
               style={{ width: `${getProgressPercentage()}%` }}
@@ -872,32 +991,32 @@ function OverviewTab({
         </div>
 
         {/* Sessions Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
-          <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center mb-3">
-            <CheckCircle className="w-5 h-5 text-green-400" />
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
+            <CheckCircle className="w-5 h-5 text-emerald-700" />
           </div>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-2xl font-bold text-gray-900">
             {completedSessions}/{enrollment?.sessions_purchased || totalSessions}
           </p>
-          <p className="text-sm text-text-tertiary mt-1">Sessions</p>
+          <p className="text-sm text-gray-500 mt-1">Sessions</p>
         </div>
 
         {/* Score Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center mb-3">
-            <TrendingUp className="w-5 h-5 text-blue-400" />
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+            <TrendingUp className="w-5 h-5 text-blue-700" />
           </div>
-          <p className="text-2xl font-bold text-white">{latestScore ?? '--'}/10</p>
-          <p className="text-sm text-text-tertiary mt-1">Latest Score</p>
+          <p className="text-2xl font-bold text-gray-900">{latestScore ?? '--'}/10</p>
+          <p className="text-sm text-gray-500 mt-1">Latest Score</p>
         </div>
 
         {/* Days Left Card */}
-        <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center mb-3">
-            <Clock className="w-5 h-5 text-amber-400" />
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
+            <Clock className="w-5 h-5 text-amber-700" />
           </div>
-          <p className="text-2xl font-bold text-white">{getDaysRemaining()}</p>
-          <p className="text-sm text-text-tertiary mt-1">Days Left</p>
+          <p className="text-2xl font-bold text-gray-900">{getDaysRemaining()}</p>
+          <p className="text-sm text-gray-500 mt-1">Days Left</p>
         </div>
       </div>
 
@@ -907,9 +1026,9 @@ function OverviewTab({
       {/* Sessions & Coach - Stack on mobile */}
       <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
         {/* Upcoming Sessions */}
-        <div className="lg:col-span-2 bg-surface-1 rounded-2xl border border-[#7b008b]/20 shadow-lg shadow-black/20 shadow-[#7b008b]/5 overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
-            <h2 className="font-semibold text-white flex items-center gap-2 text-base">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
               <Calendar className="w-5 h-5 text-[#FF0099]" />
               Upcoming Sessions
             </h2>
@@ -921,19 +1040,20 @@ function OverviewTab({
             </Link>
           </div>
           {upcomingSessions.length > 0 ? (
-            <div className="divide-y divide-white/[0.08]">
+            <div className="divide-y divide-gray-200">
               {upcomingSessions.slice(0, 3).map((session) => (
-                <div key={session.id} className="p-4 flex items-center justify-between hover:bg-surface-2/50 transition-colors gap-3">
+                <div key={session.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors gap-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#FF0099]/20 to-[#7B008B]/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Video className="w-6 h-6 text-[#FF0099]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-white text-base truncate">
+                      <p className="font-medium text-gray-900 text-base truncate">
                         {session.title || getSessionTypeLabel(session.session_type)}
                       </p>
-                      <p className="text-sm text-text-tertiary">
+                      <p className="text-sm text-gray-500">
                         {formatDate(session.scheduled_date)} • {formatTime(session.scheduled_time)}
+                        {session.session_number ? ` • ${session.session_number}/${enrollment?.sessions_purchased || totalSessions}` : ''}
                       </p>
                     </div>
                   </div>
@@ -952,17 +1072,30 @@ function OverviewTab({
             </div>
           ) : (
             <div className="p-8 text-center">
-              <Calendar className="w-12 h-12 text-text-tertiary/30 mx-auto mb-4" />
-              <p className="text-text-secondary text-base">No upcoming sessions</p>
-              <p className="text-sm text-text-tertiary mt-1">Sessions will appear here once scheduled</p>
+              <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 text-base">No upcoming sessions</p>
+              <p className="text-sm text-gray-500 mt-1">Sessions will appear here once scheduled</p>
             </div>
           )}
+          {/* Mini session progress bar */}
+          <div className="px-5 py-3 border-t border-gray-100">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>{completedSessions} of {enrollment?.sessions_purchased || totalSessions} completed</span>
+              <span>{getProgressPercentage()}%</span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
+                style={{ width: `${getProgressPercentage()}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Coach Card */}
-        <div className="bg-surface-1 rounded-2xl border border-[#7b008b]/20 shadow-lg shadow-black/20 shadow-[#7b008b]/5 overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.08]">
-            <h2 className="font-semibold text-white flex items-center gap-2 text-base">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
               <User className="w-5 h-5 text-[#FF0099]" />
               Your Coach
             </h2>
@@ -975,12 +1108,12 @@ function OverviewTab({
                 </span>
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-white text-base truncate">{getCoachName()}</p>
+                <p className="font-semibold text-gray-900 text-base truncate">{getCoachName()}</p>
                 <p className="text-sm text-[#FF0099]">Reading Coach</p>
               </div>
             </div>
             {enrollment?.coaches?.bio && (
-              <p className="text-sm text-text-tertiary mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
+              <p className="text-sm text-gray-500 mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
             )}
             <a
               href={`https://wa.me/${getCoachPhone()}?text=Hi ${getCoachName()}, I'm ${childName}'s parent.`}
@@ -1007,22 +1140,19 @@ function OverviewTab({
         variant="card"
       />
 
-      {/* Referrals Card */}
-      <div className="bg-surface-1 rounded-2xl border border-[#7b008b]/20 shadow-lg shadow-black/20 shadow-[#7b008b]/5 overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
-          <h2 className="font-semibold text-white flex items-center gap-2 text-base">
-            <Gift className="w-5 h-5 text-[#FF0099]" />
-            Refer Friends & Earn
-          </h2>
-        </div>
-        <div className="p-5">
-          <ReferralsTab
-            parentEmail={parentEmail}
-            parentName={parentName}
-            childName={childName}
-          />
-        </div>
-      </div>
+      {/* Referral Card — Compact CRO version */}
+      <ReferralCard
+        parentEmail={parentEmail}
+        childName={childName}
+        croSettings={croSettings}
+      />
+
+      {/* Trust Element */}
+      {croSettings['trust_families_count'] && parseInt(croSettings['trust_families_count']) > 0 && (
+        <p className="text-xs text-gray-400 text-center">
+          Trusted by {croSettings['trust_families_count']}+ families
+        </p>
+      )}
 
       {/* rAI Tip — dynamic from learning profile or fallback */}
       <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white">

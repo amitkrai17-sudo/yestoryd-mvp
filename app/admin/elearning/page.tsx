@@ -179,7 +179,7 @@ export default function AdminElearningPage() {
     const config: Record<string, string> = {
       draft: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
       review: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-      approved: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+      approved: 'bg-white/[0.08] text-gray-300 border border-white/[0.08]',
       published: 'bg-green-500/20 text-green-400 border border-green-500/30',
     };
     const c = config[status] || config.draft;
@@ -206,7 +206,7 @@ export default function AdminElearningPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-7 h-7 text-[#7b008b]" />
+                <BookOpen className="w-7 h-7 text-gray-300" />
                 E-Learning Management
               </h1>
               <p className="text-text-tertiary mt-1">Manage video content, modules, and quizzes</p>
@@ -217,7 +217,7 @@ export default function AdminElearningPage() {
                   setEditingModule(null);
                   setShowModuleModal(true);
                 }}
-                className="px-4 py-2 bg-surface-2 border border-border rounded-lg text-text-secondary font-medium hover:bg-surface-3 flex items-center gap-2"
+                className="px-4 py-2 bg-surface-2 border border-border rounded-xl text-text-secondary font-medium hover:bg-surface-3 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add Module
@@ -227,7 +227,7 @@ export default function AdminElearningPage() {
                   setEditingVideo(null);
                   setShowVideoModal(true);
                 }}
-                className="px-4 py-2 bg-[#7b008b] text-white rounded-lg font-medium hover:bg-[#6a0078] flex items-center gap-2"
+                className="px-4 py-2 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" />
                 Add Video
@@ -245,9 +245,9 @@ export default function AdminElearningPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition ${
                   activeTab === tab.id
-                    ? 'bg-[#7b008b]/10 text-[#7b008b]'
+                    ? 'bg-white/[0.08] text-gray-300'
                     : 'text-text-secondary hover:bg-surface-2'
                 }`}
               >
@@ -292,7 +292,7 @@ export default function AdminElearningPage() {
                   placeholder="Search videos, modules..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
+                  className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30]"
                 />
               </div>
             </div>
@@ -300,7 +300,7 @@ export default function AdminElearningPage() {
             {/* Content Tree */}
             {loading ? (
               <div className="text-center py-12">
-                <div className="w-8 h-8 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <div className="w-8 h-8 border-4 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-text-tertiary">Loading content...</p>
               </div>
             ) : (
@@ -318,7 +318,7 @@ export default function AdminElearningPage() {
                         ) : (
                           <ChevronRight className="w-5 h-5 text-text-tertiary" />
                         )}
-                        <div className="w-10 h-10 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-[#121217] border border-white/[0.08] rounded-lg flex items-center justify-center">
                           <BookOpen className="w-5 h-5 text-white" />
                         </div>
                         <div>
@@ -347,7 +347,7 @@ export default function AdminElearningPage() {
                                 setEditingModule(null);
                                 setShowModuleModal(true);
                               }}
-                              className="text-[#7b008b] ml-1 hover:underline"
+                              className="text-gray-300 ml-1 hover:underline"
                             >
                               Add one
                             </button>
@@ -366,8 +366,8 @@ export default function AdminElearningPage() {
                                   ) : (
                                     <ChevronRight className="w-4 h-4 text-text-tertiary" />
                                   )}
-                                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                                    <Video className="w-4 h-4 text-blue-400" />
+                                  <div className="w-8 h-8 bg-white/[0.08] rounded-lg flex items-center justify-center">
+                                    <Video className="w-4 h-4 text-gray-400" />
                                   </div>
                                   <div>
                                     <div className="flex items-center gap-2">
@@ -394,7 +394,7 @@ export default function AdminElearningPage() {
                                       setEditingVideo(null);
                                       setShowVideoModal(true);
                                     }}
-                                    className="p-1.5 text-[#7b008b] hover:bg-[#7b008b]/10 rounded"
+                                    className="p-1.5 text-gray-300 hover:bg-white/[0.08] rounded"
                                   >
                                     <Plus className="w-4 h-4" />
                                   </button>
@@ -635,7 +635,7 @@ function VideoModal({
               value={form.module_id}
               onChange={(e) => setForm({ ...form, module_id: e.target.value })}
               required
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white"
             >
               <option value="">Select Module</option>
               {levels.map(level => (
@@ -657,7 +657,7 @@ function VideoModal({
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
               placeholder="e.g., Introduction to Phonics"
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white placeholder:text-text-muted"
             />
           </div>
 
@@ -669,7 +669,7 @@ function VideoModal({
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
               placeholder="What will children learn?"
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white placeholder:text-text-muted"
             />
           </div>
 
@@ -680,7 +680,7 @@ function VideoModal({
               <select
                 value={form.video_source}
                 onChange={(e) => setForm({ ...form, video_source: e.target.value })}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white"
               >
                 <option value="youtube">YouTube</option>
                 <option value="bunny">Bunny.net</option>
@@ -695,7 +695,7 @@ function VideoModal({
                 onChange={(e) => setForm({ ...form, video_id: e.target.value })}
                 required
                 placeholder="dQw4w9WgXcQ"
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white placeholder:text-text-muted"
               />
             </div>
           </div>
@@ -709,7 +709,7 @@ function VideoModal({
                 value={form.duration_seconds}
                 onChange={(e) => setForm({ ...form, duration_seconds: parseInt(e.target.value) || 0 })}
                 placeholder="300"
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white placeholder:text-text-muted"
               />
             </div>
             <div>
@@ -717,7 +717,7 @@ function VideoModal({
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white"
               >
                 <option value="draft">Draft</option>
                 <option value="review">In Review</option>
@@ -734,7 +734,7 @@ function VideoModal({
                 type="checkbox"
                 checked={form.has_quiz}
                 onChange={(e) => setForm({ ...form, has_quiz: e.target.checked })}
-                className="w-4 h-4 text-[#7b008b] rounded"
+                className="w-4 h-4 text-gray-300 rounded"
               />
               <span className="text-sm text-text-secondary">Has Quiz</span>
             </label>
@@ -743,7 +743,7 @@ function VideoModal({
                 type="checkbox"
                 checked={form.is_free}
                 onChange={(e) => setForm({ ...form, is_free: e.target.checked })}
-                className="w-4 h-4 text-[#7b008b] rounded"
+                className="w-4 h-4 text-gray-300 rounded"
               />
               <span className="text-sm text-text-secondary">Free Preview</span>
             </label>
@@ -754,14 +754,14 @@ function VideoModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-text-secondary hover:bg-surface-2 rounded-lg"
+              className="px-4 py-2 text-text-secondary hover:bg-surface-2 rounded-xl"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-[#7b008b] text-white rounded-lg font-medium hover:bg-[#6a0078] disabled:opacity-50"
+              className="px-4 py-2 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 disabled:opacity-50"
             >
               {saving ? 'Saving...' : video ? 'Update Video' : 'Add Video'}
             </button>
@@ -832,7 +832,7 @@ function ModuleModal({
               value={form.level_id}
               onChange={(e) => setForm({ ...form, level_id: e.target.value })}
               required
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white"
             >
               <option value="">Select Level</option>
               {levels.map(l => (
@@ -849,7 +849,7 @@ function ModuleModal({
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
               placeholder="e.g., Phonics Basics"
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white placeholder:text-text-muted"
             />
           </div>
 
@@ -859,7 +859,7 @@ function ModuleModal({
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-brand-primary text-white placeholder:text-text-muted"
+              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] text-white placeholder:text-text-muted"
             />
           </div>
 
@@ -869,20 +869,20 @@ function ModuleModal({
                 type="checkbox"
                 checked={form.is_active}
                 onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                className="w-4 h-4 text-[#7b008b] rounded"
+                className="w-4 h-4 text-gray-300 rounded"
               />
               <span className="text-sm text-text-secondary">Active</span>
             </label>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-text-secondary hover:bg-surface-2 rounded-lg">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-text-secondary hover:bg-surface-2 rounded-xl">
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-[#7b008b] text-white rounded-lg font-medium hover:bg-[#6a0078] disabled:opacity-50"
+              className="px-4 py-2 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 disabled:opacity-50"
             >
               {saving ? 'Saving...' : module ? 'Update' : 'Add Module'}
             </button>
@@ -1029,7 +1029,7 @@ function QuizModal({
                       name="correct"
                       checked={newQuestion.correct_option_id === opt.id}
                       onChange={() => setNewQuestion({ ...newQuestion, correct_option_id: opt.id })}
-                      className="text-[#7b008b]"
+                      className="text-gray-300"
                     />
                     <input
                       type="text"
@@ -1060,7 +1060,7 @@ function QuizModal({
               <button
                 onClick={addQuestion}
                 disabled={saving || !newQuestion.question_text}
-                className="w-full py-2 bg-[#7b008b] text-white rounded-lg font-medium hover:bg-[#6a0078] disabled:opacity-50"
+                className="w-full py-2 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 disabled:opacity-50"
               >
                 {saving ? 'Adding...' : 'Add Question'}
               </button>

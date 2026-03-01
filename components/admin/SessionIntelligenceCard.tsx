@@ -147,7 +147,7 @@ export default function SessionIntelligenceCard() {
       <div className="p-6 border-b border-slate-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/[0.12] rounded-xl flex items-center justify-center">
               <Activity className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -324,7 +324,7 @@ export default function SessionIntelligenceCard() {
             {recentIssues.length > 5 && (
               <Link
                 href="/admin/sessions?filter=issues"
-                className="mt-3 flex items-center justify-center gap-1 text-sm text-violet-600 hover:text-violet-700 font-medium"
+                className="mt-3 flex items-center justify-center gap-1 text-sm text-gray-300 hover:text-white font-medium"
               >
                 View all issues <ChevronRight className="w-4 h-4" />
               </Link>

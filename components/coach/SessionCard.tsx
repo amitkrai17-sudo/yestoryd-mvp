@@ -290,7 +290,7 @@ export function SessionCard({
     <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-3 hover:border-gray-700 transition-colors w-full overflow-hidden">
       <div className="flex items-center gap-2.5 w-full">
         {/* Avatar - smaller on mobile */}
-        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0">
+        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0">
           {session.child_name.charAt(0).toUpperCase()}
         </div>
 

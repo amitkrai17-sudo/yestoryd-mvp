@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import ParentLayout from '@/components/parent/ParentLayout';
 import { supabase } from '@/lib/supabase/client';
 import {
   TrendingUp,
@@ -161,9 +160,9 @@ export default function ParentProgressPage() {
   }
 
   function getScoreColor(score: number): string {
-    if (score >= 8) return 'text-green-400';
+    if (score >= 8) return 'text-emerald-700';
     if (score >= 5) return 'text-[#FF0099]';
-    return 'text-orange-400';
+    return 'text-orange-600';
   }
 
   function formatDate(dateStr: string): string {
@@ -176,21 +175,19 @@ export default function ParentProgressPage() {
 
   if (loading) {
     return (
-      <ParentLayout>
         <div className="flex items-center justify-center h-64">
           <div className="w-8 h-8 border-4 border-[#FF0099] border-t-transparent rounded-full animate-spin" />
         </div>
-      </ParentLayout>
     );
   }
 
   if (!childId) {
     return (
-      <ParentLayout>
-        <div className="text-center py-12 bg-surface-1 rounded-2xl border border-border">
-          <BookOpen className="w-16 h-16 text-text-muted mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">No Active Enrollment</h2>
-          <p className="text-text-tertiary mb-6">Enroll your child to start tracking progress.</p>
+      <>
+        <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Active Enrollment</h2>
+          <p className="text-gray-500 mb-6">Enroll your child to start tracking progress.</p>
           <Link
             href="/assessment"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF0099] text-white rounded-xl font-semibold hover:bg-[#FF0099]/80 transition-all"
@@ -198,21 +195,21 @@ export default function ParentProgressPage() {
             Reading Test - Free
           </Link>
         </div>
-      </ParentLayout>
+      </>
     );
   }
 
   return (
-    <ParentLayout>
+    <>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Progress Report</h1>
-          <p className="text-text-tertiary">{childName}'s reading journey</p>
+          <h1 className="text-2xl font-bold text-gray-900">Progress Report</h1>
+          <p className="text-gray-500">{childName}'s reading journey</p>
         </div>
 
         {/* Session Progress Track */}
-        <div className="bg-surface-1 rounded-2xl border border-border shadow-sm p-5 mb-6">
-          <h2 className="font-semibold text-white mb-5 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+          <h2 className="font-semibold text-gray-900 mb-5 flex items-center gap-2">
             <Target className="w-5 h-5 text-[#FF0099]" />
             Session Progress
           </h2>
@@ -220,7 +217,7 @@ export default function ParentProgressPage() {
           {/* Visual Progress Track */}
           <div className="relative mb-6">
             {/* Track Line */}
-            <div className="h-2 bg-surface-3 rounded-full">
+            <div className="h-2 bg-gray-100 rounded-full">
               <div
                 className="h-2 bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
                 style={{ width: `${(sessionsCompleted / totalSessions) * 100}%` }}
@@ -235,8 +232,8 @@ export default function ParentProgressPage() {
                     i < sessionsCompleted
                       ? 'bg-[#FF0099] text-white shadow-sm'
                       : i === sessionsCompleted
-                        ? 'bg-[#FF0099]/20 text-[#FF0099] border-2 border-[#FF0099]'
-                        : 'bg-surface-3 text-text-muted'
+                        ? 'bg-pink-50 text-[#FF0099] border-2 border-[#FF0099]'
+                        : 'bg-gray-100 text-gray-400'
                   }`}>
                     {i < sessionsCompleted ? <Check className="w-3.5 h-3.5" /> : i + 1}
                   </div>
@@ -245,78 +242,78 @@ export default function ParentProgressPage() {
             </div>
           </div>
 
-          <p className="text-center text-base text-text-secondary">
-            <span className="font-bold text-[#FF0099]">{sessionsCompleted}</span> of <span className="font-bold text-white">{totalSessions}</span> sessions completed
+          <p className="text-center text-base text-gray-600">
+            <span className="font-bold text-[#FF0099]">{sessionsCompleted}</span> of <span className="font-bold text-gray-900">{totalSessions}</span> sessions completed
           </p>
         </div>
 
         {/* Stats Cards Row */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {/* Progress % */}
-          <div className="bg-surface-1 rounded-xl border border-border shadow-sm p-4 text-center">
-            <div className="w-10 h-10 mx-auto mb-2 bg-[#FF0099]/10 rounded-lg flex items-center justify-center">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <div className="w-10 h-10 mx-auto mb-2 bg-pink-50 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-[#FF0099]" />
             </div>
-            <p className="text-2xl font-bold text-white">{getProgressPercentage()}%</p>
-            <p className="text-sm text-text-tertiary">Progress</p>
+            <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
+            <p className="text-sm text-gray-500">Progress</p>
           </div>
 
           {/* Sessions */}
-          <div className="bg-surface-1 rounded-xl border border-border shadow-sm p-4 text-center">
-            <div className="w-10 h-10 mx-auto mb-2 bg-green-500/10 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-green-400" />
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <div className="w-10 h-10 mx-auto mb-2 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-emerald-700" />
             </div>
-            <p className="text-2xl font-bold text-white">{sessionsCompleted}/{totalSessions}</p>
-            <p className="text-sm text-text-tertiary">Sessions</p>
+            <p className="text-2xl font-bold text-gray-900">{sessionsCompleted}/{totalSessions}</p>
+            <p className="text-sm text-gray-500">Sessions</p>
           </div>
 
           {/* Latest Score */}
-          <div className="bg-surface-1 rounded-xl border border-border shadow-sm p-4 text-center">
-            <div className="w-10 h-10 mx-auto mb-2 bg-blue-500/10 rounded-lg flex items-center justify-center">
-              <Star className="w-5 h-5 text-blue-400" />
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <div className="w-10 h-10 mx-auto mb-2 bg-blue-50 rounded-lg flex items-center justify-center">
+              <Star className="w-5 h-5 text-blue-700" />
             </div>
-            <p className={`text-2xl font-bold ${latestScore ? getScoreColor(latestScore) : 'text-text-muted'}`}>
+            <p className={`text-2xl font-bold ${latestScore ? getScoreColor(latestScore) : 'text-gray-400'}`}>
               {latestScore ?? '--'}/10
             </p>
-            <p className="text-sm text-text-tertiary">Score</p>
+            <p className="text-sm text-gray-500">Score</p>
           </div>
         </div>
 
         {/* Timeline */}
         {learningEvents.length > 0 && (
-          <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden mb-6">
-            <div className="p-5 border-b border-border">
-              <h2 className="font-semibold text-white flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+            <div className="p-5 border-b border-gray-200">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#FF0099]" />
                 Learning Timeline
               </h2>
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-gray-200">
               {learningEvents.map((event) => (
                 <div key={event.id} className="p-5 flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#FF0099]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center flex-shrink-0">
                     {event.event_type === 'assessment' ? (
                       <Award className="w-5 h-5 text-[#FF0099]" />
                     ) : event.event_type === 'session_completed' ? (
-                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <CheckCircle className="w-5 h-5 text-emerald-700" />
                     ) : (
                       <Star className="w-5 h-5 text-yellow-400" />
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-white">
+                    <p className="font-medium text-gray-900">
                       {event.event_type === 'assessment' ? 'Reading Assessment' :
                        event.event_type === 'session_completed' ? 'Session Completed' :
                        'Achievement Unlocked'}
                     </p>
-                    <p className="text-sm text-text-tertiary">{formatDate(event.created_at)}</p>
+                    <p className="text-sm text-gray-500">{formatDate(event.created_at)}</p>
                     {event.event_data?.score && (
                       <p className={`text-lg font-bold mt-1 ${getScoreColor(event.event_data.score)}`}>
                         Score: {event.event_data.score}/10
                       </p>
                     )}
                     {event.event_data?.feedback && (
-                      <p className="text-sm text-text-secondary mt-1">{event.event_data.feedback}</p>
+                      <p className="text-sm text-gray-600 mt-1">{event.event_data.feedback}</p>
                     )}
                   </div>
                 </div>
@@ -327,32 +324,32 @@ export default function ParentProgressPage() {
 
         {/* Empty state for timeline */}
         {learningEvents.length === 0 && (
-          <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden mb-6">
-            <div className="p-5 border-b border-border">
-              <h2 className="font-semibold text-white flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+            <div className="p-5 border-b border-gray-200">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#FF0099]" />
                 Learning Timeline
               </h2>
             </div>
             <div className="p-8 text-center">
-              <Calendar className="w-12 h-12 text-text-muted mx-auto mb-3" />
-              <p className="text-text-tertiary">No learning events yet</p>
-              <p className="text-sm text-text-muted mt-1">Events will appear here as your child progresses</p>
+              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500">No learning events yet</p>
+              <p className="text-sm text-gray-400 mt-1">Events will appear here as your child progresses</p>
             </div>
           </div>
         )}
 
         {/* Achievement Badges - Horizontal Scroll */}
-        <div className="bg-surface-1 rounded-2xl border border-border shadow-sm p-5 mb-6">
-          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Award className="w-5 h-5 text-[#FF0099]" />
             Achievements
           </h3>
 
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
             {/* First Session Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center ${
-              sessionsCompleted >= 1 ? 'bg-amber-500/20 text-amber-400' : 'bg-surface-2 text-text-muted'
+            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+              sessionsCompleted >= 1 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
             }`}>
               <div className="flex justify-center mb-2">
                 {sessionsCompleted >= 1 ? <Trophy className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
@@ -362,8 +359,8 @@ export default function ParentProgressPage() {
             </div>
 
             {/* 3 in a Row Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center ${
-              sessionsCompleted >= 3 ? 'bg-orange-500/20 text-orange-400' : 'bg-surface-2 text-text-muted'
+            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+              sessionsCompleted >= 3 ? 'bg-orange-50 text-orange-700' : 'bg-gray-50 text-gray-400'
             }`}>
               <div className="flex justify-center mb-2">
                 {sessionsCompleted >= 3 ? <Flame className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
@@ -373,8 +370,8 @@ export default function ParentProgressPage() {
             </div>
 
             {/* Halfway Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center ${
-              sessionsCompleted >= 5 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-surface-2 text-text-muted'
+            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+              sessionsCompleted >= 5 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
             }`}>
               <div className="flex justify-center mb-2">
                 {sessionsCompleted >= 5 ? <Star className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
@@ -384,8 +381,8 @@ export default function ParentProgressPage() {
             </div>
 
             {/* Graduate Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center ${
-              sessionsCompleted >= totalSessions ? 'bg-purple-500/20 text-purple-400' : 'bg-surface-2 text-text-muted'
+            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+              sessionsCompleted >= totalSessions ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-400'
             }`}>
               <div className="flex justify-center mb-2">
                 {sessionsCompleted >= totalSessions ? <GraduationCap className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
@@ -423,6 +420,6 @@ export default function ParentProgressPage() {
           </div>
         </div>
       </div>
-    </ParentLayout>
+    </>
   );
 }

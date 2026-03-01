@@ -153,10 +153,10 @@ export default function ELearningPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Sparkles className="w-12 h-12 text-[#FF0099] mx-auto mb-4 animate-pulse" />
-          <p className="text-text-secondary">Loading e-learning...</p>
+          <p className="text-gray-600">Loading e-learning...</p>
         </div>
       </div>
     );
@@ -165,9 +165,9 @@ export default function ELearningPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center max-w-md">
-          <p className="text-red-400 mb-4">{error}</p>
+          <p className="text-red-700 mb-4">{error}</p>
           <button
             onClick={() => router.push('/parent')}
             className="px-4 py-2 bg-[#FF0099] text-white rounded-lg"
@@ -180,25 +180,25 @@ export default function ELearningPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div>
       {/* Header */}
-      <header className="bg-surface-1 border-b border-border sticky top-0 z-40">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-3 md:px-4 py-2 md:py-3">
           <div className="flex items-center justify-between">
             {/* Back & Title */}
             <div className="flex items-center gap-2 md:gap-4">
               <button
                 onClick={() => router.push('/parent')}
-                className="p-1.5 md:p-2 hover:bg-surface-2 rounded-lg transition"
+                className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition"
               >
-                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-text-secondary" />
+                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="font-bold text-white flex items-center gap-1.5 md:gap-2 text-sm md:text-base">
+                <h1 className="font-bold text-gray-900 flex items-center gap-1.5 md:gap-2 text-sm md:text-base">
                   <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-[#FF0099]" />
                   E-Learning
                 </h1>
-                <p className="text-xs md:text-sm text-text-tertiary hidden sm:block">Powered by rAI</p>
+                <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Powered by rAI</p>
               </div>
             </div>
 
@@ -206,21 +206,21 @@ export default function ELearningPage() {
             {gamification && (
               <div className="flex items-center gap-2 md:gap-4">
                 {/* Streak */}
-                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-orange-500/10 rounded-lg">
-                  <Flame className={`w-4 h-4 md:w-5 md:h-5 ${gamification.streak?.current > 0 ? 'text-orange-400' : 'text-text-muted'}`} />
-                  <span className="font-semibold text-white text-xs md:text-sm">{gamification.streak?.current || 0}</span>
+                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-orange-50 rounded-lg">
+                  <Flame className={`w-4 h-4 md:w-5 md:h-5 ${gamification.streak?.current > 0 ? 'text-orange-400' : 'text-gray-400'}`} />
+                  <span className="font-semibold text-gray-900 text-xs md:text-sm">{gamification.streak?.current || 0}</span>
                 </div>
 
                 {/* XP */}
-                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-purple-500/10 rounded-lg">
+                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-purple-50 rounded-lg">
                   <Zap className="w-4 h-4 md:w-5 md:h-5 text-[#FF0099]" />
-                  <span className="font-semibold text-white text-xs md:text-sm">{gamification.xp?.current || 0}</span>
+                  <span className="font-semibold text-gray-900 text-xs md:text-sm">{gamification.xp?.current || 0}</span>
                 </div>
 
                 {/* Badges */}
-                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-yellow-500/10 rounded-lg">
+                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-yellow-50 rounded-lg">
                   <Trophy className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
-                  <span className="font-semibold text-white text-xs md:text-sm">{gamification.badges?.earned?.length || 0}</span>
+                  <span className="font-semibold text-gray-900 text-xs md:text-sm">{gamification.badges?.earned?.length || 0}</span>
                 </div>
               </div>
             )}
@@ -232,19 +232,19 @@ export default function ELearningPage() {
       <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-6">
         {/* XP Progress Bar */}
         {gamification && (
-          <div className="bg-surface-1 rounded-lg md:rounded-xl p-3 md:p-4 border border-border mb-4 md:mb-6">
+          <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm mb-4 md:mb-6">
             <div className="flex items-center justify-between mb-1.5 md:mb-2">
               <div className="flex items-center gap-1.5 md:gap-2">
                 <Star className="w-4 h-4 md:w-5 md:h-5 text-[#FF0099]" />
-                <span className="font-medium text-white text-xs md:text-sm">
+                <span className="font-medium text-gray-900 text-xs md:text-sm">
                   Level {gamification.xp?.level || 1}: {gamification.xp?.levelName || 'Beginner'}
                 </span>
               </div>
-              <span className="text-xs md:text-sm text-text-tertiary">
+              <span className="text-xs md:text-sm text-gray-500">
                 {gamification.xp?.xpInCurrentLevel || 0} / {gamification.xp?.xpRequiredForLevel || 100} XP
               </span>
             </div>
-            <div className="h-2 md:h-3 bg-surface-3 rounded-full overflow-hidden">
+            <div className="h-2 md:h-3 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-full transition-all duration-500"
                 style={{ width: `${gamification.xp?.progressPercent || 0}%` }}
@@ -267,18 +267,18 @@ export default function ELearningPage() {
 
         {/* Recent Achievements */}
         {gamification && gamification.badges?.earned?.length > 0 && (
-          <div className="mt-4 md:mt-6 bg-surface-1 rounded-lg md:rounded-xl p-4 md:p-5 border border-border">
-            <h3 className="font-semibold text-white mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base">
+          <div className="mt-4 md:mt-6 bg-white rounded-lg md:rounded-xl p-4 md:p-5 border border-gray-100 shadow-sm">
+            <h3 className="font-semibold text-gray-900 mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base">
               <Trophy className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
               Recent Achievements
             </h3>
-            <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
               {gamification.badges.earned.slice(0, 5).map((badge: any) => (
-                <div key={badge.id} className="flex-shrink-0 w-16 md:w-24 text-center">
-                  <div className="w-12 h-12 md:w-16 md:h-16 mx-auto bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 rounded-lg md:rounded-xl flex items-center justify-center mb-1.5 md:mb-2 border border-yellow-500/30">
+                <div key={badge.id} className="flex-shrink-0 w-16 md:w-24 text-center snap-start">
+                  <div className="w-12 h-12 md:w-16 md:h-16 mx-auto bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg md:rounded-xl flex items-center justify-center mb-1.5 md:mb-2 border border-amber-200">
                     <Trophy className="w-6 h-6 md:w-8 md:h-8 text-amber-400" />
                   </div>
-                  <p className="text-xs md:text-sm font-medium text-white truncate">{badge.name}</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">{badge.name}</p>
                 </div>
               ))}
             </div>
@@ -288,20 +288,20 @@ export default function ELearningPage() {
         {/* Stats Cards */}
         {gamification && (
           <div className="mt-4 md:mt-6 grid grid-cols-3 gap-2 md:gap-4">
-            <div className="bg-surface-1 rounded-lg md:rounded-xl p-3 md:p-4 border border-border text-center">
+            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm text-center">
               <Play className="w-6 h-6 md:w-8 md:h-8 text-blue-400 mx-auto mb-1 md:mb-2" />
-              <p className="text-lg md:text-2xl font-bold text-white">{gamification.stats?.totalVideosCompleted || 0}</p>
-              <p className="text-xs md:text-sm text-text-tertiary">Videos</p>
+              <p className="text-lg md:text-2xl font-bold text-gray-900">{gamification.stats?.totalVideosCompleted || 0}</p>
+              <p className="text-xs md:text-sm text-gray-500">Videos</p>
             </div>
-            <div className="bg-surface-1 rounded-lg md:rounded-xl p-3 md:p-4 border border-border text-center">
-              <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-green-400 mx-auto mb-1 md:mb-2" />
-              <p className="text-lg md:text-2xl font-bold text-white">{gamification.stats?.totalQuizzesPassed || 0}</p>
-              <p className="text-xs md:text-sm text-text-tertiary">Quizzes</p>
+            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm text-center">
+              <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-700 mx-auto mb-1 md:mb-2" />
+              <p className="text-lg md:text-2xl font-bold text-gray-900">{gamification.stats?.totalQuizzesPassed || 0}</p>
+              <p className="text-xs md:text-sm text-gray-500">Quizzes</p>
             </div>
-            <div className="bg-surface-1 rounded-lg md:rounded-xl p-3 md:p-4 border border-border text-center">
+            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm text-center">
               <Star className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 mx-auto mb-1 md:mb-2" />
-              <p className="text-lg md:text-2xl font-bold text-white">{gamification.stats?.perfectScores || 0}</p>
-              <p className="text-xs md:text-sm text-text-tertiary">Perfect!</p>
+              <p className="text-lg md:text-2xl font-bold text-gray-900">{gamification.stats?.perfectScores || 0}</p>
+              <p className="text-xs md:text-sm text-gray-500">Perfect!</p>
             </div>
           </div>
         )}

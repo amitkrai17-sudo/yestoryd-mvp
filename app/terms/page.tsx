@@ -33,7 +33,7 @@ export default function TermsOfServicePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white font-sans">
+    <div className="min-h-screen bg-white font-body">
       {/* Header */}
       <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-white'}`}>
         <div className="bg-[#1a1a2e] text-white py-2 px-4 text-xs sm:text-sm">

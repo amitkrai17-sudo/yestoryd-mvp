@@ -96,7 +96,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-[#1a1f2e] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] p-5">
+        <div className="bg-gradient-to-r from-[#00ABFF] to-[#0066CC] p-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-white">Session Prep</h2>

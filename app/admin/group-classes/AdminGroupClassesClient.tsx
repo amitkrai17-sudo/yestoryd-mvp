@@ -262,11 +262,11 @@ function SessionCard({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <div className="bg-surface-1 rounded-xl border border-border p-5 hover:shadow-md transition-shadow">
+    <div className="bg-surface-1 rounded-xl border border-border p-5 transition-colors">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-xl flex items-center justify-center text-2xl">
+          <div className="w-12 h-12 bg-white/[0.08] rounded-xl flex items-center justify-center text-2xl">
             {session.class_type?.icon_emoji || '📚'}
           </div>
           <div>
@@ -285,7 +285,7 @@ function SessionCard({
           <button
             ref={buttonRef}
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 hover:bg-surface-3 rounded-lg"
+            className="p-2 hover:bg-surface-3 rounded-xl"
           >
             <MoreVertical className="w-5 h-5 text-text-tertiary" />
           </button>
@@ -316,7 +316,7 @@ function SessionCard({
           <span className="text-sm">{session.current_participants}/{session.max_participants} kids</span>
         </div>
         <div className="flex items-center gap-2 text-text-secondary">
-          <span className="text-sm font-semibold text-[#ff0099]">₹{session.price_inr}</span>
+          <span className="text-sm font-semibold text-gray-300">₹{session.price_inr}</span>
         </div>
       </div>
 
@@ -340,14 +340,14 @@ function SessionCard({
         )}
 
         {session.recall_bot_id && (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-xs font-medium">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.08] text-gray-400 border border-white/[0.08] rounded-full text-xs font-medium">
             <Mic className="w-3.5 h-3.5" />
             Recording
           </span>
         )}
 
         {session.book && (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs font-medium">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.08] text-gray-400 border border-white/[0.08] rounded-full text-xs font-medium">
             <BookOpen className="w-3.5 h-3.5" />
             {session.book.title}
           </span>
@@ -554,7 +554,7 @@ function SessionModal({
               {isEditMode ? 'Update session details' : 'Fill in the details for the new group class'}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-xl">
             <X className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
@@ -571,7 +571,7 @@ function SessionModal({
                   onClick={() => handleClassTypeChange(ct.id)}
                   className={`p-4 rounded-xl border-2 text-left transition-all ${
                     formData.classTypeId === ct.id
-                      ? 'border-[#ff0099] bg-[#ff0099]/10'
+                      ? 'border-white/[0.16] bg-white/[0.08]'
                       : 'border-border hover:border-border'
                   }`}
                 >
@@ -594,7 +594,7 @@ function SessionModal({
               <select
                 value={formData.blueprintId}
                 onChange={(e) => handleBlueprintChange(e.target.value)}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white"
               >
                 <option value="">No blueprint</option>
                 {options.blueprints
@@ -616,7 +616,7 @@ function SessionModal({
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
               placeholder="e.g., Dinosaur Discovery Reading"
               required
             />
@@ -630,7 +630,7 @@ function SessionModal({
                 type="date"
                 value={formData.scheduledDate}
                 onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
                 required
               />
             </div>
@@ -640,7 +640,7 @@ function SessionModal({
                 type="time"
                 value={formData.scheduledTime}
                 onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
                 required
               />
             </div>
@@ -654,7 +654,7 @@ function SessionModal({
                 type="number"
                 value={formData.durationMinutes}
                 onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 45 })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
               />
             </div>
             <div>
@@ -663,7 +663,7 @@ function SessionModal({
                 type="number"
                 value={formData.maxParticipants}
                 onChange={(e) => setFormData({ ...formData, maxParticipants: parseInt(e.target.value) || 10 })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
               />
             </div>
             <div>
@@ -672,7 +672,7 @@ function SessionModal({
                 type="number"
                 value={formData.priceInr}
                 onChange={(e) => setFormData({ ...formData, priceInr: parseInt(e.target.value) || 199 })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
               />
             </div>
           </div>
@@ -684,7 +684,7 @@ function SessionModal({
               <button
                 type="button"
                 onClick={onAddInstructor}
-                className="text-sm text-[#ff0099] hover:underline flex items-center gap-1"
+                className="text-sm text-gray-300 hover:underline flex items-center gap-1"
               >
                 <UserPlus className="w-4 h-4" />
                 Add New
@@ -693,7 +693,7 @@ function SessionModal({
             <select
               value={formData.instructorId}
               onChange={(e) => setFormData({ ...formData, instructorId: e.target.value })}
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white"
             >
               <option value="">Select instructor...</option>
               {options.coaches.map((coach) => (
@@ -712,7 +712,7 @@ function SessionModal({
               <select
                 value={formData.bookId}
                 onChange={(e) => setFormData({ ...formData, bookId: e.target.value })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white"
               >
                 <option value="">Select book (optional)...</option>
                 {options.books.map((book) => (
@@ -744,7 +744,7 @@ function SessionModal({
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -822,7 +822,7 @@ function AddInstructorModal({
       <div className="bg-surface-1 rounded-2xl max-w-md w-full p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-white">Add New Instructor</h3>
-          <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-xl">
             <X className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
@@ -889,7 +889,7 @@ function AddInstructorModal({
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 bg-[#ff0099] text-white rounded-xl font-semibold disabled:opacity-50"
+              className="flex-1 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold disabled:opacity-50 hover:bg-gray-200"
             >
               {loading ? 'Adding...' : 'Add Instructor'}
             </button>
@@ -1001,7 +1001,7 @@ export default function AdminGroupClassesClient() {
   );
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -1015,7 +1015,7 @@ export default function AdminGroupClassesClient() {
                 setEditingSession(null);
                 setModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-shadow"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-colors"
             >
               <Plus className="w-5 h-5" />
               Create Session
@@ -1033,7 +1033,7 @@ export default function AdminGroupClassesClient() {
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                   filter === tab
                     ? 'bg-surface-1 text-white shadow-sm'
                     : 'text-text-secondary hover:text-white'
@@ -1053,7 +1053,7 @@ export default function AdminGroupClassesClient() {
                 placeholder="Search sessions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
               />
             </div>
           </div>
@@ -1064,7 +1064,7 @@ export default function AdminGroupClassesClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : filteredSessions.length === 0 ? (
           <div className="text-center py-20">
@@ -1081,7 +1081,7 @@ export default function AdminGroupClassesClient() {
                   setEditingSession(null);
                   setModalOpen(true);
                 }}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff0099] text-white rounded-xl font-semibold"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200"
               >
                 <Plus className="w-5 h-5" />
                 Create Session

@@ -119,7 +119,7 @@ export default function AdminWaitlistPage() {
             <button
               onClick={exportToCSV}
               disabled={entries.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#e6008a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
               Export CSV
@@ -131,8 +131,8 @@ export default function AdminWaitlistPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-surface-2 border border-border rounded-xl p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#FF0099]/20 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#FF0099]" />
+              <div className="w-10 h-10 bg-white/[0.08] rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-gray-300" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-white">{totalSignups}</p>
@@ -163,7 +163,7 @@ export default function AdminWaitlistPage() {
             <select
               value={filterProduct}
               onChange={(e) => setFilterProduct(e.target.value)}
-              className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-white text-sm focus:border-[#FF0099] outline-none"
+              className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-white text-sm focus:border-white/[0.30] outline-none"
             >
               <option value="all">All Products</option>
               {products.map(p => (
@@ -175,7 +175,7 @@ export default function AdminWaitlistPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-white text-sm focus:border-[#FF0099] outline-none"
+            className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-white text-sm focus:border-white/[0.30] outline-none"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -222,7 +222,7 @@ export default function AdminWaitlistPage() {
                         <p className="text-text-tertiary text-xs">{entry.phone}</p>
                       </td>
                       <td className="p-4">
-                        <span className="px-2 py-1 bg-[#FF0099]/20 text-[#FF0099] rounded text-xs font-medium capitalize">
+                        <span className="px-2 py-1 bg-white/[0.08] text-gray-400 rounded text-xs font-medium capitalize">
                           {formatProductName(entry.product_slug)}
                         </span>
                       </td>

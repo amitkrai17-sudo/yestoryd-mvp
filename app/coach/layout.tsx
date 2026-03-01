@@ -2,27 +2,19 @@
 // FILE: app/coach/layout.tsx
 // ============================================================
 // Coach Layout - Auth + Role Verification
-// Yestoryd - AI-Powered Reading Intelligence Platform
-//
-// DARK THEME with Brand Colors:
-// - Primary CTA: #00ABFF (pink)
-// - Secondary: #00ABFF (blue)
-// - Dark BG: #0f1419
-// - Card BG: bg-gray-800
-// - Borders: border-gray-700
+// Layout chrome handled by CoachLayout → PortalLayout
 // ============================================================
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Shield, LogOut } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { CoachContext, CoachData, CoachContextType } from './context';
-import BottomNav from '@/components/navigation/BottomNav';
-import { coachNavItems } from '@/lib/config/navigation';
+import CoachLayout from '@/components/layouts/CoachLayout';
+import ChatWidget from '@/components/chat/ChatWidget';
 import { supabase } from '@/lib/supabase/client';
 
-// ==================== SUPABASE CLIENT ====================
 // ==================== ROUTE CONFIGURATION ====================
 const PUBLIC_ROUTES = ['/coach/login', '/coach/confirm'];
 
@@ -39,21 +31,21 @@ function isPublicLandingPage(pathname: string): boolean {
     '/coach/profile',
     '/coach/capture',
   ];
-  
+
   if (protectedPaths.some(p => pathname.startsWith(p))) {
     return false;
   }
-  
+
   const segments = pathname.split('/').filter(Boolean);
   return segments.length === 2 && segments[0] === 'coach';
 }
 
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.some(route => pathname.startsWith(route)) || 
+  return PUBLIC_ROUTES.some(route => pathname.startsWith(route)) ||
          isPublicLandingPage(pathname);
 }
 
-export default function CoachLayout({
+export default function CoachAppLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -94,9 +86,6 @@ export default function CoachLayout({
 
     let mounted = true;
 
-    // Single source of truth: onAuthStateChange handles INITIAL_SESSION,
-    // TOKEN_REFRESHED, and SIGNED_OUT — no separate getSession() call
-    // to avoid race conditions that cause redirect loops.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (isPublicRoute(pathname)) return;
@@ -104,7 +93,6 @@ export default function CoachLayout({
       if (session?.user) {
         validateCoach(session.user);
       } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
-        // Only redirect on definitive "no session" events
         setUser(null);
         setCoach(null);
         setIsAuthorized(false);
@@ -133,33 +121,30 @@ export default function CoachLayout({
     let coachData = null;
     let error = null;
 
-    // Try ID-based lookup first
     if (authId) {
       const result = await supabase
         .from('coaches')
         .select('id, name, email, phone, is_active, photo_url')
         .eq('user_id', authId)
         .single();
-      
+
       if (!result.error && result.data) {
         coachData = result.data;
       }
     }
 
-    // Fallback to email-based lookup
     if (!coachData && email) {
       const result = await supabase
         .from('coaches')
         .select('id, name, email, phone, is_active, photo_url')
         .eq('email', email)
         .single();
-      
+
       coachData = result.data;
       error = result.error;
     }
 
     if (error || !coachData) {
-      console.log('Coach not found:', email);
       setUser(authUser);
       setIsAuthorized(false);
       setLoading(false);
@@ -167,7 +152,6 @@ export default function CoachLayout({
     }
 
     if (!coachData.is_active) {
-      console.log('Coach is inactive:', email);
       setUser(authUser);
       setIsAuthorized(false);
       setLoading(false);
@@ -206,12 +190,12 @@ export default function CoachLayout({
   // ==================== LOADING STATE ====================
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#00ABFF] to-[#00ABFF] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <p className="text-text-tertiary">Verifying access...</p>
+          <p className="text-gray-500">Verifying access...</p>
         </div>
       </div>
     );
@@ -220,19 +204,19 @@ export default function CoachLayout({
   // ==================== UNAUTHORIZED ====================
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
-        <div className="bg-surface-1 border border-border rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
+        <div className="bg-[#121217] border border-white/[0.08] rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-400" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
-          <p className="text-text-tertiary mb-6">
+          <p className="text-gray-500 mb-6">
             {user?.email || 'Your account'} is not authorized as a coach.
             {coach && !coach.is_active && ' Your account has been deactivated.'}
           </p>
           <button
             onClick={handleSignOut}
-            className="w-full py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#00ABFF]/90 transition-colors"
+            className="w-full py-3 bg-[#00ABFF] text-white rounded-xl font-medium hover:bg-[#0099E6] transition-colors"
           >
             Sign Out
           </button>
@@ -241,53 +225,31 @@ export default function CoachLayout({
     );
   }
 
-  // ==================== AUTHORIZED - FULL LAYOUT ====================
-  // NOTE: Navigation is handled by PortalLayout (via CoachLayout component in pages)
-  // This layout only handles auth context - no duplicate sidebar/navigation
-  // Mobile bottom nav added for PWA experience
+  // ==================== AUTHORIZED ====================
   return (
     <CoachContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-surface-0 pb-20 lg:pb-0">
-        {/* Top Bar - Coach info + Logout */}
-        <div className="sticky top-0 z-40 bg-surface-1/95 backdrop-blur-sm border-b border-border">
-          <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
-            <div className="flex items-center gap-3 min-w-0">
-              {coach?.photo_url ? (
-                <img
-                  src={coach.photo_url}
-                  alt={coach.name}
-                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                />
-              ) : (
-                <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#0066cc] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                  {coach?.name?.charAt(0).toUpperCase() || 'C'}
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="font-medium text-white text-sm truncate">
-                  {coach?.name || 'Coach'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="p-2 text-text-tertiary hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-colors flex-shrink-0"
-              title="Sign out"
-              aria-label="Sign out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
+      <CoachLayout
+        onSignOut={handleSignOut}
+        userName={coach?.name || 'Coach'}
+        userEmail={user?.email}
+        userAvatar={
+          coach?.photo_url ? (
+            <img
+              src={coach.photo_url}
+              alt={coach.name}
+              className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+            />
+          ) : undefined
+        }
+        chatWidget={
+          <ChatWidget
+            userRole="coach"
+            userEmail={user?.email || ''}
+          />
+        }
+      >
         {children}
-      </div>
-      {/* Mobile Bottom Navigation */}
-      <BottomNav
-        items={coachNavItems}
-        baseRoute="/coach"
-        theme="dark"
-      />
+      </CoachLayout>
     </CoachContext.Provider>
   );
 }

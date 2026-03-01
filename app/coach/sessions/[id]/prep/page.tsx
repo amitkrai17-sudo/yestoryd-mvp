@@ -144,7 +144,7 @@ export default function SessionPrepHub() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-blue-500 mx-auto mb-4" />
           <p className="text-text-tertiary">Loading session data...</p>
@@ -155,7 +155,7 @@ export default function SessionPrepHub() {
 
   if (error || !session) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error || 'Session not found'}</p>
           <button
@@ -174,7 +174,7 @@ export default function SessionPrepHub() {
   const isToday = new Date(session.scheduled_date).toDateString() === new Date().toDateString();
 
   return (
-    <div className="min-h-screen bg-surface-0 text-white">
+    <div className="text-white">
       {/* Header */}
       <header className="border-b border-border bg-surface-1 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">

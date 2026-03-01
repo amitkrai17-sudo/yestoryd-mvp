@@ -199,7 +199,7 @@ export default function CoachDiscoveryCallDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -207,7 +207,7 @@ export default function CoachDiscoveryCallDetailPage() {
 
   if (!call) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center">
           <p className="text-text-tertiary mb-4">Discovery call not found</p>
           <button onClick={() => router.back()} className="text-blue-600 font-medium">
@@ -219,7 +219,7 @@ export default function CoachDiscoveryCallDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24">
+    <div>
       {/* Fixed Header */}
       <div className="sticky top-0 z-10 bg-surface-1 border-b">
         <div className="p-4 flex items-center gap-3">

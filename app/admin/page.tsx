@@ -134,7 +134,7 @@ function SessionIntelligenceCard() {
           <p className="text-text-secondary">{error || 'No data available'}</p>
           <button
             onClick={fetchStats}
-            className="mt-4 px-4 py-2 bg-surface-2 hover:bg-surface-3 rounded-lg text-sm font-medium transition-colors"
+            className="mt-4 px-4 py-2 bg-surface-2 hover:bg-surface-3 rounded-xl text-sm font-medium transition-colors"
           >
             Try Again
           </button>
@@ -171,7 +171,7 @@ function SessionIntelligenceCard() {
       <div className="p-3 sm:p-4 lg:p-6 border-b border-border/50">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#121217] border border-white/[0.08] rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div className="min-w-0">
@@ -191,7 +191,7 @@ function SessionIntelligenceCard() {
             </select>
             <button
               onClick={fetchStats}
-              className="p-1.5 sm:p-2 hover:bg-surface-2 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 hover:bg-surface-2 rounded-xl transition-colors"
               title="Refresh"
             >
               <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-text-tertiary" />
@@ -214,13 +214,13 @@ function SessionIntelligenceCard() {
           </div>
 
           {/* Completed */}
-          <div className="bg-blue-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-blue-500/30">
+          <div className="bg-white/[0.08] rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-white/[0.08]">
             <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
-              <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
-              <span className="text-[10px] sm:text-xs font-medium text-blue-400">Completed</span>
+              <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300" />
+              <span className="text-[10px] sm:text-xs font-medium text-gray-300">Completed</span>
             </div>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{stats.completed}</p>
-            <p className="text-[10px] sm:text-xs text-blue-400/70 mt-0.5">Avg {stats.avgDuration} min</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-300">{stats.completed}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Avg {stats.avgDuration} min</p>
           </div>
 
           {/* No-Shows */}
@@ -422,7 +422,7 @@ function InPersonSessionsCard() {
       <div className="p-3 sm:p-4 lg:p-6 border-b border-border/50">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#121217] border border-white/[0.08] rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div className="min-w-0">
@@ -440,7 +440,7 @@ function InPersonSessionsCard() {
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             )}
-            <button onClick={fetchData} className="p-1.5 sm:p-2 hover:bg-surface-2 rounded-lg transition-colors">
+            <button onClick={fetchData} className="p-1.5 sm:p-2 hover:bg-surface-2 rounded-xl transition-colors">
               <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-text-tertiary" />
             </button>
           </div>
@@ -493,25 +493,25 @@ function InPersonSessionsCard() {
           </div>
 
           {/* In-Person Ratio */}
-          <div className="bg-purple-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-purple-500/30">
+          <div className="bg-white/[0.08] rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-white/[0.08]">
             <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
-              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
-              <span className="text-[10px] sm:text-xs font-medium text-purple-400">In-Person</span>
+              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300" />
+              <span className="text-[10px] sm:text-xs font-medium text-gray-300">In-Person</span>
             </div>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400">{data.overall_offline_ratio}%</p>
-            <p className="text-[10px] sm:text-xs text-purple-400/70 mt-0.5">
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-300">{data.overall_offline_ratio}%</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">
               {data.total_offline_sessions} of {data.total_offline_sessions + data.total_online_sessions}
             </p>
           </div>
 
           {/* Reading Clip Rate */}
-          <div className="bg-blue-500/10 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-blue-500/30">
+          <div className="bg-white/[0.08] rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 border border-white/[0.08]">
             <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
-              <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
-              <span className="text-[10px] sm:text-xs font-medium text-blue-400">Clips</span>
+              <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300" />
+              <span className="text-[10px] sm:text-xs font-medium text-gray-300">Clips</span>
             </div>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{data.reading_clip_rate}%</p>
-            <p className="text-[10px] sm:text-xs text-blue-400/70 mt-0.5">Reading clip rate</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-300">{data.reading_clip_rate}%</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Reading clip rate</p>
           </div>
         </div>
 
@@ -643,16 +643,16 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
           {statCards.map((stat, index) => {
             const colorClasses: Record<string, string> = {
-              blue: 'bg-blue-500/20 text-blue-400',
-              emerald: 'bg-emerald-500/20 text-emerald-400',
-              violet: 'bg-violet-500/20 text-violet-400',
-              amber: 'bg-amber-500/20 text-amber-400',
+              blue: 'bg-white/[0.08] text-gray-300',
+              emerald: 'bg-white/[0.08] text-gray-300',
+              violet: 'bg-white/[0.08] text-gray-300',
+              amber: 'bg-white/[0.08] text-gray-300',
             };
 
             return (
               <div
                 key={index}
-                className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border p-3 sm:p-4 lg:p-6 hover:shadow-lg hover:border-border transition-all"
+                className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border p-3 sm:p-4 lg:p-6 hover:border-border transition-all"
               >
                 <div className="flex items-start justify-between mb-2 sm:mb-4">
                   <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center ${colorClasses[stat.color]}`}>
@@ -695,10 +695,10 @@ export default function AdminDashboardPage() {
               <div className="p-2 sm:p-3 lg:p-4 space-y-1 sm:space-y-2">
                 {quickActions.map((action, index) => {
                   const colorClasses: Record<string, string> = {
-                    blue: 'bg-blue-500/20 text-blue-400 group-hover:bg-blue-600 group-hover:text-white',
-                    emerald: 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white',
-                    violet: 'bg-violet-500/20 text-violet-400 group-hover:bg-violet-600 group-hover:text-white',
-                    amber: 'bg-amber-500/20 text-amber-400 group-hover:bg-amber-600 group-hover:text-white',
+                    blue: 'bg-white/[0.08] text-gray-300 group-hover:bg-white/[0.12] group-hover:text-white',
+                    emerald: 'bg-white/[0.08] text-gray-300 group-hover:bg-white/[0.12] group-hover:text-white',
+                    violet: 'bg-white/[0.08] text-gray-300 group-hover:bg-white/[0.12] group-hover:text-white',
+                    amber: 'bg-white/[0.08] text-gray-300 group-hover:bg-white/[0.12] group-hover:text-white',
                   };
 
                   return (
@@ -729,8 +729,8 @@ export default function AdminDashboardPage() {
               <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/20 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/[0.08] rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
                     </div>
                     <div>
                       <p className="text-sm sm:text-base font-medium text-white">Upcoming</p>
@@ -769,7 +769,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <Link
                   href="/admin/enrollments"
-                  className="text-xs sm:text-sm font-medium text-blue-400 hover:text-blue-500 flex items-center gap-1 flex-shrink-0"
+                  className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white flex items-center gap-1 flex-shrink-0"
                 >
                   View All
                   <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -793,7 +793,7 @@ export default function AdminDashboardPage() {
                   {recentEnrollments.map((enrollment, index) => (
                     <div key={index} className="p-3 sm:p-4 hover:bg-surface-2 transition-colors">
                       <div className="flex items-center gap-2.5 sm:gap-4">
-                        <div className="w-9 h-9 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white text-sm sm:text-base font-semibold flex-shrink-0">
+                        <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white/[0.08] rounded-full flex items-center justify-center text-white text-sm sm:text-base font-semibold flex-shrink-0">
                           {enrollment.childName?.charAt(0) || 'C'}
                         </div>
                         <div className="flex-1 min-w-0">

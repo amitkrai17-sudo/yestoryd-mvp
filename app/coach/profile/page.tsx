@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import CoachLayout from '@/components/layouts/CoachLayout';
+
 import {
   Save, Loader2, User, BookOpen, Calendar,
   Award, CheckCircle, AlertCircle, Camera
@@ -155,37 +155,32 @@ export default function CoachProfilePage() {
 
   if (isLoading) {
     return (
-      <CoachLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <Loader2 className="w-10 h-10 animate-spin text-[#00ABFF] mx-auto mb-4" />
-            <p className="text-gray-400">Loading profile...</p>
-          </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-[#00ABFF] mx-auto mb-4" />
+          <p className="text-gray-400">Loading profile...</p>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
   if (!profile) {
     return (
-      <CoachLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <p className="text-red-400 mb-4">{error || 'Failed to load profile'}</p>
-            <button
-              onClick={fetchProfile}
-              className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/90"
-            >
-              Retry
-            </button>
-          </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">{error || 'Failed to load profile'}</p>
+          <button
+            onClick={fetchProfile}
+            className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/90"
+          >
+            Retry
+          </button>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
   return (
-    <CoachLayout noPadding>
       <div className="p-3 lg:p-6 text-white">
 
       {/* Tabs - Compact on mobile */}
@@ -466,6 +461,5 @@ export default function CoachProfilePage() {
         )}
       </main>
       </div>
-    </CoachLayout>
   );
 }

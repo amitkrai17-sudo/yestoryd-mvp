@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { usePortalTheme } from '@/components/providers/ThemeProvider';
 import { NavItem } from '@/components/config/navigation';
 
 interface BottomNavProps {
@@ -11,23 +12,27 @@ interface BottomNavProps {
 
 export default function BottomNav({ items, basePath }: BottomNavProps) {
   const pathname = usePathname();
+  const { theme } = usePortalTheme();
 
   const isActive = (href: string) => {
-    // Handle dashboard/home as default route
     if (href === basePath || href === `${basePath}/dashboard`) {
-      return (
-        pathname === href ||
-        pathname === basePath ||
-        pathname === `${basePath}/dashboard`
-      );
+      return pathname === href || pathname === basePath || pathname === `${basePath}/dashboard`;
     }
     return pathname.startsWith(href);
   };
 
+  const isLight = theme.mode === 'light';
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-lg border-t border-gray-800 lg:hidden z-40">
-      {/* Safe area padding for notched phones */}
-      <div className="flex pb-[env(safe-area-inset-bottom)]">
+    <nav
+      className={`fixed bottom-0 left-0 right-0 z-50 flex lg:hidden border-t ${
+        isLight
+          ? 'bg-white/95 backdrop-blur-md border-gray-200'
+          : 'bg-[#0a0a0f]/95 backdrop-blur-md border-white/[0.08]'
+      }`}
+      style={{ height: '64px' }}
+    >
+      <div className="flex w-full pb-[env(safe-area-inset-bottom)]">
         {items.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
@@ -36,22 +41,18 @@ export default function BottomNav({ items, basePath }: BottomNavProps) {
             <Link
               key={item.id}
               href={item.href}
-              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[56px] transition-colors ${
-                active ? 'text-[#FF0099]' : 'text-gray-500 active:text-gray-300'
+              className={`flex-1 flex flex-col items-center justify-center transition-colors ${
+                active
+                  ? `text-[${theme.accent}]`
+                  : isLight
+                    ? 'text-gray-500 active:text-gray-700'
+                    : 'text-gray-400 active:text-gray-200'
               }`}
+              style={active ? { color: theme.accent } : undefined}
             >
-              <div className="relative">
-                <Icon
-                  className={`w-5 h-5 ${active ? 'stroke-[2.5]' : 'stroke-[1.5]'}`}
-                />
-                {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF0099] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {item.badge > 9 ? '9+' : item.badge}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] mt-1 font-medium">
-                {item.shortLabel || item.label}
+              <Icon className={`w-6 h-6 ${active ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
+              <span className={`text-[10px] mt-1 ${active ? 'font-semibold' : 'font-medium'}`}>
+                {item.label}
               </span>
             </Link>
           );

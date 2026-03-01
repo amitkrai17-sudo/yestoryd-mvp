@@ -127,7 +127,7 @@ export default function DiagnosticPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
       </div>
     );
@@ -135,7 +135,7 @@ export default function DiagnosticPage() {
 
   if (error && !session) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <p className="text-white mb-2">{error}</p>
@@ -148,7 +148,7 @@ export default function DiagnosticPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-8">
+    <div className="pb-8">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-surface-1 border-b border-border">
         <div className="px-4 py-3 flex items-center gap-3">
@@ -188,7 +188,7 @@ export default function DiagnosticPage() {
         {child && (
           <div className="bg-surface-1 border border-border rounded-xl p-4 mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#0066CC] flex items-center justify-center text-white font-bold text-sm">
                 {child.child_name.charAt(0)}
               </div>
               <div className="flex-1">

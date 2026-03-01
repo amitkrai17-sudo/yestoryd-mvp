@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import CoachLayout from '@/components/layouts/CoachLayout';
 import SkillBoosterSection from '@/components/coach/SkillBoosterSection';
 import ParentCallSection from '@/components/coach/ParentCallSection';
 import StudentIntelligenceCard from '@/components/coach/StudentIntelligenceCard';
@@ -269,31 +268,22 @@ export default function StudentDetailPage() {
 
   if (loading) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
-        </div>
-      </CoachLayout>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+      </div>
     );
   }
 
   if (!coach || !student) return null;
 
   return (
-    <CoachLayout
-      showMobileBack
-      mobileBackHref="/coach/students"
-      mobileTitle={student.child_name}
-      maxWidth="7xl"
-      noPadding
-    >
-      <div className="px-3 py-3 lg:px-6 lg:py-6 max-w-7xl mx-auto">
+    <div className="px-3 py-3 lg:px-6 lg:py-6 max-w-7xl mx-auto">
 
         {/* Profile Card - COMPACT */}
         <div className="bg-surface-1 rounded-xl border border-border p-2.5 lg:p-4 mb-3 lg:mb-6">
           <div className="flex items-center gap-2.5 lg:gap-4">
             {/* Avatar */}
-            <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white text-base lg:text-xl font-bold flex-shrink-0">
+            <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#0066CC] flex items-center justify-center text-white text-base lg:text-xl font-bold flex-shrink-0">
               {student.child_name?.charAt(0) || 'S'}
             </div>
 
@@ -344,7 +334,7 @@ export default function StudentDetailPage() {
           />
           <Link
             href={`/coach/ai-assistant?studentId=${studentId}&prompt=${encodeURIComponent(`Prepare me for my next session with ${student.child_name}. What should I focus on and how should I structure the 30 minutes?`)}`}
-            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white text-sm font-medium rounded-xl hover:opacity-90 transition-all"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-[#00ABFF] to-[#0066CC] text-white text-sm font-medium rounded-xl hover:opacity-90 transition-all"
           >
             <Sparkles className="w-4 h-4" />
             Prep with rAI
@@ -661,7 +651,6 @@ export default function StudentDetailPage() {
             )}
           </div>
         </div>
-      </div>
-    </CoachLayout>
+    </div>
   );
 }

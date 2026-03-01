@@ -271,7 +271,7 @@ export default function CompletionManagementPage() {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -288,7 +288,7 @@ export default function CompletionManagementPage() {
           <button
             onClick={runCronManually}
             disabled={actionLoading === 'cron'}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg hover:bg-purple-500/30 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white/[0.08] text-gray-300 border border-white/[0.08] rounded-lg hover:bg-white/[0.12] transition-colors disabled:opacity-50"
             title="Run daily alerts check"
           >
             {actionLoading === 'cron' ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
@@ -442,7 +442,7 @@ export default function CompletionManagementPage() {
             placeholder="Search child, parent, coach..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-surface-2 text-sm text-white placeholder:text-text-muted focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-surface-2 text-sm text-white placeholder:text-text-muted focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30]"
           />
         </div>
         <span className="text-xs sm:text-sm text-text-tertiary whitespace-nowrap flex-shrink-0">
@@ -546,7 +546,7 @@ export default function CompletionManagementPage() {
                             <button
                               onClick={() => extendProgram(enrollment.id, enrollment.childName)}
                               disabled={actionLoading === enrollment.id + '_extend'}
-                              className="p-2 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-colors disabled:opacity-50"
+                              className="p-2 text-gray-400 hover:bg-white/[0.08] rounded-lg transition-colors disabled:opacity-50"
                               title="Extend Program"
                             >
                               {actionLoading === enrollment.id + '_extend' ? (
@@ -565,7 +565,7 @@ export default function CompletionManagementPage() {
                               className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
                                 enrollment.finalAssessmentSent
                                   ? 'text-yellow-400 hover:bg-yellow-500/20'
-                                  : 'text-blue-400 hover:bg-blue-500/20'
+                                  : 'text-gray-400 hover:bg-white/[0.08]'
                               }`}
                               title={enrollment.finalAssessmentSent ? 'Resend Final Assessment' : 'Send Final Assessment'}
                             >
@@ -601,7 +601,7 @@ export default function CompletionManagementPage() {
                           {enrollment.status === 'completed' && (
                             <button
                               onClick={() => downloadCertificate(enrollment.id)}
-                              className="p-2 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-colors"
+                              className="p-2 text-gray-400 hover:bg-white/[0.08] rounded-lg transition-colors"
                               title="Download Certificate"
                             >
                               <Award className="w-4 h-4" />

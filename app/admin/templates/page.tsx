@@ -34,14 +34,14 @@ const DIFFICULTY_LABELS: Record<number, string> = {
 };
 
 const SKILL_COLORS: Record<string, string> = {
-  phonemic_awareness: 'bg-pink-500/20 text-pink-400',
-  phonics: 'bg-orange-500/20 text-orange-400',
-  fluency: 'bg-green-500/20 text-green-400',
-  vocabulary: 'bg-cyan-500/20 text-cyan-400',
-  comprehension: 'bg-indigo-500/20 text-indigo-400',
-  writing: 'bg-rose-500/20 text-rose-400',
-  speaking: 'bg-teal-500/20 text-teal-400',
-  listening: 'bg-yellow-500/20 text-yellow-400',
+  phonemic_awareness: 'bg-white/[0.08] text-gray-400',
+  phonics: 'bg-white/[0.08] text-gray-400',
+  fluency: 'bg-white/[0.08] text-gray-400',
+  vocabulary: 'bg-white/[0.08] text-gray-400',
+  comprehension: 'bg-white/[0.08] text-gray-400',
+  writing: 'bg-white/[0.08] text-gray-400',
+  speaking: 'bg-white/[0.08] text-gray-400',
+  listening: 'bg-white/[0.08] text-gray-400',
 };
 
 export default function TemplatesPage() {
@@ -119,14 +119,14 @@ export default function TemplatesPage() {
   ];
 
   return (
-    <div className="bg-surface-0 min-h-screen">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-6 h-6 text-brand-primary" />
+                <BookOpen className="w-6 h-6 text-gray-300" />
                 Session Templates
               </h1>
               <p className="text-text-tertiary mt-1">
@@ -135,7 +135,7 @@ export default function TemplatesPage() {
             </div>
             <button
               onClick={() => router.push('/admin/templates/new')}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-[#0a0a0f] rounded-lg text-sm font-medium transition-colors"
             >
               <Plus className="w-4 h-4" />
               New Template
@@ -154,7 +154,7 @@ export default function TemplatesPage() {
                 onClick={() => setFilter(tab.key)}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                   filter === tab.key
-                    ? 'bg-brand-primary text-white'
+                    ? 'bg-white/[0.12] text-white'
                     : 'text-text-tertiary hover:text-white'
                 }`}
               >
@@ -169,7 +169,7 @@ export default function TemplatesPage() {
               placeholder="Search templates..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-surface-1 border border-border rounded-lg text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="w-full pl-9 pr-3 py-2 bg-surface-1 border border-border rounded-lg text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
             />
           </div>
         </div>
@@ -177,7 +177,7 @@ export default function TemplatesPage() {
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
+            <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
           </div>
         )}
 

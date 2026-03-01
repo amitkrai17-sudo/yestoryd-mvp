@@ -37,7 +37,7 @@ export default function StudentCard({ student }: StudentCardProps) {
       {/* Single Row: Avatar | Info | Actions */}
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#7B008B] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#0066CC] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
           {student.child_name?.charAt(0) || 'S'}
         </div>
 

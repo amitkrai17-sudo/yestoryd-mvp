@@ -350,7 +350,7 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
   // --- PRE-SESSION ---
   if (phase === 'pre') {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex flex-col">
+      <div className="bg-[#0f1419] flex flex-col">
         <SessionHeader session={session} child={child} elapsedSeconds={0} isLive={false} coachSessionsLogged={data.coach_sessions_logged} />
 
         <div className="flex-1 px-4 py-4 max-w-2xl mx-auto w-full space-y-4">
@@ -458,7 +458,7 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
   // --- COMPLETE ---
   if (phase === 'complete') {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex flex-col">
+      <div className="bg-[#0f1419] flex flex-col">
         <SessionHeader session={session} child={child} elapsedSeconds={elapsedSeconds} isLive={false} coachSessionsLogged={data.coach_sessions_logged} />
         <div className="flex-1 max-w-2xl mx-auto w-full">
           <SessionComplete

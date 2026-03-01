@@ -525,9 +525,9 @@ export default function AdminSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-0">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           <p className="text-text-secondary">Loading settings...</p>
         </div>
       </div>
@@ -549,8 +549,8 @@ export default function AdminSettingsPage() {
           {/* Header row */}
           <div className="flex items-center justify-between gap-3 py-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center flex-shrink-0">
-                <Settings className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-[#121217] border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+                <Settings className="w-5 h-5 text-gray-300" />
               </div>
               <h1 className="text-lg font-bold text-white truncate">Site Settings</h1>
             </div>
@@ -563,7 +563,7 @@ export default function AdminSettingsPage() {
               <button
                 onClick={fetchAllData}
                 disabled={loading}
-                className="p-2 bg-surface-2 hover:bg-surface-3 rounded-lg text-text-secondary flex-shrink-0"
+                className="p-2 bg-surface-2 hover:bg-surface-3 rounded-xl text-text-secondary flex-shrink-0"
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
@@ -575,9 +575,9 @@ export default function AdminSettingsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
+                className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-xl font-medium text-sm whitespace-nowrap transition-all ${
                   activeTab === tab.id
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                    ? 'bg-white/[0.08] text-gray-300 border border-white/[0.08]'
                     : 'text-text-secondary hover:bg-surface-2'
                 }`}
               >
@@ -601,7 +601,7 @@ export default function AdminSettingsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search settings..."
-                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border text-white placeholder:text-text-muted rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border text-white placeholder:text-text-muted rounded-xl text-sm focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] outline-none"
               />
             </div>
           </div>
@@ -776,7 +776,7 @@ export default function AdminSettingsPage() {
                   is_active: true,
                   display_order: testimonials.length + 1,
                 })}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-xl font-medium text-sm hover:bg-gray-200 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Add</span>
@@ -824,7 +824,7 @@ export default function AdminSettingsPage() {
                     <button
                       onClick={() => toggleFlag(flag.flag_key, flag.flag_value)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-                        flag.flag_value ? 'bg-blue-600' : 'bg-surface-3'
+                        flag.flag_value ? 'bg-gray-400' : 'bg-surface-3'
                       }`}
                     >
                       <span
@@ -863,13 +863,13 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-500/20 text-blue-400',
-    pink: 'bg-pink-500/20 text-pink-400',
-    emerald: 'bg-emerald-500/20 text-emerald-400',
-    violet: 'bg-violet-500/20 text-violet-400',
-    amber: 'bg-amber-500/20 text-amber-400',
-    cyan: 'bg-cyan-500/20 text-cyan-400',
-    rose: 'bg-rose-500/20 text-rose-400',
+    blue: 'bg-white/[0.08] text-gray-400',
+    pink: 'bg-white/[0.08] text-gray-400',
+    emerald: 'bg-white/[0.08] text-gray-400',
+    violet: 'bg-white/[0.08] text-gray-400',
+    amber: 'bg-white/[0.08] text-gray-400',
+    cyan: 'bg-white/[0.08] text-gray-400',
+    rose: 'bg-white/[0.08] text-gray-400',
   };
 
   return (
@@ -928,7 +928,7 @@ function SettingsGrid({
             <div className="flex items-center gap-2 mb-1.5">
               <label className="text-sm font-medium text-text-secondary">{meta.label}</label>
               {meta.unit && (
-                <span className="text-[10px] font-bold text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-bold text-gray-400 bg-white/[0.08] px-1.5 py-0.5 rounded">
                   {meta.unit}
                 </span>
               )}
@@ -941,7 +941,7 @@ function SettingsGrid({
                   onChange={(e) => onUpdate(setting.key, e.target.value)}
                   rows={2}
                   placeholder={meta.defaultValue || ''}
-                  className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none resize-none"
+                  className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:border-white/[0.30] focus:ring-1 focus:ring-white/[0.10] outline-none resize-none"
                 />
               ) : (
                 <input
@@ -949,13 +949,13 @@ function SettingsGrid({
                   value={value}
                   onChange={(e) => onUpdate(setting.key, e.target.value)}
                   placeholder={meta.defaultValue || ''}
-                  className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
+                  className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:border-white/[0.30] focus:ring-1 focus:ring-white/[0.10] outline-none"
                 />
               )}
               <button
                 onClick={() => onSave(setting.key, value)}
                 disabled={saving}
-                className="px-3 py-2 bg-surface-2 text-text-tertiary rounded-lg hover:bg-blue-600 hover:text-white disabled:opacity-50 transition-all"
+                className="px-3 py-2 bg-surface-2 text-text-tertiary rounded-xl hover:bg-white/[0.12] hover:text-white disabled:opacity-50 transition-all"
                 title="Save"
               >
                 <Save className="w-4 h-4" />
@@ -1042,7 +1042,7 @@ function PricingCard({
         <button
           onClick={() => onSave(plan)}
           disabled={saving}
-          className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-2 bg-white text-[#0a0a0f] rounded-xl text-sm font-medium hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <Save className="w-4 h-4" />
           Save
@@ -1087,10 +1087,10 @@ function TestimonialCard({
           </div>
         </div>
         <div className="flex gap-1 flex-shrink-0">
-          <button onClick={onEdit} className="p-2 text-text-tertiary hover:text-blue-400 hover:bg-blue-500/20 rounded-lg">
+          <button onClick={onEdit} className="p-2 text-text-tertiary hover:text-white hover:bg-white/[0.08] rounded-xl">
             <Edit3 className="w-4 h-4" />
           </button>
-          <button onClick={onDelete} className="p-2 text-text-tertiary hover:text-red-400 hover:bg-red-500/20 rounded-lg">
+          <button onClick={onDelete} className="p-2 text-text-tertiary hover:text-red-400 hover:bg-red-500/20 rounded-xl">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -1120,7 +1120,7 @@ function TestimonialModal({
           <h3 className="font-semibold text-white">
             {testimonial.id ? 'Edit' : 'Add'} Testimonial
           </h3>
-          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-xl">
             <X className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
@@ -1209,14 +1209,14 @@ function TestimonialModal({
         <div className="p-4 bg-surface-2/50 border-t border-border flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-text-secondary rounded-lg text-sm font-medium hover:bg-surface-2"
+            className="px-4 py-2 text-text-secondary rounded-xl text-sm font-medium hover:bg-surface-2"
           >
             Cancel
           </button>
           <button
             onClick={() => onSave(form)}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-white text-[#0a0a0f] rounded-xl text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save'}
           </button>

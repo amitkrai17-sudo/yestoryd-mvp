@@ -1,104 +1,124 @@
-import { LucideIcon } from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
 import {
-  LayoutDashboard,
+  Home,
   Users,
   Calendar,
   Phone,
-  DollarSign,
-  FileText,
-  Brain,
   User,
+  BarChart3,
   BookOpen,
-  TrendingUp,
-  Settings,
-  Home,
-  Library,
+  GraduationCap,
   HelpCircle,
-  UserSearch,
+  MessageSquare,
+  Settings,
+  Briefcase,
+  FileText,
+  LayoutDashboard,
+  CheckSquare,
+  MapPin,
   Radio,
   IndianRupee,
+  Brain,
+  Ticket,
+  UserSearch,
+  UserPlus,
 } from 'lucide-react';
 
-export type PortalType = 'coach' | 'parent' | 'admin';
+export type PortalType = 'parent' | 'coach' | 'admin';
 
 export interface NavItem {
   id: string;
+  label: string;
   href: string;
   icon: LucideIcon;
-  label: string;
-  shortLabel?: string;
+  group?: string;
   badge?: number;
-  children?: NavItem[];
 }
 
 export interface PortalNavConfig {
   basePath: string;
   portalName: string;
-  bottomNav: NavItem[];
-  sidebar: NavItem[];
+  bottomNav: NavItem[];  // Max 5 items for mobile bottom nav
+  sidebar: NavItem[];    // All items including secondary
 }
 
 export const navigationConfig: Record<PortalType, PortalNavConfig> = {
-  coach: {
-    basePath: '/coach',
-    portalName: 'Coach Portal',
-    bottomNav: [
-      { id: 'home', href: '/coach/dashboard', icon: Home, label: 'Dashboard', shortLabel: 'Home' },
-      { id: 'students', href: '/coach/students', icon: Users, label: 'Students' },
-      { id: 'sessions', href: '/coach/sessions', icon: Calendar, label: 'Sessions' },
-      { id: 'calls', href: '/coach/discovery-calls', icon: Phone, label: 'Calls' },
-      { id: 'profile', href: '/coach/profile', icon: User, label: 'Profile' },
-    ],
-    sidebar: [
-      { id: 'dashboard', href: '/coach/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-      { id: 'students', href: '/coach/students', icon: Users, label: 'My Students' },
-      { id: 'sessions', href: '/coach/sessions', icon: Calendar, label: 'Sessions' },
-      { id: 'calls', href: '/coach/discovery-calls', icon: Phone, label: 'Discovery Calls' },
-      { id: 'earnings', href: '/coach/earnings', icon: DollarSign, label: 'Earnings' },
-      { id: 'templates', href: '/coach/templates', icon: FileText, label: 'Templates' },
-      { id: 'ai', href: '/coach/ai-assistant', icon: Brain, label: 'AI Assistant' },
-      { id: 'profile', href: '/coach/profile', icon: User, label: 'Profile' },
-    ],
-  },
+  // ===========================================================================
+  // PARENT
+  // ===========================================================================
   parent: {
     basePath: '/parent',
     portalName: 'Parent Portal',
     bottomNav: [
-      { id: 'home', href: '/parent/dashboard', icon: Home, label: 'Home' },
-      { id: 'progress', href: '/parent/progress', icon: TrendingUp, label: 'Progress' },
-      { id: 'sessions', href: '/parent/sessions', icon: Calendar, label: 'Sessions' },
-      { id: 'library', href: '/parent/elearning', icon: Library, label: 'Library' },
-      { id: 'support', href: '/parent/support', icon: HelpCircle, label: 'Support' },
+      { id: 'home', label: 'Home', href: '/parent/dashboard', icon: Home },
+      { id: 'progress', label: 'Progress', href: '/parent/progress', icon: BarChart3 },
+      { id: 'sessions', label: 'Sessions', href: '/parent/sessions', icon: Calendar },
+      { id: 'tasks', label: 'Tasks', href: '/parent/tasks', icon: CheckSquare },
+      { id: 'support', label: 'Support', href: '/parent/support', icon: HelpCircle },
     ],
     sidebar: [
-      { id: 'dashboard', href: '/parent/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-      { id: 'progress', href: '/parent/progress', icon: TrendingUp, label: 'Child Progress' },
-      { id: 'sessions', href: '/parent/sessions', icon: Calendar, label: 'Sessions' },
-      { id: 'elearning', href: '/parent/elearning', icon: BookOpen, label: 'E-Learning' },
-      { id: 'support', href: '/parent/support', icon: HelpCircle, label: 'Support' },
+      { id: 'dashboard', label: 'Dashboard', href: '/parent/dashboard', icon: Home, group: 'Overview' },
+      { id: 'journey', label: 'Journey', href: '/parent/journey', icon: MapPin, group: 'Overview' },
+      { id: 'sessions', label: 'Sessions', href: '/parent/sessions', icon: Calendar, group: 'Learning' },
+      { id: 'progress', label: 'Progress', href: '/parent/progress', icon: BarChart3, group: 'Learning' },
+      { id: 'tasks', label: 'Daily Tasks', href: '/parent/tasks', icon: CheckSquare, group: 'Learning' },
+      { id: 'elearning', label: 'E-Learning', href: '/parent/elearning', icon: BookOpen, group: 'Learning' },
+      { id: 'support', label: 'Support', href: '/parent/support', icon: HelpCircle, group: 'Account' },
     ],
   },
+
+  // ===========================================================================
+  // COACH
+  // ===========================================================================
+  coach: {
+    basePath: '/coach',
+    portalName: 'Coach Portal',
+    bottomNav: [
+      { id: 'home', label: 'Home', href: '/coach/dashboard', icon: Home },
+      { id: 'students', label: 'Students', href: '/coach/students', icon: Users },
+      { id: 'sessions', label: 'Sessions', href: '/coach/sessions', icon: Calendar },
+      { id: 'calls', label: 'Calls', href: '/coach/discovery-calls', icon: Phone },
+      { id: 'profile', label: 'Me', href: '/coach/profile', icon: User },
+    ],
+    sidebar: [
+      { id: 'dashboard', label: 'Dashboard', href: '/coach/dashboard', icon: Home, group: 'Overview' },
+      { id: 'students', label: 'Students', href: '/coach/students', icon: Users, group: 'Work' },
+      { id: 'sessions', label: 'Sessions', href: '/coach/sessions', icon: Calendar, group: 'Work' },
+      { id: 'calls', label: 'Discovery Calls', href: '/coach/discovery-calls', icon: Phone, group: 'Work' },
+      { id: 'templates', label: 'Templates', href: '/coach/templates', icon: FileText, group: 'Work' },
+      { id: 'ai', label: 'rAI Assistant', href: '/coach/ai-assistant', icon: Brain, group: 'AI' },
+      { id: 'profile', label: 'Profile', href: '/coach/profile', icon: User, group: 'Account' },
+      { id: 'earnings', label: 'Earnings', href: '/coach/earnings', icon: Briefcase, group: 'Account' },
+    ],
+  },
+
+  // ===========================================================================
+  // ADMIN
+  // ===========================================================================
   admin: {
     basePath: '/admin',
     portalName: 'Admin Portal',
     bottomNav: [
-      { id: 'dashboard', href: '/admin', icon: LayoutDashboard, label: 'Dashboard', shortLabel: 'Home' },
-      { id: 'crm', href: '/admin/crm', icon: UserSearch, label: 'CRM', shortLabel: 'CRM' },
-      { id: 'payments', href: '/admin/payments', icon: IndianRupee, label: 'Payments', shortLabel: 'Payments' },
-      { id: 'communication', href: '/admin/communication', icon: Radio, label: 'Comms', shortLabel: 'Comms' },
-      { id: 'coaches', href: '/admin/coach-applications', icon: Users, label: 'Coaches', shortLabel: 'Coaches' },
-      { id: 'settings', href: '/admin/settings', icon: Settings, label: 'Settings', shortLabel: 'Settings' },
+      { id: 'home', label: 'Home', href: '/admin', icon: Home },
+      { id: 'crm', label: 'CRM', href: '/admin/crm', icon: UserSearch },
+      { id: 'coaches', label: 'Coaches', href: '/admin/coaches', icon: GraduationCap },
+      { id: 'payments', label: 'Payments', href: '/admin/payments', icon: IndianRupee },
+      { id: 'settings', label: 'Settings', href: '/admin/settings', icon: Settings },
     ],
     sidebar: [
-      { id: 'dashboard', href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-      { id: 'crm', href: '/admin/crm', icon: Users, label: 'CRM' },
-      { id: 'coaches', href: '/admin/coaches', icon: Users, label: 'Coaches' },
-      { id: 'group-classes', href: '/admin/group-classes', icon: Calendar, label: 'Group Classes' },
-      { id: 'payouts', href: '/admin/payouts', icon: DollarSign, label: 'Payouts' },
-      { id: 'tds', href: '/admin/tds', icon: DollarSign, label: 'TDS' },
-      { id: 'coupons', href: '/admin/coupons', icon: FileText, label: 'Coupons' },
-      { id: 'elearning', href: '/admin/elearning', icon: BookOpen, label: 'E-Learning' },
-      { id: 'settings', href: '/admin/settings', icon: Settings, label: 'Settings' },
+      { id: 'dashboard', label: 'Dashboard', href: '/admin', icon: LayoutDashboard, group: 'Overview' },
+      { id: 'crm', label: 'CRM', href: '/admin/crm', icon: UserSearch, group: 'Operations' },
+      { id: 'coaches', label: 'Coaches', href: '/admin/coaches', icon: GraduationCap, group: 'Operations' },
+      { id: 'coach-apps', label: 'Applications', href: '/admin/coach-applications', icon: UserPlus, group: 'Operations' },
+      { id: 'group-classes', label: 'Group Classes', href: '/admin/group-classes', icon: Calendar, group: 'Operations' },
+      { id: 'communication', label: 'Communication', href: '/admin/communication', icon: Radio, group: 'Operations' },
+      { id: 'templates', label: 'Templates', href: '/admin/templates', icon: FileText, group: 'Content' },
+      { id: 'content', label: 'Content', href: '/admin/content-upload', icon: BookOpen, group: 'Content' },
+      { id: 'elearning', label: 'E-Learning', href: '/admin/elearning', icon: BookOpen, group: 'Content' },
+      { id: 'payments', label: 'Payments', href: '/admin/payments', icon: IndianRupee, group: 'Finance' },
+      { id: 'payouts', label: 'Payouts', href: '/admin/payouts', icon: Briefcase, group: 'Finance' },
+      { id: 'coupons', label: 'Coupons', href: '/admin/coupons', icon: Ticket, group: 'Finance' },
+      { id: 'settings', label: 'Settings', href: '/admin/settings', icon: Settings, group: 'System' },
     ],
   },
 };

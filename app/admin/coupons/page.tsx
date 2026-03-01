@@ -108,12 +108,12 @@ export default function AdminCouponsPage() {
 
   const getCouponTypeLabel = (type: string) => {
     const labels: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-      coach_referral: { label: 'Coach Referral', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30', icon: <Users className="w-3 h-3" /> },
-      parent_referral: { label: 'Parent Referral', color: 'bg-pink-500/20 text-pink-400 border border-pink-500/30', icon: <Gift className="w-3 h-3" /> },
-      fixed_discount: { label: 'Fixed Discount', color: 'bg-green-500/20 text-green-400 border border-green-500/30', icon: <Ticket className="w-3 h-3" /> },
-      percent_discount: { label: '% Discount', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30', icon: <Percent className="w-3 h-3" /> },
-      first_time: { label: 'First-Time', color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', icon: <Gift className="w-3 h-3" /> },
-      event: { label: 'Event', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/30', icon: <Calendar className="w-3 h-3" /> },
+      coach_referral: { label: 'Coach Referral', color: 'bg-white/[0.08] text-gray-400 border border-white/[0.08]', icon: <Users className="w-3 h-3" /> },
+      parent_referral: { label: 'Parent Referral', color: 'bg-white/[0.08] text-gray-400 border border-white/[0.08]', icon: <Gift className="w-3 h-3" /> },
+      fixed_discount: { label: 'Fixed Discount', color: 'bg-white/[0.08] text-gray-400 border border-white/[0.08]', icon: <Ticket className="w-3 h-3" /> },
+      percent_discount: { label: '% Discount', color: 'bg-white/[0.08] text-gray-400 border border-white/[0.08]', icon: <Percent className="w-3 h-3" /> },
+      first_time: { label: 'First-Time', color: 'bg-white/[0.08] text-gray-400 border border-white/[0.08]', icon: <Gift className="w-3 h-3" /> },
+      event: { label: 'Event', color: 'bg-white/[0.08] text-gray-400 border border-white/[0.08]', icon: <Calendar className="w-3 h-3" /> },
     };
     return labels[type] || { label: type, color: 'bg-surface-2 text-text-secondary', icon: <Ticket className="w-3 h-3" /> };
   };
@@ -150,7 +150,7 @@ export default function AdminCouponsPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white flex items-center gap-2">
-                <Ticket className="w-5 h-5 sm:w-6 sm:h-6 text-pink-500 flex-shrink-0" />
+                <Ticket className="w-5 h-5 sm:w-6 sm:h-6 text-gray-300 flex-shrink-0" />
                 <span className="truncate">Coupons</span>
               </h1>
               <p className="text-xs sm:text-sm text-text-tertiary mt-0.5">
@@ -159,7 +159,7 @@ export default function AdminCouponsPage() {
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs sm:text-sm font-semibold rounded-full hover:scale-105 transition-all shadow-lg flex-shrink-0"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white text-[#0a0a0f] text-xs sm:text-sm font-semibold rounded-full hover:bg-gray-200 transition-all flex-shrink-0"
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Create</span>
@@ -204,7 +204,7 @@ export default function AdminCouponsPage() {
                 placeholder="Search codes, names..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] transition-all"
               />
             </div>
 
@@ -213,7 +213,7 @@ export default function AdminCouponsPage() {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as 'all' | 'referral' | 'promo')}
-                className="appearance-none pl-4 pr-10 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer min-w-[140px]"
+                className="appearance-none pl-4 pr-10 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/[0.10] cursor-pointer min-w-[140px]"
               >
                 <option value="all">All Types</option>
                 <option value="referral">Referrals</option>
@@ -227,7 +227,7 @@ export default function AdminCouponsPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'expired')}
-                className="appearance-none pl-4 pr-10 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer min-w-[140px]"
+                className="appearance-none pl-4 pr-10 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/[0.10] cursor-pointer min-w-[140px]"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -249,7 +249,7 @@ export default function AdminCouponsPage() {
         {/* Coupons List */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-gray-400 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filteredCoupons.length === 0 ? (
           <div className="bg-surface-1 rounded-2xl shadow-sm border border-border/50 p-12 text-center">
@@ -261,7 +261,7 @@ export default function AdminCouponsPage() {
             {!searchQuery && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-full hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] font-semibold rounded-full hover:bg-gray-200 transition-all"
               >
                 <Plus className="w-5 h-5" />
                 Create Coupon
@@ -328,7 +328,7 @@ export default function AdminCouponsPage() {
                     {/* Discount */}
                     <div className="flex items-center gap-6 sm:gap-8">
                       <div className="text-center">
-                        <p className="text-lg font-bold text-pink-400">
+                        <p className="text-lg font-bold text-gray-300">
                           {getDiscountDisplay(coupon)}
                         </p>
                         <p className="text-xs text-text-tertiary">Discount</p>
@@ -489,7 +489,7 @@ function CreateCouponModal({
       <div className="bg-surface-1 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-surface-1 border-b border-border/50 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">Create Coupon</h2>
-          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-xl">
             <XCircle className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
@@ -503,7 +503,7 @@ function CreateCouponModal({
             <select
               value={formData.couponType}
               onChange={(e) => setFormData(prev => ({ ...prev, couponType: e.target.value }))}
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
             >
               <option value="percent_discount">Percentage Discount</option>
               <option value="fixed_discount">Fixed Discount</option>
@@ -523,7 +523,7 @@ function CreateCouponModal({
                 value={formData.code}
                 onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
                 placeholder="SAVE20"
-                className="flex-1 px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted font-mono uppercase focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="flex-1 px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted font-mono uppercase focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
                 required
               />
               <button
@@ -546,7 +546,7 @@ function CreateCouponModal({
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="New Year Special - 20% Off"
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
             />
           </div>
 
@@ -559,7 +559,7 @@ function CreateCouponModal({
               <select
                 value={formData.discountType}
                 onChange={(e) => setFormData(prev => ({ ...prev, discountType: e.target.value as 'fixed' | 'percentage' }))}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
               >
                 <option value="percentage">Percentage (%)</option>
                 <option value="fixed">Fixed Amount (₹)</option>
@@ -574,7 +574,7 @@ function CreateCouponModal({
                 value={formData.discountValue}
                 onChange={(e) => setFormData(prev => ({ ...prev, discountValue: e.target.value }))}
                 placeholder={formData.discountType === 'percentage' ? '20' : '500'}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
                 required
               />
             </div>
@@ -591,7 +591,7 @@ function CreateCouponModal({
                 value={formData.maxDiscount}
                 onChange={(e) => setFormData(prev => ({ ...prev, maxDiscount: e.target.value }))}
                 placeholder="1500"
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
               />
             </div>
           )}
@@ -607,7 +607,7 @@ function CreateCouponModal({
                 value={formData.maxUses}
                 onChange={(e) => setFormData(prev => ({ ...prev, maxUses: e.target.value }))}
                 placeholder="Unlimited"
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
               />
             </div>
             <div>
@@ -619,7 +619,7 @@ function CreateCouponModal({
                 value={formData.perUserLimit}
                 onChange={(e) => setFormData(prev => ({ ...prev, perUserLimit: e.target.value }))}
                 placeholder="1"
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
               />
             </div>
           </div>
@@ -633,7 +633,7 @@ function CreateCouponModal({
               type="date"
               value={formData.validUntil}
               onChange={(e) => setFormData(prev => ({ ...prev, validUntil: e.target.value }))}
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
             />
           </div>
 
@@ -643,7 +643,7 @@ function CreateCouponModal({
               type="checkbox"
               checked={formData.firstEnrollmentOnly}
               onChange={(e) => setFormData(prev => ({ ...prev, firstEnrollmentOnly: e.target.checked }))}
-              className="w-5 h-5 rounded border-border text-pink-500 focus:ring-pink-500"
+              className="w-5 h-5 rounded border-border text-gray-400 focus:ring-white/[0.10]"
             />
             <span className="text-sm text-text-secondary">First-time enrollments only</span>
           </label>
@@ -652,7 +652,7 @@ function CreateCouponModal({
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-white text-[#0a0a0f] font-semibold rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -733,7 +733,7 @@ function EditCouponModal({
             <h2 className="text-xl font-bold text-white">Edit Coupon</h2>
             <p className="text-sm text-text-tertiary font-mono">{coupon.code}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-xl">
             <XCircle className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
@@ -748,7 +748,7 @@ function EditCouponModal({
               type="text"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
             />
           </div>
 
@@ -761,7 +761,7 @@ function EditCouponModal({
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={2}
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10] resize-none"
             />
           </div>
 
@@ -776,7 +776,7 @@ function EditCouponModal({
                   type="number"
                   value={formData.discountValue}
                   onChange={(e) => setFormData(prev => ({ ...prev, discountValue: e.target.value }))}
-                  className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
                 />
               </div>
               {coupon.discount_type === 'percentage' && (
@@ -788,7 +788,7 @@ function EditCouponModal({
                     type="number"
                     value={formData.maxDiscount}
                     onChange={(e) => setFormData(prev => ({ ...prev, maxDiscount: e.target.value }))}
-                    className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
                   />
                 </div>
               )}
@@ -806,7 +806,7 @@ function EditCouponModal({
                 value={formData.maxUses}
                 onChange={(e) => setFormData(prev => ({ ...prev, maxUses: e.target.value }))}
                 placeholder="Unlimited"
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
               />
             </div>
             <div>
@@ -817,7 +817,7 @@ function EditCouponModal({
                 type="number"
                 value={formData.perUserLimit}
                 onChange={(e) => setFormData(prev => ({ ...prev, perUserLimit: e.target.value }))}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
               />
             </div>
           </div>
@@ -831,7 +831,7 @@ function EditCouponModal({
               type="date"
               value={formData.validUntil}
               onChange={(e) => setFormData(prev => ({ ...prev, validUntil: e.target.value }))}
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
             />
           </div>
 
@@ -841,7 +841,7 @@ function EditCouponModal({
               type="checkbox"
               checked={formData.isActive}
               onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-              className="w-5 h-5 rounded border-border text-pink-500 focus:ring-pink-500"
+              className="w-5 h-5 rounded border-border text-gray-400 focus:ring-white/[0.10]"
             />
             <span className="text-sm text-text-secondary">Active</span>
           </label>
@@ -850,7 +850,7 @@ function EditCouponModal({
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-white text-[#0a0a0f] font-semibold rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

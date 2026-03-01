@@ -185,7 +185,7 @@ export default function PayoutsPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25 flex-shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-[#121217] border border-white/[0.08] rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
               <Wallet className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
             </div>
             <div className="min-w-0">
@@ -213,7 +213,7 @@ export default function PayoutsPage() {
               { icon: CheckCircle, color: 'emerald', label: 'Paid', amount: summary.paid_this_month.amount, sub: `${summary.paid_this_month.count} payouts` },
               { icon: Building2, color: 'violet', label: 'TDS', amount: summary.tds_to_deposit.amount, sub: `${summary.tds_to_deposit.quarter} FY${summary.tds_to_deposit.fy}` },
             ].map((card) => {
-              const colorMap: Record<string, string> = { amber: 'bg-amber-500/20 text-amber-400', blue: 'bg-blue-500/20 text-blue-400', emerald: 'bg-emerald-500/20 text-emerald-400', violet: 'bg-violet-500/20 text-violet-400' };
+              const colorMap: Record<string, string> = { amber: 'bg-amber-500/20 text-amber-400', blue: 'bg-white/[0.08] text-gray-300', emerald: 'bg-emerald-500/20 text-emerald-400', violet: 'bg-white/[0.08] text-gray-300' };
               return (
                 <div key={card.label} className="bg-surface-1 rounded-xl sm:rounded-2xl border border-border p-2.5 sm:p-3 lg:p-5 hover:border-border/80 transition-colors">
                   <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 mb-1.5 sm:mb-3">
@@ -273,7 +273,7 @@ export default function PayoutsPage() {
               {activeTab === 'pending' && selectedPayouts.length > 0 && (
                 <button
                   onClick={() => setShowPayModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-medium shadow-lg shadow-emerald-500/25 hover:shadow-xl transition-all whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg font-medium hover:bg-gray-200 transition-all whitespace-nowrap"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Process {selectedPayouts.length}
@@ -309,7 +309,7 @@ export default function PayoutsPage() {
                             className="rounded border-border text-emerald-500 focus:ring-emerald-500 flex-shrink-0"
                           />
                         )}
-                        <div className="w-7 h-7 bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        <div className="w-7 h-7 bg-white/[0.08] rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                           {payout.coaches?.name?.charAt(0) || '?'}
                         </div>
                         <div className="min-w-0">
@@ -320,7 +320,7 @@ export default function PayoutsPage() {
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-bold text-emerald-400">₹{payout.net_amount.toLocaleString()}</p>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                          payout.payout_type === 'lead_bonus' ? 'bg-blue-500/20 text-blue-400' : 'bg-pink-500/20 text-pink-400'
+                          payout.payout_type === 'lead_bonus' ? 'bg-white/[0.08] text-gray-400' : 'bg-white/[0.08] text-gray-400'
                         }`}>
                           {payout.payout_type === 'lead_bonus' ? 'Lead' : 'Coach'}
                         </span>
@@ -378,7 +378,7 @@ export default function PayoutsPage() {
                       )}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                          <div className="w-8 h-8 bg-white/[0.08] rounded-lg flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                             {payout.coaches?.name?.charAt(0) || '?'}
                           </div>
                           <div className="min-w-0">
@@ -401,8 +401,8 @@ export default function PayoutsPage() {
                       <td className="px-4 py-4">
                         <span className={`px-2 py-1 text-xs font-medium rounded ${
                           payout.payout_type === 'lead_bonus'
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : 'bg-pink-500/20 text-pink-400'
+                            ? 'bg-white/[0.08] text-gray-400'
+                            : 'bg-white/[0.08] text-gray-400'
                         }`}>
                           {payout.payout_type === 'lead_bonus' ? 'Lead' : 'Coach'}
                         </span>
@@ -509,7 +509,7 @@ export default function PayoutsPage() {
                   <button
                     onClick={processPayouts}
                     disabled={processing}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {processing ? (
                       <RefreshCw className="w-5 h-5 animate-spin" />

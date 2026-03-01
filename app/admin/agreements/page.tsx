@@ -429,7 +429,7 @@ export default function AdminAgreementsPage() {
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <FileText className="w-6 h-6 text-purple-600" />
+                  <FileText className="w-6 h-6 text-gray-400" />
                   Agreement Management
                 </h1>
                 <p className="text-sm text-text-tertiary">Upload agreements & configure variables</p>
@@ -452,7 +452,7 @@ export default function AdminAgreementsPage() {
               onClick={() => setActiveTab('agreements')}
               className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
                 activeTab === 'agreements'
-                  ? 'border-purple-600 text-purple-600'
+                  ? 'border-white/50 text-white'
                   : 'border-transparent text-text-tertiary hover:text-text-secondary'
               }`}
             >
@@ -463,7 +463,7 @@ export default function AdminAgreementsPage() {
               onClick={() => setActiveTab('variables')}
               className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
                 activeTab === 'variables'
-                  ? 'border-purple-600 text-purple-600'
+                  ? 'border-white/50 text-white'
                   : 'border-transparent text-text-tertiary hover:text-text-secondary'
               }`}
             >
@@ -504,7 +504,7 @@ export default function AdminAgreementsPage() {
             <div className="mb-6 flex justify-end">
               <button
                 onClick={() => setShowUploadForm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 transition-all font-medium"
               >
                 <Upload className="w-4 h-4" />
                 Upload New Version
@@ -530,7 +530,7 @@ export default function AdminAgreementsPage() {
                       <label className="block text-sm font-medium text-text-secondary mb-1">
                         Agreement File (.docx) *
                       </label>
-                      <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-purple-400 transition-colors">
+                      <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-white/[0.30] transition-colors">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -554,7 +554,7 @@ export default function AdminAgreementsPage() {
                           <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="text-text-tertiary hover:text-purple-400"
+                            className="text-text-tertiary hover:text-white"
                           >
                             <Upload className="w-8 h-8 mx-auto mb-2" />
                             <span>Click to select DOCX file</span>
@@ -570,7 +570,7 @@ export default function AdminAgreementsPage() {
                         value={uploadVersion}
                         onChange={(e) => setUploadVersion(e.target.value)}
                         placeholder="e.g., 2.1"
-                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-white placeholder:text-text-muted"
+                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white placeholder:text-text-muted"
                         required
                       />
                     </div>
@@ -582,7 +582,7 @@ export default function AdminAgreementsPage() {
                         value={uploadTitle}
                         onChange={(e) => setUploadTitle(e.target.value)}
                         placeholder="e.g., Coach Service Agreement v2.1"
-                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-white placeholder:text-text-muted"
+                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white placeholder:text-text-muted"
                         required
                       />
                     </div>
@@ -592,7 +592,7 @@ export default function AdminAgreementsPage() {
                       <select
                         value={uploadEntityType}
                         onChange={(e) => setUploadEntityType(e.target.value)}
-                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-white"
+                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white"
                       >
                         <option value="proprietorship">Proprietorship</option>
                         <option value="llp">LLP</option>
@@ -606,7 +606,7 @@ export default function AdminAgreementsPage() {
                         onChange={(e) => setUploadDescription(e.target.value)}
                         placeholder="Notes about this version..."
                         rows={2}
-                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-white placeholder:text-text-muted"
+                        className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white placeholder:text-text-muted"
                       />
                     </div>
 
@@ -621,7 +621,7 @@ export default function AdminAgreementsPage() {
                       <button
                         type="submit"
                         disabled={uploading || !uploadFile || !uploadVersion || !uploadTitle}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {uploading ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
@@ -651,7 +651,7 @@ export default function AdminAgreementsPage() {
                   <div className="flex-1 overflow-y-auto p-6">
                     {previewLoading ? (
                       <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
                       </div>
                     ) : (
                       <div className="text-text-secondary" dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -664,7 +664,7 @@ export default function AdminAgreementsPage() {
             {/* Agreements List */}
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
               </div>
             ) : agreements.length === 0 ? (
               <div className="text-center py-12 bg-surface-1 rounded-xl border border-border">
@@ -673,7 +673,7 @@ export default function AdminAgreementsPage() {
                 <p className="text-text-tertiary mb-4">Upload your first agreement to get started</p>
                 <button
                   onClick={() => setShowUploadForm(true)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  className="px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200"
                 >
                   Upload Agreement
                 </button>
@@ -699,7 +699,7 @@ export default function AdminAgreementsPage() {
                               ACTIVE
                             </span>
                           )}
-                          <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 text-xs font-medium rounded-full">
+                          <span className="px-2 py-0.5 bg-white/[0.08] text-gray-400 border border-white/[0.08] text-xs font-medium rounded-full">
                             v{agreement.version}
                           </span>
                           <span className="px-2 py-0.5 bg-surface-3 text-text-secondary text-xs font-medium rounded-full flex items-center gap-1">
@@ -747,7 +747,7 @@ export default function AdminAgreementsPage() {
                         {agreement.is_active && (
                           <button
                             onClick={() => handlePreview(agreement)}
-                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg"
+                            className="p-2 text-gray-300 hover:text-white hover:bg-white/[0.08] rounded-lg"
                             title="Preview"
                           >
                             <Eye className="w-5 h-5" />
@@ -805,7 +805,7 @@ export default function AdminAgreementsPage() {
                 disabled={savingVariables || !hasChanges}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
                   hasChanges
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:shadow-lg'
+                    ? 'bg-white text-[#0a0a0f] hover:bg-gray-200'
                     : 'bg-surface-3 text-text-tertiary cursor-not-allowed'
                 }`}
               >
@@ -819,7 +819,7 @@ export default function AdminAgreementsPage() {
 
             {variablesLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
               </div>
             ) : (
               <div className="space-y-6">
@@ -839,7 +839,7 @@ export default function AdminAgreementsPage() {
                           <div key={variable.key}>
                             <label className="block text-sm font-medium text-text-secondary mb-1">
                               {variable.description}
-                              <code className="ml-2 text-xs text-purple-400 bg-purple-500/20 px-1 rounded">
+                              <code className="ml-2 text-xs text-gray-400 bg-white/[0.08] px-1 rounded">
                                 {`{{${variable.key}}}`}
                               </code>
                             </label>
@@ -847,7 +847,7 @@ export default function AdminAgreementsPage() {
                               type="text"
                               value={editedVariables[variable.key] || ''}
                               onChange={(e) => handleVariableChange(variable.key, e.target.value)}
-                              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-white placeholder:text-text-muted text-sm"
+                              className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white placeholder:text-text-muted text-sm"
                             />
                           </div>
                         ))}
@@ -859,10 +859,10 @@ export default function AdminAgreementsPage() {
             )}
 
             {/* Info Box */}
-            <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-              <h4 className="font-medium text-blue-400 mb-2">How Variables Work</h4>
-              <ul className="text-sm text-blue-400 space-y-1">
-                <li>- Variables like <code className="bg-blue-500/20 px-1 rounded">{'{{company_name}}'}</code> in your DOCX will be replaced with values from this page</li>
+            <div className="mt-6 bg-white/[0.06] border border-white/[0.08] rounded-xl p-4">
+              <h4 className="font-medium text-gray-300 mb-2">How Variables Work</h4>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li>- Variables like <code className="bg-white/[0.08] px-1 rounded">{'{{company_name}}'}</code> in your DOCX will be replaced with values from this page</li>
                 <li>- Changes take effect immediately for new coach signups</li>
                 <li>- Already signed agreements are NOT affected by changes</li>
                 <li>- Use the <strong>Preview</strong> button in Agreements tab to see the final result</li>

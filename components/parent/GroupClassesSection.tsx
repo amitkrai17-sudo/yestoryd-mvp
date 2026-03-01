@@ -106,9 +106,9 @@ function isWithin30Min(dateStr: string, timeStr: string): boolean {
 
 function engagementLabel(rating: number | null): { text: string; color: string } {
   if (!rating) return { text: '', color: '' };
-  if (rating >= 5) return { text: 'High', color: 'text-green-400' };
-  if (rating >= 3) return { text: 'Medium', color: 'text-yellow-400' };
-  return { text: 'Low', color: 'text-orange-400' };
+  if (rating >= 5) return { text: 'High', color: 'text-green-600' };
+  if (rating >= 3) return { text: 'Medium', color: 'text-yellow-600' };
+  return { text: 'Low', color: 'text-orange-600' };
 }
 
 // ─── Main Component ───
@@ -152,12 +152,12 @@ export default function GroupClassesSection({
 
   if (loading) {
     return (
-      <div className="bg-surface-1 rounded-2xl p-6 border border-[#7b008b]/20 shadow-lg shadow-black/20">
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-purple-600" />
           </div>
-          <h2 className="text-lg font-bold text-white">Group Classes</h2>
+          <h2 className="text-lg font-bold text-gray-900">Group Classes</h2>
         </div>
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 text-[#7b008b] animate-spin" />
@@ -168,17 +168,17 @@ export default function GroupClassesSection({
 
   if (!data || (data.upcoming.length === 0 && data.past.length === 0)) {
     return (
-      <div className="bg-surface-1 rounded-2xl p-6 border border-[#7b008b]/20 shadow-lg shadow-black/20">
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-purple-600" />
           </div>
-          <h2 className="text-lg font-bold text-white">Group Classes</h2>
+          <h2 className="text-lg font-bold text-gray-900">Group Classes</h2>
         </div>
         <div className="text-center py-6">
           <Sparkles className="w-12 h-12 text-[#7b008b]/30 mx-auto mb-3" />
-          <p className="text-text-secondary text-sm mb-1">Join a fun learning class</p>
-          <p className="text-text-tertiary text-xs mb-4">Starting from ₹199</p>
+          <p className="text-gray-600 text-sm mb-1">Join a fun learning class</p>
+          <p className="text-gray-500 text-xs mb-4">Starting from ₹199</p>
           <Link
             href="/classes"
             className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white rounded-xl font-semibold hover:opacity-90 transition-all text-sm min-h-[44px]"
@@ -192,14 +192,14 @@ export default function GroupClassesSection({
   }
 
   return (
-    <div className="bg-surface-1 rounded-2xl p-5 border border-[#7b008b]/20 shadow-lg shadow-black/20">
+    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-purple-600" />
           </div>
-          <h2 className="text-lg font-bold text-white">Group Classes</h2>
+          <h2 className="text-lg font-bold text-gray-900">Group Classes</h2>
         </div>
         <Link
           href="/classes"
@@ -211,37 +211,37 @@ export default function GroupClassesSection({
 
       {/* Stats Bar */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-surface-2 rounded-xl p-3 text-center">
-          <p className="text-xl font-bold text-white">{data.stats.total_attended}</p>
-          <p className="text-xs text-text-tertiary mt-0.5">Attended</p>
+        <div className="bg-gray-50 rounded-xl p-3 text-center">
+          <p className="text-xl font-bold text-gray-900">{data.stats.total_attended}</p>
+          <p className="text-xs text-gray-500 mt-0.5">Attended</p>
         </div>
-        <div className="bg-surface-2 rounded-xl p-3 text-center">
-          <p className="text-xl font-bold text-white flex items-center justify-center gap-1">
+        <div className="bg-gray-50 rounded-xl p-3 text-center">
+          <p className="text-xl font-bold text-gray-900 flex items-center justify-center gap-1">
             {data.stats.current_streak}
-            {data.stats.current_streak > 0 && <Flame className="w-4 h-4 text-orange-400" />}
+            {data.stats.current_streak > 0 && <Flame className="w-4 h-4 text-orange-500" />}
           </p>
-          <p className="text-xs text-text-tertiary mt-0.5">Streak</p>
+          <p className="text-xs text-gray-500 mt-0.5">Streak</p>
         </div>
-        <div className="bg-surface-2 rounded-xl p-3 text-center">
-          <p className="text-xl font-bold text-white flex items-center justify-center gap-1">
+        <div className="bg-gray-50 rounded-xl p-3 text-center">
+          <p className="text-xl font-bold text-gray-900 flex items-center justify-center gap-1">
             {data.stats.badges_earned}
-            {data.stats.badges_earned > 0 && <Trophy className="w-4 h-4 text-amber-400" />}
+            {data.stats.badges_earned > 0 && <Trophy className="w-4 h-4 text-amber-500" />}
           </p>
-          <p className="text-xs text-text-tertiary mt-0.5">Badges</p>
+          <p className="text-xs text-gray-500 mt-0.5">Badges</p>
         </div>
       </div>
 
       {/* Badges ribbon */}
       {data.badges.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide snap-x snap-mandatory">
           {data.badges.slice(0, 5).map(badge => (
             <div
               key={badge.id}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full whitespace-nowrap flex-shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full whitespace-nowrap flex-shrink-0 snap-start"
               title={badge.description}
             >
               <span className="text-sm">{badge.icon || '🏆'}</span>
-              <span className="text-xs font-medium text-amber-300">{badge.name}</span>
+              <span className="text-xs font-medium text-amber-700">{badge.name}</span>
             </div>
           ))}
         </div>
@@ -250,7 +250,7 @@ export default function GroupClassesSection({
       {/* Upcoming Sessions */}
       {data.upcoming.length > 0 && (
         <div className="mb-5">
-          <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3">
+          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
             Upcoming
           </h3>
           <div className="space-y-3">
@@ -259,7 +259,7 @@ export default function GroupClassesSection({
               return (
                 <div
                   key={session.registration_id}
-                  className="bg-surface-2 rounded-xl p-4 border border-purple-500/10"
+                  className="bg-gray-50 rounded-xl p-4 border border-gray-100"
                 >
                   <div className="flex items-start gap-3">
                     <div
@@ -269,16 +269,16 @@ export default function GroupClassesSection({
                       {session.icon_emoji || '📖'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{session.class_type_name}</p>
-                      <p className="text-xs text-text-tertiary mt-0.5">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{session.class_type_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
                         {formatDate(session.scheduled_date)} · {formatTime(session.scheduled_time)} · {session.duration_minutes}min
                       </p>
-                      <p className="text-xs text-text-tertiary mt-0.5">
+                      <p className="text-xs text-gray-500 mt-0.5">
                         For {session.child_name}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         {session.is_enrolled_free && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs font-medium border border-green-500/30">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-200">
                             <CheckCircle className="w-3 h-3" />
                             FREE
                           </span>
@@ -308,7 +308,7 @@ export default function GroupClassesSection({
       {/* Past Sessions */}
       {data.past.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3">
+          <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
             Recent
           </h3>
           <div className="space-y-3">
@@ -317,7 +317,7 @@ export default function GroupClassesSection({
               return (
                 <div
                   key={session.registration_id}
-                  className="bg-surface-2 rounded-xl p-4 border border-[#7b008b]/10"
+                  className="bg-gray-50 rounded-xl p-4 border border-gray-100"
                 >
                   <div className="flex items-start gap-3">
                     <div
@@ -328,12 +328,12 @@ export default function GroupClassesSection({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-white truncate">{session.class_type_name}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{session.class_type_name}</p>
                         {session.attendance_status === 'present' && (
                           <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-xs text-text-tertiary mt-0.5">
+                      <p className="text-xs text-gray-500 mt-0.5">
                         {formatDate(session.scheduled_date)} · {session.child_name}
                         {engagement.text && (
                           <span className={`ml-2 ${engagement.color}`}>· {engagement.text} engagement</span>
@@ -342,19 +342,19 @@ export default function GroupClassesSection({
 
                       {/* Micro-insight */}
                       {session.micro_insight ? (
-                        <div className="mt-2 bg-surface-1/50 rounded-lg p-3 border-l-2 border-purple-500">
-                          <p className="text-xs text-text-secondary leading-relaxed">{session.micro_insight}</p>
+                        <div className="mt-2 bg-white rounded-lg p-3 border-l-2 border-purple-500">
+                          <p className="text-xs text-gray-600 leading-relaxed">{session.micro_insight}</p>
                           {session.badges_earned.length > 0 && (
                             <div className="flex items-center gap-1.5 mt-2">
                               <Award className="w-3.5 h-3.5 text-amber-400" />
-                              <span className="text-xs text-amber-300 font-medium">
+                              <span className="text-xs text-amber-700 font-medium">
                                 {session.badges_earned.join(', ')}
                               </span>
                             </div>
                           )}
                         </div>
                       ) : session.attendance_status === 'present' ? (
-                        <div className="mt-2 flex items-center gap-1.5 text-xs text-text-tertiary">
+                        <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           Insight generating...
                         </div>

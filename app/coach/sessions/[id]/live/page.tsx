@@ -53,7 +53,7 @@ export default function LiveSessionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-3" />
           <p className="text-white/40 text-sm">Loading session...</p>
@@ -64,7 +64,7 @@ export default function LiveSessionPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <p className="text-white mb-2">{error}</p>

@@ -24,7 +24,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import ChatWidget from '@/components/chat/ChatWidget';
-import CoachLayout from '@/components/coach/CoachLayout';
 import CoachTierCard from '@/components/coach/CoachTierCard';
 import CoachAvailabilityCard from '@/components/coach/CoachAvailabilityCard';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -117,10 +116,9 @@ export default function CoachDashboardClient({
   if (!coach) return null;
 
   return (
-    <CoachLayout>
-      <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-4 lg:space-y-6">
         {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white">
+        <div className="bg-gradient-to-r from-[#00ABFF] to-[#0066CC] rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white">
           <h1 className="text-lg lg:text-2xl font-bold mb-1 lg:mb-2">
             Welcome back, {coach.name.split(' ')[0]}!
           </h1>
@@ -174,7 +172,7 @@ export default function CoachDashboardClient({
                         </span>
                         <Link
                           href={`/coach/students/${session.child_id}`}
-                          className="px-3 py-1.5 bg-[#00ABFF] text-white text-xs lg:text-sm rounded-lg hover:bg-[#00ABFF]/90 transition-colors"
+                          className="px-3 py-1.5 bg-[#00ABFF] text-white text-xs lg:text-sm rounded-xl hover:bg-[#00ABFF]/90 transition-colors"
                         >
                           View
                         </Link>
@@ -212,7 +210,7 @@ export default function CoachDashboardClient({
                   </div>
                   <Link
                     href={`/coach/students/${student.child_id}`}
-                    className="px-3 py-1.5 bg-amber-500/20 text-amber-400 text-xs rounded-lg hover:bg-amber-500/30 transition-colors flex items-center gap-1 flex-shrink-0"
+                    className="px-3 py-1.5 bg-amber-500/20 text-amber-400 text-xs rounded-xl hover:bg-amber-500/30 transition-colors flex items-center gap-1 flex-shrink-0"
                   >
                     View <ChevronRight className="w-3 h-3" />
                   </Link>
@@ -261,7 +259,7 @@ export default function CoachDashboardClient({
                   </div>
                   <Link
                     href={`/coach/ai-assistant?studentId=${session.child_id}&prompt=${encodeURIComponent(`Prepare me for my session with ${session.child_name} today. What should I focus on?`)}`}
-                    className="px-2.5 py-1.5 bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white text-[10px] lg:text-xs font-medium rounded-lg hover:opacity-90 transition-all flex items-center gap-1 flex-shrink-0"
+                    className="px-2.5 py-1.5 bg-gradient-to-r from-[#00ABFF] to-[#0066CC] text-white text-[10px] lg:text-xs font-medium rounded-xl hover:opacity-90 transition-all flex items-center gap-1 flex-shrink-0"
                   >
                     <Sparkles className="w-3 h-3" />
                     Prep
@@ -337,7 +335,7 @@ export default function CoachDashboardClient({
               href="/coach/templates"
               className="p-3 lg:p-4 bg-surface-0 rounded-xl hover:bg-surface-2/50 transition-all group text-center border border-border/50"
             >
-              <Gift className="w-6 h-6 lg:w-7 lg:h-7 text-[#7B008B] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
+              <Gift className="w-6 h-6 lg:w-7 lg:h-7 text-[#0066CC] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-xs lg:text-sm text-text-secondary">Referral</span>
             </Link>
             <Link
@@ -364,12 +362,12 @@ export default function CoachDashboardClient({
               <div className="flex flex-wrap gap-2 lg:gap-3">
                 <Link
                   href="/coach/ai-assistant"
-                  className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-[#00ABFF] text-white rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
+                  className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-[#00ABFF] text-white rounded-xl text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
                 >
                   <TrendingUp className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   Ask rAI
                 </Link>
-                <button className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-surface-2 text-text-secondary rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-surface-3 transition-colors">
+                <button className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-surface-2 text-text-secondary rounded-xl text-xs lg:text-sm font-medium hover:bg-surface-3 transition-colors">
                   <MessageCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   Request
                 </button>
@@ -380,7 +378,6 @@ export default function CoachDashboardClient({
 
         {/* Floating rAI Chat Widget */}
         <ChatWidget userRole="coach" userEmail={coach.email} />
-      </div>
-    </CoachLayout>
+    </div>
   );
 }

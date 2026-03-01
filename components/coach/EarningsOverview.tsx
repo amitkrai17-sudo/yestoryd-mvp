@@ -95,7 +95,7 @@ export default function EarningsOverview({
           <Calculator className="w-4 h-4" />
           Earnings Calculator
         </div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
           Transparent Revenue Sharing
         </h2>
         <p className="text-gray-400 text-lg">

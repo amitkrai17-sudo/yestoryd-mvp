@@ -83,7 +83,7 @@ export default function CapturePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-3" />
           <p className="text-text-tertiary text-sm">Loading session...</p>
@@ -94,7 +94,7 @@ export default function CapturePage() {
 
   if (error || !sessionDetails || !coach) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="bg-surface-1 border border-border rounded-xl p-6 max-w-md w-full text-center">
           <p className="text-red-400 text-sm mb-4">{error || 'Unable to load capture form'}</p>
           <button

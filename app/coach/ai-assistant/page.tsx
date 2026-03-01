@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import CoachLayout from '@/components/layouts/CoachLayout';
 import { supabase } from '@/lib/supabase/client';
 import {
   Send,
@@ -376,19 +375,16 @@ export default function AIAssistantPage() {
 
   if (loading) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
-        </div>
-      </CoachLayout>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+      </div>
     );
   }
 
   if (!coach) return null;
 
   return (
-    <CoachLayout noPadding>
-      <div className="h-[calc(100vh-120px)] flex gap-4 lg:gap-6 relative px-4 py-4">
+    <div className="h-[calc(100vh-120px)] flex gap-4 lg:gap-6 relative px-4 py-4">
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -468,7 +464,7 @@ export default function AIAssistantPage() {
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-full flex items-center justify-center text-white font-bold">
                   {student.child_name.charAt(0)}
                 </div>
                 <div>
@@ -500,7 +496,7 @@ export default function AIAssistantPage() {
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <div className="hidden lg:flex w-11 h-11 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-xl items-center justify-center overflow-hidden">
+            <div className="hidden lg:flex w-11 h-11 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-xl items-center justify-center overflow-hidden">
               <Image
                 src="/images/rai-mascot.png"
                 alt="rAI"
@@ -573,7 +569,7 @@ export default function AIAssistantPage() {
                 className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
               >
                 {message.role === 'assistant' && (
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
                     <Image
                       src="/images/rai-mascot.png"
                       alt="rAI"
@@ -587,7 +583,7 @@ export default function AIAssistantPage() {
                   <div
                     className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-r from-[#00ABFF] to-[#7B008B] text-white'
+                        ? 'bg-gradient-to-r from-[#00ABFF] to-[#0066CC] text-white'
                         : message.isError
                           ? 'bg-red-500/10 text-red-400 border border-red-500/30'
                           : 'bg-surface-2/50 text-text-secondary border border-border'
@@ -619,7 +615,7 @@ export default function AIAssistantPage() {
 
           {sending && !messages.some(m => m.isStreaming) && (
             <div className="flex gap-2 sm:gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#7B008B] rounded-xl flex items-center justify-center overflow-hidden">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-xl flex items-center justify-center overflow-hidden">
                 <Image
                   src="/images/rai-mascot.png"
                   alt="rAI"
@@ -661,14 +657,13 @@ export default function AIAssistantPage() {
             <button
               onClick={sendMessage}
               disabled={sending || !input.trim()}
-              className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] hover:opacity-90 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
+              className="bg-gradient-to-r from-[#00ABFF] to-[#0066CC] hover:opacity-90 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </button>
           </div>
         </div>
       </div>
-      </div>
-    </CoachLayout>
+    </div>
   );
 }

@@ -367,7 +367,7 @@ export default function HomePageClient({
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 font-sans">
+    <div className="min-h-screen bg-surface-0 font-body">
       <HeaderNav
         scrolled={scrolled}
         topBarTextDesktop={c.topbar_text_desktop || 'Jolly Phonics Certified • 7 Years Experience'}

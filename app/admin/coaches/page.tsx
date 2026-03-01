@@ -123,7 +123,7 @@ export default function CoachesPage() {
   }
 
   return (
-    <div className="bg-surface-0 min-h-screen">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -153,7 +153,7 @@ export default function CoachesPage() {
         ) : coaches.length > 0 ? (
           <div className="space-y-2 max-w-4xl">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider px-1 mb-3 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-purple-400" />
+              <MapPin className="w-4 h-4 text-gray-300" />
               In-Person Session Stats
             </h2>
 
@@ -168,7 +168,7 @@ export default function CoachesPage() {
                     onClick={() => toggleExpand(coach.id)}
                     className="w-full flex items-center gap-3 p-3 sm:p-4 hover:bg-surface-2 transition-colors text-left"
                   >
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.08] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                       {coach.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -181,7 +181,7 @@ export default function CoachesPage() {
                         <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                           hasHighRatio
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-purple-500/10 text-purple-400'
+                            : 'bg-white/[0.08] text-gray-300'
                         }`}>
                           {Math.round(coach.stats.offline_ratio * 100)}% in-person
                         </span>
@@ -217,7 +217,7 @@ export default function CoachesPage() {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                         <div className="bg-surface-1 rounded-lg p-2.5 border border-border">
                           <div className="flex items-center gap-1 mb-1">
-                            <MapPin className="w-3 h-3 text-purple-400" />
+                            <MapPin className="w-3 h-3 text-gray-300" />
                             <span className="text-[10px] text-text-tertiary font-medium">In-Person</span>
                           </div>
                           <p className="text-lg font-bold text-white">{coach.stats.offline_count}</p>
@@ -226,7 +226,7 @@ export default function CoachesPage() {
 
                         <div className="bg-surface-1 rounded-lg p-2.5 border border-border">
                           <div className="flex items-center gap-1 mb-1">
-                            <Mic className="w-3 h-3 text-blue-400" />
+                            <Mic className="w-3 h-3 text-gray-300" />
                             <span className="text-[10px] text-text-tertiary font-medium">Clips</span>
                           </div>
                           <p className="text-lg font-bold text-white">{coach.stats.reading_clips_provided}</p>
@@ -290,24 +290,24 @@ export default function CoachesPage() {
           </p>
           <div className="bg-surface-1 rounded-xl p-5 text-left border border-border">
             <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-400" />
+              <Users className="w-5 h-5 text-gray-300" />
               Planned Features
             </h3>
             <ul className="space-y-2 text-sm text-text-secondary">
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Add and manage coach profiles
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Set availability and max students
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 View assigned students per coach
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Track session completion rates
               </li>
             </ul>

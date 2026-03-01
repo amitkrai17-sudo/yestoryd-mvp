@@ -398,16 +398,16 @@ export default function SlotPicker({
       </div>
 
       {/* Date Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
         {availableDates.map((date) => {
           const slotsCount = (slotsByDate[date] || [])
             .filter(s => s.bucketName === selectedBucket?.name).length;
-          
+
           return (
             <button
               key={date}
               onClick={() => setSelectedDate(date)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg border transition-colors ${
+              className={`flex-shrink-0 px-4 py-2 rounded-lg border transition-colors snap-start ${
                 selectedDate === date
                   ? 'bg-[#00ABFF] border-[#00ABFF] text-white'
                   : 'bg-[#1a1a24] border-gray-700 text-gray-300 hover:border-gray-600'

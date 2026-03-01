@@ -45,28 +45,28 @@ export default function PendingSkillBoosterCard({ session, childName }: PendingS
                     border border-yellow-500/30 rounded-2xl p-5 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         {/* Icon */}
-        <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Zap className="w-6 h-6 text-yellow-400" />
+        <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Zap className="w-6 h-6 text-amber-700" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-white mb-1">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">
             Skill Booster Session Recommended
           </h3>
 
-          <p className="text-text-secondary text-sm mb-3">
+          <p className="text-gray-600 text-sm mb-3">
             Coach {session.coach_name} recommends a Skill Booster session for {childName} focusing on{' '}
-            <strong className="text-white">{focusAreaLabel}</strong>.
+            <strong className="text-gray-900">{focusAreaLabel}</strong>.
           </p>
 
           {/* Info Badge */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="inline-flex items-center px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+            <span className="inline-flex items-center px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium">
               ✓ Free - Included in your program
             </span>
             {daysSince > 0 && (
-              <span className="text-xs text-text-tertiary">
+              <span className="text-xs text-gray-500">
                 Recommended {daysSince} day{daysSince > 1 ? 's' : ''} ago
               </span>
             )}

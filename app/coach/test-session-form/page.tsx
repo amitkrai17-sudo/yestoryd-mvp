@@ -34,7 +34,7 @@ export default function TestSessionFormPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 p-8">
+    <div className="p-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-4">Session Form Test Page</h1>
         <p className="text-text-tertiary text-sm mb-6">

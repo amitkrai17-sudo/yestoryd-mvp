@@ -13,26 +13,28 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Listen for auth state changes (handles OAuth callback)
+    // Listen for auth state changes (handles OAuth callback).
+    // Do NOT redirect here — the parent layout validates admin status
+    // and redirects authenticated admins to /admin. Redirecting blindly
+    // caused an infinite loop for authenticated non-admin users:
+    // login → /admin (no admin) → middleware → /admin/login → repeat.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event:', event);
       if (event === 'SIGNED_IN' && session) {
-        setTimeout(() => { window.location.href = '/admin'; }, 500);
-      }
-      setCheckingSession(false);
-    });
-
-    // Check existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setTimeout(() => { window.location.href = '/admin'; }, 500);
+        // Layout's onAuthStateChange will call validateAdmin → set isAuthorized → redirect
+        setCheckingSession(false);
       } else {
         setCheckingSession(false);
       }
     });
 
+    // Check existing session on mount — just clear the loading state.
+    // Layout handles redirect for authenticated admins.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCheckingSession(false);
+    });
+
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);

@@ -23,28 +23,28 @@ export default function EnrollmentsPage() {
           </p>
           <div className="bg-surface-0 rounded-xl p-6 text-left">
             <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-blue-600" />
+              <GraduationCap className="w-5 h-5 text-gray-300" />
               Planned Features
             </h3>
             <ul className="space-y-2 text-sm text-text-secondary">
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 View all enrollments with search & filters
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Filter by status (active, completed, cancelled)
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 View child and parent details
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Track session progress
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Export enrollment data
               </li>
             </ul>

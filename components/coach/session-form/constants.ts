@@ -19,7 +19,7 @@ export const BRAND_COLORS = {
   hotPink: '#00ABFF',
   electricBlue: '#00ABFF',
   yellow: '#FFDE00',
-  deepPurple: '#7B008B',
+  deepPurple: '#0066CC',
   successGreen: '#10B981',
   warningOrange: '#F59E0B',
   errorRed: '#EF4444',

@@ -228,7 +228,7 @@ export default function SupportTicketsTab({ adminEmail }: SupportTicketsTabProps
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tickets..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30]"
           />
         </div>
 
@@ -237,7 +237,7 @@ export default function SupportTicketsTab({ adminEmail }: SupportTicketsTabProps
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30]"
           >
             <option value="all">All Status</option>
             <option value="open">Open</option>
@@ -278,12 +278,8 @@ export default function SupportTicketsTab({ adminEmail }: SupportTicketsTabProps
                   className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <div className="flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      ticket.user_type === 'parent' ? 'bg-purple-100' : 'bg-blue-100'
-                    }`}>
-                      <User className={`w-5 h-5 ${
-                        ticket.user_type === 'parent' ? 'text-purple-600' : 'text-blue-600'
-                      }`} />
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-gray-100`}>
+                      <User className={`w-5 h-5 text-gray-600`} />
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -350,12 +346,8 @@ export default function SupportTicketsTab({ adminEmail }: SupportTicketsTabProps
             <div className="p-6 overflow-y-auto max-h-[60vh]">
               {/* User Info */}
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-6">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  selectedTicket.user_type === 'parent' ? 'bg-purple-100' : 'bg-blue-100'
-                }`}>
-                  <User className={`w-6 h-6 ${
-                    selectedTicket.user_type === 'parent' ? 'text-purple-600' : 'text-blue-600'
-                  }`} />
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center bg-gray-100`}>
+                  <User className={`w-6 h-6 text-gray-600`} />
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">{selectedTicket.user_name}</p>

@@ -78,9 +78,9 @@ const config: Config = {
       },
       fontFamily: {
         display: ['var(--font-jakarta)', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-        body: ['Inter', 'system-ui', 'sans-serif'],
-        reading: ['Lexend', 'system-ui', 'sans-serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        body: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        reading: ['var(--font-reading)', 'Lexend', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         'glow-pink': '0 0 20px rgba(255, 0, 153, 0.3)',

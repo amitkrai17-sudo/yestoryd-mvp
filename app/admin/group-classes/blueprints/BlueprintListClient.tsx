@@ -189,7 +189,7 @@ export default function BlueprintListClient() {
   }, {} as Record<string, { classType: ClassType | null; blueprints: Blueprint[] }>);
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -200,7 +200,7 @@ export default function BlueprintListClient() {
             </div>
             <button
               onClick={() => router.push('/admin/group-classes/blueprints/new')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-shadow"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-colors"
             >
               <Plus className="w-5 h-5" />
               Create Blueprint
@@ -221,7 +221,7 @@ export default function BlueprintListClient() {
                 placeholder="Search blueprints..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+                className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
               />
             </div>
           </div>
@@ -269,7 +269,7 @@ export default function BlueprintListClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : filteredBlueprints.length === 0 ? (
           <div className="text-center py-20">
@@ -280,7 +280,7 @@ export default function BlueprintListClient() {
             <p className="text-text-tertiary mb-4">Create your first blueprint to get started!</p>
             <button
               onClick={() => router.push('/admin/group-classes/blueprints/new')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff0099] text-white rounded-xl font-semibold"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200"
             >
               <Plus className="w-5 h-5" />
               Create Blueprint
@@ -306,7 +306,7 @@ export default function BlueprintListClient() {
                     return (
                       <div
                         key={bp.id}
-                        className="bg-surface-1 rounded-xl border border-border p-5 hover:shadow-md transition-shadow"
+                        className="bg-surface-1 rounded-xl border border-border p-5 transition-colors"
                       >
                         {/* Header */}
                         <div className="flex items-start justify-between mb-3">
@@ -323,7 +323,7 @@ export default function BlueprintListClient() {
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${status.classes}`}>
                             {status.label}
                           </span>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/[0.08] text-gray-400 border border-white/[0.08]">
                             {getAgeBadge(bp.age_band)}
                           </span>
                         </div>

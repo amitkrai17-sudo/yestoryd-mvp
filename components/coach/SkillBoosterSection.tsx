@@ -127,7 +127,7 @@ export default function SkillBoosterSection({
         {/* Progress Bar */}
         <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
           <div
-            className="bg-gradient-to-r from-[#00ABFF] to-[#7B008B] h-2 rounded-full transition-all duration-300"
+            className="bg-gradient-to-r from-[#00ABFF] to-[#0066CC] h-2 rounded-full transition-all duration-300"
             style={{ width: `${(skillBoosterUsed / skillBoosterMax) * 100}%` }}
           />
         </div>
@@ -140,7 +140,7 @@ export default function SkillBoosterSection({
         {canRecommend ? (
           <button
             onClick={() => setShowModal(true)}
-            className="w-full py-3 px-4 bg-gradient-to-r from-[#00ABFF] to-[#7B008B]
+            className="w-full py-3 px-4 bg-gradient-to-r from-[#00ABFF] to-[#0066CC]
                        text-white font-medium rounded-xl hover:opacity-90 transition-opacity
                        flex items-center justify-center gap-2"
           >
@@ -259,7 +259,7 @@ export default function SkillBoosterSection({
                       <button
                         onClick={handleRecommend}
                         disabled={!focusArea || isSubmitting}
-                        className="h-12 px-4 bg-gradient-to-r from-[#00ABFF] to-[#7B008B]
+                        className="h-12 px-4 bg-gradient-to-r from-[#00ABFF] to-[#0066CC]
                                  text-white rounded-xl hover:opacity-90 disabled:opacity-50
                                  transition-opacity flex items-center justify-center gap-2 font-medium whitespace-nowrap"
                       >

@@ -160,7 +160,7 @@ export default function ParentJourneyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
       </div>
     );
@@ -169,10 +169,10 @@ export default function ParentJourneyPage() {
   if (!data || !data.roadmap) {
     return (
       <div className="p-4 lg:p-8">
-        <div className="max-w-2xl mx-auto text-center py-12 bg-surface-1 rounded-2xl border border-border">
-          <MapPin className="w-12 h-12 text-text-tertiary mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-white mb-1">Learning Journey</h2>
-          <p className="text-text-tertiary text-sm mb-4">
+        <div className="max-w-2xl mx-auto text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <MapPin className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Learning Journey</h2>
+          <p className="text-gray-500 text-sm mb-4">
             {data?.child?.name || 'Your child'}&apos;s personalized roadmap will appear here after the diagnostic session.
           </p>
         </div>
@@ -239,14 +239,14 @@ export default function ParentJourneyPage() {
 
         {/* Next Session Card */}
         {nextSession && (
-          <div className="bg-surface-1 rounded-2xl border-2 border-[#FF0099]/30 p-5">
+          <div className="bg-white rounded-2xl border-2 border-pink-200 p-5 shadow-sm">
             <p className="text-[10px] uppercase tracking-wider text-[#FF0099] font-medium mb-2">Next Session</p>
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="text-white font-medium text-base">
+                <h3 className="text-gray-900 font-medium text-base">
                   {nextSession.is_diagnostic ? 'Diagnostic Session' : (nextSession.template_title || `Session ${nextSession.session_number}`)}
                 </h3>
-                <div className="flex items-center gap-3 mt-1 text-text-tertiary text-sm">
+                <div className="flex items-center gap-3 mt-1 text-gray-500 text-sm">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
                     {formatDate(nextSession.date)}
@@ -260,7 +260,7 @@ export default function ParentJourneyPage() {
                   )}
                 </div>
                 {nextSession.coach_name && (
-                  <p className="text-text-tertiary text-xs mt-1">with Coach {nextSession.coach_name}</p>
+                  <p className="text-gray-500 text-xs mt-1">with Coach {nextSession.coach_name}</p>
                 )}
               </div>
               {nextSession.google_meet_link && (
@@ -303,17 +303,17 @@ export default function ParentJourneyPage() {
           };
 
           return (
-            <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
-              <div className="px-5 py-3 border-b border-border">
-                <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                   <FileText className="w-4 h-4 text-[#FF0099]" />
                   Practice This Week
-                  <span className="ml-auto text-[10px] text-text-tertiary font-normal">
+                  <span className="ml-auto text-[10px] text-gray-500 font-normal">
                     {allItems.filter((i: any) => i.viewed_at).length}/{allItems.length} opened
                   </span>
                 </h3>
               </div>
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-gray-200">
                 {allItems.map((item: any) => (
                   <a
                     key={item.id}
@@ -321,25 +321,25 @@ export default function ParentJourneyPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => handleContentClick(item.eventId, item.id)}
-                    className="flex items-center gap-3 px-5 py-3 hover:bg-surface-2 transition-colors"
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-gray-100 transition-colors"
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       item.type === 'video' ? 'bg-blue-500/10' : 'bg-emerald-500/10'
                     }`}>
                       {item.type === 'video'
-                        ? <Film className="w-4 h-4 text-blue-400" />
-                        : <FileText className="w-4 h-4 text-emerald-400" />
+                        ? <Film className="w-4 h-4 text-blue-600" />
+                        : <FileText className="w-4 h-4 text-emerald-600" />
                       }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{item.title}</p>
-                      <p className="text-[10px] text-text-tertiary">
+                      <p className="text-sm text-gray-900 truncate">{item.title}</p>
+                      <p className="text-[10px] text-gray-500">
                         {item.type === 'video' ? 'Video' : 'Worksheet'}
                         {item.viewed_at && ' · Opened'}
                       </p>
                     </div>
                     {item.asset_url && (
-                      <ExternalLink className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                      <ExternalLink className="w-4 h-4 text-gray-500 flex-shrink-0" />
                     )}
                   </a>
                 ))}
@@ -350,23 +350,23 @@ export default function ParentJourneyPage() {
 
         {/* Session Timeline */}
         {planItems.length > 0 && (
-          <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
-            <div className="px-5 py-3 border-b border-border">
-              <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-[#FF0099]" />
                 Session Timeline
               </h3>
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-gray-200">
               {/* Diagnostic (always first) */}
               <div className="flex items-center gap-3 px-5 py-3">
-                <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
+                <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-4 h-4 text-emerald-700" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-text-tertiary">Diagnostic Session</p>
+                  <p className="text-sm text-gray-500">Diagnostic Session</p>
                 </div>
-                <span className="text-[10px] text-green-400">Complete</span>
+                <span className="text-[10px] text-emerald-700">Complete</span>
               </div>
 
               {planItems.map((item: PlanItem, idx: number) => {
@@ -381,27 +381,27 @@ export default function ParentJourneyPage() {
                     {/* Status icon */}
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
                       isCompleted
-                        ? 'bg-green-500/20'
+                        ? 'bg-emerald-50'
                         : isCurrent
-                        ? 'bg-[#FF0099]/20'
-                        : 'bg-surface-2'
+                        ? 'bg-pink-50'
+                        : 'bg-gray-50'
                     }`}>
                       {isCompleted ? (
-                        <CheckCircle className="w-4 h-4 text-green-400" />
+                        <CheckCircle className="w-4 h-4 text-emerald-700" />
                       ) : isCurrent ? (
                         <span className="w-2 h-2 bg-[#FF0099] rounded-full animate-pulse" />
                       ) : (
-                        <Circle className="w-4 h-4 text-text-tertiary/40" />
+                        <Circle className="w-4 h-4 text-gray-500/40" />
                       )}
                     </div>
 
                     {/* Session info */}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm truncate ${isCompleted ? 'text-text-tertiary' : 'text-white'}`}>
+                      <p className={`text-sm truncate ${isCompleted ? 'text-gray-500' : 'text-gray-900'}`}>
                         {item.title}
                       </p>
                       {item.skills.length > 0 && (
-                        <p className="text-[10px] text-text-tertiary mt-0.5 truncate">
+                        <p className="text-[10px] text-gray-500 mt-0.5 truncate">
                           {item.skills.join(' + ')}
                         </p>
                       )}
@@ -413,12 +413,12 @@ export default function ParentJourneyPage() {
                         <Star className="w-3.5 h-3.5 text-amber-400" />
                       )}
                       {isCurrent && (
-                        <span className="text-[9px] px-1.5 py-0.5 bg-[#FF0099]/20 text-[#FF0099] rounded font-medium">
+                        <span className="text-[9px] px-1.5 py-0.5 bg-pink-50 text-[#FF0099] border border-pink-200 rounded font-medium">
                           Up Next
                         </span>
                       )}
                       {isCompleted && (
-                        <span className="text-[9px] text-green-400">Done</span>
+                        <span className="text-[9px] text-emerald-700">Done</span>
                       )}
                     </div>
                   </div>
@@ -430,14 +430,14 @@ export default function ParentJourneyPage() {
 
         {/* Recent Session Summaries */}
         {recentSummaries && recentSummaries.length > 0 && (
-          <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden">
-            <div className="px-5 py-3 border-b border-border">
-              <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#FF0099]" />
                 Recent Sessions
               </h3>
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-gray-200">
               {recentSummaries.map((s: SessionSummary) => (
                 <div key={s.id} className="px-5 py-3">
                   <button
@@ -446,29 +446,29 @@ export default function ParentJourneyPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white font-medium truncate">
+                        <p className="text-sm text-gray-900 font-medium truncate">
                           {s.session_number ? `Session ${s.session_number}: ` : ''}{s.focus}
                         </p>
-                        <p className="text-[10px] text-text-tertiary mt-0.5">
+                        <p className="text-[10px] text-gray-500 mt-0.5">
                           {new Date(s.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                           {s.progress && ` — ${s.progress.replace(/_/g, ' ')}`}
                         </p>
                       </div>
                       {expandedSummary === s.id
-                        ? <ChevronUp className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-                        : <ChevronDown className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                        ? <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        : <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
                       }
                     </div>
                   </button>
                   {expandedSummary === s.id && (
                     <div className="mt-2 space-y-2">
                       {s.summary && (
-                        <p className="text-xs text-text-secondary">{s.summary}</p>
+                        <p className="text-xs text-gray-600">{s.summary}</p>
                       )}
                       {s.highlights.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {s.highlights.map((h: string, i: number) => (
-                            <span key={i} className="text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full border border-green-500/20">
+                            <span key={i} className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
                               {h}
                             </span>
                           ))}
@@ -488,15 +488,15 @@ export default function ParentJourneyPage() {
             {futureSeasons.map((season: any) => (
               <div
                 key={season.season_number}
-                className="bg-surface-1 rounded-2xl border border-border p-4 opacity-60"
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 opacity-60"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-text-tertiary" />
+                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-gray-500" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-white text-sm font-medium">{season.season_name}</p>
-                    <p className="text-text-tertiary text-xs">
+                    <p className="text-gray-900 text-sm font-medium">{season.season_name}</p>
+                    <p className="text-gray-500 text-xs">
                       Unlocks after Season {season.season_number - 1}
                     </p>
                   </div>

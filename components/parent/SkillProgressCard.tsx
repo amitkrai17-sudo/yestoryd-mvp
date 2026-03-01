@@ -25,9 +25,9 @@ function formatSkillTag(tag: string): string {
 }
 
 const SEVERITY_CONFIG: Record<string, { color: string; bgColor: string }> = {
-  mild: { color: 'text-amber-400', bgColor: 'bg-amber-500/20 border-amber-500/30' },
-  moderate: { color: 'text-orange-400', bgColor: 'bg-orange-500/20 border-orange-500/30' },
-  severe: { color: 'text-red-400', bgColor: 'bg-red-500/20 border-red-500/30' },
+  mild: { color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200' },
+  moderate: { color: 'text-orange-700', bgColor: 'bg-orange-50 border-orange-200' },
+  severe: { color: 'text-red-700', bgColor: 'bg-red-50 border-red-200' },
 };
 
 export default function SkillProgressCard({
@@ -40,11 +40,11 @@ export default function SkillProgressCard({
   if (!hasAnyData) return null;
 
   return (
-    <div className="bg-surface-1 rounded-2xl border border-[#7b008b]/20
-                    shadow-lg shadow-black/20 overflow-hidden w-full">
+    <div className="bg-white rounded-2xl border border-gray-100
+                    shadow-sm overflow-hidden w-full">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-white/[0.08]">
-        <h2 className="font-semibold text-white flex items-center gap-2 text-base">
+      <div className="px-5 py-4 border-b border-gray-200">
+        <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
           <BarChart3 className="w-5 h-5 text-[#FF0099]" />
           {childName}&apos;s Skills
         </h2>
@@ -54,7 +54,7 @@ export default function SkillProgressCard({
         {/* Mastered Skills */}
         {masteredSkills.length > 0 && (
           <div>
-            <p className="text-xs text-text-tertiary uppercase tracking-wide font-medium mb-2">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">
               Mastered
             </p>
             <div className="flex flex-wrap gap-2">
@@ -62,7 +62,7 @@ export default function SkillProgressCard({
                 <span
                   key={i}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
-                           bg-green-500/15 text-green-400 border border-green-500/25"
+                           bg-emerald-50 text-emerald-700 border border-emerald-200"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
                   {formatSkillTag(skill)}
@@ -75,7 +75,7 @@ export default function SkillProgressCard({
         {/* Active Skills */}
         {activeSkills.length > 0 && (
           <div>
-            <p className="text-xs text-text-tertiary uppercase tracking-wide font-medium mb-2">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">
               Working On
             </p>
             <div className="flex flex-wrap gap-2">
@@ -83,7 +83,7 @@ export default function SkillProgressCard({
                 <span
                   key={i}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
-                           bg-blue-500/15 text-blue-400 border border-blue-500/25"
+                           bg-blue-50 text-blue-700 border border-blue-200"
                 >
                   <Loader2 className="w-3.5 h-3.5" />
                   {formatSkillTag(skill)}
@@ -96,7 +96,7 @@ export default function SkillProgressCard({
         {/* Struggle Areas */}
         {struggleAreas.length > 0 && (
           <div>
-            <p className="text-xs text-text-tertiary uppercase tracking-wide font-medium mb-2">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">
               Needs Extra Practice
             </p>
             <div className="flex flex-wrap gap-2">

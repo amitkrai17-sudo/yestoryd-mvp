@@ -291,14 +291,14 @@ export default function TemplateEditPage() {
 
   if (loading) {
     return (
-      <div className="bg-surface-0 min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="bg-surface-0 min-h-screen">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
@@ -312,7 +312,7 @@ export default function TemplateEditPage() {
               </button>
               <div>
                 <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-brand-primary" />
+                  <BookOpen className="w-5 h-5 text-gray-300" />
                   {isNew ? 'New Template' : `Edit ${form.template_code}`}
                 </h1>
               </div>
@@ -320,7 +320,7 @@ export default function TemplateEditPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-[#0a0a0f] rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {saving ? 'Saving...' : 'Save'}
@@ -353,7 +353,7 @@ export default function TemplateEditPage() {
                 value={form.template_code}
                 onChange={e => updateField('template_code', e.target.value.toUpperCase())}
                 placeholder="e.g. F01"
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
               />
             </div>
             <div>
@@ -361,7 +361,7 @@ export default function TemplateEditPage() {
               <select
                 value={form.age_band}
                 onChange={e => updateField('age_band', e.target.value)}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
               >
                 <option value="foundation">Foundation (4-6)</option>
                 <option value="building">Building (7-9)</option>
@@ -375,7 +375,7 @@ export default function TemplateEditPage() {
                 value={form.title}
                 onChange={e => updateField('title', e.target.value)}
                 placeholder="Session title"
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
               />
             </div>
             <div className="sm:col-span-2">
@@ -384,7 +384,7 @@ export default function TemplateEditPage() {
                 value={form.description}
                 onChange={e => updateField('description', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary resize-none"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
               />
             </div>
           </div>
@@ -400,7 +400,7 @@ export default function TemplateEditPage() {
                 type="number"
                 value={form.duration_minutes}
                 onChange={e => updateField('duration_minutes', parseInt(e.target.value) || 30)}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
               />
             </div>
             <div>
@@ -411,7 +411,7 @@ export default function TemplateEditPage() {
                 max={10}
                 value={form.difficulty_level}
                 onChange={e => updateField('difficulty_level', parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
               />
             </div>
             <div>
@@ -421,7 +421,7 @@ export default function TemplateEditPage() {
                 min={1}
                 value={form.recommended_order}
                 onChange={e => updateField('recommended_order', parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
               />
             </div>
             <div className="flex flex-col gap-2 pt-5">
@@ -457,7 +457,7 @@ export default function TemplateEditPage() {
                 onClick={() => toggleSkill(skill)}
                 className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
                   form.skill_dimensions.includes(skill)
-                    ? 'bg-brand-primary/20 text-brand-primary border-brand-primary/30'
+                    ? 'bg-white/[0.08] text-gray-300 border-white/[0.16]'
                     : 'bg-surface-2 text-text-tertiary border-border hover:text-white'
                 }`}
               >
@@ -477,7 +477,7 @@ export default function TemplateEditPage() {
               onChange={e => setPrereqInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addPrereq())}
               placeholder="e.g. F01"
-              className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
             />
             <button
               onClick={addPrereq}
@@ -512,7 +512,7 @@ export default function TemplateEditPage() {
               onChange={e => setMaterialInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addMaterial())}
               placeholder="e.g. Flashcards, Whiteboard"
-              className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="flex-1 px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
             />
             <button
               onClick={addMaterial}
@@ -571,26 +571,26 @@ export default function TemplateEditPage() {
                       value={step.time}
                       onChange={e => updateActivity(i, 'time', e.target.value)}
                       placeholder="0-5"
-                      className="px-2 py-1.5 bg-surface-2 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                      className="px-2 py-1.5 bg-surface-2 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                     />
                     <input
                       type="text"
                       value={step.activity}
                       onChange={e => updateActivity(i, 'activity', e.target.value)}
                       placeholder="Activity description"
-                      className="px-2 py-1.5 bg-surface-2 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                      className="px-2 py-1.5 bg-surface-2 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                     />
                     <input
                       type="text"
                       value={step.purpose}
                       onChange={e => updateActivity(i, 'purpose', e.target.value)}
                       placeholder="Purpose"
-                      className="px-2 py-1.5 bg-surface-2 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                      className="px-2 py-1.5 bg-surface-2 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                     />
                     <button
                       onClick={() => openContentPicker(i)}
                       title="Link content"
-                      className="p-1.5 rounded hover:bg-brand-primary/20 text-text-tertiary hover:text-brand-primary transition-colors"
+                      className="p-1.5 rounded hover:bg-white/[0.08] text-text-tertiary hover:text-white transition-colors"
                     >
                       <Link2 className="w-3.5 h-3.5" />
                     </button>
@@ -609,10 +609,10 @@ export default function TemplateEditPage() {
                           key={ref.id}
                           className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-full border ${
                             ref.type === 'video'
-                              ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                              ? 'bg-white/[0.08] border-white/[0.16] text-gray-300'
                               : ref.type === 'game'
-                              ? 'bg-purple-500/10 border-purple-500/30 text-purple-400'
-                              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                              ? 'bg-white/[0.08] border-white/[0.16] text-gray-300'
+                              : 'bg-white/[0.08] border-white/[0.16] text-gray-300'
                           }`}
                         >
                           {contentIcon(ref.type)}
@@ -644,7 +644,7 @@ export default function TemplateEditPage() {
                 onChange={e => updateField('coach_prep_notes', e.target.value)}
                 rows={3}
                 placeholder="Notes for the coach to prepare for this session..."
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary resize-none"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
               />
             </div>
             <div>
@@ -654,7 +654,7 @@ export default function TemplateEditPage() {
                 onChange={e => updateField('parent_involvement', e.target.value)}
                 rows={2}
                 placeholder="Expected parent role or involvement..."
-                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary resize-none"
+                className="w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
               />
             </div>
           </div>
@@ -707,14 +707,14 @@ export default function TemplateEditPage() {
                     onChange={e => setPickerQuery(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && searchContent()}
                     placeholder="Search learning units..."
-                    className="w-full pl-8 pr-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                    className="w-full pl-8 pr-3 py-2 bg-surface-2 border border-border rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                     autoFocus
                   />
                 </div>
                 <button
                   onClick={searchContent}
                   disabled={pickerLoading}
-                  className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-white hover:bg-gray-200 text-[#0a0a0f] rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   {pickerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
                 </button>
@@ -744,7 +744,7 @@ export default function TemplateEditPage() {
                         </span>
                       )}
                       {unit.skill && (
-                        <span className="ml-2 text-[10px] text-brand-primary">
+                        <span className="ml-2 text-[10px] text-gray-300">
                           {(unit.skill as any)?.name || (Array.isArray(unit.skill) ? (unit.skill as any)[0]?.name : '')}
                         </span>
                       )}
@@ -768,11 +768,11 @@ export default function TemplateEditPage() {
                               onClick={() => addContentRef({ type: 'video', id: v.id, label: v.title })}
                               className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                                 alreadyAdded
-                                  ? 'bg-blue-500/10 text-blue-400 cursor-default'
+                                  ? 'bg-white/[0.08] text-gray-300 cursor-default'
                                   : 'hover:bg-surface-0 text-white'
                               }`}
                             >
-                              <Film className="w-3 h-3 text-blue-400 shrink-0" />
+                              <Film className="w-3 h-3 text-gray-400 shrink-0" />
                               <span className="truncate">{v.title}</span>
                               {v.duration_seconds && (
                                 <span className="text-text-tertiary ml-auto shrink-0">
@@ -801,11 +801,11 @@ export default function TemplateEditPage() {
                               onClick={() => addContentRef({ type: 'game', id: g.id, label: g.title })}
                               className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                                 alreadyAdded
-                                  ? 'bg-purple-500/10 text-purple-400 cursor-default'
+                                  ? 'bg-white/[0.08] text-gray-300 cursor-default'
                                   : 'hover:bg-surface-0 text-white'
                               }`}
                             >
-                              <Gamepad2 className="w-3 h-3 text-purple-400 shrink-0" />
+                              <Gamepad2 className="w-3 h-3 text-gray-400 shrink-0" />
                               <span className="truncate">{g.title}</span>
                               {alreadyAdded && <span className="text-[10px] ml-auto shrink-0">Added</span>}
                             </button>
@@ -829,11 +829,11 @@ export default function TemplateEditPage() {
                               onClick={() => addContentRef({ type: 'worksheet', id: w.id, label: w.title })}
                               className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                                 alreadyAdded
-                                  ? 'bg-emerald-500/10 text-emerald-400 cursor-default'
+                                  ? 'bg-white/[0.08] text-gray-300 cursor-default'
                                   : 'hover:bg-surface-0 text-white'
                               }`}
                             >
-                              <FileText className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <FileText className="w-3 h-3 text-gray-400 shrink-0" />
                               <span className="truncate">{w.title}</span>
                               {w.asset_format && (
                                 <span className="text-text-tertiary ml-auto shrink-0 uppercase">{w.asset_format}</span>

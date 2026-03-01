@@ -6,7 +6,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import CoachLayout from '@/components/layouts/CoachLayout';
 import { AudioRecorder } from '@/components/coach/AudioRecorder';
 import {
   Loader2,
@@ -378,14 +377,12 @@ export default function OfflineReportPage() {
 
   if (loading) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-4" />
-            <p className="text-text-tertiary">Loading report form...</p>
-          </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-4" />
+          <p className="text-text-tertiary">Loading report form...</p>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
@@ -395,21 +392,19 @@ export default function OfflineReportPage() {
 
   if (accessDenied) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center max-w-sm">
-            <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-            <p className="text-white text-lg mb-2">Cannot Submit Report</p>
-            <p className="text-text-tertiary text-sm mb-4">{accessDenied}</p>
-            <button
-              onClick={() => router.push('/coach/sessions')}
-              className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg text-sm hover:bg-[#00ABFF]/90 transition-colors"
-            >
-              Back to Sessions
-            </button>
-          </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+          <p className="text-white text-lg mb-2">Cannot Submit Report</p>
+          <p className="text-text-tertiary text-sm mb-4">{accessDenied}</p>
+          <button
+            onClick={() => router.push('/coach/sessions')}
+            className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg text-sm hover:bg-[#00ABFF]/90 transition-colors"
+          >
+            Back to Sessions
+          </button>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
@@ -419,20 +414,18 @@ export default function OfflineReportPage() {
 
   if (error || !session) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-white text-lg mb-4">{error || 'Session not found'}</p>
-            <button
-              onClick={loadSession}
-              className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg text-sm hover:bg-[#00ABFF]/90 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-white text-lg mb-4">{error || 'Session not found'}</p>
+          <button
+            onClick={loadSession}
+            className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg text-sm hover:bg-[#00ABFF]/90 transition-colors"
+          >
+            Retry
+          </button>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
@@ -442,31 +435,29 @@ export default function OfflineReportPage() {
 
   if (submitted) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center max-w-sm">
-            <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-            <h2 className="text-white text-xl font-bold mb-2">Report Submitted</h2>
-            {adherenceScore !== null && (
-              <div className="bg-surface-2 border border-border rounded-xl p-4 mb-4">
-                <p className="text-text-tertiary text-xs mb-1">Adherence Score</p>
-                <p className="text-3xl font-bold text-white">{Math.round(adherenceScore * 100)}%</p>
-              </div>
-            )}
-            <p className="text-text-tertiary text-sm mb-4">
-              {session.report_submitted_at
-                ? 'This report was already submitted.'
-                : 'Redirecting to sessions...'}
-            </p>
-            <button
-              onClick={() => router.push('/coach/sessions')}
-              className="px-6 py-3 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-primary/90 transition-colors min-h-[48px]"
-            >
-              Back to Sessions
-            </button>
-          </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
+          <h2 className="text-white text-xl font-bold mb-2">Report Submitted</h2>
+          {adherenceScore !== null && (
+            <div className="bg-surface-2 border border-border rounded-xl p-4 mb-4">
+              <p className="text-text-tertiary text-xs mb-1">Adherence Score</p>
+              <p className="text-3xl font-bold text-white">{Math.round(adherenceScore * 100)}%</p>
+            </div>
+          )}
+          <p className="text-text-tertiary text-sm mb-4">
+            {session.report_submitted_at
+              ? 'This report was already submitted.'
+              : 'Redirecting to sessions...'}
+          </p>
+          <button
+            onClick={() => router.push('/coach/sessions')}
+            className="px-6 py-3 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-primary/90 transition-colors min-h-[48px]"
+          >
+            Back to Sessions
+          </button>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
@@ -481,8 +472,7 @@ export default function OfflineReportPage() {
     && actualStartTime && actualEndTime;
 
   return (
-    <CoachLayout>
-      <div className="max-w-lg mx-auto space-y-4 pb-8">
+    <div className="max-w-lg mx-auto space-y-4 pb-8">
         {/* ============================================================
             HEADER
             ============================================================ */}
@@ -892,7 +882,6 @@ export default function OfflineReportPage() {
             {activities.length > 0 && !hasAtLeastOneStatus && <p>Mark at least one activity status</p>}
           </div>
         )}
-      </div>
-    </CoachLayout>
+    </div>
   );
 }

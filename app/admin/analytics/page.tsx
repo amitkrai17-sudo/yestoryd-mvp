@@ -23,28 +23,28 @@ export default function AnalyticsPage() {
           </p>
           <div className="bg-surface-0 rounded-xl p-6 text-left">
             <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-600" />
+              <BarChart3 className="w-5 h-5 text-gray-300" />
               Planned Features
             </h3>
             <ul className="space-y-2 text-sm text-text-secondary">
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Website traffic & page views
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Assessment completion rates
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Assessment → Enrollment conversion
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Revenue trends over time
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full" />
                 Coach performance metrics
               </li>
             </ul>

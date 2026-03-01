@@ -76,12 +76,12 @@ const DIFFICULTY_LEVELS = ['beginner', 'intermediate', 'advanced'];
 const YRL_LEVELS = ['F1', 'F2', 'F3', 'F4', 'B1', 'B2', 'B3', 'B4', 'M1', 'M2', 'M3', 'M4'];
 
 const TYPE_BADGES: Record<string, { color: string; icon: typeof Film }> = {
-  video: { color: 'bg-blue-500/20 text-blue-400', icon: Film },
-  worksheet: { color: 'bg-green-500/20 text-green-400', icon: FileText },
-  game: { color: 'bg-purple-500/20 text-purple-400', icon: Gamepad2 },
-  audio: { color: 'bg-orange-500/20 text-orange-400', icon: Headphones },
-  interactive: { color: 'bg-teal-500/20 text-teal-400', icon: Monitor },
-  parent_guide: { color: 'bg-pink-500/20 text-pink-400', icon: BookOpen },
+  video: { color: 'bg-white/[0.08] text-gray-400', icon: Film },
+  worksheet: { color: 'bg-white/[0.08] text-gray-400', icon: FileText },
+  game: { color: 'bg-white/[0.08] text-gray-400', icon: Gamepad2 },
+  audio: { color: 'bg-white/[0.08] text-gray-400', icon: Headphones },
+  interactive: { color: 'bg-white/[0.08] text-gray-400', icon: Monitor },
+  parent_guide: { color: 'bg-white/[0.08] text-gray-400', icon: BookOpen },
 };
 
 type TabType = 'csv' | 'single' | 'library';
@@ -129,7 +129,7 @@ export default function ContentUploadPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-8">
+    <div className="p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Content Warehouse</h1>
@@ -144,7 +144,7 @@ export default function ContentUploadPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-[1px] ${
               activeTab === tab.key
-                ? 'border-blue-500 text-blue-400'
+                ? 'border-gray-300 text-gray-300'
                 : 'border-transparent text-text-tertiary hover:text-white'
             }`}
           >
@@ -285,7 +285,7 @@ function CsvUploadTab({ skills }: { skills: Skill[] }) {
           Download Template
         </button>
 
-        <label className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/20 border border-blue-500/30 rounded-xl text-blue-400 hover:bg-blue-500/30 transition-colors text-sm cursor-pointer">
+        <label className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.08] border border-white/[0.08] rounded-xl text-white hover:bg-white/[0.12] transition-colors text-sm cursor-pointer">
           <Upload className="w-4 h-4" />
           Choose CSV File
           <input
@@ -357,7 +357,7 @@ function CsvUploadTab({ skills }: { skills: Skill[] }) {
             <button
               onClick={handleUpload}
               disabled={validCount === 0 || uploading}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
+              className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
             >
               {uploading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -371,7 +371,7 @@ function CsvUploadTab({ skills }: { skills: Skill[] }) {
               <div className="flex-1 max-w-xs">
                 <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                    className="h-full bg-gray-400 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -496,7 +496,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
         <input
           value={form.title}
           onChange={e => updateField('title', e.target.value)}
-          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           placeholder="e.g., Phonics: CVC Words"
         />
       </div>
@@ -508,7 +508,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           <select
             value={form.content_type}
             onChange={e => updateField('content_type', e.target.value)}
-            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           >
             <option value="">Select type</option>
             {CONTENT_TYPES.map(t => (
@@ -521,7 +521,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           <select
             value={form.yrl_level}
             onChange={e => updateField('yrl_level', e.target.value)}
-            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           >
             <option value="">Select level</option>
             {YRL_LEVELS.map(l => (
@@ -538,7 +538,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           value={form.description}
           onChange={e => updateField('description', e.target.value)}
           rows={3}
-          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
           placeholder="Brief description of this content"
         />
       </div>
@@ -549,7 +549,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
         <input
           value={form.asset_url}
           onChange={e => updateField('asset_url', e.target.value)}
-          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           placeholder="youtube:ID, storage:path, engine:name, or full URL"
         />
         <p className="text-xs text-text-muted mt-1">Prefixes: youtube:ID, storage:path, engine:name</p>
@@ -562,7 +562,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           <select
             value={form.arc_stage}
             onChange={e => updateField('arc_stage', e.target.value)}
-            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           >
             <option value="">Select stage</option>
             {ARC_STAGES.map(s => (
@@ -575,7 +575,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           <select
             value={form.difficulty_level}
             onChange={e => updateField('difficulty_level', e.target.value)}
-            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           >
             <option value="">Select difficulty</option>
             {DIFFICULTY_LEVELS.map(d => (
@@ -588,7 +588,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           <input
             value={form.asset_format}
             onChange={e => updateField('asset_format', e.target.value)}
-            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
             placeholder="e.g., pdf, mp4"
           />
         </div>
@@ -601,7 +601,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           type="number"
           value={form.duration_seconds}
           onChange={e => updateField('duration_seconds', e.target.value)}
-          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           placeholder="180"
         />
       </div>
@@ -613,7 +613,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           value={form.coach_guidance}
           onChange={e => updateField('coach_guidance', e.target.value)}
           rows={3}
-          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
           placeholder="Notes for the coach on how to use this content"
         />
       </div>
@@ -625,7 +625,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
           value={form.parent_instruction}
           onChange={e => updateField('parent_instruction', e.target.value)}
           rows={2}
-          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
           placeholder="Instructions for parents on home practice"
         />
       </div>
@@ -636,7 +636,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
         <input
           value={form.child_label}
           onChange={e => updateField('child_label', e.target.value)}
-          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-3 py-2.5 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
           placeholder="Child-friendly name for this activity"
         />
       </div>
@@ -653,7 +653,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
                 onClick={() => toggleSkill(skill)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   isSelected
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
+                    ? 'bg-white/[0.08] text-gray-300 border border-white/[0.16]'
                     : 'bg-surface-1 text-text-secondary border border-border hover:bg-surface-2'
                 }`}
               >
@@ -669,13 +669,13 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
             {selectedSkills.map((sel, i) => (
               <div key={sel.id} className="flex items-center gap-2">
                 <span className="text-xs text-text-muted w-32 truncate">
-                  {i === 0 && <span className="text-blue-400 mr-1">(primary)</span>}
+                  {i === 0 && <span className="text-gray-300 mr-1">(primary)</span>}
                   {sel.name}:
                 </span>
                 <input
                   value={sel.subSkill}
                   onChange={e => updateSubSkill(sel.id, e.target.value)}
-                  className="flex-1 px-2 py-1.5 bg-surface-1 border border-border rounded-lg text-white text-xs placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="flex-1 px-2 py-1.5 bg-surface-1 border border-border rounded-lg text-white text-xs placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                   placeholder="Sub-skill tag (optional)"
                 />
               </div>
@@ -688,7 +688,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
       <button
         onClick={handleSave}
         disabled={!form.title.trim() || !form.content_type || saving}
-        className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
+        className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
         Save Content Item
@@ -850,7 +850,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full pl-9 pr-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
             placeholder="Search content..."
           />
         </div>
@@ -858,7 +858,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value)}
-          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
         >
           <option value="">All Types</option>
           {CONTENT_TYPES.map(t => (
@@ -869,7 +869,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
         <select
           value={filterLevel}
           onChange={e => setFilterLevel(e.target.value)}
-          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
         >
           <option value="">All Levels</option>
           {YRL_LEVELS.map(l => (
@@ -880,7 +880,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
         <select
           value={filterStage}
           onChange={e => setFilterStage(e.target.value)}
-          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
         >
           <option value="">All Stages</option>
           {ARC_STAGES.map(s => (
@@ -891,7 +891,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
         <select
           value={filterSkill}
           onChange={e => setFilterSkill(e.target.value)}
-          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
         >
           <option value="">All Skills</option>
           {skills.map(s => (
@@ -902,7 +902,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
         <select
           value={filterActive}
           onChange={e => setFilterActive(e.target.value)}
-          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="px-3 py-2 bg-surface-1 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
         >
           <option value="true">Active</option>
           <option value="false">Inactive</option>
@@ -961,7 +961,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                         key={i}
                         className={`text-[10px] px-1.5 py-0.5 rounded ${
                           skill.is_primary
-                            ? 'bg-blue-500/20 text-blue-400'
+                            ? 'bg-white/[0.08] text-gray-300'
                             : 'bg-surface-2 text-text-muted'
                         }`}
                       >
@@ -1053,7 +1053,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                 <input
                   value={editForm.title || ''}
                   onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                 />
               </div>
 
@@ -1063,7 +1063,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                   value={editForm.description || ''}
                   onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
                 />
               </div>
 
@@ -1073,7 +1073,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                   <select
                     value={editForm.yrl_level || ''}
                     onChange={e => setEditForm(f => ({ ...f, yrl_level: e.target.value }))}
-                    className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                   >
                     <option value="">None</option>
                     {YRL_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
@@ -1084,7 +1084,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                   <select
                     value={editForm.difficulty_level || ''}
                     onChange={e => setEditForm(f => ({ ...f, difficulty_level: e.target.value }))}
-                    className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10]"
                   >
                     <option value="">None</option>
                     {DIFFICULTY_LEVELS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -1098,7 +1098,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                   value={editForm.coach_guidance || ''}
                   onChange={e => setEditForm(f => ({ ...f, coach_guidance: e.target.value }))}
                   rows={2}
-                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
                 />
               </div>
 
@@ -1108,7 +1108,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                   value={editForm.parent_instruction || ''}
                   onChange={e => setEditForm(f => ({ ...f, parent_instruction: e.target.value }))}
                   rows={2}
-                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-surface-0 border border-border rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/[0.10] resize-none"
                 />
               </div>
 
@@ -1116,7 +1116,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                 <button
                   onClick={saveEdit}
                   disabled={editSaving}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-xl text-sm font-medium hover:bg-gray-200 disabled:opacity-40 transition-colors"
                 >
                   {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
                   Save Changes

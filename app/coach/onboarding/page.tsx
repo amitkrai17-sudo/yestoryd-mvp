@@ -207,7 +207,7 @@ export default function CoachOnboardingPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <RefreshCw className="w-10 h-10 text-[#00ABFF] animate-spin mx-auto mb-4" />
           <p className="text-gray-300">Loading your onboarding...</p>
@@ -219,7 +219,7 @@ export default function CoachOnboardingPage() {
   // Error state
   if (!coach) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center min-h-[60vh] p-4">
         <div className="bg-surface-1 rounded-2xl p-8 max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Profile Not Found</h2>
@@ -233,7 +233,7 @@ export default function CoachOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
       <header className="bg-black/20 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -431,7 +431,7 @@ export default function CoachOnboardingPage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mb-4">
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
-                <h2 className="text-3xl font-bold text-white">You're All Set, {coach.name?.split(' ')[0]}! 🎉</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">You're All Set, {coach.name?.split(' ')[0]}! 🎉</h2>
                 <p className="text-text-tertiary mt-2">Your onboarding is complete. Here's what's next.</p>
               </div>
 

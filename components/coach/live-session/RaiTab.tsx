@@ -32,7 +32,7 @@ const CONTENT_TYPE_COLORS: Record<string, string> = {
   game: 'text-purple-400 bg-purple-400/10',
   audio: 'text-orange-400 bg-orange-400/10',
   interactive: 'text-teal-400 bg-teal-400/10',
-  parent_guide: 'text-pink-400 bg-pink-400/10',
+  parent_guide: 'text-[#00ABFF] bg-[#00ABFF]/10',
 };
 
 export default function RaiTab({ childId, child, coachEmail }: RaiTabProps) {

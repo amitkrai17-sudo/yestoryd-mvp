@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import CoachLayout from '@/components/layouts/CoachLayout';
+
 import { supabase } from '@/lib/supabase/client';
 import {
   IndianRupee,
@@ -224,18 +224,15 @@ export default function CoachEarningsPage() {
 
   if (loading) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
-        </div>
-      </CoachLayout>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+      </div>
     );
   }
 
   if (!coach) return null;
 
   return (
-    <CoachLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -412,6 +409,5 @@ export default function CoachEarningsPage() {
           </div>
         </div>
       </div>
-    </CoachLayout>
   );
 }

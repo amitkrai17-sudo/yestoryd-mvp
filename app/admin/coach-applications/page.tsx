@@ -80,14 +80,14 @@ function AudioPlayer({ url, duration }: { url: string; duration?: number }) {
         onEnded={() => setIsPlaying(false)} onError={() => setError(true)}
         onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || duration || 0)} preload="metadata" />
       {error ? (
-        <a href={url} target="_blank" className="text-blue-500 text-xs flex items-center gap-1"><ExternalLink className="w-3 h-3" />Open</a>
+        <a href={url} target="_blank" className="text-gray-300 text-xs flex items-center gap-1"><ExternalLink className="w-3 h-3" />Open</a>
       ) : (
         <>
-          <button onClick={togglePlay} className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center hover:bg-pink-600">
+          <button onClick={togglePlay} className="w-8 h-8 rounded-full bg-white text-[#0a0a0f] flex items-center justify-center hover:bg-gray-200">
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
           <div className="flex-1">
-            <div className="h-1.5 bg-surface-3 rounded-full"><div className="h-full bg-pink-500 rounded-full" style={{ width: `${audioDuration ? (currentTime / audioDuration) * 100 : 0}%` }} /></div>
+            <div className="h-1.5 bg-surface-3 rounded-full"><div className="h-full bg-white/50 rounded-full" style={{ width: `${audioDuration ? (currentTime / audioDuration) * 100 : 0}%` }} /></div>
             <div className="text-xs text-text-tertiary mt-0.5">{formatTime(currentTime)} / {formatTime(audioDuration)}</div>
           </div>
         </>
@@ -141,8 +141,8 @@ function ScheduleModal({ app, onClose, onDone }: { app: CoachApplication; onClos
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted" />
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2 border border-border rounded-lg text-text-secondary">Cancel</button>
-          <button onClick={handleSchedule} disabled={loading || !date || !time} className="flex-1 py-2 bg-indigo-500 text-white rounded-lg disabled:opacity-50">
+          <button onClick={onClose} className="flex-1 py-2 border border-border rounded-xl text-text-secondary">Cancel</button>
+          <button onClick={handleSchedule} disabled={loading || !date || !time} className="flex-1 py-2 bg-white text-[#0a0a0f] rounded-xl disabled:opacity-50 hover:bg-gray-200">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Schedule'}
           </button>
         </div>
@@ -203,8 +203,8 @@ function FeedbackModal({ app, onClose, onDone }: { app: CoachApplication; onClos
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)..." rows={3} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted" />
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-2 border border-border rounded-lg text-text-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={loading || !outcome} className="flex-1 py-2 bg-purple-500 text-white rounded-lg disabled:opacity-50">
+          <button onClick={onClose} className="flex-1 py-2 border border-border rounded-xl text-text-secondary">Cancel</button>
+          <button onClick={handleSubmit} disabled={loading || !outcome} className="flex-1 py-2 bg-white text-[#0a0a0f] rounded-xl disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save'}
           </button>
         </div>
@@ -344,7 +344,7 @@ function DetailModal({
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-surface-1 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="p-4 border-b border-border bg-gradient-to-r from-pink-500 to-purple-600 text-white">
+          <div className="p-4 border-b border-border bg-[#121217] border-b-white/[0.08] text-white">
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-xl font-bold">{app.name}</h2>
@@ -381,7 +381,7 @@ function DetailModal({
                   </div>
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <a href={`tel:${app.phone}`} className="flex-1 text-center py-1 bg-blue-500 text-white text-xs rounded">Call</a>
+                  <a href={`tel:${app.phone}`} className="flex-1 text-center py-1 bg-white text-[#0a0a0f] text-xs rounded hover:bg-gray-200">Call</a>
                   <a href={`https://wa.me/91${app.phone.replace(/\D/g, '')}`} target="_blank" className="flex-1 text-center py-1 bg-green-500 text-white text-xs rounded">WhatsApp</a>
                 </div>
               </div>
@@ -418,7 +418,7 @@ function DetailModal({
                 <h4 className="text-xs font-semibold text-text-tertiary mb-2">AI ASSESSMENT ({aiConversation.length} messages)</h4>
                 <div className="bg-surface-0 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                   {aiConversation.map((msg: any, i: number) => (
-                    <div key={i} className={`text-sm ${msg.role === 'assistant' ? 'text-purple-400' : 'text-text-secondary'}`}>
+                    <div key={i} className={`text-sm ${msg.role === 'assistant' ? 'text-gray-300' : 'text-text-secondary'}`}>
                       <span className="font-semibold">{msg.role === 'assistant' ? 'rAI: ' : 'Applicant: '}</span>
                       {msg.content}
                     </div>
@@ -429,13 +429,13 @@ function DetailModal({
 
             {/* Interview Info */}
             {hasInterview && (
-              <div className="bg-indigo-500/20 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-indigo-400 mb-2">INTERVIEW</h4>
+              <div className="bg-white/[0.06] rounded-lg p-3 border border-white/[0.08]">
+                <h4 className="text-xs font-semibold text-gray-400 mb-2">INTERVIEW</h4>
                 <div className="text-sm text-text-secondary">
                   {new Date(app.interview_scheduled_at!).toLocaleString()}
                 </div>
                 {app.google_meet_link && (
-                  <a href={app.google_meet_link} target="_blank" className="inline-flex items-center gap-1 mt-2 text-sm text-indigo-400 hover:underline">
+                  <a href={app.google_meet_link} target="_blank" className="inline-flex items-center gap-1 mt-2 text-sm text-gray-300 hover:underline">
                     <Video className="w-4 h-4" /> Join Google Meet
                   </a>
                 )}
@@ -448,28 +448,28 @@ function DetailModal({
               <div className="grid grid-cols-2 gap-2">
                 {/* Calculate Score */}
                 <button onClick={handleCalculate} disabled={calculating || !app.audio_statement_url}
-                  className="flex items-center justify-center gap-2 py-2 px-3 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-2 py-2 px-3 bg-white text-[#0a0a0f] rounded-xl text-sm hover:bg-gray-200 disabled:opacity-50">
                   {calculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
                   Calculate Score
                 </button>
 
                 {/* Schedule Interview */}
                 <button onClick={() => setShowSchedule(true)} disabled={hasInterview}
-                  className="flex items-center justify-center gap-2 py-2 px-3 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-2 py-2 px-3 bg-white/[0.08] text-white rounded-xl text-sm hover:bg-white/[0.12] border border-white/[0.08] disabled:opacity-50">
                   <Calendar className="w-4 h-4" />
                   {hasInterview ? 'Scheduled' : 'Schedule'}
                 </button>
 
                 {/* Approve */}
                 <button onClick={() => handleQuickAction('approved')} disabled={actionLoading === 'approved' || app.status === 'approved'}
-                  className="flex items-center justify-center gap-2 py-2 px-3 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-2 py-2 px-3 bg-emerald-500 text-white rounded-xl text-sm hover:bg-emerald-600 disabled:opacity-50">
                   {actionLoading === 'approved' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                   Approve
                 </button>
 
                 {/* Reject */}
                 <button onClick={() => handleQuickAction('rejected')} disabled={actionLoading === 'rejected' || app.status === 'rejected'}
-                  className="flex items-center justify-center gap-2 py-2 px-3 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-2 py-2 px-3 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 disabled:opacity-50">
                   {actionLoading === 'rejected' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                   Reject
                 </button>
@@ -477,14 +477,14 @@ function DetailModal({
                 {/* Google Meet */}
                 {app.google_meet_link && (
                   <a href={app.google_meet_link} target="_blank"
-                    className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">
+                    className="flex items-center justify-center gap-2 py-2 px-3 bg-white text-[#0a0a0f] rounded-xl text-sm hover:bg-gray-200">
                     <Video className="w-4 h-4" /> Join Meet
                   </a>
                 )}
 
                 {/* Hold */}
                 <button onClick={() => handleQuickAction('on_hold')} disabled={actionLoading === 'on_hold' || app.status === 'on_hold'}
-                  className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-500 text-white rounded-xl text-sm hover:bg-amber-600 disabled:opacity-50">
                   {actionLoading === 'on_hold' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
                   Hold
                 </button>
@@ -492,7 +492,7 @@ function DetailModal({
                 {/* Complete Interview */}
                 {hasInterview && !interviewDone && (
                   <button onClick={() => setShowFeedback(true)}
-                    className="flex items-center justify-center gap-2 py-2 px-3 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 col-span-2">
+                    className="flex items-center justify-center gap-2 py-2 px-3 bg-white text-[#0a0a0f] rounded-xl text-sm hover:bg-gray-200 col-span-2">
                     <Award className="w-4 h-4" /> Complete Interview & Give Feedback
                   </button>
                 )}
@@ -639,7 +639,7 @@ export default function AdminCoachApplicationsPage() {
             <h1 className="text-lg sm:text-xl font-bold text-white">Coach Applications</h1>
             <p className="text-xs text-text-tertiary">Quick review dashboard</p>
           </div>
-          <button onClick={fetchApplications} className="p-2 bg-surface-1 border border-border rounded-lg hover:bg-surface-2 flex-shrink-0" title="Refresh">
+          <button onClick={fetchApplications} className="p-2 bg-surface-1 border border-border rounded-xl hover:bg-surface-2 flex-shrink-0" title="Refresh">
             <RefreshCw className={`w-5 h-5 text-text-secondary ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -650,7 +650,7 @@ export default function AdminCoachApplicationsPage() {
             { label: 'Total', value: stats.total, color: 'border-border' },
             { label: 'Pending', value: stats.pending, color: 'border-yellow-400' },
             { label: 'Qualified', value: stats.qualified, color: 'border-green-400' },
-            { label: 'Approved', value: stats.approved, color: 'border-blue-400' },
+            { label: 'Approved', value: stats.approved, color: 'border-white/[0.16]' },
           ].map(s => (
             <div key={s.label} className={`bg-surface-1 rounded-lg p-2.5 sm:p-3 border-l-4 ${s.color}`}>
               <div className="text-xl sm:text-2xl font-bold text-white">{s.value}</div>
@@ -670,16 +670,16 @@ export default function AdminCoachApplicationsPage() {
                 placeholder="Search name, email, phone, city, score, date..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30]"
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex-shrink-0 px-3 sm:px-4 py-2 border rounded-lg text-sm flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-pink-500/20 border-pink-500 text-pink-400' : 'text-text-secondary border-border hover:bg-surface-2'}`}
+              className={`flex-shrink-0 px-3 sm:px-4 py-2 border rounded-xl text-sm flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-white/[0.08] border-white/[0.16] text-white' : 'text-text-secondary border-border hover:bg-surface-2'}`}
             >
               <Filter className="w-4 h-4" />
               <span className="hidden sm:inline">Filters</span>
-              {hasActiveFilters && <span className="w-2 h-2 bg-pink-500 rounded-full"></span>}
+              {hasActiveFilters && <span className="w-2 h-2 bg-white rounded-full"></span>}
             </button>
           </div>
 
@@ -743,7 +743,7 @@ export default function AdminCoachApplicationsPage() {
                 <div className="col-span-2 md:col-span-4">
                   <button
                     onClick={clearFilters}
-                    className="text-sm text-pink-400 hover:text-pink-300 flex items-center gap-1"
+                    className="text-sm text-gray-300 hover:text-white flex items-center gap-1"
                   >
                     <X className="w-4 h-4" /> Clear all filters
                   </button>
@@ -763,7 +763,7 @@ export default function AdminCoachApplicationsPage() {
         {/* List */}
         <div className="bg-surface-1 rounded-lg overflow-hidden shadow-sm">
           {loading ? (
-            <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-pink-500" /></div>
+            <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-text-tertiary">
               {hasActiveFilters ? 'No applications match your filters' : 'No applications found'}
@@ -779,7 +779,7 @@ export default function AdminCoachApplicationsPage() {
                     onClick={() => setSelectedAppId(app.id)}
                     className="p-3 hover:bg-surface-2 cursor-pointer flex items-center gap-3"
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/[0.12] flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
                       {app.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

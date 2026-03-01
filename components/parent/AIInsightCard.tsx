@@ -35,9 +35,9 @@ interface AIInsightCardProps {
 }
 
 const TREND_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
-  improving: { label: 'Improving', color: 'text-green-400', Icon: TrendingUp },
-  stable: { label: 'Stable', color: 'text-blue-400', Icon: ArrowRight },
-  declining: { label: 'Needs Attention', color: 'text-amber-400', Icon: TrendingDown },
+  improving: { label: 'Improving', color: 'text-green-600', Icon: TrendingUp },
+  stable: { label: 'Stable', color: 'text-blue-600', Icon: ArrowRight },
+  declining: { label: 'Needs Attention', color: 'text-amber-600', Icon: TrendingDown },
 };
 
 export default function AIInsightCard({ learningProfile, childName }: AIInsightCardProps) {
@@ -65,9 +65,9 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
   if (!hasContent) return null;
 
   return (
-    <div className="bg-gradient-to-br from-[#7b008b]/20 via-surface-1 to-[#ff0099]/10
-                    border border-[#7b008b]/30 rounded-2xl overflow-hidden
-                    shadow-lg shadow-black/20 w-full">
+    <div className="bg-gradient-to-r from-pink-50 to-white
+                    border border-gray-100 rounded-2xl overflow-hidden
+                    shadow-sm w-full">
       {/* Header */}
       <div className="p-5 pb-3">
         <div className="flex items-start gap-4">
@@ -78,10 +78,10 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-bold text-white">rAI Insight</h3>
+              <h3 className="text-lg font-bold text-gray-900">rAI Insight</h3>
               <Sparkles className="w-4 h-4 text-[#ff0099]" />
             </div>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-gray-600">
               {childName}&apos;s learning intelligence
             </p>
           </div>
@@ -91,16 +91,16 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
         {reading_level?.current && (
           <div className="mt-4 flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold
-                           bg-[#7b008b]/20 text-[#ff0099] border border-[#7b008b]/30">
+                           bg-pink-50 text-[#ff0099] border border-pink-200">
               <BookOpen className="w-3.5 h-3.5" />
               {reading_level.current}
             </span>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-2 ${trend.color}`}>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-50 ${trend.color}`}>
               <TrendIcon className="w-3.5 h-3.5" />
               {trend.label}
             </span>
             {sessions_completed != null && (
-              <span className="text-xs text-text-tertiary">
+              <span className="text-xs text-gray-500">
                 {sessions_completed} sessions done
                 {sessions_remaining ? ` · ${sessions_remaining} left` : ''}
               </span>
@@ -110,12 +110,12 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
 
         {/* Next Session Focus */}
         {recommended_focus_next_session && (
-          <div className="mt-4 bg-surface-1/70 rounded-xl p-4 border border-[#7b008b]/20">
-            <p className="text-xs text-text-tertiary uppercase tracking-wide font-medium mb-1 flex items-center gap-1.5">
+          <div className="mt-4 bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1 flex items-center gap-1.5">
               <Target className="w-3.5 h-3.5 text-[#ff0099]" />
               Next Session Focus
             </p>
-            <p className="text-sm text-white font-medium leading-snug">
+            <p className="text-sm text-gray-900 font-medium leading-snug">
               {recommended_focus_next_session}
             </p>
           </div>
@@ -124,11 +124,11 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
         {/* What Works preview (collapsed) */}
         {what_works && what_works.length > 0 && !expanded && (
           <div className="mt-3">
-            <p className="text-xs text-text-tertiary flex items-center gap-1.5">
-              <Lightbulb className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-              What works: <span className="text-green-400">{what_works[0]}</span>
+            <p className="text-xs text-gray-500 flex items-center gap-1.5">
+              <Lightbulb className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+              What works: <span className="text-green-600">{what_works[0]}</span>
               {what_works.length > 1 && (
-                <span className="text-text-tertiary ml-1">+{what_works.length - 1} more</span>
+                <span className="text-gray-500 ml-1">+{what_works.length - 1} more</span>
               )}
             </p>
           </div>
@@ -139,7 +139,7 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium
-                   text-[#ff0099] hover:text-white transition-colors border-t border-border/50"
+                   text-[#ff0099] hover:text-[#7B008B] transition-colors border-t border-gray-200"
       >
         {expanded ? (
           <>Show Less <ChevronUp className="w-4 h-4" /></>
@@ -150,18 +150,18 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
 
       {/* Expanded Details */}
       {expanded && (
-        <div className="px-5 pb-5 space-y-4 border-t border-border/30">
+        <div className="px-5 pb-5 space-y-4 border-t border-gray-200">
           {/* What Works */}
           {what_works && what_works.length > 0 && (
             <div className="pt-4">
-              <h4 className="text-sm font-semibold text-green-400 flex items-center gap-2 mb-2">
+              <h4 className="text-sm font-semibold text-green-600 flex items-center gap-2 mb-2">
                 <Lightbulb className="w-4 h-4" />
                 What Works for {childName}
               </h4>
               <ul className="space-y-1.5">
                 {what_works.map((w, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                    <span className="text-green-400 mt-0.5">+</span>
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="text-green-600 mt-0.5">+</span>
                     <span>{w}</span>
                   </li>
                 ))}
@@ -176,7 +176,7 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
                 <Brain className="w-4 h-4" />
                 Learner Profile
               </h4>
-              <p className="text-sm text-text-secondary leading-relaxed">{personality_notes}</p>
+              <p className="text-sm text-gray-600 leading-relaxed">{personality_notes}</p>
             </div>
           )}
 
@@ -189,14 +189,14 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
               </h4>
               <div className="flex items-center gap-3">
                 <span className={`text-sm font-medium ${
-                  parent_engagement.level === 'high' ? 'text-green-400' :
-                  parent_engagement.level === 'medium' ? 'text-amber-400' :
-                  'text-red-400'
+                  parent_engagement.level === 'high' ? 'text-green-600' :
+                  parent_engagement.level === 'medium' ? 'text-amber-600' :
+                  'text-red-600'
                 }`}>
                   {parent_engagement.level.charAt(0).toUpperCase() + parent_engagement.level.slice(1)}
                 </span>
                 {parent_engagement.task_completion_rate != null && (
-                  <span className="text-xs text-text-tertiary">
+                  <span className="text-xs text-gray-500">
                     Tasks completed: {Math.round(parent_engagement.task_completion_rate * 100)}%
                   </span>
                 )}
@@ -206,8 +206,8 @@ export default function AIInsightCard({ learningProfile, childName }: AIInsightC
 
           {/* Last Updated */}
           {lastUpdated && (
-            <div className="pt-2 border-t border-border/30">
-              <span className="text-xs text-text-tertiary">
+            <div className="pt-2 border-t border-gray-200">
+              <span className="text-xs text-gray-500">
                 Updated {lastUpdated} · Powered by rAI
               </span>
             </div>

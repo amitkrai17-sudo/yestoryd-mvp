@@ -118,7 +118,7 @@ export default function PaymentsPage() {
   };
 
   return (
-    <div className="bg-surface-0 min-h-screen pb-24 lg:pb-0">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex items-center justify-between">
@@ -127,10 +127,10 @@ export default function PaymentsPage() {
             <p className="text-xs sm:text-sm text-text-tertiary mt-0.5">Payment history and transaction management</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { fetchStats(); fetchPayments(); fetchOrphans(); }} className="p-2 rounded-lg bg-surface-2 text-text-secondary hover:text-white transition-colors">
+            <button onClick={() => { fetchStats(); fetchPayments(); fetchOrphans(); }} className="p-2 rounded-xl bg-surface-2 text-text-secondary hover:text-white transition-colors">
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button onClick={handleExport} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-surface-2 text-text-secondary hover:text-white text-sm transition-colors">
+            <button onClick={handleExport} className="flex items-center gap-1 px-3 py-2 rounded-xl bg-surface-2 text-text-secondary hover:text-white text-sm transition-colors">
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export CSV</span>
             </button>
@@ -143,8 +143,8 @@ export default function PaymentsPage() {
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             <StatCard label="Today" value={formatINR(stats.today.revenue)} sub={`${stats.today.count} payments`} icon={<IndianRupee className="w-5 h-5 text-green-400" />} />
-            <StatCard label="This Month" value={formatINR(stats.month.revenue)} sub={`${stats.month.count} payments`} icon={<TrendingUp className="w-5 h-5 text-blue-400" />} />
-            <StatCard label="All Time" value={formatINR(stats.allTime.revenue)} sub={`${stats.allTime.count} total`} icon={<IndianRupee className="w-5 h-5 text-purple-400" />} />
+            <StatCard label="This Month" value={formatINR(stats.month.revenue)} sub={`${stats.month.count} payments`} icon={<TrendingUp className="w-5 h-5 text-gray-300" />} />
+            <StatCard label="All Time" value={formatINR(stats.allTime.revenue)} sub={`${stats.allTime.count} total`} icon={<IndianRupee className="w-5 h-5 text-gray-300" />} />
             <StatCard label="Failed (30d)" value={String(stats.failed.count)} sub="payment attempts" icon={<AlertTriangle className="w-5 h-5 text-red-400" />} />
             <StatCard label="Refunds" value={formatINR(stats.refunds.total)} sub={`${stats.refunds.count} refunds`} icon={<ArrowUpDown className="w-5 h-5 text-yellow-400" />} />
           </div>
@@ -205,7 +205,7 @@ export default function PaymentsPage() {
                 placeholder="Search by payment/order ID..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="w-full pl-10 pr-8 py-2 bg-surface-2 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full pl-10 pr-8 py-2 bg-surface-2 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-white/[0.10]"
               />
               {search && (
                 <button onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -219,7 +219,7 @@ export default function PaymentsPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+                className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10]"
               >
                 <option value="all">All Status</option>
                 <option value="captured">Captured</option>
@@ -229,15 +229,15 @@ export default function PaymentsPage() {
 
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Calendar className="w-4 h-4 text-text-tertiary" />
-                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="px-2 py-1.5 bg-surface-2 border border-border rounded-lg text-sm text-white focus:ring-2 focus:ring-pink-500" />
+                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="px-2 py-1.5 bg-surface-2 border border-border rounded-lg text-sm text-white focus:ring-2 focus:ring-white/[0.10]" />
                 <span className="text-text-tertiary text-xs">to</span>
-                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="px-2 py-1.5 bg-surface-2 border border-border rounded-lg text-sm text-white focus:ring-2 focus:ring-pink-500" />
+                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="px-2 py-1.5 bg-surface-2 border border-border rounded-lg text-sm text-white focus:ring-2 focus:ring-white/[0.10]" />
               </div>
 
               {(statusFilter !== 'all' || search || dateFrom || dateTo) && (
                 <button
                   onClick={() => { setStatusFilter('all'); setSearch(''); setDateFrom(''); setDateTo(''); setPage(1); }}
-                  className="flex-shrink-0 text-sm text-pink-400 hover:underline whitespace-nowrap"
+                  className="flex-shrink-0 text-sm text-gray-300 hover:underline whitespace-nowrap"
                 >
                   Clear
                 </button>
@@ -249,7 +249,7 @@ export default function PaymentsPage() {
         {/* Payments List */}
         {loading ? (
           <div className="bg-surface-1 rounded-xl border border-border p-8 text-center">
-            <Loader2 className="w-5 h-5 animate-spin text-pink-500 mx-auto" />
+            <Loader2 className="w-5 h-5 animate-spin text-gray-400 mx-auto" />
           </div>
         ) : payments.length === 0 ? (
           <div className="bg-surface-1 rounded-xl border border-border p-8 text-center text-text-tertiary">No payments found</div>
@@ -271,7 +271,7 @@ export default function PaymentsPage() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-white font-semibold">{formatINR(p.amount)}</span>
                   <div className="flex items-center gap-3 text-text-tertiary">
-                    {p.coupon_code && <span className="text-pink-400">{p.coupon_code}</span>}
+                    {p.coupon_code && <span className="text-gray-300">{p.coupon_code}</span>}
                     <span>{p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-'}</span>
                   </div>
                 </div>

@@ -82,14 +82,14 @@ export default function ParentCallCard({
   return (
     <>
       {/* Card */}
-      <div className="bg-surface-1 rounded-2xl p-5 shadow-lg shadow-black/20 shadow-[#7b008b]/5 border border-[#7b008b]/20">
+      <div className="bg-white rounded-2xl p-5 border border-pink-200 shadow-sm">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-            <Phone className="w-5 h-5 text-blue-400" />
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+            <Phone className="w-5 h-5 text-blue-700" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-white">Parent Call</h3>
-            <p className="text-xs text-text-tertiary">15-min call with Coach {coachName}</p>
+            <h3 className="text-base font-semibold text-gray-900">Parent Call</h3>
+            <p className="text-xs text-gray-500">15-min call with Coach {coachName}</p>
           </div>
         </div>
 
@@ -97,20 +97,20 @@ export default function ParentCallCard({
         {hasActiveCall && (
           <div className="mb-3">
             {activeCalls.map(call => (
-              <div key={call.id} className="bg-surface-2 rounded-xl p-3 border border-white/[0.08]">
+              <div key={call.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
                 {call.status === 'requested' && (
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                    <span className="text-sm text-yellow-400">Awaiting coach confirmation</span>
+                    <Clock className="w-4 h-4 text-amber-700 flex-shrink-0" />
+                    <span className="text-sm text-amber-700">Awaiting coach confirmation</span>
                   </div>
                 )}
                 {call.status === 'scheduled' && call.scheduled_at && (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span className="text-sm text-green-400">Scheduled</span>
+                      <Calendar className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                      <span className="text-sm text-emerald-700">Scheduled</span>
                     </div>
-                    <p className="text-sm text-white ml-6">
+                    <p className="text-sm text-gray-900 ml-6">
                       {new Date(call.scheduled_at).toLocaleString('en-IN', {
                         weekday: 'short', day: 'numeric', month: 'short',
                         hour: '2-digit', minute: '2-digit', hour12: true,
@@ -121,7 +121,7 @@ export default function ParentCallCard({
                         href={call.google_meet_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 mt-2 ml-6 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-colors"
+                        className="inline-flex items-center gap-1.5 mt-2 ml-6 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
                       >
                         Join Meet
                       </a>
@@ -143,21 +143,21 @@ export default function ParentCallCard({
           </button>
         ) : !hasActiveCall ? (
           <div className="text-center py-2">
-            <p className="text-xs text-text-tertiary">
-              Next call available in <span className="text-blue-400 font-medium">{nextMonthName}</span>
+            <p className="text-xs text-gray-500">
+              Next call available in <span className="text-blue-700 font-medium">{nextMonthName}</span>
             </p>
           </div>
         ) : null}
 
         {/* Recent history */}
         {calls.filter(c => c.status === 'completed').length > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/[0.08]">
-            <p className="text-xs text-text-tertiary mb-2">Recent calls</p>
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <p className="text-xs text-gray-500 mb-2">Recent calls</p>
             {calls
               .filter(c => c.status === 'completed')
               .slice(0, 2)
               .map(call => (
-                <div key={call.id} className="flex items-center gap-2 text-xs text-text-secondary py-1">
+                <div key={call.id} className="flex items-center gap-2 text-xs text-gray-600 py-1">
                   <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                   <span>
                     {call.completed_at
@@ -172,32 +172,32 @@ export default function ParentCallCard({
 
       {/* Request Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-          <div className="w-full sm:max-w-md bg-surface-1 rounded-t-2xl sm:rounded-2xl p-6 border border-border shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
+          <div className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-6 border border-gray-200 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Request Coach Call</h3>
-              <button onClick={() => { setShowModal(false); setSubmitResult(null); }} className="p-1 hover:bg-surface-2 rounded-lg">
-                <X className="w-5 h-5 text-text-tertiary" />
+              <h3 className="text-lg font-semibold text-gray-900">Request Coach Call</h3>
+              <button onClick={() => { setShowModal(false); setSubmitResult(null); }} className="p-1 hover:bg-gray-100 rounded-xl">
+                <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
-            <p className="text-sm text-text-tertiary mb-4">
+            <p className="text-sm text-gray-500 mb-4">
               Request a 15-minute call with Coach {coachName} to discuss your child&apos;s progress.
             </p>
 
-            <label className="block text-sm text-text-secondary mb-1.5">
-              What would you like to discuss? <span className="text-text-tertiary">(optional)</span>
+            <label className="block text-sm text-gray-600 mb-1.5">
+              What would you like to discuss? <span className="text-gray-500">(optional)</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g., homework struggles, reading at home, progress questions..."
               rows={3}
-              className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-xl text-sm text-white placeholder:text-text-muted focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
 
             {submitResult && (
-              <div className={`mt-3 p-3 rounded-xl text-sm ${submitResult.success ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'}`}>
+              <div className={`mt-3 p-3 rounded-xl text-sm ${submitResult.success ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                 {submitResult.message}
               </div>
             )}

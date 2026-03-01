@@ -207,7 +207,7 @@ function LeadModal({
             <h2 className="text-xl font-bold text-white">{lead.name}</h2>
             <p className="text-sm text-text-tertiary">Age {lead.age} - {lead.parent_name}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-xl">
             <X className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
@@ -233,7 +233,7 @@ function LeadModal({
               <label className="text-xs text-text-tertiary uppercase tracking-wide">Email</label>
               <div className="flex items-center gap-2 mt-1">
                 <Mail className="w-4 h-4 text-text-tertiary" />
-                <a href={`mailto:${lead.parent_email}`} className="text-sm text-blue-400 hover:underline">
+                <a href={`mailto:${lead.parent_email}`} className="text-sm text-gray-300 hover:underline">
                   {lead.parent_email}
                 </a>
               </div>
@@ -242,7 +242,7 @@ function LeadModal({
               <label className="text-xs text-text-tertiary uppercase tracking-wide">Phone</label>
               <div className="flex items-center gap-2 mt-1">
                 <Phone className="w-4 h-4 text-text-tertiary" />
-                <a href={`tel:${lead.parent_phone}`} className="text-sm text-blue-400 hover:underline">
+                <a href={`tel:${lead.parent_phone}`} className="text-sm text-gray-300 hover:underline">
                   {lead.parent_phone}
                 </a>
               </div>
@@ -267,7 +267,7 @@ function LeadModal({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="mt-1 w-full px-3 py-2 border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+              className="mt-1 w-full px-3 py-2 border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10]"
             >
               <option value="assessed">Assessed</option>
               <option value="contacted">Contacted</option>
@@ -285,7 +285,7 @@ function LeadModal({
             <select
               value={assignedCoach}
               onChange={(e) => setAssignedCoach(e.target.value)}
-              className="mt-1 w-full px-3 py-2 border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+              className="mt-1 w-full px-3 py-2 border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10]"
             >
               <option value="">Unassigned</option>
               {availableCoaches.map((coach) => (
@@ -307,7 +307,7 @@ function LeadModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="mt-1 w-full px-3 py-2 border border-border rounded-lg text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-pink-500"
+              className="mt-1 w-full px-3 py-2 border border-border rounded-lg text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-white/[0.10]"
               placeholder="Add notes about this lead..."
             />
           </div>
@@ -315,7 +315,7 @@ function LeadModal({
           <div className="flex gap-2">
             <a
               href={`tel:${lead.parent_phone}`}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200"
             >
               <Phone className="w-4 h-4" /> Call
             </a>
@@ -337,7 +337,7 @@ function LeadModal({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full py-3 bg-pink-600 text-white rounded-lg font-medium hover:bg-pink-700 disabled:opacity-50"
+            className="w-full py-3 bg-white text-[#0a0a0f] rounded-lg font-medium hover:bg-gray-200 disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
@@ -468,7 +468,7 @@ function DiscoveryCallModal({
             <h2 className="text-xl font-bold text-white">{call.child_name}</h2>
             <p className="text-sm text-text-tertiary">Age {call.child_age} - {call.parent_name}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-xl">
             <X className="w-5 h-5 text-text-tertiary" />
           </button>
         </div>
@@ -541,7 +541,7 @@ function DiscoveryCallModal({
               <button
                 onClick={handleAssignCoach}
                 disabled={!assignedCoach || saving}
-                className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50"
+                className="px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 disabled:opacity-50"
               >
                 {saving ? '...' : call.coach_id ? 'Reassign' : 'Assign'}
               </button>
@@ -585,7 +585,7 @@ function DiscoveryCallModal({
                         type="button"
                         onClick={() => setPostCallData({ ...postCallData, call_outcome: option.value })}
                         className={`p-2 rounded-lg border text-sm font-medium transition-all ${postCallData.call_outcome === option.value
-                          ? 'border-pink-500 bg-pink-500/20 text-pink-400'
+                          ? 'border-white/[0.16] bg-white/[0.08] text-white'
                           : 'border-border bg-surface-1 text-text-secondary hover:border-border'
                           }`}
                       >
@@ -630,7 +630,7 @@ function DiscoveryCallModal({
                     onChange={(e) => setPostCallData({ ...postCallData, objections: e.target.value })}
                     placeholder="Price concerns, time constraints, spouse decision..."
                     rows={2}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted resize-none focus:ring-2 focus:ring-pink-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted resize-none focus:ring-2 focus:ring-white/[0.10]"
                   />
                 </div>
 
@@ -644,7 +644,7 @@ function DiscoveryCallModal({
                     onChange={(e) => setPostCallData({ ...postCallData, concerns: e.target.value })}
                     placeholder="What questions did they ask? What worried them?"
                     rows={2}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted resize-none focus:ring-2 focus:ring-pink-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted resize-none focus:ring-2 focus:ring-white/[0.10]"
                   />
                 </div>
 
@@ -658,7 +658,7 @@ function DiscoveryCallModal({
                     onChange={(e) => setPostCallData({ ...postCallData, follow_up_notes: e.target.value })}
                     placeholder="What should we do next? Any specific follow-up needed?"
                     rows={2}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted resize-none focus:ring-2 focus:ring-pink-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted resize-none focus:ring-2 focus:ring-white/[0.10]"
                   />
                 </div>
 
@@ -673,7 +673,7 @@ function DiscoveryCallModal({
                       value={postCallData.follow_up_date}
                       onChange={(e) => setPostCallData({ ...postCallData, follow_up_date: e.target.value })}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+                      className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10]"
                     />
                   </div>
                 )}
@@ -723,7 +723,7 @@ function DiscoveryCallModal({
               <button
                 onClick={handleSendFollowup}
                 disabled={sendingFollowup}
-                className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-white/[0.08] text-white rounded-lg font-medium hover:bg-white/[0.12] disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <MessageCircle className="w-4 h-4" />
                 {sendingFollowup ? 'Sending...' : 'Send 24hr Follow-up'}
@@ -733,7 +733,7 @@ function DiscoveryCallModal({
 
           {/* Contact Buttons */}
           <div className="flex gap-2 pt-2">
-            <a href={`tel:${call.parent_phone}`} className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-center text-sm font-medium flex items-center justify-center gap-1">
+            <a href={`tel:${call.parent_phone}`} className="flex-1 bg-white text-[#0a0a0f] py-2.5 rounded-lg text-center text-sm font-medium flex items-center justify-center gap-1">
               <Phone className="w-4 h-4" />Call
             </a>
             <a href={`https://wa.me/91${(call.parent_phone || '').replace(/\D/g, '')}`} target="_blank" className="flex-1 bg-green-600 text-white py-2.5 rounded-lg text-center text-sm font-medium flex items-center justify-center gap-1">
@@ -878,14 +878,14 @@ export default function AdminCRMPage() {
           <div className="flex gap-1 mt-4 overflow-x-auto pb-1">
             <button
               onClick={() => setActiveTab('leads')}
-              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition whitespace-nowrap ${activeTab === 'leads' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition whitespace-nowrap ${activeTab === 'leads' ? 'bg-white/[0.08] text-white' : 'text-text-secondary hover:bg-surface-2'
                 }`}
             >
               Leads ({stats.total})
             </button>
             <button
               onClick={() => setActiveTab('discovery')}
-              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${activeTab === 'discovery' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${activeTab === 'discovery' ? 'bg-white/[0.08] text-white' : 'text-text-secondary hover:bg-surface-2'
                 }`}
             >
               Discovery Calls ({discoveryCalls.length})
@@ -897,7 +897,7 @@ export default function AdminCRMPage() {
             </button>
             <button
               onClick={() => setActiveTab('support')}
-              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${activeTab === 'support' ? 'bg-pink-500/20 text-pink-400' : 'text-text-secondary hover:bg-surface-2'
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${activeTab === 'support' ? 'bg-white/[0.08] text-white' : 'text-text-secondary hover:bg-surface-2'
                 }`}
             >
               <HelpCircle className="w-4 h-4" />
@@ -920,7 +920,7 @@ export default function AdminCRMPage() {
                 { icon: Users, label: 'Total Leads', value: stats.total, color: 'text-text-tertiary', valueColor: 'text-white' },
                 { icon: TrendingUp, label: 'Yestoryd', value: stats.yestoryd_leads, color: 'text-green-400', valueColor: 'text-green-400' },
                 { icon: UserPlus, label: 'Coach Refs', value: stats.coach_leads, color: 'text-orange-400', valueColor: 'text-orange-400' },
-                { icon: CheckCircle, label: 'Enrolled', value: stats.enrolled, color: 'text-blue-400', valueColor: 'text-blue-400' },
+                { icon: CheckCircle, label: 'Enrolled', value: stats.enrolled, color: 'text-gray-300', valueColor: 'text-gray-300' },
                 { icon: Clock, label: 'Pending', value: stats.pending, color: 'text-yellow-400', valueColor: 'text-yellow-400' },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface-1 rounded-xl p-3 sm:p-4 border border-border">
@@ -943,7 +943,7 @@ export default function AdminCRMPage() {
                     placeholder="Search by name, email, phone..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-pink-500"
+                    className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-white/[0.10]"
                   />
                 </div>
 
@@ -952,7 +952,7 @@ export default function AdminCRMPage() {
                   <select
                     value={sourceFilter}
                     onChange={(e) => setSourceFilter(e.target.value)}
-                    className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+                    className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10]"
                   >
                     <option value="all">All Sources</option>
                     <option value="yestoryd">Yestoryd</option>
@@ -962,7 +962,7 @@ export default function AdminCRMPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-pink-500"
+                    className="flex-shrink-0 px-2.5 py-1.5 text-sm border border-border rounded-lg text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10]"
                   >
                     <option value="all">All Statuses</option>
                     <option value="assessed">Assessed</option>
@@ -980,7 +980,7 @@ export default function AdminCRMPage() {
                         setStatusFilter('all');
                         setSearch('');
                       }}
-                      className="flex-shrink-0 text-sm text-pink-400 hover:underline whitespace-nowrap"
+                      className="flex-shrink-0 text-sm text-gray-300 hover:underline whitespace-nowrap"
                     >
                       Clear
                     </button>
@@ -1093,7 +1093,7 @@ export default function AdminCRMPage() {
                             <td className="px-4 py-3">
                               <button
                                 onClick={() => setSelected(lead)}
-                                className="flex items-center gap-1 text-pink-400 hover:text-pink-300 text-sm font-medium"
+                                className="flex items-center gap-1 text-gray-300 hover:text-white text-sm font-medium"
                               >
                                 <Eye className="w-4 h-4" />
                                 View
@@ -1134,7 +1134,7 @@ export default function AdminCRMPage() {
                     fetchDiscoveryCalls(filter);
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${discoveryFilter === filter
-                    ? 'bg-pink-500/20 text-pink-400'
+                    ? 'bg-white/[0.08] text-white'
                     : 'bg-surface-1 text-text-secondary border border-border hover:bg-surface-2'
                     }`}
                 >

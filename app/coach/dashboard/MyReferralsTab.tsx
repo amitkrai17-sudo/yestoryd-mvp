@@ -153,7 +153,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
   return (
     <div className="space-y-6">
       {/* Header Card - Referral Link */}
-      <div className="bg-gradient-to-r from-[#00abff] to-[#7b008b] rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-[#00abff] to-[#0066CC] rounded-2xl p-6 text-white">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-2 mb-2">

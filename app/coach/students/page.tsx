@@ -12,7 +12,6 @@ import {
   Clock,
   Award,
 } from 'lucide-react';
-import CoachLayout from '@/components/layouts/CoachLayout';
 import StudentCard from '@/components/coach/StudentCard';
 import { supabase } from '@/lib/supabase/client';
 
@@ -149,19 +148,16 @@ export default function CoachStudentsPage() {
 
   if (loading) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
-        </div>
-      </CoachLayout>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
+      </div>
     );
   }
 
   if (!coach) return null;
 
   return (
-    <CoachLayout>
-      <div className="px-3 py-4 lg:px-6 lg:py-6 max-w-4xl mx-auto">
+    <div className="px-3 py-4 lg:px-6 lg:py-6 max-w-4xl mx-auto">
         {/* Header - Compact */}
         <div className="mb-4">
           <h1 className="text-lg lg:text-xl font-bold text-white flex items-center gap-2">
@@ -226,7 +222,6 @@ export default function CoachStudentsPage() {
             ))
           )}
         </div>
-      </div>
-    </CoachLayout>
+    </div>
   );
 }

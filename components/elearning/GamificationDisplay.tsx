@@ -233,7 +233,7 @@ export function BadgeDisplay({ badges, allBadges, maxDisplay = 6 }: BadgeDisplay
           <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">All Badges</h3>
-              <button onClick={() => setShowAll(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => setShowAll(false)} className="p-2 hover:bg-gray-100 rounded-xl">
                 <X className="w-5 h-5" />
               </button>
             </div>

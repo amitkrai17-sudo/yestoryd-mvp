@@ -268,7 +268,7 @@ export default function AdminCoachGroupsPage() {
       <div className="p-3 sm:p-4 lg:p-6 bg-surface-0">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
+            <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-3" />
             <p className="text-text-tertiary">Loading coach groups...</p>
           </div>
         </div>
@@ -317,8 +317,8 @@ export default function AdminCoachGroupsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-surface-1 rounded-2xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-              <Users className="w-5 h-5 text-blue-400" />
+            <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center">
+              <Users className="w-5 h-5 text-gray-300" />
             </div>
           </div>
           <p className="text-2xl font-bold text-white">{coaches.length}</p>
@@ -327,8 +327,8 @@ export default function AdminCoachGroupsPage() {
 
         <div className="bg-surface-1 rounded-2xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-purple-400" />
+            <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-gray-300" />
             </div>
           </div>
           <p className="text-2xl font-bold text-white">{groups.length}</p>
@@ -347,8 +347,8 @@ export default function AdminCoachGroupsPage() {
 
         <div className="bg-surface-1 rounded-2xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-pink-500/20 rounded-xl flex items-center justify-center">
-              <Percent className="w-5 h-5 text-pink-400" />
+            <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center">
+              <Percent className="w-5 h-5 text-gray-300" />
             </div>
           </div>
           <p className="text-2xl font-bold text-white">
@@ -396,7 +396,7 @@ export default function AdminCoachGroupsPage() {
                             Internal
                           </span>
                         )}
-                        <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
+                        <span className="text-xs px-2 py-0.5 bg-white/[0.08] text-gray-400 border border-white/[0.08] rounded-full">
                           {group.coach_count} coach{group.coach_count !== 1 ? 'es' : ''}
                         </span>
                       </div>
@@ -412,7 +412,7 @@ export default function AdminCoachGroupsPage() {
                         <p className="text-xs text-text-tertiary">Coach</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-lg font-bold text-blue-400">
+                        <p className="text-lg font-bold text-gray-300">
                           {group.is_internal ? '100%' : `${group.platform_fee_percent}%`}
                         </p>
                         <p className="text-xs text-text-tertiary">Platform</p>
@@ -427,7 +427,7 @@ export default function AdminCoachGroupsPage() {
                             e.stopPropagation();
                             startEdit(group);
                           }}
-                          className="p-2 text-text-tertiary hover:text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+                          className="p-2 text-text-tertiary hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
@@ -447,7 +447,7 @@ export default function AdminCoachGroupsPage() {
                       <p className="text-xs text-text-tertiary">Coach Gets</p>
                     </div>
                     <div className="flex-1 text-center">
-                      <p className="text-lg font-bold text-blue-400">
+                      <p className="text-lg font-bold text-gray-300">
                         {group.is_internal ? '100%' : `${group.platform_fee_percent}%`}
                       </p>
                       <p className="text-xs text-text-tertiary">Platform Gets</p>
@@ -474,7 +474,7 @@ export default function AdminCoachGroupsPage() {
                               onChange={(e) =>
                                 setEditValues({ ...editValues, lead_cost_percent: Number(e.target.value) })
                               }
-                              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-surface-2 placeholder:text-text-muted"
+                              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white bg-surface-2 placeholder:text-text-muted"
                             />
                           </div>
                           <div>
@@ -489,7 +489,7 @@ export default function AdminCoachGroupsPage() {
                               onChange={(e) =>
                                 setEditValues({ ...editValues, coach_cost_percent: Number(e.target.value) })
                               }
-                              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-surface-2 placeholder:text-text-muted"
+                              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white bg-surface-2 placeholder:text-text-muted"
                             />
                           </div>
                           <div>
@@ -510,7 +510,7 @@ export default function AdminCoachGroupsPage() {
                             type="text"
                             value={editValues.description || ''}
                             onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
-                            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white bg-surface-2 placeholder:text-text-muted"
+                            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] text-white bg-surface-2 placeholder:text-text-muted"
                           />
                         </div>
 
@@ -518,7 +518,7 @@ export default function AdminCoachGroupsPage() {
                           <button
                             onClick={() => saveGroup(group.id)}
                             disabled={saving}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
                           >
                             <Check className="w-4 h-4" />
                             {saving ? 'Saving...' : 'Save Changes'}
@@ -550,7 +550,7 @@ export default function AdminCoachGroupsPage() {
                                 <p className="text-sm text-text-tertiary">Coach Earnings</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-2xl font-bold text-blue-400">
+                                <p className="text-2xl font-bold text-gray-300">
                                   ₹{split.platformGets.toLocaleString()}
                                 </p>
                                 <p className="text-sm text-text-tertiary">Platform Revenue</p>
@@ -572,7 +572,7 @@ export default function AdminCoachGroupsPage() {
                                   <p className="text-sm text-emerald-400">Coach Earnings</p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="text-2xl font-bold text-blue-400">
+                                  <p className="text-2xl font-bold text-gray-300">
                                     ₹{splitWithLead.platformGets.toLocaleString()}
                                   </p>
                                   <p className="text-sm text-text-tertiary">Platform Revenue</p>
@@ -655,7 +655,7 @@ export default function AdminCoachGroupsPage() {
                           <select
                             value={coach.group_id || ''}
                             onChange={(e) => assignCoachToGroup(coach.id, e.target.value || null)}
-                            className="px-3 py-1.5 border border-border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 text-white bg-surface-2"
+                            className="px-3 py-1.5 border border-border rounded-lg text-sm focus:ring-2 focus:ring-white/[0.10] text-white bg-surface-2"
                           >
                             <option value="">Unassigned</option>
                             {groups.map((group) => (
@@ -698,7 +698,7 @@ export default function AdminCoachGroupsPage() {
                         ) : (
                           <button
                             onClick={() => setAssigningCoach(coach.id)}
-                            className="text-sm text-blue-400 hover:text-blue-500 font-medium"
+                            className="text-sm text-gray-300 hover:text-white font-medium"
                           >
                             Change Tier
                           </button>
@@ -721,9 +721,9 @@ export default function AdminCoachGroupsPage() {
       </div>
 
       {/* ==================== INFO BOX ==================== */}
-      <div className="mt-8 p-4 bg-blue-500/20 border border-blue-500/30 rounded-xl">
-        <h3 className="font-medium text-blue-400 mb-2">How Revenue Split Works</h3>
-        <ul className="text-sm text-blue-400/80 space-y-1">
+      <div className="mt-8 p-4 bg-white/[0.06] border border-white/[0.08] rounded-xl">
+        <h3 className="font-medium text-gray-300 mb-2">How Revenue Split Works</h3>
+        <ul className="text-sm text-gray-400 space-y-1">
           <li>• <strong>Lead Cost:</strong> Paid to whoever sourced the lead (Yestoryd or coach)</li>
           <li>• <strong>Coach Cost:</strong> Paid to the coaching coach over 3 monthly installments</li>
           <li>• <strong>Platform Fee:</strong> Retained by Yestoryd for operations</li>

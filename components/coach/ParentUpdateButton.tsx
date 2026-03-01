@@ -68,7 +68,7 @@ Keep it encouraging, under 200 words. Use a few emojis. Format for WhatsApp.`;
     <>
       <button
         onClick={() => setShowChat(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-[#25D366] to-[#128C7E] rounded-lg hover:shadow-md transition-all"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-[#25D366] to-[#128C7E] rounded-xl hover:shadow-md transition-all"
       >
         <MessageCircle className="w-3.5 h-3.5" />
         <span>Update Parent</span>

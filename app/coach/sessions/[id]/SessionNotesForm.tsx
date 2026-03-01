@@ -294,10 +294,10 @@ export default function SessionNotesForm({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface-1 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#00abff] to-[#7B008B] p-4 text-white">
+        <div className="bg-gradient-to-r from-[#00abff] to-[#0066CC] p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-bold">Session Notes</h2>
-            <button onClick={onClose} className="p-1 hover:bg-surface-1/20 rounded-lg transition">
+            <button onClick={onClose} className="p-1 hover:bg-surface-1/20 rounded-xl transition">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -496,7 +496,7 @@ export default function SessionNotesForm({
                           <button
                             type="button"
                             onClick={stopRecording}
-                            className="px-4 py-2 bg-red-500 text-white rounded-lg flex items-center gap-2 mx-auto"
+                            className="px-4 py-2 bg-red-500 text-white rounded-xl flex items-center gap-2 mx-auto"
                           >
                             <Square className="w-4 h-4" /> Stop
                           </button>
@@ -625,7 +625,7 @@ export default function SessionNotesForm({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex-1 py-3 bg-[#00abff] text-white rounded-xl font-semibold hover:bg-[#e6008a] transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-3 bg-[#00abff] text-white rounded-xl font-semibold hover:bg-[#0095E0] transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

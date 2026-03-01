@@ -116,7 +116,7 @@ export default function RevenueSettingsPage() {
   if (loading) {
     return (
       <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -127,8 +127,8 @@ export default function RevenueSettingsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <Settings className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 bg-[#121217] border border-white/[0.08] rounded-2xl flex items-center justify-center">
+              <Settings className="w-6 h-6 text-gray-300" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Revenue Split Configuration</h1>
@@ -138,7 +138,7 @@ export default function RevenueSettingsPage() {
           <button
             onClick={handleSave}
             disabled={saving || config.platform_fee_percent < 0}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             Save Changes
@@ -164,7 +164,7 @@ export default function RevenueSettingsPage() {
             <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="p-6 border-b border-border bg-surface-2">
                 <div className="flex items-center gap-3">
-                  <Percent className="w-5 h-5 text-violet-500" />
+                  <Percent className="w-5 h-5 text-gray-300" />
                   <h2 className="text-lg font-semibold text-white">Component Percentages</h2>
                 </div>
                 <p className="text-sm text-text-tertiary mt-1">Must total 100%. Platform Fee adjusts automatically.</p>
@@ -175,10 +175,10 @@ export default function RevenueSettingsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-blue-500" />
+                      <TrendingUp className="w-4 h-4 text-gray-400" />
                       Lead Cost
                     </label>
-                    <span className="text-2xl font-bold text-blue-600">{config.lead_cost_percent}%</span>
+                    <span className="text-2xl font-bold text-white">{config.lead_cost_percent}%</span>
                   </div>
                   <input
                     type="range"
@@ -186,7 +186,7 @@ export default function RevenueSettingsPage() {
                     max="50"
                     value={config.lead_cost_percent}
                     onChange={(e) => handlePercentChange('lead_cost_percent', parseFloat(e.target.value))}
-                    className="w-full h-2 bg-blue-100 rounded-full appearance-none cursor-pointer accent-blue-500"
+                    className="w-full h-2 bg-surface-3 rounded-full appearance-none cursor-pointer accent-gray-400"
                   />
                   <p className="text-xs text-text-muted mt-2">Goes to whoever sourced the lead</p>
                 </div>
@@ -195,10 +195,10 @@ export default function RevenueSettingsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                      <Users className="w-4 h-4 text-pink-500" />
+                      <Users className="w-4 h-4 text-gray-400" />
                       Coach Cost
                     </label>
-                    <span className="text-2xl font-bold text-pink-600">{config.coach_cost_percent}%</span>
+                    <span className="text-2xl font-bold text-white">{config.coach_cost_percent}%</span>
                   </div>
                   <input
                     type="range"
@@ -206,24 +206,24 @@ export default function RevenueSettingsPage() {
                     max="70"
                     value={config.coach_cost_percent}
                     onChange={(e) => handlePercentChange('coach_cost_percent', parseFloat(e.target.value))}
-                    className="w-full h-2 bg-pink-100 rounded-full appearance-none cursor-pointer accent-pink-500"
+                    className="w-full h-2 bg-surface-3 rounded-full appearance-none cursor-pointer accent-gray-400"
                   />
                   <p className="text-xs text-text-muted mt-2">Goes to the coach delivering sessions</p>
                 </div>
 
                 {/* Platform Fee (Auto) */}
-                <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-200">
+                <div className="p-4 bg-surface-2 rounded-xl border border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-violet-500" />
-                      <span className="text-sm font-medium text-violet-700">Platform Fee</span>
-                      <span className="text-xs px-2 py-0.5 bg-violet-200 text-violet-700 rounded-full">Auto</span>
+                      <Building2 className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm font-medium text-white">Platform Fee</span>
+                      <span className="text-xs px-2 py-0.5 bg-white/[0.08] text-gray-400 rounded-full">Auto</span>
                     </div>
-                    <span className={`text-2xl font-bold ${config.platform_fee_percent < 0 ? 'text-red-600' : 'text-violet-600'}`}>
+                    <span className={`text-2xl font-bold ${config.platform_fee_percent < 0 ? 'text-red-600' : 'text-white'}`}>
                       {config.platform_fee_percent}%
                     </span>
                   </div>
-                  <p className="text-xs text-violet-500 mt-2">Retained by Yestoryd LLP</p>
+                  <p className="text-xs text-text-tertiary mt-2">Retained by Yestoryd LLP</p>
                 </div>
               </div>
             </div>
@@ -249,7 +249,7 @@ export default function RevenueSettingsPage() {
                       step="0.5"
                       value={config.tds_rate_percent}
                       onChange={(e) => setConfig({ ...config, tds_rate_percent: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-3 pr-10 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
+                      className="w-full px-4 py-3 pr-10 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted">%</span>
                   </div>
@@ -264,7 +264,7 @@ export default function RevenueSettingsPage() {
                       step="1000"
                       value={config.tds_threshold_annual}
                       onChange={(e) => setConfig({ ...config, tds_threshold_annual: parseInt(e.target.value) || 0 })}
-                      className="w-full pl-8 pr-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
+                      className="w-full pl-8 pr-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
                     />
                   </div>
                 </div>
@@ -292,7 +292,7 @@ export default function RevenueSettingsPage() {
                   <select
                     value={config.payout_frequency}
                     onChange={(e) => setConfig({ ...config, payout_frequency: e.target.value })}
-                    className="w-full px-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
                   >
                     <option value="monthly">Monthly</option>
                     <option value="per_session">Per Session</option>
@@ -307,7 +307,7 @@ export default function RevenueSettingsPage() {
                       max="28"
                       value={config.payout_day_of_month}
                       onChange={(e) => setConfig({ ...config, payout_day_of_month: parseInt(e.target.value) || 7 })}
-                      className="w-full px-4 py-3 pr-16 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-surface-2"
+                      className="w-full px-4 py-3 pr-16 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted text-sm">of month</span>
                   </div>
@@ -328,20 +328,20 @@ export default function RevenueSettingsPage() {
               <div className="p-6 space-y-6">
                 {/* Visual Split Bar */}
                 <div className="h-8 rounded-full overflow-hidden flex shadow-inner">
-                  <div 
-                    className="bg-gradient-to-r from-blue-400 to-blue-500 flex items-center justify-center text-xs font-bold text-white transition-all duration-300"
+                  <div
+                    className="bg-gray-500 flex items-center justify-center text-xs font-bold text-white transition-all duration-300"
                     style={{ width: `${config.lead_cost_percent}%` }}
                   >
                     {config.lead_cost_percent >= 15 && `${config.lead_cost_percent}%`}
                   </div>
-                  <div 
-                    className="bg-gradient-to-r from-pink-400 to-pink-500 flex items-center justify-center text-xs font-bold text-white transition-all duration-300"
+                  <div
+                    className="bg-gray-400 flex items-center justify-center text-xs font-bold text-white transition-all duration-300"
                     style={{ width: `${config.coach_cost_percent}%` }}
                   >
                     {config.coach_cost_percent >= 15 && `${config.coach_cost_percent}%`}
                   </div>
-                  <div 
-                    className="bg-gradient-to-r from-violet-400 to-violet-500 flex items-center justify-center text-xs font-bold text-white transition-all duration-300"
+                  <div
+                    className="bg-gray-300 flex items-center justify-center text-xs font-bold text-slate-900 transition-all duration-300"
                     style={{ width: `${config.platform_fee_percent}%` }}
                   >
                     {config.platform_fee_percent >= 15 && `${config.platform_fee_percent}%`}
@@ -351,15 +351,15 @@ export default function RevenueSettingsPage() {
                 {/* Legend */}
                 <div className="flex justify-center gap-6">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <div className="w-3 h-3 rounded-full bg-gray-500" />
                     <span className="text-xs text-slate-400">Lead Cost</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-pink-500" />
+                    <div className="w-3 h-3 rounded-full bg-gray-400" />
                     <span className="text-xs text-slate-400">Coach Cost</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-violet-500" />
+                    <div className="w-3 h-3 rounded-full bg-gray-300" />
                     <span className="text-xs text-slate-400">Platform</span>
                   </div>
                 </div>
@@ -367,15 +367,15 @@ export default function RevenueSettingsPage() {
                 {/* Amount Breakdown */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                    <p className="text-xs text-blue-400 mb-1">Lead Cost</p>
+                    <p className="text-xs text-gray-400 mb-1">Lead Cost</p>
                     <p className="text-xl font-bold text-white">₹{leadCostAmount.toLocaleString()}</p>
                   </div>
                   <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                    <p className="text-xs text-pink-400 mb-1">Coach Cost</p>
+                    <p className="text-xs text-gray-400 mb-1">Coach Cost</p>
                     <p className="text-xl font-bold text-white">₹{coachCostAmount.toLocaleString()}</p>
                   </div>
                   <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                    <p className="text-xs text-violet-400 mb-1">Platform Fee</p>
+                    <p className="text-xs text-gray-400 mb-1">Platform Fee</p>
                     <p className="text-xl font-bold text-white">₹{platformFeeAmount.toLocaleString()}</p>
                   </div>
                 </div>
@@ -394,7 +394,7 @@ export default function RevenueSettingsPage() {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-medium text-text-secondary">Yestoryd Lead + External Coach</span>
-                    <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">50-50 Split</span>
+                    <span className="px-3 py-1 bg-white/[0.08] text-gray-300 text-xs font-medium rounded-full">50-50 Split</span>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex-1 p-3 bg-surface-2 rounded-lg">
@@ -403,10 +403,10 @@ export default function RevenueSettingsPage() {
                       <p className="text-xs text-text-muted">After TDS</p>
                     </div>
                     <ArrowRight className="w-5 h-5 text-text-muted" />
-                    <div className="flex-1 p-3 bg-violet-50 rounded-lg">
-                      <p className="text-xs text-violet-600 mb-1">Yestoryd Gets</p>
-                      <p className="text-lg font-bold text-violet-700">₹{(leadCostAmount + platformFeeAmount + tdsAmount).toLocaleString()}</p>
-                      <p className="text-xs text-violet-500">Inc. TDS collected</p>
+                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
+                      <p className="text-xs text-gray-400 mb-1">Yestoryd Gets</p>
+                      <p className="text-lg font-bold text-white">₹{(leadCostAmount + platformFeeAmount + tdsAmount).toLocaleString()}</p>
+                      <p className="text-xs text-text-tertiary">Inc. TDS collected</p>
                     </div>
                   </div>
                 </div>
@@ -415,19 +415,19 @@ export default function RevenueSettingsPage() {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-medium text-text-secondary">Coach Lead + External Coach</span>
-                    <span className="px-3 py-1 bg-pink-50 text-pink-700 text-xs font-medium rounded-full">70-30 Split</span>
+                    <span className="px-3 py-1 bg-white/[0.08] text-gray-300 text-xs font-medium rounded-full">70-30 Split</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 p-3 bg-pink-50 rounded-lg">
-                      <p className="text-xs text-pink-600 mb-1">Coach Gets</p>
-                      <p className="text-lg font-bold text-pink-700">₹{(netToCoach + leadCostAmount - Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
-                      <p className="text-xs text-pink-500">Coach + Lead Bonus</p>
+                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
+                      <p className="text-xs text-gray-400 mb-1">Coach Gets</p>
+                      <p className="text-lg font-bold text-white">₹{(netToCoach + leadCostAmount - Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
+                      <p className="text-xs text-text-tertiary">Coach + Lead Bonus</p>
                     </div>
                     <ArrowRight className="w-5 h-5 text-text-muted" />
-                    <div className="flex-1 p-3 bg-violet-50 rounded-lg">
-                      <p className="text-xs text-violet-600 mb-1">Yestoryd Gets</p>
-                      <p className="text-lg font-bold text-violet-700">₹{(platformFeeAmount + tdsAmount + Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
-                      <p className="text-xs text-violet-500">Platform + TDS</p>
+                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
+                      <p className="text-xs text-gray-400 mb-1">Yestoryd Gets</p>
+                      <p className="text-lg font-bold text-white">₹{(platformFeeAmount + tdsAmount + Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
+                      <p className="text-xs text-text-tertiary">Platform + TDS</p>
                     </div>
                   </div>
                 </div>
@@ -463,7 +463,7 @@ export default function RevenueSettingsPage() {
 
                     return (
                       <div key={month} className="flex-1 text-center">
-                        <div className="w-12 h-12 mx-auto bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center text-white font-bold mb-2">
+                        <div className="w-12 h-12 mx-auto bg-[#121217] border border-white/[0.08] rounded-xl flex items-center justify-center text-white font-bold mb-2">
                           M{month}
                         </div>
                         <p className="text-lg font-bold text-white">₹{amount.toLocaleString()}</p>

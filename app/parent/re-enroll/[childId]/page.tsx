@@ -144,7 +144,7 @@ export default function ReEnrollPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
       </div>
     );
@@ -152,10 +152,10 @@ export default function ReEnrollPage() {
 
   if (error && !data) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <p className="text-white mb-2">{error}</p>
+          <p className="text-gray-900 mb-2">{error}</p>
           <button onClick={() => router.back()} className="text-[#FF0099] font-medium">Go Back</button>
         </div>
       </div>
@@ -164,15 +164,15 @@ export default function ReEnrollPage() {
 
   if (paymentSuccess) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-400" />
+          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-emerald-700" />
           </div>
-          <h1 className="text-xl font-bold text-white mb-2">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
             You&apos;re All Set!
           </h1>
-          <p className="text-text-tertiary text-sm mb-6">
+          <p className="text-gray-500 text-sm mb-6">
             Season {data.next_season.number} enrollment is confirmed for {data.child.name}.
             We&apos;ll set up your sessions shortly.
           </p>
@@ -196,44 +196,44 @@ export default function ReEnrollPage() {
         {/* Header */}
         <div className="text-center">
           <Sparkles className="w-8 h-8 text-[#FF0099] mx-auto mb-2" />
-          <h1 className="text-xl font-bold text-white">
+          <h1 className="text-xl font-bold text-gray-900">
             Continue {child.name}&apos;s Journey
           </h1>
-          <p className="text-text-tertiary text-sm mt-1">
+          <p className="text-gray-500 text-sm mt-1">
             Season {next_season.number} is ready
           </p>
         </div>
 
         {/* Season 1 Recap */}
-        <div className="bg-surface-1 border border-border rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-400" />
-            <h2 className="text-white font-bold text-sm">Season {previous_season.number} Recap</h2>
+            <h2 className="text-gray-900 font-bold text-sm">Season {previous_season.number} Recap</h2>
           </div>
           <div className="px-5 py-4">
             {/* Stats */}
             <div className="flex items-center gap-4 mb-4">
               <div>
                 <p className="text-lg font-bold text-amber-400">{prevCompletionPct}%</p>
-                <p className="text-[10px] text-text-tertiary">Complete</p>
+                <p className="text-[10px] text-gray-500">Complete</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-white">{previous_season.sessions_completed}/{previous_season.sessions_total}</p>
-                <p className="text-[10px] text-text-tertiary">Sessions</p>
+                <p className="text-lg font-bold text-gray-900">{previous_season.sessions_completed}/{previous_season.sessions_total}</p>
+                <p className="text-[10px] text-gray-500">Sessions</p>
               </div>
             </div>
 
             {/* Growth highlights (top 3) */}
             {previous_season.growth?.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-text-tertiary">Key growth areas:</p>
+                <p className="text-xs text-gray-500">Key growth areas:</p>
                 {previous_season.growth.slice(0, 3).map((g: SkillGrowth) => (
-                  <div key={g.skill} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-                    <span className="text-xs text-white">{g.skill}</span>
+                  <div key={g.skill} className="flex items-center justify-between py-1.5 border-b border-gray-200 last:border-0">
+                    <span className="text-xs text-gray-900">{g.skill}</span>
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="text-text-tertiary">{g.before}</span>
-                      <ArrowRight className="w-3 h-3 text-green-400" />
-                      <span className="text-green-400 font-medium">{g.after}</span>
+                      <span className="text-gray-500">{g.before}</span>
+                      <ArrowRight className="w-3 h-3 text-emerald-700" />
+                      <span className="text-emerald-700 font-medium">{g.after}</span>
                     </div>
                   </div>
                 ))}
@@ -243,23 +243,23 @@ export default function ReEnrollPage() {
         </div>
 
         {/* Season 2 Preview */}
-        <div className="bg-gradient-to-br from-[#FF0099]/10 to-[#7B008B]/10 border border-[#FF0099]/20 rounded-2xl p-5">
+        <div className="bg-gradient-to-br from-pink-50 to-pink-50 border border-pink-200 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <Star className="w-5 h-5 text-[#FF0099]" />
-            <h2 className="text-white font-bold text-sm">Season {next_season.number}: {next_season.name}</h2>
+            <h2 className="text-gray-900 font-bold text-sm">Season {next_season.number}: {next_season.name}</h2>
           </div>
 
           {next_season.focus_areas?.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {next_season.focus_areas.map((area: string) => (
-                <span key={area} className="px-2.5 py-1 text-[10px] bg-[#FF0099]/10 text-[#FF0099] rounded-full border border-[#FF0099]/20">
+                <span key={area} className="px-2.5 py-1 text-[10px] bg-pink-50 text-[#FF0099] rounded-full border border-pink-200">
                   {area}
                 </span>
               ))}
             </div>
           )}
 
-          <p className="text-text-tertiary text-xs leading-relaxed">
+          <p className="text-gray-500 text-xs leading-relaxed">
             Building on {child.name}&apos;s Season {previous_season.number} progress,
             this season will focus on strengthening key skills and reaching new milestones.
           </p>
@@ -271,8 +271,8 @@ export default function ReEnrollPage() {
             <div className="flex items-start gap-3">
               <ArrowUpRight className="w-5 h-5 text-[#00ABFF] flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-white text-sm font-medium">Level Up!</p>
-                <p className="text-text-tertiary text-xs mt-0.5">
+                <p className="text-gray-900 text-sm font-medium">Level Up!</p>
+                <p className="text-gray-500 text-xs mt-0.5">
                   {age_band_transition.reason}. They&apos;ll transition from{' '}
                   <AgeBandBadge ageBand={age_band_transition.from} /> to{' '}
                   <AgeBandBadge ageBand={age_band_transition.to} /> with age-appropriate content.
@@ -284,28 +284,28 @@ export default function ReEnrollPage() {
 
         {/* Coach Continuity */}
         {coach && (
-          <div className="bg-surface-1 border border-border rounded-xl p-4 flex items-center gap-3">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#0066CC] flex items-center justify-center text-white font-bold text-sm">
               {coach.name?.charAt(0) || 'C'}
             </div>
             <div className="flex-1">
-              <p className="text-white font-medium text-sm">{coach.name}</p>
-              <p className="text-text-tertiary text-xs">Same coach continues</p>
+              <p className="text-gray-900 font-medium text-sm">{coach.name}</p>
+              <p className="text-gray-500 text-xs">Same coach continues</p>
             </div>
-            <User className="w-4 h-4 text-green-400" />
+            <User className="w-4 h-4 text-emerald-700" />
           </div>
         )}
 
         {/* Scheduling Preferences */}
-        <div className="bg-surface-1 border border-border rounded-2xl p-5 space-y-4">
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-text-tertiary" />
-            <h2 className="text-white font-bold text-sm">Schedule Preference</h2>
+            <Clock className="w-5 h-5 text-gray-500" />
+            <h2 className="text-gray-900 font-bold text-sm">Schedule Preference</h2>
           </div>
 
           {/* Preferred Days */}
           <div>
-            <p className="text-xs text-text-tertiary mb-2">Preferred days (optional)</p>
+            <p className="text-xs text-gray-500 mb-2">Preferred days (optional)</p>
             <div className="flex gap-2">
               {DAY_LABELS.map((day, i) => {
                 const selected = preferenceDays.includes(i);
@@ -318,8 +318,8 @@ export default function ReEnrollPage() {
                     )}
                     className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
                       selected
-                        ? 'bg-[#FF0099]/20 text-[#FF0099] border-[#FF0099]/30'
-                        : 'bg-surface-2 text-text-tertiary border-border'
+                        ? 'bg-pink-50 text-[#FF0099] border-pink-200'
+                        : 'bg-gray-50 text-gray-500 border-gray-200'
                     }`}
                   >
                     {day}
@@ -331,7 +331,7 @@ export default function ReEnrollPage() {
 
           {/* Time Bucket */}
           <div>
-            <p className="text-xs text-text-tertiary mb-2">Preferred time (optional)</p>
+            <p className="text-xs text-gray-500 mb-2">Preferred time (optional)</p>
             <div className="grid grid-cols-2 gap-2">
               {TIME_BUCKETS.map(tb => (
                 <button
@@ -340,8 +340,8 @@ export default function ReEnrollPage() {
                   onClick={() => setTimeBucket(tb.value)}
                   className={`px-3 py-2 text-xs rounded-lg border transition-colors ${
                     timeBucket === tb.value
-                      ? 'bg-[#FF0099]/20 text-[#FF0099] border-[#FF0099]/30'
-                      : 'bg-surface-2 text-text-tertiary border-border'
+                      ? 'bg-pink-50 text-[#FF0099] border-pink-200'
+                      : 'bg-gray-50 text-gray-500 border-gray-200'
                   }`}
                 >
                   {tb.label}
@@ -353,19 +353,19 @@ export default function ReEnrollPage() {
 
         {/* Pricing + CTA */}
         {pricing && !pricing.is_locked && (
-          <div className="bg-surface-1 border border-border rounded-2xl p-5">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5">
             <div className="text-center mb-4">
-              <p className="text-text-tertiary text-xs">Season {next_season.number}</p>
-              <p className="text-3xl font-bold text-white mt-1">
-                <span className="text-lg text-text-tertiary">&#8377;</span>{pricing.price?.toLocaleString('en-IN')}
+              <p className="text-gray-500 text-xs">Season {next_season.number}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-1">
+                <span className="text-lg text-gray-500">&#8377;</span>{pricing.price?.toLocaleString('en-IN')}
               </p>
-              <p className="text-xs text-text-tertiary mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {pricing.sessions} sessions | {pricing.duration_months} month{pricing.duration_months > 1 ? 's' : ''}
               </p>
             </div>
 
             {error && (
-              <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs text-center">
                 {error}
               </div>
             )}
@@ -391,14 +391,14 @@ export default function ReEnrollPage() {
         )}
 
         {pricing?.is_locked && (
-          <div className="bg-surface-1 border border-border rounded-2xl p-5 text-center">
-            <p className="text-text-tertiary text-sm">{pricing.lock_message || 'Re-enrollment is currently unavailable.'}</p>
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 text-center">
+            <p className="text-gray-500 text-sm">{pricing.lock_message || 'Re-enrollment is currently unavailable.'}</p>
           </div>
         )}
 
         {!pricing && (
-          <div className="bg-surface-1 border border-border rounded-2xl p-5 text-center">
-            <p className="text-text-tertiary text-sm">Pricing not available. Please contact support.</p>
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 text-center">
+            <p className="text-gray-500 text-sm">Pricing not available. Please contact support.</p>
           </div>
         )}
       </div>

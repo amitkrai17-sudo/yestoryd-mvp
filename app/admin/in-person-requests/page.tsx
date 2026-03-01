@@ -146,7 +146,7 @@ export default function InPersonRequestsPage() {
   }
 
   return (
-    <div className="bg-surface-0 min-h-screen">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -233,7 +233,7 @@ export default function InPersonRequestsPage() {
                 {/* Top row: Coach + Child + Time */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    <div className="w-10 h-10 bg-white/[0.12] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                       {req.coach_name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -302,7 +302,7 @@ export default function InPersonRequestsPage() {
                           className={`h-full rounded-full transition-all ${
                             req.offline_count >= req.max_offline ? 'bg-red-500' :
                             req.offline_count >= req.max_offline * 0.75 ? 'bg-amber-500' :
-                            'bg-purple-500'
+                            'bg-gray-400'
                           }`}
                           style={{ width: `${req.max_offline > 0 ? Math.min((req.offline_count / req.max_offline) * 100, 100) : 0}%` }}
                         />

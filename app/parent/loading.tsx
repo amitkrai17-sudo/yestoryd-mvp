@@ -1,22 +1,22 @@
 export default function ParentDashboardLoading() {
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div>
       {/* Header skeleton */}
-      <div className="bg-surface-1 shadow-sm border-b border-border">
+      <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="h-8 w-32 bg-surface-3 rounded animate-pulse"></div>
-          <div className="h-10 w-10 bg-surface-3 rounded-full animate-pulse"></div>
+          <div className="h-8 w-32 bg-gray-100 rounded animate-pulse"></div>
+          <div className="h-10 w-10 bg-gray-100 rounded-full animate-pulse"></div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Welcome card skeleton */}
-        <div className="bg-surface-1 rounded-xl p-6 shadow-sm border border-border">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-surface-3 rounded-full animate-pulse"></div>
+            <div className="w-16 h-16 bg-gray-100 rounded-full animate-pulse"></div>
             <div className="space-y-2">
-              <div className="h-6 w-48 bg-surface-3 rounded animate-pulse"></div>
-              <div className="h-4 w-32 bg-surface-3 rounded animate-pulse"></div>
+              <div className="h-6 w-48 bg-gray-100 rounded animate-pulse"></div>
+              <div className="h-4 w-32 bg-gray-100 rounded animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -24,23 +24,23 @@ export default function ParentDashboardLoading() {
         {/* Stats grid skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-surface-1 rounded-xl p-6 shadow-sm border border-border">
-              <div className="h-4 w-24 bg-surface-3 rounded animate-pulse mb-2"></div>
-              <div className="h-8 w-16 bg-surface-3 rounded animate-pulse"></div>
+            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="h-4 w-24 bg-gray-100 rounded animate-pulse mb-2"></div>
+              <div className="h-8 w-16 bg-gray-100 rounded animate-pulse"></div>
             </div>
           ))}
         </div>
 
         {/* Sessions skeleton */}
-        <div className="bg-surface-1 rounded-xl p-6 shadow-sm border border-border">
-          <div className="h-6 w-40 bg-surface-3 rounded animate-pulse mb-4"></div>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="h-6 w-40 bg-gray-100 rounded animate-pulse mb-4"></div>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-3 bg-surface-2 rounded-lg">
-                <div className="w-12 h-12 bg-surface-3 rounded animate-pulse"></div>
+              <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="w-12 h-12 bg-gray-100 rounded animate-pulse"></div>
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-3/4 bg-surface-3 rounded animate-pulse"></div>
-                  <div className="h-3 w-1/2 bg-surface-3 rounded animate-pulse"></div>
+                  <div className="h-4 w-3/4 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-3 w-1/2 bg-gray-100 rounded animate-pulse"></div>
                 </div>
               </div>
             ))}

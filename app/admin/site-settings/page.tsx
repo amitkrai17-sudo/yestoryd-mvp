@@ -25,25 +25,25 @@ interface SiteSetting {
 
 // Category display configuration
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; description: string }> = {
-  hero: { label: 'Hero Section', color: 'bg-pink-500/20 text-pink-400', description: 'Homepage hero content & A/B variants' },
-  arc: { label: 'ARC Method', color: 'bg-purple-500/20 text-purple-400', description: 'Assess, Remediate, Celebrate section' },
-  rai: { label: 'rAI Technology', color: 'bg-blue-500/20 text-blue-400', description: 'AI technology comparison section' },
-  problem: { label: 'Problem Section', color: 'bg-orange-500/20 text-orange-400', description: 'Problem awareness content' },
-  pricing: { label: 'Pricing', color: 'bg-green-500/20 text-green-400', description: 'Pricing section content' },
-  story: { label: 'Our Story', color: 'bg-indigo-500/20 text-indigo-400', description: "Rucha's story section" },
-  testimonials: { label: 'Testimonials', color: 'bg-yellow-500/20 text-yellow-400', description: 'Testimonials section text' },
-  header: { label: 'Header/Nav', color: 'bg-cyan-500/20 text-cyan-400', description: 'Navigation & top bar' },
-  footer: { label: 'Footer', color: 'bg-slate-500/20 text-slate-400', description: 'Footer content' },
-  cta: { label: 'CTA Section', color: 'bg-red-500/20 text-red-400', description: 'Call-to-action content' },
-  journey: { label: 'Journey', color: 'bg-violet-500/20 text-violet-400', description: 'Learning journey visualization' },
-  faq: { label: 'FAQ', color: 'bg-teal-500/20 text-teal-400', description: 'Frequently asked questions' },
-  transformation: { label: 'Transformation', color: 'bg-emerald-500/20 text-emerald-400', description: 'Before/after transformation' },
-  floating: { label: 'Floating Elements', color: 'bg-amber-500/20 text-amber-400', description: 'Floating buttons & CTAs' },
-  triangulation: { label: 'Triangulation', color: 'bg-fuchsia-500/20 text-fuchsia-400', description: 'rAI/Coach/Parent triangle' },
-  contact: { label: 'Contact Info', color: 'bg-sky-500/20 text-sky-400', description: 'Contact details' },
-  program: { label: 'Program Config', color: 'bg-lime-500/20 text-lime-400', description: 'Program structure & sessions' },
-  coach: { label: 'Coach Defaults', color: 'bg-rose-500/20 text-rose-400', description: 'Default coach settings' },
-  videos: { label: 'Videos', color: 'bg-cyan-500/20 text-cyan-400', description: 'Video URLs' },
+  hero: { label: 'Hero Section', color: 'bg-white/[0.08] text-gray-400', description: 'Homepage hero content & A/B variants' },
+  arc: { label: 'ARC Method', color: 'bg-white/[0.08] text-gray-400', description: 'Assess, Remediate, Celebrate section' },
+  rai: { label: 'rAI Technology', color: 'bg-white/[0.08] text-gray-400', description: 'AI technology comparison section' },
+  problem: { label: 'Problem Section', color: 'bg-white/[0.08] text-gray-400', description: 'Problem awareness content' },
+  pricing: { label: 'Pricing', color: 'bg-white/[0.08] text-gray-400', description: 'Pricing section content' },
+  story: { label: 'Our Story', color: 'bg-white/[0.08] text-gray-400', description: "Rucha's story section" },
+  testimonials: { label: 'Testimonials', color: 'bg-white/[0.08] text-gray-400', description: 'Testimonials section text' },
+  header: { label: 'Header/Nav', color: 'bg-white/[0.08] text-gray-400', description: 'Navigation & top bar' },
+  footer: { label: 'Footer', color: 'bg-white/[0.08] text-gray-400', description: 'Footer content' },
+  cta: { label: 'CTA Section', color: 'bg-white/[0.08] text-gray-400', description: 'Call-to-action content' },
+  journey: { label: 'Journey', color: 'bg-white/[0.08] text-gray-400', description: 'Learning journey visualization' },
+  faq: { label: 'FAQ', color: 'bg-white/[0.08] text-gray-400', description: 'Frequently asked questions' },
+  transformation: { label: 'Transformation', color: 'bg-white/[0.08] text-gray-400', description: 'Before/after transformation' },
+  floating: { label: 'Floating Elements', color: 'bg-white/[0.08] text-gray-400', description: 'Floating buttons & CTAs' },
+  triangulation: { label: 'Triangulation', color: 'bg-white/[0.08] text-gray-400', description: 'rAI/Coach/Parent triangle' },
+  contact: { label: 'Contact Info', color: 'bg-white/[0.08] text-gray-400', description: 'Contact details' },
+  program: { label: 'Program Config', color: 'bg-white/[0.08] text-gray-400', description: 'Program structure & sessions' },
+  coach: { label: 'Coach Defaults', color: 'bg-white/[0.08] text-gray-400', description: 'Default coach settings' },
+  videos: { label: 'Videos', color: 'bg-white/[0.08] text-gray-400', description: 'Video URLs' },
 };
 
 export default function SiteSettingsManager() {
@@ -214,7 +214,7 @@ export default function SiteSettingsManager() {
     return (
       <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#FF0099] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-gray-400 animate-spin mx-auto mb-4" />
           <p className="text-text-secondary">Loading settings...</p>
         </div>
       </div>
@@ -227,8 +227,8 @@ export default function SiteSettingsManager() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#FF0099]/20 rounded-xl flex items-center justify-center">
-              <Database className="w-6 h-6 text-[#FF0099]" />
+            <div className="w-12 h-12 bg-white/[0.08] rounded-xl flex items-center justify-center">
+              <Database className="w-6 h-6 text-gray-300" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Site Settings Manager</h1>
@@ -252,7 +252,7 @@ export default function SiteSettingsManager() {
             </button>
             <button
               onClick={fetchSettings}
-              className="flex items-center gap-2 px-3 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/80 transition-colors text-sm"
+              className="flex items-center gap-2 px-3 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 transition-colors text-sm"
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
@@ -285,7 +285,7 @@ export default function SiteSettingsManager() {
             placeholder="Search settings by category, key, description, or value..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-surface-1 border border-border rounded-xl text-white placeholder:text-text-muted focus:border-[#FF0099] focus:ring-2 focus:ring-[#FF0099]/20 outline-none transition-all"
+            className="w-full pl-12 pr-4 py-3 bg-surface-1 border border-border rounded-xl text-white placeholder:text-text-muted focus:border-white/[0.30] focus:ring-2 focus:ring-white/[0.10] outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -338,7 +338,7 @@ export default function SiteSettingsManager() {
                 >
                   <div className="flex items-center gap-3">
                     {expandedCategories.has(category) ? (
-                      <ChevronDown className="w-5 h-5 text-[#FF0099]" />
+                      <ChevronDown className="w-5 h-5 text-gray-300" />
                     ) : (
                       <ChevronRight className="w-5 h-5 text-text-tertiary" />
                     )}
@@ -371,7 +371,7 @@ export default function SiteSettingsManager() {
                                 className="flex items-center gap-1 group"
                                 title="Click to copy key"
                               >
-                                <code className="text-[#FF0099] font-mono text-sm group-hover:underline">
+                                <code className="text-gray-300 font-mono text-sm group-hover:underline">
                                   {setting.key}
                                 </code>
                                 {copiedKey === setting.key ? (
@@ -399,14 +399,14 @@ export default function SiteSettingsManager() {
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
                                   rows={getValueType(setting.value) === 'object' || getValueType(setting.value) === 'array' ? 10 : 3}
-                                  className="w-full bg-surface-2 border border-border rounded-lg p-3 text-white font-mono text-sm focus:border-[#FF0099] focus:ring-2 focus:ring-[#FF0099]/20 outline-none resize-y"
+                                  className="w-full bg-surface-2 border border-border rounded-lg p-3 text-white font-mono text-sm focus:border-white/[0.30] focus:ring-2 focus:ring-white/[0.10] outline-none resize-y"
                                   placeholder="Enter value..."
                                 />
                                 <div className="flex gap-2 mt-2">
                                   <button
                                     onClick={() => saveSetting(setting)}
                                     disabled={saving}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/80 disabled:opacity-50 text-sm font-medium"
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 disabled:opacity-50 text-sm font-medium"
                                   >
                                     {saving ? (
                                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -435,7 +435,7 @@ export default function SiteSettingsManager() {
                           {editingId !== setting.id && (
                             <button
                               onClick={() => startEdit(setting)}
-                              className="p-2 text-text-tertiary hover:text-[#FF0099] hover:bg-surface-2 rounded-lg transition-colors flex-shrink-0"
+                              className="p-2 text-text-tertiary hover:text-white hover:bg-surface-2 rounded-lg transition-colors flex-shrink-0"
                               title="Edit setting"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -459,7 +459,7 @@ export default function SiteSettingsManager() {
             <p className="text-text-tertiary text-sm">No settings match "{searchQuery}"</p>
             <button
               onClick={() => setSearchQuery('')}
-              className="mt-4 px-4 py-2 bg-[#FF0099] text-white rounded-lg hover:bg-[#FF0099]/80 text-sm"
+              className="mt-4 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 text-sm"
             >
               Clear Search
             </button>

@@ -182,7 +182,7 @@ function ResolveModal({
             <button
               onClick={handleResolve}
               disabled={saving}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-white text-[#0a0a0f] hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50"
             >
               {saving ? 'Resolving...' : 'Resolve'}
             </button>
@@ -393,7 +393,7 @@ export default function SchedulingQueuePage() {
                         {item.status !== 'resolved' && (
                           <button
                             onClick={() => setSelectedItem(item)}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-medium transition-colors"
+                            className="px-3 py-1 bg-white text-[#0a0a0f] hover:bg-gray-200 text-xs rounded-lg font-medium transition-colors"
                           >
                             Resolve
                           </button>

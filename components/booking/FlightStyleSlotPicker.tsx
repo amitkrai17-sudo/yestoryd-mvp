@@ -362,7 +362,7 @@ export default function FlightStyleSlotPicker({
       </div>
 
       {/* Date Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
         {availableDates.slice(0, 10).map((date) => {
           const slotsCount = (slotsByDate[date] || [])
             .filter(s => s.bucketName === selectedBucket?.name).length;
@@ -373,7 +373,7 @@ export default function FlightStyleSlotPicker({
               key={date}
               onClick={() => setSelectedDate(date)}
               className={`
-                flex-shrink-0 px-4 py-2 rounded-lg text-center transition-all min-w-[80px]
+                flex-shrink-0 px-4 py-2 rounded-lg text-center transition-all min-w-[80px] snap-start
                 ${isSelected
                   ? 'bg-[#ff0099] text-white shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

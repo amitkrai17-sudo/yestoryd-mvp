@@ -209,7 +209,7 @@ function SegmentCard({
     <div className="bg-surface-1 border border-border rounded-xl p-5">
       {/* Header row */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="w-8 h-8 bg-gradient-to-br from-[#ff0099] to-[#7b008b] rounded-lg flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+        <span className="w-8 h-8 bg-white/[0.12] rounded-lg flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
           {segmentIndex + 1}
         </span>
 
@@ -281,7 +281,7 @@ function SegmentCard({
         <div className="mb-3">
           {segment.content_item_id ? (
             <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-lg">
-              <Link2 className="w-4 h-4 text-[#ff0099]" />
+              <Link2 className="w-4 h-4 text-gray-300" />
               <span className="text-sm text-white flex-1">{linkedContentTitle || segment.content_item_id.slice(0, 8) + '...'}</span>
               <button
                 onClick={() => { updateField('content_item_id', undefined); setLinkedContentTitle(''); }}
@@ -293,7 +293,7 @@ function SegmentCard({
           ) : (
             <button
               onClick={() => setShowContentPicker(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-[#ff0099] hover:bg-[#ff0099]/10 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/[0.08] rounded-lg transition-colors"
             >
               <Link2 className="w-4 h-4" />
               Link Content
@@ -329,7 +329,7 @@ function SegmentCard({
           ))}
           <button
             onClick={addGuidedQuestion}
-            className="text-sm text-[#ff0099] hover:underline flex items-center gap-1"
+            className="text-sm text-gray-300 hover:underline flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" /> Add Question
           </button>
@@ -599,14 +599,14 @@ export default function BlueprintEditorClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24">
+    <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
@@ -645,7 +645,7 @@ export default function BlueprintEditorClient() {
                   onClick={() => setForm(prev => ({ ...prev, classTypeId: ct.id }))}
                   className={`p-4 rounded-xl border-2 text-left transition-all ${
                     form.classTypeId === ct.id
-                      ? 'border-[#ff0099] bg-[#ff0099]/10'
+                      ? 'border-white/[0.16] bg-white/[0.08]'
                       : 'border-border hover:border-border/80'
                   }`}
                 >
@@ -669,7 +669,7 @@ export default function BlueprintEditorClient() {
               value={form.name}
               onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
               placeholder="e.g., Dinosaur Discovery - Ages 7-9"
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
             />
           </div>
 
@@ -680,7 +680,7 @@ export default function BlueprintEditorClient() {
               value={form.description}
               onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Brief description of what this blueprint covers..."
-              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-[#ff0099] focus:border-transparent text-white placeholder:text-text-muted resize-none"
+              className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted resize-none"
               rows={3}
             />
           </div>
@@ -696,7 +696,7 @@ export default function BlueprintEditorClient() {
                   onClick={() => setForm(prev => ({ ...prev, ageBand: ab }))}
                   className={`px-5 py-2.5 rounded-xl border-2 font-medium transition-all ${
                     form.ageBand === ab
-                      ? 'border-[#ff0099] bg-[#ff0099]/10 text-white'
+                      ? 'border-white/[0.16] bg-white/[0.08] text-white'
                       : 'border-border text-text-secondary hover:border-border/80'
                   }`}
                 >
@@ -713,7 +713,7 @@ export default function BlueprintEditorClient() {
             <h2 className="text-lg font-bold text-white">Segments</h2>
             <button
               onClick={addSegment}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#ff0099] hover:bg-[#ff0099]/10 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/[0.08] rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add Segment
@@ -740,7 +740,7 @@ export default function BlueprintEditorClient() {
               <p className="text-text-tertiary mb-3">No segments yet</p>
               <button
                 onClick={addSegment}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#ff0099] text-white rounded-lg text-sm font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg text-sm font-medium hover:bg-gray-200"
               >
                 <Plus className="w-4 h-4" />
                 Add First Segment
@@ -861,7 +861,7 @@ export default function BlueprintEditorClient() {
                           onClick={() => toggleSkillTag(skill.skill_tag)}
                           className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all text-center ${
                             isSelected
-                              ? 'bg-[#ff0099]/20 text-[#ff0099] border-[#ff0099]/40'
+                              ? 'bg-white/[0.08] text-white border-white/[0.16]'
                               : 'bg-surface-1 text-text-secondary border-border hover:border-text-tertiary'
                           }`}
                         >
@@ -906,7 +906,7 @@ export default function BlueprintEditorClient() {
             <button
               onClick={() => handleSave('published')}
               disabled={saving}
-              className="px-5 py-2.5 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg disabled:opacity-50 flex items-center gap-2 text-sm"
+              className="px-5 py-2.5 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2 text-sm"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

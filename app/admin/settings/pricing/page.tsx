@@ -198,9 +198,9 @@ export default function PricingSettingsPage() {
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       pricing: 'text-green-400 bg-green-500/20 border border-green-500/30',
-      referral: 'text-pink-400 bg-pink-500/20 border border-pink-500/30',
-      discount: 'text-purple-400 bg-purple-500/20 border border-purple-500/30',
-      completion: 'text-blue-400 bg-blue-500/20 border border-blue-500/30',
+      referral: 'text-gray-400 bg-white/[0.08] border border-white/[0.08]',
+      discount: 'text-gray-400 bg-white/[0.08] border border-white/[0.08]',
+      completion: 'text-gray-400 bg-white/[0.08] border border-white/[0.08]',
     };
     return colors[category] || 'text-text-secondary bg-surface-2';
   };
@@ -227,7 +227,7 @@ export default function PricingSettingsPage() {
   if (loading) {
     return (
       <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-gray-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -240,7 +240,7 @@ export default function PricingSettingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Settings className="w-7 h-7 text-pink-500" />
+                <Settings className="w-7 h-7 text-gray-300" />
                 Pricing & Discounts
               </h1>
               <p className="text-sm text-text-tertiary mt-1">
@@ -253,7 +253,7 @@ export default function PricingSettingsPage() {
               className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-full transition-all shadow-lg ${
                 saved
                   ? 'bg-green-500 text-white'
-                  : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:scale-105'
+                  : 'bg-white text-[#0a0a0f] hover:bg-gray-200'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {saving ? (
@@ -287,12 +287,12 @@ export default function PricingSettingsPage() {
         )}
 
         {/* Info Banner - Coaching price location */}
-        <div className="mb-6 flex items-start gap-3 p-4 bg-blue-500/20 border border-blue-500/30 rounded-xl text-blue-400">
+        <div className="mb-6 flex items-start gap-3 p-4 bg-white/[0.08] border border-white/[0.08] rounded-xl text-gray-300">
           <IndianRupee className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">Coaching Program Price</p>
-            <p className="text-sm text-blue-300 mt-0.5">
-              Managed in <a href="/admin/settings" className="underline hover:text-blue-200 font-semibold">Site Settings → Pricing tab</a>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Managed in <a href="/admin/settings" className="underline hover:text-white font-semibold">Site Settings → Pricing tab</a>
             </p>
           </div>
         </div>
@@ -335,7 +335,7 @@ export default function PricingSettingsPage() {
                               onChange={(e) => handleChange(setting.key, e.target.checked ? 'true' : 'false')}
                               className="sr-only peer"
                             />
-                            <div className="w-14 h-7 bg-surface-3 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-500/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-border after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-pink-500"></div>
+                            <div className="w-14 h-7 bg-surface-3 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-white/[0.10] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-border after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gray-400"></div>
                           </label>
                         ) : (
                           <div className="relative">
@@ -348,7 +348,7 @@ export default function PricingSettingsPage() {
                               type={setting.key === 'completion_certificate_prefix' ? 'text' : 'number'}
                               value={getSettingValue(setting.key, setting.value)}
                               onChange={(e) => handleChange(setting.key, e.target.value)}
-                              className={`w-full py-2.5 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted text-right focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all ${
+                              className={`w-full py-2.5 bg-surface-2 border border-border rounded-xl text-white placeholder:text-text-muted text-right focus:outline-none focus:ring-2 focus:ring-white/[0.10] focus:border-white/[0.30] transition-all ${
                                 setting.suffix === '₹' ? 'pl-8 pr-4' : 'px-4'
                               }`}
                             />
@@ -369,15 +369,15 @@ export default function PricingSettingsPage() {
         </div>
 
         {/* Calculated Values Preview */}
-        <div className="mt-6 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-2xl border border-pink-500/30 p-6">
+        <div className="mt-6 bg-[#121217] rounded-2xl border border-white/[0.08] p-6">
           <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-pink-500" />
+            <Calculator className="w-5 h-5 text-gray-300" />
             Calculated Values
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {/* V1 fallback '5999' below – site_settings 'coaching_program_price' is authoritative */}
             <div className="bg-surface-1 rounded-xl p-4">
-              <div className="text-2xl font-bold text-pink-400">
+              <div className="text-2xl font-bold text-gray-300">
                 ₹{Math.round(
                   parseInt(getSettingValue('coaching_program_price', '5999')) *
                   parseInt(getSettingValue('parent_referral_credit_percent', '10')) / 100
@@ -395,7 +395,7 @@ export default function PricingSettingsPage() {
               <div className="text-xs text-text-tertiary">Max Discount (₹)</div>
             </div>
             <div className="bg-surface-1 rounded-xl p-4">
-              <div className="text-2xl font-bold text-purple-400">
+              <div className="text-2xl font-bold text-gray-300">
                 ₹{Math.round(
                   parseInt(getSettingValue('coaching_program_price', '5999')) *
                   (100 - parseInt(getSettingValue('max_discount_percent', '20'))) / 100
@@ -404,7 +404,7 @@ export default function PricingSettingsPage() {
               <div className="text-xs text-text-tertiary">Min Payment</div>
             </div>
             <div className="bg-surface-1 rounded-xl p-4">
-              <div className="text-2xl font-bold text-blue-400">
+              <div className="text-2xl font-bold text-gray-300">
                 ₹{Math.round(
                   parseInt(getSettingValue('coaching_program_price', '5999')) *
                   (100 - parseInt(getSettingValue('loyalty_discount_percent', '10'))) / 100

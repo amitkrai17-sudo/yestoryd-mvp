@@ -132,8 +132,8 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
   // Show pending request status
   if (pendingRequest) {
     return (
-      <div className="mt-2 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-        <div className="flex items-center gap-2 text-amber-400 text-sm">
+      <div className="mt-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+        <div className="flex items-center gap-2 text-amber-700 text-sm">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>
             {pendingRequest.request_type === 'cancel' ? 'Cancel' : 'Reschedule'} request pending review
@@ -147,20 +147,20 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
     <div className="mt-2">
       {/* Success/Error */}
       {success && (
-        <div className="mb-2 px-4 py-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-start gap-2">
-          <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-          <p className="text-green-400 text-sm flex-1">{success}</p>
-          <button onClick={() => setSuccess(null)} className="text-green-400 hover:text-green-300">
+        <div className="mb-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+          <p className="text-emerald-700 text-sm flex-1">{success}</p>
+          <button onClick={() => setSuccess(null)} className="text-emerald-700 hover:text-emerald-800">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {error && (
-        <div className="mb-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-          <p className="text-red-400 text-sm flex-1">{error}</p>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
+        <div className="mb-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-red-700 flex-shrink-0 mt-0.5" />
+          <p className="text-red-700 text-sm flex-1">{error}</p>
+          <button onClick={() => setError(null)} className="text-red-700 hover:text-red-800">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -170,14 +170,14 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
         <div className="flex gap-2">
           <button
             onClick={() => { setMode('cancel'); setReason(''); setCustomReason(''); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
           >
             <XCircle className="w-3.5 h-3.5" />
             Request Cancel
           </button>
           <button
             onClick={() => { setMode('reschedule'); setReason(''); setCustomReason(''); setPreferredDate(''); setPreferredTime(''); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
           >
             <CalendarClock className="w-3.5 h-3.5" />
             Request Reschedule
@@ -187,10 +187,10 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
 
       {/* Cancel Form */}
       {mode === 'cancel' && (
-        <div className="bg-surface-2 border border-border rounded-xl p-4">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-white">Request Cancellation</h4>
-            <button onClick={() => setMode('idle')} className="text-text-tertiary hover:text-white">
+            <h4 className="text-sm font-semibold text-gray-900">Request Cancellation</h4>
+            <button onClick={() => setMode('idle')} className="text-gray-500 hover:text-gray-900">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -205,8 +205,8 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
                   onClick={() => setReason(r.id)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-left ${
                     selected
-                      ? 'border-[#FF0099]/50 bg-[#FF0099]/10 text-white'
-                      : 'border-border bg-surface-1 text-text-secondary hover:border-border/80'
+                      ? 'border-[#FF0099]/50 bg-pink-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-200/80'
                   }`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
@@ -222,7 +222,7 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               placeholder="Please specify reason..."
-              className="w-full px-3 py-2 mb-3 bg-surface-1 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
+              className="w-full px-3 py-2 mb-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
             />
           )}
 
@@ -238,10 +238,10 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
 
       {/* Reschedule Form */}
       {mode === 'reschedule' && (
-        <div className="bg-surface-2 border border-border rounded-xl p-4">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-white">Request Reschedule</h4>
-            <button onClick={() => setMode('idle')} className="text-text-tertiary hover:text-white">
+            <h4 className="text-sm font-semibold text-gray-900">Request Reschedule</h4>
+            <button onClick={() => setMode('idle')} className="text-gray-500 hover:text-gray-900">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -256,8 +256,8 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
                   onClick={() => setReason(r.id)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-left ${
                     selected
-                      ? 'border-[#FF0099]/50 bg-[#FF0099]/10 text-white'
-                      : 'border-border bg-surface-1 text-text-secondary hover:border-border/80'
+                      ? 'border-[#FF0099]/50 bg-pink-50 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-200/80'
                   }`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
@@ -273,28 +273,28 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               placeholder="Please specify reason..."
-              className="w-full px-3 py-2 mb-3 bg-surface-1 border border-border rounded-lg text-sm text-white placeholder:text-text-muted focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
+              className="w-full px-3 py-2 mb-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
             />
           )}
 
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div>
-              <label className="block text-xs text-text-tertiary mb-1">Preferred Date (optional)</label>
+              <label className="block text-xs text-gray-500 mb-1">Preferred Date (optional)</label>
               <input
                 type="date"
                 value={preferredDate}
                 onChange={(e) => setPreferredDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 bg-surface-1 border border-border rounded-lg text-sm text-white focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
               />
             </div>
             <div>
-              <label className="block text-xs text-text-tertiary mb-1">Preferred Time (optional)</label>
+              <label className="block text-xs text-gray-500 mb-1">Preferred Time (optional)</label>
               <input
                 type="time"
                 value={preferredTime}
                 onChange={(e) => setPreferredTime(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-1 border border-border rounded-lg text-sm text-white focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
               />
             </div>
           </div>

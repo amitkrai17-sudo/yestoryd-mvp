@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import CoachLayout from '@/components/layouts/CoachLayout';
+
 import { PreSessionBrief, SessionCard } from '@/components/coach';
 import { ParentUpdateButton } from '@/components/coach/ParentUpdateButton';
 // Structured capture form (v3.0) with intelligence scoring
@@ -421,38 +421,33 @@ export default function CoachSessionsPage() {
   // ============================================================
   if (loading) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-4" />
-            <p className="text-text-tertiary">Loading sessions...</p>
-          </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-4" />
+          <p className="text-text-tertiary">Loading sessions...</p>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <CoachLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-white text-lg mb-4">{error}</p>
-            <button
-              onClick={loadSessions}
-              className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/90 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-white text-lg mb-4">{error}</p>
+          <button
+            onClick={loadSessions}
+            className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/90 transition-colors"
+          >
+            Retry
+          </button>
         </div>
-      </CoachLayout>
+      </div>
     );
   }
 
   return (
-    <CoachLayout>
       <div className="space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:gap-4">
@@ -907,6 +902,5 @@ export default function CoachSessionsPage() {
         </div>
       )}
       </div>
-    </CoachLayout>
   );
 }
