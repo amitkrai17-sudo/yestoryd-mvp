@@ -103,13 +103,6 @@ ${notes ? `Parent notes: ${notes}` : ''}`;
       return NextResponse.json({ error: 'Failed to save reading log' }, { status: 500 });
     }
 
-    // If bookId provided, increment vote_count on the book (engagement signal)
-    if (bookId) {
-      await supabase.rpc('increment_book_vote_count', { book_id_input: bookId }).catch(() => {
-        // Silent — vote count increment is non-critical
-      });
-    }
-
     return NextResponse.json({
       success: true,
       event,

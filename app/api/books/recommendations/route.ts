@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     // Verify parent owns this child
     const { data: child } = await supabase
       .from('children')
-      .select('id, age, overall_reading_level')
+      .select('id, age')
       .eq('id', childId)
       .eq('parent_email', user.email ?? '')
       .single();
@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
         relevance_score: r.relevance_score,
       })),
       childAge: child.age,
-      readingLevel: child.overall_reading_level,
     }, {
       headers: {
         'Cache-Control': 'private, max-age=600, stale-while-revalidate=300',

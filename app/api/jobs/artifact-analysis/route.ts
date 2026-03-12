@@ -54,9 +54,7 @@ interface ChildArtifact {
 }
 
 /** Helper for child_artifacts table (not in generated types) */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function childArtifacts(supabase: ReturnType<typeof createAdminClient>): any {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return supabase.from('child_artifacts' as any);
 }
 

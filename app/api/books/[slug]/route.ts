@@ -41,10 +41,10 @@ export const GET = withParamsHandler<{ slug: string }>(async (request, { slug },
 
   // Log view to activity_log (fire and forget)
   supabase.from('activity_log').insert({
+    user_email: 'anonymous',
     user_type: 'visitor',
     action: 'book_viewed',
     metadata: { book_id: book.id, slug, title: book.title },
-    created_at: new Date().toISOString(),
   }).then(() => {});
 
   const response = NextResponse.json({

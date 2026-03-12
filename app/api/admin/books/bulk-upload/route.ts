@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/api/with-api-handler';
+import { Database } from '@/lib/database.types';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
   }
 
   const errors: RowError[] = [];
-  const toInsert: Record<string, unknown>[] = [];
+  const toInsert: Database['public']['Tables']['books']['Insert'][] = [];
 
   // Validate each row (first pass — record errors)
   for (let i = 0; i < items.length; i++) {

@@ -39,7 +39,6 @@ interface PhaseResult {
 }
 
 // Smoke test queries many tables (some not in generated types) — use any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = any;
 
 // ── Constants ─────────────────────────────────────────────────

@@ -100,7 +100,7 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
     .like('slug', `${slug}%`);
 
   if (existing && existing.length > 0) {
-    const existingSlugs = new Set(existing.map((b: { slug: string }) => b.slug));
+    const existingSlugs = new Set(existing.map((b: { slug: string | null }) => b.slug));
     if (existingSlugs.has(slug)) {
       let counter = 2;
       while (existingSlugs.has(`${slug}-${counter}`)) counter++;

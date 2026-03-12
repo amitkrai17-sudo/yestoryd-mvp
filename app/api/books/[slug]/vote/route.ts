@@ -75,7 +75,7 @@ export const DELETE = withParamsHandler<{ slug: string }>(async (req, params, ct
   const bookId = params.slug;
   const voteType = req.nextUrl.searchParams.get('vote_type') || 'kahani_request';
 
-  const userId = auth.userId;
+  const userId = auth.userId!;
 
   // Delete the most recent vote of this type by this user
   const { data: votes } = await supabase

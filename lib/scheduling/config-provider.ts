@@ -217,7 +217,6 @@ interface CacheEntry<T> {
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cache = new Map<string, CacheEntry<any>>();
 
 function getCached<T>(key: string): T | null {

@@ -31,13 +31,15 @@ export const POST = withApiHandler(async (_req: NextRequest, ctx) => {
   // Log to activity_log
   await supabase.from('activity_log').insert({
     action: 'book_embedding_generation',
-    actor_type: 'admin',
-    details: {
+    user_email: 'system',
+    user_type: 'admin',
+    metadata: JSON.parse(JSON.stringify({
       total_books: books.length,
       success: result.success,
       failed: result.failed,
-      errors: result.errors.slice(0, 10), // Cap error details
-    },
+      errors: result.errors.slice(0, 10),
+    })),
+    page_path: '/api/admin/books/generate-embeddings',
   });
 
   return NextResponse.json({

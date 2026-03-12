@@ -152,15 +152,22 @@ export async function getBookRecommendations(
     // ── Fetch child profile ──
     const { data: child } = await supabase
       .from('children')
-      .select('id, child_name, age, overall_reading_level, learning_profile, areas_to_improve, latest_assessment_score, assessment_wpm, learning_needs')
+      .select('id, child_name, age, learning_profile, latest_assessment_score, assessment_wpm, learning_needs')
       .eq('id', childId)
       .single();
 
     if (!child) return [];
 
     const childProfile: ChildProfile = {
-      ...child,
-      reading_level: child.overall_reading_level,
+      id: child.id,
+      child_name: child.child_name,
+      age: child.age,
+      reading_level: null,
+      learning_profile: child.learning_profile as Record<string, unknown> | null,
+      areas_to_improve: null,
+      latest_assessment_score: child.latest_assessment_score,
+      assessment_wpm: child.assessment_wpm,
+      learning_needs: child.learning_needs,
     };
 
     // ── Fetch intelligence profile (if exists) ──
