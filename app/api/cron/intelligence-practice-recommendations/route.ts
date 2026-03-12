@@ -13,7 +13,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,43 +63,7 @@ const GENERIC_READING_TASK = {
   description: 'Read together for 15 minutes. Pick a book your child enjoys — the most important thing is making reading fun!',
   task_type: 'practice_reading',
   duration_minutes: 15,
-};
-
-// ============================================================
-// AUTH VERIFICATION
-// ============================================================
-
-async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
-  const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
-    return { isValid: true, source: 'cron_secret' };
-  }
-
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  const signature = request.headers.get('upstash-signature');
-  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    try {
-      const receiver = new Receiver({
-        currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
-        nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
-      });
-      const isValid = await receiver.verify({ signature, body: body || '' });
-      if (isValid) return { isValid: true, source: 'qstash' };
-    } catch (e) {
-      console.error('QStash verification failed:', e);
-    }
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    return { isValid: true, source: 'dev_bypass' };
-  }
-
-  return { isValid: false, source: 'none' };
-}
+};
 
 // ============================================================
 // MAIN HANDLER
@@ -108,7 +74,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const auth = await verifyCronAuth(request);
+    const auth = await verifyCronRequest(request);
     if (!auth.isValid) {
       console.error(JSON.stringify({ requestId, event: 'practice_recs_auth_failed' }));
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -354,7 +320,7 @@ export async function GET(request: NextRequest) {
     // Activity log
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'system@yestoryd.com',
+        user_email: COMPANY_CONFIG.supportEmail,
         user_type: 'admin',
         action: 'intelligence_practice_recommendations',
         metadata: { requestId, ...summary },

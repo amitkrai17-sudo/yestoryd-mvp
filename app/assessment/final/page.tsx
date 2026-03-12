@@ -11,8 +11,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Mic, Square, Play, Pause, RotateCcw, Send, 
   CheckCircle, Clock, Volume2, BookOpen, Sparkles,
-  Award, ArrowRight, Loader2, AlertCircle
+  Award, ArrowRight, AlertCircle
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // Sample reading passages for final assessment
 const READING_PASSAGES = [
@@ -227,7 +228,7 @@ function FinalAssessmentContent() {
             <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl p-6 text-white text-center">
               <Sparkles className="w-10 h-10 mx-auto mb-3 text-yellow-300" />
               <h2 className="text-xl font-bold mb-2">
-                Congratulations! 🎉
+                Congratulations!
               </h2>
               <p className="text-pink-100">
                 {enrollmentData?.childName} has completed all coaching sessions with Coach {enrollmentData?.coachName}!
@@ -406,13 +407,13 @@ function FinalAssessmentContent() {
               <CheckCircle className="w-12 h-12 text-green-500" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Assessment Complete! 🎉
+              Assessment Complete!
             </h2>
             <p className="text-gray-600 mb-6">
               Redirecting to {enrollmentData?.childName}'s achievement page...
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
               Please wait...
             </div>
           </div>

@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import { 
-  HelpCircle, 
-  Send, 
-  Loader2, 
-  CheckCircle, 
+  HelpCircle,
+  Send,
+  CheckCircle,
   X,
   MessageSquare,
   CreditCard,
@@ -16,6 +15,8 @@ import {
   MoreHorizontal,
   Sparkles
 } from 'lucide-react';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { Spinner } from '@/components/ui/spinner';
 
 interface SupportFormProps {
   userType: 'parent' | 'coach';
@@ -261,7 +262,7 @@ export default function SupportForm({
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Spinner size="sm" />
                       Submitting...
                     </>
                   ) : (
@@ -306,8 +307,8 @@ export default function SupportForm({
                 
                 <p className="text-xs text-gray-500">
                   Need urgent help? Call us at{' '}
-                  <a href="tel:+918976287997" className="font-medium" style={{ color: theme.primary }}>
-                    +91 8976287997
+                  <a href={`tel:+${COMPANY_CONFIG.leadBotWhatsApp}`} className="font-medium" style={{ color: theme.primary }}>
+                    {COMPANY_CONFIG.leadBotWhatsAppDisplay}
                   </a>
                 </p>
               </div>

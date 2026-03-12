@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import crypto from 'crypto';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ const DEFAULT_COACHES = [
   {
     id: '9fb07277-60b6-4410-a71c-9de94b8b9971',
     name: 'Rucha Rai',
-    email: 'engage@yestoryd.com',
+    email: COMPANY_CONFIG.supportEmail,
     is_available: true,
     is_active: true,
     exit_status: null

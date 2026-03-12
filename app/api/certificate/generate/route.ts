@@ -67,6 +67,14 @@ export async function GET(request: NextRequest) {
     const childName = capitalizeName((enrollment.children as any)?.name || (enrollment.children as any)?.child_name || 'Student');
     const coachName = capitalizeName((enrollment.coaches as any)?.name || 'Coach');
     const certificateNumber = enrollment.certificate_number || `YC-${new Date().getFullYear()}-00001`;
+
+    // Query actual completed session count
+    const { count: completedSessionCount } = await supabase
+      .from('scheduled_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('enrollment_id', enrollmentId)
+      .eq('status', 'completed');
+    const sessionsLabel = `${completedSessionCount || 0} Sessions Completed`;
     const completedDate = enrollment.completed_at 
       ? new Date(enrollment.completed_at).toLocaleDateString('en-IN', { 
           day: 'numeric', 
@@ -279,7 +287,7 @@ export async function GET(request: NextRequest) {
           demonstrating dedication, progress, and a love for reading.
         </div>
         <div class="achievement">
-          🏆 9 Sessions Completed • Certified Reader
+          ${sessionsLabel} • Certified Reader
         </div>
       </div>
       

@@ -19,12 +19,13 @@ import {
   Pause,
   RotateCcw,
   CheckCircle2,
-  Loader2,
   AlertCircle,
   Send,
   Sparkles,
-  User
+  User,
+  Volume2
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Message {
   role: 'assistant' | 'user';
@@ -56,13 +57,22 @@ function AssessmentPageContent() {
   const [questionNumber, setQuestionNumber] = useState(1);
   const [isTyping, setIsTyping] = useState(false);
   const [chatComplete, setChatComplete] = useState(false);
+  const [lowEffortCount, setLowEffortCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Welcome audio states
+  const [welcomeAudioUrl, setWelcomeAudioUrl] = useState<string | null>(null);
+  const [welcomePlaying, setWelcomePlaying] = useState(false);
+  const [welcomeEnded, setWelcomeEnded] = useState(false);
+  const [welcomeProgress, setWelcomeProgress] = useState(0);
+  const [welcomeShowButton, setWelcomeShowButton] = useState(false);
 
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const welcomeAudioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -83,6 +93,12 @@ function AssessmentPageContent() {
       if (fetchError || !data) {
         setError('Application not found. Please start over.');
       } else {
+        // Redirect to confirmation if assessment is already complete
+        const completedStatuses = ['ai_assessment_complete', 'waitlist', 'qualified', 'not_qualified'];
+        if (completedStatuses.includes(data.status)) {
+          router.replace(`/yestoryd-academy/confirmation?applicationId=${applicationId}`);
+          return;
+        }
         setApplicationData(data);
       }
       setIsLoading(false);
@@ -90,6 +106,67 @@ function AssessmentPageContent() {
 
     loadApplication();
   }, [applicationId, router]);
+
+  // Fetch welcome audio URL from site_settings
+  useEffect(() => {
+    const fetchWelcomeAudio = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'coach_welcome_audio_url')
+          .single();
+
+        if (error || !data?.value) return;
+
+        const url = typeof data.value === 'string'
+          ? data.value.replace(/^"|"$/g, '') // strip JSON quotes if stored as JSON string
+          : '';
+        if (!url) return;
+
+        setWelcomeAudioUrl(url);
+
+        // Attempt autoplay after a short delay
+        const audio = welcomeAudioRef.current;
+        if (audio) {
+          audio.src = url;
+          try {
+            await audio.play();
+            setWelcomePlaying(true);
+          } catch {
+            // Autoplay blocked by browser — show play button
+            setWelcomeShowButton(true);
+          }
+        }
+      } catch (err) {
+        console.error('[WelcomeAudio] Failed to fetch:', err);
+      }
+    };
+
+    fetchWelcomeAudio();
+  }, []);
+
+  // Welcome audio event handlers
+  const handleWelcomePlayPause = () => {
+    const audio = welcomeAudioRef.current;
+    if (!audio || !welcomeAudioUrl) return;
+
+    if (welcomePlaying) {
+      audio.pause();
+      setWelcomePlaying(false);
+    } else {
+      // Reset if ended
+      if (welcomeEnded) {
+        audio.currentTime = 0;
+        setWelcomeEnded(false);
+      }
+      audio.play().catch((err) => {
+        console.error('[WelcomeAudio] Play failed:', err);
+      });
+      setWelcomePlaying(true);
+      setWelcomeShowButton(true); // ensure button stays visible
+    }
+  };
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -221,9 +298,11 @@ function AssessmentPageContent() {
       const response = await fetch('/api/coach-assessment/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           messages: [],
-          questionNumber: 1
+          questionNumber: 1,
+          applicationId,
+          lowEffortCount: 0
         })
       });
 
@@ -235,14 +314,14 @@ function AssessmentPageContent() {
         // Fallback greeting
         setMessages([{
           role: 'assistant',
-          content: "Namaste! 🙏 I'm rAI, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
+          content: "Namaste! I'm rAI, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
         }]);
       }
     } catch (err) {
       console.error('Error starting conversation:', err);
       setMessages([{
         role: 'assistant',
-        content: "Namaste! 🙏 I'm rAI, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
+        content: "Namaste! I'm rAI, and I'll be having a brief chat with you today. I'd love to understand how you approach working with children.\n\nQuestion 1 of 4: Imagine you're coaching a 6-year-old who suddenly gets frustrated and says 'I can't do this.' How would you handle that moment?"
       }]);
     }
 
@@ -266,16 +345,23 @@ function AssessmentPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: newMessages,
-          questionNumber
+          questionNumber,
+          applicationId,
+          lowEffortCount
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        
+
         setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
         setQuestionNumber(data.questionNumber || questionNumber + 1);
-        
+
+        // Track low-effort count from Gemini's response
+        if (typeof data.lowEffortCount === 'number') {
+          setLowEffortCount(data.lowEffortCount);
+        }
+
         if (data.isComplete) {
           setChatComplete(true);
           // Save assessment data with FULL conversation
@@ -291,7 +377,7 @@ function AssessmentPageContent() {
         "That's a thoughtful approach. Here's another scenario: After a month of coaching, a parent tells you their child hasn't improved much. They're disappointed. What would you say?",
         "I appreciate your perspective. Next: During a session, a usually cheerful child seems quiet and withdrawn today. How would you approach this?",
         "Thank you for sharing. Last question: A parent asks 'Can you guarantee my child will improve by 2 grade levels in 3 months?' How do you respond?",
-        "Thank you for sharing your thoughts! 🙏\n\nOur team will review your application within 48 hours. If we're a good match, you'll hear from Rucha (our founder).\n\nBest wishes!"
+        "Thank you for sharing your thoughts!\n\nOur team will review your application within 48 hours. If we're a good match, you'll hear from Rucha (our founder).\n\nBest wishes!"
       ];
       
       const nextQ = Math.min(questionNumber, 4);
@@ -392,7 +478,7 @@ function AssessmentPageContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -457,6 +543,62 @@ function AssessmentPageContent() {
                 Record a 1-2 minute voice statement about why you want to become a reading coach
               </p>
             </div>
+
+            {/* Welcome Audio from Rucha */}
+            <audio
+              ref={welcomeAudioRef}
+              preload="auto"
+              onTimeUpdate={() => {
+                const audio = welcomeAudioRef.current;
+                if (audio && audio.duration) {
+                  setWelcomeProgress((audio.currentTime / audio.duration) * 100);
+                }
+              }}
+              onEnded={() => {
+                setWelcomePlaying(false);
+                setWelcomeEnded(true);
+                setWelcomeShowButton(true);
+              }}
+              onError={() => {
+                console.error('[WelcomeAudio] Audio failed to load');
+                setWelcomeAudioUrl(null);
+              }}
+            />
+
+            {welcomeAudioUrl && (welcomeShowButton || welcomePlaying) && (
+              <div className="mb-6 mx-auto max-w-sm">
+                <button
+                  onClick={handleWelcomePlayPause}
+                  className="w-full flex items-center gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+                >
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center ${welcomePlaying ? 'animate-pulse' : ''}`}>
+                    <Volume2 className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="flex-grow min-w-0">
+                    <p className="text-sm font-medium text-slate-900">Rucha, Head Coach</p>
+                    <p className="text-xs text-slate-500">
+                      {welcomePlaying ? 'Playing...' : welcomeEnded ? 'Replay message' : 'Listen to my message'}
+                    </p>
+                    {/* Progress bar */}
+                    {(welcomePlaying || welcomeEnded) && (
+                      <div className="mt-1.5 h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                          style={{ width: `${welcomeProgress}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    {welcomePlaying ? (
+                      <Pause className="w-5 h-5 text-slate-600" />
+                    ) : (
+                      <Play className="w-5 h-5 text-slate-600" />
+                    )}
+                  </div>
+                </button>
+              </div>
+            )}
 
             {/* Recording Interface */}
             <div className="text-center py-8">
@@ -675,7 +817,7 @@ function AssessmentPageContent() {
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Spinner color="white" />
                       Submitting...
                     </>
                   ) : (
@@ -698,7 +840,7 @@ export default function AssessmentPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     }>
       <AssessmentPageContent />

@@ -25,6 +25,7 @@ import {
   FileText,
   Mic,
 } from 'lucide-react';
+import { Avatar } from '@/components/shared/Avatar';
 
 // ============================================================
 // TYPES
@@ -793,9 +794,7 @@ export default function AdminDashboardPage() {
                   {recentEnrollments.map((enrollment, index) => (
                     <div key={index} className="p-3 sm:p-4 hover:bg-surface-2 transition-colors">
                       <div className="flex items-center gap-2.5 sm:gap-4">
-                        <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white/[0.08] rounded-full flex items-center justify-center text-white text-sm sm:text-base font-semibold flex-shrink-0">
-                          {enrollment.childName?.charAt(0) || 'C'}
-                        </div>
+                        <Avatar name={enrollment.childName || 'C'} size="md" portal="admin" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm sm:text-base font-medium text-white truncate">{enrollment.childName}</p>
                           <p className="text-xs text-text-tertiary truncate">

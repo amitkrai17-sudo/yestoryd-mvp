@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { capitalizeName } from '@/lib/utils';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
@@ -12,8 +12,6 @@ import { getGeminiModel } from '@/lib/gemini-config';
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface ReportData {
   child: {
@@ -92,7 +90,7 @@ export async function POST(
     }
 
     // NOTE: Assessment data queries disabled - assessment columns don't exist in children table
-    // Would need to query child_rag_profiles or another assessment table
+    // Assessment scores are stored in child_intelligence_profiles.skill_ratings
     const initialAssessment = null;
     const finalAssessment = null;
 
@@ -167,7 +165,7 @@ export async function POST(
     };
 
     // Generate report using Gemini
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('feedback_generation') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('feedback_generation') });
 
     const prompt = `You are an expert reading coach and child development specialist. Generate a comprehensive, warm, and encouraging progress report for a child who completed a 12-week reading coaching program.
 

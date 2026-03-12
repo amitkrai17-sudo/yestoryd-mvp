@@ -8,8 +8,9 @@
 import { useState, useEffect } from 'react';
 import {
   Gift, Copy, Check, Share2, Users, IndianRupee,
-  Loader2, ChevronRight, MessageCircle, Clock, Sparkles
+  ChevronRight, MessageCircle, Clock, Sparkles
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface ReferralData {
   referralCode: string;
@@ -37,7 +38,7 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [data, setData] = useState<ReferralData | null>(null);
-  const [config, setConfig] = useState<ReferralConfig>({ creditAmount: 600, discountPercent: 10 });
+  const [config, setConfig] = useState<ReferralConfig>({ creditAmount: 600, discountPercent: 10 }); // Initial defaults; overridden by fetchReferralConfig() from site_settings
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -136,11 +137,11 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
   function shareOnWhatsApp() {
     if (data?.referralCode) {
       const message = encodeURIComponent(
-        `Hey! 👋\n\n` +
-        `My child ${childName} has been doing amazing with Yestoryd's reading program! 📚\n\n` +
+        `Hey!\n\n` +
+        `My child ${childName} has been doing amazing with Yestoryd's reading program!\n\n` +
         `Use my referral code *${data.referralCode}* to get ${config.discountPercent}% OFF your enrollment.\n\n` +
         `Take the free AI reading assessment here: https://yestoryd.com/assessment?ref=${data.referralCode}\n\n` +
-        `Trust me, it's worth it! 🌟`
+        `Trust me, it's worth it!`
       );
       window.open(`https://wa.me/?text=${message}`, '_blank');
     }
@@ -162,7 +163,7 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#7b008b] mx-auto mb-4" />
+          <Spinner size="lg" className="text-[#7b008b] mx-auto mb-4" />
           <p className="text-gray-500">Loading referral data...</p>
         </div>
       </div>
@@ -193,7 +194,7 @@ export default function ReferralsTab({ parentEmail, parentName, childName }: Ref
           >
             {generating ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Spinner />
                 Generating...
               </>
             ) : (

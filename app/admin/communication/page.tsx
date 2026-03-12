@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Radio, Send, FileText, BarChart3, RefreshCw, Bell, Mail, MessageSquare, Smartphone, Loader2 } from 'lucide-react';
+import { Radio, Send, FileText, BarChart3, RefreshCw, Bell, Mail, MessageSquare, Smartphone } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { supabase } from '@/lib/supabase/client';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -42,20 +44,15 @@ export default function CommunicationPage() {
   return (
     <div className="bg-surface-0 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#121217] border border-white/[0.08] flex items-center justify-center flex-shrink-0">
-            <Radio className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">Communication Hub</h1>
-            <p className="text-text-tertiary text-xs sm:text-sm">Multi-channel notifications & analytics</p>
-          </div>
-        </div>
-        <button onClick={loadData} disabled={loading} className="p-2 bg-surface-1 hover:bg-surface-2 rounded-xl text-text-tertiary flex-shrink-0">
-          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
+      <PageHeader
+        title="Communication Hub"
+        subtitle="Multi-channel notifications & analytics"
+        action={
+          <button onClick={loadData} disabled={loading} className="p-2 bg-surface-1 hover:bg-surface-2 rounded-xl text-text-tertiary flex-shrink-0">
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex bg-surface-1 rounded-xl p-1 mb-6 overflow-x-auto">
@@ -76,7 +73,7 @@ export default function CommunicationPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-gray-400 animate-spin" /></div>
+        <div className="flex justify-center py-20"><Spinner size="lg" color="muted" /></div>
       ) : (
         <>
           {activeTab === 'dashboard' && (

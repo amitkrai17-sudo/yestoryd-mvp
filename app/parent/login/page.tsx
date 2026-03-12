@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, BookOpen, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { supabase } from '@/lib/supabase/client';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
-// Default WhatsApp number (can be fetched from site_settings)
-const DEFAULT_WHATSAPP = '918976287997';
+// WhatsApp support number (Lead Bot — user-facing)
+const AISENSY_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
 
 export default function ParentLoginPage() {
   const [email, setEmail] = useState('');
@@ -691,9 +693,7 @@ export default function ParentLoginPage() {
 
           <p className="text-center mt-6 text-text-tertiary text-sm">
             Need help?{' '}
-            <a href={`https://wa.me/${DEFAULT_WHATSAPP}`} className="text-[#00abff] hover:underline">
-              Contact Support
-            </a>
+            <WhatsAppButton phone={AISENSY_WHATSAPP} variant="link" label="Contact Support" className="text-[#00abff]" />
           </p>
         </div>
       </div>

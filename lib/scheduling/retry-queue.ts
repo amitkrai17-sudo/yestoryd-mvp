@@ -192,7 +192,7 @@ export async function processRetry(
         coachId: session.coach_id,
         sessionType: session.session_type || 'coaching',
         weekNumber: session.week_number,
-        durationMinutes: session.duration_minutes || 45,
+        durationMinutes: session.duration_minutes || 45, // Fallback for Building band; actual value from scheduled_sessions.duration_minutes
       },
       { isRetry: true, sessionId }
     );

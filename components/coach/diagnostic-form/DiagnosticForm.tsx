@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Loader2, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getDiagnosticFields, getFieldSections, type DiagnosticField } from './schemas';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -212,7 +213,7 @@ export default function DiagnosticForm({
       >
         {saving ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Spinner size="sm" />
             Saving...
           </>
         ) : (

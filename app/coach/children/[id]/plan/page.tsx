@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Loader2, AlertCircle, CheckCircle2, ChevronDown,
+  ArrowLeft, AlertCircle, CheckCircle2, ChevronDown,
   ChevronUp, GripVertical, ArrowUpDown, Replace, StickyNote,
   Sparkles, Target, Clock, BookOpen, Shield,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
+import { Avatar } from '@/components/shared/Avatar';
 
 interface PlanItem {
   id: string;
@@ -231,7 +233,7 @@ export default function PlanReviewPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
+        <Spinner size="lg" className="text-[#00ABFF]" />
       </div>
     );
   }
@@ -320,9 +322,7 @@ export default function PlanReviewPage() {
         {/* Plan Overview Card */}
         <div className="bg-surface-1 border border-border rounded-xl p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#0066CC] flex items-center justify-center text-white font-bold text-sm">
-              {child?.child_name?.charAt(0) || '?'}
-            </div>
+            <Avatar name={child?.child_name || '?'} size="md" portal="coach" />
             <div className="flex-1">
               <p className="text-white font-medium">{child?.child_name}</p>
               <div className="flex items-center gap-2 mt-0.5">
@@ -627,7 +627,7 @@ export default function PlanReviewPage() {
               className="flex items-center gap-2 bg-[#00ABFF] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#00ABFF]/90 disabled:opacity-50 transition-colors"
             >
               {approving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Spinner size="sm" color="white" />
               ) : (
                 <Shield className="w-4 h-4" />
               )}

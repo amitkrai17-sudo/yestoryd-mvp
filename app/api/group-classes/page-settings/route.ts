@@ -20,7 +20,7 @@ const DEFAULTS = {
   age_range: { min: 4, max: 12 },
   stats: [
     { value: '500+', label: 'Sessions Conducted', icon: 'calendar' },
-    { value: '1000+', label: 'Happy Kids', icon: 'users' },
+    { value: '500+', label: 'Happy Kids', icon: 'users' },
     { value: '4.9★', label: 'Parent Rating', icon: 'star' },
     { value: '50+', label: 'Books Read', icon: 'book' },
   ],

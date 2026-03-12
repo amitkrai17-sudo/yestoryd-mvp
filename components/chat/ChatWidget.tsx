@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Loader2, Sparkles, Minimize2, Copy, MessageCircle, Check, RotateCw, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { X, Send, Sparkles, Minimize2, Copy, MessageCircle, Check, RotateCw, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { readChatSSE } from '@/lib/rai/sse-client';
 
 interface Message {

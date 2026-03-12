@@ -3,13 +3,11 @@
 // Used when Tier 0 regex doesn't match
 // ============================================================
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import type { Intent } from './tier0-regex';
 import type { ConversationState } from '@/lib/whatsapp/types';
 
 import { getGeminiModel } from '@/lib/gemini-config';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export interface GeminiClassification {
   intent: Intent;
@@ -53,7 +51,7 @@ export async function classifyTier1(
   collectedData: Record<string, unknown>
 ): Promise<GeminiClassification> {
   try {
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: getGeminiModel('classification'),
       generationConfig: {
         temperature: 0.1,

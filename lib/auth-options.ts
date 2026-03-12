@@ -253,7 +253,7 @@ export const authOptions: NextAuthOptions = {
           provider: account?.provider,
         });
 
-        console.log(`✅ Sign-in successful: ${email} (${role})`);
+        console.log(`[OK] Sign-in successful: ${email} (${role})`);
         return true;
 
       } catch (error) {

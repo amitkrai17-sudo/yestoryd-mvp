@@ -6,10 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { scheduleCalendarEvent } from '@/lib/googleCalendar';
+import { getCategoryLabelMap } from '@/lib/config/skill-categories';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
-const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || 'engage@yestoryd.com';
+const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || COMPANY_CONFIG.supportEmail;
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
     const endTime = new Date(startTime.getTime() + sbDuration * 60 * 1000);
 
     const childName = child.child_name || child.name || 'Child';
-    const focusAreaLabel = getFocusAreaLabel(session.focus_area ?? '');
+    const focusAreaLabel = await getFocusAreaLabel(session.focus_area ?? '');
 
     let calendarResult;
     try {
@@ -185,17 +187,24 @@ Coach will join via Google Meet.`,
   }
 }
 
-// Helper function
-function getFocusAreaLabel(focusArea: string): string {
-  const labels: Record<string, string> = {
-    phonics_sounds: 'Phonics & Letter Sounds',
-    reading_fluency: 'Reading Fluency',
-    comprehension: 'Reading Comprehension',
-    vocabulary: 'Vocabulary Building',
-    grammar: 'Grammar & Sentence Structure',
-    confidence: 'Speaking Confidence',
-    specific_sounds: 'Specific Sound Practice',
-    other: 'Special Focus',
-  };
-  return labels[focusArea] || focusArea;
+// Helper: resolve focus area label from DB categories (canonical slugs)
+// Falls back to legacy labels + title-case for unknown values
+const LEGACY_FOCUS_LABELS: Record<string, string> = {
+  phonics_sounds: 'Phonics & Letter Sounds',
+  comprehension: 'Reading Comprehension',
+  vocabulary: 'Vocabulary Building',
+  grammar: 'Grammar & Sentence Structure',
+  confidence: 'Speaking Confidence',
+  specific_sounds: 'Specific Sound Practice',
+  other: 'Special Focus',
+};
+
+async function getFocusAreaLabel(focusArea: string): Promise<string> {
+  // Try canonical slug from DB first
+  const labelMap = await getCategoryLabelMap();
+  if (labelMap[focusArea]) return labelMap[focusArea];
+  // Fallback for legacy slugs
+  if (LEGACY_FOCUS_LABELS[focusArea]) return LEGACY_FOCUS_LABELS[focusArea];
+  // Last resort: title-case the raw value
+  return focusArea.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }

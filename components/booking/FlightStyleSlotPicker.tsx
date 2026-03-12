@@ -13,8 +13,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar, Clock, ChevronRight, ChevronLeft,
-  Loader2, CheckCircle, AlertCircle, Sparkles, RefreshCw
+  CheckCircle, AlertCircle, Sparkles, RefreshCw,
+  Sunrise, Sun, CloudSun, Sunset, Moon,
 } from 'lucide-react';
+import { formatDateRelative, formatTime12 } from '@/lib/utils/date-format';
+import { Spinner } from '@/components/ui/spinner';
+
+const BUCKET_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Sunrise, Sun, CloudSun, Sunset, Moon,
+};
 
 // ============================================================
 // TYPES
@@ -32,7 +39,7 @@ interface TimeSlot {
 interface TimeBucket {
   name: string;
   displayName: string;
-  emoji: string;
+  icon: string;
   startHour: number;
   endHour: number;
   totalSlots: number;
@@ -118,8 +125,9 @@ export default function FlightStyleSlotPicker({
 
     setSelectedBucket(bucket);
 
-    // Find first date with slots in this bucket
-    const dates = Object.keys(slotsByDate).sort();
+    // Find first future date with slots in this bucket
+    const todayIST = getTodayISTString();
+    const dates = Object.keys(slotsByDate).filter(d => d >= todayIST).sort();
     for (const date of dates) {
       const hasSlots = slotsByDate[date]?.some(s => s.bucketName === bucket.name);
       if (hasSlots) {
@@ -144,38 +152,22 @@ export default function FlightStyleSlotPicker({
   // HELPERS
   // ============================================================
 
-  function formatDate(dateStr: string): string {
-    const date = new Date(dateStr + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const dateOnly = new Date(dateStr + 'T00:00:00');
-    dateOnly.setHours(0, 0, 0, 0);
-
-    if (dateOnly.getTime() === today.getTime()) return 'Today';
-    if (dateOnly.getTime() === tomorrow.getTime()) return 'Tomorrow';
-
-    return date.toLocaleDateString('en-IN', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-  }
-
-  function formatTime(time: string): string {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
+  function getTodayISTString(): string {
+    // IST = UTC+5:30 — defense in depth against API returning stale dates
+    const now = new Date();
+    const istMs = now.getTime() + (5.5 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000);
+    const ist = new Date(istMs);
+    const y = ist.getFullYear();
+    const m = String(ist.getMonth() + 1).padStart(2, '0');
+    const d = String(ist.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   function getAvailableDates(): string[] {
     if (!selectedBucket) return [];
+    const todayIST = getTodayISTString();
     return Object.keys(slotsByDate)
-      .filter(date => slotsByDate[date]?.some(s => s.bucketName === selectedBucket.name))
+      .filter(date => date >= todayIST && slotsByDate[date]?.some(s => s.bucketName === selectedBucket.name))
       .sort();
   }
 
@@ -197,7 +189,7 @@ export default function FlightStyleSlotPicker({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="w-10 h-10 animate-spin text-[#ff0099] mb-4" />
+        <Spinner size="xl" className="mb-4" />
         <p className="text-gray-500">Finding available times...</p>
       </div>
     );
@@ -214,7 +206,7 @@ export default function FlightStyleSlotPicker({
         <p className="text-red-500 mb-4">{error}</p>
         <button
           onClick={fetchSlots}
-          className="flex items-center gap-2 px-4 py-2 bg-[#ff0099] text-white rounded-lg"
+          className="flex items-center gap-2 px-4 py-2 bg-[#ff0099] text-white rounded-xl"
         >
           <RefreshCw className="w-4 h-4" />
           Try Again
@@ -284,7 +276,7 @@ export default function FlightStyleSlotPicker({
                 <div className="flex items-center justify-between">
                   {/* Left: Emoji + Info */}
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">{bucket.emoji}</span>
+                    {(() => { const Icon = BUCKET_ICONS[bucket.icon] || Clock; return <Icon className="w-6 h-6 text-[#ff0099]" />; })()}
                     <div>
                       <div className="font-semibold text-gray-900">
                         {bucket.displayName}
@@ -348,13 +340,13 @@ export default function FlightStyleSlotPicker({
       <div className="flex items-center gap-3">
         <button
           onClick={handleBack}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
         >
           <ChevronLeft className="w-5 h-5 text-gray-500" />
         </button>
         <div>
           <div className="font-semibold text-gray-900 flex items-center gap-2">
-            <span>{selectedBucket?.emoji}</span>
+            {(() => { const Icon = selectedBucket?.icon ? (BUCKET_ICONS[selectedBucket.icon] || Clock) : Clock; return <Icon className="w-5 h-5 text-[#ff0099]" />; })()}
             {selectedBucket?.displayName}
           </div>
           <p className="text-sm text-gray-500">Pick a specific time</p>
@@ -373,14 +365,14 @@ export default function FlightStyleSlotPicker({
               key={date}
               onClick={() => setSelectedDate(date)}
               className={`
-                flex-shrink-0 px-4 py-2 rounded-lg text-center transition-all min-w-[80px] snap-start
+                flex-shrink-0 px-4 py-2 rounded-xl text-center transition-all min-w-[80px] snap-start
                 ${isSelected
                   ? 'bg-[#ff0099] text-white shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }
               `}
             >
-              <div className="font-medium text-sm">{formatDate(date)}</div>
+              <div className="font-medium text-sm">{formatDateRelative(date)}</div>
               <div className="text-xs opacity-75">{slotsCount} slots</div>
             </button>
           );
@@ -404,9 +396,9 @@ export default function FlightStyleSlotPicker({
                 }
               `}
             >
-              <div className="font-semibold">{formatTime(slot.time)}</div>
+              <div className="font-semibold">{formatTime12(slot.time)}</div>
               <div className="text-xs opacity-75 mt-0.5">
-                to {formatTime(slot.endTime)}
+                to {formatTime12(slot.endTime)}
               </div>
             </button>
           );
@@ -426,7 +418,7 @@ export default function FlightStyleSlotPicker({
           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
           <div>
             <div className="font-medium text-green-800">
-              {formatDate(selectedSlot.date)} at {formatTime(selectedSlot.time)}
+              {formatDateRelative(selectedSlot.date)} at {formatTime12(selectedSlot.time)}
             </div>
             <div className="text-sm text-green-600">
               {durationMinutes}-minute {sessionType} session

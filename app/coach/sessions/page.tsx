@@ -3,8 +3,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import Link from 'next/link';
-
 import { PreSessionBrief, SessionCard } from '@/components/coach';
 import { ParentUpdateButton } from '@/components/coach/ParentUpdateButton';
 // Structured capture form (v3.0) with intelligence scoring
@@ -15,7 +13,6 @@ import { RequestOfflineModal } from '@/components/coach/RequestOfflineModal';
 import {
   Calendar,
   Filter,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   AlertCircle,
@@ -24,6 +21,8 @@ import {
   Clock,
   CalendarDays,
 } from 'lucide-react';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { Spinner } from '@/components/ui/spinner';
 import { getStatusConfig } from '@/components/coach/StatusBadge';
 
 // ============================================================
@@ -423,7 +422,7 @@ export default function CoachSessionsPage() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-4" />
+          <Spinner size="lg" className="text-[#00ABFF] mx-auto mb-4" />
           <p className="text-text-tertiary">Loading sessions...</p>
         </div>
       </div>
@@ -555,23 +554,15 @@ export default function CoachSessionsPage() {
       {view === 'list' && (
         <div className="space-y-4 lg:space-y-6">
           {Object.keys(groupedSessions).length === 0 ? (
-            <div className="bg-surface-1 border border-border rounded-xl p-8 lg:p-12 text-center">
-              <div className="w-12 h-12 lg:w-16 lg:h-16 bg-surface-2 rounded-xl lg:rounded-2xl flex items-center justify-center mx-auto mb-3 lg:mb-4">
-                <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-text-tertiary" />
-              </div>
-              <h3 className="text-white text-base lg:text-lg font-medium mb-2">No sessions found</h3>
-              <p className="text-text-tertiary text-sm mb-4">
-                {filterStatus === 'upcoming'
+            <div className="bg-surface-1 border border-border rounded-xl p-8 lg:p-12">
+              <EmptyState
+                icon={Calendar}
+                title="No sessions found"
+                description={filterStatus === 'upcoming'
                   ? 'No upcoming sessions scheduled'
                   : 'Try adjusting your filters'}
-              </p>
-              <Link
-                href="/coach/students"
-                className="inline-flex items-center gap-2 text-[#00ABFF] text-sm hover:underline"
-              >
-                <Users className="w-4 h-4" />
-                View Students
-              </Link>
+                action={{ label: 'View Students', href: '/coach/students' }}
+              />
             </div>
           ) : (
             Object.entries(groupedSessions)
@@ -818,7 +809,7 @@ export default function CoachSessionsPage() {
                 className="flex-1 px-3 lg:px-4 py-2.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {markingMissed === selectedSession.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                 ) : (
                   'Mark Missed'
                 )}
@@ -892,7 +883,7 @@ export default function CoachSessionsPage() {
                 className="flex-1 px-3 lg:px-4 py-2.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {cancelling === selectedSession.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                 ) : (
                   'Cancel'
                 )}

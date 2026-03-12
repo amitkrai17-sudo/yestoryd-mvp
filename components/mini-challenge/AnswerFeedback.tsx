@@ -6,7 +6,8 @@
 
 'use client';
 
-import { Volume2, ArrowRight, Loader2 } from 'lucide-react';
+import { Volume2, ArrowRight } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { LottieAnimation } from '@/components/ui/LottieAnimation';
 import { useTTS } from '@/hooks/useTTS';
 
@@ -64,7 +65,7 @@ export function AnswerFeedback({
           className="flex items-center gap-2 text-[#00ABFF] mt-4 hover:text-[#00ABFF]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Spinner size="sm" className="text-[#00ABFF]" />
           ) : (
             <Volume2 className="w-4 h-4" />
           )}

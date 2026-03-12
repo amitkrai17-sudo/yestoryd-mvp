@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -124,7 +125,7 @@ async function sendConfirmationEmail(
       </p>
       <p style="color: #999; font-size: 12px; margin: 10px 0 0 0;">
         <a href="https://yestoryd.com" style="color: #ff0099;">yestoryd.com</a> | 
-        <a href="https://wa.me/918976287997" style="color: #25D366;">WhatsApp</a>
+        <a href="https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}" style="color: #25D366;">WhatsApp</a>
       </p>
     </div>
     
@@ -137,7 +138,7 @@ async function sendConfirmationEmail(
       to: parentEmail,
       subject: `🎉 ${childName} is registered for ${sessionTitle}!`,
       html: emailContent,
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+      from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
     });
 
     if (result.success) {

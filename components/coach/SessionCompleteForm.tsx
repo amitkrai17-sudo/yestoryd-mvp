@@ -6,7 +6,6 @@ import {
   Mic,
   MicOff,
   Send,
-  Loader2,
   BookOpen,
   TrendingUp,
   Users,
@@ -26,6 +25,7 @@ import {
   FileText,
   LucideIcon,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface SessionCompleteFormProps {
   sessionId: string;
@@ -570,7 +570,7 @@ export default function SessionCompleteForm({
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner />
                     Saving...
                   </>
                 ) : (

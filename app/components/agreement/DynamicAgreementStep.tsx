@@ -5,7 +5,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Check, ChevronDown, Loader2, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import SignaturePad from './SignaturePad';
 
 interface AgreementInfo {
@@ -139,7 +140,7 @@ export default function DynamicAgreementStep({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600 mb-4" />
+        <Spinner size="lg" className="text-purple-600 mb-4" />
         <p className="text-gray-600">Loading agreement...</p>
       </div>
     );
@@ -316,7 +317,7 @@ export default function DynamicAgreementStep({
       >
         {signing ? (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Spinner color="white" />
             Signing Agreement...
           </>
         ) : (

@@ -4,7 +4,7 @@
 // Button component for one-click parent updates on session cards
 
 import { useState } from 'react';
-import { MessageCircle, Check, Loader2 } from 'lucide-react';
+import { MessageCircle, Check } from 'lucide-react';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 
 interface ParentUpdateButtonProps {

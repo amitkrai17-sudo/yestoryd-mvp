@@ -6,31 +6,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { processUnavailability } from '@/lib/scheduling/coach-availability-handler';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes
 
-function verifyCronAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true;
 
-  const qstashSignature = request.headers.get('upstash-signature');
-  if (qstashSignature) return true;
-
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) return true;
-
-  return false;
-}
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
-  if (!verifyCronAuth(request)) {
+  const cronAuth = await verifyCronRequest(request);
+  if (!cronAuth.isValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -138,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     // Audit log
     await supabase.from('activity_log').insert({
-      user_email: 'engage@yestoryd.com',
+      user_email: COMPANY_CONFIG.supportEmail,
       user_type: 'system',
       action: 'coach_unavailability_cron_executed',
       metadata: {

@@ -8,6 +8,7 @@ import { requireAdmin, requireAdminOrCoach } from '@/lib/api-auth';
 import { dispatch, type SchedulingEventType } from '@/lib/scheduling/orchestrator';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // 2 minutes
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     let auth: { authorized: boolean; email?: string | null; role?: string | null; error?: string };
     if (isInternalAuth) {
-      auth = { authorized: true, email: 'engage@yestoryd.com', role: 'admin' };
+      auth = { authorized: true, email: COMPANY_CONFIG.supportEmail, role: 'admin' };
     } else {
       auth = await requireAdminOrCoach();
       if (!auth.authorized) {

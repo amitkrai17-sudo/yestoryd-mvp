@@ -9,9 +9,12 @@
 import { useState, useEffect } from 'react';
 import {
   CalendarOff, Calendar, AlertTriangle, CheckCircle, ChevronDown,
-  ChevronUp, Loader2, Info, X, Users, Clock, Plane, Heart,
-  GraduationCap, Briefcase, AlertCircle, Eye, LogOut, DoorOpen
+  ChevronUp, Info, X, Users, Clock, Plane, Heart,
+  GraduationCap, Briefcase, AlertCircle, Eye, LogOut, DoorOpen,
+  Lightbulb, Hourglass, ClipboardList
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { DateInput } from '@/components/ui/date-input';
 
 interface CoachAvailabilityCardProps {
   coachId: string;
@@ -352,7 +355,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-6 h-6 animate-spin text-[#00abff]" />
+          <Spinner className="text-[#00abff]" />
         </div>
       </div>
     );
@@ -391,11 +394,11 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
           </div>
           <div className="text-left">
             <h3 className="font-semibold text-gray-800">
-              {isExiting 
-                ? '🚪 Leaving Yestoryd'
-                : hasUnavailability 
-                  ? '📅 Upcoming Time Off' 
-                  : '✅ Fully Available'
+              {isExiting
+                ? <><DoorOpen className="w-4 h-4 inline mr-1" />Leaving Yestoryd</>
+                : hasUnavailability
+                  ? <><Calendar className="w-4 h-4 inline mr-1" />Upcoming Time Off</>
+                  : <><CheckCircle className="w-4 h-4 inline mr-1" />Fully Available</>
               }
             </h3>
             <p className="text-sm text-gray-500">
@@ -585,7 +588,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                     </div>
                     <div>
                       <p className={`font-semibold text-base ${isExiting ? 'text-red-700' : 'text-red-600'}`}>
-                        {isExiting ? '🚪 Exit Scheduled' : '🚪 Leaving Yestoryd?'}
+                        {isExiting ? <><DoorOpen className="w-4 h-4 inline mr-1" />Exit Scheduled</> : <><DoorOpen className="w-4 h-4 inline mr-1" />Leaving Yestoryd?</>}
                       </p>
                       <p className="text-sm text-gray-500">
                         {isExiting 
@@ -652,32 +655,20 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
 
               {/* Date Selection */}
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    min={minStartDateStr}
-                    max={maxEndDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-[#00abff] text-sm text-gray-900 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate || minStartDateStr}
-                    max={maxEndDateStr}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00abff] focus:border-[#00abff] text-sm text-gray-900 bg-white"
-                  />
-                </div>
+                <DateInput
+                  label="Start Date"
+                  value={startDate}
+                  onChange={setStartDate}
+                  min={minStartDateStr}
+                  max={maxEndDateStr}
+                />
+                <DateInput
+                  label="End Date"
+                  value={endDate}
+                  onChange={setEndDate}
+                  min={startDate || minStartDateStr}
+                  max={maxEndDateStr}
+                />
               </div>
 
               {/* Notify Parents Toggle */}
@@ -705,7 +696,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                 className="w-full py-4 bg-gradient-to-r from-[#00abff] to-[#0066cc] text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {actionLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner />
                 ) : (
                   <>
                     <Eye className="w-5 h-5" />
@@ -775,7 +766,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
               <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-100">
                 <p className="font-medium text-blue-800 mb-1">What will happen:</p>
                 <p className="text-sm text-blue-700">{impactPreview.resolution}</p>
-                <p className="text-xs text-blue-600 mt-2">💡 {impactPreview.recommendation}</p>
+                <p className="text-xs text-blue-600 mt-2 flex items-start gap-1"><Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" /> {impactPreview.recommendation}</p>
               </div>
 
               {/* Confirm / Cancel Buttons */}
@@ -792,7 +783,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                   className="py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {actionLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner />
                   ) : (
                     <>
                       <CheckCircle className="w-5 h-5" />
@@ -842,7 +833,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
 
                     <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
                       <p className="text-sm text-amber-800">
-                        ⏳ Admin is handling student reassignment. You'll receive your final payout within 30 days of your last session.
+                        <Hourglass className="w-4 h-4 inline mr-1" /> Admin is handling student reassignment. You&apos;ll receive your final payout within 30 days of your last session.
                       </p>
                     </div>
 
@@ -852,7 +843,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                       className="w-full py-3 border-2 border-green-500 text-green-700 rounded-xl font-semibold hover:bg-green-50 transition-all flex items-center justify-center gap-2"
                     >
                       {exitLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Spinner />
                       ) : (
                         <>
                           <CheckCircle className="w-5 h-5" />
@@ -891,7 +882,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                     )}
 
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                      <p className="text-sm font-medium text-blue-800">📋 What happens next:</p>
+                      <p className="text-sm font-medium text-blue-800 flex items-center gap-1"><ClipboardList className="w-4 h-4" /> What happens next:</p>
                       <ul className="text-sm text-blue-700 mt-2 space-y-1">
                         <li>• Admin will reassign your students</li>
                         <li>• Parents will be notified of coach change</li>
@@ -913,7 +904,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                         className="py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-red-700 flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {exitLoading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Spinner />
                         ) : (
                           <>
                             <DoorOpen className="w-5 h-5" />
@@ -930,12 +921,10 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Last Working Date <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <DateInput
                         value={exitDate}
-                        onChange={(e) => setExitDate(e.target.value)}
+                        onChange={setExitDate}
                         min={minExitDateStr}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm text-gray-900 bg-white"
                       />
                       <p className="text-xs text-gray-500 mt-1">Minimum 14 days notice required</p>
                     </div>
@@ -962,7 +951,7 @@ export default function CoachAvailabilityCard({ coachId, coachEmail, onStatusCha
                       className="w-full py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-red-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {exitLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Spinner />
                       ) : (
                         <>
                           <Eye className="w-5 h-5" />

@@ -11,8 +11,11 @@ import { supabase } from '@/lib/supabase/client';
 import {
   Settings, Save, Search, ChevronDown, ChevronRight,
   Edit2, X, Check, AlertCircle, RefreshCw, Database,
-  Loader2, Copy, CheckCircle
+  Copy, CheckCircle
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { StatCard } from '@/components/shared/StatCard';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface SiteSetting {
   id: string;
@@ -214,7 +217,7 @@ export default function SiteSettingsManager() {
     return (
       <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-gray-400 animate-spin mx-auto mb-4" />
+          <Spinner size="xl" color="muted" className="mx-auto mb-4" />
           <p className="text-text-secondary">Loading settings...</p>
         </div>
       </div>
@@ -225,40 +228,33 @@ export default function SiteSettingsManager() {
     <div className="bg-surface-0 p-3 sm:p-4 lg:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/[0.08] rounded-xl flex items-center justify-center">
-              <Database className="w-6 h-6 text-gray-300" />
+        <PageHeader
+          title="Site Settings Manager"
+          subtitle={`${settings.length} settings across ${Object.keys(groupedSettings).length} categories`}
+          action={
+            <div className="flex gap-2">
+              <button
+                onClick={expandAll}
+                className="px-3 py-2 bg-surface-2 text-text-secondary rounded-lg hover:bg-surface-3 transition-colors text-sm"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={collapseAll}
+                className="px-3 py-2 bg-surface-2 text-text-secondary rounded-lg hover:bg-surface-3 transition-colors text-sm"
+              >
+                Collapse All
+              </button>
+              <button
+                onClick={fetchSettings}
+                className="flex items-center gap-2 px-3 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 transition-colors text-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Site Settings Manager</h1>
-              <p className="text-text-tertiary text-sm">
-                {settings.length} settings across {Object.keys(groupedSettings).length} categories
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={expandAll}
-              className="px-3 py-2 bg-surface-2 text-text-secondary rounded-lg hover:bg-surface-3 transition-colors text-sm"
-            >
-              Expand All
-            </button>
-            <button
-              onClick={collapseAll}
-              className="px-3 py-2 bg-surface-2 text-text-secondary rounded-lg hover:bg-surface-3 transition-colors text-sm"
-            >
-              Collapse All
-            </button>
-            <button
-              onClick={fetchSettings}
-              className="flex items-center gap-2 px-3 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 transition-colors text-sm"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Alerts */}
         {error && (
@@ -299,22 +295,10 @@ export default function SiteSettingsManager() {
 
         {/* Stats Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="bg-surface-1 border border-border rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-white">{settings.length}</p>
-            <p className="text-xs text-text-tertiary">Total Settings</p>
-          </div>
-          <div className="bg-surface-1 border border-border rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-white">{Object.keys(groupedSettings).length}</p>
-            <p className="text-xs text-text-tertiary">Categories</p>
-          </div>
-          <div className="bg-surface-1 border border-border rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-white">{settings.filter(s => getValueType(s.value) === 'object' || getValueType(s.value) === 'array').length}</p>
-            <p className="text-xs text-text-tertiary">JSON Values</p>
-          </div>
-          <div className="bg-surface-1 border border-border rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-white">{filteredCategories.length}</p>
-            <p className="text-xs text-text-tertiary">Showing</p>
-          </div>
+          <StatCard value={settings.length} label="Total Settings" color="gray" />
+          <StatCard value={Object.keys(groupedSettings).length} label="Categories" color="gray" />
+          <StatCard value={settings.filter(s => getValueType(s.value) === 'object' || getValueType(s.value) === 'array').length} label="JSON Values" color="gray" />
+          <StatCard value={filteredCategories.length} label="Showing" color="gray" />
         </div>
 
         {/* Categories */}
@@ -409,7 +393,7 @@ export default function SiteSettingsManager() {
                                     className="flex items-center gap-1.5 px-4 py-2 bg-white text-[#0a0a0f] rounded-lg hover:bg-gray-200 disabled:opacity-50 text-sm font-medium"
                                   >
                                     {saving ? (
-                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      <Spinner size="sm" />
                                     ) : (
                                       <Save className="w-4 h-4" />
                                     )}

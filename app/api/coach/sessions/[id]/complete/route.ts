@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
 import { queueProgressPulse } from '@/lib/qstash';
+import { getCategoryBySlug } from '@/lib/config/skill-categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,11 +30,6 @@ export async function POST(
     const supabase = supabaseAdmin;
     const { id: sessionId } = await params;
     const payload = await request.json();
-
-    console.log('=== SESSION COMPLETE API ===');
-    console.log('Session ID:', sessionId);
-    console.log('Focus:', payload.primaryFocus || payload.focusArea);
-    console.log('Progress:', payload.focusProgress || payload.progressRating);
 
     // Extract fields (support both new form and legacy formats)
     const primaryFocus = payload.primaryFocus || payload.focusArea;
@@ -67,8 +63,6 @@ export async function POST(
       800 // Warn if > 800ms
     );
 
-    console.log(`[SESSION_COMPLETE] Fetch took ${durationMs}ms`);
-
     if (fetchError || !session) {
       console.error('Session fetch error:', fetchError);
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
@@ -78,12 +72,17 @@ export async function POST(
       return NextResponse.json({ error: 'Session already completed' }, { status: 409 });
     }
 
-    // 2. Update scheduled_sessions status
+    // 2. Resolve category_id from focus area slug
+    const category = await getCategoryBySlug(primaryFocus);
+
+    // 3. Update scheduled_sessions status + focus metadata
     const { error: sessionError } = await supabase
       .from('scheduled_sessions')
       .update({
         status: 'completed',
         completed_at: new Date().toISOString(),
+        focus_area: primaryFocus,
+        category_id: category?.id ?? null,
       })
       .eq('id', sessionId);
 
@@ -92,7 +91,7 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
     }
 
-    // 3. Build event_data for learning_events (SINGLE SOURCE OF TRUTH)
+    // 4. Build event_data for learning_events (SINGLE SOURCE OF TRUTH)
     const eventData = {
       // Identifiers
       session_id: sessionId,
@@ -125,7 +124,7 @@ export async function POST(
       form_version: '2.0',
     };
 
-    // 4. Build content for embedding (RAG search)
+    // 5. Build content for embedding (RAG search)
     const contentParts = [
       `Coaching session #${eventData.session_number}`,
       `Focus: ${eventData.focus_area?.replace(/_/g, ' ')}`,
@@ -160,7 +159,7 @@ export async function POST(
 
     const contentForEmbedding = contentParts.join('\n').trim();
 
-    // 5. Insert learning_event
+    // 6. Insert learning_event
     const { error: eventError } = await supabase
       .from('learning_events')
       .insert({
@@ -179,7 +178,7 @@ export async function POST(
       // Log but don't fail - session is marked complete
     }
 
-    // 6. Update children cache (for quick parent queries)
+    // 7. Update children cache (for quick parent queries)
     const childSummary = {
       date: new Date().toISOString(),
       focus: primaryFocus,
@@ -225,8 +224,7 @@ export async function POST(
 
     // Generate daily parent tasks (non-blocking for response)
     try {
-      const taskResult = await generateAndInsertDailyTasks(session.child_id!, sessionId);
-      console.log(`[SESSION_COMPLETE] Daily tasks generated: ${taskResult.inserted}`);
+      await generateAndInsertDailyTasks(session.child_id!, sessionId);
     } catch (taskError) {
       console.error('[SESSION_COMPLETE] Daily task generation failed:', taskError);
     }
@@ -291,7 +289,7 @@ export async function POST(
               requestId: crypto.randomUUID(),
             });
 
-            console.log(`[SESSION_COMPLETE] Progress Pulse queued: session ${completedCount}, interval ${pulseInterval}`);
+            // Progress Pulse queued successfully
           }
         }
       }
@@ -300,8 +298,27 @@ export async function POST(
       console.error('[SESSION_COMPLETE] Progress Pulse check failed:', pulseError);
     }
 
-    const duration = Date.now() - startTime;
-    console.log(`=== SESSION COMPLETE SUCCESS (${duration}ms) ===`);
+    // Write to activity_log for audit trail
+    try {
+      await supabase.from('activity_log').insert({
+        action: 'session_completed',
+        user_email: session.coach_id || 'unknown',
+        user_type: 'coach',
+        metadata: {
+          session_id: sessionId,
+          child_id: session.child_id,
+          session_number: session.session_number,
+          focus_area: primaryFocus,
+          progress_rating: focusProgress,
+          engagement_level: engagementLevel,
+          highlights_count: highlights.length,
+          challenges_count: challenges.length,
+          homework_assigned: payload.homeworkAssigned || false,
+        },
+      });
+    } catch (logErr) {
+      console.error('Activity log error:', logErr);
+    }
 
     return NextResponse.json({
       success: true,

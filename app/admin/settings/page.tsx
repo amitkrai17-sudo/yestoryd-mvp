@@ -17,7 +17,7 @@ import {
   Globe,
   BookOpen,
   Calendar,
-  Loader2,
+
   Plus,
   Trash2,
   Edit3,
@@ -34,6 +34,8 @@ import {
   BarChart3,
   Video,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // ==================== TYPES ====================
 interface SiteSetting {
@@ -115,21 +117,21 @@ const FIELD_META: Record<string, {
     description: 'Include country code (+91)',
     type: 'tel',
     required: true,
-    defaultValue: '+918976287997',
+    defaultValue: `+${COMPANY_CONFIG.leadBotWhatsApp}`,
   },
   support_email: {
     label: 'Support Email',
     description: 'Customer support email',
     type: 'email',
     required: true,
-    defaultValue: 'engage@yestoryd.com',
+    defaultValue: COMPANY_CONFIG.supportEmail,
   },
   support_phone: {
     label: 'Support Phone',
     description: 'Phone for calls',
     type: 'tel',
     required: false,
-    defaultValue: '+918976287997',
+    defaultValue: `+${COMPANY_CONFIG.leadBotWhatsApp}`,
   },
   
   // Social - OPTIONAL
@@ -160,13 +162,13 @@ const FIELD_META: Record<string, {
     label: 'Total Assessments',
     description: 'Homepage hero stat',
     required: false,
-    defaultValue: '1000+',
+    defaultValue: '500+',
   },
   happy_parents: {
     label: 'Happy Parents',
     description: 'Homepage stat',
     required: false,
-    defaultValue: '500+',
+    defaultValue: '100+',
   },
   success_rate: {
     label: 'Success Rate',
@@ -218,7 +220,7 @@ const FIELD_META: Record<string, {
     description: 'Direct phone',
     type: 'tel',
     required: true,
-    defaultValue: '+918976287997',
+    defaultValue: `+${COMPANY_CONFIG.leadBotWhatsApp}`,
   },
   default_coach_email: {
     label: 'Coach Email',
@@ -527,7 +529,7 @@ export default function AdminSettingsPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <Spinner size="lg" color="muted" />
           <p className="text-text-secondary">Loading settings...</p>
         </div>
       </div>

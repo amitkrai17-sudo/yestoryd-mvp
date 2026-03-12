@@ -10,8 +10,10 @@ import { supabase } from '@/lib/supabase/client';
 import {
   BookOpen, Video, Play, Plus, Edit, Trash2, ChevronRight,
   ChevronDown, Eye, EyeOff, Clock, CheckCircle, Search,
-  Upload, GripVertical, BarChart3, Users, FileQuestion
+  Upload, GripVertical, BarChart3, Users, FileQuestion,
+  Layers
 } from 'lucide-react';
+import { StatCard } from '@/components/shared/StatCard';
 
 interface Level {
   id: string;
@@ -265,22 +267,10 @@ export default function AdminElearningPage() {
           <>
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <p className="text-sm text-text-tertiary">Total Levels</p>
-                <p className="text-2xl font-bold text-white">{levels.length}</p>
-              </div>
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <p className="text-sm text-text-tertiary">Total Modules</p>
-                <p className="text-2xl font-bold text-white">{totalModules}</p>
-              </div>
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <p className="text-sm text-text-tertiary">Total Videos</p>
-                <p className="text-2xl font-bold text-white">{totalVideos}</p>
-              </div>
-              <div className="bg-surface-1 rounded-xl p-4 border border-border">
-                <p className="text-sm text-text-tertiary">Published</p>
-                <p className="text-2xl font-bold text-green-400">{publishedVideos}</p>
-              </div>
+              <StatCard value={levels.length} label="Total Levels" icon={Layers} color="blue" variant="accent" />
+              <StatCard value={totalModules} label="Total Modules" icon={BookOpen} color="purple" variant="accent" />
+              <StatCard value={totalVideos} label="Total Videos" icon={Video} color="orange" variant="accent" />
+              <StatCard value={publishedVideos} label="Published" icon={CheckCircle} color="green" variant="accent" />
             </div>
 
             {/* Search */}

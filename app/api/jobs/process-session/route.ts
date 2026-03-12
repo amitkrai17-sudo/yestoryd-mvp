@@ -11,21 +11,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embeddings';
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getGeminiModel } from '@/lib/gemini-config';
+import { analyzeSessionTranscript, type SessionAnalysis } from '@/lib/gemini/session-prompts';
 
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization to avoid build-time errors) ---
 const getSupabase = createAdminClient;
 
-const getGenAI = () => new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // --- QSTASH SIGNATURE VERIFICATION (Manual - avoids build-time env var issues) ---
 async function verifyQStashSignature(
@@ -106,35 +104,7 @@ const SessionJobSchema = z.object({
 
 type SessionJobPayload = z.infer<typeof SessionJobSchema>;
 
-// --- 2. TYPES ---
-
-interface SessionAnalysis {
-  session_type?: string;
-  child_name?: string | null;
-  focus_area?: string;
-  skills_worked_on?: string[];
-  progress_rating?: string;
-  engagement_level?: string;
-  confidence_level?: number;
-  breakthrough_moment?: string | null;
-  concerns_noted?: string | null;
-  homework_assigned?: boolean;
-  homework_topic?: string | null;
-  homework_description?: string | null;
-  next_session_focus?: string | null;
-  coach_talk_ratio?: number;
-  child_reading_samples?: string[];
-  key_observations?: string[];
-  flagged_for_attention?: boolean;
-  flag_reason?: string | null;
-  safety_flag?: boolean;
-  safety_reason?: string | null;
-  sentiment_score?: number;
-  summary?: string;
-  parent_summary?: string;
-}
-
-// --- 3. HELPER FUNCTIONS ---
+// --- 2. HELPER FUNCTIONS ---
 
 /**
  * Sanitize text for AI prompt (prevent injection)
@@ -193,101 +163,6 @@ async function getChildContext(childId: string): Promise<{
   };
 }
 
-/**
- * Analyze transcript with Gemini AI
- */
-async function analyzeTranscript(
-  transcript: string,
-  childContext: { name: string; age: number; score: number | null; sessionsCompleted: number; recentSessions: string } | null,
-  childName: string,
-  requestId: string
-): Promise<SessionAnalysis> {
-  const sanitizedTranscript = sanitizeForPrompt(transcript);
-  const genAI = getGenAI();
-
-  const prompt = `You are an AI assistant for Yestoryd, a reading coaching platform for children aged 4-12 in India.
-
-TASK: Analyze this coaching session transcript and generate TWO outputs:
-1. COACH_ANALYSIS: Detailed analysis for internal use
-2. PARENT_SUMMARY: A warm, encouraging 2-3 sentence summary for parents
-
-${childContext ? `CHILD CONTEXT:
-- Name: ${childContext.name}
-- Age: ${childContext.age}
-- Current Score: ${childContext.score}/10
-- Sessions Completed: ${childContext.sessionsCompleted}
-${childContext.recentSessions ? `Recent Sessions:\n${childContext.recentSessions}` : ''}` : ''}
-
-TRANSCRIPT (Speaker-labeled):
-${sanitizedTranscript.substring(0, 15000)}
-
-Generate a JSON response with this structure:
-{
-  "session_type": "coaching",
-  "child_name": "${childName}",
-  "focus_area": "phonics|fluency|comprehension|vocabulary",
-  "skills_worked_on": ["skill codes"],
-  "progress_rating": "declined|same|improved|significant_improvement",
-  "engagement_level": "low|medium|high",
-  "confidence_level": 1-5,
-  "breakthrough_moment": "string or null",
-  "concerns_noted": "string or null",
-  "homework_assigned": true|false,
-  "homework_topic": "string or null",
-  "homework_description": "string or null",
-  "next_session_focus": "string or null",
-  "coach_talk_ratio": 0-100,
-  "child_reading_samples": ["phrases child read"],
-  "key_observations": ["observation 1", "observation 2"],
-  "flagged_for_attention": false,
-  "flag_reason": null,
-  "safety_flag": false,
-  "safety_reason": null,
-  "sentiment_score": 0.7,
-  "summary": "2-3 sentence technical summary for coach records",
-  "parent_summary": "2-3 sentence warm, encouraging summary for parents"
-}
-
-SAFETY: Set "safety_flag": true only for genuine signs of distress, anxiety, fear, or concerning mentions about home/school.
-
-Respond ONLY with valid JSON. No markdown, no backticks.`;
-
-  try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('session_analysis') });
-
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 2000,
-      },
-    });
-
-    const text = result.response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
-      const analysis = JSON.parse(jsonMatch[0]) as SessionAnalysis;
-      console.log(JSON.stringify({
-        requestId,
-        event: 'ai_analysis_complete',
-        focusArea: analysis.focus_area,
-        progressRating: analysis.progress_rating,
-      }));
-      return analysis;
-    }
-
-    return getDefaultAnalysis(childName);
-
-  } catch (error: any) {
-    console.error(JSON.stringify({
-      requestId,
-      event: 'ai_analysis_error',
-      error: error.message,
-    }));
-    return getDefaultAnalysis(childName);
-  }
-}
 
 function getDefaultAnalysis(childName: string): SessionAnalysis {
   return {
@@ -620,14 +495,26 @@ export async function POST(request: NextRequest) {
       : null;
     const childName = childContext?.name || 'Child';
 
-    // 5. AI Analysis (5-15 seconds)
+    // 5. AI Analysis (5-15 seconds) — uses shared builder from lib/gemini/session-prompts.ts
     console.log(JSON.stringify({ requestId, event: 'starting_ai_analysis' }));
-    const analysis = await analyzeTranscript(
-      payload.transcriptText,
-      childContext,
-      childName,
-      requestId
-    );
+    let analysis: SessionAnalysis;
+    try {
+      const sanitizedTranscript = sanitizeForPrompt(payload.transcriptText);
+      analysis = await analyzeSessionTranscript(sanitizedTranscript, childContext, childName);
+      console.log(JSON.stringify({
+        requestId,
+        event: 'ai_analysis_complete',
+        focusArea: analysis.focus_area,
+        progressRating: analysis.progress_rating,
+      }));
+    } catch (aiError: any) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'ai_analysis_error',
+        error: aiError.message,
+      }));
+      analysis = getDefaultAnalysis(childName);
+    }
 
     // 6. Audio Download & Storage (10-30 seconds)
     let audioStoragePath: string | undefined;

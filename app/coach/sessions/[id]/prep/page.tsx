@@ -10,9 +10,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Clock, User, BookOpen, AlertTriangle,
-  Sparkles, Target, CheckCircle, Loader2, Play,
+  Sparkles, Target, CheckCircle, Play,
   ChevronDown, ChevronUp, MessageSquare, FileText
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { Avatar } from '@/components/shared/Avatar';
 import SessionFeedbackForm from '@/components/shared/SessionFeedbackForm';
 import { SkillTagDisplay } from '@/components/shared/SkillTagSelector';
 
@@ -66,9 +68,16 @@ export default function SessionPrepHub() {
   const [prepNotes, setPrepNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [readingActivity, setReadingActivity] = useState<{
+    currentlyReading: string | null;
+    booksThisMonth: number;
+    recommended: { title: string; reason: string }[];
+  } | null>(null);
+
   const [expandedSections, setExpandedSections] = useState({
     history: true,
     patterns: true,
+    reading: true,
     notes: true,
   });
 
@@ -98,6 +107,51 @@ export default function SessionPrepHub() {
       fetchSessionData();
     }
   }, [sessionId]);
+
+  // Fetch reading activity when child is loaded
+  useEffect(() => {
+    if (!session?.children?.id) return;
+    const childId = session.children.id;
+
+    async function fetchReading() {
+      try {
+        const [statsRes, recsRes] = await Promise.all([
+          fetch(`/api/parent/reading?childId=${childId}`, {
+            headers: { Authorization: `Bearer admin` },
+          }).catch(() => null),
+          fetch(`/api/books/recommendations?childId=${childId}`, {
+            headers: { Authorization: `Bearer admin` },
+          }).catch(() => null),
+        ]);
+
+        let booksThisMonth = 0;
+        let currentlyReading: string | null = null;
+
+        if (statsRes?.ok) {
+          const statsData = await statsRes.json();
+          booksThisMonth = statsData.stats?.booksThisMonth || 0;
+          if (statsData.readingLogs?.[0]) {
+            currentlyReading = statsData.readingLogs[0].data?.book_title || null;
+          }
+        }
+
+        let recommended: { title: string; reason: string }[] = [];
+        if (recsRes?.ok) {
+          const recsData = await recsRes.json();
+          recommended = (recsData.recommendations || []).slice(0, 3).map((r: Record<string, unknown>) => ({
+            title: r.title as string,
+            reason: (r.recommendation_reason as string) || 'Recommended',
+          }));
+        }
+
+        setReadingActivity({ currentlyReading, booksThisMonth, recommended });
+      } catch {
+        // Silent — reading activity is non-critical
+      }
+    }
+
+    fetchReading();
+  }, [session?.children?.id]);
 
   // Save prep notes
   const saveNotes = async () => {
@@ -146,7 +200,7 @@ export default function SessionPrepHub() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-500 mx-auto mb-4" />
+          <Spinner size="xl" className="text-blue-500 mx-auto mb-4" />
           <p className="text-text-tertiary">Loading session data...</p>
         </div>
       </div>
@@ -231,9 +285,7 @@ export default function SessionPrepHub() {
             {/* Child Overview */}
             <div className="bg-surface-1 rounded-xl border border-border p-6">
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-2xl font-bold">
-                  {child.child_name.charAt(0)}
-                </div>
+                <Avatar name={child.child_name} size="lg" portal="coach" />
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{child.child_name}</h2>
                   <p className="text-text-tertiary">Age {child.age} • Parent: {child.parent_name}</p>
@@ -308,9 +360,9 @@ export default function SessionPrepHub() {
                           history.patterns.engagement_trend === 'declining' ? 'text-red-400' :
                           'text-text-tertiary'
                         }>
-                          {history.patterns.engagement_trend === 'improving' ? '📈 Improving' :
-                           history.patterns.engagement_trend === 'declining' ? '📉 Declining' :
-                           '➡️ Stable'}
+                          {history.patterns.engagement_trend === 'improving' ? 'Improving' :
+                           history.patterns.engagement_trend === 'declining' ? 'Declining' :
+                           'Stable'}
                         </span>
                       </p>
                     </div>
@@ -370,6 +422,53 @@ export default function SessionPrepHub() {
               </div>
             )}
 
+            {/* Reading Activity */}
+            {readingActivity && (
+              <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
+                <button
+                  onClick={() => toggleSection('reading')}
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-surface-2/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-rose-400" />
+                    <span className="font-semibold">Reading Activity</span>
+                  </div>
+                  {expandedSections.reading ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+
+                {expandedSections.reading && (
+                  <div className="px-6 pb-6 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-surface-2/50 rounded-lg">
+                        <p className="text-xs text-text-tertiary">Currently Reading</p>
+                        <p className="text-sm font-medium mt-0.5">
+                          {readingActivity.currentlyReading || 'No book logged'}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-surface-2/50 rounded-lg">
+                        <p className="text-xs text-text-tertiary">Books This Month</p>
+                        <p className="text-sm font-medium mt-0.5">{readingActivity.booksThisMonth}</p>
+                      </div>
+                    </div>
+
+                    {readingActivity.recommended.length > 0 && (
+                      <div>
+                        <p className="text-sm text-text-tertiary mb-2">Recommended Books</p>
+                        <div className="space-y-2">
+                          {readingActivity.recommended.map((rec, idx) => (
+                            <div key={idx} className="p-3 bg-surface-2/50 rounded-lg">
+                              <p className="text-sm font-medium">{rec.title}</p>
+                              <p className="text-xs text-text-tertiary mt-0.5">{rec.reason}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Recent Sessions History */}
             {history?.recent_sessions && history.recent_sessions.length > 0 && (
               <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
@@ -412,8 +511,7 @@ export default function SessionPrepHub() {
                                 sess.progress_rating === 'struggled' ? 'bg-red-900/30 text-red-400' :
                                 'bg-surface-2 text-text-secondary'}
                             `}>
-                              {sess.progress_rating === 'improved' ? '📈' : 
-                               sess.progress_rating === 'struggled' ? '📉' : '➡️'} {sess.progress_rating}
+                              {sess.progress_rating}
                             </span>
                           )}
                           {sess.rating_overall && (
@@ -423,14 +521,14 @@ export default function SessionPrepHub() {
 
                         {sess.breakthrough_moment && (
                           <div className="mt-2 p-2 bg-yellow-900/20 border border-yellow-800/30 rounded text-sm">
-                            <span className="text-yellow-400">✨ Breakthrough: </span>
+                            <span className="text-yellow-400">Breakthrough: </span>
                             {sess.breakthrough_moment}
                           </div>
                         )}
 
                         {sess.concerns_noted && (
                           <div className="mt-2 p-2 bg-red-900/20 border border-red-800/30 rounded text-sm">
-                            <span className="text-red-400">⚠️ Concern: </span>
+                            <span className="text-red-400">Concern: </span>
                             {sess.concerns_noted}
                           </div>
                         )}

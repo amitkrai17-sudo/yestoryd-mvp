@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
       const sessionsIncluded = v3.coachingSessions
         || plan.sessions_included
         || v3.sessionRange.max
-        || 9;
+        || 0;
 
       // V1 duration: prefer exact V3 duration if available, then DB column
       const coachingDuration = v3.sessionDurationMinutes

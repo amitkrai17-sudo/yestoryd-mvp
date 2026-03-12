@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { buildFullAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
@@ -12,8 +12,6 @@ import { buildFullAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,12 +49,23 @@ export async function POST(request: NextRequest) {
       .eq('id', enrollment.child_id)
       .single();
 
-    // Get assessment scores from child_rag_profiles
+    // Get previous assessment scores from child_intelligence_profiles
     const { data: profile } = await supabase
-      .from('child_rag_profiles')
-      .select('clarity_score, fluency_score, speed_score, strengths, areas_of_improvement')
+      .from('child_intelligence_profiles')
+      .select('skill_ratings, narrative_profile')
       .eq('child_id', enrollment.child_id)
-      .single();
+      .maybeSingle();
+
+    // Extract assessment scores from skill_ratings JSON (if present)
+    const skillRatings = (profile?.skill_ratings as Record<string, any>) || {};
+    const narrativeProfile = (profile?.narrative_profile as Record<string, any>) || {};
+    const previousScoresFromProfile = {
+      clarity_score: skillRatings.clarity_score as number | null ?? null,
+      fluency_score: skillRatings.fluency_score as number | null ?? null,
+      speed_score: skillRatings.speed_score as number | null ?? null,
+      strengths: (narrativeProfile.strengths as string[]) || null,
+      areas_of_improvement: (narrativeProfile.areas_of_improvement as string[]) || null,
+    };
 
     // Fetch coach data separately (optional - some enrollments may not have assigned coach yet)
     let coach = null;
@@ -87,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze with Gemini (shared standardized prompt with comparison mode)
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
 
     const analysisPrompt = buildFullAssessmentPrompt({
       childName: child?.child_name || 'Child',
@@ -95,12 +104,12 @@ export async function POST(request: NextRequest) {
       passage: passageText || '',
       wordCount: passageText?.split(' ').length || 0,
       previousScores: {
-        clarity: profile?.clarity_score,
-        fluency: profile?.fluency_score,
-        speed: profile?.speed_score,
+        clarity: previousScoresFromProfile.clarity_score,
+        fluency: previousScoresFromProfile.fluency_score,
+        speed: previousScoresFromProfile.speed_score,
         wpm: child?.assessment_wpm,
-        strengths: profile?.strengths,
-        areasToImprove: profile?.areas_of_improvement,
+        strengths: previousScoresFromProfile.strengths,
+        areasToImprove: previousScoresFromProfile.areas_of_improvement,
       },
       comparisonMode: true,
     });
@@ -126,9 +135,9 @@ export async function POST(request: NextRequest) {
       console.error('Failed to parse Gemini response:', parseError);
       // Provide default scores (matches full assessment schema)
       analysis = {
-        clarity_score: Math.min(10, (profile?.clarity_score || 5) + 1),
-        fluency_score: Math.min(10, (profile?.fluency_score || 5) + 1),
-        speed_score: Math.min(10, (profile?.speed_score || 5) + 1),
+        clarity_score: Math.min(10, (previousScoresFromProfile.clarity_score || 5) + 1),
+        fluency_score: Math.min(10, (previousScoresFromProfile.fluency_score || 5) + 1),
+        speed_score: Math.min(10, (previousScoresFromProfile.speed_score || 5) + 1),
         wpm: (child?.assessment_wpm || 50) + 15,
         completeness_percentage: 90,
         strengths: ['Completed the program', 'Showed dedication'],
@@ -140,18 +149,28 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Update child_rag_profiles with final assessment scores
+    // Update child_intelligence_profiles with final assessment scores
+    // Merge assessment scores into skill_ratings and narrative_profile JSON fields
+    const updatedSkillRatings = {
+      ...skillRatings,
+      clarity_score: analysis.clarity_score,
+      fluency_score: analysis.fluency_score,
+      speed_score: analysis.speed_score,
+    };
+    const updatedNarrativeProfile = {
+      ...narrativeProfile,
+      strengths: analysis.strengths,
+      areas_of_improvement: analysis.areas_to_improve,
+    };
+
     const { error: updateError } = await supabase
-      .from('child_rag_profiles')
-      .update({
-        clarity_score: analysis.clarity_score,
-        fluency_score: analysis.fluency_score,
-        speed_score: analysis.speed_score,
-        strengths: analysis.strengths,
-        areas_of_improvement: analysis.areas_to_improve,
-        last_updated_at: new Date().toISOString(),
-      })
-      .eq('child_id', enrollment.child_id);
+      .from('child_intelligence_profiles')
+      .upsert({
+        child_id: enrollment.child_id,
+        skill_ratings: updatedSkillRatings,
+        narrative_profile: updatedNarrativeProfile,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'child_id' });
 
     if (updateError) {
       console.error('Failed to update child assessment:', updateError);
@@ -215,9 +234,9 @@ export async function POST(request: NextRequest) {
       analysis,
       certificateNumber: reportData.certificateNumber,
       improvements: {
-        clarity: analysis.clarity_score - (profile?.clarity_score || 5),
-        fluency: analysis.fluency_score - (profile?.fluency_score || 5),
-        speed: analysis.speed_score - (profile?.speed_score || 5),
+        clarity: analysis.clarity_score - (previousScoresFromProfile.clarity_score || 5),
+        fluency: analysis.fluency_score - (previousScoresFromProfile.fluency_score || 5),
+        speed: analysis.speed_score - (previousScoresFromProfile.speed_score || 5),
         wpm: analysis.wpm - (child?.assessment_wpm || 50),
       },
     });

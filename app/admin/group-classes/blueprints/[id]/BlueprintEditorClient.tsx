@@ -9,8 +9,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown,
-  Loader2, AlertCircle, Save, Search, X, Link2,
+  AlertCircle, Save, Search, X, Link2,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import type {
   SegmentType, AgeBand, IndividualMomentType, CaptureMethod,
   BlueprintSegment, IndividualMomentConfig, BlueprintStatus,
@@ -139,7 +140,7 @@ function ContentPicker({
           autoFocus
         />
       </div>
-      {loading && <div className="text-center py-2"><Loader2 className="w-4 h-4 animate-spin text-text-tertiary mx-auto" /></div>}
+      {loading && <div className="text-center py-2"><Spinner size="sm" color="muted" className="mx-auto" /></div>}
       {results.length > 0 && (
         <div className="max-h-40 overflow-y-auto space-y-1">
           {results.map((item) => (
@@ -600,7 +601,7 @@ export default function BlueprintEditorClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        <Spinner size="lg" color="muted" />
       </div>
     );
   }
@@ -909,7 +910,7 @@ export default function BlueprintEditorClient() {
               className="px-5 py-2.5 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2 text-sm"
             >
               {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Spinner size="sm" />
               ) : (
                 <Save className="w-4 h-4" />
               )}

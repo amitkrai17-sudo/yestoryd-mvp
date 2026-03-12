@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, Users, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { supabase } from '@/lib/supabase/client';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export default function CoachLoginPage() {
   const [email, setEmail] = useState('');
@@ -15,7 +17,7 @@ export default function CoachLoginPage() {
   const [mode, setMode] = useState<'login' | 'phone' | 'phone-otp'>('login');
   const [message, setMessage] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('918976287997');
+  const [whatsappNumber, setWhatsappNumber] = useState<string>(COMPANY_CONFIG.leadBotWhatsApp);
   const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
 
@@ -523,8 +525,8 @@ export default function CoachLoginPage() {
                 <p className="text-sm text-gray-400">Active Coaches</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">₹15K+</p>
-                <p className="text-sm text-gray-400">Avg. Earnings</p>
+                <p className="text-3xl font-bold text-white">Flexible</p>
+                <p className="text-sm text-gray-400">Earn on Your Schedule</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">4.9★</p>
@@ -683,9 +685,7 @@ export default function CoachLoginPage() {
 
           <p className="text-center mt-6 text-gray-400 text-sm">
             Need help?{' '}
-            <a href={`https://wa.me/${whatsappNumber}`} className="text-[#00abff] hover:underline">
-              Contact Support
-            </a>
+            <WhatsAppButton phone={whatsappNumber} variant="link" label="Contact Support" className="text-[#00abff]" />
           </p>
         </div>
       </div>

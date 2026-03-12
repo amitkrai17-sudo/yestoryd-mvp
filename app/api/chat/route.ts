@@ -53,6 +53,7 @@ import { generateEmbedding } from '@/lib/rai/embeddings';
 import { getPricingConfig, getSessionCountForChild } from '@/lib/config/pricing-config';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -384,7 +385,7 @@ async function handleLearningStreaming(
       .in('status', ['enrolled', 'assessment_complete']);
 
     if (!parentChildren || parentChildren.length === 0) {
-      send({ type: 'response', content: "I don't see any enrolled children for your account. If you've recently enrolled, it may take a few minutes to update. For help, contact support at 918976287997.", intent, source: 'sql' });
+      send({ type: 'response', content: `I don't see any enrolled children for your account. If you've recently enrolled, it may take a few minutes to update. For help, contact support at ${COMPANY_CONFIG.leadBotWhatsApp}.`, intent, source: 'sql' });
       send({ type: 'done', source: 'sql' });
       return;
     }
@@ -521,7 +522,7 @@ async function handleLearningStreaming(
     userRole,
     childName,
     eventsContext,
-    coach ? { name: coach.name, phone: coach.phone || '918976287997', email: coach.email } : null,
+    coach ? { name: coach.name, phone: coach.phone || COMPANY_CONFIG.leadBotWhatsApp, email: coach.email } : null,
     undefined,
     childMeta
   );
@@ -646,7 +647,7 @@ async function handleOperational(
         source: 'sql',
       };
     }
-    return { response: "I couldn't find an active enrollment for your account. Please contact support at 918976287997 if you need help.", intent: 'OPERATIONAL', source: 'sql' };
+    return { response: `I couldn't find an active enrollment for your account. Please contact support at ${COMPANY_CONFIG.leadBotWhatsApp} if you need help.`, intent: 'OPERATIONAL', source: 'sql' };
   }
 
   if (/program|what('?s| is) included/i.test(lowerMessage)) {
@@ -661,7 +662,7 @@ async function handleOperational(
 
   if (/reschedule|change.*session|move.*session/i.test(lowerMessage)) {
     const coach = await getCoachForParent(userEmail);
-    return { response: OPERATIONAL_RESPONSES.reschedule(coach?.name || 'your coach', coach?.phone || '918976287997'), intent: 'OPERATIONAL', source: 'sql' };
+    return { response: OPERATIONAL_RESPONSES.reschedule(coach?.name || 'your coach', coach?.phone || COMPANY_CONFIG.leadBotWhatsApp), intent: 'OPERATIONAL', source: 'sql' };
   }
 
   if (/support|contact|help.*number|whatsapp/i.test(lowerMessage)) {
@@ -671,9 +672,9 @@ async function handleOperational(
   if (/who is my coach|coach('?s)? (name|email|phone|contact)/i.test(lowerMessage)) {
     const coach = await getCoachForParent(userEmail);
     if (coach) {
-      return { response: `Your coach is ${coach.name}. You can reach ${coach.name.split(' ')[0]} on WhatsApp at ${coach.phone || '918976287997'} or email at ${coach.email}.`, intent: 'OPERATIONAL', source: 'sql' };
+      return { response: `Your coach is ${coach.name}. You can reach ${coach.name.split(' ')[0]} on WhatsApp at ${coach.phone || COMPANY_CONFIG.leadBotWhatsApp} or email at ${coach.email}.`, intent: 'OPERATIONAL', source: 'sql' };
     }
-    return { response: "I couldn't find your assigned coach. Please contact support at 918976287997 for assistance.", intent: 'OPERATIONAL', source: 'sql' };
+    return { response: `I couldn't find your assigned coach. Please contact support at ${COMPANY_CONFIG.leadBotWhatsApp} for assistance.`, intent: 'OPERATIONAL', source: 'sql' };
   }
 
   if (userRole === 'coach' && /how many (children|students|kids)/i.test(lowerMessage)) {
@@ -705,13 +706,13 @@ async function handleOperational(
           totalSessions = getSessionCountForChild(pConfig, child.age, 'full');
         } catch { /* fall through */ }
       }
-      if (!totalSessions) totalSessions = 9;
+      if (!totalSessions) totalSessions = 18; // Foundation max (safest fallback)
       const enrolledDate = child.enrolled_at
         ? new Date(child.enrolled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'recently';
       return { response: `${child.child_name}'s enrollment is active. Enrolled on ${enrolledDate}. Progress: ${child.sessions_completed || 0}/${totalSessions} sessions completed. You have Master Key access to all Yestoryd services.`, intent: 'OPERATIONAL', source: 'sql' };
     }
-    return { response: "I couldn't find an active enrollment for your account. If you've recently paid, it may take a few minutes to update. Contact support at 918976287997 if you need help.", intent: 'OPERATIONAL', source: 'sql' };
+    return { response: `I couldn't find an active enrollment for your account. If you've recently paid, it may take a few minutes to update. Contact support at ${COMPANY_CONFIG.leadBotWhatsApp} if you need help.`, intent: 'OPERATIONAL', source: 'sql' };
   }
 
   return { response: OPERATIONAL_RESPONSES.out_of_scope, intent: 'OPERATIONAL', source: 'sql' };
@@ -751,7 +752,7 @@ async function handleSchedule(
 
     if (!sessions || sessions.length === 0) {
       const coach = await getCoachForParent(userEmail);
-      return { response: `No upcoming sessions scheduled yet. To book a session, contact Coach ${coach?.name || 'your coach'} on WhatsApp at ${coach?.phone || '918976287997'}.`, intent: 'SCHEDULE', source: 'sql' };
+      return { response: `No upcoming sessions scheduled yet. To book a session, contact Coach ${coach?.name || 'your coach'} on WhatsApp at ${coach?.phone || COMPANY_CONFIG.leadBotWhatsApp}.`, intent: 'SCHEDULE', source: 'sql' };
     }
 
     const nextSession = sessions[0];

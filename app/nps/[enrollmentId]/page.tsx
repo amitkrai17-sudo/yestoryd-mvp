@@ -10,10 +10,11 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Star, Send, Loader2, CheckCircle, Heart,
+  Star, Send, CheckCircle, Heart,
   ThumbsUp, ThumbsDown, MessageSquare, Sparkles,
   ChevronRight, ArrowRight
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function NPSSurveyPage() {
   const params = useParams();
@@ -118,7 +119,7 @@ export default function NPSSurveyPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
+          <Spinner size="xl" className="mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -307,7 +308,7 @@ export default function NPSSurveyPage() {
             className="w-full py-4 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-lg rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner color="white" />
             ) : (
               <>
                 <Send className="w-5 h-5" />

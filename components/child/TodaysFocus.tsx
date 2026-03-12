@@ -4,6 +4,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Target, Lightbulb } from 'lucide-react';
 
 interface TodaysFocusProps {
   quest: {
@@ -33,7 +34,7 @@ export default function TodaysFocus({ quest, onStart }: TodaysFocusProps) {
         <div className="flex items-start gap-3">
           {/* Green Icon */}
           <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xl">🎯</span>
+            <Target className="w-6 h-6 text-white" />
           </div>
           
           {/* Content */}
@@ -41,7 +42,7 @@ export default function TodaysFocus({ quest, onStart }: TodaysFocusProps) {
             <p className="text-xs text-gray-400 mb-0.5">Today's Focus</p>
             <h3 className="font-semibold text-gray-800">{skillName}</h3>
             <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-              <span>💡</span>
+              <Lightbulb className="w-4 h-4" />
               {isInProgress ? 'Continue practicing' : 'Start practicing'}
             </p>
           </div>

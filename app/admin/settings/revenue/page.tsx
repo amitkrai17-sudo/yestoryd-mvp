@@ -5,6 +5,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 import { 
   Settings, 
   Percent, 
@@ -20,6 +26,7 @@ import {
   ArrowRight,
   Info,
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface RevenueConfig {
   id?: string;
@@ -49,8 +56,7 @@ export default function RevenueSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
-  const previewAmount = 5999;
+  const [previewAmount, setPreviewAmount] = useState<number>(0);
 
   // Calculate preview splits
   const leadCostAmount = Math.round(previewAmount * config.lead_cost_percent / 100);
@@ -63,10 +69,16 @@ export default function RevenueSettingsPage() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('/api/admin/revenue-config');
-        const data = await res.json();
+        const [configRes, priceRes] = await Promise.all([
+          fetch('/api/admin/revenue-config'),
+          supabase.from('pricing_plans').select('discounted_price').eq('slug', 'full').eq('is_active', true).single(),
+        ]);
+        const data = await configRes.json();
         if (data.success && data.config) {
           setConfig(data.config);
+        }
+        if (priceRes.data?.discounted_price) {
+          setPreviewAmount(priceRes.data.discounted_price);
         }
       } catch (error) {
         console.error('Failed to fetch config:', error);
@@ -125,25 +137,20 @@ export default function RevenueSettingsPage() {
     <div className="bg-surface-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#121217] border border-white/[0.08] rounded-2xl flex items-center justify-center">
-              <Settings className="w-6 h-6 text-gray-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Revenue Split Configuration</h1>
-              <p className="text-text-tertiary">Configure how enrollment fees are distributed</p>
-            </div>
-          </div>
-          <button
-            onClick={handleSave}
-            disabled={saving || config.platform_fee_percent < 0}
-            className="flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Save Changes
-          </button>
-        </div>
+        <PageHeader
+          title="Revenue Split Configuration"
+          subtitle="Configure how enrollment fees are distributed"
+          action={
+            <button
+              onClick={handleSave}
+              disabled={saving || config.platform_fee_percent < 0}
+              className="flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save Changes
+            </button>
+          }
+        />
 
         {/* Message */}
         {message && (

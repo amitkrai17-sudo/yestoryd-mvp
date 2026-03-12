@@ -11,7 +11,7 @@
  * import { analyzeReading, generateEmbedding, generateSessionSummary } from '@/lib/ai/provider';
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { getAgeConfig, buildFullAssessmentPrompt, type FullAssessmentResult } from '@/lib/gemini/assessment-prompts';
 
@@ -89,12 +89,7 @@ export interface SessionSummaryResult {
 // ==================== GEMINI CLIENT ====================
 
 function getGeminiClient(model: string) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY not configured');
-  }
-  const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({ model });
+  return getGenAI().getGenerativeModel({ model });
 }
 
 // ==================== READING ANALYSIS ====================

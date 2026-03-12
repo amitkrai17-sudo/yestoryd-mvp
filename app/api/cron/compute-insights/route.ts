@@ -21,51 +21,14 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = createAdminClient;
-
-// --- VERIFICATION ---
-async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
-  // 1. Check CRON_SECRET (header only, NOT query param!)
-  const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
-    return { isValid: true, source: 'cron_secret' };
-  }
-
-  // 2. Check internal API key
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  // 3. Check QStash signature
-  const signature = request.headers.get('upstash-signature');
-  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    try {
-      const receiver = new Receiver({
-        currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
-        nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
-      });
-
-      const isValid = await receiver.verify({
-        signature,
-        body: body || '',
-      });
-
-      if (isValid) {
-        return { isValid: true, source: 'qstash' };
-      }
-    } catch (e) {
-      console.error('QStash verification failed:', e);
-    }
-  }
-
-  return { isValid: false, source: 'none' };
-}
+const getSupabase = createAdminClient;
 
 // --- HELPER: Save insight ---
 async function saveInsight(
@@ -425,7 +388,7 @@ async function computeInsights(requestId: string, source: string) {
     // AUDIT LOG & RESPONSE
     // ============================================================
     await supabase.from('activity_log').insert({
-      user_email: 'engage@yestoryd.com',
+      user_email: COMPANY_CONFIG.supportEmail,
       user_type: 'system',
       action: 'compute_insights_executed',
       metadata: {
@@ -478,7 +441,7 @@ async function computeInsights(requestId: string, source: string) {
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const body = await request.text();
-  const auth = await verifyCronAuth(request, body);
+  const auth = await verifyCronRequest(request, body);
 
   if (!auth.isValid) {
     console.error(JSON.stringify({
@@ -496,7 +459,7 @@ export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
   
   // SECURITY: Check header auth only, NOT query params (visible in logs!)
-  const auth = await verifyCronAuth(request);
+  const auth = await verifyCronRequest(request);
 
   if (!auth.isValid) {
     console.error(JSON.stringify({

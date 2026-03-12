@@ -142,8 +142,8 @@ export async function handleBookingConfirm(
     // Handle "already booked" as success
     if (bookingData.code === 'ALREADY_BOOKED') {
       const alreadyMsg =
-        `You already have a discovery call scheduled! 📅\n\n` +
-        `We'll send you a reminder before the call. Looking forward to helping ${childName}! 🎯`;
+        `You already have a discovery call scheduled!\n\n` +
+        `We'll send you a reminder before the call. Looking forward to helping ${childName}!`;
       await sendText(phone, alreadyMsg);
 
       return {
@@ -174,15 +174,15 @@ export async function handleBookingConfirm(
     // 5. SUCCESS — send confirmation
     const displayDate = formatSlotLong(date, time);
     const coachInfo = bookingData.coach?.assigned
-      ? `👩‍🏫 Coach: ${bookingData.coach.name}`
-      : `👩‍🏫 A coach will be assigned shortly`;
+      ? `Coach: ${bookingData.coach.name}`
+      : `A coach will be assigned shortly`;
 
     const confirmMsg =
-      `✅ Your free discovery call is booked!\n\n` +
-      `📅 ${displayDate}\n` +
+      `Your free discovery call is booked!\n\n` +
+      `${displayDate}\n` +
       `${coachInfo}\n` +
-      `📱 Via Google Meet (link will be in your calendar invite)\n\n` +
-      `You'll get a reminder 1 hour before. Looking forward to helping ${childName}! 🎯`;
+      `Via Google Meet (link will be in your calendar invite)\n\n` +
+      `You'll get a reminder 1 hour before. Looking forward to helping ${childName}!`;
 
     await sendText(phone, confirmMsg);
 

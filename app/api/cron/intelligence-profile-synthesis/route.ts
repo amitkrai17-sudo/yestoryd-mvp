@@ -13,9 +13,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 import {
   buildSynthesisPrompt,
   parseSynthesisResponse,
@@ -27,44 +29,7 @@ import {
   type SynthesisMicroAssessment,
 } from '@/lib/intelligence/synthesis';
 
-export const dynamic = 'force-dynamic';
-
-// ============================================================
-// AUTH VERIFICATION
-// ============================================================
-
-async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
-  const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
-    return { isValid: true, source: 'cron_secret' };
-  }
-
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  const signature = request.headers.get('upstash-signature');
-  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    try {
-      const receiver = new Receiver({
-        currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
-        nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
-      });
-      const isValid = await receiver.verify({ signature, body: body || '' });
-      if (isValid) return { isValid: true, source: 'qstash' };
-    } catch (e) {
-      console.error('QStash verification failed:', e);
-    }
-  }
-
-  // Dev bypass
-  if (process.env.NODE_ENV === 'development') {
-    return { isValid: true, source: 'dev_bypass' };
-  }
-
-  return { isValid: false, source: 'none' };
-}
+export const dynamic = 'force-dynamic';
 
 // ============================================================
 // MAIN HANDLER
@@ -75,7 +40,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const auth = await verifyCronAuth(request);
+    const auth = await verifyCronRequest(request);
     if (!auth.isValid) {
       console.error(JSON.stringify({ requestId, event: 'synthesis_auth_failed' }));
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -106,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     console.log(JSON.stringify({ requestId, event: 'synthesis_profiles_found', count: profiles.length }));
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    const genAI = getGenAI();
     const model = genAI.getGenerativeModel({
       model: getGeminiModel('session_analysis'),
       generationConfig: { maxOutputTokens: 2000, temperature: 0.2 },
@@ -304,7 +269,7 @@ export async function GET(request: NextRequest) {
     // Activity log
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'system@yestoryd.com',
+        user_email: COMPANY_CONFIG.supportEmail,
         user_type: 'admin',
         action: 'intelligence_profile_synthesis',
         metadata: { requestId, ...summary },

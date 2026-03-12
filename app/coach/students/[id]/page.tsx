@@ -8,11 +8,9 @@ import StudentIntelligenceCard from '@/components/coach/StudentIntelligenceCard'
 import { supabase } from '@/lib/supabase/client';
 import {
   Calendar,
-  MessageCircle,
   Phone,
   Bot,
   Send,
-  Loader2,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -22,6 +20,10 @@ import {
   BookOpen,
   Sparkles,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { Avatar } from '@/components/shared/Avatar';
 import Link from 'next/link';
 
 // Types
@@ -233,10 +235,9 @@ export default function StudentDetailPage() {
     }
   };
 
-  const openWhatsApp = (phone: string) => {
+  const getCleanPhone = (phone: string) => {
     const cleanPhone = phone?.replace(/\D/g, '') || '';
-    const url = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}`;
-    window.open(url, '_blank');
+    return cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone;
   };
 
   const formatDate = (dateStr: string) => {
@@ -269,7 +270,7 @@ export default function StudentDetailPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+        <Spinner size="lg" className="text-[#00ABFF]" />
       </div>
     );
   }
@@ -283,9 +284,7 @@ export default function StudentDetailPage() {
         <div className="bg-surface-1 rounded-xl border border-border p-2.5 lg:p-4 mb-3 lg:mb-6">
           <div className="flex items-center gap-2.5 lg:gap-4">
             {/* Avatar */}
-            <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-[#00ABFF] to-[#0066CC] flex items-center justify-center text-white text-base lg:text-xl font-bold flex-shrink-0">
-              {student.child_name?.charAt(0) || 'S'}
-            </div>
+            <Avatar name={student.child_name || 'S'} size="lg" portal="coach" />
 
             {/* Info - compact */}
             <div className="flex-1 min-w-0">
@@ -306,13 +305,18 @@ export default function StudentDetailPage() {
 
             {/* Contact - icon only on mobile */}
             <div className="flex gap-1.5 flex-shrink-0">
-              <button
-                onClick={() => openWhatsApp(student.parent_phone)}
-                className="w-9 h-9 lg:w-auto lg:px-3 lg:py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg flex items-center justify-center gap-1.5"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span className="hidden lg:inline text-sm">WhatsApp</span>
-              </button>
+              <WhatsAppButton
+                phone={getCleanPhone(student.parent_phone)}
+                variant="icon-only"
+                size="sm"
+                className="lg:hidden"
+              />
+              <WhatsAppButton
+                phone={getCleanPhone(student.parent_phone)}
+                label="WhatsApp"
+                size="sm"
+                className="hidden lg:inline-flex"
+              />
               <a
                 href={`tel:${student.parent_phone}`}
                 className="w-9 h-9 lg:w-auto lg:px-3 lg:py-2 bg-surface-2 hover:bg-surface-3 text-white rounded-lg flex items-center justify-center gap-1.5"
@@ -424,7 +428,7 @@ export default function StudentDetailPage() {
                 {chatLoading && (
                   <div className="flex justify-start">
                     <div className="bg-surface-2 rounded-lg px-2.5 py-1.5">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00ABFF]" />
+                      <Spinner size="sm" className="text-[#00ABFF]" />
                     </div>
                   </div>
                 )}
@@ -535,13 +539,7 @@ export default function StudentDetailPage() {
                             <span className="text-[10px] lg:text-xs text-text-tertiary truncate">
                               {formatDate(session.scheduled_date)}
                             </span>
-                            <span className={`px-1.5 py-0.5 text-[9px] lg:text-[10px] rounded ${
-                              session.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                              session.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
-                              'bg-blue-500/20 text-blue-400'
-                            }`}>
-                              {session.status}
-                            </span>
+                            <StatusBadge status={session.status} size="sm" />
                           </div>
 
                           {/* Action button */}

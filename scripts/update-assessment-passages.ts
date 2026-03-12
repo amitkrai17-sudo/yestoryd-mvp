@@ -221,7 +221,7 @@ const ASSESSMENT_PASSAGES = [
 ];
 
 async function updatePassages() {
-  console.log('🚀 Starting assessment passages update...\n');
+  console.log('[START] Starting assessment passages update...\n');
 
   // Check current state
   const { data: currentSetting, error: fetchError } = await supabase
@@ -236,7 +236,7 @@ async function updatePassages() {
   }
 
   if (currentSetting) {
-    console.log('📋 Current passages found, updating...');
+    console.log('[INFO] Current passages found, updating...');
 
     const { error: updateError } = await supabase
       .from('site_settings')
@@ -251,7 +251,7 @@ async function updatePassages() {
       return;
     }
   } else {
-    console.log('📋 No existing passages, inserting new...');
+    console.log('[INFO] No existing passages, inserting new...');
 
     const { error: insertError } = await supabase
       .from('site_settings')
@@ -268,7 +268,7 @@ async function updatePassages() {
     }
   }
 
-  console.log('✅ Successfully updated assessment passages!\n');
+  console.log('[OK] Successfully updated assessment passages!\n');
 
   // Verify the update
   const { data: verifyData, error: verifyError } = await supabase
@@ -283,7 +283,7 @@ async function updatePassages() {
   }
 
   const passages = JSON.parse(verifyData.value as string);
-  console.log(`📊 Total passages: ${passages.length}\n`);
+  console.log(`Total passages: ${passages.length}\n`);
 
   // Group by age
   const byAge: Record<string, any[]> = {};
@@ -292,12 +292,12 @@ async function updatePassages() {
     byAge[p.ageGroup].push(p);
   }
 
-  console.log('📚 Passages by age group:');
+  console.log('Passages by age group:');
   for (const [age, list] of Object.entries(byAge)) {
     console.log(`   ${age}: ${list.length} passages (Level: ${list[0].level})`);
   }
 
-  console.log('\n🎯 Sample passages (one from each age group):\n');
+  console.log('\nSample passages (one from each age group):\n');
 
   const samples = ['4-5', '6-7', '8-9', '10-12'];
   for (const age of samples) {
@@ -310,7 +310,7 @@ async function updatePassages() {
     }
   }
 
-  console.log('✅ Database update complete!');
+  console.log('[OK] Database update complete!');
 }
 
 updatePassages().catch(console.error);

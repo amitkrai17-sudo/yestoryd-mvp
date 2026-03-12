@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Bell, Loader2, CheckCircle } from 'lucide-react';
+import { X, Bell, CheckCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface NotifyMeModalProps {
   isOpen: boolean;
@@ -206,7 +207,7 @@ export default function NotifyMeModal({
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner />
                     Joining...
                   </>
                 ) : (

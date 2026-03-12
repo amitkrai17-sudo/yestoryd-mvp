@@ -14,9 +14,10 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { sendEmail } from '@/lib/email/resend-client';
 import { loadAuthConfig, loadEmailConfig } from '@/lib/config/loader';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
-const WHATSAPP_NUMBER = '+91 89762 87997';
+const WHATSAPP_NUMBER = COMPANY_CONFIG.leadBotWhatsAppDisplay;
 
 // --- VALIDATION SCHEMA ---
 const sendConfirmationSchema = z.object({
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
           </p>
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
             <p style="color: #64748b; font-size: 14px; margin: 0;">
-              Questions? Reply to this email or WhatsApp us at <a href="https://wa.me/918976287997" style="color: #22c55e;">${WHATSAPP_NUMBER}</a>
+              Questions? Reply to this email or WhatsApp us at <a href="https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}" style="color: #22c55e;">${WHATSAPP_NUMBER}</a>
             </p>
             <p style="color: #64748b; font-size: 14px; margin-top: 10px;">
               Warm regards,<br/>

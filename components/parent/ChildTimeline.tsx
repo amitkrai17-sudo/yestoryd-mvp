@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Target, BookOpen, BarChart3, TrendingUp,
-  MessageSquare, ChevronDown, Loader2, Award,
+  MessageSquare, ChevronDown, Award,
   Sparkles, ChevronRight, FileText,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // ─── Types ───
 
@@ -105,7 +106,7 @@ function EventCard({ event }: { event: TimelineEvent }) {
               )}
               {!!d.breakthrough_moment && (
                 <p className="text-xs text-green-400 mt-1">
-                  ✨ {String(d.breakthrough_moment)}
+                  {String(d.breakthrough_moment)}
                 </p>
               )}
               {Array.isArray(d.key_observations) && d.key_observations.length > 0 && (
@@ -275,7 +276,7 @@ export default function ChildTimeline({
           <h2 className="text-lg font-bold text-gray-900">{childName}&apos;s Learning Journey</h2>
         </div>
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 text-[#7b008b] animate-spin" />
+          <Spinner className="text-[#7b008b]" />
         </div>
       </div>
     );
@@ -366,7 +367,7 @@ export default function ChildTimeline({
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors min-h-[44px] border border-gray-200"
           >
             {loadingMore ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
             ) : (
               <ChevronDown className="w-4 h-4" />
             )}

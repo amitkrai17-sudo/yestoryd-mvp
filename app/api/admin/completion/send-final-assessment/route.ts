@@ -9,9 +9,9 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
-import crypto from 'crypto';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { withApiHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,18 +22,7 @@ const sendAssessmentSchema = z.object({
   childName: z.string().min(1).max(100),
 });
 
-export async function POST(request: NextRequest) {
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
-  try {
-    const auth = await requireAdmin();
-    
-    if (!auth.authorized) {
-      console.log(JSON.stringify({ requestId, event: 'send_final_assessment_auth_failed', error: auth.error }));
-      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
-    }
-
+export const POST = withApiHandler(async (request, { auth, supabase, requestId }) => {
     let body;
     try {
       body = await request.json();
@@ -48,9 +37,7 @@ export async function POST(request: NextRequest) {
 
     const { enrollmentId, parentEmail, childName } = validation.data;
 
-    console.log(JSON.stringify({ requestId, event: 'send_final_assessment_request', adminEmail: auth.email, enrollmentId, parentEmail }));
-
-    const supabase = getServiceSupabase();
+    // Validated — proceed
 
     // Get enrollment details
     const { data: enrollment, error: enrollmentError } = await supabase
@@ -108,7 +95,7 @@ export async function POST(request: NextRequest) {
 
       await sendEmail({
         to: parentEmail,
-        from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+        from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
         subject: `🎉 ${childName}'s Final Reading Assessment - See How Far They've Come!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -167,9 +154,6 @@ export async function POST(request: NextRequest) {
       console.error('WhatsApp send error:', waError);
     }
 
-    const duration = Date.now() - startTime;
-    console.log(JSON.stringify({ requestId, event: 'send_final_assessment_success', enrollmentId, emailSent, whatsappSent, duration: `${duration}ms` }));
-
     return NextResponse.json({
       success: true,
       requestId,
@@ -178,9 +162,4 @@ export async function POST(request: NextRequest) {
       emailSent,
       whatsappSent,
     });
-
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'send_final_assessment_error', error: error.message }));
-    return NextResponse.json({ success: false, error: error.message, requestId }, { status: 500 });
-  }
-}
+}, { auth: 'admin' });

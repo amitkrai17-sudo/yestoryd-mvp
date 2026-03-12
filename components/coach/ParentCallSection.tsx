@@ -6,9 +6,12 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Phone, Calendar, Clock, CheckCircle, Loader2,
+  Phone, Calendar, Clock, CheckCircle,
   X, Plus, MessageCircle,
 } from 'lucide-react';
+import { DateInput } from '@/components/ui/date-input';
+import { Spinner } from '@/components/ui/spinner';
+import { TimeInput } from '@/components/ui/time-input';
 
 interface ParentCallData {
   id: string;
@@ -354,25 +357,17 @@ export default function ParentCallSection({
             </p>
 
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm text-text-secondary mb-1">Date</label>
-                <input
-                  type="date"
-                  value={scheduleDate}
-                  onChange={e => setScheduleDate(e.target.value)}
-                  min={minDate}
-                  className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-xl text-sm text-white focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-text-secondary mb-1">Time</label>
-                <input
-                  type="time"
-                  value={scheduleTime}
-                  onChange={e => setScheduleTime(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-surface-2 border border-border rounded-xl text-sm text-white focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <DateInput
+                label="Date"
+                value={scheduleDate}
+                onChange={setScheduleDate}
+                min={minDate}
+              />
+              <TimeInput
+                label="Time"
+                value={scheduleTime}
+                onChange={setScheduleTime}
+              />
               {!scheduleCallId && (
                 <div>
                   <label className="block text-sm text-text-secondary mb-1">Notes <span className="text-text-tertiary">(optional)</span></label>
@@ -394,7 +389,7 @@ export default function ParentCallSection({
             >
               {scheduling ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                   {scheduleCallId ? 'Confirming...' : 'Scheduling...'}
                 </>
               ) : (
@@ -430,7 +425,7 @@ export default function ParentCallSection({
               disabled={completing}
               className="w-full mt-4 py-3 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-500 transition-all disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2"
             >
-              {completing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              {completing ? <Spinner size="sm" /> : <CheckCircle className="w-4 h-4" />}
               {completing ? 'Saving...' : 'Mark as Completed'}
             </button>
           </div>

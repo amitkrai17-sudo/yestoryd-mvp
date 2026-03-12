@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { BookOpen, HelpCircle } from 'lucide-react';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 export default function NotFound() {
   return (
@@ -8,7 +10,10 @@ export default function NotFound() {
         <div className="relative mb-8">
           <div className="text-9xl font-bold text-purple-100">404</div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-6xl">📚❓</span>
+            <span className="flex items-center gap-2">
+              <BookOpen className="w-12 h-12 text-purple-500" />
+              <HelpCircle className="w-10 h-10 text-purple-400" />
+            </span>
           </div>
         </div>
         
@@ -50,14 +55,7 @@ export default function NotFound() {
             <Link href="/coach" className="text-purple-600 hover:underline">
               Coach Portal
             </Link>
-            <a 
-              href="https://wa.me/918976287997" 
-              className="text-green-600 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Contact Support
-            </a>
+            <WhatsAppButton variant="link" label="Contact Support" />
           </div>
         </div>
       </div>

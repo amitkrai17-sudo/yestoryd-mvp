@@ -13,13 +13,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calendar, Clock, Plus, Trash2, Loader2,
+  Calendar, Clock, Plus, Trash2,
   AlertCircle, Check, X, Eye, EyeOff,
   Sparkles, Zap, Copy, ClipboardPaste,
   CheckSquare, GraduationCap, Users, Phone,
   ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
 
 // ============================================================
 // TYPES
@@ -544,7 +545,7 @@ export default function AvailabilityCalendar({ coachId, readOnly = false }: Avai
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -717,7 +718,7 @@ export default function AvailabilityCalendar({ coachId, readOnly = false }: Avai
           </h4>
           {previewLoading ? (
             <div className="flex justify-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-[#FF0099]" />
+              <Spinner />
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -833,7 +834,7 @@ export default function AvailabilityCalendar({ coachId, readOnly = false }: Avai
               disabled={saving || formData.selectedDays.length === 0}
               className="flex-1 px-4 py-2.5 bg-[#FF0099] hover:bg-[#e6008a] disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {saving ? <Spinner size="sm" /> : <Check className="w-4 h-4" />}
               Add
             </button>
           </div>

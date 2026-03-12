@@ -11,10 +11,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Award, Download, Share2, Gift, RefreshCw, Loader2,
+  Award, Download, Share2, Gift, RefreshCw,
   CheckCircle, Star, MessageCircle, ChevronRight,
   BookOpen, Trophy, Sparkles, ArrowRight, Copy, Check, PartyPopper
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 interface CompletionData {
   enrollmentId: string;
@@ -44,25 +46,37 @@ export default function CompletionPage() {
   const [referralCode, setReferralCode] = useState('');
   const [generatingCode, setGeneratingCode] = useState(false);
 
-  // Dynamic referral credit from pricing
+  // Dynamic referral credit + discount percent from pricing + site_settings
   const [referralCredit, setReferralCredit] = useState(0);
+  const [referralPercent, setReferralPercent] = useState(10);
 
   useEffect(() => {
     fetchCompletionData();
   }, [enrollmentId]);
 
-  // Fetch pricing to compute parent referral credit (10% of enrollment price)
+  // Fetch pricing + referral percent from site_settings
   useEffect(() => {
-    fetch('/api/pricing-display')
-      .then(res => res.json())
-      .then(data => {
-        if (data?.tiers) {
-          const fullSeason = data.tiers.find((t: any) => t.slug === 'full');
-          const price = fullSeason?.discountedPrice || 0;
-          if (price > 0) setReferralCredit(Math.round(price * 10 / 100));
+    Promise.all([
+      fetch('/api/pricing-display').then(r => r.json()).catch(() => null),
+      fetch('/api/admin/settings?categories=referral').then(r => r.json()).catch(() => null),
+    ]).then(([pricingData, settingsData]) => {
+      // Get referral percent from site_settings
+      let percent = 10;
+      settingsData?.settings?.forEach((s: { key: string; value: string }) => {
+        const val = String(s.value).replace(/"/g, '');
+        if (s.key === 'parent_referral_credit_percent' || s.key === 'referral_credit_percent') {
+          percent = parseInt(val) || 10;
         }
-      })
-      .catch(() => {});
+      });
+      setReferralPercent(percent);
+
+      // Compute credit amount from full tier price
+      if (pricingData?.tiers) {
+        const fullSeason = pricingData.tiers.find((t: any) => t.slug === 'full');
+        const price = fullSeason?.discountedPrice || 0;
+        if (price > 0) setReferralCredit(Math.round(price * percent / 100));
+      }
+    });
   }, []);
 
   async function fetchCompletionData() {
@@ -78,7 +92,7 @@ export default function CompletionPage() {
 
       // Check if actually completed
       if (!result.eligible && result.reason !== 'already_completed') {
-        setError(`Program not yet complete. ${result.progress?.completed || 0}/${result.progress?.total || 9 /* V1 fallback – enrollment.total_sessions is authoritative */} sessions done.`);
+        setError(`Program not yet complete. ${result.progress?.completed || 0}/${result.progress?.total || 0} sessions done.`);
         setLoading(false);
         return;
       }
@@ -97,7 +111,7 @@ export default function CompletionPage() {
         completedAt: enrollData.data?.completed_at || new Date().toISOString(),
         programStart: result.enrollment?.programStart || '',
         programEnd: result.enrollment?.programEnd || '',
-        sessionsCompleted: result.progress?.completed || 9, // V1 fallback – enrollment.total_sessions is authoritative
+        sessionsCompleted: result.progress?.completed || 0,
       });
 
       // Check for existing referral code
@@ -167,7 +181,7 @@ export default function CompletionPage() {
   function handleShareWhatsApp() {
     const message = encodeURIComponent(
       `${data?.childName} just completed Yestoryd's 12-week reading program!\n\n` +
-      `Use my referral code *${referralCode}* to get 10% OFF when you enroll.\n\n` +
+      `Use my referral code *${referralCode}* to get ${referralPercent}% OFF when you enroll.\n\n` +
       `Take the FREE reading assessment: https://yestoryd.com/assessment?ref=${referralCode}\n\n` +
       `Trust me, it's worth it!`
     );
@@ -184,7 +198,7 @@ export default function CompletionPage() {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-[#ff0099] mx-auto mb-4" />
+          <Spinner size="xl" className="mx-auto mb-4" />
           <p className="text-text-secondary">Loading your achievement...</p>
         </div>
       </div>
@@ -289,7 +303,7 @@ export default function CompletionPage() {
                     className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-[#ffde00] to-[#ffc107] text-gray-900 font-bold rounded-xl hover:shadow-lg hover:shadow-[#ffde00]/30 transition-all disabled:opacity-50 min-h-[56px]"
                   >
                     {downloading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Spinner color="white" />
                     ) : (
                       <>
                         <Download className="w-5 h-5" />
@@ -349,7 +363,7 @@ export default function CompletionPage() {
             <div className="flex-1">
               <h3 className="font-bold text-white mb-1">Refer a Friend, Earn {referralCredit > 0 ? `₹${referralCredit.toLocaleString('en-IN')}` : '₹...'}!</h3>
               <p className="text-text-secondary text-sm mb-4">
-                Share your success! Friends get 10% off, you get {referralCredit > 0 ? `₹${referralCredit.toLocaleString('en-IN')}` : '₹...'} credit.
+                Share your success! Friends get {referralPercent}% off, you get {referralCredit > 0 ? `₹${referralCredit.toLocaleString('en-IN')}` : '₹...'} credit.
               </p>
 
               {referralCode ? (
@@ -380,7 +394,7 @@ export default function CompletionPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 min-h-[44px]"
                 >
                   {generatingCode ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" />
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
@@ -401,7 +415,7 @@ export default function CompletionPage() {
               </div>
               <h3 className="text-2xl font-bold mb-2">Keep {data?.childName}&apos;s Progress Going!</h3>
               <p className="text-white/80 mb-4">
-                Re-enroll now and get 10% early renewal discount. Use your referral credits too!
+                Re-enroll now and get {referralPercent}% early renewal discount. Use your referral credits too!
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
@@ -431,7 +445,7 @@ export default function CompletionPage() {
 
       {/* Footer */}
       <footer className="max-w-4xl mx-auto px-4 py-8 text-center text-sm text-text-tertiary">
-        <p>Questions? Contact us at engage@yestoryd.com or WhatsApp 8976287997</p>
+        <p>Questions? Contact us at {COMPANY_CONFIG.supportEmail} or WhatsApp {COMPANY_CONFIG.leadBotWhatsAppDisplay}</p>
       </footer>
     </div>
   );

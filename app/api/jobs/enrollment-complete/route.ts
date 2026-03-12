@@ -26,6 +26,7 @@ import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
 
     // 9. AUDIT LOG
     await supabase.from('activity_log').insert({
-      user_email: 'engage@yestoryd.com',
+      user_email: COMPANY_CONFIG.supportEmail,
       user_type: 'system',
       action: 'enrollment_complete_processed',
       metadata: {
@@ -451,7 +452,7 @@ async function scheduleCalendarForExistingSessions(
           end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Kolkata' },
           attendees: [
             { email: data.parentEmail, displayName: data.parentName },
-            { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
+            { email: COMPANY_CONFIG.supportEmail, displayName: 'Yestoryd (Recording)' },
           ],
           ...(isOffline ? {} : {
             conferenceData: {
@@ -627,8 +628,8 @@ async function sendConfirmationEmail(
       to: data.parentEmail,
       subject: `Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
       html: generateEmailHtml(data, sessionList, sessions.length),
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
-      replyTo: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
+      from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
+      replyTo: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd Support' },
     });
 
     if (!result.success) {
@@ -706,8 +707,8 @@ function generateEmailHtml(
     <div style="border-top: 1px solid #eee; padding-top: 24px; margin-top: 24px;">
       <p style="color: #666; font-size: 14px; margin: 0;">
         <strong>Questions?</strong><br>
-        Email: engage@yestoryd.com<br>
-        WhatsApp: <a href="https://wa.me/918976287997" style="color: #25D366;">+91 89762 87997</a>
+        Email: ${COMPANY_CONFIG.supportEmail}<br>
+        WhatsApp: <a href="https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}" style="color: #25D366;">${COMPANY_CONFIG.leadBotWhatsAppDisplay}</a>
       </p>
     </div>
 

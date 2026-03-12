@@ -6,7 +6,8 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Loader2, Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import type { CardProps, ObservationItem } from '../types';
 
@@ -118,7 +119,7 @@ export function ObservationsCard({ state, onUpdate, observations, loading }: Obs
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin mb-3" />
+        <Spinner size="lg" className="text-[#00ABFF] mb-3" />
         <p className="text-text-tertiary text-sm">Loading observations...</p>
       </div>
     );

@@ -91,7 +91,7 @@ export async function createRecallBot(params: ScheduleBotParams): Promise<BotRes
     }
 
     const botData = await response.json();
-    console.log(`🤖 Recall bot created: ${botData.id} for session ${sessionId}`);
+    console.log(`[BOT] Recall bot created: ${botData.id} for session ${sessionId}`);
 
     // Store bot info in recall_bot_sessions table
     await supabase.from('recall_bot_sessions').insert({
@@ -165,7 +165,7 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
       return { success: true, botsCreated: 0, errors: [] };
     }
 
-    console.log(`📅 Scheduling ${sessions.length} Recall bots for enrollment ${enrollmentId}`);
+    console.log(`[SCHEDULE] Scheduling ${sessions.length} Recall bots for enrollment ${enrollmentId}`);
 
     // Create bot for each session
     for (const session of sessions) {
@@ -210,7 +210,7 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log(`✅ Created ${botsCreated}/${sessions.length} Recall bots`);
+    console.log(`[OK] Created ${botsCreated}/${sessions.length} Recall bots`);
 
     return { success: true, botsCreated, errors };
 
@@ -238,7 +238,7 @@ export async function cancelRecallBot(botId: string): Promise<boolean> {
     });
 
     if (response.ok) {
-      console.log(`🗑️ Recall bot cancelled: ${botId}`);
+      console.log(`[DELETE] Recall bot cancelled: ${botId}`);
       
       // Update database
       await supabase

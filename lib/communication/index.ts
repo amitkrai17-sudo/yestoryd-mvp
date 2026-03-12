@@ -2,7 +2,7 @@
 // Central Communication Engine
 
 import { sendWhatsAppMessage, isWhatsAppConfigured } from './aisensy';
-import { sendEmail, isEmailConfigured } from './sendgrid';
+import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { loadAuthConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -10,10 +10,11 @@ const supabase = createAdminClient();
 
 // Re-export WhatsApp Cloud API (prospect-facing AI assistant)
 export { sendWhatsAppCloudMessage, markMessageAsRead, isWhatsAppCloudConfigured } from './whatsapp-cloud';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Admin phone numbers for alerts (add more as needed)
 const ADMIN_PHONES = [
-  '918976287997',  // Amit
+  COMPANY_CONFIG.aiSensyWhatsApp,  // Amit (AiSensy outbound)
   // '91XXXXXXXXXX',  // Rucha - add her number
 ];
 
@@ -216,9 +217,7 @@ async function sendEmailToRecipient(
   return sendEmail({
     to: email,
     subject,
-    htmlBody: body,
-    templateId: template.email_sendgrid_template_id,
-    dynamicData: variables,
+    html: body,
   });
 }
 

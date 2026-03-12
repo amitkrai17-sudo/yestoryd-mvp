@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,29 +15,6 @@ export const maxDuration = 60;
 
 const getSupabase = createAdminClient;
 
-function verifyCronAuth(request: NextRequest): { isValid: boolean; source: string } {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-    return { isValid: true, source: 'vercel_cron' };
-  }
-
-  const qstashSignature = request.headers.get('upstash-signature');
-  if (qstashSignature) {
-    const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-    if (currentKey) {
-      return { isValid: true, source: 'qstash' };
-    }
-  }
-
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  return { isValid: false, source: 'none' };
-}
 
 // Nudge message templates
 const NUDGE_MESSAGES: Record<number, (childName: string, seasonNum: number) => string> = {
@@ -53,7 +32,7 @@ export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
-  const { isValid, source } = verifyCronAuth(request);
+  const { isValid, source } = await verifyCronRequest(request);
   if (!isValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -201,7 +180,7 @@ export async function GET(request: NextRequest) {
     await supabase
       .from('activity_log')
       .insert({
-        user_email: 'engage@yestoryd.com',
+        user_email: COMPANY_CONFIG.supportEmail,
         user_type: 'system',
         action: 're_enrollment_nudge_cron',
         metadata: { sent, skipped, errors: errors.length, total: pendingNudges.length, durationMs: duration } as any,

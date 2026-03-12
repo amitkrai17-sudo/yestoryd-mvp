@@ -12,12 +12,13 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
-  Loader2,
   ChevronLeft,
   User,
   Calendar,
   FileText,
 } from 'lucide-react';
+import { Avatar } from '@/components/shared/Avatar';
+import { Spinner } from '@/components/ui/spinner';
 
 // ============================================================
 // TYPES
@@ -183,7 +184,7 @@ export default function InPersonRequestsPage() {
         {/* Loading */}
         {loading && (
           <div className="text-center py-16">
-            <Loader2 className="w-8 h-8 text-text-tertiary animate-spin mx-auto mb-3" />
+            <Spinner size="lg" color="muted" className="mx-auto mb-3" />
             <p className="text-text-secondary text-sm">Loading requests...</p>
           </div>
         )}
@@ -233,9 +234,7 @@ export default function InPersonRequestsPage() {
                 {/* Top row: Coach + Child + Time */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 bg-white/[0.12] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {req.coach_name.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar name={req.coach_name} size="md" portal="admin" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white truncate">{req.coach_name}</p>
                       <p className="text-xs text-text-tertiary truncate">{req.coach_email}</p>
@@ -322,7 +321,7 @@ export default function InPersonRequestsPage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
                     >
                       {actionLoading === req.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Spinner size="sm" className="w-3.5 h-3.5" />
                       ) : (
                         <XCircle className="w-3.5 h-3.5" />
                       )}
@@ -334,7 +333,7 @@ export default function InPersonRequestsPage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
                     >
                       {actionLoading === req.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Spinner size="sm" className="w-3.5 h-3.5" />
                       ) : (
                         <CheckCircle className="w-3.5 h-3.5" />
                       )}

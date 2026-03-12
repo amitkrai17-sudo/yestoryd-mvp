@@ -10,7 +10,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, Mic, Square, Play, CheckCircle2, AlertCircle, BookOpen, HelpCircle, X } from 'lucide-react';
+import { Mic, Square, Play, CheckCircle2, AlertCircle, BookOpen, HelpCircle, X } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
 // ============================================================
@@ -260,7 +261,7 @@ export default function MicroAssessmentCapture({
   if (loadingPassage) {
     return (
       <div className="flex flex-col items-center justify-center p-8 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Spinner size="lg" className="text-indigo-500" />
         <p className="text-sm text-gray-500">Loading passage...</p>
       </div>
     );
@@ -489,7 +490,7 @@ export default function MicroAssessmentCapture({
         {/* ─── Submitting ─── */}
         {step === 'submitting' && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className="w-10 h-10 animate-spin text-emerald-500" />
+            <Spinner size="xl" className="text-emerald-500" />
             <p className="text-gray-600 font-medium">Analyzing reading...</p>
             <p className="text-sm text-gray-400">This may take a few seconds</p>
           </div>

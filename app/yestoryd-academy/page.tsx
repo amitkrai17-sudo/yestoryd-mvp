@@ -11,7 +11,6 @@ import {
   Heart,
   CheckCircle2,
   Clock,
-  Users,
   MessageCircle,
   Sparkles,
   ChevronDown,
@@ -19,7 +18,6 @@ import {
   ArrowRight,
   Star,
   Zap,
-  Shield,
   Target,
   Award,
   Crown,
@@ -32,18 +30,13 @@ import {
   Headphones,
   CreditCard,
   BarChart3,
-  Settings,
   BookOpen,
-  Lightbulb,
-  HandHeart,
   Scale,
   TrendingUp,
   UserCheck,
-  Play,
-  AlertCircle,
-  Loader2
+  AlertCircle
 } from 'lucide-react';
-import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
+import { Spinner } from '@/components/ui/spinner';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 import { supabase } from '@/lib/supabase/client';
 
@@ -83,14 +76,48 @@ const STATIC_FAQ_DATA = [
   }
 ];
 
+// ── Tier display type (visual layer only — rates come from API) ──
+interface TierDisplay {
+  name: string;
+  displayName: string;
+  perSessionRate: number;
+  sbRate: number;
+  monthlyEstimate: number;
+  exampleStudents: number;
+  coachPercent: number;
+  minChildren: number;
+  color: string;
+  borderColor: string;
+  bgGradient: string;
+  icon: typeof Sprout;
+}
+
+// Tier visual config (client-side only — no business logic)
+const TIER_VISUALS: Record<string, { color: string; borderColor: string; bgGradient: string; icon: typeof Sprout; exampleStudents: number }> = {
+  rising:  { color: 'text-green-400',   borderColor: 'border-green-500/30',   bgGradient: 'from-green-500/20 to-green-500/5',       icon: Sprout, exampleStudents: 10 },
+  expert:  { color: 'text-[#ffde00]',   borderColor: 'border-[#ffde00]/30',   bgGradient: 'from-[#ffde00]/20 to-[#ffde00]/5',       icon: Star,   exampleStudents: 15 },
+  master:  { color: 'text-[#c847f4]',   borderColor: 'border-[#c847f4]/30',   bgGradient: 'from-[#c847f4]/20 to-[#c847f4]/5',       icon: Crown,  exampleStudents: 20 },
+};
+const DEFAULT_VISUAL = { color: 'text-[#00abff]', borderColor: 'border-[#00abff]/30', bgGradient: 'from-[#00abff]/20 to-[#00abff]/5', icon: Award, exampleStudents: 10 };
+
 export default function YestorydAcademyPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [earningsMode, setEarningsMode] = useState<'assigned' | 'bring'>('assigned');
+  const [selectedTier, setSelectedTier] = useState(0); // index into tiers
   const [childrenCount, setChildrenCount] = useState(10);
+  const [includeReferral, setIncludeReferral] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
 
-  // Dynamic earnings data from database
-  const { data: earningsData, isLoading: earningsLoading } = useEarningsCalculator();
+  // Tier + pricing data from API
+  const [tiers, setTiers] = useState<TierDisplay[]>([]);
+  const [tiersLoading, setTiersLoading] = useState(true);
+  const [tiersError, setTiersError] = useState(false);
+  const [referralBonusPerStudent, setReferralBonusPerStudent] = useState(0);
+  const [referralPercent, setReferralPercent] = useState(0);
+  const [programPrice, setProgramPrice] = useState(0);
+  const [sessionsPerWeek, setSessionsPerWeek] = useState(1);
+  const [payoutDay, setPayoutDay] = useState(7);
+  const [coachingSessions, setCoachingSessions] = useState(12);
+  const [sbSessions, setSbSessions] = useState(4);
 
   // Session durations from site_settings
   const durations = useSessionDurations();
@@ -118,52 +145,96 @@ export default function YestorydAcademyPage() {
     fetchVideoUrl();
   }, []);
 
+  // Fetch tier data from earnings-calculator API (single source of truth: payout-config.ts)
+  useEffect(() => {
+    async function fetchTiers() {
+      try {
+        const res = await fetch('/api/coach/earnings-calculator?mode=tiers&age_band=building');
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to load earnings data');
+        }
+
+        setProgramPrice(data.pricing.program_price);
+        setReferralBonusPerStudent(data.referral.bonus_per_enrollment);
+        setReferralPercent(data.referral.coach_referral_percent);
+        setPayoutDay(data.payout_day);
+        setSessionsPerWeek(data.age_band.sessions_per_week);
+        setCoachingSessions(data.age_band.coaching_sessions);
+        setSbSessions(data.age_band.skill_building_sessions);
+
+        // Map API tier rates to display tiers (add visual config)
+        const sessPerMonth = data.age_band.sessions_per_week * 4;
+        const sbPerMonth = data.age_band.coaching_sessions > 0
+          ? Math.round(data.age_band.skill_building_sessions * sessPerMonth / data.age_band.coaching_sessions)
+          : 0;
+
+        const computed: TierDisplay[] = data.tiers.map((t: any) => {
+          const visual = TIER_VISUALS[t.name.toLowerCase()] ?? DEFAULT_VISUAL;
+          const perStudentMonthly = (t.coaching_rate * sessPerMonth) + (t.skill_building_rate * sbPerMonth);
+
+          return {
+            name: t.name,
+            displayName: t.display_name,
+            perSessionRate: t.coaching_rate,
+            sbRate: t.skill_building_rate,
+            monthlyEstimate: perStudentMonthly * visual.exampleStudents,
+            exampleStudents: visual.exampleStudents,
+            coachPercent: t.coach_cost_percent,
+            minChildren: t.min_children_threshold,
+            color: visual.color,
+            borderColor: visual.borderColor,
+            bgGradient: visual.bgGradient,
+            icon: visual.icon,
+          };
+        });
+
+        setTiers(computed);
+        setTiersLoading(false);
+      } catch (err) {
+        console.error('[Academy] Failed to load tier data:', err);
+        setTiersError(true);
+        setTiersLoading(false);
+      }
+    }
+    fetchTiers();
+  }, []);
+
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  const calculateEarnings = () => {
-    // Get earnings from database or use fallback
-    const fullProgram = earningsData?.products.find(p => p.slug === 'full');
-    const ownLeadEarnings = fullProgram?.coach_earnings_own_lead || 4200;
-    const platformLeadEarnings = fullProgram?.coach_earnings_platform_lead || 3000;
-
-    const perChild = earningsMode === 'assigned' ? platformLeadEarnings : ownLeadEarnings;
-    return childrenCount * perChild;
+  // Calculator: compute monthly earnings for selected tier + student count
+  // Uses rates from API (calculated by payout-config.ts) — no local math on rates
+  const calcMonthlyEarnings = () => {
+    const tier = tiers[selectedTier];
+    if (!tier) return { sessions: 0, base: 0, referral: 0, total: 0, perSession: 0 };
+    const sessionsPerStudent = Math.round(sessionsPerWeek * 4);
+    const totalSessions = childrenCount * sessionsPerStudent;
+    const base = totalSessions * tier.perSessionRate;
+    const referral = includeReferral ? childrenCount * referralBonusPerStudent : 0;
+    return { sessions: totalSessions, base, referral, total: base + referral, perSession: tier.perSessionRate };
   };
 
-  // Get dynamic values from earnings data
-  const splitConfig = earningsData?.split_config;
-  const fullProgram = earningsData?.products.find(p => p.slug === 'full');
-  const programPrice = fullProgram?.price || 5999;
-  const leadCostPercent = splitConfig?.lead_cost_percent || 20;
-  const coachCostPercent = splitConfig?.coach_cost_percent || 50;
-  const platformFeePercent = splitConfig?.platform_fee_percent || 30;
-  const ownLeadTotalPercent = splitConfig?.own_lead_total_percent || 70;
-
-  // Calculate amounts from percentages
-  const leadCostAmount = Math.round(programPrice * leadCostPercent / 100);
-  const coachCostAmount = Math.round(programPrice * coachCostPercent / 100);
-  const platformFeeAmount = Math.round(programPrice * platformFeePercent / 100);
-  const ownLeadTotal = fullProgram?.coach_earnings_own_lead || Math.round(programPrice * ownLeadTotalPercent / 100);
-  const platformLeadTotal = fullProgram?.coach_earnings_platform_lead || coachCostAmount;
-
-  // Build FAQ data with dynamic pricing values
-  const faqData = [
-    ...STATIC_FAQ_DATA.slice(0, 2),
+  // Build FAQ data — only include pricing entries when tier data is loaded
+  const earningsFaqEntries = tiers.length > 0 ? [
     {
-      question: "How does the revenue sharing work?",
-      answer: `For every ₹${programPrice.toLocaleString('en-IN')} enrollment: ${leadCostPercent}% goes to lead cost (whoever brought the student), ${coachCostPercent}% goes to the coach (you), and ${platformFeePercent}% is the platform fee. If Yestoryd assigns you a student, you earn ₹${platformLeadTotal.toLocaleString('en-IN')}. If you bring the student yourself, you earn ₹${ownLeadTotal.toLocaleString('en-IN')}.`
+      question: "How does the earnings model work?",
+      answer: `You earn per session completed, not a percentage of the enrollment fee. As a ${tiers[0]?.displayName} coach, you earn ₹${tiers[0]?.perSessionRate.toLocaleString('en-IN')} per coaching session. As you progress to ${tiers[tiers.length - 1]?.displayName}, you earn ₹${tiers[tiers.length - 1]?.perSessionRate.toLocaleString('en-IN')} per coaching session. Skill building sessions pay 50% of your coaching rate. Payouts happen monthly on the ${payoutDay}th.`
     },
-    ...STATIC_FAQ_DATA.slice(2, 4),
-    {
-      question: "What if I bring students but can't coach them?",
-      answer: `You can refer students and earn ₹${leadCostAmount.toLocaleString('en-IN')} per enrollment even if another coach teaches them. Great for those at full capacity or building a network.`
-    },
+  ] : [];
+  const referralFaqEntries = (tiers.length > 0 && referralBonusPerStudent > 0) ? [
     {
       question: "What if I bring my own students?",
-      answer: `You keep ${ownLeadTotalPercent}% (₹${ownLeadTotal.toLocaleString('en-IN')}) for students you bring and coach yourself. The ${leadCostPercent}% lead cost goes to you since you sourced the student.`
+      answer: `When you refer a student, you earn an additional ₹${referralBonusPerStudent.toLocaleString('en-IN')} referral bonus per enrollment on top of your per-session earnings. Even if you're at full capacity, you can refer students for other coaches and still earn the referral bonus.`
     },
+  ] : [];
+  const faqData = [
+    ...STATIC_FAQ_DATA.slice(0, 2),
+    ...earningsFaqEntries,
+    ...STATIC_FAQ_DATA.slice(2, 4),
+    ...referralFaqEntries,
     ...STATIC_FAQ_DATA.slice(4),
   ];
 
@@ -543,156 +614,157 @@ export default function YestorydAcademyPage() {
         </div>
       </section>
 
-      {/* Earnings Section */}
+      {/* Earnings Section — V2 Tier Progression */}
       <section className="py-20 bg-surface-0 border-t border-border">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-[#ff0099]/20 text-[#ff0099] rounded-full px-4 py-2 mb-4">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">INTRODUCTORY OFFER</span>
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm font-medium">GROW YOUR EARNINGS</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               How You Earn
             </h2>
             <p className="text-text-tertiary">
-              Lock in these rates by joining now — percentages may change for future coaches.
+              Earn per session completed. Grow your rate as you grow with us.
             </p>
           </div>
 
-          {/* 3-Component Split */}
-          {earningsLoading ? (
+          {/* Loading / Error / Content */}
+          {tiersLoading ? (
             <div className="flex items-center justify-center gap-3 py-12">
-              <Loader2 className="w-6 h-6 text-[#ff0099] animate-spin" />
+              <Spinner />
               <span className="text-text-tertiary">Loading earnings data...</span>
             </div>
-          ) : (
-            <div className="grid md:grid-cols-3 gap-4 mb-10">
-              <div className="bg-gradient-to-br from-[#c847f4]/20 to-[#c847f4]/10 rounded-2xl p-6 text-center border border-[#c847f4]/30">
-                <div className="text-3xl font-bold text-[#c847f4] mb-2">{leadCostPercent}%</div>
-                <div className="font-semibold text-white mb-1">Lead Cost</div>
-                <div className="text-sm text-text-secondary mb-2">₹{leadCostAmount.toLocaleString()}</div>
-                <div className="text-xs text-text-tertiary">Goes to whoever<br />brought the student</div>
-              </div>
-              <div className="bg-gradient-to-br from-green-500/20 to-green-500/10 rounded-2xl p-6 text-center border border-green-500/30">
-                <div className="text-3xl font-bold text-green-400 mb-2">{coachCostPercent}%</div>
-                <div className="font-semibold text-white mb-1">Coach Cost</div>
-                <div className="text-sm text-text-secondary mb-2">₹{coachCostAmount.toLocaleString()}</div>
-                <div className="text-xs text-text-tertiary">Goes to coach<br />who teaches</div>
-              </div>
-              <div className="bg-gradient-to-br from-[#00abff]/20 to-[#00abff]/10 rounded-2xl p-6 text-center border border-[#00abff]/30">
-                <div className="text-3xl font-bold text-[#00abff] mb-2">{platformFeePercent}%</div>
-                <div className="font-semibold text-white mb-1">Platform Fee</div>
-                <div className="text-sm text-text-secondary mb-2">₹{platformFeeAmount.toLocaleString()}</div>
-                <div className="text-xs text-text-tertiary">Yestoryd<br />(tech, content, support)</div>
-              </div>
+          ) : tiersError || tiers.length === 0 ? (
+            <div className="bg-surface-1 border border-border rounded-2xl p-8 text-center">
+              <AlertCircle className="w-8 h-8 text-text-tertiary mx-auto mb-3" />
+              <p className="text-text-secondary mb-1">Unable to load current earnings rates.</p>
+              <p className="text-sm text-text-tertiary">Please refresh the page or try again later.</p>
             </div>
-          )}
+          ) : (<>
 
-          {/* Scenarios */}
-          <div className="space-y-4 mb-10">
-            {/* Yestoryd Assigns */}
-            <div className="bg-surface-1 rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 rounded-full bg-[#00abff]" />
-                <h3 className="font-semibold text-white">Yestoryd Assigns</h3>
-              </div>
-              <p className="text-sm text-text-tertiary mb-4">We bring the student, you coach them.</p>
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="text-text-tertiary">You earn:</span>
-                  <span className="text-2xl font-bold text-white ml-2">₹{platformLeadTotal.toLocaleString()}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-text-tertiary">Yestoryd:</span>
-                  <span className="text-text-secondary ml-2">₹{(programPrice - platformLeadTotal).toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="text-center mt-4 text-2xl font-bold text-[#00abff]">{coachCostPercent}%</div>
-            </div>
+          {/* Tier Progression Cards */}
+          <div className="grid md:grid-cols-3 gap-4 mb-4">
+            {tiers.map((tier, i) => {
+              const TierIcon = tier.icon;
+              const baseTotal =
+                (coachingSessions * tier.perSessionRate) + (sbSessions * tier.sbRate);
+              const basePercent = programPrice > 0 ? Math.round(baseTotal / programPrice * 100) : 0;
+              const withReferralTotal = baseTotal + referralBonusPerStudent;
+              const withReferralPercent = programPrice > 0 ? Math.round(withReferralTotal / programPrice * 100) : 0;
 
-            {/* You Bring & Coach */}
-            <div className="bg-surface-1 rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 rounded-full bg-orange-500" />
-                <h3 className="font-semibold text-white">You Bring & Coach</h3>
-              </div>
-              <p className="text-sm text-text-tertiary mb-4">Your student, you coach them.</p>
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="text-text-tertiary">You earn:</span>
-                  <span className="text-2xl font-bold text-white ml-2">₹{ownLeadTotal.toLocaleString()}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-text-tertiary">Yestoryd:</span>
-                  <span className="text-text-secondary ml-2">₹{platformFeeAmount.toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="text-center mt-4 text-2xl font-bold text-orange-400">{ownLeadTotalPercent}%</div>
-            </div>
+              return (
+                <div
+                  key={tier.name}
+                  className={`bg-gradient-to-br ${tier.bgGradient} rounded-2xl p-6 border ${tier.borderColor} relative`}
+                >
+                  {/* Arrow connector (desktop only) */}
+                  {i < tiers.length - 1 && (
+                    <div className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10">
+                      <ArrowRight className="w-5 h-5 text-text-tertiary" />
+                    </div>
+                  )}
 
-            {/* You Refer Only */}
-            <div className="bg-surface-1 rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-3 h-3 rounded-full bg-[#ffde00]" />
-                <h3 className="font-semibold text-white">You Refer Only</h3>
-              </div>
-              <p className="text-sm text-text-tertiary mb-4">Your lead, another coach teaches.</p>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-text-tertiary">Referral bonus:</span>
-                  <div className="font-bold text-[#ffde00]">₹{leadCostAmount.toLocaleString()}</div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-surface-0/50 flex items-center justify-center">
+                      <TierIcon className={`w-5 h-5 ${tier.color}`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-bold ${tier.color}`}>{tier.displayName}</h3>
+                      {tier.minChildren > 0 ? (
+                        <p className="text-xs text-text-tertiary">{tier.minChildren}+ children coached</p>
+                      ) : (
+                        <p className="text-xs text-text-tertiary">Entry level</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Session breakdown */}
+                  <div className="space-y-1 mb-4 text-sm text-text-secondary">
+                    <div className="flex justify-between">
+                      <span>{coachingSessions} coaching sessions</span>
+                      <span className="text-text-tertiary">× ₹{tier.perSessionRate.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{sbSessions} skill building sessions</span>
+                      <span className="text-text-tertiary">× ₹{tier.sbRate.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  {/* Earnings per enrollment: assigned vs own student */}
+                  <div className="pt-3 border-t border-white/10 space-y-2">
+                    {/* Yestoryd assigns */}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-text-tertiary">Yestoryd assigns</span>
+                      <span className="text-white font-medium">
+                        {basePercent}% · ₹{baseTotal.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {/* You bring — highlighted */}
+                    {referralBonusPerStudent > 0 && (
+                      <div className="flex items-center justify-between text-sm bg-[#ffde00]/10 -mx-2 px-2 py-1.5 rounded-xl">
+                        <span className="text-[#ffde00]">You bring student</span>
+                        <span className="text-[#ffde00] font-bold">
+                          {withReferralPercent}% · ₹{withReferralTotal.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Monthly estimate */}
+                  <div className="pt-3 mt-2 border-t border-white/10 flex justify-between text-sm">
+                    <span className="text-text-tertiary">Monthly est.</span>
+                    <span className="text-text-secondary">
+                      ~₹{tier.monthlyEstimate.toLocaleString('en-IN')}
+                      <span className="text-text-tertiary"> ({tier.exampleStudents} kids)</span>
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-text-tertiary">Teaching coach:</span>
-                  <div className="text-text-secondary">₹{coachCostAmount.toLocaleString()}</div>
-                </div>
-                <div>
-                  <span className="text-text-tertiary">Yestoryd:</span>
-                  <div className="text-text-secondary">₹{platformFeeAmount.toLocaleString()}</div>
-                </div>
-              </div>
-              <div className="text-center mt-4 text-2xl font-bold text-[#ffde00]">{leadCostPercent}%</div>
-            </div>
+              );
+            })}
           </div>
 
-          <p className="text-center text-sm text-[#ff0099]">
-            Even at full capacity, keep referring — you earn ₹{leadCostAmount.toLocaleString()} for every student you bring!
-          </p>
+          {programPrice > 0 && (
+            <p className="text-center text-xs text-text-tertiary mb-10">
+              Based on Full Course (₹{programPrice.toLocaleString('en-IN')}) · Building band (age 7-9) · Rates vary by age band and plan
+            </p>
+          )}
 
-          {/* Earnings Calculator */}
-          <div className="mt-12 bg-surface-1 rounded-2xl p-8 border border-border">
+          {/* Interactive Earnings Calculator */}
+          <div className="bg-surface-1 rounded-2xl p-8 border border-border">
             <h3 className="text-xl font-bold text-white text-center mb-6">Earnings Calculator</h3>
 
-            <div className="flex flex-wrap justify-center gap-4 mb-6">
-              <button
-                onClick={() => setEarningsMode('assigned')}
-                className={`px-6 py-2 rounded-full font-medium transition-all min-h-[44px] ${
-                  earningsMode === 'assigned'
-                    ? 'bg-[#ff0099] text-white'
-                    : 'bg-surface-2 text-text-tertiary hover:bg-surface-0 border border-border'
-                }`}
-              >
-                Yestoryd assigns ({coachCostPercent}%)
-              </button>
-              <button
-                onClick={() => setEarningsMode('bring')}
-                className={`px-6 py-2 rounded-full font-medium transition-all min-h-[44px] ${
-                  earningsMode === 'bring'
-                    ? 'bg-[#ff0099] text-white'
-                    : 'bg-surface-2 text-text-tertiary hover:bg-surface-0 border border-border'
-                }`}
-              >
-                You bring students ({ownLeadTotalPercent}%)
-              </button>
+            {/* Tier Selector */}
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
+              {tiers.map((tier, i) => {
+                const TierIcon = tier.icon;
+                return (
+                  <button
+                    key={tier.name}
+                    onClick={() => setSelectedTier(i)}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-xl font-medium transition-all min-h-[44px] ${
+                      selectedTier === i
+                        ? 'bg-[#ff0099] text-white'
+                        : 'bg-surface-2 text-text-tertiary hover:bg-surface-0 border border-border'
+                    }`}
+                  >
+                    <TierIcon className="w-4 h-4" />
+                    {tier.displayName}
+                  </button>
+                );
+              })}
             </div>
 
+            {/* Students Slider */}
             <div className="text-center mb-6">
               <label className="text-text-tertiary block mb-2">Children you coach:</label>
               <div className="flex items-center justify-center gap-4">
                 <input
                   type="range"
                   min="1"
-                  max="30"
+                  max="20"
                   value={childrenCount}
                   onChange={(e) => setChildrenCount(parseInt(e.target.value))}
                   className="w-48 accent-[#ff0099]"
@@ -701,16 +773,57 @@ export default function YestorydAcademyPage() {
               </div>
             </div>
 
-            <div className="text-center">
-              <p className="text-text-tertiary mb-2">Monthly earnings potential</p>
-              <div className="text-4xl md:text-5xl font-bold text-white">
-                ₹{calculateEarnings().toLocaleString()}
+            {/* Referral Toggle */}
+            {referralBonusPerStudent > 0 && (
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <button
+                  onClick={() => setIncludeReferral(!includeReferral)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    includeReferral ? 'bg-[#ff0099]' : 'bg-surface-2'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                      includeReferral ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-text-secondary">Include referral bonus (you bring students)</span>
               </div>
-              <p className="text-text-tertiary text-sm mt-2">
-                ({earningsMode === 'assigned' ? `${coachCostPercent}%` : `${ownLeadTotalPercent}%`} share)
-              </p>
-            </div>
+            )}
+
+            {/* Results */}
+            {(() => {
+              const calc = calcMonthlyEarnings();
+              return (
+                <div className="text-center">
+                  <p className="text-text-tertiary mb-2">Monthly earnings potential</p>
+                  <div className="text-4xl md:text-5xl font-bold text-white">
+                    ₹{calc.total.toLocaleString('en-IN')}
+                  </div>
+                  <div className="flex items-center justify-center gap-4 mt-3 text-sm text-text-tertiary">
+                    <span>₹{calc.perSession.toLocaleString('en-IN')}/session</span>
+                    <span className="text-border">|</span>
+                    <span>~{calc.sessions} sessions/month</span>
+                  </div>
+                  {includeReferral && calc.referral > 0 && (
+                    <p className="text-sm text-[#ffde00] mt-2">
+                      Includes ₹{calc.referral.toLocaleString('en-IN')} referral bonuses
+                    </p>
+                  )}
+                  <p className="text-xs text-text-tertiary mt-4">
+                    Annual potential: ₹{(calc.total * 12).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
+
+          <p className="text-center text-xs text-text-tertiary mt-4">
+            Payouts processed monthly on the 7th via UPI transfer.
+          </p>
+
+          </>)}
         </div>
       </section>
 

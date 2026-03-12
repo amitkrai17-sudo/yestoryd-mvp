@@ -195,7 +195,7 @@ export async function timedQuery<T>(
     const durationMs = Date.now() - startTime;
 
     if (durationMs > slowThresholdMs) {
-      console.warn(`🐢 [SLOW QUERY] ${queryName}: ${durationMs}ms (threshold: ${slowThresholdMs}ms)`);
+      console.warn(`[SLOW QUERY] ${queryName}: ${durationMs}ms (threshold: ${slowThresholdMs}ms)`);
     } else if (process.env.NODE_ENV === 'development') {
       // In dev, log all query times for visibility
       console.log(`[DB] ${queryName}: ${durationMs}ms`);

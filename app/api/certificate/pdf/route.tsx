@@ -14,13 +14,11 @@ import {
   Text,
   StyleSheet,
 } from '@react-pdf/renderer';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // PDF Styles
 const styles = StyleSheet.create({
@@ -320,7 +318,7 @@ const CertificateDocument: React.FC<CertificateProps> = ({
 
           {/* Badge */}
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>🏆 {sessionsCompleted} Sessions • {programDuration}</Text>
+            <Text style={styles.badgeText}>{sessionsCompleted} Sessions • {programDuration}</Text>
           </View>
 
           {/* Child Name */}
@@ -331,7 +329,7 @@ const CertificateDocument: React.FC<CertificateProps> = ({
 
           {/* Progress Report */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📊 Progress Report</Text>
+            <Text style={styles.sectionTitle}>Progress Report</Text>
 
             {/* Header Row */}
             <View style={styles.metricsHeader}>
@@ -379,20 +377,20 @@ const CertificateDocument: React.FC<CertificateProps> = ({
 
           {/* Gemini Feedback */}
           <View style={styles.feedbackSection}>
-            <Text style={styles.feedbackTitle}>✨ Coach's Assessment</Text>
+            <Text style={styles.feedbackTitle}>Coach's Assessment</Text>
             <Text style={styles.feedbackText}>{geminiFeedback.summary}</Text>
           </View>
 
           {/* Strengths & Achievements */}
           <View style={styles.twoColumn}>
             <View style={styles.column}>
-              <Text style={styles.columnTitle}>💪 Strengths</Text>
+              <Text style={styles.columnTitle}>Strengths</Text>
               {geminiFeedback.strengths.slice(0, 4).map((strength, i) => (
                 <Text key={i} style={styles.bulletPoint}>• {strength}</Text>
               ))}
             </View>
             <View style={[styles.column, { backgroundColor: '#EFF6FF' }]}>
-              <Text style={[styles.columnTitle, { color: '#1E40AF' }]}>🎯 Achievements</Text>
+              <Text style={[styles.columnTitle, { color: '#1E40AF' }]}>Achievements</Text>
               {geminiFeedback.achievements.slice(0, 4).map((achievement, i) => (
                 <Text key={i} style={styles.bulletPoint}>• {achievement}</Text>
               ))}
@@ -402,7 +400,7 @@ const CertificateDocument: React.FC<CertificateProps> = ({
           {/* Recommendation */}
           {geminiFeedback.recommendation && (
             <View style={{ marginTop: 10, padding: 8, backgroundColor: '#F5F3FF', borderRadius: 4 }}>
-              <Text style={{ fontSize: 8, color: '#5B21B6', fontWeight: 'bold' }}>📚 Next Steps</Text>
+              <Text style={{ fontSize: 8, color: '#5B21B6', fontWeight: 'bold' }}>Next Steps</Text>
               <Text style={{ fontSize: 8, color: '#4B5563', marginTop: 3 }}>{geminiFeedback.recommendation}</Text>
             </View>
           )}
@@ -449,7 +447,7 @@ async function generateGeminiFeedback(data: {
   recommendation: string;
 }> {
   try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('formatting') });
 
     const prompt = `You are a reading coach writing a certificate feedback for a child who completed a 12-week reading program.
 
@@ -640,7 +638,7 @@ export async function GET(request: NextRequest) {
       finalScores,
       initialFeedback,
       finalFeedback,
-      sessionsCompleted: sessionsCompleted || 9, // V1 fallback – enrollment.total_sessions is authoritative
+      sessionsCompleted: sessionsCompleted || 0,
     });
 
     // Generate PDF
@@ -652,7 +650,7 @@ export async function GET(request: NextRequest) {
         certificateNumber={certificateNumber}
         completedDate={completedDate}
         programDuration={programDuration}
-        sessionsCompleted={sessionsCompleted || 9 /* V1 fallback – enrollment.total_sessions is authoritative */}
+        sessionsCompleted={sessionsCompleted || 0}
         initialScores={initialScores}
         finalScores={finalScores}
         geminiFeedback={geminiFeedback}

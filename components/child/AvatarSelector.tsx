@@ -3,6 +3,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Palette, Sparkles } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface AvatarSelectorProps {
   childId: string;
@@ -11,14 +13,14 @@ interface AvatarSelectorProps {
 }
 
 const AVATAR_TYPES = [
-  { id: 'fox', name: 'Fox', emoji: '🦊', description: 'Clever and curious' },
-  { id: 'bunny', name: 'Bunny', emoji: '🐰', description: 'Quick and friendly' },
-  { id: 'bear', name: 'Bear', emoji: '🐻', description: 'Strong and brave' },
-  { id: 'lion', name: 'Lion', emoji: '🦁', description: 'Bold and proud' },
-  { id: 'cat', name: 'Cat', emoji: '🐱', description: 'Smart and playful' },
-  { id: 'owl', name: 'Owl', emoji: '🦉', description: 'Wise and thoughtful' },
-  { id: 'panda', name: 'Panda', emoji: '🐼', description: 'Gentle and kind' },
-  { id: 'butterfly', name: 'Butterfly', emoji: '🦋', description: 'Free and beautiful' },
+  { id: 'fox', name: 'Fox', initial: 'F', description: 'Clever and curious' },
+  { id: 'bunny', name: 'Bunny', initial: 'B', description: 'Quick and friendly' },
+  { id: 'bear', name: 'Bear', initial: 'Be', description: 'Strong and brave' },
+  { id: 'lion', name: 'Lion', initial: 'L', description: 'Bold and proud' },
+  { id: 'cat', name: 'Cat', initial: 'C', description: 'Smart and playful' },
+  { id: 'owl', name: 'Owl', initial: 'O', description: 'Wise and thoughtful' },
+  { id: 'panda', name: 'Panda', initial: 'P', description: 'Gentle and kind' },
+  { id: 'butterfly', name: 'Butterfly', initial: 'Bt', description: 'Free and beautiful' },
 ];
 
 const AVATAR_COLORS = [
@@ -85,7 +87,7 @@ export default function AvatarSelector({ childId, childName, onComplete }: Avata
             animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.1, 1] }}
             transition={{ duration: 0.6 }}
           >
-            {step === 1 ? '🎨' : step === 2 ? '🌈' : '✨'}
+            {step === 1 ? <Palette className="w-10 h-10 mx-auto" /> : step === 2 ? <Sparkles className="w-10 h-10 mx-auto" /> : <Sparkles className="w-10 h-10 mx-auto" />}
           </motion.div>
           <h2 className="text-2xl font-black">
             {step === 1 ? 'Choose Your Buddy!' : 
@@ -140,7 +142,7 @@ export default function AvatarSelector({ childId, childName, onComplete }: Avata
                       animate={selectedType === type.id ? { y: [0, -5, 0] } : {}}
                       transition={{ duration: 0.3 }}
                     >
-                      {type.emoji}
+                      {type.initial}
                     </motion.span>
                     <span className="text-xs font-bold text-gray-700">{type.name}</span>
                   </motion.button>
@@ -165,7 +167,7 @@ export default function AvatarSelector({ childId, childName, onComplete }: Avata
                     className="w-28 h-28 rounded-full flex items-center justify-center text-6xl shadow-xl border-4 border-white"
                     style={{ backgroundColor: AVATAR_COLORS.find(c => c.id === selectedColor)?.hex + '30' }}
                   >
-                    {selectedTypeInfo?.emoji}
+                    {selectedTypeInfo?.initial}
                   </div>
                 </motion.div>
                 <div className="flex justify-center gap-3 flex-wrap">
@@ -202,7 +204,7 @@ export default function AvatarSelector({ childId, childName, onComplete }: Avata
                   animate={{ y: [0, -8, 0] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 >
-                  {selectedTypeInfo?.emoji}
+                  {selectedTypeInfo?.initial}
                 </motion.div>
                 <input
                   type="text"
@@ -255,12 +257,12 @@ export default function AvatarSelector({ childId, childName, onComplete }: Avata
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 >
-                  ⏳
+                  <Spinner size="sm" />
                 </motion.span>
                 Creating...
               </span>
             ) : step === 3 ? (
-              '✨ LET\'S GO!'
+              'LET\'S GO!'
             ) : (
               'Next →'
             )}

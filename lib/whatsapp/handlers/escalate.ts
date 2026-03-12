@@ -7,10 +7,10 @@ import { sendText } from '@/lib/whatsapp/cloud-api';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import { loadAuthConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 const getSupabase = createAdminClient;
 
-// TODO: Move to site_settings or a dedicated admin config table
-const ADMIN_PHONE = process.env.ADMIN_WHATSAPP_PHONE || '+919687606177';
+const ADMIN_PHONE = COMPANY_CONFIG.adminWhatsApp;
 
 export interface EscalateResult {
   response: string;
@@ -37,7 +37,7 @@ export async function handleEscalate(
     .eq('id', conversationId);
 
   // 2. Send user confirmation
-  const body = `Connecting you with a Yestoryd reading expert! They'll respond shortly 🙏\n\nIn the meantime, feel free to share any details about your child.`;
+  const body = `Connecting you with a Yestoryd reading expert! They'll respond shortly.\n\nIn the meantime, feel free to share any details about your child.`;
   await sendText(phone, body);
 
   // 3. Log escalation with lead summary for admin
@@ -104,7 +104,7 @@ export async function notifyAdmin(
   // --- a) WhatsApp alert to admin ---
   try {
     const lines = [
-      `🚨 LEAD ESCALATION`,
+      `[ALERT] LEAD ESCALATION`,
       ``,
       `Parent: ${parentName} (${phone})`,
       `Child: ${childName}, Age ${childAge}`,
@@ -171,7 +171,7 @@ export async function notifyAdmin(
     const notifications = adminUsers.map(admin => ({
       user_id: admin.id,
       user_type: 'admin',
-      title: `🚨 Lead escalation — ${parentName}`,
+      title: `[ALERT] Lead escalation — ${parentName}`,
       body: `${childName} (age ${childAge}) • Score ${leadScore}/100 • ${messageCount} messages. Parent requested human help.`,
       notification_type: 'escalation',
       action_url: waLink,

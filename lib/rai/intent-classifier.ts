@@ -1,11 +1,9 @@
 // file: lib/rai/intent-classifier.ts
 // rAI v2.0 - Two-tier intent classification
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { Complexity, Intent, IntentClassification, UserRole } from './types';
 import { getGeminiModel } from '@/lib/gemini-config';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // ============================================================
 // TIER 0: REGEX ROUTER (Zero latency, Zero cost)
@@ -127,7 +125,7 @@ export async function tier1Classifier(
   userRole: UserRole
 ): Promise<IntentClassification> {
   try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('classification') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('classification') });
     
     const prompt = INTENT_CLASSIFICATION_PROMPT
       .replace('{role}', userRole)

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Loader2 } from 'lucide-react';
+import { Shield } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { supabase } from '@/lib/supabase/client';
 
 // ==================== SUPABASE CLIENT ====================
@@ -93,7 +94,7 @@ export default function AdminLoginPage() {
           className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-surface-1 border-2 border-border rounded-xl font-medium text-text-secondary hover:bg-surface-2 hover:border-border/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Spinner />
           ) : (
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path

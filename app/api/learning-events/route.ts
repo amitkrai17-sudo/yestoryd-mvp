@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import { getGeminiModel } from '@/lib/gemini-config';
@@ -7,8 +7,6 @@ import { getGeminiModel } from '@/lib/gemini-config';
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // Event types
 type EventType = 'assessment' | 'session' | 'quiz' | 'milestone' | 'note' | 'handwritten';
@@ -24,7 +22,7 @@ interface LearningEventInput {
 // Generate AI summary for the event
 async function generateAISummary(eventType: EventType, data: Record<string, any>): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('story_summarization') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('story_summarization') });
 
     let prompt = '';
     switch (eventType) {

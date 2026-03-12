@@ -6,6 +6,7 @@
 
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
+import { Lock, Clock, FileText } from 'lucide-react';
 
 interface LearningItem {
   unit: {
@@ -89,8 +90,8 @@ function getCardConfig(item: LearningItem, isFirst: boolean = false) {
   return {
     bg: 'bg-gray-100',
     border: 'border-gray-200',
-    badge: { text: '🎬 Video', bg: 'bg-gray-200', color: 'text-gray-500' },
-    icon: '🔒',
+    badge: { text: 'Video', bg: 'bg-gray-200', color: 'text-gray-500' },
+    icon: 'locked',
     iconBg: 'bg-gray-200',
     locked: true,
     message: 'Complete previous first'
@@ -183,9 +184,13 @@ export default function LearningPathCarousel({ items, onSelect }: LearningPathCa
 
                 {/* Center Icon */}
                 <div className={`w-14 h-14 rounded-full ${config.iconBg} flex items-center justify-center`}>
-                  <span className={`text-2xl ${config.iconColor || (config.locked ? 'text-gray-400' : 'text-white')}`}>
-                    {config.icon}
-                  </span>
+                  {config.icon === 'locked' ? (
+                    <Lock className={`w-6 h-6 text-gray-400`} />
+                  ) : (
+                    <span className={`text-2xl ${config.iconColor || (config.locked ? 'text-gray-400' : 'text-white')}`}>
+                      {config.icon}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -195,15 +200,15 @@ export default function LearningPathCarousel({ items, onSelect }: LearningPathCa
                   {getSimpleTitle(item.unit?.quest_title || item.unit?.name || 'Activity')}
                 </h4>
                 <div className={`flex items-center gap-2 mt-1 text-xs ${config.locked ? 'text-gray-400' : config.bg === 'bg-white' ? 'text-gray-500' : 'text-white/80'}`}>
-                  <span>⏱ {item.unit?.estimated_minutes || 5}:00</span>
-                  {hasQuiz && <span>📝 Quiz</span>}
+                  <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" /> {item.unit?.estimated_minutes || 5}:00</span>
+                  {hasQuiz && <span className="flex items-center gap-0.5"><FileText className="w-3 h-3" /> Quiz</span>}
                 </div>
                 {config.message && (
                   <p className={`text-[10px] mt-1.5 flex items-center gap-1 ${
                     config.locked ? 'text-orange-500' : 
                     config.bg === 'bg-white' ? 'text-green-600' : 'text-white/90'
                   }`}>
-                    {config.locked ? '🔒' : '✓'} {config.message}
+                    {config.locked ? <Lock className="w-3 h-3 inline-block" /> : '✓'} {config.message}
                   </p>
                 )}
               </div>

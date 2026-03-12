@@ -9,18 +9,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  // Verify cron secret or QStash signature
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  const isQStash = request.headers.get('upstash-signature');
-
-  if (!isQStash && (!cronSecret || authHeader !== `Bearer ${cronSecret}`)) {
+  const cronAuth = await verifyCronRequest(request);
+  if (!cronAuth.isValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

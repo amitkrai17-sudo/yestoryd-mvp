@@ -4,7 +4,8 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Loader2, AlertCircle, CheckCircle, MapPin } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, MapPin } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 type OfflineReason = 'travel' | 'parent_preference' | 'connectivity' | 'other';
 type LocationType = 'home_visit' | 'school' | 'center' | 'other';
@@ -238,7 +239,7 @@ export function RequestOfflineModal({ isOpen, session, onClose, onSuccess }: Req
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                   Requesting...
                 </>
               ) : (

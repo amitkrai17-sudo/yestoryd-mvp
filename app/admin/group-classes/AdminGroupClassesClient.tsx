@@ -7,12 +7,17 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   Plus, Calendar, Clock, Users, Search, MoreVertical,
   Edit, CheckCircle, XCircle, Copy, ExternalLink,
-  BookOpen, User, Loader2, AlertCircle, X, Video,
-  UserPlus, Mail, Phone, Mic
+  BookOpen, User, AlertCircle, X, Video,
+  UserPlus, Mail, Phone, Mic, Layers
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { DateInput } from '@/components/ui/date-input';
+import { TimeInput } from '@/components/ui/time-input';
 
 // =============================================================================
 // TYPES
@@ -114,15 +119,7 @@ function formatTime(timeStr: string): string {
   return `${displayHour}:${minutes} ${ampm}`;
 }
 
-function getStatusBadge(status: string): string {
-  switch (status) {
-    case 'scheduled': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
-    case 'live': return 'bg-green-500/20 text-green-400 border border-green-500/30';
-    case 'completed': return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
-    case 'cancelled': return 'bg-red-500/20 text-red-400 border border-red-500/30';
-    default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
-  }
-}
+// Status badge helper removed — using shared StatusBadge component
 
 // =============================================================================
 // ACTION MENU COMPONENT (Fixed position overlay)
@@ -279,9 +276,7 @@ function SessionCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(session.status)}`}>
-            {session.status}
-          </span>
+          <StatusBadge status={session.status} size="sm" />
           <button
             ref={buttonRef}
             onClick={() => setMenuOpen(!menuOpen)}
@@ -624,26 +619,16 @@ function SessionModal({
 
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-text-secondary mb-2">Date *</label>
-              <input
-                type="date"
-                value={formData.scheduledDate}
-                onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-text-secondary mb-2">Time *</label>
-              <input
-                type="time"
-                value={formData.scheduledTime}
-                onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
-                className="w-full px-4 py-3 bg-surface-2 border border-border rounded-xl focus:ring-2 focus:ring-white/[0.10] focus:border-transparent text-white placeholder:text-text-muted"
-                required
-              />
-            </div>
+            <DateInput
+              label="Date *"
+              value={formData.scheduledDate}
+              onChange={(v) => setFormData({ ...formData, scheduledDate: v })}
+            />
+            <TimeInput
+              label="Time *"
+              value={formData.scheduledTime}
+              onChange={(v) => setFormData({ ...formData, scheduledTime: v })}
+            />
           </div>
 
           {/* Duration, Max Kids, Price */}
@@ -748,7 +733,7 @@ function SessionModal({
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner />
                   {isEditMode ? 'Saving...' : 'Creating...'}
                 </>
               ) : isEditMode ? (
@@ -1044,6 +1029,15 @@ export default function AdminGroupClassesClient() {
             ))}
           </div>
 
+          {/* Blueprints link */}
+          <Link
+            href="/admin/group-classes/blueprints"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-white hover:bg-surface-2 transition-colors"
+          >
+            <Layers className="w-4 h-4" />
+            Blueprints
+          </Link>
+
           {/* Search */}
           <div className="flex-1 max-w-md">
             <div className="relative">
@@ -1064,7 +1058,7 @@ export default function AdminGroupClassesClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            <Spinner size="lg" color="muted" />
           </div>
         ) : filteredSessions.length === 0 ? (
           <div className="text-center py-20">

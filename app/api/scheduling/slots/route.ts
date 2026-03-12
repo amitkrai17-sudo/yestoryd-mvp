@@ -23,6 +23,32 @@ const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
 
 // ============================================================================
+// IST HELPERS (UTC+5:30) — Vercel runs in UTC, slots must use IST
+// ============================================================================
+
+function getNowIST(): Date {
+  // Create a Date representing the current moment in IST
+  const now = new Date();
+  // Shift by IST offset: UTC + 5h 30m
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60 * 1000;
+  return new Date(utcMs + istOffset);
+}
+
+function getTodayIST(): string {
+  const ist = getNowIST();
+  const y = ist.getFullYear();
+  const m = String(ist.getMonth() + 1).padStart(2, '0');
+  const d = String(ist.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getCurrentTimeMinutesIST(): number {
+  const ist = getNowIST();
+  return ist.getHours() * 60 + ist.getMinutes();
+}
+
+// ============================================================================
 // CONFIGURATION
 // ============================================================================
 
@@ -39,11 +65,11 @@ const CONFIG = {
   
   // Time buckets for flight-style UI
   TIME_BUCKETS: [
-    { name: 'early_morning', displayName: 'Early Morning', emoji: '🌅', startHour: 6, endHour: 9 },
-    { name: 'morning', displayName: 'Morning', emoji: '☀️', startHour: 9, endHour: 12 },
-    { name: 'afternoon', displayName: 'Afternoon', emoji: '🌤️', startHour: 12, endHour: 16 },
-    { name: 'evening', displayName: 'Evening', emoji: '🌆', startHour: 16, endHour: 20 },
-    { name: 'night', displayName: 'Night', emoji: '🌙', startHour: 20, endHour: 22 },
+    { name: 'early_morning', displayName: 'Early Morning', icon: 'Sunrise', startHour: 6, endHour: 9 },
+    { name: 'morning', displayName: 'Morning', icon: 'Sun', startHour: 9, endHour: 12 },
+    { name: 'afternoon', displayName: 'Afternoon', icon: 'CloudSun', startHour: 12, endHour: 16 },
+    { name: 'evening', displayName: 'Evening', icon: 'Sunset', startHour: 16, endHour: 20 },
+    { name: 'night', displayName: 'Night', icon: 'Moon', startHour: 20, endHour: 22 },
   ],
   
   // Age-based durations
@@ -94,7 +120,7 @@ interface Coach {
 interface TimeBucket {
   name: string;
   displayName: string;
-  emoji: string;
+  icon: string;
   startHour: number;
   endHour: number;
   totalSlots: number;
@@ -182,9 +208,10 @@ export async function GET(request: NextRequest) {
     // STEP 3: Get existing bookings to exclude
     // ========================================================================
     
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    
+    // Use IST "today" — Vercel runs in UTC where midnight UTC is 5:30 AM IST
+    const todayIST = getTodayIST();
+    const startDate = new Date(todayIST + 'T00:00:00');
+
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + days);
     
@@ -530,9 +557,8 @@ function generateSlotsFromRule(
   // Snap start time to grid
   let currentMinutes = Math.ceil(ruleStartMinutes / CONFIG.SNAP_TO_GRID_MINUTES) * CONFIG.SNAP_TO_GRID_MINUTES;
 
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayStr = getTodayIST();
+  const currentTimeMinutes = getCurrentTimeMinutesIST();
 
   let slotsGenerated = 0;
   let slotsSkippedPast = 0;

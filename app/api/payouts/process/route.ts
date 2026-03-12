@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,9 @@ export const dynamic = 'force-dynamic';
 // --- CONFIGURATION (Lazy initialization) ---
 // Using getServiceSupabase from api-auth.ts
 
-// --- CONSTANTS ---
-const BATCH_SIZE = 20; // Max coaches per request (prevents timeout)
-const RAZORPAY_RATE_LIMIT_DELAY = 100; // ms between Razorpay calls
+// --- CONSTANTS (infrastructure — intentionally hardcoded) ---
+const BATCH_SIZE = 20; // Max coaches per request (prevents Vercel timeout)
+const RAZORPAY_RATE_LIMIT_DELAY = 100; // ms between Razorpay API calls to avoid 429s
 
 // --- HELPER: Razorpay auth ---
 function getRazorpayAuth(): string {
@@ -431,7 +432,7 @@ export async function POST(request: NextRequest) {
 
           // 5j. Audit log
           await supabase.from('activity_log').insert({
-            user_email: auth.adminEmail || 'engage@yestoryd.com',
+            user_email: auth.adminEmail || COMPANY_CONFIG.supportEmail,
       user_type: 'system',
             action: 'payout_processed',
             metadata: {
@@ -499,7 +500,7 @@ export async function POST(request: NextRequest) {
 
         // Audit log failure
         await supabase.from('activity_log').insert({
-          user_email: auth.adminEmail || 'engage@yestoryd.com',
+          user_email: auth.adminEmail || COMPANY_CONFIG.supportEmail,
       user_type: 'system',
           action: 'payout_failed',
           metadata: {

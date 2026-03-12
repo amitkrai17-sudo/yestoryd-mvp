@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
-  CheckCircle, 
-  AlertCircle, 
-  ArrowRight, 
-  Calendar, 
+  CheckCircle,
+  AlertCircle,
+  ArrowRight,
+  Calendar,
   Share2,
   Download,
-  Star
+  Star,
+  PartyPopper
 } from 'lucide-react';
 import Link from 'next/link';
 import { getScoreCategory, formatCurrency } from '@/lib/utils/helpers';
@@ -33,7 +34,7 @@ interface ResultsDisplayProps {
   result: AssessmentResult;
   coachName?: string;
   coachSubdomain?: string;
-  /** Price for the featured package (continuation tier). Falls back to 5999. */
+  /** Price for the featured package (continuation tier). Parent must pass real value. */
   packagePrice?: number;
   /** Label for sessions, e.g. "6–12 coaching sessions". Falls back to "6 one-hour coaching sessions". */
   sessionLabel?: string;
@@ -46,7 +47,7 @@ export function ResultsDisplay({
   result,
   coachName = 'Rucha Rai',
   coachSubdomain = 'rucha',
-  packagePrice = 5999, // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
+  packagePrice = 0,
   sessionLabel = '6 one-hour coaching sessions',
 }: ResultsDisplayProps) {
   const scoreCategory = getScoreCategory(result.score);
@@ -83,7 +84,7 @@ export function ResultsDisplay({
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Assessment Complete! 🎉
+          Assessment Complete! <PartyPopper className="w-7 h-7 inline text-amber-500" />
         </h1>
         <p className="text-gray-600">
           Great job, {childName}! Here are your results.

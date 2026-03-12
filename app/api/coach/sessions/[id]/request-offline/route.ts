@@ -5,12 +5,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { getSetting } from '@/lib/settings/getSettings';
 import { updateCalendarEventForOffline } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
-import crypto from 'crypto';
+import { withParamsHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,27 +20,13 @@ interface RequestBody {
   location_type?: 'home_visit' | 'school' | 'center' | 'other';
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const requestId = crypto.randomUUID();
-
-  try {
-    // 1. Auth check
-    const auth = await requireAdminOrCoach();
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
-    }
-
-    const { id: sessionId } = await params;
+export const POST = withParamsHandler<{ id: string }>(async (request, { id: sessionId }, { auth, supabase, requestId }) => {
     const body: RequestBody = await request.json();
 
     if (!body.reason) {
       return NextResponse.json({ error: 'reason is required' }, { status: 400 });
     }
 
-    const supabase = getServiceSupabase();
     const coachId = auth.coachId;
 
     if (!coachId) {
@@ -118,7 +103,7 @@ export async function POST(
     // Fetch enrollment total_sessions for cap calculation
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('total_sessions')
+      .select('total_sessions, age_band')
       .eq('id', enrollmentId)
       .single();
 
@@ -127,7 +112,19 @@ export async function POST(
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
     }
 
-    const totalSessions = enrollment.total_sessions ?? 24;
+    let totalSessions = enrollment.total_sessions;
+    if (!totalSessions && enrollment.age_band) {
+      const { data: bandRow } = await supabase
+        .from('age_band_config')
+        .select('sessions_per_season, skill_booster_credits')
+        .eq('id', enrollment.age_band)
+        .single();
+      if (bandRow) totalSessions = bandRow.sessions_per_season + (bandRow.skill_booster_credits || 0);
+    }
+    if (!totalSessions) {
+      const bandTotals: Record<string, number> = { foundation: 24, building: 16, mastery: 12 };
+      totalSessions = bandTotals[(enrollment.age_band || '').toLowerCase()] ?? 24;
+    }
     const maxOffline = Math.floor(totalSessions * offlineMaxPercent / 100);
 
     if ((offlineCount ?? 0) >= maxOffline) {
@@ -301,9 +298,4 @@ export async function POST(
         message: `Your offline request needs admin approval. You have ${qualifiedCount ?? 0}/${onlineThreshold} qualifying online sessions completed.`,
       });
     }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Internal server error';
-    console.error(JSON.stringify({ requestId, event: 'request_offline_error', error: message }));
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+}, { auth: 'adminOrCoach' });

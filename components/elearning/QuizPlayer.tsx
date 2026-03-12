@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, AlertCircle, ChevronRight, Volume2 } from 'lucide-react';
+import { X, Check, AlertCircle, ChevronRight, Volume2, Star, Flame, Trophy, ThumbsUp } from 'lucide-react';
 import { playSound, playHaptic, speak } from '@/lib/sounds';
 
 interface Question {
@@ -182,7 +182,7 @@ export default function QuizPlayer({ quizId, onComplete, onExit }: QuizPlayerPro
         <div className="flex items-center gap-3">
           {/* Score */}
           <div className="bg-white px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
-            <span className="text-yellow-500">⭐</span>
+            <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
             <span className="font-bold text-gray-700">{score}</span>
           </div>
           
@@ -193,7 +193,7 @@ export default function QuizPlayer({ quizId, onComplete, onExit }: QuizPlayerPro
               animate={{ scale: 1 }}
               className="bg-orange-100 px-3 py-1.5 rounded-full flex items-center gap-1.5"
             >
-              <span>🔥</span>
+              <Flame className="w-4 h-4 text-orange-500" />
               <span className="font-bold text-orange-600">{streak}</span>
             </motion.div>
           )}
@@ -332,7 +332,7 @@ export default function QuizPlayer({ quizId, onComplete, onExit }: QuizPlayerPro
               </div>
               <div className="flex-1">
                 <p className={`font-semibold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                  {isCorrect ? '🎉 Correct!' : '😕 Not quite'}
+                  {isCorrect ? 'Correct!' : 'Not quite'}
                 </p>
                 {!isCorrect && currentQuestion.explanation && (
                   <p className="text-sm text-gray-600 mt-1">
@@ -374,8 +374,8 @@ export default function QuizPlayer({ quizId, onComplete, onExit }: QuizPlayerPro
               animate={{ scale: 1 }}
               className="bg-white rounded-3xl p-8 max-w-sm mx-4 text-center"
             >
-              <div className="text-6xl mb-4">
-                {mistakes.length === 0 ? '🏆' : '👏'}
+              <div className="mb-4 flex justify-center">
+                {mistakes.length === 0 ? <Trophy className="w-16 h-16 text-yellow-500" /> : <ThumbsUp className="w-16 h-16 text-blue-500" />}
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
                 {mistakes.length === 0 ? 'Perfect!' : 'Quiz Complete!'}

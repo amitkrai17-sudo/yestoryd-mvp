@@ -3,34 +3,35 @@
 // Saves structured data + voice note + creates learning events for RAG
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getGeminiModel } from '@/lib/gemini-config';
+import { getCategoryBySlug } from '@/lib/config/skill-categories';
+import {
+  transcribeVoiceNoteBase64,
+  generateSessionSummary,
+} from '@/lib/gemini/audio-analysis';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface SessionCompleteRequest {
   sessionId: string;
   coachId: string;
   childId: string;
   sessionType: 'coaching' | 'remedial' | 'trial';
-  
+
   // Step 1: Basic assessment
   focusArea: string;
   progressRating: string;
   engagementLevel: string;
   confidenceLevel: number;
-  
+
   // Step 2: Skills
   skillsWorkedOn: string[];
-  
+
   // Step 3: Voice note
   voiceNote?: string;
-  
+
   // Step 4: Homework, quiz, flags
   homeworkAssigned: boolean;
   homeworkTopic?: string;
@@ -41,72 +42,6 @@ interface SessionCompleteRequest {
   flagReason?: string;
   breakthroughMoment?: string;
   concerns?: string;
-}
-
-// Transcribe voice note using Gemini
-async function transcribeVoiceNote(audioBase64: string): Promise<string> {
-  try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('session_analysis') });
-    const audioData = audioBase64.split(',')[1] || audioBase64;
-    
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: 'audio/webm',
-          data: audioData,
-        },
-      },
-      { text: 'Transcribe this voice note from a reading coach about a coaching session. Return only the transcription, no additional commentary.' },
-    ]);
-
-    return result.response.text().trim();
-  } catch (error) {
-    console.error('Voice transcription error:', error);
-    return '';
-  }
-}
-
-// Generate AI summary for the session
-async function generateSessionSummary(
-  childName: string,
-  data: SessionCompleteRequest,
-  voiceTranscript?: string
-): Promise<string> {
-  try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('session_analysis') });
-    
-    const prompt = `
-You are summarizing a reading coaching session for a child.
-
-Child: ${childName}
-Session Type: ${data.sessionType}
-
-Session Details:
-- Focus area: ${data.focusArea}
-- Progress vs last session: ${data.progressRating}
-- Engagement level: ${data.engagementLevel}
-- Confidence level: ${data.confidenceLevel}/5
-- Skills worked on: ${data.skillsWorkedOn.length > 0 ? data.skillsWorkedOn.join(', ') : 'Not specified'}
-${data.homeworkAssigned ? `- Homework assigned: ${data.homeworkTopic} - ${data.homeworkDescription || ''}` : ''}
-${data.breakthroughMoment ? `- Breakthrough moment: ${data.breakthroughMoment}` : ''}
-${data.concerns ? `- Concerns: ${data.concerns}` : ''}
-${data.flaggedForAttention ? `- FLAGGED: ${data.flagReason}` : ''}
-${voiceTranscript ? `\nCoach's notes: "${voiceTranscript}"` : ''}
-
-Write a concise 2-3 sentence summary that captures:
-1. What was worked on and how the child performed
-2. Key observations (progress, engagement, confidence)
-3. Any notable moments or concerns
-
-Be professional and factual. This will be shown to parents and used for tracking.`;
-
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
-  } catch (error) {
-    console.error('Summary generation error:', error);
-    // Fallback summary
-    return `${data.sessionType.charAt(0).toUpperCase() + data.sessionType.slice(1)} session focused on ${data.focusArea}. Progress: ${data.progressRating}. Engagement: ${data.engagementLevel}. Confidence: ${data.confidenceLevel}/5.`;
-  }
 }
 
 // Update child skill progress
@@ -173,9 +108,8 @@ async function createHomeworkAssignment(
   }
 }
 
-// Send quiz to child (placeholder - would integrate with WhatsApp/email)
+// Send quiz to child
 async function sendQuizToChild(childId: string, sessionId: string, quizTopic: string) {
-  // Find or generate quiz
   const { data: quiz } = await supabase
     .from('quiz_bank')
     .select('id, title')
@@ -185,7 +119,6 @@ async function sendQuizToChild(childId: string, sessionId: string, quizTopic: st
     .single();
 
   if (quiz) {
-    // Get child's parent info
     const { data: child } = await supabase
       .from('children')
       .select('parent_email, parent_phone, name')
@@ -194,8 +127,7 @@ async function sendQuizToChild(childId: string, sessionId: string, quizTopic: st
 
     if (child) {
       // TODO: Send WhatsApp/Email with quiz link
-      console.log(`Quiz "${quiz.title}" to be sent to ${child.parent_email || child.parent_phone}`);
-      
+
       // Create learning event for quiz assignment
       await supabase
         .from('learning_events')
@@ -248,14 +180,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Transcribe voice note if provided
+    // Transcribe voice note if provided (uses shared builder with anti-hallucination rules)
     let voiceTranscript = '';
     if (data.voiceNote) {
-      voiceTranscript = await transcribeVoiceNote(data.voiceNote);
+      try {
+        voiceTranscript = await transcribeVoiceNoteBase64(data.voiceNote);
+      } catch (error) {
+        console.error('Voice transcription error:', error);
+      }
     }
 
-    // Generate AI summary
+    // Generate AI summary (uses shared builder from lib/gemini/audio-analysis.ts)
     const aiSummary = await generateSessionSummary(child.name ?? 'Child', data, voiceTranscript);
+
+    // Resolve category_id from focus_area slug
+    const category = await getCategoryBySlug(data.focusArea);
 
     // Update scheduled_sessions
     const { error: sessionError } = await supabase
@@ -266,30 +205,31 @@ export async function POST(request: NextRequest) {
 
         // Form data
         focus_area: data.focusArea,
+        category_id: category?.id ?? null,
         progress_rating: data.progressRating ? Number(data.progressRating) : null,
         engagement_level: data.engagementLevel ? Number(data.engagementLevel) : null,
         confidence_level: data.confidenceLevel,
         skills_worked_on: data.skillsWorkedOn,
-        
+
         // Voice note
         voice_note_transcript: voiceTranscript || null,
-        
+
         // Homework & quiz
         homework_assigned: data.homeworkAssigned,
         homework_topic: data.homeworkTopic || null,
         homework_description: data.homeworkDescription || null,
         quiz_assigned: data.quizAssigned,
         quiz_topic: data.quizTopic || null,
-        
+
         // Flags
         flagged_for_attention: data.flaggedForAttention,
         flag_reason: data.flagReason || null,
         breakthrough_moment: data.breakthroughMoment || null,
         concerns_noted: data.concerns || null,
-        
+
         // AI summary
         ai_summary: aiSummary,
-        
+
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.sessionId);
@@ -376,23 +316,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Update child's confidence level
-    const { error: childUpdateError } = await supabase
+    await supabase
       .from('children')
       .update({
         current_confidence_level: data.confidenceLevel,
-        sessions_completed: child.age, // This should be increment, fixed below
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.childId);
 
-    // Actually increment sessions_completed
+    // Increment sessions_completed
     await supabase.rpc('increment_sessions_completed', { child_id_param: data.childId });
 
-    // If flagged, log for admin attention
-    if (data.flaggedForAttention) {
-      console.log(`ATTENTION: Session flagged for ${child.name} - ${data.flagReason}`);
-      // TODO: Send notification to admin
-    }
+    // Write to activity_log for audit trail
+    await supabase
+      .from('activity_log')
+      .insert({
+        action: data.flaggedForAttention ? 'session_completed_flagged' : 'session_completed',
+        user_email: data.coachId,
+        user_type: 'coach',
+        metadata: {
+          session_id: data.sessionId,
+          child_id: data.childId,
+          child_name: child.name,
+          session_type: data.sessionType,
+          focus_area: data.focusArea,
+          progress_rating: data.progressRating,
+          flagged: data.flaggedForAttention,
+          flag_reason: data.flagReason || null,
+          homework_assigned: data.homeworkAssigned,
+          quiz_assigned: data.quizAssigned,
+        },
+      });
 
     // Create breakthrough milestone if applicable
     if (data.breakthroughMoment) {

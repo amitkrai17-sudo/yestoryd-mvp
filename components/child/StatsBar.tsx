@@ -4,6 +4,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Play, CheckCircle, Star } from 'lucide-react';
 
 interface StatsBarProps {
   videosWatched: number;
@@ -14,21 +15,21 @@ interface StatsBarProps {
 export default function StatsBar({ videosWatched, quizzesCompleted, perfectScores }: StatsBarProps) {
   const stats = [
     {
-      icon: '▶️',
+      Icon: Play,
       value: videosWatched,
       label: 'Videos',
       color: 'text-blue-500',
       bg: 'bg-blue-50'
     },
     {
-      icon: '✅',
+      Icon: CheckCircle,
       value: quizzesCompleted,
       label: 'Quizzes',
       color: 'text-green-500',
       bg: 'bg-green-50'
     },
     {
-      icon: '⭐',
+      Icon: Star,
       value: perfectScores,
       label: 'Perfect!',
       color: 'text-yellow-500',
@@ -47,11 +48,11 @@ export default function StatsBar({ videosWatched, quizzesCompleted, perfectScore
           className={`${stat.bg} rounded-xl p-4 text-center`}
         >
           <motion.div
-            className="text-2xl mb-1"
+            className={`mb-1 ${stat.color}`}
             animate={stat.value > 0 ? { scale: [1, 1.1, 1] } : {}}
             transition={{ duration: 0.5, repeat: stat.value > 0 ? Infinity : 0, repeatDelay: 3 }}
           >
-            {stat.icon}
+            <stat.Icon className="w-6 h-6 mx-auto" />
           </motion.div>
           <div className={`text-2xl font-bold ${stat.color}`}>
             {stat.value}

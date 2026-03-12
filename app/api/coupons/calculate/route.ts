@@ -17,6 +17,7 @@ import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,7 +162,10 @@ export async function POST(request: NextRequest) {
       settingsMap[s.key] = s.value?.toString().replace(/"/g, '') || '';
     });
 
-    let originalAmount = customAmount || 5999; // V1 fallback – pricing_plans.discounted_price is authoritative
+    // Resolve base amount from DB (pricing_plans for coaching, site_settings for others)
+    const pricingCfg = await getPricingConfig();
+    const fullTierPrice = pricingCfg.tiers.find(t => t.slug === 'full')?.discountedPrice || 0;
+    let originalAmount = customAmount || fullTierPrice;
 
     if (productType === 'coaching') {
       // Use pricing_plans table (single source of truth)

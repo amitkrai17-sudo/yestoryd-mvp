@@ -9,8 +9,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Send, Paperclip, X, Image as ImageIcon, 
-  File, Loader2, Check, CheckCheck, AlertCircle
+  File, Check, CheckCheck, AlertCircle
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Message {
   id: string;
@@ -223,7 +224,7 @@ export default function ChatWidget({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+            <Spinner className="text-pink-500" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -398,7 +399,7 @@ export default function ChatWidget({
             `}
           >
             {isSending ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner />
             ) : (
               <Send className="w-5 h-5" />
             )}

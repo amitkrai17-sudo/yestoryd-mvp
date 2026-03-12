@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, X, GraduationCap } from 'lucide-react';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { useState, useEffect } from 'react';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 
@@ -162,7 +163,7 @@ export default function TermsOfServicePage() {
                 </ul>
               </div>
               <p className="mt-4">
-                Refund requests: <a href="mailto:engage@yestoryd.com" className="text-[#FF0099] hover:underline font-medium">engage@yestoryd.com</a>
+                Refund requests: <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-[#FF0099] hover:underline font-medium">{COMPANY_CONFIG.supportEmail}</a>
               </p>
             </section>
 
@@ -245,7 +246,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">12. Dispute Resolution</h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li><strong>Informal Resolution:</strong> Contact engage@yestoryd.com first. We aim to resolve all disputes amicably within 7 business days.</li>
+                <li><strong>Informal Resolution:</strong> Contact {COMPANY_CONFIG.supportEmail} first. We aim to resolve all disputes amicably within 7 business days.</li>
                 <li><strong>Governing Law:</strong> Laws of India</li>
                 <li><strong>Jurisdiction:</strong> Courts in Mumbai, Maharashtra</li>
               </ul>
@@ -255,13 +256,13 @@ export default function TermsOfServicePage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">13. Contact Us</h2>
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                 <p className="font-bold text-gray-900">Yestoryd</p>
-                <p>Email: <a href="mailto:engage@yestoryd.com" className="text-[#FF0099] hover:underline">engage@yestoryd.com</a></p>
-                <p>Phone: <a href="tel:+918976287997" className="text-[#FF0099] hover:underline">+91 8976287997</a></p>
+                <p>Email: <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.supportEmail}</a></p>
+                <p>Phone: <a href={`tel:+${COMPANY_CONFIG.leadBotWhatsApp}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.leadBotWhatsAppDisplay}</a></p>
                 <p>Website: <a href="https://yestoryd.com" className="text-[#FF0099] hover:underline">yestoryd.com</a></p>
                 <p className="mt-3 pt-3 border-t border-gray-200">
                   <span className="font-semibold">Grievance Officer:</span> Rucha Rai<br />
-                  Email: <a href="mailto:engage@yestoryd.com" className="text-[#FF0099] hover:underline">engage@yestoryd.com</a><br />
-                  Phone: <a href="tel:+918976287997" className="text-[#FF0099] hover:underline">+91 8976287997</a>
+                  Email: <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.supportEmail}</a><br />
+                  Phone: <a href={`tel:+${COMPANY_CONFIG.leadBotWhatsApp}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.leadBotWhatsAppDisplay}</a>
                 </p>
               </div>
             </section>
@@ -316,7 +317,7 @@ export default function TermsOfServicePage() {
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-gray-600 text-sm">© {new Date().getFullYear()} Yestoryd. All rights reserved.</p>
-            <p className="text-gray-600 text-sm">Made with ❤️ for young readers in India</p>
+            <p className="text-gray-600 text-sm">Made for young readers in India</p>
           </div>
         </div>
       </footer>

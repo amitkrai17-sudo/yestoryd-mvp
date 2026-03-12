@@ -12,6 +12,8 @@ import {
   CheckCircle, Calendar, Mail, MessageCircle,
   ArrowRight, Home, Gift, Sparkles
 } from 'lucide-react';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import confetti from 'canvas-confetti';
 
 function SuccessContent() {
@@ -177,16 +179,14 @@ function SuccessContent() {
         </div>
 
         <div className="text-center mt-6">
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 text-sm flex items-center justify-center gap-1">
             Questions?{' '}
-            <a
-              href="https://wa.me/918976287997?text=Hi!%20I%20just%20registered%20for%20a%20group%20class%20and%20have%20a%20question."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#25D366] font-semibold hover:underline"
-            >
-              Chat with us on WhatsApp
-            </a>
+            <WhatsAppButton
+              phone={COMPANY_CONFIG.aiSensyWhatsApp}
+              message="Hi! I just registered for a group class and have a question."
+              label="Chat with us on WhatsApp"
+              variant="link"
+            />
           </p>
         </div>
       </div>

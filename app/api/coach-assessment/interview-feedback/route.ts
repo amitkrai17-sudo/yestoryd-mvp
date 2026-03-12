@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email/resend-client';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { loadEmailConfig } from '@/lib/config/loader';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
         interview_notes: notes,
         interview_feedback: feedback,
         interview_score: interviewScore,
-        reviewed_by: reviewedBy || 'engage@yestoryd.com',
+        reviewed_by: reviewedBy || COMPANY_CONFIG.supportEmail,
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })

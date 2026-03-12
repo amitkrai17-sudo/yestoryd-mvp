@@ -79,8 +79,10 @@ export async function GET(request: NextRequest) {
       .limit(3);
 
     const pricingConfig = await getPricingConfig();
-    const bandSessions = pricingConfig.ageBands.find(b => b.id === (child.age_band || 'building'))?.sessionsPerSeason;
-    const totalSessions = child.total_sessions || bandSessions || 9;
+    const band = pricingConfig.ageBands.find(b => b.id === (child.age_band || 'building'));
+    const bandTotal = band ? band.sessionsPerSeason + band.skillBoosterCredits : undefined;
+    const bandTotals: Record<string, number> = { foundation: 24, building: 16, mastery: 12 };
+    const totalSessions = child.total_sessions || bandTotal || bandTotals[(child.age_band || 'building').toLowerCase()] || 16;
     const sessionsCompleted = completedCount || 0;
     const progressPercentage = Math.round((sessionsCompleted / totalSessions) * 100);
 

@@ -5,7 +5,7 @@
 // Pricing fallback preserved as last resort.
 // ============================================================
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { sendText } from '@/lib/whatsapp/cloud-api';
 import { getLeadBotUrls } from '@/lib/whatsapp/urls';
 import { getLeadBotKnowledge } from '@/lib/whatsapp/knowledge-base';
@@ -15,8 +15,6 @@ import {
   getDurationRange,
   getPerWeekPrice,
 } from '@/lib/config/pricing-config';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // Gemini 2.0 Flash Lite — cheapest model for knowledge-grounded answers
 const FLASH_LITE_MODEL = 'gemini-2.0-flash-lite';
@@ -38,9 +36,9 @@ async function buildPricingFallback(): Promise<string> {
 
   return (
     `Our personalized 1:1 coaching starts at ₹${perWeek}/week.\n\n` +
-    `📦 Starter: ₹${(starter?.discountedPrice ?? 3999).toLocaleString('en-IN')} (${fmtRange(starterRange)} sessions)\n` +
-    `📦 Continuation: ₹${(continuation?.discountedPrice ?? 7499).toLocaleString('en-IN')} (${fmtRange(contRange)} sessions)\n` +
-    `📦 Full Program: ₹${(full?.discountedPrice ?? 9999).toLocaleString('en-IN')} (${fmtRange(fullRange)} sessions)\n\n` +
+    `Starter: ₹${(starter?.discountedPrice ?? 3999).toLocaleString('en-IN')} (${fmtRange(starterRange)} sessions)\n` +
+    `Continuation: ₹${(continuation?.discountedPrice ?? 7499).toLocaleString('en-IN')} (${fmtRange(contRange)} sessions)\n` +
+    `Full Program: ₹${(full?.discountedPrice ?? 9999).toLocaleString('en-IN')} (${fmtRange(fullRange)} sessions)\n\n` +
     `Each session is ${fmtRange(durRange)} minutes with a certified reading coach on Google Meet.\n\n` +
     `Would you like to book a free discovery call to learn more?`
   );
@@ -81,7 +79,7 @@ export async function handleFaq(
 
   let responseText = '';
   try {
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: FLASH_LITE_MODEL,
       generationConfig: {
         temperature: 0.3,
@@ -147,7 +145,7 @@ Parent's question: "${question}"`;
       const { assessmentUrl } = await getLeadBotUrls();
       responseText =
         `We'd love to help! At Yestoryd, we provide personalized 1:1 reading coaching for children aged 4-12 through live sessions on Google Meet.\n\n` +
-        `Try our free 3-min reading assessment to see where your child stands:\n${assessmentUrl}`;
+        `Try our free 5-minute reading assessment to see where your child stands:\n${assessmentUrl}`;
     }
   }
 

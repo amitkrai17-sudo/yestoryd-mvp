@@ -17,10 +17,12 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import { sendText } from '@/lib/whatsapp/cloud-api';
 import { formatForWhatsApp } from '@/lib/utils/phone';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import crypto from 'crypto';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { getPricingConfig, getPerWeekPrice } from '@/lib/config/pricing-config';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,11 +70,11 @@ function getStaticMessage(
   if (sequence === 'post_assessment') {
     switch (step) {
       case 0:
-        return `Hi ${name}! 👋\n\nWe noticed you completed the reading assessment for ${child}. The results showed some interesting insights!\n\nWould you like to discuss them with one of our reading experts? It's a free 15-min call, no commitment.`;
+        return `Hi ${name}! 👋\n\nWe noticed you completed the reading assessment for ${child}. The results showed some interesting insights!\n\nWould you like to discuss them with one of our reading experts? It's a free 30-min call, no commitment.`;
       case 1:
         return null; // Gemini tip — handled separately
       case 2:
-        return `Hi ${name}, just checking in! 📚\n\nMany parents who took the assessment found that a single discovery call helped them understand exactly where their child stands.\n\nShall I set one up for ${child}? It's free and takes just 15 minutes.`;
+        return `Hi ${name}, just checking in! 📚\n\nMany parents who took the assessment found that a single discovery call helped them understand exactly where their child stands.\n\nShall I set one up for ${child}? It's free and takes just 30 minutes.`;
       case 3:
         return `Hi ${name}! Our coaches have helped 100+ children improve their reading confidence.\n\nOne parent told us: "After just 4 sessions, my daughter started reading on her own!"\n\nWant to see how we can help ${child} too?`;
       case 4:
@@ -83,7 +85,7 @@ function getStaticMessage(
   if (sequence === 'post_conversation') {
     switch (step) {
       case 0:
-        return `Hi ${name}! 👋\n\nWe had a great chat earlier. If you'd like to take the next step, our free 3-minute reading assessment can give you a clear picture of where ${child} stands.\n\nShall I send you the link?`;
+        return `Hi ${name}! 👋\n\nWe had a great chat earlier. If you'd like to take the next step, our free 5-minute reading assessment can give you a clear picture of where ${child} stands.\n\nShall I send you the link?`;
       case 1:
         return null; // Gemini tip — handled separately
       case 2:
@@ -116,7 +118,7 @@ async function generateReadingTip(childAge: number | null, concern: string | nul
   const topic = concern || 'reading skills';
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    const genAI = getGenAI();
     const model = genAI.getGenerativeModel({
       model: getGeminiModel('content_generation'),
       generationConfig: { temperature: 0.7, maxOutputTokens: 100 },
@@ -136,49 +138,7 @@ async function generateReadingTip(childAge: number | null, concern: string | nul
 
   // Static fallback
   return `Try reading aloud with your child for just 10 minutes a day — it builds both vocabulary and confidence! Pick a book they love and take turns reading pages.`;
-}
-
-// ============================================================
-// AUTH VERIFICATION (matches daily-lead-digest pattern)
-// ============================================================
-
-async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
-  // 1. Check CRON_SECRET
-  const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
-    return { isValid: true, source: 'cron_secret' };
-  }
-
-  // 2. Check internal API key
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  // 3. Check QStash signature
-  const signature = request.headers.get('upstash-signature');
-  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    try {
-      const receiver = new Receiver({
-        currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
-        nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
-      });
-
-      const isValid = await receiver.verify({
-        signature,
-        body: body || '',
-      });
-
-      if (isValid) {
-        return { isValid: true, source: 'qstash' };
-      }
-    } catch (e) {
-      console.error('QStash verification failed:', e);
-    }
-  }
-
-  return { isValid: false, source: 'none' };
-}
+}
 
 // ============================================================
 // MAIN HANDLER
@@ -190,7 +150,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. AUTHORIZATION
-    const auth = await verifyCronAuth(request);
+    const auth = await verifyCronRequest(request);
     if (!auth.isValid) {
       console.error(JSON.stringify({ requestId, event: 'nurture_auth_failed' }));
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -528,7 +488,7 @@ export async function GET(request: NextRequest) {
 
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'engage@yestoryd.com',
+        user_email: COMPANY_CONFIG.supportEmail,
         user_type: 'system',
         action: 'agent_nurture_cron',
         metadata: {

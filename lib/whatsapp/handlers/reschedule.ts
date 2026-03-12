@@ -52,7 +52,7 @@ export async function handleReschedule(
   // 2. No active booking — offer to schedule fresh
   if (!discoveryCallId) {
     const noBookingMsg =
-      `I don't see an active booking for you. No worries — let's schedule a discovery call! 😊`;
+      `I don't see an active booking for you. No worries — let's schedule a discovery call!`;
     await sendText(phone, noBookingMsg);
 
     const slotResult = await handleSlotSelection(
@@ -76,7 +76,7 @@ export async function handleReschedule(
   if (!discoveryCall || discoveryCall.status === 'cancelled' || discoveryCall.status === 'completed' || discoveryCall.status === 'converted') {
     // Already cancelled/completed — just offer new slots
     const alreadyMsg =
-      `Looks like your previous booking is no longer active. Let's find a new time! 😊`;
+      `Looks like your previous booking is no longer active. Let's find a new time!`;
     await sendText(phone, alreadyMsg);
 
     const slotResult = await handleSlotSelection(
@@ -156,7 +156,7 @@ export async function handleReschedule(
 
   // 5. Send cancellation confirmation
   const cancelMsg =
-    `No problem at all! I've cancelled your previous booking. Let's find a better time 😊`;
+    `No problem at all! I've cancelled your previous booking. Let's find a better time.`;
   await sendText(phone, cancelMsg);
 
   // 6. Immediately re-offer slots

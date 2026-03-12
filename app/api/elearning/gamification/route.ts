@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
           id: b.badge_id,
           earnedAt: b.created_at,
           name: b.badge?.name || '',
-          icon: b.badge?.icon || '🏆',
+          icon: b.badge?.icon || 'Trophy',
           description: b.badge?.description || '',
           category: b.badge?.category || 'milestone',
         })) || [],

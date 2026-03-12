@@ -2,13 +2,12 @@
 // ENHANCED v2.1 - Smart Proactive Triggers with Recurring Struggle Detection
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
 const supabase = createAdminClient();
 
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
-const ADMIN_PHONE = process.env.ADMIN_PHONE || '918976287997';
+const ADMIN_PHONE = process.env.ADMIN_PHONE || COMPANY_CONFIG.adminWhatsApp;
 
 interface SessionAnalysis {
   progress_rating?: string;
@@ -413,43 +412,21 @@ function formatParentMessage(
 }
 
 async function sendWhatsApp(phone: string, message: string): Promise<boolean> {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-    console.warn('Twilio not configured');
-    return false;
-  }
-
   try {
     let formatted = phone.replace(/\D/g, '');
     if (!formatted.startsWith('91') && formatted.length === 10) {
       formatted = '91' + formatted;
     }
-    const to = 'whatsapp:+' + formatted;
 
-    const res = await fetch(
-      'https://api.twilio.com/2010-04-01/Accounts/' + TWILIO_ACCOUNT_SID + '/Messages.json',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Basic ' + Buffer.from(TWILIO_ACCOUNT_SID + ':' + TWILIO_AUTH_TOKEN).toString('base64'),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          From: TWILIO_WHATSAPP_NUMBER,
-          To: to,
-          Body: message,
-        }),
-      }
-    );
+    const result = await sendWhatsAppMessage({
+      to: formatted,
+      templateName: 'proactive_notification',
+      variables: [message],
+    });
 
-    if (res.ok) {
-      console.log('WhatsApp sent to ' + to);
-      return true;
-    }
-
-    console.error('WhatsApp failed:', await res.text());
-    return false;
+    return result.success;
   } catch (e) {
-    console.error('WhatsApp error:', e);
+    console.error('WhatsApp send error:', e);
     return false;
   }
 }

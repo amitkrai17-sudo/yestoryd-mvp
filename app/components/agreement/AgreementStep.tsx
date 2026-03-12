@@ -11,9 +11,9 @@ import {
   Check, 
   AlertTriangle, 
   ChevronDown,
-  Loader2,
   Shield,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import AgreementText from './AgreementText';
 import SignaturePad from './SignaturePad';
 
@@ -186,7 +186,7 @@ export default function AgreementStep({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 sm:py-20">
-        <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 text-pink-500 animate-spin mb-4" />
+        <Spinner size="lg" className="mb-4" />
         <p className="text-gray-500 text-sm sm:text-base">Loading agreement...</p>
       </div>
     );
@@ -395,7 +395,7 @@ export default function AgreementStep({
         >
           {signing ? (
             <>
-              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+              <Spinner size="sm" color="white" />
               <span className="hidden sm:inline">Signing Agreement...</span>
               <span className="sm:hidden">Signing...</span>
             </>

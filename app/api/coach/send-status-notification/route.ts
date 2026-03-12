@@ -4,21 +4,14 @@
 // SECURITY: requireAdmin() - only admins can trigger status notifications
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig, loadRevenueSplitConfig } from '@/lib/config/loader';
 import { getPricingConfig } from '@/lib/config/pricing-config';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { withApiHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
-  try {
-    const auth = await requireAdmin();
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
-    }
-
-    const supabase = getServiceSupabase();
-
+export const POST = withApiHandler(async (request, { auth, supabase }) => {
     const { coachId, coachEmail, coachName, coachPhone, status, interviewLink } = await request.json();
 
     if (!coachId || !coachEmail || !coachName || !status) {
@@ -35,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Compute earnings from base price × split percentages
     const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
-    const basePrice = fullSeasonTier?.discountedPrice || 5999;
+    const basePrice = fullSeasonTier?.discountedPrice ?? 0;
     const coachPercent = splitConfig.coachCostPercent;
     const ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;
     const ownLeadEarnings = Math.round(basePrice * ownLeadPercent / 100);
@@ -116,7 +109,7 @@ export async function POST(request: NextRequest) {
     
     <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
       <p style="color: #64748b; font-size: 14px; margin-bottom: 8px;">
-        Questions? Reply to this email or WhatsApp us at +91 8976287997
+        Questions? Reply to this email or WhatsApp us at ${COMPANY_CONFIG.leadBotWhatsAppDisplay}
       </p>
       <p style="color: #94a3b8; font-size: 12px; margin: 0;">
         © 2025 Yestoryd | AI-Powered Reading Intelligence for Children
@@ -213,7 +206,7 @@ Warm regards,
     
     <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
       <p style="color: #64748b; font-size: 14px; margin-bottom: 8px;">
-        Questions? Feel free to reach out at engage@yestoryd.com
+        Questions? Feel free to reach out at ${COMPANY_CONFIG.supportEmail}
       </p>
       <p style="color: #94a3b8; font-size: 12px; margin: 0;">
         © 2025 Yestoryd | Empowering Young Readers Across India
@@ -297,7 +290,7 @@ Warm wishes,
     
     <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
       <p style="color: #64748b; font-size: 14px; margin-bottom: 8px;">
-        Questions? Reply to this email or WhatsApp us at +91 8976287997
+        Questions? Reply to this email or WhatsApp us at ${COMPANY_CONFIG.leadBotWhatsAppDisplay}
       </p>
       <p style="color: #94a3b8; font-size: 12px; margin: 0;">
         © 2025 Yestoryd | AI-Powered Reading Intelligence for Children
@@ -385,7 +378,7 @@ Warm regards,
     
     <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
       <p style="color: #64748b; font-size: 14px; margin-bottom: 8px;">
-        Questions? Reply to this email or WhatsApp us at +91 8976287997
+        Questions? Reply to this email or WhatsApp us at ${COMPANY_CONFIG.leadBotWhatsAppDisplay}
       </p>
       <p style="color: #94a3b8; font-size: 12px; margin: 0;">
         © 2025 Yestoryd | AI-Powered Reading Intelligence for Children
@@ -513,11 +506,4 @@ Excited to meet you!
       message: `${status} notification sent successfully`,
     });
 
-  } catch (error: any) {
-    console.error('Status notification error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
-  }
-}
+}, { auth: 'admin' });

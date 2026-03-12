@@ -3,9 +3,9 @@
 // PATCH /api/admin/agreements/[id] - Activate
 // DELETE /api/admin/agreements/[id] - Delete
 
-import { Database } from '@/lib/supabase/database.types';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/api-auth';
 
 const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
@@ -15,6 +15,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+  }
+
   try {
     const { id } = params;
     const body = await request.json();
@@ -67,6 +72,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+  }
+
   try {
     const { id } = params;
 

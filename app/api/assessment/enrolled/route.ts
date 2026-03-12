@@ -1,38 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { buildLiteAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
+import { generateAssessmentAISummary } from '@/lib/gemini/session-prompts';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-// Generate AI summary for the assessment
-async function generateAISummary(childName: string, data: any): Promise<string> {
-  try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
-    
-    const prompt = `Summarize this reading assessment in 1-2 encouraging sentences for a parent:
-Child: ${childName}
-Score: ${data.score}/10
-Reading Speed: ${data.wpm} WPM
-Fluency: ${data.fluency}
-Pronunciation: ${data.pronunciation}
-Completeness: ${data.completeness}%
-Errors: ${data.errors?.length || 0} words
-Feedback: ${data.feedback}`;
-
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
-  } catch (error) {
-    console.error('AI summary error:', error);
-    return `${childName} scored ${data.score}/10 with ${data.wpm} WPM reading speed.`;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,6 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Use Gemini model for analysis
+    const genAI = getGenAI();
     const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
 
     // Extract base64 audio data
@@ -145,8 +122,23 @@ export async function POST(request: NextRequest) {
       passage_word_count: passage.split(' ').length,
     };
 
-    // Generate AI summary for RAG
-    const aiSummary = await generateAISummary(childName || 'Child', assessmentData);
+    // Generate AI summary for RAG (shared builder)
+    let aiSummary: string;
+    try {
+      aiSummary = await generateAssessmentAISummary({
+        childName: childName || 'Child',
+        score: assessmentData.score,
+        wpm: assessmentData.wpm,
+        fluency: assessmentData.fluency,
+        pronunciation: assessmentData.pronunciation,
+        completeness: assessmentData.completeness,
+        errors: assessmentData.errors,
+        feedback: assessmentData.feedback,
+      });
+    } catch (summaryErr) {
+      console.error('AI summary error:', summaryErr);
+      aiSummary = `${childName} scored ${assessmentData.score}/10 with ${assessmentData.wpm} WPM reading speed.`;
+    }
 
     // Create searchable text for embedding
     const searchableText = `assessment reading score ${assessmentData.score} wpm ${assessmentData.wpm} fluency ${assessmentData.fluency} pronunciation ${assessmentData.pronunciation} completeness ${assessmentData.completeness} ${assessmentData.feedback} ${aiSummary}`;

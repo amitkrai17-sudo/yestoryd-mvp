@@ -2,6 +2,7 @@
 // rAI v2.1 - Upgraded system prompts with personalization + pedagogical depth
 
 import { UserRole } from './types';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // --- Child metadata for prompt personalization ---
 export interface IntelligenceProfileMeta {
@@ -15,11 +16,19 @@ export interface IntelligenceProfileMeta {
   overallConfidence: string;
 }
 
+export interface ReadingActivityMeta {
+  currentlyReading?: string | null;
+  booksThisMonth?: number;
+  bookTitlesThisMonth?: string[];
+  recommendedBooks?: string[];
+}
+
 export interface ChildMeta {
   age?: number;
   sessionsCompleted?: number;
   totalSessions?: number;
   intelligenceProfile?: IntelligenceProfileMeta | null;
+  readingActivity?: ReadingActivityMeta | null;
 }
 
 function getStageName(age?: number): string {
@@ -31,7 +40,7 @@ function getStageName(age?: number): string {
 
 function getSessionProgress(childName: string, meta?: ChildMeta): string {
   if (meta?.sessionsCompleted == null) return '';
-  const total = meta.totalSessions || 9; // V1 fallback – enrollment.total_sessions is authoritative
+  const total = meta.totalSessions || 0;
   return `\n${childName} has completed ${meta.sessionsCompleted} of ${total} coaching sessions in the ${getStageName(meta.age)} stage.`;
 }
 
@@ -84,6 +93,33 @@ function formatIntelligenceContext(profile: IntelligenceProfileMeta, childName: 
 }
 
 // ============================================================
+// READING ACTIVITY CONTEXT FORMATTER
+// ============================================================
+
+function formatReadingContext(activity: ReadingActivityMeta, childName: string): string {
+  const lines: string[] = [];
+  lines.push(`${childName}'s READING ACTIVITY:`);
+
+  if (activity.currentlyReading) {
+    lines.push(`Currently reading: ${activity.currentlyReading}`);
+  }
+
+  if (activity.booksThisMonth != null) {
+    lines.push(`Books read this month: ${activity.booksThisMonth}`);
+  }
+
+  if (activity.bookTitlesThisMonth && activity.bookTitlesThisMonth.length > 0) {
+    lines.push(`Recent titles: ${activity.bookTitlesThisMonth.slice(0, 5).join(', ')}`);
+  }
+
+  if (activity.recommendedBooks && activity.recommendedBooks.length > 0) {
+    lines.push(`Recommended next: ${activity.recommendedBooks.slice(0, 3).join(', ')}`);
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================
 // PARENT PROMPT — Grade A
 // ============================================================
 
@@ -94,13 +130,17 @@ export function buildParentPrompt(
   childMeta?: ChildMeta
 ): string {
   const coachName = coachInfo?.name || 'your coach';
-  const coachPhone = coachInfo?.phone || '918976287997';
-  const coachEmail = coachInfo?.email || 'engage@yestoryd.com';
+  const coachPhone = coachInfo?.phone || COMPANY_CONFIG.leadBotWhatsApp;
+  const coachEmail = coachInfo?.email || COMPANY_CONFIG.supportEmail;
   const ageInfo = childMeta?.age ? ` (age ${childMeta.age})` : '';
   const progress = getSessionProgress(childName, childMeta);
 
   const intelligenceBlock = childMeta?.intelligenceProfile
     ? `\n${formatIntelligenceContext(childMeta.intelligenceProfile, childName)}\n`
+    : '';
+
+  const readingBlock = childMeta?.readingActivity
+    ? `\n${formatReadingContext(childMeta.readingActivity, childName)}\n`
     : '';
 
   return `You are rAI, the reading intelligence assistant for Yestoryd — an AI-powered reading program for children aged 4-12 in India.
@@ -113,7 +153,7 @@ YOUR PERSONALITY
 - You make reading development feel exciting, not clinical
 - You use ${childName}'s name naturally in conversation
 - You speak in simple, clear language (many parents are not native English speakers)
-${intelligenceBlock}
+${intelligenceBlock}${readingBlock}
 ${childName}'s LEARNING DATA:
 ${eventsContext}
 
@@ -126,7 +166,7 @@ YESTORYD PROGRAM INFO:
 - Program: 3-Month 1:1 Reading Coaching for children aged 4-12
 - Sessions: Personalized 1:1 coaching sessions (count varies by age band)
 - Master Key: Enrolled families get FREE access to e-learning, storytelling workshops, and group classes
-- Support WhatsApp: 918976287997
+- Support WhatsApp: ${COMPANY_CONFIG.leadBotWhatsApp}
 
 RESPONSE GUIDELINES:
 1. Lead with what is going WELL before areas to improve
@@ -136,7 +176,7 @@ RESPONSE GUIDELINES:
 5. If you do not have data for something, say so honestly — never invent progress
 6. End complex responses with an encouraging note
 7. For scheduling questions, direct them to contact Coach ${coachName.split(' ')[0]}
-8. For billing or payment questions, direct to WhatsApp support: 918976287997
+8. For billing or payment questions, direct to WhatsApp support: ${COMPANY_CONFIG.leadBotWhatsApp}
 
 BOUNDARIES:
 - Never share coach's internal notes or scores directly
@@ -168,6 +208,10 @@ export function buildCoachPrompt(
     ? `\n${formatIntelligenceContext(childMeta.intelligenceProfile, childName)}\n`
     : '';
 
+  const readingBlock = childMeta?.readingActivity
+    ? `\n${formatReadingContext(childMeta.readingActivity, childName)}\n`
+    : '';
+
   return `You are rAI, the pedagogical intelligence assistant for Yestoryd reading coaches.
 
 ${coachGreeting} with student ${childName}${ageInfo}.${progress}
@@ -193,7 +237,7 @@ STEP 3: FORMULATE ACTIONABLE RECOMMENDATIONS
 - Reference what worked before in the data
 - Reference the ARC method (Assess, Remediate, Celebrate) stages when applicable
 - For session prep, structure as: review, warm-up (5 min), main activity (15 min), cool-down (5 min), parent note
-${intelligenceBlock}
+${intelligenceBlock}${readingBlock}
 STUDENT'S LEARNING DATA:
 ${eventsContext}
 
@@ -289,8 +333,8 @@ export const OPERATIONAL_RESPONSES = {
 
   support: `For support, you can:
 • Submit a support request using the "Need Help?" button on your dashboard
-• Reach us on WhatsApp at 918976287997
-• Email engage@yestoryd.com
+• Reach us on WhatsApp at ${COMPANY_CONFIG.leadBotWhatsApp}
+• Email ${COMPANY_CONFIG.supportEmail}
 
 We typically respond within 24 hours.`,
 
@@ -307,7 +351,7 @@ For other questions, use the "Need Help?" button on your dashboard to submit a s
 
   out_of_scope: `I'm here specifically to help with your child's reading education and development.
 
-For other questions, please use the "Need Help?" button on your dashboard to submit a support request, or contact our team on WhatsApp at 918976287997. They'll be happy to help!`,
+For other questions, please use the "Need Help?" button on your dashboard to submit a support request, or contact our team on WhatsApp at ${COMPANY_CONFIG.leadBotWhatsApp}. They'll be happy to help!`,
 };
 
 export const OFF_LIMITS_RESPONSES = {

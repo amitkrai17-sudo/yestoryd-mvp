@@ -6,11 +6,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  X, Mic, Square, Trash2, CheckCircle, Loader2,
-  AlertCircle, ChevronRight, ChevronLeft, 
+  X, Mic, Square, Trash2, CheckCircle,
+  AlertCircle, ChevronRight, ChevronLeft,
   BookOpen, TrendingUp, Zap, ClipboardList,
   Flag, Sparkles, Volume2, Star, Send, Home
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface SessionNotesFormProps {
   sessionId: string;
@@ -24,30 +25,30 @@ interface SessionNotesFormProps {
   onClose?: () => void;
 }
 
-// Predefined options for structured data
+// Focus areas — canonical slugs matching skill_categories table
 const FOCUS_AREAS = [
-  { code: 'phonics', label: 'Phonics', icon: '🔤' },
-  { code: 'fluency', label: 'Reading Fluency', icon: '📖' },
-  { code: 'comprehension', label: 'Comprehension', icon: '🧠' },
-  { code: 'vocabulary', label: 'Vocabulary', icon: '📝' },
-  { code: 'sight_words', label: 'Sight Words', icon: '👀' },
-  { code: 'pronunciation', label: 'Pronunciation', icon: '🗣️' },
-  { code: 'confidence', label: 'Reading Confidence', icon: '💪' },
-  { code: 'speed', label: 'Reading Speed', icon: '⚡' },
+  { code: 'phonics_letter_sounds', label: 'Phonics & Letter Sounds' },
+  { code: 'reading_fluency', label: 'Reading Fluency' },
+  { code: 'reading_comprehension', label: 'Reading Comprehension' },
+  { code: 'vocabulary_building', label: 'Vocabulary Building' },
+  { code: 'grammar_syntax', label: 'Grammar & Syntax' },
+  { code: 'creative_writing', label: 'Creative Writing' },
+  { code: 'pronunciation', label: 'Pronunciation & Speaking' },
+  { code: 'story_analysis', label: 'Story Analysis' },
 ];
 
 const PROGRESS_OPTIONS = [
-  { value: 'excellent', label: 'Excellent Progress', emoji: '🌟', color: 'bg-green-100 border-green-500 text-green-700' },
-  { value: 'good', label: 'Good Progress', emoji: '👍', color: 'bg-blue-100 border-blue-500 text-blue-700' },
-  { value: 'steady', label: 'Steady', emoji: '📊', color: 'bg-yellow-100 border-yellow-500 text-yellow-700' },
-  { value: 'needs_work', label: 'Needs More Work', emoji: '💪', color: 'bg-orange-100 border-orange-500 text-orange-700' },
+  { value: 'excellent', label: 'Excellent Progress', color: 'bg-green-100 border-green-500 text-green-700' },
+  { value: 'good', label: 'Good Progress', color: 'bg-blue-100 border-blue-500 text-blue-700' },
+  { value: 'steady', label: 'Steady', color: 'bg-yellow-100 border-yellow-500 text-yellow-700' },
+  { value: 'needs_work', label: 'Needs More Work', color: 'bg-orange-100 border-orange-500 text-orange-700' },
 ];
 
 const ENGAGEMENT_OPTIONS = [
-  { value: 'very_engaged', label: 'Very Engaged', emoji: '🔥', description: 'Actively participating, asking questions' },
-  { value: 'engaged', label: 'Engaged', emoji: '😊', description: 'Following along, responding well' },
-  { value: 'moderate', label: 'Moderate', emoji: '😐', description: 'Some attention, needed prompting' },
-  { value: 'distracted', label: 'Distracted', emoji: '😔', description: 'Had trouble focusing today' },
+  { value: 'very_engaged', label: 'Very Engaged', description: 'Actively participating, asking questions' },
+  { value: 'engaged', label: 'Engaged', description: 'Following along, responding well' },
+  { value: 'moderate', label: 'Moderate', description: 'Some attention, needed prompting' },
+  { value: 'distracted', label: 'Distracted', description: 'Had trouble focusing today' },
 ];
 
 const SKILLS_WORKED_ON = [
@@ -345,8 +346,7 @@ export default function SessionNotesForm({
                           : 'border-border hover:border-border'
                       }`}
                     >
-                      <span className="text-lg">{area.icon}</span>
-                      <span className="block text-sm font-medium mt-1">{area.label}</span>
+                      <span className="block text-sm font-medium">{area.label}</span>
                     </button>
                   ))}
                 </div>
@@ -371,7 +371,6 @@ export default function SessionNotesForm({
                           : 'border-border hover:border-border'
                       }`}
                     >
-                      <span className="text-2xl">{option.emoji}</span>
                       <span className="font-medium">{option.label}</span>
                     </button>
                   ))}
@@ -403,7 +402,6 @@ export default function SessionNotesForm({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{option.emoji}</span>
                         <div>
                           <span className="font-medium">{option.label}</span>
                           <p className="text-xs text-text-tertiary">{option.description}</p>
@@ -629,7 +627,7 @@ export default function SessionNotesForm({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner color="white" />
                   Saving...
                 </>
               ) : (

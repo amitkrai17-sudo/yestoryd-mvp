@@ -1,0 +1,23 @@
+{
+  "table_stats": {
+    "error": "{\"error\":\"requested path is invalid\"}"
+  },
+  "similar_names": {
+    "error": "{\"error\":\"requested path is invalid\"}"
+  },
+  "column_overlap": {
+    "error": "{\"error\":\"requested path is invalid\"}"
+  },
+  "empty_tables": {
+    "error": "{\"error\":\"requested path is invalid\"}"
+  },
+  "orphan_tables": {
+    "error": "{\"error\":\"requested path is invalid\"}"
+  },
+  "no_rls": {
+    "error": "{\"error\":\"requested path is invalid\"}"
+  },
+  "all_tables": {
+    "error": "{\"error\":\"requested path is invalid\"}"
+  }
+}

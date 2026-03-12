@@ -8,7 +8,9 @@
  * import { createEnrollmentSessions } from '@/lib/calendar/operations';
  */
 
-import { google, calendar_v3 } from 'googleapis';
+import { calendar_v3 } from 'googleapis';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { getCalendarClient, DEFAULT_COACH_ORGANIZER } from './auth';
 
 // ==================== TYPES ====================
 
@@ -37,26 +39,6 @@ export interface EnrollmentResult {
   rolledBack: boolean;
 }
 
-// ==================== GOOGLE CALENDAR CLIENT ====================
-
-// For coaching sessions, fall back to DEFAULT_COACH_EMAIL (not engage@) so a coach is always organizer
-const DEFAULT_COACH_ORGANIZER = process.env.DEFAULT_COACH_EMAIL || process.env.GOOGLE_CALENDAR_DELEGATED_USER;
-
-function getCalendarClient(impersonateEmail?: string): calendar_v3.Calendar {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/calendar'],
-    clientOptions: {
-      subject: impersonateEmail || DEFAULT_COACH_ORGANIZER,
-    },
-  });
-
-  return google.calendar({ version: 'v3', auth });
-}
-
 // ==================== MAIN FUNCTIONS ====================
 
 /**
@@ -64,7 +46,7 @@ function getCalendarClient(impersonateEmail?: string): calendar_v3.Calendar {
  */
 export async function createEnrollmentSessions(
   sessions: SessionToCreate[],
-  adminEmail: string = 'engage@yestoryd.com'
+  adminEmail: string = COMPANY_CONFIG.supportEmail
 ): Promise<EnrollmentResult> {
   // Use the coach email from the first session as the organizer (falls back to DEFAULT_COACH_EMAIL)
   const coachEmail = sessions[0]?.coachEmail || DEFAULT_COACH_ORGANIZER;
@@ -140,8 +122,8 @@ async function createCalendarEvent(
   const endTime = new Date(startTime.getTime() + session.durationMinutes * 60 * 1000);
 
   const sessionTitle = session.sessionType === 'coaching'
-    ? `📚 Coaching Session ${session.sessionNumber} - ${session.childName}`
-    : `👨‍👩‍👧 Parent Check-in - ${session.childName}`;
+    ? `Coaching Session ${session.sessionNumber} - ${session.childName}`
+    : `Parent Check-in - ${session.childName}`;
 
   const description = session.sessionType === 'coaching'
     ? `Yestoryd Reading Coaching Session

@@ -12,7 +12,7 @@ import Link from 'next/link';
 import {
   Calendar, TrendingUp, HelpCircle,
   ChevronRight, Video,
-  Clock, CheckCircle, Target, User, MessageCircle,
+  Clock, CheckCircle, Target, User,
   BookOpen, Zap, AlertCircle, RefreshCw,
   Sparkles, Star, Rocket, Trophy
 } from 'lucide-react';
@@ -22,19 +22,22 @@ import ProgressPulseCard from '@/components/parent/ProgressPulseCard';
 import AIInsightCard from '@/components/parent/AIInsightCard';
 import SkillProgressCard from '@/components/parent/SkillProgressCard';
 import IntelligenceWidget from '@/components/parent/IntelligenceWidget';
-import SupportWidget from '@/components/support/SupportWidget';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ProgressCelebration from '@/components/parent/ProgressCelebration';
 import ReEnrollmentBanner from '@/components/parent/ReEnrollmentBanner';
-import ReferralCard from '@/components/parent/ReferralCard';
 import GroupClassesSection from '@/components/parent/GroupClassesSection';
-import ChildTimeline from '@/components/parent/ChildTimeline';
+import ReadingSection from '@/components/parent/ReadingSection';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
-import { getSessionTypeLabel } from '@/lib/utils/session-labels';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
+import WelcomeSection from './_components/WelcomeSection';
+import SessionList from './_components/SessionList';
+import ProgressPanel from './_components/ProgressPanel';
+import CROSection from './_components/CROSection';
 import { supabase } from '@/lib/supabase/client';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
-// Default WhatsApp number (fetched from site_settings)
-const DEFAULT_WHATSAPP = '918976287997';
+// Default WhatsApp number (fetched from site_settings, falls back to Lead Bot)
+const DEFAULT_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
 
 interface Session {
   id: string;
@@ -136,7 +139,7 @@ export default function ParentDashboardPage() {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [completedSessions, setCompletedSessions] = useState<number>(0);
-  const [totalSessions, setTotalSessions] = useState<number>(9); // V1 fallback – enrollment.total_sessions is authoritative
+  const [totalSessions, setTotalSessions] = useState<number>(0);
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [pendingSkillBooster, setPendingSkillBooster] = useState<PendingSkillBoosterSession | null>(null);
   const [parentCalls, setParentCalls] = useState<any[]>([]);
@@ -424,7 +427,7 @@ export default function ParentDashboardPage() {
         console.error('Total count error:', totalError);
       }
 
-      setTotalSessions(total || 9); // V1 fallback – enrollment.total_sessions is authoritative
+      setTotalSessions(total || enrollmentData?.total_sessions || enrollmentData?.sessions_purchased || 24);
       setLoading(false);
     } catch (err: any) {
       console.error('Error fetching data:', err);
@@ -781,8 +784,6 @@ function OverviewTab({
     }
   };
 
-  const enrollmentTypeInfo = getEnrollmentTypeInfo();
-
   // Check if starter is completed and can continue
   const isStarterCompleted = enrollment?.enrollment_type === 'starter' &&
     (enrollment?.starter_completed_at || completedSessions >= totalSessions);
@@ -798,24 +799,11 @@ function OverviewTab({
   return (
     <div className="space-y-6 w-full">
       {/* Personalized Welcome */}
-      <div className="bg-gradient-to-r from-pink-50/50 to-white rounded-2xl p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-gray-600 text-sm">
-              {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}, {parentName ? parentName.split(' ')[0] : 'there'}
-            </p>
-            <h1 className="text-xl font-bold text-gray-900 mt-0.5">
-              {childName}&apos;s Learning Journey
-            </h1>
-          </div>
-          {enrollment?.enrollment_type && (
-            <span className={`px-4 py-2 rounded-xl text-sm font-semibold border flex items-center justify-center gap-2 whitespace-nowrap ${enrollmentTypeInfo.color}`}>
-              <enrollmentTypeInfo.Icon className="w-4 h-4 flex-shrink-0" />
-              {enrollmentTypeInfo.label}
-            </span>
-          )}
-        </div>
-      </div>
+      <WelcomeSection
+        parentName={parentName}
+        childName={childName}
+        enrollmentType={enrollment?.enrollment_type}
+      />
 
       {/* RE-ENROLLMENT BANNER — show when sessions remaining <= 2 */}
       {enrollment && childId && (() => {
@@ -973,123 +961,33 @@ function OverviewTab({
         />
       )}
 
-      {/* Stats Grid - 2x2 on mobile */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Progress Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center mb-3">
-            <Target className="w-5 h-5 text-[#FF0099]" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
-          <p className="text-sm text-gray-500 mt-1">Progress</p>
-          <div className="mt-3 h-2 bg-gray-50 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
-              style={{ width: `${getProgressPercentage()}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Sessions Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
-            <CheckCircle className="w-5 h-5 text-emerald-700" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">
-            {completedSessions}/{enrollment?.sessions_purchased || totalSessions}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">Sessions</p>
-        </div>
-
-        {/* Score Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-            <TrendingUp className="w-5 h-5 text-blue-700" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{latestScore ?? '--'}/10</p>
-          <p className="text-sm text-gray-500 mt-1">Latest Score</p>
-        </div>
-
-        {/* Days Left Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-            <Clock className="w-5 h-5 text-amber-700" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{getDaysRemaining()}</p>
-          <p className="text-sm text-gray-500 mt-1">Days Left</p>
-        </div>
-      </div>
+      {/* Stats Grid */}
+      <ProgressPanel
+        completedSessions={completedSessions}
+        totalSessions={totalSessions}
+        sessionsPurchased={enrollment?.sessions_purchased ?? null}
+        latestScore={latestScore}
+        getDaysRemaining={getDaysRemaining}
+        getProgressPercentage={getProgressPercentage}
+      />
 
       {/* Group Classes Section */}
       <GroupClassesSection childId={childId} />
 
+      {/* Reading Section */}
+      <ReadingSection childId={childId} />
+
       {/* Sessions & Coach - Stack on mobile */}
       <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
         {/* Upcoming Sessions */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
-              <Calendar className="w-5 h-5 text-[#FF0099]" />
-              Upcoming Sessions
-            </h2>
-            <Link
-              href="/parent/sessions"
-              className="text-sm text-[#FF0099] hover:text-[#CC007A] font-medium flex items-center gap-1 min-h-[44px] px-2 -mr-2"
-            >
-              View All <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-          {upcomingSessions.length > 0 ? (
-            <div className="divide-y divide-gray-200">
-              {upcomingSessions.slice(0, 3).map((session) => (
-                <div key={session.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors gap-3">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Video className="w-6 h-6 text-[#FF0099]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 text-base truncate">
-                        {session.title || getSessionTypeLabel(session.session_type)}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(session.scheduled_date)} • {formatTime(session.scheduled_time)}
-                        {session.session_number ? ` • ${session.session_number}/${enrollment?.sessions_purchased || totalSessions}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                  {session.google_meet_link && (
-                    <a
-                      href={session.google_meet_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2.5 bg-[#FF0099] text-white rounded-xl text-sm font-semibold hover:bg-[#CC007A] transition-all flex-shrink-0 min-h-[44px] flex items-center"
-                    >
-                      Join
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 text-center">
-              <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 text-base">No upcoming sessions</p>
-              <p className="text-sm text-gray-500 mt-1">Sessions will appear here once scheduled</p>
-            </div>
-          )}
-          {/* Mini session progress bar */}
-          <div className="px-5 py-3 border-t border-gray-100">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>{completedSessions} of {enrollment?.sessions_purchased || totalSessions} completed</span>
-              <span>{getProgressPercentage()}%</span>
-            </div>
-            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
-                style={{ width: `${getProgressPercentage()}%` }}
-              />
-            </div>
-          </div>
+        <div className="lg:col-span-2">
+          <SessionList
+            upcomingSessions={upcomingSessions}
+            completedSessions={completedSessions}
+            totalSessions={totalSessions}
+            sessionsPurchased={enrollment?.sessions_purchased ?? null}
+            getProgressPercentage={getProgressPercentage}
+          />
         </div>
 
         {/* Coach Card */}
@@ -1115,61 +1013,26 @@ function OverviewTab({
             {enrollment?.coaches?.bio && (
               <p className="text-sm text-gray-500 mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
             )}
-            <a
-              href={`https://wa.me/${getCoachPhone()}?text=Hi ${getCoachName()}, I'm ${childName}'s parent.`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#25D366] text-white rounded-xl font-semibold hover:bg-[#1da851] transition-colors min-h-[48px] text-base"
-            >
-              <MessageCircle className="w-5 h-5" />
-              Message on WhatsApp
-            </a>
+            <WhatsAppButton
+              phone={getCoachPhone()}
+              message={`Hi ${getCoachName()}, I'm ${childName}'s parent.`}
+              label="Message on WhatsApp"
+              size="lg"
+              className="w-full"
+            />
           </div>
         </div>
       </div>
 
-      {/* Child Timeline — unified learning journey */}
-      <ChildTimeline childId={childId} childName={childName} />
-
-      {/* Support Widget */}
-      <SupportWidget
-        userType="parent"
-        userEmail={parentEmail}
-        userName={parentName}
+      {/* CRO Section — timeline, support, referral, trust, rAI tip */}
+      <CROSection
+        childId={childId}
         childName={childName}
-        variant="card"
-      />
-
-      {/* Referral Card — Compact CRO version */}
-      <ReferralCard
         parentEmail={parentEmail}
-        childName={childName}
+        parentName={parentName}
+        learningProfile={learningProfile}
         croSettings={croSettings}
       />
-
-      {/* Trust Element */}
-      {croSettings['trust_families_count'] && parseInt(croSettings['trust_families_count']) > 0 && (
-        <p className="text-xs text-gray-400 text-center">
-          Trusted by {croSettings['trust_families_count']}+ families
-        </p>
-      )}
-
-      {/* rAI Tip — dynamic from learning profile or fallback */}
-      <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Zap className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-semibold text-lg">rAI says</h3>
-            <p className="text-white/90 text-base mt-1">
-              {learningProfile?.what_works && learningProfile.what_works.length > 0
-                ? `Tip: ${learningProfile.what_works[0]}. Keep it up!`
-                : 'Set aside 15-20 minutes of quiet reading time daily. Consistency matters more than duration!'}
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

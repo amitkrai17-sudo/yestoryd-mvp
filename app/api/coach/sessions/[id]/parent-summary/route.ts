@@ -8,14 +8,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { getPricingConfig } from '@/lib/config/pricing-config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
-import { getGeminiModel } from '@/lib/gemini-config';
+import {
+  generateParentWhatsAppSummary,
+  generateLearningProfileSynthesis,
+} from '@/lib/gemini/session-prompts';
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(
   request: NextRequest,
@@ -95,15 +95,11 @@ export async function POST(
       skipped: activityLogs.filter((a: any) => a.status === 'skipped').length,
     };
 
-    // 4. Generate summary via Gemini
+    // 4. Generate summary via shared Gemini builder
     const isOffline = session.session_mode === 'offline' || offlineContext?.session_mode === 'offline';
     let summary: string;
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY not configured');
-      }
-
-      // Build offline-specific context for the prompt
+      // Build offline-specific context section
       let offlineSection = '';
       if (isOffline) {
         const parts: string[] = ['SESSION TYPE: In-person (offline) session'];
@@ -123,27 +119,17 @@ export async function POST(
         offlineSection = '\n\n' + parts.join('\n\n');
       }
 
-      const prompt = `You are a warm, encouraging assistant helping parents understand their child's reading coaching session.
-
-CHILD: ${child.child_name}, age ${child.age}
-SESSION: #${session.session_number || '—'}
-DURATION: ${session.session_timer_seconds ? Math.round(session.session_timer_seconds / 60) + ' minutes' : 'Not recorded'}
-
-ACTIVITIES:
-${activitySummary}
-
-RESULTS: ${statusCounts.completed} completed, ${statusCounts.partial} partial, ${statusCounts.struggled} struggled, ${statusCounts.skipped} skipped
-${session.coach_notes ? 'COACH NOTES: ' + session.coach_notes : ''}${offlineSection}
-
-Write a SHORT (2-3 sentences max) parent-friendly summary of this session for WhatsApp. Be warm, highlight positives, mention any struggles gently as "areas we'll keep working on". Use the child's first name. Do NOT use emojis. Keep it under 300 characters.${isOffline ? ' Mention that the session was conducted in person.' : ''}`;
-
-      const model = genAI.getGenerativeModel({ model: getGeminiModel('feedback_generation') });
-      const result = await model.generateContent(prompt);
-      summary = result.response.text().trim();
-
-      if (!summary || summary.length < 20) {
-        throw new Error('Invalid AI response');
-      }
+      summary = await generateParentWhatsAppSummary({
+        childName: child.child_name,
+        childAge: child.age,
+        sessionNumber: session.session_number,
+        durationMinutes: session.session_timer_seconds ? Math.round(session.session_timer_seconds / 60) : null,
+        activitySummary,
+        statusCounts,
+        coachNotes: session.coach_notes,
+        isOffline,
+        offlineSection,
+      });
     } catch (aiError: any) {
       console.warn(JSON.stringify({ requestId, event: 'gemini_fallback', error: aiError.message }));
       // Fallback: simple template
@@ -416,13 +402,13 @@ async function synthesizeLearningProfile(
       sessionsCompleted = count || 0;
       const pricingConfig = await getPricingConfig();
       const bandSessions = pricingConfig.ageBands.find(b => b.id === (childRow?.age_band || 'building'))?.sessionsPerSeason;
-      sessionsRemaining = Math.max(0, (enrollment.total_sessions || bandSessions || 9) - sessionsCompleted);
+      sessionsRemaining = Math.max(0, (enrollment.total_sessions || bandSessions || 0) - sessionsCompleted);
     }
   } catch {
     // Non-fatal
   }
 
-  // 7. Build Gemini prompt
+  // 7. Build context for Gemini profile synthesis
   const historyText = (recentEvents || []).map((e: any, i: number) => {
     const d = e.event_data || {};
     return `Event ${i + 1} (${e.event_type}, ${new Date(e.created_at).toLocaleDateString()}):
@@ -441,94 +427,43 @@ async function synthesizeLearningProfile(
     return `- ${d.activity_name || 'Unknown'} (session ${d.session_number || '?'}): ${d.coach_note || 'no note'}`;
   }).join('\n');
 
-  const prompt = `You are rAI, Yestoryd's reading intelligence system. Synthesize a learning profile for this child based on their coaching session history.
-
-CHILD: ${childRow?.child_name || 'Unknown'}, age ${childRow?.age || '?'}, band ${childRow?.age_band || '?'}
-SESSION JUST COMPLETED: #${sessionNumber || '?'}
-SESSIONS COMPLETED: ${sessionsCompleted}, REMAINING: ${sessionsRemaining}
-
-CURRENT PROFILE (previous synthesis, may be empty):
-${JSON.stringify(currentProfile, null, 2)}
-
-THIS SESSION'S DATA:
-${sessionEvent ? JSON.stringify(sessionEvent.event_data, null, 2) : 'No event data found'}
-
-RECENT SESSION HISTORY (most recent first):
-${historyText || 'No history available'}
-
-ACTIVE STRUGGLE FLAGS:
-${struggleText || 'None'}
-
-PARENT TASK COMPLETION RATE: ${taskCompletionRate !== null ? (taskCompletionRate * 100).toFixed(0) + '%' : 'Not available'}
-
-Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
-{
-  "last_updated": "${new Date().toISOString()}",
-  "reading_level": { "current": "Foundation — Early/Mid/Late or Building — Early/Mid/Late or Mastery — Early/Mid/Late", "wpm": null, "trend": "improving" },
-  "active_skills": ["skill_tag_1"],
-  "mastered_skills": ["skill_tag_1"],
-  "struggle_areas": [{ "skill": "skill_tag", "sessions_struggling": 1, "severity": "mild" }],
-  "what_works": ["approach 1"],
-  "what_doesnt_work": ["approach 1"],
-  "personality_notes": "Brief description of child's learning personality and engagement style",
-  "parent_engagement": { "level": "high", "task_completion_rate": ${taskCompletionRate !== null ? taskCompletionRate.toFixed(2) : 0} },
-  "recommended_focus_next_session": "Specific recommendation for next session focus",
-  "sessions_completed": ${sessionsCompleted},
-  "sessions_remaining": ${sessionsRemaining}
-}
-
-RULES:
-- Update the previous profile with new data, don't start from scratch
-- Use actual skill tags from el_skills (phonemic_awareness, phonics, fluency, vocabulary, comprehension, etc.)
-- Base reading_level.trend on comparing recent sessions to earlier ones
-- struggle_areas should consolidate recurring struggles across sessions
-- what_works and what_doesnt_work should accumulate across sessions
-- personality_notes should evolve with each session (not reset)
-- If this is the first session, infer what you can from available data`;
-
   if (!process.env.GEMINI_API_KEY) {
     console.log(JSON.stringify({ requestId, event: 'learning_profile_skipped', reason: 'no GEMINI_API_KEY' }));
     return;
   }
 
-  const model = genAI.getGenerativeModel({ model: getGeminiModel('feedback_generation') });
-  const result = await model.generateContent(prompt);
-  let responseText = result.response.text().trim();
-
-  // Strip markdown code fences if present
-  if (responseText.startsWith('```')) {
-    responseText = responseText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-  }
-
-  let profile: any;
-  try {
-    profile = JSON.parse(responseText);
-  } catch (parseError: any) {
-    throw new Error(`Gemini returned invalid JSON: ${responseText.substring(0, 200)}`);
-  }
-
-  // Validate basic structure
-  if (!profile.last_updated || !profile.reading_level) {
-    throw new Error('Invalid profile structure from Gemini');
-  }
+  const profile = await generateLearningProfileSynthesis({
+    childName: childRow?.child_name || 'Unknown',
+    childAge: childRow?.age || null,
+    ageBand: childRow?.age_band || null,
+    sessionNumber,
+    sessionsCompleted,
+    sessionsRemaining,
+    currentProfile,
+    sessionEventData: (sessionEvent?.event_data as Record<string, unknown>) || null,
+    historyText,
+    struggleText,
+    taskCompletionRate,
+  });
 
   // 8. Store in children.learning_profile
   const { error: updateError } = await supabase
     .from('children')
-    .update({ learning_profile: profile })
+    .update({ learning_profile: profile as unknown as import('@/lib/database.types').Json })
     .eq('id', childId);
 
   if (updateError) {
     throw new Error(`Failed to update learning_profile: ${updateError.message}`);
   }
 
+  const profileAny = profile as Record<string, any>;
   console.log(JSON.stringify({
     requestId,
     event: 'learning_profile_updated',
     childId,
     sessionNumber,
-    activeSkills: profile.active_skills?.length || 0,
-    struggleAreas: profile.struggle_areas?.length || 0,
-    trend: profile.reading_level?.trend,
+    activeSkills: profileAny.active_skills?.length || 0,
+    struggleAreas: profileAny.struggle_areas?.length || 0,
+    trend: profileAny.reading_level?.trend,
   }));
 }

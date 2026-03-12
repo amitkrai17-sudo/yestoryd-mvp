@@ -10,14 +10,14 @@ export const dynamic = 'force-dynamic';
 
 // Avatar options
 const AVATAR_TYPES = [
-  { id: 'fox', name: 'Fox', emoji: '🦊', description: 'Clever and curious' },
-  { id: 'bunny', name: 'Bunny', emoji: '🐰', description: 'Quick and friendly' },
-  { id: 'bear', name: 'Bear', emoji: '🐻', description: 'Strong and brave' },
-  { id: 'lion', name: 'Lion', emoji: '🦁', description: 'Bold and proud' },
-  { id: 'cat', name: 'Cat', emoji: '🐱', description: 'Smart and playful' },
-  { id: 'owl', name: 'Owl', emoji: '🦉', description: 'Wise and thoughtful' },
-  { id: 'panda', name: 'Panda', emoji: '🐼', description: 'Gentle and kind' },
-  { id: 'butterfly', name: 'Butterfly', emoji: '🦋', description: 'Free and beautiful' },
+  { id: 'fox', name: 'Fox', initial: 'F', description: 'Clever and curious' },
+  { id: 'bunny', name: 'Bunny', initial: 'B', description: 'Quick and friendly' },
+  { id: 'bear', name: 'Bear', initial: 'B', description: 'Strong and brave' },
+  { id: 'lion', name: 'Lion', initial: 'L', description: 'Bold and proud' },
+  { id: 'cat', name: 'Cat', initial: 'C', description: 'Smart and playful' },
+  { id: 'owl', name: 'Owl', initial: 'O', description: 'Wise and thoughtful' },
+  { id: 'panda', name: 'Panda', initial: 'P', description: 'Gentle and kind' },
+  { id: 'butterfly', name: 'Butterfly', initial: 'B', description: 'Free and beautiful' },
 ];
 
 const AVATAR_COLORS = [
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       data: {
         avatar: {
           ...avatar,
-          emoji: avatarInfo?.emoji,
+          initial: avatarInfo?.initial,
           description: avatarInfo?.description
         },
         isNew: !existing,

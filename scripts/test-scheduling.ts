@@ -19,7 +19,7 @@ async function testSchedulingEngine() {
   console.log('========================================\n');
 
   // Test 1: Verify pricing_plans structure
-  console.log('📋 TEST 1: Pricing Plans Structure');
+  console.log('[TEST] 1: Pricing Plans Structure');
   console.log('─'.repeat(40));
 
   const { data: plans, error: plansError } = await supabase
@@ -34,7 +34,7 @@ async function testSchedulingEngine() {
     .order('duration_weeks');
 
   if (plansError) {
-    console.error('❌ Error fetching plans:', plansError);
+    console.error('[ERROR] Error fetching plans:', plansError);
     return;
   }
 
@@ -67,10 +67,10 @@ async function testSchedulingEngine() {
     starter.duration_coaching_mins === expectedStarter.duration_coaching_mins &&
     starter.duration_checkin_mins === expectedStarter.duration_checkin_mins;
 
-  console.log(`\n  ✅ Starter plan: ${starterValid ? 'VALID' : '❌ INVALID'}`);
+  console.log(`\n  [OK] Starter plan: ${starterValid ? 'VALID' : '❌ INVALID'}`);
 
   // Test 2: Verify coach schedule rules
-  console.log('\n\n📋 TEST 2: Coach Schedule Rules');
+  console.log('\n\n[TEST] TEST 2: Coach Schedule Rules');
   console.log('─'.repeat(40));
 
   const { data: coaches, error: coachesError } = await supabase
@@ -79,7 +79,7 @@ async function testSchedulingEngine() {
     .eq('status', 'active');
 
   if (coachesError) {
-    console.error('❌ Error fetching coaches:', coachesError);
+    console.error('[ERROR] Error fetching coaches:', coachesError);
     return;
   }
 
@@ -96,7 +96,7 @@ async function testSchedulingEngine() {
       .order('day_of_week');
 
     if (!rules || rules.length === 0) {
-      console.log('    ⚠️ No schedule rules set');
+      console.log('    [WARN] No schedule rules set');
     } else {
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       rules.forEach(rule => {
@@ -108,7 +108,7 @@ async function testSchedulingEngine() {
   }
 
   // Test 3: Check enrollments table has preference columns
-  console.log('\n\n📋 TEST 3: Enrollment Preference Columns');
+  console.log('\n\n[TEST] TEST 3: Enrollment Preference Columns');
   console.log('─'.repeat(40));
 
   const { data: sampleEnrollment, error: enrollError } = await supabase
@@ -117,16 +117,16 @@ async function testSchedulingEngine() {
     .limit(1);
 
   if (enrollError && enrollError.code === '42703') {
-    console.log('  ❌ Preference columns NOT found in enrollments table');
+    console.log('  [FAIL] Preference columns NOT found in enrollments table');
   } else {
-    console.log('  ✅ preference_time_bucket: EXISTS');
-    console.log('  ✅ preference_days: EXISTS');
-    console.log('  ✅ preference_start_type: EXISTS');
-    console.log('  ✅ preference_start_date: EXISTS');
+    console.log('  [OK] preference_time_bucket: EXISTS');
+    console.log('  [OK] preference_days: EXISTS');
+    console.log('  [OK] preference_start_type: EXISTS');
+    console.log('  [OK] preference_start_date: EXISTS');
   }
 
   // Test 4: Check scheduled_sessions has slot_match_type
-  console.log('\n\n📋 TEST 4: Scheduled Sessions slot_match_type');
+  console.log('\n\n[TEST] TEST 4: Scheduled Sessions slot_match_type');
   console.log('─'.repeat(40));
 
   const { data: sampleSession, error: sessionError } = await supabase
@@ -135,13 +135,13 @@ async function testSchedulingEngine() {
     .limit(1);
 
   if (sessionError && sessionError.code === '42703') {
-    console.log('  ❌ slot_match_type column NOT found');
+    console.log('  [FAIL] slot_match_type column NOT found');
   } else {
-    console.log('  ✅ slot_match_type: EXISTS');
+    console.log('  [OK] slot_match_type: EXISTS');
   }
 
   // Test 5: Test slot generation API
-  console.log('\n\n📋 TEST 5: Slot Generation API');
+  console.log('\n\n[TEST] TEST 5: Slot Generation API');
   console.log('─'.repeat(40));
 
   if (coaches && coaches.length > 0) {
@@ -154,7 +154,7 @@ async function testSchedulingEngine() {
   }
 
   // Test 6: Simulate enrollment scheduling
-  console.log('\n\n📋 TEST 6: Simulate Enrollment Scheduling');
+  console.log('\n\n[TEST] TEST 6: Simulate Enrollment Scheduling');
   console.log('─'.repeat(40));
 
   const simulationPlan = starter;
@@ -186,10 +186,10 @@ async function testSchedulingEngine() {
   console.log('========================================\n');
 
   console.log('  Database Configuration:');
-  console.log(`    ✅ Pricing plans configured correctly`);
-  console.log(`    ✅ Coach schedule rules active`);
-  console.log(`    ✅ Preference columns in enrollments`);
-  console.log(`    ✅ slot_match_type in scheduled_sessions`);
+  console.log(`    [OK] Pricing plans configured correctly`);
+  console.log(`    [OK] Coach schedule rules active`);
+  console.log(`    [OK] Preference columns in enrollments`);
+  console.log(`    [OK] slot_match_type in scheduled_sessions`);
 
   console.log('\n  To complete testing:');
   console.log('    1. Start dev server: npm run dev');

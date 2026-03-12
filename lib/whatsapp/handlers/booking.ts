@@ -23,9 +23,9 @@ export async function handleBooking(
     `They'll answer all your questions and suggest the best plan.`;
 
   await sendButtons(phone, body, [
-    { id: 'btn_book_call', title: '📞 Book Now' },
-    { id: 'btn_assessment', title: '📖 Free Assessment' },
-    { id: 'btn_more_questions', title: '❓ Ask a Question' },
+    { id: 'btn_book_call', title: 'Book Now' },
+    { id: 'btn_assessment', title: 'Free Assessment' },
+    { id: 'btn_more_questions', title: 'Ask a Question' },
   ]);
 
   return {

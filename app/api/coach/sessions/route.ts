@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 // CONSTANTS
 // ============================================================
 
-const DEFAULT_TOTAL_SESSIONS = 9; // V1 fallback – enrollment.total_sessions is authoritative
+const DEFAULT_TOTAL_SESSIONS = 18; // Foundation max (safest coaching-only fallback)
 const API_NAME = 'coach-sessions';
 
 // ============================================================

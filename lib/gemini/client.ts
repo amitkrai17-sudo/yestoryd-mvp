@@ -7,8 +7,19 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { buildFullAssessmentPrompt, type FullAssessmentResult } from '@/lib/gemini/assessment-prompts';
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Lazy singleton — avoids crash if GEMINI_API_KEY is missing at import time
+let _genAI: GoogleGenerativeAI | null = null;
+
+/** Lazy singleton for GoogleGenerativeAI client */
+export function getGenAI(): GoogleGenerativeAI {
+  if (!_genAI) {
+    _genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  }
+  return _genAI;
+}
+
+// Keep backward compat for internal usage in this file
+const genAI = { getGenerativeModel: (opts: { model: string }) => getGenAI().getGenerativeModel(opts) };
 
 /**
  * Assessment analysis result

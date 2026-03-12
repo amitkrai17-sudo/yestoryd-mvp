@@ -51,14 +51,14 @@ export function checkRateLimit(phone: string): RateLimitResult {
   if (entry.minute.count >= MAX_PER_MINUTE) {
     return {
       allowed: false,
-      message: `You're sending messages very quickly! Please wait a moment and try again 🙏`,
+      message: `You're sending messages very quickly! Please wait a moment and try again.`,
     };
   }
 
   if (entry.hour.count >= MAX_PER_HOUR) {
     return {
       allowed: false,
-      message: `You've sent a lot of messages recently. Please try again in a little while, or reply "human" to speak with our team directly 🙏`,
+      message: `You've sent a lot of messages recently. Please try again in a little while, or reply "human" to speak with our team directly.`,
     };
   }
 

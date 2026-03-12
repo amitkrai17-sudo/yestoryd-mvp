@@ -8,8 +8,9 @@
 import { FC } from 'react';
 import {
   CheckCircle, ThumbsUp, AlertTriangle, Target, BookOpen, Home,
-  Bell, TrendingUp, Heart, FileText, ArrowLeft, Save, Loader2
+  Bell, TrendingUp, Heart, FileText, ArrowLeft, Save,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { SessionFormState } from '../types';
 import {
   FOCUS_AREAS,
@@ -292,7 +293,7 @@ const Step4Review: FC<Step4Props> = ({
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner />
               Submitting...
             </>
           ) : (

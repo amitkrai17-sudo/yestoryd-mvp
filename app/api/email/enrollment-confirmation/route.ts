@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const coachName = enrollmentData?.coaches?.name || 'Rucha';
-    const coachPhone = enrollmentData?.coaches?.phone || '+91 8976287997';
+    const coachPhone = enrollmentData?.coaches?.phone || COMPANY_CONFIG.leadBotWhatsAppDisplay;
     const programStart = enrollmentData?.program_start 
       ? new Date(enrollmentData.program_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
       : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
           View Parent Dashboard →
         </a>
         <br><br>
-        <a href="https://wa.me/918976287997?text=Hi! I just enrolled ${encodeURIComponent(childName)} in the reading program." 
+        <a href="https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}?text=Hi! I just enrolled ${encodeURIComponent(childName)} in the reading program."
            style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 600;">
           💬 Say Hi on WhatsApp
         </a>
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
       to: parentEmail,
       subject: `🎉 Welcome! ${childName} is enrolled in Reading Coaching`,
       html: htmlContent,
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+      from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
     });
     console.log(`✅ Enrollment confirmation email sent to ${parentEmail}`);
 

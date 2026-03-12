@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import { BookOpen } from 'lucide-react';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 export default function GlobalError({
   error,
@@ -19,7 +21,9 @@ export default function GlobalError({
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
           {/* Sad mascot or icon */}
-          <div className="text-6xl mb-4">📚</div>
+          <div className="w-16 h-16 mx-auto mb-4 bg-purple-100 rounded-2xl flex items-center justify-center">
+            <BookOpen className="w-8 h-8 text-purple-600" />
+          </div>
           
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Oops! Something went wrong
@@ -57,14 +61,7 @@ export default function GlobalError({
         {/* Support link */}
         <p className="text-center mt-4 text-sm text-gray-500">
           Need help?{' '}
-          <a 
-            href="https://wa.me/918976287997" 
-            className="text-pink-600 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Contact us on WhatsApp
-          </a>
+          <WhatsAppButton variant="link" label="Contact us on WhatsApp" className="text-pink-600" />
         </p>
       </div>
     </div>

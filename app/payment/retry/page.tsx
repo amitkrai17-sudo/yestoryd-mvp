@@ -2,7 +2,9 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
-import { Loader2, CreditCard, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
+import { CreditCard, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 declare global {
   interface Window {
@@ -172,7 +174,7 @@ function RetryPageContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-pink-500 mx-auto mb-3" />
+          <Spinner size="lg" className="mx-auto mb-3" />
           <p className="text-text-secondary text-sm">Validating your retry link...</p>
         </div>
       </div>
@@ -260,7 +262,7 @@ function RetryPageContent() {
               className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/30"
             >
               {paying ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Spinner color="white" />
               ) : (
                 <>
                   <CreditCard className="w-5 h-5" />
@@ -279,8 +281,8 @@ function RetryPageContent() {
         {/* Help */}
         <p className="text-center text-text-tertiary text-xs">
           Having trouble? Contact us at{' '}
-          <a href="mailto:engage@yestoryd.com" className="text-pink-400 hover:underline">
-            engage@yestoryd.com
+          <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-pink-400 hover:underline">
+            {COMPANY_CONFIG.supportEmail}
           </a>
         </p>
       </div>
@@ -293,7 +295,7 @@ export default function RetryPaymentPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+          <Spinner size="lg" />
         </div>
       }
     >

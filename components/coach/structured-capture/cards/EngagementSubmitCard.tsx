@@ -4,8 +4,8 @@
 
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
 import { ScorePreview } from '../ScorePreview';
 import type { CardProps, EngagementLevel, ParentUpdateType } from '../types';
 import {
@@ -216,7 +216,7 @@ export function EngagementSubmitCard({
       >
         {submitting ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Spinner size="sm" />
             Submitting...
           </>
         ) : (

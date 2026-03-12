@@ -173,7 +173,7 @@ function PortalLayoutInner({
       </button>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pb-20 lg:pb-0 min-h-screen">
+      <main className="lg:ml-64 pb-20 lg:pb-0">
         <div className="px-4 lg:px-6 py-4 lg:py-6">
           {children}
         </div>

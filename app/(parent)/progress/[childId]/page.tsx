@@ -9,9 +9,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
-  ArrowLeft, Calendar, MessageSquare, Clock, 
-  Download, Share2, Loader2, RefreshCw
+  ArrowLeft, Calendar, MessageSquare, Clock,
+  Download, Share2, RefreshCw, Frown
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import {
   ProgressLineChart,
   EngagementPieChart,
@@ -104,7 +105,7 @@ export default function ParentProgressDashboard() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-pink-500 mx-auto mb-4" />
+          <Spinner size="xl" className="mx-auto mb-4" />
           <p className="text-gray-600">Loading progress data...</p>
         </div>
       </div>
@@ -116,7 +117,7 @@ export default function ParentProgressDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">😕</span>
+            <Frown className="w-8 h-8 text-red-500" />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Oops!</h2>
           <p className="text-gray-600 mb-4">{error || 'Something went wrong'}</p>
@@ -351,9 +352,9 @@ export default function ParentProgressDashboard() {
                             : 'bg-yellow-100 text-yellow-700'
                         }
                       `}>
-                        {session.progress_rating === 'improved' ? '📈 Improved' :
-                         session.progress_rating === 'struggled' ? '📉 Struggled' :
-                         '➡️ Steady'}
+                        {session.progress_rating === 'improved' ? 'Improved' :
+                         session.progress_rating === 'struggled' ? 'Struggled' :
+                         'Steady'}
                       </span>
                     )}
 

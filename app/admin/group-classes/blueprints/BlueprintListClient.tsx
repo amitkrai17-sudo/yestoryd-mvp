@@ -8,9 +8,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Plus, Search, Loader2, Clock, Layers,
+  Plus, Search, Clock, Layers,
   Archive, Copy, Edit, Filter,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import type { AgeBand, BlueprintStatus } from '@/types/group-classes';
 
 // =============================================================================
@@ -269,7 +270,7 @@ export default function BlueprintListClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            <Spinner size="lg" color="muted" />
           </div>
         ) : filteredBlueprints.length === 0 ? (
           <div className="text-center py-20">
@@ -359,7 +360,7 @@ export default function BlueprintListClient() {
                             disabled={isActioning}
                             className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-text-secondary hover:text-white hover:bg-surface-2 rounded-lg transition-colors disabled:opacity-50"
                           >
-                            {isActioning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
+                            {isActioning ? <Spinner size="sm" className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
                           {bp.status !== 'archived' && (
                             <button

@@ -10,39 +10,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const dynamic = 'force-dynamic';
 
-// --- VERIFICATION (same pattern as enrollment-lifecycle cron) ---
-function verifyCronAuth(request: NextRequest): { isValid: boolean; source: string } {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-    return { isValid: true, source: 'vercel_cron' };
-  }
-
-  const qstashSignature = request.headers.get('upstash-signature');
-  if (qstashSignature) {
-    const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-    if (currentKey) {
-      return { isValid: true, source: 'qstash' };
-    }
-  }
-
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  return { isValid: false, source: 'none' };
-}
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
-  const auth = verifyCronAuth(request);
+  const auth = await verifyCronRequest(request);
   if (!auth.isValid) {
     console.error(JSON.stringify({ requestId, event: 'cron_auth_failed', cron: 'session-completion-nudge' }));
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

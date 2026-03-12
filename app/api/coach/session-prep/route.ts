@@ -5,15 +5,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { hybridSearch, formatEventsForContext } from '@/lib/rai/hybrid-search';
 import { buildSessionPrepPrompt } from '@/lib/rai/prompts';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,7 +83,7 @@ Additionally, extract and return a JSON object with these fields:
 Return ONLY the JSON object, no other text.`;
 
     // Call Gemini
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('content_generation') });
     const result = await model.generateContent(structuredPrompt);
     const responseText = result.response.text();
 

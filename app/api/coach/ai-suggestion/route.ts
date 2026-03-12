@@ -4,36 +4,30 @@
 // USES: Child's learning history + current session data
 // =============================================================================
 
-import { supabaseAdmin } from '@/lib/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { searchContentUnits, formatContentUnitsForContext } from '@/lib/rai/hybrid-search';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { getCategoryLabelMap } from '@/lib/config/skill-categories';
+import { withApiHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-// Focus area labels for display
-const FOCUS_LABELS: Record<string, string> = {
-  phonics_letter_sounds: 'Phonics & Letter Sounds',
-  reading_fluency: 'Reading Fluency',
-  reading_comprehension: 'Reading Comprehension',
-  vocabulary_building: 'Vocabulary Building',
-  grammar_syntax: 'Grammar & Syntax',
-  creative_writing: 'Creative Writing',
-  pronunciation: 'Pronunciation',
-  story_analysis: 'Story Analysis',
-};
+// Loaded from skill_categories DB table (cached 5 min)
+let _focusLabels: Record<string, string> | null = null;
+async function getFocusLabels(): Promise<Record<string, string>> {
+  if (!_focusLabels) _focusLabels = await getCategoryLabelMap();
+  return _focusLabels;
+}
 
 /**
  * Generate AI-powered next session recommendation
  * Uses child's history + current session data
  */
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-
+export const POST = withApiHandler(async (request, { auth, supabase: supabaseAdmin }) => {
   try {
+    const startTime = Date.now();
+
     const payload = await request.json();
     const {
       childId,
@@ -48,9 +42,24 @@ export async function POST(request: NextRequest) {
       engagementLevel,
     } = payload;
 
-    console.log('=== AI SUGGESTION REQUEST ===');
-    console.log('Child:', childName, 'Age:', childAge);
-    console.log('Focus:', primaryFocus, 'Progress:', focusProgress);
+    // Verify the child belongs to this coach via active enrollment
+    if (childId) {
+      const { count } = await supabaseAdmin
+        .from('enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('coach_id', auth.coachId!)
+        .eq('child_id', childId)
+        .in('status', ['active', 'pending_start']);
+
+      if (!count || count === 0) {
+        return NextResponse.json(
+          { error: 'Child not assigned to this coach' },
+          { status: 403 }
+        );
+      }
+    }
+
+    const FOCUS_LABELS = await getFocusLabels();
 
     // Validate required fields
     if (!childName || !primaryFocus || !focusProgress) {
@@ -196,12 +205,10 @@ SYNTHESIZED LEARNING PROFILE (updated after each session):
 
         if (contentUnits.length > 0) {
           contentContext = '\n\n' + formatContentUnitsForContext(contentUnits);
-          console.log(`Content units found: ${contentUnits.length}`);
         }
 
         if (contentItemsResult.length > 0) {
           recommendedContent = contentItemsResult;
-          console.log(`Content items found: ${contentItemsResult.length}`);
         }
       }
     } catch (err) {
@@ -249,10 +256,7 @@ Respond with ONLY the recommendation, no preamble or explanation.`;
     let isFallback = false;
 
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY not configured');
-      }
-
+      const genAI = getGenAI();
       const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
       const result = await model.generateContent(prompt);
       suggestion = result.response.text().trim();
@@ -267,15 +271,14 @@ Respond with ONLY the recommendation, no preamble or explanation.`;
         primaryFocus,
         focusProgress,
         highlights?.[0],
-        childName
+        childName,
+        FOCUS_LABELS
       );
       suggestion = fallback.suggestion;
       isFallback = true;
     }
 
     const duration = Date.now() - startTime;
-    console.log(`=== AI SUGGESTION ${isFallback ? 'FALLBACK' : 'SUCCESS'} (${duration}ms) ===`);
-    console.log('Suggestion:', suggestion.substring(0, 100) + '...');
 
     // 5. Extract recommended activities from suggestion
     const recommendedActivities = extractActivities(suggestion, primaryFocus, focusProgress);
@@ -292,9 +295,7 @@ Respond with ONLY the recommendation, no preamble or explanation.`;
       },
     });
   } catch (error) {
-    console.error('AI suggestion error:', error);
-
-    // Return fallback suggestion on any error
+    // Return fallback suggestion on any error (graceful degradation)
     const fallback = generateFallbackSuggestion(
       'reading_fluency',
       'improved',
@@ -312,7 +313,7 @@ Respond with ONLY the recommendation, no preamble or explanation.`;
       },
     });
   }
-}
+}, { auth: 'coach' });
 
 /**
  * Extract activity suggestions based on focus and progress
@@ -407,9 +408,10 @@ function generateFallbackSuggestion(
   focus: string,
   progress: string,
   highlight?: string,
-  childName?: string
+  childName?: string,
+  focusLabels?: Record<string, string>
 ): { suggestion: string; activities: string[] } {
-  const focusLabel = FOCUS_LABELS[focus] || focus?.replace(/_/g, ' ') || 'reading skills';
+  const focusLabel = focusLabels?.[focus] || focus?.replace(/_/g, ' ') || 'reading skills';
   const name = childName || 'the student';
 
   const progressSuggestions: Record<string, string> = {

@@ -4,16 +4,15 @@
 // AUTO-TRIGGERS final assessment email after session 9 (last parent check-in)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface ParentCheckinRequest {
   sessionId: string;
@@ -46,7 +45,7 @@ interface ParentCheckinRequest {
 // Transcribe voice note using Gemini
 async function transcribeVoiceNote(audioBase64: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('formatting') });
     const audioData = audioBase64.split(',')[1] || audioBase64;
 
     const result = await model.generateContent([
@@ -74,7 +73,7 @@ async function generateCheckinSummary(
   voiceTranscript?: string
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('formatting') });
 
     const prompt = `
 You are summarizing a parent check-in call for a children's reading coaching program.
@@ -135,7 +134,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
     // V2: Use enrollment.total_sessions, fallback to age-band-aware session count
     const pricingConfig = await getPricingConfig();
     const bandSessions = pricingConfig.ageBands.find(b => b.id === ((enrollment as any).age_band || 'building'))?.sessionsPerSeason;
-    const totalRequired = enrollment.total_sessions || bandSessions || 9;
+    const totalRequired = enrollment.total_sessions || bandSessions || 0;
 
     // Count completed sessions for this child
     const { count: completedSessions } = await supabase
@@ -211,7 +210,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
 
       await sendEmail({
         to: parentEmail,
-        from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+        from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
         subject: `🎉 ${childName}'s Final Reading Assessment - See Their Amazing Progress!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -256,7 +255,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
               </div>
               
               <p style="color: #888; font-size: 14px;">
-                Questions? Reply to this email or WhatsApp us at 8976287997.
+                Questions? Reply to this email or WhatsApp us at ${COMPANY_CONFIG.leadBotWhatsAppDisplay}.
               </p>
               
               <p style="color: #555;">

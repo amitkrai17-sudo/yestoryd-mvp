@@ -1,11 +1,9 @@
 // file: lib/rai/model-router.ts
 // rAI v2.0 - Model selection and tiered fallback
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { Complexity, UserRole } from './types';
 import { getGeminiModel } from '@/lib/gemini-config';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 /**
  * Select the appropriate Gemini model based on role, intent, and complexity.
@@ -74,7 +72,7 @@ export async function* generateWithFallback(
 ): AsyncGenerator<string> {
   // Tier 1: Primary model
   try {
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: primaryModel,
       generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
     });
@@ -94,7 +92,7 @@ export async function* generateWithFallback(
   const fallbackModel = getGeminiModel('default');
   if (primaryModel !== fallbackModel) {
     try {
-      const fallback = genAI.getGenerativeModel({
+      const fallback = getGenAI().getGenerativeModel({
         model: fallbackModel,
         generationConfig: { maxOutputTokens: Math.min(maxTokens, 400), temperature: 0.3 },
       });

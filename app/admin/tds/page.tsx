@@ -21,6 +21,7 @@ import {
   Info,
   ExternalLink,
 } from 'lucide-react';
+import { DateInput } from '@/components/ui/date-input';
 
 interface QuarterlySummary {
   quarter: string;
@@ -430,17 +431,11 @@ export default function TdsPage() {
                     className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 placeholder:text-text-muted focus:ring-2 focus:ring-white/[0.10] focus:border-transparent"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    Deposit Date
-                  </label>
-                  <input
-                    type="date"
-                    value={depositDate}
-                    onChange={(e) => setDepositDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-xl text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10] focus:border-transparent"
-                  />
-                </div>
+                <DateInput
+                  label="Deposit Date"
+                  value={depositDate}
+                  onChange={setDepositDate}
+                />
 
                 <div className="flex gap-3 pt-2">
                   <button

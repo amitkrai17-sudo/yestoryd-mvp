@@ -18,14 +18,14 @@ export async function handleAssessmentCta(
   const childName = (collectedData.child_name as string) || 'your child';
 
   const body =
-    `Here's a free 3-minute AI reading assessment for ${childName}! It'll tell you their exact reading level and areas to improve.\n\n` +
+    `Here's a free 5-minute AI reading assessment for ${childName}! It'll tell you their exact reading level and areas to improve.\n\n` +
     `${assessmentUrl}\n\n` +
     `It's completely free — give it a try!`;
 
   await sendButtons(phone, body, [
-    { id: 'btn_assessment', title: '📖 Take Assessment' },
-    { id: 'btn_book_call', title: '📞 Book a Call' },
-    { id: 'btn_more_questions', title: '❓ More Questions' },
+    { id: 'btn_assessment', title: 'Take Assessment' },
+    { id: 'btn_book_call', title: 'Book a Call' },
+    { id: 'btn_more_questions', title: 'More Questions' },
   ]);
 
   return {

@@ -4,6 +4,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { BookOpen, Clock, Star } from 'lucide-react';
 
 interface Quest {
   unit: {
@@ -53,7 +54,7 @@ export default function MoreQuests({ quests, onSelect }: MoreQuestsProps) {
         >
           {/* Icon */}
           <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl opacity-50">📚</span>
+            <BookOpen className="w-6 h-6 text-gray-400" />
           </div>
           
           {/* Content */}
@@ -62,9 +63,9 @@ export default function MoreQuests({ quests, onSelect }: MoreQuestsProps) {
               {getSimpleTitle(quest.unit.quest_title || quest.unit.name)}
             </h4>
             <p className="text-sm text-gray-400 flex items-center gap-2 mt-0.5">
-              <span>⏱ {quest.unit.estimated_minutes || 10} min</span>
+              <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" /> {quest.unit.estimated_minutes || 10} min</span>
               <span>•</span>
-              <span>⭐ +{quest.unit.xp_reward || 50}</span>
+              <span className="flex items-center gap-0.5"><Star className="w-3 h-3" /> +{quest.unit.xp_reward || 50}</span>
             </p>
           </div>
           

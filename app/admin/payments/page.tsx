@@ -4,8 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   IndianRupee, Search, Filter, Download, RefreshCw,
   TrendingUp, AlertTriangle, ArrowUpDown, ChevronLeft, ChevronRight,
-  Loader2, Calendar, X, ExternalLink, ShieldAlert,
+  X, ExternalLink, ShieldAlert,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { DateRangeInput } from '@/components/ui/date-range-input';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Payment {
   id: string;
@@ -121,20 +124,22 @@ export default function PaymentsPage() {
     <div>
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
-        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">Payments</h1>
-            <p className="text-xs sm:text-sm text-text-tertiary mt-0.5">Payment history and transaction management</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => { fetchStats(); fetchPayments(); fetchOrphans(); }} className="p-2 rounded-xl bg-surface-2 text-text-secondary hover:text-white transition-colors">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            <button onClick={handleExport} className="flex items-center gap-1 px-3 py-2 rounded-xl bg-surface-2 text-text-secondary hover:text-white text-sm transition-colors">
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export CSV</span>
-            </button>
-          </div>
+        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <PageHeader
+            title="Payments"
+            subtitle="Payment history and transaction management"
+            action={
+              <div className="flex gap-2">
+                <button onClick={() => { fetchStats(); fetchPayments(); fetchOrphans(); }} className="p-2 rounded-xl bg-surface-2 text-text-secondary hover:text-white transition-colors">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button onClick={handleExport} className="flex items-center gap-1 px-3 py-2 rounded-xl bg-surface-2 text-text-secondary hover:text-white text-sm transition-colors">
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </button>
+              </div>
+            }
+          />
         </div>
       </div>
 
@@ -227,12 +232,13 @@ export default function PaymentsPage() {
                 <option value="refunded">Refunded</option>
               </select>
 
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Calendar className="w-4 h-4 text-text-tertiary" />
-                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="px-2 py-1.5 bg-surface-2 border border-border rounded-lg text-sm text-white focus:ring-2 focus:ring-white/[0.10]" />
-                <span className="text-text-tertiary text-xs">to</span>
-                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="px-2 py-1.5 bg-surface-2 border border-border rounded-lg text-sm text-white focus:ring-2 focus:ring-white/[0.10]" />
-              </div>
+              <DateRangeInput
+                startDate={dateFrom}
+                endDate={dateTo}
+                onStartChange={(v) => { setDateFrom(v); setPage(1); }}
+                onEndChange={(v) => { setDateTo(v); setPage(1); }}
+                className="flex-shrink-0"
+              />
 
               {(statusFilter !== 'all' || search || dateFrom || dateTo) && (
                 <button
@@ -249,7 +255,7 @@ export default function PaymentsPage() {
         {/* Payments List */}
         {loading ? (
           <div className="bg-surface-1 rounded-xl border border-border p-8 text-center">
-            <Loader2 className="w-5 h-5 animate-spin text-gray-400 mx-auto" />
+            <Spinner color="muted" className="mx-auto" />
           </div>
         ) : payments.length === 0 ? (
           <div className="bg-surface-1 rounded-xl border border-border p-8 text-center text-text-tertiary">No payments found</div>

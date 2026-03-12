@@ -13,7 +13,10 @@ import {
   UserPlus, Eye, ExternalLink, RefreshCw, HelpCircle,
   Zap, User, AlertCircle, FileText
 } from 'lucide-react';
+import { DateInput } from '@/components/ui/date-input';
 import SupportTicketsTab from '@/components/admin/SupportTicketsTab';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 // Types
 interface Coach {
@@ -91,18 +94,7 @@ interface DiscoveryCall {
   completed_at?: string | null;
 }
 
-// Status badge colors
-const STATUS_COLORS: Record<string, string> = {
-  assessed: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-  contacted: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-  call_scheduled: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
-  call_done: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
-  enrolled: 'bg-green-500/20 text-green-400 border border-green-500/30',
-  active: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-  completed: 'bg-surface-2 text-text-secondary border border-border',
-  lost: 'bg-red-500/20 text-red-400 border border-red-500/30',
-  churned: 'bg-red-500/20 text-red-400 border border-red-500/30',
-};
+// Status badge colors removed — using shared StatusBadge component
 
 // Assignment Type Badge Component
 function AssignmentBadge({ type }: { type: string | null | undefined }) {
@@ -319,13 +311,11 @@ function LeadModal({
             >
               <Phone className="w-4 h-4" /> Call
             </a>
-            <a
-              href={`https://wa.me/91${(lead.parent_phone || '').replace(/\D/g, '')}`}
-              target="_blank"
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              <MessageCircle className="w-4 h-4" /> WhatsApp
-            </a>
+            <WhatsAppButton
+              phone={`91${(lead.parent_phone || '').replace(/\D/g, '')}`}
+              label="WhatsApp"
+              className="flex-1"
+            />
             <a
               href={`mailto:${lead.parent_email}`}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface-3 text-white rounded-lg hover:bg-surface-2"
@@ -484,9 +474,7 @@ function DiscoveryCallModal({
               })}
             </span>
             {call.call_completed && (
-              <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-full text-xs font-medium">
-                Completed
-              </span>
+              <StatusBadge status="completed" size="sm" className="ml-2" />
             )}
           </div>
 
@@ -668,12 +656,10 @@ function DiscoveryCallModal({
                     <label className="block text-sm font-medium text-text-secondary mb-1">
                       Follow-up Date
                     </label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={postCallData.follow_up_date}
-                      onChange={(e) => setPostCallData({ ...postCallData, follow_up_date: e.target.value })}
+                      onChange={(v) => setPostCallData({ ...postCallData, follow_up_date: v })}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2 focus:ring-2 focus:ring-white/[0.10]"
                     />
                   </div>
                 )}
@@ -736,9 +722,12 @@ function DiscoveryCallModal({
             <a href={`tel:${call.parent_phone}`} className="flex-1 bg-white text-[#0a0a0f] py-2.5 rounded-lg text-center text-sm font-medium flex items-center justify-center gap-1">
               <Phone className="w-4 h-4" />Call
             </a>
-            <a href={`https://wa.me/91${(call.parent_phone || '').replace(/\D/g, '')}`} target="_blank" className="flex-1 bg-green-600 text-white py-2.5 rounded-lg text-center text-sm font-medium flex items-center justify-center gap-1">
-              <MessageCircle className="w-4 h-4" />WhatsApp
-            </a>
+            <WhatsAppButton
+              phone={`91${(call.parent_phone || '').replace(/\D/g, '')}`}
+              label="WhatsApp"
+              className="flex-1"
+              size="sm"
+            />
           </div>
         </div>
       </div>
@@ -1008,9 +997,7 @@ export default function AdminCRMPage() {
                           <div className="font-medium text-white truncate">{lead.name}, {lead.age}y</div>
                           <div className="text-xs text-text-tertiary truncate">{lead.parent_name}</div>
                         </div>
-                        <span className={`ml-2 flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[lead.lead_status] || 'bg-surface-2 text-text-secondary border border-border'}`}>
-                          {lead.lead_status?.replace('_', ' ')}
-                        </span>
+                        <StatusBadge status={lead.lead_status || 'pending'} size="sm" />
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
@@ -1066,9 +1053,7 @@ export default function AdminCRMPage() {
                               <LeadSourceBadge lead={lead} />
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[lead.lead_status] || 'bg-surface-2 text-text-secondary border border-border'}`}>
-                                {lead.lead_status?.replace('_', ' ')}
-                              </span>
+                              <StatusBadge status={lead.lead_status || 'pending'} size="sm" />
                             </td>
                             <td className="px-4 py-3">
                               {lead.latest_assessment_score !== null ? (
@@ -1167,21 +1152,10 @@ export default function AdminCRMPage() {
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="font-medium text-white">{call.child_name}</span>
                                 {call.call_completed && (
-                                  <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-[10px]">
-                                    Done
-                                  </span>
+                                  <StatusBadge status="completed" size="sm" />
                                 )}
                                 {call.call_outcome && (
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${call.call_outcome === 'enrolled' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                    call.call_outcome === 'follow_up' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                      call.call_outcome === 'not_interested' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                                        'bg-surface-2 text-text-secondary border border-border'
-                                    }`}>
-                                    {call.call_outcome === 'enrolled' ? 'Enrolled' :
-                                      call.call_outcome === 'follow_up' ? 'Follow-up' :
-                                        call.call_outcome === 'not_interested' ? 'Not Interested' :
-                                          call.call_outcome === 'no_show' ? 'No Show' : call.call_outcome}
-                                  </span>
+                                  <StatusBadge status={call.call_outcome} size="sm" />
                                 )}
                               </div>
                               <div className="text-xs sm:text-sm text-text-tertiary mt-0.5">

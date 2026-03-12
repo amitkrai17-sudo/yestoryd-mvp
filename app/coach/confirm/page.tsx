@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Calendar, Clock, User, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 const DAY_OPTIONS = [
   { value: 1, label: 'Monday' },
@@ -117,7 +118,7 @@ export default function ConfirmSchedulePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+        <Spinner size="lg" className="text-[#00ABFF]" />
       </div>
     );
   }
@@ -262,7 +263,7 @@ export default function ConfirmSchedulePage() {
         >
           {confirming ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner color="white" />
               Creating Sessions...
             </>
           ) : (

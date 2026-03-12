@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Trophy, Loader2, Star, ArrowRight, Share2,
+  Trophy, Star, ArrowRight, Share2,
   TrendingUp, ChevronDown, ChevronUp, Calendar,
   Award, AlertCircle, MessageCircle, ShieldCheck,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
 
 interface SkillGrowth {
@@ -79,7 +80,7 @@ export default function SeasonReportPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }

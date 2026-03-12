@@ -5,25 +5,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
-import crypto from 'crypto';
+import { withParamsHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const requestId = crypto.randomUUID();
-
-  try {
-    const auth = await requireAdminOrCoach();
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
-    }
-
-    const { id } = await params;
-    const supabase = getServiceSupabase();
+export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { auth, supabase, requestId }) => {
 
     // 1. Get session details
     const { data: session, error: sessionError } = await supabase
@@ -53,15 +39,24 @@ export async function GET(
       .eq('id', session.child_id)
       .single();
 
-    // 3. Get enrollment details
-    let totalSessions = 9;
+    // 3. Get enrollment details — coaching only
+    let totalSessions = 18; // Foundation max fallback
     if (session.enrollment_id) {
       const { data: enrollment } = await supabase
         .from('enrollments')
         .select('total_sessions, age_band, session_duration_minutes, season_number')
         .eq('id', session.enrollment_id)
         .single();
-      if (enrollment?.total_sessions) totalSessions = enrollment.total_sessions;
+      if (enrollment?.total_sessions) {
+        totalSessions = enrollment.total_sessions;
+      } else if (enrollment?.age_band) {
+        const { data: bandRow } = await supabase
+          .from('age_band_config')
+          .select('sessions_per_season')
+          .eq('id', enrollment.age_band)
+          .single();
+        if (bandRow?.sessions_per_season) totalSessions = bandRow.sessions_per_season;
+      }
     }
 
     // 4. Get template details if assigned
@@ -407,30 +402,13 @@ export async function GET(
       coach_sessions_logged: coachSessionsLogged,
       next_session_id: nextSessionId,
     });
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'live_session_error', error: error.message }));
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+}, { auth: 'adminOrCoach' });
 
 // ============================================================
 // PATCH: Mark session as in_progress when coach starts live panel
 // Called by LiveSessionPanel on session start / Meet open
 // ============================================================
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const requestId = crypto.randomUUID();
-
-  try {
-    const auth = await requireAdminOrCoach();
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
-    }
-
-    const { id } = await params;
-    const supabase = getServiceSupabase();
+export const PATCH = withParamsHandler<{ id: string }>(async (request, { id }, { auth, supabase, requestId }) => {
 
     // Only update if currently 'scheduled' — don't overwrite other states
     const { data: session } = await supabase
@@ -470,8 +448,4 @@ export async function PATCH(
     }));
 
     return NextResponse.json({ success: true, status: 'in_progress' });
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'session_start_error', error: error.message }));
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+}, { auth: 'adminOrCoach' });

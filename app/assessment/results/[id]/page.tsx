@@ -5,12 +5,13 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Loader2, MessageCircle, CheckCircle, AlertCircle,
+  MessageCircle, CheckCircle, AlertCircle,
   ChevronDown, ChevronUp, Target, Volume2, Lightbulb,
   BookOpenCheck, Sparkles, BookOpen, Zap, MessageSquare,
   TrendingUp, Download, Share2, AlertTriangle, Calendar, FileText,
   Play, Check,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import Confetti from '@/components/Confetti';
 import { GoalsCapture } from '@/components/assessment/GoalsCapture';
 import { getAgeBandFromAge } from '@/components/AgeBandBadge';
@@ -258,7 +259,7 @@ export default function ResultsPage() {
     // Build the share message with link to results page
     const reportLink = `https://yestoryd.com/assessment/results/${childId}`;
 
-    return encodeURIComponent(`📊 *${data.childName}'s Reading Assessment Results*
+    return encodeURIComponent(`*${data.childName}'s Reading Assessment Results*
 
 *Scores:*
 Overall: ${data.overall_score}/10 | Clarity: ${data.clarity_score}/10
@@ -267,9 +268,9 @@ Fluency: ${data.fluency_score}/10 | Speed: ${data.speed_score}/10
 *Key Observations:*${errorsText}${strengthText}
 
 *What's Next?*
-View the full report and book a FREE 15-min call with our reading coach.
+View the full report and book a FREE 30-min call with our reading coach.
 
-👉 ${reportLink}
+${reportLink}
 
 _Assessed by rAI | yestoryd.com_`);
   }, [data, childId]);
@@ -295,7 +296,7 @@ _Assessed by rAI | yestoryd.com_`);
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-surface-0">
       <div className="text-center">
-        <Loader2 className="w-12 h-12 animate-spin text-[#ff0099] mx-auto mb-4" />
+        <Spinner size="xl" className="mx-auto mb-4" />
         <p className="text-text-tertiary">Loading results...</p>
       </div>
     </div>
@@ -492,9 +493,9 @@ _Assessed by rAI | yestoryd.com_`);
               {data.parentEmail && (
                 <div>
                   <div className={`flex items-center justify-center gap-2 text-sm ${emailSent ? 'text-green-500' : 'text-text-tertiary'}`}>
-                    {sendingEmail ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> :
+                    {sendingEmail ? <><Spinner size="sm" /> Sending...</> :
                      emailSent ? <><CheckCircle className="w-4 h-4" /> Sent to {data.parentEmail}</> :
-                     <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>}
+                     <><Spinner size="sm" /> Sending...</>}
                   </div>
                   {emailSent && <p className="text-amber-500 text-xs mt-1"><AlertTriangle className="w-3 h-3 inline" /> Check spam folder</p>}
                 </div>
@@ -656,7 +657,7 @@ _Assessed by rAI | yestoryd.com_`);
               {
                 step: '2',
                 title: 'Talk to a reading coach',
-                desc: 'A 15-min FREE call to discuss results and create a personalized plan.',
+                desc: 'A 30-min FREE call to discuss results and create a personalized plan.',
                 color: '#00ABFF',
                 done: false,
               },

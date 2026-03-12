@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
 
         await sendEmail({
           to: coach.email,
-          from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+          from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
           subject: `👋 New Student Assigned: ${childName}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

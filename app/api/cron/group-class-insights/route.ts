@@ -9,12 +9,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +25,6 @@ const getReceiver = () => new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
   nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
 });
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // ─── Validation ───
 
@@ -45,34 +44,7 @@ const payloadSchema = z.object({
   })),
   class_type_name: z.string(),
   session_date: z.string(),
-});
-
-// ─── Auth Verification ───
-
-async function verifyAuth(request: NextRequest, body: string): Promise<{ isValid: boolean; source: string }> {
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  const signature = request.headers.get('upstash-signature');
-  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    try {
-      const receiver = getReceiver();
-      const isValid = await receiver.verify({ signature, body });
-      if (isValid) return { isValid: true, source: 'qstash' };
-    } catch (e) {
-      console.error('[group-class-insights] QStash verification failed:', e);
-    }
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('[group-class-insights] Development mode - skipping signature verification');
-    return { isValid: true, source: 'dev_bypass' };
-  }
-
-  return { isValid: false, source: 'none' };
-}
+});
 
 // ─── Attendance-based CTA bucket ───
 
@@ -109,7 +81,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.text();
-    const auth = await verifyAuth(request, body);
+    const auth = await verifyCronRequest(request, body);
 
     if (!auth.isValid) {
       console.error(JSON.stringify({ requestId, event: 'group_class_insights_auth_failed' }));
@@ -236,7 +208,7 @@ export async function POST(request: NextRequest) {
 
         let insightText: string;
         try {
-          const model = genAI.getGenerativeModel({
+          const model = getGenAI().getGenerativeModel({
             model: getGeminiModel('story_summarization'),
             generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
           });

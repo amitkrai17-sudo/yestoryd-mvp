@@ -5,12 +5,12 @@ import {
   Award,
   Calendar,
   CreditCard,
-  Loader2,
-  MessageCircle,
   Phone,
   Shield,
   Sparkles,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 interface Pricing {
   programPrice: number;
@@ -57,7 +57,7 @@ export function PaymentSection({
       <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-4 text-white">
         {!pricing ? (
           <div className="flex items-center justify-center py-2">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            <Spinner className="mr-2" color="white" />
             <span>Loading pricing...</span>
           </div>
         ) : (
@@ -117,7 +117,7 @@ export function PaymentSection({
           className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/30 mt-2"
         >
           {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Spinner color="white" />
           ) : (
             <>
               <CreditCard className="w-5 h-5" />
@@ -160,15 +160,12 @@ export function PaymentSection({
             <Phone className="w-4 h-4" />
             Free Call
           </Link>
-          <a
-            href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 h-10 flex items-center justify-center gap-1 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg text-sm transition-colors"
-          >
-            <MessageCircle className="w-4 h-4" />
-            WhatsApp
-          </a>
+          <WhatsAppButton
+            phone={whatsappNumber}
+            message={whatsappMessage}
+            label="WhatsApp"
+            className="flex-1"
+          />
         </div>
       </div>
     </div>

@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Loader2, MapPin, CheckCircle, Circle, Video, Clock,
+  MapPin, CheckCircle, Circle, Video, Clock,
   ChevronDown, ChevronUp, Target, Sparkles, Lock,
   Calendar, Star, ArrowRight, FileText, Film, ExternalLink,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
 import { supabase } from '@/lib/supabase/client';
 
@@ -161,7 +162,7 @@ export default function ParentJourneyPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }

@@ -16,17 +16,21 @@ import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  CheckCircle, Clock, Video, Heart, Award, MessageCircle,
-  ArrowRight, Loader2, Calendar, Sparkles, Shield, Users,
+  CheckCircle, Clock, Video, Heart, Award,
+  ArrowRight, Calendar, Sparkles, Shield, Users,
   User, Phone, Mail, Baby, Brain, Eye, PhoneCall,
   ChevronLeft, Check, Target,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import FlightStyleSlotPicker from '@/components/booking/FlightStyleSlotPicker';
+import { formatDateLong, formatTime12 } from '@/lib/utils/date-format';
 import { GoalsCapture } from '@/components/assessment/GoalsCapture';
 import { LEARNING_GOALS } from '@/lib/constants/goals';
 import { GoalIcon } from '@/components/shared/GoalIcon';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 import { AgeBandBadge, getAgeBandFromAge } from '@/components/AgeBandBadge';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 // ============================================================
 // TYPES
@@ -134,10 +138,7 @@ function LetsTalkContent() {
   };
 
   // WhatsApp config
-  const whatsappNumber = '918976287997';
-  const whatsappMessage = encodeURIComponent(
-    `Hi! I'd like to know more about Yestoryd's reading program${formData.childName ? ` for ${formData.childName}` : ''}.`
-  );
+  const whatsappMessage = `Hi! I'd like to know more about Yestoryd's reading program${formData.childName ? ` for ${formData.childName}` : ''}.`;
 
   // ============================================================
   // HANDLERS
@@ -200,8 +201,8 @@ function LetsTalkContent() {
         // Booking successful
         setBookingResult({
           meetLink: data.booking.meetLink,
-          date: formatDateDisplay(selectedSlot.date),
-          time: formatTimeDisplay(selectedSlot.time),
+          date: formatDateLong(selectedSlot.date),
+          time: formatTime12(selectedSlot.time),
           coachName: data.coach?.name || 'Our Reading Coach',
         });
         setStep('success');
@@ -218,21 +219,6 @@ function LetsTalkContent() {
   // ============================================================
   // FORMATTERS
   // ============================================================
-
-  const formatDateDisplay = (dateStr: string) => {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    });
-  };
-
-  const formatTimeDisplay = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const hour12 = hours % 12 || 12;
-    return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
-  };
 
   // ============================================================
   // RENDER
@@ -371,6 +357,7 @@ function LetsTalkContent() {
                   <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff0099] to-[#7b008b] border-2 border-white" />
                 ))}
               </div>
+              {/* TODO: fetch from site_settings */}
               <span className="text-gray-600 text-sm">
                 <span className="text-gray-900 font-bold">100+</span> families helped
               </span>
@@ -541,7 +528,7 @@ function LetsTalkContent() {
                     {/* Submit */}
                     <button
                       type="submit"
-                      className="w-full h-14 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-2"
+                      className="w-full h-12 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-2"
                     >
                       <Calendar className="w-5 h-5" />
                       Choose a Time Slot
@@ -628,10 +615,10 @@ function LetsTalkContent() {
                       <button
                         onClick={handleBooking}
                         disabled={loading}
-                        className="w-full h-14 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full h-12 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#ff0099]/20 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loading ? (
-                          <><Loader2 className="w-5 h-5 animate-spin" /> Booking...</>
+                          <><Spinner color="white" /> Booking...</>
                         ) : (
                           <><Check className="w-5 h-5" /> Confirm Booking</>
                         )}
@@ -649,7 +636,7 @@ function LetsTalkContent() {
                   </div>
 
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    You're All Set! 🎉
+                    You're All Set!
                   </h2>
 
                   <p className="text-gray-600 mb-4">
@@ -690,15 +677,12 @@ function LetsTalkContent() {
                   <p className="text-center text-gray-500 text-xs mb-2">
                     Prefer to message directly?
                   </p>
-                  <a
-                    href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full h-11 flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#20bd5a] text-white font-semibold rounded-xl transition-colors text-sm"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Message on WhatsApp
-                  </a>
+                  <WhatsAppButton
+                    message={whatsappMessage}
+                    label="Message on WhatsApp"
+                    size="lg"
+                    className="w-full"
+                  />
                 </div>
               )}
             </div>
@@ -709,14 +693,12 @@ function LetsTalkContent() {
       {/* Mobile Sticky CTA */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 z-40 shadow-lg">
         <div className="flex gap-2">
-          <a
-            href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-12 w-14 flex items-center justify-center bg-[#25d366] text-white rounded-xl flex-shrink-0"
-          >
-            <MessageCircle className="w-5 h-5" />
-          </a>
+          <WhatsAppButton
+            message={whatsappMessage}
+            variant="icon-only"
+            size="lg"
+            className="w-14 flex-shrink-0"
+          />
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex-1 h-12 flex items-center justify-center gap-2 bg-[#FF0099] hover:bg-[#e6008a] text-white font-bold rounded-xl text-sm"
@@ -742,7 +724,7 @@ export default function LetsTalkPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FFF5F9] to-white">
-        <Loader2 className="w-12 h-12 animate-spin text-[#ff0099]" />
+        <Spinner size="xl" />
       </div>
     }>
       <LetsTalkContent />

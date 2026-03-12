@@ -6,6 +6,7 @@ import {
   Phone, MessageCircle, Mail, ArrowLeft, Send, CheckCircle,
   User, Clock, Target, Sparkles, Heart
 } from 'lucide-react';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { LEARNING_GOALS, LearningGoalId } from '@/lib/constants/goals';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
 
@@ -248,14 +249,12 @@ export default function CoachDiscoveryCallDetailPage() {
             <Phone className="w-4 h-4" />
             Call
           </a>
-          <a 
-            href={`https://wa.me/91${(call.parent_phone || '').replace(/\D/g, '')}`}
-            target="_blank"
-            className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2.5 rounded-lg font-medium text-sm"
-          >
-            <MessageCircle className="w-4 h-4" />
-            WhatsApp
-          </a>
+          <WhatsAppButton
+            phone={`91${(call.parent_phone || '').replace(/\D/g, '')}`}
+            label="WhatsApp"
+            size="sm"
+            className="flex-1"
+          />
         </div>
 
         {/* Tab Switcher */}
@@ -338,7 +337,6 @@ export default function CoachDiscoveryCallDetailPage() {
                                  bg-blue-900/30 border border-blue-600/30
                                  rounded-full text-sm text-white"
                     >
-                      <span>{goal.emoji}</span>
                       <span>{goal.label}</span>
                     </span>
                   );
@@ -405,9 +403,9 @@ export default function CoachDiscoveryCallDetailPage() {
               <label className="block text-sm font-medium text-text-secondary mb-3">Call Status *</label>
               <div className="space-y-2">
                 {[
-                  { value: 'completed', label: '✅ Completed', desc: 'Call finished successfully' },
-                  { value: 'no_show', label: '❌ No Show', desc: 'Parent did not attend' },
-                  { value: 'rescheduled', label: '📅 Rescheduled', desc: 'Call moved to another time' },
+                  { value: 'completed', label: 'Completed', desc: 'Call finished successfully' },
+                  { value: 'no_show', label: 'No Show', desc: 'Parent did not attend' },
+                  { value: 'rescheduled', label: 'Rescheduled', desc: 'Call moved to another time' },
                 ].map((status) => (
                   <button
                     key={status.value}
@@ -444,9 +442,9 @@ export default function CoachDiscoveryCallDetailPage() {
               </label>
               <div className="space-y-2">
                 {[
-                  { value: 'rarely', label: '📚 Rarely', desc: 'Once a week or less' },
-                  { value: 'sometimes', label: '📖 Sometimes', desc: 'Few times a week' },
-                  { value: 'daily', label: '🌟 Daily', desc: 'Every day' },
+                  { value: 'rarely', label: 'Rarely', desc: 'Once a week or less' },
+                  { value: 'sometimes', label: 'Sometimes', desc: 'Few times a week' },
+                  { value: 'daily', label: 'Daily', desc: 'Every day' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -483,9 +481,9 @@ export default function CoachDiscoveryCallDetailPage() {
               </label>
               <div className="space-y-2">
                 {[
-                  { value: 'resistant', label: '😟 Resistant', desc: 'Avoids or dislikes reading' },
-                  { value: 'neutral', label: '😐 Neutral', desc: 'Neither enjoys nor dislikes' },
-                  { value: 'enjoys', label: '😊 Enjoys', desc: 'Likes reading' },
+                  { value: 'resistant', label: 'Resistant', desc: 'Avoids or dislikes reading' },
+                  { value: 'neutral', label: 'Neutral', desc: 'Neither enjoys nor dislikes' },
+                  { value: 'enjoys', label: 'Enjoys', desc: 'Likes reading' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -522,9 +520,9 @@ export default function CoachDiscoveryCallDetailPage() {
               </label>
               <div className="flex gap-2">
                 {[
-                  { value: 'high', label: '🔥 High', color: 'green' },
-                  { value: 'medium', label: '⚡ Medium', color: 'yellow' },
-                  { value: 'low', label: '❄️ Low', color: 'red' },
+                  { value: 'high', label: 'High', color: 'green' },
+                  { value: 'medium', label: 'Medium', color: 'yellow' },
+                  { value: 'low', label: 'Low', color: 'red' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -565,11 +563,11 @@ export default function CoachDiscoveryCallDetailPage() {
               </label>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: 'price', label: '💰 Price' },
-                  { value: 'time', label: '⏰ Time' },
-                  { value: 'not_sure', label: '🤔 Not sure' },
-                  { value: 'want_to_think', label: '💭 Think about it' },
-                  { value: 'other', label: '📝 Other' },
+                  { value: 'price', label: 'Price' },
+                  { value: 'time', label: 'Time' },
+                  { value: 'not_sure', label: 'Not sure' },
+                  { value: 'want_to_think', label: 'Think about it' },
+                  { value: 'other', label: 'Other' },
                 ].map((obj) => (
                   <button
                     key={obj.value}

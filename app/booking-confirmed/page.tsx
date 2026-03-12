@@ -11,11 +11,9 @@ import Image from 'next/image';
 import {
   CheckCircle,
   Calendar,
-  MessageCircle,
   Mail,
   Clock,
   ArrowRight,
-  Loader2,
   Video,
   Star,
   Sparkles,
@@ -23,7 +21,9 @@ import {
   Heart,
   Shield,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 function BookingConfirmedContent() {
   const searchParams = useSearchParams();
@@ -34,10 +34,7 @@ function BookingConfirmedContent() {
   const parentEmail = searchParams.get('email') || '';
 
   // WhatsApp
-  const whatsappNumber = '918976287997';
-  const whatsappMessage = encodeURIComponent(
-    `Hi Rucha! I just booked a discovery call${childName ? ` for ${childName}` : ''}. Looking forward to speaking with you!`
-  );
+  const whatsappMessage = `Hi Rucha! I just booked a discovery call${childName ? ` for ${childName}` : ''}. Looking forward to speaking with you!`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-500/10 via-surface-0 to-surface-0">
@@ -177,15 +174,12 @@ function BookingConfirmedContent() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <a
-            href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full min-h-[48px] flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-full transition-colors shadow-lg shadow-green-500/30"
-          >
-            <MessageCircle className="w-5 h-5" />
-            Message Rucha on WhatsApp
-          </a>
+          <WhatsAppButton
+            message={whatsappMessage}
+            label="Message Rucha on WhatsApp"
+            size="lg"
+            className="w-full rounded-full shadow-lg shadow-green-500/30"
+          />
 
           <Link
             href="/"
@@ -232,7 +226,7 @@ export default function BookingConfirmedPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-surface-0">
-        <Loader2 className="w-12 h-12 animate-spin text-[#ff0099]" />
+        <Spinner size="xl" />
       </div>
     }>
       <BookingConfirmedContent />

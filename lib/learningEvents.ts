@@ -1,16 +1,14 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
 // Generate AI summary
 async function generateAISummary(prompt: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('story_summarization') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('story_summarization') });
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
   } catch (error) {

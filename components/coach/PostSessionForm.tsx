@@ -11,9 +11,11 @@ import {
   X, CheckCircle, AlertCircle, Sparkles, TrendingUp, Target,
   BookOpen, Star, Zap, Award, ArrowRight, ArrowLeft, Clock,
   Calendar, Bell, MessageSquare, ThumbsUp, AlertTriangle,
-  Brain, Heart, Trophy, Save, Loader2, FileText, Type, Mic,
+  Brain, Heart, Trophy, Save, FileText, Type, Mic,
   Search, PenTool, LayoutGrid, Lightbulb, LucideIcon
 } from 'lucide-react';
+import { DateInput } from '@/components/ui/date-input';
+import { Spinner } from '@/components/ui/spinner';
 
 // YESTORYD BRAND COLORS
 const COLORS = {
@@ -1048,24 +1050,12 @@ export default function PostSessionForm({
                         }}
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        Due Date <span style={{ color: COLORS.hotPink }}>*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.homeworkDueDate}
-                        onChange={(e) => setFormData(prev => ({ ...prev, homeworkDueDate: e.target.value }))}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 transition-all"
-                        style={{ 
-                          background: COLORS.darkGray,
-                          border: `1px solid ${COLORS.mediumGray}`,
-                          ...(formData.homeworkDueDate ? { borderColor: COLORS.hotPink } : {})
-                        }}
-                      />
-                    </div>
+                    <DateInput
+                      label={`Due Date *`}
+                      value={formData.homeworkDueDate}
+                      onChange={(v) => setFormData(prev => ({ ...prev, homeworkDueDate: v }))}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
                   </div>
                 )}
               </div>
@@ -1353,7 +1343,7 @@ export default function PostSessionForm({
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner />
                     Submitting...
                   </>
                 ) : (

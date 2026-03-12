@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { Sparkles, Brain, PartyPopper, Heart, ArrowRight, BookOpen, Volume2, Lightbulb, ArrowDown } from 'lucide-react';
 
 interface MascotGuideProps {
   message: string;
@@ -59,13 +60,14 @@ export default function MascotGuide({
   }, [message]);
 
   const getMascotExpression = () => {
+    const iconClass = "w-8 h-8 text-white";
     switch (mood) {
-      case 'excited': return '🤩';
-      case 'thinking': return '🤔';
-      case 'celebrating': return '🥳';
-      case 'encouraging': return '🤗';
-      case 'pointing': return '👉';
-      default: return '🦊';
+      case 'excited': return <Sparkles className={iconClass} />;
+      case 'thinking': return <Brain className={iconClass} />;
+      case 'celebrating': return <PartyPopper className={iconClass} />;
+      case 'encouraging': return <Heart className={iconClass} />;
+      case 'pointing': return <ArrowRight className={iconClass} />;
+      default: return <BookOpen className={iconClass} />;
     }
   };
 
@@ -148,7 +150,7 @@ export default function MascotGuide({
                 whileTap={{ scale: 0.9 }}
                 title="Listen"
               >
-                <span className="text-lg">🔊</span>
+                <Volume2 className="w-5 h-5 text-gray-700" />
               </motion.button>
             </div>
 
@@ -159,7 +161,7 @@ export default function MascotGuide({
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                <span>💡</span> Tap to start!
+                <Lightbulb className="w-4 h-4" /> Tap to start!
               </motion.p>
             )}
           </div>
@@ -181,7 +183,7 @@ export default function MascotGuide({
           }}
         >
           <div className="flex flex-col items-center">
-            <span className="text-4xl">👇</span>
+            <ArrowDown className="w-8 h-8 text-[#FF0099]" />
             <span className="text-xs font-bold text-[#FF0099] bg-white px-2 py-1 rounded-full shadow-md">
               Tap here!
             </span>

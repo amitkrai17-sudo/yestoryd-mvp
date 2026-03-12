@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, Loader2, Ticket, X } from 'lucide-react';
+import { Check, Ticket, X } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface DiscountBreakdown {
   originalAmount: number;
@@ -57,7 +58,7 @@ export function CouponInput({
             className="flex-shrink-0 px-3 sm:px-4 py-2 bg-[#FF0099] text-white font-semibold rounded-lg hover:bg-[#FF0099]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             {couponLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
             ) : (
               'Apply'
             )}

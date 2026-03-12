@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { LiveSessionPanel } from '@/components/coach/live-session';
 import type { LiveSessionData } from '@/components/coach/live-session/types';
 
@@ -55,7 +56,7 @@ export default function LiveSessionPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-3" />
+          <Spinner size="lg" className="text-[#00ABFF] mx-auto mb-3" />
           <p className="text-white/40 text-sm">Loading session...</p>
         </div>
       </div>

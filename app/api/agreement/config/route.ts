@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -13,8 +14,8 @@ export const dynamic = 'force-dynamic';
 const DEFAULT_CONFIG = {
   company_name: 'Yestoryd LLP',
   company_address: '[REGISTERED ADDRESS], Navi Mumbai, Maharashtra',
-  company_email: 'engage@yestoryd.com',
-  company_phone: '+91 8976287997',
+  company_email: COMPANY_CONFIG.supportEmail,
+  company_phone: COMPANY_CONFIG.leadBotWhatsAppDisplay,
   company_website: 'yestoryd.com',
   lead_cost_percent: '20',
   coach_cost_percent: '50',

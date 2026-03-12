@@ -14,9 +14,9 @@ import {
   Upload,
   FileText,
   X,
-  Loader2,
   AlertCircle
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // Essential qualities - ALL must be checked
 const ESSENTIAL_QUALITIES = [
@@ -217,7 +217,7 @@ function QualifyPageContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -424,7 +424,7 @@ function QualifyPageContent() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner color="white" />
                   Processing...
                 </>
               ) : (
@@ -445,7 +445,7 @@ export default function QualifyPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     }>
       <QualifyPageContent />

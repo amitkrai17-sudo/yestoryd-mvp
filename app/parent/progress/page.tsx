@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { EmptyState } from '@/components/shared/EmptyState';
 import {
   TrendingUp,
   Star,
@@ -38,7 +38,7 @@ export default function ParentProgressPage() {
   const [childName, setChildName] = useState('');
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
-  const [totalSessions, setTotalSessions] = useState(9); // V1 fallback – enrollment.total_sessions is authoritative
+  const [totalSessions, setTotalSessions] = useState(0);
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [learningEvents, setLearningEvents] = useState<LearningEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +135,7 @@ export default function ParentProgressPage() {
         .select('*', { count: 'exact', head: true })
         .eq('child_id', enrolledChild.id);
 
-      setTotalSessions(total || 9); // V1 fallback – enrollment.total_sessions is authoritative
+      setTotalSessions(total || enrollmentData?.total_sessions || enrollmentData?.sessions_purchased || 24);
 
       // Fetch learning events (assessments, achievements, etc.)
       const { data: events } = await supabase
@@ -183,19 +183,14 @@ export default function ParentProgressPage() {
 
   if (!childId) {
     return (
-      <>
-        <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Active Enrollment</h2>
-          <p className="text-gray-500 mb-6">Enroll your child to start tracking progress.</p>
-          <Link
-            href="/assessment"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF0099] text-white rounded-xl font-semibold hover:bg-[#FF0099]/80 transition-all"
-          >
-            Reading Test - Free
-          </Link>
-        </div>
-      </>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-8">
+        <EmptyState
+          icon={BookOpen}
+          title="No Active Enrollment"
+          description="Enroll your child to start tracking progress."
+          action={{ label: 'Reading Test - Free', href: '/assessment' }}
+        />
+      </div>
     );
   }
 
@@ -331,11 +326,11 @@ export default function ParentProgressPage() {
                 Learning Timeline
               </h2>
             </div>
-            <div className="p-8 text-center">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No learning events yet</p>
-              <p className="text-sm text-gray-400 mt-1">Events will appear here as your child progresses</p>
-            </div>
+            <EmptyState
+              icon={Calendar}
+              title="No learning events yet"
+              description="Events will appear here as your child progresses"
+            />
           </div>
         )}
 

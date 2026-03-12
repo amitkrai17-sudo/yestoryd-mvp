@@ -9,7 +9,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { ChallengeInvite } from './ChallengeInvite';
 import { QuestionCard } from './QuestionCard';
 import { AnswerFeedback } from './AnswerFeedback';
@@ -245,7 +246,7 @@ export function MiniChallengeFlow({ childId, goalArea, onComplete, onSkip }: Min
   if (stage === 'loading') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Spinner size="lg" />
         <p className="text-gray-400">Loading challenge...</p>
       </div>
     );

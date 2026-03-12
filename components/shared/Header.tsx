@@ -18,6 +18,7 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
     { href: '/services/coaching', label: 'Coaching' },
     { href: '/services/elearning', label: 'eLearning' },
     { href: '/services/storytelling', label: 'Storytelling' },
+    { href: '/library', label: 'Library' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/about', label: 'About' },
   ];

@@ -8,8 +8,9 @@
 
 import { FC, useEffect, useState, useMemo } from 'react';
 import {
-  Target, Home, Bell, Lightbulb, ArrowRight, ArrowLeft, CheckCircle, Loader2
+  Target, Home, Bell, Lightbulb, ArrowRight, ArrowLeft, CheckCircle,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { SessionFormState, ParentUpdateType } from '../types';
 import {
   FOCUS_AREAS,
@@ -224,7 +225,7 @@ const Step3Planning: FC<Step3Props> = ({
 
             {aiSuggestion.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Spinner size="sm" />
                 <span>Analyzing {childName}&apos;s learning history...</span>
               </div>
             ) : (

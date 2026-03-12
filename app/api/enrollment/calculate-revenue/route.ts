@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { z } from 'zod';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -375,7 +376,7 @@ export async function POST(request: NextRequest) {
     // 14. AUDIT LOG
     // =================================================================
     await supabase.from('activity_log').insert({
-      user_email: adminEmail || 'engage@yestoryd.com',
+      user_email: adminEmail || COMPANY_CONFIG.supportEmail,
       user_type: 'system',
       action: 'enrollment_revenue_calculated',
       metadata: {

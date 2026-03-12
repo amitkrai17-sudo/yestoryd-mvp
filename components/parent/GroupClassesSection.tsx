@@ -5,8 +5,9 @@ import Link from 'next/link';
 import {
   BookOpen, Calendar, Clock, ChevronRight,
   Video, Trophy, Flame, Award, Sparkles,
-  CheckCircle, Loader2, ExternalLink,
+  CheckCircle, ExternalLink,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // ─── Types ───
 
@@ -115,8 +116,10 @@ function engagementLabel(rating: number | null): { text: string; color: string }
 
 export default function GroupClassesSection({
   childId,
+  groupClassMinPrice = '199',
 }: {
   childId: string | null;
+  groupClassMinPrice?: string;
 }) {
   const [data, setData] = useState<GroupClassesData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,7 +163,7 @@ export default function GroupClassesSection({
           <h2 className="text-lg font-bold text-gray-900">Group Classes</h2>
         </div>
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 text-[#7b008b] animate-spin" />
+          <Spinner className="text-[#7b008b]" />
         </div>
       </div>
     );
@@ -178,7 +181,7 @@ export default function GroupClassesSection({
         <div className="text-center py-6">
           <Sparkles className="w-12 h-12 text-[#7b008b]/30 mx-auto mb-3" />
           <p className="text-gray-600 text-sm mb-1">Join a fun learning class</p>
-          <p className="text-gray-500 text-xs mb-4">Starting from ₹199</p>
+          <p className="text-gray-500 text-xs mb-4">Starting from ₹{groupClassMinPrice}</p>
           <Link
             href="/classes"
             className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white rounded-xl font-semibold hover:opacity-90 transition-all text-sm min-h-[44px]"
@@ -240,7 +243,7 @@ export default function GroupClassesSection({
               className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full whitespace-nowrap flex-shrink-0 snap-start"
               title={badge.description}
             >
-              <span className="text-sm">{badge.icon || '🏆'}</span>
+              <span className="text-sm">{badge.icon || 'trophy'}</span>
               <span className="text-xs font-medium text-amber-700">{badge.name}</span>
             </div>
           ))}
@@ -355,7 +358,7 @@ export default function GroupClassesSection({
                         </div>
                       ) : session.attendance_status === 'present' ? (
                         <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <Spinner size="sm" />
                           Insight generating...
                         </div>
                       ) : null}

@@ -463,7 +463,7 @@ export async function generateLearningPlan(
 
     const pricingConfig = await getPricingConfig();
     const bandSessions = pricingConfig.ageBands.find(b => b.id === ageBand)?.sessionsPerSeason;
-    const totalSessions = enrollment.total_sessions || bandSessions || 9;
+    const totalSessions = enrollment.total_sessions || bandSessions || 0;
 
     // 3. Fetch templates for this age band
     const { data: templates, error: templatesError } = await supabase

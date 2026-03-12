@@ -8,12 +8,11 @@ import {
   TrendingUp,
   Calendar,
   Users,
-  Loader2,
-  Download,
   Filter,
-  ArrowUpRight,
-  ArrowDownRight,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { StatCard } from '@/components/shared/StatCard';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Earning {
   id: string;
@@ -23,6 +22,7 @@ interface Earning {
   program_fee: number;
   coach_amount: number;
   yestoryd_amount: number;
+  coach_percent: number;
   split_type: string;
   lead_source: string;
   status: string;
@@ -38,9 +38,16 @@ interface EarningsSummary {
   coachLeads: number;
 }
 
+interface SplitsInfo {
+  coachCostPercent: number;
+  leadReferralPercent: number;
+  effectivePercent: number;
+  effectivePercentWithLead: number;
+  groupName: string;
+}
+
 export default function CoachEarningsPage() {
   const [loading, setLoading] = useState(true);
-  const [coach, setCoach] = useState<any>(null);
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [summary, setSummary] = useState<EarningsSummary>({
     totalEarnings: 0,
@@ -51,6 +58,7 @@ export default function CoachEarningsPage() {
     yestorydLeads: 0,
     coachLeads: 0,
   });
+  const [splits, setSplits] = useState<SplitsInfo | null>(null);
   const [filterPeriod, setFilterPeriod] = useState('all');
 
   useEffect(() => {
@@ -66,107 +74,20 @@ export default function CoachEarningsPage() {
         return;
       }
 
-      const { data: coachData } = await supabase
-        .from('coaches')
-        .select('*')
-        .eq('email', user.email!)
-        .single();
-
-      if (!coachData) {
-        window.location.href = '/coach/login';
-        return;
+      // Use the earnings-summary API (single source of truth for V2 splits)
+      const res = await fetch(`/api/coach/earnings-summary?email=${encodeURIComponent(user.email!)}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          window.location.href = '/coach/login';
+          return;
+        }
+        throw new Error('Failed to load earnings');
       }
 
-      setCoach(coachData);
-
-      // Get all enrolled children through ENROLLMENTS (single source of truth)
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          id,
-          status,
-          amount,
-          lead_source,
-          created_at,
-          child:children (
-            id,
-            child_name,
-            parent_name,
-            custom_coach_split
-          )
-        `)
-        .eq('coach_id', coachData.id)
-        .in('status', ['active', 'pending_start', 'completed'])
-        .order('created_at', { ascending: false });
-
-      const defaultCoachSplit = (coachData.coach_split_percentage || 40) / 100;
-      const coachLeadSplit = 0.70; // 70% for coach leads
-
-      // Calculate earnings for each enrollment
-      const earningsData: Earning[] = (enrollments || []).map((enrollment) => {
-        const child = enrollment.child as any;
-        if (!child) return null;
-
-        // V1 fallback – enrollment.amount is authoritative, 5999 is last-resort
-        const programFee = enrollment.amount || 5999;
-        const isCoachLead = enrollment.lead_source === 'coach';
-        const splitPercentage = child.custom_coach_split
-          ? child.custom_coach_split / 100
-          : isCoachLead
-          ? coachLeadSplit
-          : defaultCoachSplit;
-
-        const coachAmount = programFee * splitPercentage;
-        const yestorydAmount = programFee - coachAmount;
-
-        return {
-          id: child.id,
-          child_name: child.child_name,
-          parent_name: child.parent_name,
-          enrollment_date: enrollment.created_at,
-          program_fee: programFee,
-          coach_amount: coachAmount,
-          yestoryd_amount: yestorydAmount,
-          split_type: child.custom_coach_split ? 'custom' : isCoachLead ? 'coach_lead' : 'default',
-          lead_source: enrollment.lead_source || 'yestoryd',
-          status: enrollment.status === 'active' ? 'paid' : 'pending',
-        };
-      }).filter(Boolean) as Earning[];
-
-      setEarnings(earningsData);
-
-      // Calculate summary
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-
-      const totalEarnings = earningsData.reduce((sum, e) => sum + e.coach_amount, 0);
-      const thisMonthEarnings = earningsData
-        .filter((e) => new Date(e.enrollment_date) >= startOfMonth)
-        .reduce((sum, e) => sum + e.coach_amount, 0);
-      const lastMonthEarnings = earningsData
-        .filter((e) => {
-          const date = new Date(e.enrollment_date);
-          return date >= startOfLastMonth && date <= endOfLastMonth;
-        })
-        .reduce((sum, e) => sum + e.coach_amount, 0);
-      const pendingEarnings = earningsData
-        .filter((e) => e.status === 'pending')
-        .reduce((sum, e) => sum + e.coach_amount, 0);
-
-      const yestorydLeads = earningsData.filter((e) => e.lead_source === 'yestoryd').length;
-      const coachLeads = earningsData.filter((e) => e.lead_source === 'coach').length;
-
-      setSummary({
-        totalEarnings,
-        thisMonthEarnings,
-        lastMonthEarnings,
-        pendingEarnings,
-        totalStudents: earningsData.length,
-        yestorydLeads,
-        coachLeads,
-      });
+      const data = await res.json();
+      setEarnings(data.earnings);
+      setSummary(data.summary);
+      setSplits(data.splits);
     } catch (error) {
       console.error('Error loading earnings:', error);
     } finally {
@@ -190,14 +111,15 @@ export default function CoachEarningsPage() {
     });
   };
 
-  const getSplitBadge = (splitType: string, leadSource: string) => {
-    if (splitType === 'custom') {
-      return <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs">Custom</span>;
+  const getSplitBadge = (earning: Earning) => {
+    const pct = Math.round(earning.coach_percent);
+    if (earning.split_type === 'custom') {
+      return <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs">Custom {pct}%</span>;
     }
-    if (leadSource === 'coach') {
-      return <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs">70-30</span>;
+    if (earning.lead_source === 'coach') {
+      return <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs">{pct}%</span>;
     }
-    return <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs">50-50</span>;
+    return <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs">{pct}%</span>;
   };
 
   const getMonthChange = () => {
@@ -225,89 +147,58 @@ export default function CoachEarningsPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+        <Spinner size="lg" className="text-[#00ABFF]" />
       </div>
     );
   }
 
-  if (!coach) return null;
-
   return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <IndianRupee className="w-7 h-7 text-yellow-400" />
-              Earnings
-            </h1>
-            <p className="text-text-tertiary">Track your coaching income</p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-text-tertiary">Your split:</span>
-            <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full font-medium">
-              {coach.coach_split_percentage}% (Yestoryd leads)
-            </span>
-            <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full font-medium">
-              70% (Your leads)
-            </span>
-          </div>
-        </div>
+        <PageHeader
+          title="Earnings"
+          subtitle="Track your coaching income"
+          action={
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-text-tertiary">Your split:</span>
+              <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full font-medium">
+                {splits?.effectivePercent ?? 58}% (Yestoryd leads)
+              </span>
+              <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full font-medium">
+                {splits?.effectivePercentWithLead ?? 68}% (Your leads)
+              </span>
+            </div>
+          }
+        />
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-surface-1 rounded-xl p-5 border border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                <IndianRupee className="w-5 h-5 text-yellow-400" />
-              </div>
-              <span className="text-text-tertiary text-sm">Total Earned</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{formatCurrency(summary.totalEarnings)}</p>
-          </div>
-
-          <div className="bg-surface-1 rounded-xl p-5 border border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-green-400" />
-              </div>
-              <span className="text-text-tertiary text-sm">This Month</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{formatCurrency(summary.thisMonthEarnings)}</p>
-            {monthChange !== null && (
-              <div className={`flex items-center gap-1 mt-1 text-sm ${monthChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {monthChange >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                {Math.abs(monthChange).toFixed(0)}% vs last month
-              </div>
-            )}
-          </div>
-
-          <div className="bg-surface-1 rounded-xl p-5 border border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-400" />
-              </div>
-              <span className="text-text-tertiary text-sm">Total Students</span>
-            </div>
-            <p className="text-3xl font-bold text-white">{summary.totalStudents}</p>
-            <p className="text-text-tertiary text-sm mt-1">
-              {summary.yestorydLeads} platform • {summary.coachLeads} yours
-            </p>
-          </div>
-
-          <div className="bg-surface-1 rounded-xl p-5 border border-border">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-orange-400" />
-              </div>
-              <span className="text-text-tertiary text-sm">Avg per Student</span>
-            </div>
-            <p className="text-3xl font-bold text-white">
-              {summary.totalStudents > 0
-                ? formatCurrency(summary.totalEarnings / summary.totalStudents)
-                : '₹0'}
-            </p>
-          </div>
+          <StatCard
+            value={formatCurrency(summary.totalEarnings)}
+            label="Total Earned"
+            icon={IndianRupee}
+            color="yellow"
+          />
+          <StatCard
+            value={formatCurrency(summary.thisMonthEarnings)}
+            label="This Month"
+            icon={Calendar}
+            color="green"
+            trend={monthChange !== null ? { value: Math.round(Math.abs(monthChange)), positive: monthChange >= 0 } : undefined}
+          />
+          <StatCard
+            value={summary.totalStudents}
+            label="Total Students"
+            icon={Users}
+            color="blue"
+            subtitle={`${summary.yestorydLeads} platform \u2022 ${summary.coachLeads} yours`}
+          />
+          <StatCard
+            value={summary.totalStudents > 0 ? formatCurrency(summary.totalEarnings / summary.totalStudents) : '\u20B90'}
+            label="Avg per Student"
+            icon={TrendingUp}
+            color="orange"
+          />
         </div>
 
         {/* Earnings Table */}
@@ -359,7 +250,7 @@ export default function CoachEarningsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-text-tertiary">{formatDate(earning.enrollment_date)}</td>
-                      <td className="px-4 py-3">{getSplitBadge(earning.split_type, earning.lead_source)}</td>
+                      <td className="px-4 py-3">{getSplitBadge(earning)}</td>
                       <td className="px-4 py-3 text-right text-text-tertiary">{formatCurrency(earning.program_fee)}</td>
                       <td className="px-4 py-3 text-right">
                         <span className="text-green-400 font-semibold">{formatCurrency(earning.coach_amount)}</span>
@@ -401,7 +292,7 @@ export default function CoachEarningsPage() {
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <span className="text-text-tertiary">{formatDate(earning.enrollment_date)}</span>
-                    {getSplitBadge(earning.split_type, earning.lead_source)}
+                    {getSplitBadge(earning)}
                   </div>
                 </div>
               ))

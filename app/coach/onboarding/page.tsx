@@ -15,21 +15,22 @@ import {
   CheckCircle,
   AlertCircle,
   Copy,
-  ExternalLink,
   RefreshCw,
   Shield,
   Wallet,
   IndianRupee,
   Sparkles,
-  MessageCircle,
   LayoutDashboard,
   GraduationCap,
   Gift,
   Users,
 } from 'lucide-react';
+import { Avatar } from '@/components/shared/Avatar';
 import DynamicAgreementStep from '../../components/agreement/DynamicAgreementStep';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { supabase } from '@/lib/supabase/client';
 import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 interface CoachData {
   id: string;
@@ -57,7 +58,7 @@ export default function CoachOnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   
   // WhatsApp number from site_settings
-  const [whatsappNumber, setWhatsappNumber] = useState('918976287997');
+  const [whatsappNumber, setWhatsappNumber] = useState<string>(COMPANY_CONFIG.leadBotWhatsApp);
 
   // Dynamic earnings from pricing × split config
   const { data: earningsData } = useEarningsCalculator();
@@ -242,9 +243,7 @@ export default function CoachOnboardingPage() {
           </Link>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-300">Welcome, {coach.name?.split(' ')[0]}</span>
-            <div className="w-8 h-8 bg-gradient-to-r from-[#00ABFF] to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-              {coach.name?.charAt(0) || 'C'}
-            </div>
+            <Avatar name={coach.name || 'C'} size="sm" portal="coach" />
           </div>
         </div>
       </header>
@@ -431,7 +430,7 @@ export default function CoachOnboardingPage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mb-4">
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">You're All Set, {coach.name?.split(' ')[0]}! 🎉</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">You're All Set, {coach.name?.split(' ')[0]}!</h2>
                 <p className="text-text-tertiary mt-2">Your onboarding is complete. Here's what's next.</p>
               </div>
 
@@ -468,11 +467,16 @@ export default function CoachOnboardingPage() {
                   <p className="text-sm text-text-tertiary mt-1">View your students, sessions & earnings</p>
                 </Link>
 
-                <a href={`https://wa.me/${whatsappNumber}?text=Hi, I completed onboarding. Code: ${coach.referral_code}`} target="_blank" rel="noopener noreferrer" className="p-5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group">
-                  <MessageCircle className="w-8 h-8 text-green-600 mb-3" />
-                  <h3 className="font-semibold text-white group-hover:text-green-600">Join WhatsApp Group</h3>
+                <div className="p-5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors group">
+                  <WhatsAppButton
+                    phone={whatsappNumber}
+                    message={`Hi, I completed onboarding. Code: ${coach.referral_code}`}
+                    label="Join WhatsApp Group"
+                    variant="link"
+                    className="flex-col items-start gap-0"
+                  />
                   <p className="text-sm text-text-tertiary mt-1">Connect with other coaches</p>
-                </a>
+                </div>
 
                 <div className="p-5 bg-blue-50 rounded-xl">
                   <Users className="w-8 h-8 text-blue-600 mb-3" />
@@ -518,9 +522,13 @@ export default function CoachOnboardingPage() {
         </div>
 
         <div className="text-center mt-6">
-          <a href="https://wa.me/${whatsappNumber}?text=I need help with coach onboarding" target="_blank" rel="noopener noreferrer" className="text-text-tertiary hover:text-blue-400 text-sm inline-flex items-center gap-2">
-            Need help? Contact support <ExternalLink className="w-4 h-4" />
-          </a>
+          <WhatsAppButton
+            phone={whatsappNumber}
+            message="I need help with coach onboarding"
+            label="Need help? Contact support"
+            variant="link"
+            className="text-text-tertiary hover:text-blue-400 text-sm"
+          />
         </div>
       </main>
     </div>

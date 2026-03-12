@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase/client';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import {
   CheckCircle2,
   Calendar,
@@ -18,13 +19,14 @@ import {
   MessageCircle,
   ArrowRight,
   Sparkles,
-  Loader2,
   PartyPopper,
   Gift,
   Share2,
   Copy,
   Check,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -36,7 +38,7 @@ function SuccessContent() {
 
   const [showContent, setShowContent] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState('918976287997');
+  const [whatsappNumber, setWhatsappNumber] = useState<string>(COMPANY_CONFIG.leadBotWhatsApp);
 
   useEffect(() => {
     setTimeout(() => setShowContent(true), 300);
@@ -62,7 +64,7 @@ function SuccessContent() {
   }, []);
 
   // Referral message
-  const referralMessage = `🎉 I just enrolled ${childName || 'my child'} in Yestoryd's AI-powered reading program! They help kids aged 4-12 become confident readers with personalized coaching.\n\n✨ Take their FREE 5-minute reading assessment: https://yestoryd.com/assessment`;
+  const referralMessage = `I just enrolled ${childName || 'my child'} in Yestoryd's AI-powered reading program! They help kids aged 4-12 become confident readers with personalized coaching.\n\nTake their FREE 5-minute reading assessment: https://yestoryd.com/assessment`;
 
   const handleCopyReferral = () => {
     navigator.clipboard.writeText(referralMessage);
@@ -247,28 +249,23 @@ function SuccessContent() {
               <ArrowRight className="w-5 h-5" />
             </Link>
 
-            <a
-              href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi! I just enrolled ${childName || 'my child'} in the reading program (ID: ${enrollmentId?.slice(0,8) || 'N/A'}). Looking forward to starting!`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full bg-green-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-green-600 transition-all"
-            >
-              <MessageCircle className="w-5 h-5" />
-              Say Hi on WhatsApp
-            </a>
+            <WhatsAppButton
+              message={`Hi! I just enrolled ${childName || 'my child'} in the reading program (ID: ${enrollmentId?.slice(0,8) || 'N/A'}). Looking forward to starting!`}
+              label="Say Hi on WhatsApp"
+              size="lg"
+              className="w-full rounded-2xl"
+            />
           </div>
 
           {/* Support */}
           <div className="text-center mt-8">
             <p className="text-text-tertiary text-sm">
               Questions? Email us at{' '}
-              <a href="mailto:engage@yestoryd.com" className="text-amber-400 hover:underline">
-                engage@yestoryd.com
+              <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-amber-400 hover:underline">
+                {COMPANY_CONFIG.supportEmail}
               </a>{' '}
-              or WhatsApp{' '}
-              <a href={`https://wa.me/${whatsappNumber}`} className="text-green-400 hover:underline">
-                {formatWhatsAppDisplay(whatsappNumber)}
-              </a>
+              or{' '}
+              <WhatsAppButton variant="link" label={`WhatsApp ${formatWhatsAppDisplay(whatsappNumber)}`} className="text-green-400" />
             </p>
           </div>
         </div>
@@ -281,7 +278,7 @@ export default function EnrollmentSuccessPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-surface-0">
-        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+        <Spinner size="lg" className="text-green-500" />
       </div>
     }>
       <SuccessContent />

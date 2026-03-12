@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight, Shield, Clock, TrendingUp } from 'lucide-react';
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 interface CtaSectionProps {
   titleLine1: string;
@@ -57,15 +57,13 @@ export function CtaSection({
             Reading Test - Free
             <ArrowRight className="w-5 h-5" />
           </Link>
-          <a
-            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#25d366] text-white px-6 py-3 rounded-xl font-bold text-lg hover:bg-[#20bd5a] transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-[#25d366]/25"
-          >
-            <WhatsAppIcon className="w-5 h-5" />
-            {whatsappButtonText}
-          </a>
+          <WhatsAppButton
+            phone={whatsappNumber}
+            message={whatsappMessage}
+            label={whatsappButtonText}
+            size="lg"
+            className="w-full sm:w-auto"
+          />
         </div>
 
         <div className="flex items-center justify-center gap-3 sm:gap-6 mt-10 text-white/60 text-xs sm:text-sm">

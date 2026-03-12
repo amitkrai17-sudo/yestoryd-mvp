@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 interface FooterProps {
   variant?: 'default' | 'coach';
@@ -48,6 +49,11 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
                 </Link>
               </li>
               <li>
+                <Link href="/library" className="text-gray-400 hover:text-white transition-colors">
+                  Book Library
+                </Link>
+              </li>
+              <li>
                 <Link href="/services/podcasts" className="text-gray-400 hover:text-white transition-colors">
                   Podcasts
                 </Link>
@@ -92,13 +98,13 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
             <h4 className="font-bold text-[#FBBF24] mb-5">Get in Touch</h4>
             <ul className="space-y-3 text-sm">
               <li>
-                <a href="mailto:engage@yestoryd.com" className="text-gray-400 hover:text-white transition-colors">
-                  engage@yestoryd.com
+                <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-gray-400 hover:text-white transition-colors">
+                  {COMPANY_CONFIG.supportEmail}
                 </a>
               </li>
               <li>
-                <a href="tel:+919876543210" className="text-gray-400 hover:text-white transition-colors">
-                  +91 98765 43210
+                <a href={`tel:+${COMPANY_CONFIG.leadBotWhatsApp}`} className="text-gray-400 hover:text-white transition-colors">
+                  {COMPANY_CONFIG.leadBotWhatsAppDisplay}
                 </a>
               </li>
               <li className="pt-3">

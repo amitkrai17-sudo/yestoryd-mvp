@@ -5,25 +5,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
-import crypto from 'crypto';
+import { withParamsHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const requestId = crypto.randomUUID();
-
-  try {
-    const auth = await requireAdminOrCoach();
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
-    }
-
-    const { id } = await params;
-    const supabase = getServiceSupabase();
+export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { auth, supabase, requestId }) => {
 
     // 1. Get session details (including companion panel fields)
     const { data: session, error: sessionError } = await supabase
@@ -108,15 +94,24 @@ export async function GET(
       // Non-fatal — intelligence profile may not exist
     }
 
-    // 3. Get enrollment details (total_sessions)
-    let totalSessions = 9;
+    // 3. Get enrollment details (total_sessions) — coaching only
+    let totalSessions = 18; // Foundation max fallback
     if (session.enrollment_id) {
       const { data: enrollment } = await supabase
         .from('enrollments')
         .select('total_sessions, age_band, session_duration_minutes')
         .eq('id', session.enrollment_id)
         .single();
-      if (enrollment?.total_sessions) totalSessions = enrollment.total_sessions;
+      if (enrollment?.total_sessions) {
+        totalSessions = enrollment.total_sessions;
+      } else if (enrollment?.age_band) {
+        const { data: bandRow } = await supabase
+          .from('age_band_config')
+          .select('sessions_per_season')
+          .eq('id', enrollment.age_band)
+          .single();
+        if (bandRow?.sessions_per_season) totalSessions = bandRow.sessions_per_season;
+      }
     }
 
     // 4. Get template details if assigned
@@ -303,8 +298,4 @@ export async function GET(
         created_at: e.created_at,
       })),
     });
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'session_brief_error', error: error.message }));
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+}, { auth: 'adminOrCoach' });

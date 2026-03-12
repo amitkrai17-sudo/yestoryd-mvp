@@ -107,7 +107,7 @@ async function scheduleWithWeeklyPattern(
     preference = { bucket: 'any' },
     requestId = 'unknown',
     weeklyPattern = [],
-    sessionDurationMinutes = 45,
+    sessionDurationMinutes = 45, // Building-band default; actual value from age_band_config via caller
     startWeek = 0,
     durationWeeks = 12,
   } = options;
@@ -574,7 +574,7 @@ export async function createSessionsSimple(
     programStart,
     requestId = 'unknown',
     weeklyPattern,
-    sessionDurationMinutes = 45,
+    sessionDurationMinutes = 45, // Building-band default; actual value from age_band_config via caller
     startWeek = 0,
     durationWeeks = 12,
   } = options;

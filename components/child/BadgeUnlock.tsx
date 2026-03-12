@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Star, PartyPopper } from 'lucide-react';
 
 interface Badge {
   id: string;
@@ -117,7 +118,7 @@ export function BadgeUnlockModal({
               repeatDelay: 1
             }}
           >
-            {['✨', '⭐', '🌟'][i % 3]}
+            {[<Sparkles key="sp" className="w-5 h-5 text-yellow-400" />, <Star key="st" className="w-5 h-5 text-yellow-500" fill="currentColor" />, <Star key="st2" className="w-5 h-5 text-amber-400" fill="currentColor" />][i % 3]}
           </motion.div>
         ))}
 
@@ -128,7 +129,7 @@ export function BadgeUnlockModal({
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
-            🎉 Achievement Unlocked! 🎉
+            <PartyPopper className="w-4 h-4 inline-block mr-1" /> Achievement Unlocked! <PartyPopper className="w-4 h-4 inline-block ml-1" />
           </motion.p>
 
           {/* Badge Icon */}

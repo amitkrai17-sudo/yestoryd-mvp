@@ -1,3 +1,5 @@
+import { BookOpen } from 'lucide-react';
+
 export default function AssessmentLoading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-pink-800 flex items-center justify-center p-4">
@@ -6,10 +8,10 @@ export default function AssessmentLoading() {
         <div className="relative w-24 h-24 mx-auto mb-6">
           {/* Book base */}
           <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
-          
+
           {/* Floating books animation */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-5xl animate-bounce">📖</span>
+            <BookOpen className="w-12 h-12 text-white animate-bounce" />
           </div>
         </div>
         

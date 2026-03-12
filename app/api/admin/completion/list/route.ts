@@ -9,9 +9,8 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { getPricingConfig } from '@/lib/config/pricing-config';
-import crypto from 'crypto';
+import { withApiHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,21 +40,7 @@ interface EnrichedEnrollment {
   completedAt: string | null;
 }
 
-export async function GET(request: NextRequest) {
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
-  try {
-    const auth = await requireAdmin();
-    
-    if (!auth.authorized) {
-      console.log(JSON.stringify({ requestId, event: 'completion_list_auth_failed', error: auth.error }));
-      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
-    }
-
-    console.log(JSON.stringify({ requestId, event: 'completion_list_request', adminEmail: auth.email }));
-
-    const supabase = getServiceSupabase();
+export const GET = withApiHandler(async (request, { auth, supabase, requestId }) => {
     const today = new Date();
 
     // Get all enrollments
@@ -168,7 +153,7 @@ export async function GET(request: NextRequest) {
         // V2: Use enrollment.total_sessions, fallback to age-band-aware session count
         const ageBand = (enrollment as any).age_band || 'building';
         const bandSessions = pricingConfig.ageBands.find(b => b.id === ageBand)?.sessionsPerSeason;
-        const enrollmentTotal = (enrollment as any).total_sessions || bandSessions || 9;
+        const enrollmentTotal = (enrollment as any).total_sessions || bandSessions || 0;
         const onTrackThreshold = Math.ceil(enrollmentTotal * 0.67); // ~67% complete = on track
 
         // Calculate risk level
@@ -242,9 +227,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const duration = Date.now() - startTime;
-    console.log(JSON.stringify({ requestId, event: 'completion_list_success', count: enrichedEnrollments.length, duration: `${duration}ms` }));
-
     return NextResponse.json({
       success: true,
       requestId,
@@ -260,8 +242,4 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'completion_list_error', error: error.message }));
-    return NextResponse.json({ success: false, error: error.message, requestId }, { status: 500 });
-  }
-}
+}, { auth: 'admin' });

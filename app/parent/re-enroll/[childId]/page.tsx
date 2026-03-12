@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Loader2, Star, ArrowRight, Trophy, TrendingUp,
+  Star, ArrowRight, Trophy, TrendingUp,
   AlertCircle, CheckCircle, Clock, User, Sparkles,
   ArrowUpRight,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
 
 declare global {
@@ -145,7 +146,7 @@ export default function ReEnrollPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -377,7 +378,7 @@ export default function ReEnrollPage() {
             >
               {paying ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                   Processing...
                 </>
               ) : (

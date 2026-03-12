@@ -6,12 +6,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email/resend-client';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
 // Google Calendar setup (same as enrollment scheduling)
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
-const DELEGATED_USER = process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com';
+const DELEGATED_USER = process.env.GOOGLE_CALENDAR_DELEGATED_USER || COMPANY_CONFIG.supportEmail;
 
 async function getGoogleCalendarClient() {
   const auth = new google.auth.GoogleAuth({

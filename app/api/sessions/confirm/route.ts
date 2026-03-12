@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { scheduleBotsForEnrollment } from '@/lib/recall-auto-bot';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -207,7 +208,7 @@ export async function POST(request: NextRequest) {
             end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Kolkata' },
             attendees: [
               { email: parentEmail, displayName: parentName },
-              { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
+              { email: COMPANY_CONFIG.supportEmail, displayName: 'Yestoryd (Recording)' },
             ],
             conferenceData: {
               createRequest: {

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mammoth from 'mammoth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getDurationRange, getPricingConfig } from '@/lib/config/pricing-config';
 
 const supabase = createAdminClient();
 
@@ -15,7 +16,7 @@ interface ConfigValues {
   [key: string]: string;
 }
 
-function replaceVariables(html: string, config: ConfigValues, coachData?: any): string {
+function replaceVariables(html: string, config: ConfigValues, coachData?: any, sessionDurationLabel = '30-60 minutes'): string {
   // Define all possible variables
   const variables: { [key: string]: string } = {
     // Company details
@@ -55,7 +56,7 @@ function replaceVariables(html: string, config: ConfigValues, coachData?: any): 
     '{{program_fee}}': config.program_fee || '5,999',
     '{{program_duration}}': config.program_duration || '12 weeks',
     '{{sessions_per_month}}': config.sessions_per_month || '3',
-    '{{session_duration}}': config.session_duration || '45-60 minutes',
+    '{{session_duration}}': config.session_duration || sessionDurationLabel,
     
     // Agreement version
     '{{agreement_version}}': config.agreement_version || '2.1',
@@ -151,8 +152,18 @@ export async function GET(request: NextRequest) {
       const result = await mammoth.convertToHtml({ buffer });
       let html = result.value;
 
+      // Derive session duration range from age_band_config
+      let sessionDurationLabel = '30-60 minutes';
+      try {
+        const pricingConfig = await getPricingConfig();
+        const range = getDurationRange(pricingConfig);
+        sessionDurationLabel = range.min === range.max
+          ? `${range.min} minutes`
+          : `${range.min}-${range.max} minutes`;
+      } catch { /* keep fallback */ }
+
       // Replace variables with config values
-      html = replaceVariables(html, config, coachData);
+      html = replaceVariables(html, config, coachData, sessionDurationLabel);
 
       // Add custom styling
       html = `

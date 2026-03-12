@@ -7,8 +7,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useCoachContext } from '@/app/coach/context';
+import { Spinner } from '@/components/ui/spinner';
 import StructuredCaptureForm from '@/components/coach/structured-capture';
 import type { SessionModality } from '@/lib/intelligence/types';
 
@@ -85,7 +85,7 @@ export default function CapturePage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-3" />
+          <Spinner size="lg" className="text-[#00ABFF] mx-auto mb-3" />
           <p className="text-text-tertiary text-sm">Loading session...</p>
         </div>
       </div>

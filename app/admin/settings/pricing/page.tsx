@@ -11,6 +11,7 @@ import {
   Settings, Save, RefreshCw, IndianRupee, Percent, 
   Gift, Users, Clock, Award, AlertCircle, CheckCircle
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface SettingItem {
   key: string;
@@ -237,43 +238,38 @@ export default function PricingSettingsPage() {
       {/* Header */}
       <div className="bg-surface-1 border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Settings className="w-7 h-7 text-gray-300" />
-                Pricing & Discounts
-              </h1>
-              <p className="text-sm text-text-tertiary mt-1">
-                Configure program pricing, referral rewards, and discount rules
-              </p>
-            </div>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-full transition-all shadow-lg ${
-                saved
-                  ? 'bg-green-500 text-white'
-                  : 'bg-white text-[#0a0a0f] hover:bg-gray-200'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {saving ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Saving...
-                </>
-              ) : saved ? (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  Save Changes
-                </>
-              )}
-            </button>
-          </div>
+          <PageHeader
+            title="Pricing & Discounts"
+            subtitle="Configure program pricing, referral rewards, and discount rules"
+            action={
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-full transition-all shadow-lg ${
+                  saved
+                    ? 'bg-green-500 text-white'
+                    : 'bg-white text-[#0a0a0f] hover:bg-gray-200'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {saving ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : saved ? (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            }
+          />
         </div>
       </div>
 
@@ -375,11 +371,11 @@ export default function PricingSettingsPage() {
             Calculated Values
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {/* V1 fallback '5999' below – site_settings 'coaching_program_price' is authoritative */}
+            {/* Values loaded from site_settings coaching_program_price */}
             <div className="bg-surface-1 rounded-xl p-4">
               <div className="text-2xl font-bold text-gray-300">
                 ₹{Math.round(
-                  parseInt(getSettingValue('coaching_program_price', '5999')) *
+                  parseInt(getSettingValue('coaching_program_price', '0')) *
                   parseInt(getSettingValue('parent_referral_credit_percent', '10')) / 100
                 )}
               </div>
@@ -388,7 +384,7 @@ export default function PricingSettingsPage() {
             <div className="bg-surface-1 rounded-xl p-4">
               <div className="text-2xl font-bold text-green-400">
                 ₹{Math.round(
-                  parseInt(getSettingValue('coaching_program_price', '5999')) *
+                  parseInt(getSettingValue('coaching_program_price', '0')) *
                   parseInt(getSettingValue('max_discount_percent', '20')) / 100
                 )}
               </div>
@@ -397,7 +393,7 @@ export default function PricingSettingsPage() {
             <div className="bg-surface-1 rounded-xl p-4">
               <div className="text-2xl font-bold text-gray-300">
                 ₹{Math.round(
-                  parseInt(getSettingValue('coaching_program_price', '5999')) *
+                  parseInt(getSettingValue('coaching_program_price', '0')) *
                   (100 - parseInt(getSettingValue('max_discount_percent', '20'))) / 100
                 )}
               </div>
@@ -406,7 +402,7 @@ export default function PricingSettingsPage() {
             <div className="bg-surface-1 rounded-xl p-4">
               <div className="text-2xl font-bold text-gray-300">
                 ₹{Math.round(
-                  parseInt(getSettingValue('coaching_program_price', '5999')) *
+                  parseInt(getSettingValue('coaching_program_price', '0')) *
                   (100 - parseInt(getSettingValue('loyalty_discount_percent', '10'))) / 100
                 )}
               </div>

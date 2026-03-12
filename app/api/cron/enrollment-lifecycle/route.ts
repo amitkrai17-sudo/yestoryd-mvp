@@ -24,6 +24,8 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,32 +34,49 @@ export const maxDuration = 300; // 5 minutes max
 // --- CONFIGURATION (Lazy initialization) ---
 const getSupabase = createAdminClient;
 
-// --- VERIFICATION ---
-function verifyCronAuth(request: NextRequest): { isValid: boolean; source: string } {
-  // 1. Check Vercel CRON_SECRET
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-    return { isValid: true, source: 'vercel_cron' };
-  }
+// --- TYPED JOIN INTERFACES ---
+interface EnrollmentChild {
+  id: string;
+  name: string | null;
+  child_name: string | null;
+  parent_email: string | null;
+  parent_phone: string | null;
+  parent_name: string | null;
+}
 
-  // 2. Check QStash signature
-  const qstashSignature = request.headers.get('upstash-signature');
-  if (qstashSignature) {
-    const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-    if (currentKey) {
-      return { isValid: true, source: 'qstash' };
-    }
-  }
+interface EnrollmentCoach {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
 
-  // 3. Check internal API key (for manual admin trigger)
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
+interface EnrollmentWithRelations {
+  id: string;
+  requested_start_date: string | null;
+  child_id: string;
+  parent_id: string | null;
+  coach_id: string | null;
+  children: EnrollmentChild | EnrollmentChild[] | null;
+  coaches: EnrollmentCoach | EnrollmentCoach[] | null;
+}
 
-  return { isValid: false, source: 'none' };
+interface SessionWithRelations {
+  id: string;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  session_type: string | null;
+  coach_id: string | null;
+  child_id: string | null;
+  google_meet_link: string | null;
+  coach_reminder_24h_sent: boolean | null;
+  children: { id: string; name: string | null; child_name: string | null } | Array<{ id: string; name: string | null; child_name: string | null }> | null;
+  coaches: { id: string; name: string | null; phone: string | null; email: string | null } | Array<{ id: string; name: string | null; phone: string | null; email: string | null }> | null;
+}
+
+/** Unwrap a Supabase join relation that may be an array or single object */
+function unwrapRelation<T>(rel: T | T[] | null): T | null {
+  if (Array.isArray(rel)) return rel[0] ?? null;
+  return rel;
 }
 
 // --- RESULTS TYPE ---
@@ -74,7 +93,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   // 1. Verify authorization
-  const auth = verifyCronAuth(request);
+  const auth = await verifyCronRequest(request);
   
   if (!auth.isValid) {
     console.error(JSON.stringify({
@@ -129,7 +148,8 @@ export async function GET(request: NextRequest) {
     if (delayedError) {
       results.delayedStarts.errors.push(delayedError.message);
     } else if (delayedEnrollments) {
-      for (const enrollment of delayedEnrollments) {
+      for (const rawEnrollment of delayedEnrollments) {
+        const enrollment = rawEnrollment as unknown as EnrollmentWithRelations;
         try {
           await supabase
             .from('enrollments')
@@ -152,17 +172,17 @@ export async function GET(request: NextRequest) {
 
           // Queue session scheduling via enrollment-complete job
           try {
-            const child = (enrollment as any).children;
-            const coach = (enrollment as any).coaches;
+            const child = unwrapRelation(enrollment.children);
+            const coach = unwrapRelation(enrollment.coaches);
             await queueEnrollmentComplete({
               enrollmentId: enrollment.id,
-              childId: (enrollment as any).child_id || child?.id || '',
+              childId: enrollment.child_id || child?.id || '',
               childName: child?.child_name || child?.name || 'Child',
-              parentId: (enrollment as any).parent_id || '',
+              parentId: enrollment.parent_id || '',
               parentEmail: child?.parent_email || '',
               parentName: child?.parent_name || '',
               parentPhone: child?.parent_phone || undefined,
-              coachId: (enrollment as any).coach_id || coach?.id || '',
+              coachId: enrollment.coach_id || coach?.id || '',
               coachEmail: coach?.email || '',
               coachName: coach?.name || '',
             });
@@ -303,9 +323,10 @@ export async function GET(request: NextRequest) {
         count: sessions24h.length,
       }));
 
-      for (const session of sessions24h) {
-        const coach = session.coaches as any;
-        const child = session.children as any;
+      for (const rawSession of sessions24h) {
+        const session = rawSession as unknown as SessionWithRelations;
+        const coach = unwrapRelation(session.coaches);
+        const child = unwrapRelation(session.children);
 
         if (!coach?.phone) {
           results.coachReminders24h.errors.push(`Session ${session.id}: Coach has no phone`);
@@ -395,6 +416,7 @@ export async function GET(request: NextRequest) {
         program_end_date,
         completion_alert_sent_at,
         total_sessions,
+        age_band,
         children (name, parent_email),
         coaches (name, email)
       `)
@@ -447,12 +469,22 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Batch-fetch age_band_config for session counts
+        const bandIds = Array.from(new Set(enrollmentsToCheck.map(e => (e as any).age_band).filter(Boolean)));
+        const bandMap = new Map<string, number>();
+        if (bandIds.length > 0) {
+          const { data: bands } = await supabase
+            .from('age_band_config')
+            .select('id, sessions_per_season')
+            .in('id', bandIds);
+          bands?.forEach(b => bandMap.set(b.id, b.sessions_per_season));
+        }
+
         // Process at-risk enrollments
         for (const enrollment of enrollmentsToCheck) {
           const completedCount = countsMap[enrollment.id] || 0;
-          
-          // V2: Use enrollment.total_sessions, fallback to legacy 9
-          const enrollmentTotal = (enrollment as any).total_sessions || 9; // V1 fallback – enrollment.total_sessions is authoritative (DISABLED code)
+          const bandSessions = (enrollment as any).age_band ? bandMap.get((enrollment as any).age_band) : undefined;
+          const enrollmentTotal = (enrollment as any).total_sessions || bandSessions || 0;
           if (completedCount < enrollmentTotal) {
             try {
               await supabase.from('admin_alerts').insert({
@@ -490,7 +522,7 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
 
     await supabase.from('activity_log').insert({
-      user_email: 'engage@yestoryd.com',
+      user_email: COMPANY_CONFIG.supportEmail,
       user_type: 'system',
       action: 'enrollment_lifecycle_cron_executed',
       metadata: {

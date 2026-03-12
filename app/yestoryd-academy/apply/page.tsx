@@ -16,10 +16,11 @@ import {
   Phone,
   MapPin,
   Globe,
-  Loader2,
   CheckCircle2,
   LogOut
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Country list
 const COUNTRIES = [
@@ -174,9 +175,9 @@ export default function ApplyPage() {
       // Navigate to Step 2
       router.push(`/yestoryd-academy/qualify?applicationId=${application.id}`);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating application:', err);
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError('Something went wrong. Please try again or contact us on WhatsApp.');
       setIsSubmitting(false);
     }
   };
@@ -184,7 +185,7 @@ export default function ApplyPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -415,6 +416,16 @@ export default function ApplyPage() {
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
                 {error}
+                {error.includes('WhatsApp') && (
+                  <a
+                    href={`https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}?text=Hi%2C%20I%20need%20help%20with%20my%20coach%20application`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-1 underline font-medium text-red-700 hover:text-red-900"
+                  >
+                    Chat with us
+                  </a>
+                )}
               </div>
             )}
 
@@ -435,7 +446,7 @@ export default function ApplyPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner color="white" />
                     Processing...
                   </>
                 ) : (

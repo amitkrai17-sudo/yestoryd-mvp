@@ -9,10 +9,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Users, Search, X, CheckCircle, Clock, MessageCircle, Phone,
   Mail, Play, Pause, Calendar, AlertCircle, Video,
-  Award, ThumbsUp, ThumbsDown, Loader2, ExternalLink,
+  Award, ThumbsUp, ThumbsDown, ExternalLink,
   RefreshCw, UserCheck, UserX, Eye, Filter, MapPin,
   CalendarDays, Target
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { Avatar } from '@/components/shared/Avatar';
+import { DateInput } from '@/components/ui/date-input';
+import { TimeInput } from '@/components/ui/time-input';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 // ==================== TYPES ====================
 interface CoachApplication {
@@ -137,13 +142,13 @@ function ScheduleModal({ app, onClose, onDone }: { app: CoachApplication; onClos
       <div className="bg-surface-1 rounded-xl p-6 w-full max-w-sm">
         <h3 className="font-bold text-white mb-4">Schedule Interview</h3>
         <div className="space-y-3">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted" />
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full p-2 border-border bg-surface-2 rounded text-white placeholder:text-text-muted" />
+          <DateInput value={date} onChange={setDate} />
+          <TimeInput value={time} onChange={setTime} />
         </div>
         <div className="flex gap-2 mt-4">
           <button onClick={onClose} className="flex-1 py-2 border border-border rounded-xl text-text-secondary">Cancel</button>
           <button onClick={handleSchedule} disabled={loading || !date || !time} className="flex-1 py-2 bg-white text-[#0a0a0f] rounded-xl disabled:opacity-50 hover:bg-gray-200">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Schedule'}
+            {loading ? <Spinner size="sm" className="mx-auto" /> : 'Schedule'}
           </button>
         </div>
       </div>
@@ -205,7 +210,7 @@ function FeedbackModal({ app, onClose, onDone }: { app: CoachApplication; onClos
         <div className="flex gap-2 mt-4">
           <button onClick={onClose} className="flex-1 py-2 border border-border rounded-xl text-text-secondary">Cancel</button>
           <button onClick={handleSubmit} disabled={loading || !outcome} className="flex-1 py-2 bg-white text-[#0a0a0f] rounded-xl disabled:opacity-50">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save'}
+            {loading ? <Spinner size="sm" className="mx-auto" /> : 'Save'}
           </button>
         </div>
       </div>
@@ -382,7 +387,7 @@ function DetailModal({
                 </div>
                 <div className="flex gap-2 mt-2">
                   <a href={`tel:${app.phone}`} className="flex-1 text-center py-1 bg-white text-[#0a0a0f] text-xs rounded hover:bg-gray-200">Call</a>
-                  <a href={`https://wa.me/91${app.phone.replace(/\D/g, '')}`} target="_blank" className="flex-1 text-center py-1 bg-green-500 text-white text-xs rounded">WhatsApp</a>
+                  <WhatsAppButton phone={`91${app.phone.replace(/\D/g, '')}`} label="WhatsApp" size="sm" className="flex-1" />
                 </div>
               </div>
 
@@ -449,7 +454,7 @@ function DetailModal({
                 {/* Calculate Score */}
                 <button onClick={handleCalculate} disabled={calculating || !app.audio_statement_url}
                   className="flex items-center justify-center gap-2 py-2 px-3 bg-white text-[#0a0a0f] rounded-xl text-sm hover:bg-gray-200 disabled:opacity-50">
-                  {calculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+                  {calculating ? <Spinner size="sm" /> : <Target className="w-4 h-4" />}
                   Calculate Score
                 </button>
 
@@ -463,14 +468,14 @@ function DetailModal({
                 {/* Approve */}
                 <button onClick={() => handleQuickAction('approved')} disabled={actionLoading === 'approved' || app.status === 'approved'}
                   className="flex items-center justify-center gap-2 py-2 px-3 bg-emerald-500 text-white rounded-xl text-sm hover:bg-emerald-600 disabled:opacity-50">
-                  {actionLoading === 'approved' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  {actionLoading === 'approved' ? <Spinner size="sm" color="white" /> : <CheckCircle className="w-4 h-4" />}
                   Approve
                 </button>
 
                 {/* Reject */}
                 <button onClick={() => handleQuickAction('rejected')} disabled={actionLoading === 'rejected' || app.status === 'rejected'}
                   className="flex items-center justify-center gap-2 py-2 px-3 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 disabled:opacity-50">
-                  {actionLoading === 'rejected' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                  {actionLoading === 'rejected' ? <Spinner size="sm" color="white" /> : <X className="w-4 h-4" />}
                   Reject
                 </button>
 
@@ -485,7 +490,7 @@ function DetailModal({
                 {/* Hold */}
                 <button onClick={() => handleQuickAction('on_hold')} disabled={actionLoading === 'on_hold' || app.status === 'on_hold'}
                   className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-500 text-white rounded-xl text-sm hover:bg-amber-600 disabled:opacity-50">
-                  {actionLoading === 'on_hold' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
+                  {actionLoading === 'on_hold' ? <Spinner size="sm" color="white" /> : <Pause className="w-4 h-4" />}
                   Hold
                 </button>
 
@@ -717,26 +722,19 @@ export default function AdminCoachApplicationsPage() {
               </div>
 
               {/* Date From */}
-              <div>
-                <label className="text-xs font-medium text-text-tertiary mb-1 block">From Date</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2"
-                />
-              </div>
+              <DateInput
+                label="From Date"
+                value={dateFrom}
+                onChange={setDateFrom}
+              />
 
               {/* Date To */}
-              <div>
-                <label className="text-xs font-medium text-text-tertiary mb-1 block">To Date</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-sm text-white bg-surface-2"
-                />
-              </div>
+              <DateInput
+                label="To Date"
+                value={dateTo}
+                onChange={setDateTo}
+                min={dateFrom}
+              />
 
               {/* Clear Filters */}
               {hasActiveFilters && (
@@ -763,7 +761,7 @@ export default function AdminCoachApplicationsPage() {
         {/* List */}
         <div className="bg-surface-1 rounded-lg overflow-hidden shadow-sm">
           {loading ? (
-            <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div>
+            <div className="p-8 text-center"><Spinner color="muted" className="mx-auto" /></div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-text-tertiary">
               {hasActiveFilters ? 'No applications match your filters' : 'No applications found'}
@@ -779,9 +777,7 @@ export default function AdminCoachApplicationsPage() {
                     onClick={() => setSelectedAppId(app.id)}
                     className="p-3 hover:bg-surface-2 cursor-pointer flex items-center gap-3"
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/[0.12] flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
-                      {app.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar name={app.name} size="md" portal="admin" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-white truncate text-sm">{app.name}</span>

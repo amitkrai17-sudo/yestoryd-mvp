@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, X, GraduationCap } from 'lucide-react';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { useState, useEffect } from 'react';
 
 export default function PrivacyPolicyPage() {
@@ -216,7 +217,7 @@ export default function PrivacyPolicyPage() {
                 <li><strong>Grievance Redressal:</strong> Lodge complaints about data handling</li>
               </ul>
               <p className="mt-4">
-                To exercise these rights, contact us at <a href="mailto:engage@yestoryd.com" className="text-[#FF0099] hover:underline font-medium">engage@yestoryd.com</a>
+                To exercise these rights, contact us at <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-[#FF0099] hover:underline font-medium">{COMPANY_CONFIG.supportEmail}</a>
               </p>
             </section>
 
@@ -224,12 +225,12 @@ export default function PrivacyPolicyPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Contact Us</h2>
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                 <p className="font-bold text-gray-900">Yestoryd</p>
-                <p>Email: <a href="mailto:engage@yestoryd.com" className="text-[#FF0099] hover:underline">engage@yestoryd.com</a></p>
-                <p>Phone: <a href="tel:+918976287997" className="text-[#FF0099] hover:underline">+91 8976287997</a></p>
+                <p>Email: <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.supportEmail}</a></p>
+                <p>Phone: <a href={`tel:+${COMPANY_CONFIG.leadBotWhatsApp}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.leadBotWhatsAppDisplay}</a></p>
                 <p className="mt-3 pt-3 border-t border-gray-200">
                   <span className="font-semibold">Grievance Officer:</span> Rucha Rai<br />
-                  Email: <a href="mailto:engage@yestoryd.com" className="text-[#FF0099] hover:underline">engage@yestoryd.com</a><br />
-                  Phone: <a href="tel:+918976287997" className="text-[#FF0099] hover:underline">+91 8976287997</a><br />
+                  Email: <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.supportEmail}</a><br />
+                  Phone: <a href={`tel:+${COMPANY_CONFIG.leadBotWhatsApp}`} className="text-[#FF0099] hover:underline">{COMPANY_CONFIG.leadBotWhatsAppDisplay}</a><br />
                   Response time: Within 72 hours
                 </p>
               </div>
@@ -285,7 +286,7 @@ export default function PrivacyPolicyPage() {
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-gray-600 text-sm">© {new Date().getFullYear()} Yestoryd. All rights reserved.</p>
-            <p className="text-gray-600 text-sm">Made with ❤️ for young readers in India</p>
+            <p className="text-gray-600 text-sm">Made for young readers in India</p>
           </div>
         </div>
       </footer>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Share2, BookOpen } from 'lucide-react';
+import { Share2, BookOpen, Star, Sparkles, Rocket, Trophy, BarChart3 } from 'lucide-react';
 
 // Brand Colors (matching email template)
 const COLORS = {
@@ -23,34 +23,38 @@ function getScoreMessage(score: number, childName: string) {
   if (score >= 8) return {
     headline: `${childName} Is Doing Amazingly!`,
     subheadline: 'A true reading champion',
-    emoji: '⭐',
+    IconComponent: Star,
+    iconColor: 'text-amber-400',
     encouragement: `${score}/10 is excellent! Advanced coaching can take skills even higher.`,
   };
   if (score >= 6) return {
     headline: `${childName} Shows Great Potential!`,
     subheadline: 'A rising reading star',
-    emoji: '🌟',
+    IconComponent: Sparkles,
+    iconColor: 'text-yellow-400',
     encouragement: `${score}/10 shows promise! A few sessions can unlock their full ability.`,
   };
   if (score >= 4) return {
     headline: `${childName} Is On The Right Track!`,
     subheadline: 'Building reading confidence',
-    emoji: '📖',
+    IconComponent: BookOpen,
+    iconColor: 'text-blue-400',
     encouragement: `${score}/10 is a great start! Targeted coaching will accelerate progress.`,
   };
   return {
     headline: `${childName} Has Taken The First Step!`,
     subheadline: 'Every reader starts somewhere',
-    emoji: '🚀',
+    IconComponent: Rocket,
+    iconColor: 'text-pink-400',
     encouragement: `Our coaches specialize in building strong foundations. Let's begin!`,
   };
 }
 
 // Age-appropriate call-to-action
-function getAgeCTA(age: number, childName: string) {
-  if (age <= 6) return `Show Mommy & Daddy your star! ⭐`;
-  if (age <= 9) return `Share your achievement with family! 🏆`;
-  return `Share your results 📊`;
+function getAgeCTA(age: number, _childName: string) {
+  if (age <= 6) return 'Show Mommy & Daddy your star!';
+  if (age <= 9) return 'Share your achievement with family!';
+  return 'Share your results';
 }
 
 // Full-screen Confetti Component
@@ -195,11 +199,11 @@ export default function AgeCelebration({
   
   const handleShare = () => {
     const shareMessage = encodeURIComponent(
-      `🎉 ${childName}'s Reading Assessment Results!\n\n` +
-      `${message.emoji} ${message.headline}\n` +
-      `📊 Score: ${score}/10\n\n` +
+      `${childName}'s Reading Assessment Results!\n\n` +
+      `${message.headline}\n` +
+      `Score: ${score}/10\n\n` +
       `${message.subheadline}\n\n` +
-      `Take the FREE assessment: yestoryd.com/assessment 📚`
+      `Take the FREE assessment: yestoryd.com/assessment`
     );
     window.open(`https://wa.me/?text=${shareMessage}`, '_blank');
     onShare?.();
@@ -229,7 +233,7 @@ export default function AgeCelebration({
             {/* Text content - matching email style */}
             <div className="flex-grow min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">{message.emoji}</span>
+                <message.IconComponent className={`w-6 h-6 ${message.iconColor}`} />
                 <p className="text-white/90 text-xs sm:text-sm font-medium uppercase tracking-wide">
                   Reading Assessment
                 </p>

@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { assessmentRateLimiter, getClientIP, rateLimitResponse } from '@/lib/rate-limit';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
 import { z } from 'zod';
@@ -52,12 +52,12 @@ const AI_PROVIDERS: AIProvider[] = [
 // --- CONFIGURATION (Lazy initialization) ---
 const getSupabase = createAdminClient;
 
-// --- CONSTANTS ---
+// --- CONSTANTS (infrastructure — intentionally hardcoded) ---
 const MAX_AUDIO_SIZE_MB = 5; // 5MB max audio file (keeps Gemini processing under 10s)
 const MAX_AUDIO_SIZE_BYTES = MAX_AUDIO_SIZE_MB * 1024 * 1024;
 const MAX_PASSAGE_LENGTH = 2000; // Max characters in passage
 
-// --- RATE LIMITING ---
+// --- RATE LIMITING (infrastructure — intentionally hardcoded) ---
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT = {
   maxRequests: 5,      // 5 assessments
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
         let responseText: string;
 
         if (provider.type === 'gemini') {
-          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+          const genAI = getGenAI();
           const model = genAI.getGenerativeModel({ model: provider.model });
           const result = await model.generateContent([
             { inlineData: { mimeType: audioMimeType, data: audioData } },

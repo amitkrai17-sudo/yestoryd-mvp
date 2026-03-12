@@ -17,6 +17,8 @@ import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPricingConfig } from '@/lib/config/pricing-config';
+import { getSiteSetting } from '@/lib/config/site-settings-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -286,13 +288,9 @@ export async function POST(request: NextRequest) {
         referrerName: coupon.coach?.name ?? undefined,
       };
     } else if (coupon.coupon_type === 'parent_referral') {
-      // Fetch settings and pricing in PARALLEL to avoid waterfall
-      const [settingsResult, pricingResult] = await Promise.all([
-        supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', 'parent_referral_credit_percent')
-          .single(),
+      // Fetch settings (cached) and pricing in PARALLEL to avoid waterfall
+      const [creditPercentStr, pricingResult] = await Promise.all([
+        getSiteSetting('parent_referral_credit_percent'),
         supabase
           .from('pricing_plans')
           .select('discounted_price')
@@ -302,12 +300,10 @@ export async function POST(request: NextRequest) {
           .single(),
       ]);
 
-      const creditPercent = parseInt(
-        (typeof settingsResult.data?.value === 'string'
-          ? settingsResult.data.value.replace(/"/g, '')
-          : String(settingsResult.data?.value || 10))
-      );
-      const programPrice = pricingResult.data?.discounted_price || 5999; // V1 fallback – pricing_plans.discounted_price is authoritative
+      const creditPercent = parseInt(creditPercentStr?.replace(/"/g, '') || '10');
+      const pricingConfig = await getPricingConfig();
+      const fullTier = pricingConfig.tiers.find(t => t.slug === 'full') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
+      const programPrice = pricingResult.data?.discounted_price || fullTier?.discountedPrice || 0;
 
       response.referralImpact = {
         leadSource: 'parent',

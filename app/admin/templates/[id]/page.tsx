@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  ArrowLeft, Save, Loader2, BookOpen, Plus, Trash2, GripVertical,
+  ArrowLeft, Save, BookOpen, Plus, Trash2, GripVertical,
   Link2, X, Search, Film, Gamepad2, FileText,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
 
 interface ContentRef {
@@ -292,7 +293,7 @@ export default function TemplateEditPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
+        <Spinner size="lg" color="muted" />
       </div>
     );
   }
@@ -322,7 +323,7 @@ export default function TemplateEditPage() {
               disabled={saving}
               className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-[#0a0a0f] rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? <Spinner size="sm" /> : <Save className="w-4 h-4" />}
               {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
@@ -716,7 +717,7 @@ export default function TemplateEditPage() {
                   disabled={pickerLoading}
                   className="px-4 py-2 bg-white hover:bg-gray-200 text-[#0a0a0f] rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
-                  {pickerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
+                  {pickerLoading ? <Spinner size="sm" /> : 'Search'}
                 </button>
               </div>
               <p className="text-[10px] text-text-tertiary mt-2">

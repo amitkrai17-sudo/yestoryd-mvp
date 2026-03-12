@@ -6,7 +6,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Zap, Plus, Loader2, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Zap, Plus, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { supabase } from '@/lib/supabase/client';
 
 interface SkillBoosterSectionProps {
@@ -264,7 +265,7 @@ export default function SkillBoosterSection({
                                  transition-opacity flex items-center justify-center gap-2 font-medium whitespace-nowrap"
                       >
                         {isSubmitting ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Spinner />
                         ) : (
                           <>
                             <Zap className="w-5 h-5 flex-shrink-0" />

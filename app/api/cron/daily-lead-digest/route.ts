@@ -27,48 +27,11 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import { sendDailyDigest, type DailyDigestData } from '@/lib/notifications/admin-alerts';
 import { sendText } from '@/lib/whatsapp/cloud-api';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
-export const dynamic = 'force-dynamic';
-
-// --- VERIFICATION ---
-async function verifyCronAuth(request: NextRequest, body?: string): Promise<{ isValid: boolean; source: string }> {
-  // 1. Check CRON_SECRET
-  const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
-    return { isValid: true, source: 'cron_secret' };
-  }
-
-  // 2. Check internal API key
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  // 3. Check QStash signature
-  const signature = request.headers.get('upstash-signature');
-  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    try {
-      const receiver = new Receiver({
-        currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
-        nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
-      });
-
-      const isValid = await receiver.verify({
-        signature,
-        body: body || '',
-      });
-
-      if (isValid) {
-        return { isValid: true, source: 'qstash' };
-      }
-    } catch (e) {
-      console.error('QStash verification failed:', e);
-    }
-  }
-
-  return { isValid: false, source: 'none' };
-}
+export const dynamic = 'force-dynamic';
 
 // --- TYPES ---
 interface LeadDigestData {
@@ -106,7 +69,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. AUTHORIZATION (Required)
-    const auth = await verifyCronAuth(request);
+    const auth = await verifyCronRequest(request);
 
     if (!auth.isValid) {
       console.error(JSON.stringify({
@@ -315,7 +278,7 @@ export async function GET(request: NextRequest) {
     // 11. Audit log (non-blocking)
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'engage@yestoryd.com',
+        user_email: COMPANY_CONFIG.supportEmail,
         user_type: 'system',
         action: 'daily_lead_digest_sent',
         metadata: {
@@ -481,7 +444,7 @@ async function fetchWaLeadDigest(
 function formatWaLeadDigestMessage(date: string, wa: WaLeadDigestData): string {
   const lines: string[] = [];
 
-  lines.push(`💬 WhatsApp Leads — ${date}`);
+  lines.push(`WhatsApp Leads — ${date}`);
   lines.push(`New: ${wa.newCount} | Total active: ${wa.totalActive}`);
   lines.push('');
 
@@ -498,7 +461,7 @@ function formatWaLeadDigestMessage(date: string, wa: WaLeadDigestData): string {
   // Hot leads
   if (wa.hotLeads.length > 0 && wa.hotLeads[0].lead_score > 0) {
     lines.push('');
-    lines.push('🔥 Top leads:');
+    lines.push('Top leads:');
     for (const lead of wa.hotLeads) {
       if (lead.lead_score === 0) continue;
       const age = lead.child_age ? `, age ${lead.child_age}` : '';
@@ -508,8 +471,8 @@ function formatWaLeadDigestMessage(date: string, wa: WaLeadDigestData): string {
 
   // Alerts
   const alerts: string[] = [];
-  if (wa.stuckCount > 0) alerts.push(`⚠️ Stuck >48h: ${wa.stuckCount} leads`);
-  if (wa.escalatedCount > 0) alerts.push(`🚨 Escalated (needs human): ${wa.escalatedCount}`);
+  if (wa.stuckCount > 0) alerts.push(`[WARN] Stuck >48h: ${wa.stuckCount} leads`);
+  if (wa.escalatedCount > 0) alerts.push(`[ALERT] Escalated (needs human): ${wa.escalatedCount}`);
   if (alerts.length > 0) {
     lines.push('');
     lines.push(alerts.join('\n'));

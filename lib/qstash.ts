@@ -104,7 +104,7 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData): Promise<
       delay: 0,
     });
 
-    console.log('📤 Queued enrollment-complete job via QStash:', {
+    console.log('[QUEUE] Queued enrollment-complete job via QStash:', {
       messageId: response.messageId,
       enrollmentId: data.enrollmentId,
       childName: data.childName,
@@ -115,7 +115,7 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData): Promise<
       messageId: response.messageId,
     };
   } catch (error: any) {
-    console.error('❌ QStash queue failed:', error.message);
+    console.error('[ERROR] QStash queue failed:', error.message);
     return {
       success: false,
       messageId: null,
@@ -160,7 +160,7 @@ export async function queueSessionProcessing(data: SessionProcessingData): Promi
       delay: 2, // 2 second delay to let any race conditions settle
     });
 
-    console.log('📤 Queued session-processing job via QStash:', {
+    console.log('[QUEUE] Queued session-processing job via QStash:', {
       messageId: response.messageId,
       sessionId: data.sessionId,
       botId: data.botId,
@@ -173,7 +173,7 @@ export async function queueSessionProcessing(data: SessionProcessingData): Promi
       messageId: response.messageId,
     };
   } catch (error: any) {
-    console.error('❌ QStash session processing queue failed:', {
+    console.error('[ERROR] QStash session processing queue failed:', {
       error: error.message,
       sessionId: data.sessionId,
       requestId: data.requestId,
@@ -211,14 +211,14 @@ export async function queueDelayedNotification(data: {
       retries: 2,
     });
 
-    console.log('📤 Queued notification job:', {
+    console.log('[QUEUE] Queued notification job:', {
       messageId: response.messageId,
       type: data.type,
     });
 
     return { success: true, messageId: response.messageId };
   } catch (error: any) {
-    console.error('❌ Failed to queue notification:', error.message);
+    console.error('[ERROR] Failed to queue notification:', error.message);
     return { success: false, messageId: null, error: error.message };
   }
 }
@@ -241,7 +241,7 @@ export async function queueCommunicationSend(data: CommunicationJobData): Promis
       delay: data.priority === 'urgent' ? 0 : 5, // Urgent = immediate, others = 5s delay
     });
 
-    console.log('📤 Queued communication job:', {
+    console.log('[QUEUE] Queued communication job:', {
       messageId: response.messageId,
       templateCode: data.templateCode,
       recipientType: data.recipientType,
@@ -250,7 +250,7 @@ export async function queueCommunicationSend(data: CommunicationJobData): Promis
 
     return { success: true, messageId: response.messageId };
   } catch (error: any) {
-    console.error('❌ Failed to queue communication:', error.message);
+    console.error('[ERROR] Failed to queue communication:', error.message);
     return { success: false, messageId: null, error: error.message };
   }
 }
@@ -286,7 +286,7 @@ export async function queueDiscoveryNotification(data: {
       delay: 0,
     });
 
-    console.log('📤 Queued discovery notification:', {
+    console.log('[QUEUE] Queued discovery notification:', {
       messageId: response.messageId,
       discoveryCallId: data.discoveryCallId,
       parentName: data.parentName,
@@ -294,7 +294,7 @@ export async function queueDiscoveryNotification(data: {
 
     return { success: true, messageId: response.messageId };
   } catch (error: any) {
-    console.error('❌ Failed to queue discovery notification:', error.message);
+    console.error('[ERROR] Failed to queue discovery notification:', error.message);
     return { success: false, messageId: null, error: error.message };
   }
 }
@@ -327,14 +327,14 @@ export async function createQStashSchedule(config: {
       retries: 3,
     });
 
-    console.log('📅 Created QStash schedule:', {
+    console.log('[SCHEDULE] Created QStash schedule:', {
       scheduleId: schedule.scheduleId,
       cron: config.cron,
     });
 
     return { success: true, scheduleId: schedule.scheduleId };
   } catch (error: any) {
-    console.error('❌ Failed to create schedule:', error.message);
+    console.error('[ERROR] Failed to create schedule:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -367,7 +367,7 @@ export async function deleteQStashSchedule(scheduleId: string) {
 
   try {
     await qstash.schedules.delete(scheduleId);
-    console.log('🗑️ Deleted QStash schedule:', scheduleId);
+    console.log('[DELETE] Deleted QStash schedule:', scheduleId);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -403,7 +403,7 @@ export async function queueHotLeadAlert(
       delay: 2, // 2 second delay
     });
 
-    console.log('🔥 Queued hot lead alert:', {
+    console.log('[QUEUE] Queued hot lead alert:', {
       childId,
       messageId: result.messageId,
     });
@@ -449,7 +449,7 @@ export async function queueCalendarAttendeeUpdate(
       delay: 2, // 2 second delay
     });
 
-    console.log('📅 Queued calendar attendee update:', {
+    console.log('[QUEUE] Queued calendar attendee update:', {
       eventId: data.eventId,
       newCoachEmail: data.newCoachEmail,
       messageId: result.messageId,
@@ -502,7 +502,7 @@ export async function triggerGoalsCaptureCheck(): Promise<QueueResult> {
 
     return { success: true, messageId: response.messageId };
   } catch (error: any) {
-    console.error('❌ Failed to trigger goals capture:', error.message);
+    console.error('[ERROR] Failed to trigger goals capture:', error.message);
     return { success: false, messageId: null, error: error.message };
   }
 }
@@ -567,7 +567,7 @@ export async function triggerDailyLeadDigest(): Promise<QueueResult> {
 
     return { success: true, messageId: response.messageId };
   } catch (error: any) {
-    console.error('❌ Failed to trigger daily lead digest:', error.message);
+    console.error('[ERROR] Failed to trigger daily lead digest:', error.message);
     return { success: false, messageId: null, error: error.message };
   }
 }
@@ -889,4 +889,10 @@ export function isQStashConfigured(): boolean {
  */
 export function getQStashDashboardUrl(): string {
   return 'https://console.upstash.com/qstash';
+}
+
+export async function queueArtifactAnalysis(_payload: { artifact_id: string; requestId: string }) {
+  // TODO: implement when child artifacts feature is built
+  console.warn('queueArtifactAnalysis not yet implemented');
+  return { success: false, messageId: null };
 }

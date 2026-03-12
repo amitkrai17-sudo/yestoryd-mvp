@@ -60,7 +60,7 @@ const BookDiscoverySchema = z.object({
     .regex(/^\d{2}:\d{2}$/, 'Invalid time format (HH:MM)')
     .refine(v => {
       const [hours] = v.split(':').map(Number);
-      return hours >= 6 && hours <= 21; // 9 AM to 8 PM
+      return hours >= 6 && hours <= 21; // Infrastructure: booking window 6 AM - 9 PM IST
     }, 'Booking hours: 6 AM - 9 PM'),
 
   source: z.string().max(50).default('lets-talk'),
@@ -86,7 +86,7 @@ interface BookingResult {
   error?: string;
 }
 
-// --- 3. RATE LIMITING ---
+// --- 3. RATE LIMITING (infrastructure — intentionally hardcoded) ---
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
 const RATE_LIMIT_MAX = 3; // 3 bookings per hour per email

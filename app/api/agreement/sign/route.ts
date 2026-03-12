@@ -7,6 +7,7 @@ import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 import { loadRevenueSplitConfig } from '@/lib/config/loader';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -169,7 +170,7 @@ async function sendConfirmationEmail(
   try {
     const [pricingConfig, splitConfig] = await Promise.all([getPricingConfig(), loadRevenueSplitConfig()]);
     const tier = pricingConfig.tiers.find(t => t.slug === 'full') || pricingConfig.tiers[pricingConfig.tiers.length - 1];
-    const basePrice = tier?.discountedPrice || 5999;
+    const basePrice = tier?.discountedPrice ?? 0;
     coachPercent = splitConfig.coachCostPercent;
     ownLeadPercent = splitConfig.coachCostPercent + splitConfig.leadCostPercent;
     platformLeadEarningsStr = Math.round(basePrice * coachPercent / 100).toLocaleString('en-IN');
@@ -194,7 +195,7 @@ async function sendConfirmationEmail(
         <!-- Header -->
         <tr>
           <td style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); padding: 30px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🎉 Welcome to Yestoryd!</h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Welcome to Yestoryd!</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your Coach Agreement is Active</p>
           </td>
         </tr>
@@ -208,12 +209,12 @@ async function sendConfirmationEmail(
             
             <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
               Congratulations! You have successfully signed the Coach Service Agreement. 
-              You're now officially part of the Yestoryd coaching team! 🚀
+              You're now officially part of the Yestoryd coaching team!
             </p>
             
             <!-- Agreement Details Box -->
             <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-              <h3 style="margin: 0 0 15px 0; color: #333;">📋 Agreement Details</h3>
+              <h3 style="margin: 0 0 15px 0; color: #333;">Agreement Details</h3>
               <table style="width: 100%;">
                 <tr>
                   <td style="padding: 5px 0; color: #666;">Version:</td>
@@ -225,14 +226,14 @@ async function sendConfirmationEmail(
                 </tr>
                 <tr>
                   <td style="padding: 5px 0; color: #666;">Status:</td>
-                  <td style="padding: 5px 0; color: #22c55e; font-weight: bold;">✅ Active</td>
+                  <td style="padding: 5px 0; color: #22c55e; font-weight: bold;">Active</td>
                 </tr>
               </table>
             </div>
             
             <!-- Earnings Box -->
             <div style="background: linear-gradient(135deg, #FFF0F5 0%, #F0E6FF 100%); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-              <h3 style="margin: 0 0 15px 0; color: #7B008B;">💰 Your Earnings Potential</h3>
+              <h3 style="margin: 0 0 15px 0; color: #7B008B;">Your Earnings Potential</h3>
               <table style="width: 100%;">
                 <tr>
                   <td style="padding: 8px 0; color: #666;">Yestoryd-sourced student:</td>
@@ -247,7 +248,7 @@ async function sendConfirmationEmail(
             
             <!-- Referral Link -->
             <div style="background-color: #FF0099; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
-              <p style="color: #ffffff; margin: 0 0 10px 0; font-weight: bold;">🔗 Your Referral Link</p>
+              <p style="color: #ffffff; margin: 0 0 10px 0; font-weight: bold;">Your Referral Link</p>
               <p style="color: #ffffff; margin: 0; font-size: 14px; word-break: break-all;">
                 ${referralLink}
               </p>
@@ -257,7 +258,7 @@ async function sendConfirmationEmail(
             </div>
             
             <!-- Next Steps -->
-            <h3 style="color: #333; margin-bottom: 15px;">📌 Next Steps</h3>
+            <h3 style="color: #333; margin-bottom: 15px;">Next Steps</h3>
             <ol style="color: #666; padding-left: 20px; margin-bottom: 20px;">
               <li style="margin-bottom: 10px;">Complete your bank details in the dashboard (if not done)</li>
               <li style="margin-bottom: 10px;">Share your referral link with parents you know</li>
@@ -280,7 +281,7 @@ async function sendConfirmationEmail(
               <strong>Yestoryd</strong> | AI-Powered Reading Intelligence Platform
             </p>
             <p style="color: #999; font-size: 12px; margin: 0;">
-              Questions? Reply to this email or WhatsApp us at +91 8976287997
+              Questions? Reply to this email or WhatsApp us at ${COMPANY_CONFIG.leadBotWhatsAppDisplay}
             </p>
           </td>
         </tr>
@@ -291,8 +292,8 @@ async function sendConfirmationEmail(
 
   await sendEmail({
     to: coach.email,
-    subject: '🎉 Welcome to Yestoryd! Your Coach Agreement is Active',
+    subject: 'Welcome to Yestoryd! Your Coach Agreement is Active',
     html: emailHtml,
-    from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+    from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
   });
 }

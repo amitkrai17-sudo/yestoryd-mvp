@@ -8,10 +8,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Star, AlertTriangle, Sparkles, MessageSquare, 
-  Loader2, Check, BookOpen, Flag, Send
+  Star, AlertTriangle, Sparkles, MessageSquare,
+  Check, BookOpen, Flag, Send,
+  TrendingUp, ArrowRight, TrendingDown, Flame, Smile, Moon,
+  Bookmark, Phone
 } from 'lucide-react';
 import SkillTagSelector from './SkillTagSelector';
+import { Spinner } from '@/components/ui/spinner';
 
 interface SessionFeedbackFormProps {
   sessionId: string;
@@ -204,10 +207,10 @@ export default function SessionFeedbackForm({
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { value: 'improved', label: '📈 Improved', color: 'green' },
-                  { value: 'same', label: '➡️ Same', color: 'yellow' },
-                  { value: 'struggled', label: '📉 Struggled', color: 'red' },
-                ].map(({ value, label, color }) => (
+                  { value: 'improved', label: 'Improved', color: 'green', Icon: TrendingUp },
+                  { value: 'same', label: 'Same', color: 'yellow', Icon: ArrowRight },
+                  { value: 'struggled', label: 'Struggled', color: 'red', Icon: TrendingDown },
+                ].map(({ value, label, color, Icon }) => (
                   <button
                     key={value}
                     type="button"
@@ -220,7 +223,7 @@ export default function SessionFeedbackForm({
                       }
                     `}
                   >
-                    {label}
+                    <Icon className="w-4 h-4 inline mr-1" />{label}
                   </button>
                 ))}
               </div>
@@ -233,10 +236,10 @@ export default function SessionFeedbackForm({
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { value: 'high', label: '🔥 High', emoji: '🔥' },
-                  { value: 'medium', label: '😊 Medium', emoji: '😊' },
-                  { value: 'low', label: '😴 Low', emoji: '😴' },
-                ].map(({ value, label }) => (
+                  { value: 'high', label: 'High', EIcon: Flame },
+                  { value: 'medium', label: 'Medium', EIcon: Smile },
+                  { value: 'low', label: 'Low', EIcon: Moon },
+                ].map(({ value, label, EIcon }) => (
                   <button
                     key={value}
                     type="button"
@@ -249,7 +252,7 @@ export default function SessionFeedbackForm({
                       }
                     `}
                   >
-                    {label}
+                    <EIcon className="w-4 h-4 inline mr-1" />{label}
                   </button>
                 ))}
               </div>
@@ -331,7 +334,7 @@ export default function SessionFeedbackForm({
             {/* Next Session Focus */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                📌 Recommended Focus for Next Session
+                <Bookmark className="w-4 h-4 inline mr-1" /> Recommended Focus for Next Session
               </label>
               <SkillTagSelector
                 selectedTags={feedback.next_session_focus}
@@ -437,7 +440,7 @@ export default function SessionFeedbackForm({
             <div className="p-4 bg-red-50 rounded-lg border border-red-200">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h4 className="font-medium text-red-900">🚩 Flag for Attention</h4>
+                  <h4 className="font-medium text-red-900 flex items-center gap-1"><Flag className="w-4 h-4" /> Flag for Attention</h4>
                   <p className="text-sm text-red-700">Alert admin about this child</p>
                 </div>
                 <button
@@ -471,7 +474,7 @@ export default function SessionFeedbackForm({
             {/* Parent Communication */}
             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div>
-                <h4 className="font-medium text-blue-900">📞 Parent Communication Needed</h4>
+                <h4 className="font-medium text-blue-900 flex items-center gap-1"><Phone className="w-4 h-4" /> Parent Communication Needed</h4>
                 <p className="text-sm text-blue-700">Mark if you need to discuss with parent</p>
               </div>
               <button
@@ -523,7 +526,7 @@ export default function SessionFeedbackForm({
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
               Submitting...
             </>
           ) : (

@@ -3,13 +3,11 @@
 // Asks ONE question at a time, extracts structured data
 // ============================================================
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { sendText, sendButtons } from '@/lib/whatsapp/cloud-api';
 import type { ConversationState } from '@/lib/whatsapp/types';
 
 import { getGeminiModel } from '@/lib/gemini-config';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export interface QualificationResult {
   response: string;
@@ -54,7 +52,7 @@ export async function handleQualification(
 
   // 2. Use Gemini to extract data and generate conversational response
   try {
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: getGeminiModel('content_generation'),
       generationConfig: {
         temperature: 0.5,
@@ -112,12 +110,12 @@ Only include extracted fields that you found NEW info for. child_age must be a n
       const childName = merged.child_name as string;
       const assessmentMsg =
         parsed.response ||
-        `Thank you! Based on what you've shared about ${childName}, I'd recommend our free 3-minute AI reading assessment to understand their exact level.`;
+        `Thank you! Based on what you've shared about ${childName}, I'd recommend our free 5-minute AI reading assessment to understand their exact level.`;
 
       await sendButtons(phone, assessmentMsg, [
-        { id: 'btn_assessment', title: '📖 Take Assessment' },
-        { id: 'btn_book_call', title: '📞 Book a Call' },
-        { id: 'btn_more_questions', title: '❓ More Questions' },
+        { id: 'btn_assessment', title: 'Take Assessment' },
+        { id: 'btn_book_call', title: 'Book a Call' },
+        { id: 'btn_more_questions', title: 'More Questions' },
       ]);
 
       return {

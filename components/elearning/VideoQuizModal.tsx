@@ -9,8 +9,9 @@
 import { useState, useEffect } from 'react';
 import {
   X, Play, CheckCircle, ChevronRight, Trophy, Zap,
-  Loader2, PartyPopper, XCircle
+  PartyPopper, XCircle
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface QuizQuestion {
   id: string;
@@ -260,7 +261,7 @@ export default function VideoQuizModal({
                 className="w-full sm:w-auto px-4 md:px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-medium hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50 min-h-[48px]"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner />
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5" />
@@ -278,7 +279,7 @@ export default function VideoQuizModal({
             {/* Quiz Header */}
             <div className="p-3 md:p-4 bg-gradient-to-r from-[#ff0099] to-[#7b008b] flex-shrink-0">
               <div className="flex items-center justify-between text-white">
-                <h2 className="text-lg md:text-xl font-bold">Quiz Time! 🎯</h2>
+                <h2 className="text-lg md:text-xl font-bold">Quiz Time!</h2>
                 <div className="flex items-center gap-3">
                   <span className="px-2 md:px-3 py-1 bg-white/20 rounded-full text-xs md:text-sm">
                     {currentQuestionIndex + 1} / {quizQuestions.length}
@@ -357,7 +358,7 @@ export default function VideoQuizModal({
                   className="flex-1 sm:flex-none px-4 md:px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50 min-h-[48px]"
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner />
                   ) : (
                     <>
                       <span className="text-sm md:text-base">Submit</span>
@@ -402,7 +403,7 @@ export default function VideoQuizModal({
             {/* Title */}
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
               {quizResult.isPerfect
-                ? '🎉 Perfect!'
+                ? 'Perfect!'
                 : quizResult.quizPassed === false
                 ? 'Keep Trying!'
                 : quizResult.quizPassed

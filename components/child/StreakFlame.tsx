@@ -4,6 +4,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Flame, Sparkles } from 'lucide-react';
 
 interface StreakFlameProps {
   streak: number;
@@ -76,44 +77,44 @@ export default function StreakFlame({ streak, showAnimation = true }: StreakFlam
             ease: "easeInOut"
           }}
         >
-          🔥
+          <Flame className={`${config.size === 'text-3xl' ? 'w-8 h-8' : config.size === 'text-2xl' ? 'w-7 h-7' : config.size === 'text-xl' ? 'w-6 h-6' : config.size === 'text-lg' ? 'w-5 h-5' : 'w-4 h-4'} text-white`} />
         </motion.span>
 
         {/* Second Flame (7+ days) */}
         {config.flames >= 2 && (
           <motion.span
-            className="absolute -top-1 -left-1 text-sm"
-            animate={{ 
+            className="absolute -top-1 -left-1"
+            animate={{
               scale: [0.8, 1.1, 0.8],
               y: [0, -3, 0],
               opacity: [0.7, 1, 0.7]
             }}
-            transition={{ 
-              duration: 0.7, 
+            transition={{
+              duration: 0.7,
               repeat: Infinity,
               delay: 0.2
             }}
           >
-            🔥
+            <Flame className="w-4 h-4 text-white" />
           </motion.span>
         )}
 
         {/* Third Flame (30+ days) */}
         {config.flames >= 3 && (
           <motion.span
-            className="absolute -top-2 left-2 text-xs"
-            animate={{ 
+            className="absolute -top-2 left-2"
+            animate={{
               scale: [0.7, 1, 0.7],
               y: [0, -4, 0],
               opacity: [0.5, 0.9, 0.5]
             }}
-            transition={{ 
-              duration: 0.5, 
+            transition={{
+              duration: 0.5,
               repeat: Infinity,
               delay: 0.4
             }}
           >
-            🔥
+            <Flame className="w-3 h-3 text-white" />
           </motion.span>
         )}
 
@@ -121,17 +122,17 @@ export default function StreakFlame({ streak, showAnimation = true }: StreakFlam
         {streak >= 14 && (
           <>
             <motion.span
-              className="absolute -top-2 -right-2 text-xs"
-              animate={{ 
+              className="absolute -top-2 -right-2"
+              animate={{
                 rotate: [0, 360],
                 scale: [0.8, 1, 0.8]
               }}
-              transition={{ 
-                duration: 2, 
-                repeat: Infinity 
+              transition={{
+                duration: 2,
+                repeat: Infinity
               }}
             >
-              ✨
+              <Sparkles className="w-3 h-3 text-yellow-200" />
             </motion.span>
           </>
         )}

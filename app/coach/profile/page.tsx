@@ -9,10 +9,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+import Link from 'next/link';
 import {
-  Save, Loader2, User, BookOpen, Calendar,
-  Award, CheckCircle, AlertCircle, Camera
+  Save, User, BookOpen, Calendar,
+  Award, CheckCircle, AlertCircle, Camera, Briefcase, ChevronRight
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import SkillTagSelector from '@/components/shared/SkillTagSelector';
 import AvailabilityCalendar from '@/components/shared/AvailabilityCalendar';
 import CoachAvailabilityCard from '@/components/coach/CoachAvailabilityCard';
@@ -157,7 +159,7 @@ export default function CoachProfilePage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-[#00ABFF] mx-auto mb-4" />
+          <Spinner size="xl" className="text-[#00ABFF] mx-auto mb-4" />
           <p className="text-gray-400">Loading profile...</p>
         </div>
       </div>
@@ -208,6 +210,23 @@ export default function CoachProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* Earnings Quick Link (visible on mobile where bottom nav has no Earnings) */}
+      <Link
+        href="/coach/earnings"
+        className="flex items-center justify-between p-3 lg:p-4 mb-4 bg-surface-1/50 rounded-xl border border-border hover:bg-surface-2/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+            <Briefcase className="w-4.5 h-4.5 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">View Earnings</p>
+            <p className="text-xs text-text-tertiary">Track your coaching income & splits</p>
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-text-tertiary" />
+      </Link>
 
       {/* Content */}
       <main className="max-w-4xl mx-auto">
@@ -447,7 +466,7 @@ export default function CoachProfilePage() {
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
+                  <Spinner size="sm" color="white" />
                   Saving...
                 </>
               ) : (

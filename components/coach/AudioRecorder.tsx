@@ -5,7 +5,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, Square, Play, Pause, RotateCcw, Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, RotateCcw, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 type AudioType = 'voice_note' | 'reading_clip';
 type RecorderState = 'idle' | 'recording' | 'recorded' | 'uploading' | 'uploaded';
@@ -349,7 +350,7 @@ export function AudioRecorder({
         {/* UPLOADING state */}
         {state === 'uploading' && (
           <div className="flex flex-col items-center gap-3 py-4">
-            <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
+            <Spinner size="lg" />
             <div className="w-full max-w-[200px]">
               <div className="bg-surface-3 rounded-full h-2 overflow-hidden">
                 <div

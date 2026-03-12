@@ -23,11 +23,9 @@ import {
   User,
   Baby,
   ChevronDown,
-  Loader2,
   Volume2,
   Award,
   TrendingUp,
-  MessageCircle,
   Calendar,
   Share2,
   LogOut,
@@ -38,11 +36,17 @@ import {
   Brain,
   Lock,
   RefreshCw,
+  Sprout,
+  Trophy,
+  Lightbulb,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import type { AssessmentSettings, AssessmentPassage } from '@/types/settings';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 // Modular components
 import { supabase } from '@/lib/supabase/client';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import {
   AssessmentHeader,
   TrustBadges,
@@ -179,7 +183,7 @@ function getScoreBasedCTA(
     low: {
       headline: `Great start, ${childName}! Let's build from here`,
       subtext: 'Our coaches specialize in building reading confidence from the ground up',
-      emoji: '🌱',
+      emoji: 'Sprout',
       primaryCTA: `Start ${childName}'s Reading Journey`,
       secondaryCTA: 'Talk to a Coach First',
       prioritizeConsultation: true,
@@ -187,7 +191,7 @@ function getScoreBasedCTA(
     medium: {
       headline: `${childName} has a solid foundation!`,
       subtext: 'With guided practice, improvement comes quickly',
-      emoji: '📈',
+      emoji: 'TrendingUp',
       primaryCTA: `Accelerate ${childName}'s Progress`,
       secondaryCTA: 'Talk to a Coach First',
       prioritizeConsultation: true,
@@ -195,7 +199,7 @@ function getScoreBasedCTA(
     high: {
       headline: `${childName} is doing wonderfully!`,
       subtext: 'Ready to reach the next level',
-      emoji: '⭐',
+      emoji: 'Star',
       primaryCTA: `Unlock ${childName}'s Full Potential`,
       secondaryCTA: 'Talk to a Coach',
       prioritizeConsultation: false,
@@ -203,7 +207,7 @@ function getScoreBasedCTA(
     excellent: {
       headline: `${childName} is a reading star!`,
       subtext: 'Advanced coaching for gifted readers',
-      emoji: '🏆',
+      emoji: 'Trophy',
       primaryCTA: `Challenge ${childName} Further`,
       secondaryCTA: 'Explore Advanced Options',
       prioritizeConsultation: false,
@@ -253,7 +257,7 @@ function getScoreContext(
 function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSettings> }) {
   // Extract settings with defaults
   const COLORS = DEFAULT_COLORS; // Colors remain as constants for now
-  const whatsappNumber = settings.whatsapp_number?.replace('+', '') || '918976287997';
+  const whatsappNumber = settings.whatsapp_number?.replace('+', '') || COMPANY_CONFIG.leadBotWhatsApp;
   const pageTitle = settings.assessment_page_title || 'FREE READING ASSESSMENT';
   const pageSubtitle = settings.assessment_page_subtitle || 'Get AI-powered insights in just 5 minutes';
   const heroBadge = settings.assessment_hero_badge || 'FREE READING ASSESSMENT';
@@ -613,10 +617,10 @@ function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSetti
 
         // Show friendly "processing" message
         alert(
-          `🎉 ${data.message || "We're analyzing your reading!"}\n\n` +
-          `✉️ Results will be emailed to ${formData.parentEmail}\n` +
-          `⏱️ Check your inbox (and spam folder) in 5-10 minutes.\n\n` +
-          `📧 Confirmation sent to ${formData.parentEmail}`
+          `${data.message || "We're analyzing your reading!"}\n\n` +
+          `Results will be emailed to ${formData.parentEmail}\n` +
+          `Check your inbox (and spam folder) in 5-10 minutes.\n\n` +
+          `Confirmation sent to ${formData.parentEmail}`
         );
 
         // Reset to home or show a "check email" state
@@ -663,7 +667,7 @@ function AssessmentPageContent({ settings }: { settings: Partial<AssessmentSetti
 
     const text = `?? *Yestoryd Reading Report for ${formData.childName}*
 
-${ctaInfo.emoji} *Overall Score: ${results.overall_score}/10*
+*Overall Score: ${results.overall_score}/10*
 
 ?? *Detailed Scores:*
 ?? Clarity: ${results.clarity_score}/10
@@ -760,15 +764,12 @@ https://yestoryd.com/lets-talk
               />
             </Link>
 
-            <a
-              href={`https://wa.me/${whatsappNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-green-500 text-white px-3 py-2 rounded-full text-sm font-medium hover:bg-green-600 transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Help</span>
-            </a>
+            <WhatsAppButton
+              phone={whatsappNumber}
+              label="Help"
+              size="sm"
+              className="rounded-full"
+            />
           </div>
         </div>
       </header>
@@ -835,7 +836,7 @@ https://yestoryd.com/lets-talk
                 {/* Google Sign-In */}
                 {authLoading ? (
                   <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-[#FF0099]" />
+                    <Spinner />
                   </div>
                 ) : user ? (
                   <div className="bg-surface-3 border border-border rounded-2xl p-4">
@@ -875,7 +876,7 @@ https://yestoryd.com/lets-talk
                     className="w-full flex items-center justify-center gap-3 bg-surface-2 text-white font-semibold py-4 px-6 rounded-2xl hover:bg-surface-3 transition-all shadow-lg border border-border disabled:opacity-50"
                   >
                     {isGoogleLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Spinner />
                     ) : (
                       <>
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -1106,7 +1107,13 @@ https://yestoryd.com/lets-talk
                     <>
                       {/* Encouraging Header - First thing they see */}
                       <div>
-                        <div className="text-5xl mb-3">{ctaInfo.emoji}</div>
+                        <div className="flex justify-center mb-3">
+                          {ctaInfo.emoji === 'Sprout' && <Sprout className="w-12 h-12 text-green-400" />}
+                          {ctaInfo.emoji === 'TrendingUp' && <TrendingUp className="w-12 h-12 text-blue-400" />}
+                          {ctaInfo.emoji === 'Star' && <Star className="w-12 h-12 text-yellow-400" />}
+                          {ctaInfo.emoji === 'Trophy' && <Trophy className="w-12 h-12 text-amber-400" />}
+                          {!['Sprout', 'TrendingUp', 'Star', 'Trophy'].includes(ctaInfo.emoji) && <Star className="w-12 h-12 text-yellow-400" />}
+                        </div>
                         <h2 className="text-2xl font-bold text-white mb-1">
                           {ctaInfo.headline}
                         </h2>
@@ -1132,8 +1139,8 @@ https://yestoryd.com/lets-talk
                         </div>
 
                         {/* Context message - reduces anxiety */}
-                        <p className="text-text-secondary text-sm bg-surface-1 rounded-lg p-3 border border-border">
-                          💡 {scoreContext}
+                        <p className="text-text-secondary text-sm bg-surface-1 rounded-lg p-3 border border-border flex items-start gap-2">
+                          <Lightbulb className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" /> {scoreContext}
                         </p>
                       </div>
 
@@ -1191,7 +1198,7 @@ https://yestoryd.com/lets-talk
                               <Calendar className="w-5 h-5" />
                               {ctaInfo.secondaryCTA}
                             </Link>
-                            <p className="text-gray-400 text-xs">Free 15-min call • No obligation • Get personalized advice</p>
+                            <p className="text-gray-400 text-xs">Free 30-min call • No obligation • Get personalized advice</p>
 
                             <Link
                               href={getEnrollUrl()}
@@ -1269,7 +1276,7 @@ https://yestoryd.com/lets-talk
                         }}
                         className="w-full py-3 text-text-tertiary hover:text-white transition-colors text-sm"
                       >
-                        🔄 Assess Another Child
+                        Assess Another Child
                       </button>
 
                       <p className="text-text-tertiary text-xs">
@@ -1400,7 +1407,7 @@ https://yestoryd.com/lets-talk
               >
                 {isAnalyzing ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Spinner color="white" />
                     rAI is analyzing...
                   </>
                 ) : (

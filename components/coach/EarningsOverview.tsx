@@ -8,8 +8,8 @@ import {
   Calculator,
   ChevronRight,
   AlertCircle,
-  Loader2
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { useEarningsCalculator } from '@/hooks/useEarningsCalculator';
 
 interface EarningsOverviewProps {
@@ -30,7 +30,7 @@ export default function EarningsOverview({
     return (
       <div className={`bg-gray-900 rounded-2xl p-8 ${className}`}>
         <div className="flex items-center justify-center gap-3 py-12">
-          <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+          <Spinner className="text-blue-400" />
           <span className="text-gray-400">Loading earnings data...</span>
         </div>
       </div>

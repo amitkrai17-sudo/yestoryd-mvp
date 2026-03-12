@@ -10,13 +10,13 @@ import {
   MapPin,
   AlertTriangle,
   RefreshCw,
-  Loader2,
   FileText,
   Mic,
   Clock,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // ============================================================
 // TYPES
@@ -147,7 +147,7 @@ export default function CoachesPage() {
         {/* Coach List with In-Person Stats */}
         {loading ? (
           <div className="text-center py-16">
-            <Loader2 className="w-8 h-8 text-text-tertiary animate-spin mx-auto mb-3" />
+            <Spinner size="lg" color="muted" className="mx-auto mb-3" />
             <p className="text-text-secondary text-sm">Loading coaches...</p>
           </div>
         ) : coaches.length > 0 ? (
@@ -194,7 +194,7 @@ export default function CoachesPage() {
                     )}
 
                     {coach.statsLoading ? (
-                      <Loader2 className="w-4 h-4 text-text-tertiary animate-spin flex-shrink-0" />
+                      <Spinner size="sm" color="muted" className="flex-shrink-0" />
                     ) : isExpanded ? (
                       <ChevronUp className="w-4 h-4 text-text-tertiary flex-shrink-0" />
                     ) : (
@@ -270,7 +270,7 @@ export default function CoachesPage() {
 
                   {isExpanded && coach.statsLoading && (
                     <div className="border-t border-border p-6 text-center bg-surface-0">
-                      <Loader2 className="w-5 h-5 text-text-tertiary animate-spin mx-auto" />
+                      <Spinner color="muted" className="mx-auto" />
                     </div>
                   )}
                 </div>

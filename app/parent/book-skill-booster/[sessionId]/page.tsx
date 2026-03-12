@@ -10,10 +10,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Calendar, Clock, Sparkles, Check, Loader2,
+  Calendar, Clock, Sparkles, Check,
   ArrowLeft, AlertCircle, CheckCircle, Video,
   ChevronLeft, ChevronRight, Zap
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // 4-Point Star Icon Component (Yestoryd branding)
 function StarIcon({ className }: { className?: string }) {
@@ -218,7 +219,7 @@ export default function BookSkillBoosterPage() {
   // Loading State
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#FF0099] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading available slots...</p>
@@ -230,7 +231,7 @@ export default function BookSkillBoosterPage() {
   // Error State
   if (error && !sessionData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load</h2>
@@ -250,7 +251,7 @@ export default function BookSkillBoosterPage() {
   // Success State
   if (bookingSuccess) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
           <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-emerald-700" />
@@ -288,7 +289,7 @@ export default function BookSkillBoosterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-[60vh] bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4">
@@ -461,7 +462,7 @@ export default function BookSkillBoosterPage() {
         >
           {isBooking ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner color="white" />
               Booking...
             </>
           ) : (

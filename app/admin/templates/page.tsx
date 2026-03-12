@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  BookOpen, Search, Loader2, Plus, Filter,
+  BookOpen, Search, Plus, Filter,
   Clock, Zap, Star, ToggleLeft, ToggleRight, Pencil,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { AgeBandBadge } from '@/components/AgeBandBadge';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 type AgeBandFilter = 'all' | 'foundation' | 'building' | 'mastery';
 
@@ -123,24 +126,19 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="bg-surface-1 border-b border-border">
         <div className="px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-6 h-6 text-gray-300" />
-                Session Templates
-              </h1>
-              <p className="text-text-tertiary mt-1">
-                Manage curated session templates for each age band
-              </p>
-            </div>
-            <button
-              onClick={() => router.push('/admin/templates/new')}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-[#0a0a0f] rounded-lg text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              New Template
-            </button>
-          </div>
+          <PageHeader
+            title="Session Templates"
+            subtitle="Manage curated session templates for each age band"
+            action={
+              <button
+                onClick={() => router.push('/admin/templates/new')}
+                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-[#0a0a0f] rounded-lg text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                New Template
+              </button>
+            }
+          />
         </div>
       </div>
 
@@ -177,7 +175,7 @@ export default function TemplatesPage() {
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
+            <Spinner size="lg" color="muted" />
           </div>
         )}
 
@@ -216,9 +214,7 @@ export default function TemplatesPage() {
                           </span>
                         )}
                         {!template.is_active && (
-                          <span className="px-2 py-0.5 text-xs rounded-full bg-gray-500/20 text-gray-400 border border-gray-500/30">
-                            Inactive
-                          </span>
+                          <StatusBadge status="inactive" size="sm" />
                         )}
                       </div>
                       <h3 className="text-white font-medium text-sm mb-2">{template.title}</h3>
@@ -281,7 +277,7 @@ export default function TemplatesPage() {
                         title={template.is_active ? 'Deactivate' : 'Activate'}
                       >
                         {togglingId === template.id ? (
-                          <Loader2 className="w-5 h-5 text-text-tertiary animate-spin" />
+                          <Spinner color="muted" />
                         ) : template.is_active ? (
                           <ToggleRight className="w-5 h-5 text-green-400" />
                         ) : (

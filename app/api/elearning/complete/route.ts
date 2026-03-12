@@ -9,23 +9,40 @@ import { createAdminClient } from '@/lib/supabase/admin';
 const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
 
-// Level thresholds
-const LEVEL_THRESHOLDS = [
-  0,     // Level 1: 0 XP
-  100,   // Level 2: 100 XP
-  300,   // Level 3: 300 XP
-  600,   // Level 4: 600 XP
-  1000,  // Level 5: 1000 XP
-  1500,  // Level 6: 1500 XP
-  2100,  // Level 7: 2100 XP
-  2800,  // Level 8: 2800 XP
-  3600,  // Level 9: 3600 XP
-  4500,  // Level 10: 4500 XP
-];
+// Fallback level thresholds — overridden by site_settings key 'gamification_level_thresholds'
+const FALLBACK_LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2100, 2800, 3600, 4500];
 
-function calculateLevel(xp: number): number {
-  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (xp >= LEVEL_THRESHOLDS[i]) {
+let cachedThresholds: number[] | null = null;
+let cacheLoadedAt = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getLevelThresholds(): Promise<number[]> {
+  if (cachedThresholds && Date.now() - cacheLoadedAt < CACHE_TTL) {
+    return cachedThresholds;
+  }
+  try {
+    const { data } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'gamification_level_thresholds')
+      .single();
+    if (data?.value) {
+      const parsed = JSON.parse(String(data.value));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedThresholds = parsed.map(Number);
+        cacheLoadedAt = Date.now();
+        return cachedThresholds;
+      }
+    }
+  } catch { /* use fallback */ }
+  cachedThresholds = FALLBACK_LEVEL_THRESHOLDS;
+  cacheLoadedAt = Date.now();
+  return cachedThresholds;
+}
+
+function calculateLevel(xp: number, thresholds: number[]): number {
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (xp >= thresholds[i]) {
       return i + 1;
     }
   }
@@ -70,10 +87,11 @@ export async function POST(request: NextRequest) {
       .eq('child_id', childId)
       .single();
     
+    const levelThresholds = await getLevelThresholds();
     const currentXP = gamification?.total_xp || 0;
-    const currentLevel = calculateLevel(currentXP);
+    const currentLevel = calculateLevel(currentXP, levelThresholds);
     const newXP = currentXP + totalXP;
-    const newLevel = calculateLevel(newXP);
+    const newLevel = calculateLevel(newXP, levelThresholds);
     
     const levelUp = newLevel > currentLevel;
     
@@ -134,20 +152,20 @@ export async function POST(request: NextRequest) {
     
     // First unit badge
     if ((gamification?.total_units_completed || 0) === 0) {
-      newBadge = { name: 'First Steps', icon: '🌟' };
-      await awardBadge(childId, 'first-steps', 'First Steps', '🌟');
+      newBadge = { name: 'First Steps', icon: 'Star' };
+      await awardBadge(childId, 'first-steps', 'First Steps', 'Star');
     }
     
     // Perfect score badge
     if (isPerfect && (gamification?.total_perfect_scores || 0) === 0) {
-      newBadge = { name: 'Perfectionist', icon: '💯' };
-      await awardBadge(childId, 'perfectionist', 'Perfectionist', '💯');
+      newBadge = { name: 'Perfectionist', icon: 'Target' };
+      await awardBadge(childId, 'perfectionist', 'Perfectionist', 'Target');
     }
     
     // 5 units badge
     if ((gamification?.total_units_completed || 0) + 1 === 5) {
-      newBadge = { name: 'Quick Learner', icon: '📚' };
-      await awardBadge(childId, 'quick-learner', 'Quick Learner', '📚');
+      newBadge = { name: 'Quick Learner', icon: 'BookOpen' };
+      await awardBadge(childId, 'quick-learner', 'Quick Learner', 'BookOpen');
     }
     
     // Log to learning events for RAG

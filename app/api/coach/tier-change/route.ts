@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadPricingPlan } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
           to: coach.email,
           subject,
           html: htmlContent,
-          from: { email: 'engage@yestoryd.com', name: 'Yestoryd Team' },
+          from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd Team' },
         });
 
         results.email.sent = emailResult.success;

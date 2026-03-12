@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PartyPopper, Star } from 'lucide-react';
 
 interface XPProgressBarProps {
   currentXP: number;
@@ -101,7 +102,7 @@ export default function XPProgressBar({
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 0.5, repeat: 3 }}
               >
-                🎉 LEVEL UP! 🎉
+                <PartyPopper className="w-5 h-5 inline-block mr-1" /> LEVEL UP! <PartyPopper className="w-5 h-5 inline-block ml-1" />
               </motion.span>
             </div>
             
@@ -127,7 +128,7 @@ export default function XPProgressBar({
                   delay: i * 0.1
                 }}
               >
-                ⭐
+                <Star className="w-5 h-5 text-yellow-400" fill="currentColor" />
               </motion.div>
             ))}
           </motion.div>

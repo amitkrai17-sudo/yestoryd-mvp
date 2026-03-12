@@ -5,7 +5,8 @@
 // ============================================================
 
 import { useState } from 'react';
-import { Phone, Clock, CheckCircle, Loader2, X, Calendar } from 'lucide-react';
+import { Phone, Clock, CheckCircle, X, Calendar } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface ParentCallData {
   id: string;
@@ -209,7 +210,7 @@ export default function ParentCallCard({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                   Sending Request...
                 </>
               ) : (

@@ -6,10 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { scheduleCalendarEvent } from '@/lib/googleCalendar';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { getSiteSettingInt } from '@/lib/config/site-settings-loader';
 
 export const dynamic = 'force-dynamic';
 
-const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || 'engage@yestoryd.com';
+const CALENDAR_EMAIL = process.env.GOOGLE_CALENDAR_EMAIL || COMPANY_CONFIG.supportEmail;
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,14 +53,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing child or coach data' }, { status: 404 });
     }
 
-    // Get duration from site_settings
-    const { data: durationSetting } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', 'parent_call_duration_minutes')
-      .single();
-
-    const durationMinutes = parseInt(String(durationSetting?.value ?? '15'), 10);
+    // Get duration from site_settings (cached 5 min)
+    const durationMinutes = await getSiteSettingInt('parent_call_duration_minutes', 15);
     const childName = child.child_name || 'Student';
 
     // Create Google Calendar event

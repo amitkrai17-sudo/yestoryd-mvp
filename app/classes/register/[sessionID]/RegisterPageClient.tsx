@@ -13,9 +13,10 @@ import Image from 'next/image';
 import Script from 'next/script';
 import {
   Calendar, Clock, Users, ArrowLeft, CheckCircle, Tag,
-  AlertCircle, Loader2, Shield, User, Mail, Phone, Baby,
+  AlertCircle, Shield, User, Mail, Phone, Baby,
   Sparkles, Gift, CreditCard, BookOpen
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // =============================================================================
 // TYPES
@@ -344,7 +345,7 @@ export default function RegisterPageClient({ sessionId: propSessionId }: { sessi
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#ff0099] animate-spin mx-auto mb-4" />
+          <Spinner size="xl" className="mx-auto mb-4" />
           <p className="text-text-secondary">Loading session details...</p>
         </div>
       </div>
@@ -582,7 +583,7 @@ export default function RegisterPageClient({ sessionId: propSessionId }: { sessi
                           className="px-6 py-3 bg-surface-2 text-text-secondary rounded-xl font-semibold hover:bg-surface-0 transition-colors disabled:opacity-50 flex items-center gap-2 border border-border min-h-[44px]"
                         >
                           {couponLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Spinner color="white" />
                           ) : (
                             'Apply'
                           )}
@@ -620,7 +621,7 @@ export default function RegisterPageClient({ sessionId: propSessionId }: { sessi
                   >
                     {submitting ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Spinner color="white" />
                         Processing...
                       </>
                     ) : pricing?.finalPrice === 0 ? (

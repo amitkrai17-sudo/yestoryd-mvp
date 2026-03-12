@@ -147,8 +147,10 @@ export async function GET(
     const seasonNumber = enrollment.season_number || 1;
     const pricingConfig = await getPricingConfig();
     const ageBand = enrollment.age_band || child.age_band || 'building';
-    const bandSessions = pricingConfig.ageBands.find(b => b.id === ageBand)?.sessionsPerSeason;
-    const totalSessions = enrollment.total_sessions || bandSessions || 9;
+    const band = pricingConfig.ageBands.find(b => b.id === ageBand);
+    const bandTotal = band ? band.sessionsPerSeason + band.skillBoosterCredits : undefined;
+    const bandTotals: Record<string, number> = { foundation: 24, building: 16, mastery: 12 };
+    const totalSessions = enrollment.total_sessions || bandTotal || bandTotals[ageBand.toLowerCase()] || 16;
 
     return NextResponse.json({
       success: true,

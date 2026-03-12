@@ -11,7 +11,6 @@ import {
   Clock,
   XCircle,
   CheckCircle,
-  Loader2,
   Trash2,
   RotateCcw,
   Mail,
@@ -19,6 +18,7 @@ import {
   Calendar,
   FileText,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface PendingAssessment {
   id: string;
@@ -118,7 +118,7 @@ export default function PendingAssessmentsPage() {
       case 'processing':
         return (
           <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded">
-            <Loader2 className="w-3 h-3 animate-spin" />
+            <Spinner size="sm" className="w-3 h-3" />
             Processing
           </span>
         );
@@ -205,7 +205,7 @@ export default function PendingAssessmentsPage() {
               <p className="text-2xl font-bold text-blue-600">{stats.processing}</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+              <Spinner className="text-blue-600 w-6 h-6" />
             </div>
           </div>
         </div>
@@ -249,7 +249,7 @@ export default function PendingAssessmentsPage() {
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            <Spinner size="lg" color="muted" />
           </div>
         ) : filteredAssessments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -339,7 +339,7 @@ export default function PendingAssessmentsPage() {
                           className="flex items-center gap-1 px-3 py-1.5 bg-white text-[#0a0a0f] text-xs font-medium rounded hover:bg-gray-200 disabled:opacity-50"
                         >
                           {actionLoading === assessment.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <Spinner size="sm" className="w-3 h-3" />
                           ) : (
                             <RotateCcw className="w-3 h-3" />
                           )}

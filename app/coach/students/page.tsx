@@ -7,12 +7,13 @@ import { useRouter } from 'next/navigation';
 import {
   Users,
   Search,
-  Loader2,
   UserCheck,
   Clock,
   Award,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import StudentCard from '@/components/coach/StudentCard';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { supabase } from '@/lib/supabase/client';
 
 interface Student {
@@ -85,6 +86,17 @@ export default function CoachStudentsPage() {
         .in('status', ['active', 'pending_start', 'completed'])
         .order('created_at', { ascending: false });
 
+      // Batch-fetch age_band_config for session counts
+      const bandIds = Array.from(new Set((enrollmentsData || []).map(e => (e as any).age_band).filter(Boolean)));
+      const bandMap = new Map<string, number>();
+      if (bandIds.length > 0) {
+        const { data: bands } = await supabase
+          .from('age_band_config')
+          .select('id, sessions_per_season')
+          .in('id', bandIds);
+        bands?.forEach(b => bandMap.set(b.id, b.sessions_per_season));
+      }
+
       // Get session counts for each enrollment
       const studentsWithSessions = await Promise.all(
         (enrollmentsData || []).map(async (enrollment) => {
@@ -98,14 +110,16 @@ export default function CoachStudentsPage() {
             .eq('status', 'completed');
 
           const profile = (child as any).learning_profile;
+          const ageBand = (enrollment as any).age_band;
+          const bandSessions = ageBand ? bandMap.get(ageBand) : undefined;
           return {
             id: child.id,
             child_name: child.child_name,
             age: child.age,
-            age_band: (enrollment as any).age_band || null,
+            age_band: ageBand || null,
             assessment_score: child.latest_assessment_score,
             sessions_completed: count || 0,
-            total_sessions: enrollment.total_sessions || enrollment.sessions_scheduled || 9, // V1 fallback – enrollment.total_sessions is authoritative
+            total_sessions: enrollment.total_sessions || enrollment.sessions_scheduled || bandSessions || 0,
             status: enrollment.status === 'pending_start' ? 'active' : enrollment.status,
             is_coach_lead: enrollment.lead_source === 'coach',
             trend: profile?.reading_level?.trend || null,
@@ -149,7 +163,7 @@ export default function CoachStudentsPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF]" />
+        <Spinner size="lg" className="text-[#00ABFF]" />
       </div>
     );
   }
@@ -212,10 +226,11 @@ export default function CoachStudentsPage() {
         {/* Student Cards */}
         <div className="space-y-2">
           {filteredStudents.length === 0 ? (
-            <div className="text-center py-12 text-text-tertiary">
-              <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No students found</p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No students found"
+              description="Try adjusting your search or filters"
+            />
           ) : (
             filteredStudents.map((student) => (
               <StudentCard key={student.id} student={student} />

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 export function AudioRecorderCheck({ 
   onReady 
@@ -56,17 +56,11 @@ export function AudioRecorderCheck({
             {error}. Don't worry! You can still send us the recording via WhatsApp.
           </p>
           
-          <Button 
-            variant="outline" 
-            className="mt-3 w-full border-green-600 text-green-700 hover:bg-green-50"
-            onClick={() => window.open(
-              `https://wa.me/918976287997?text=Hi, my device couldn't record. I want to submit the reading assessment for my child.`, 
-              '_blank'
-            )}
-          >
-            <Send className="w-4 h-4 mr-2" />
-            Send via WhatsApp
-          </Button>
+          <WhatsAppButton
+            message="Hi, my device couldn't record. I want to submit the reading assessment for my child."
+            label="Send via WhatsApp"
+            className="mt-3 w-full"
+          />
         </div>
       </div>
     </div>

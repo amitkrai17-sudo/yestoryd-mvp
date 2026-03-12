@@ -5,7 +5,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import type { CardProps, ModuleGroup } from '../types';
 
@@ -49,7 +50,7 @@ export function SkillsCoveredCard({ state, onUpdate, modules, loading }: SkillsC
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin mb-3" />
+        <Spinner size="lg" className="text-[#00ABFF] mb-3" />
         <p className="text-text-tertiary text-sm">Loading skills...</p>
       </div>
     );

@@ -365,7 +365,7 @@ export function getDurationRange(
   config: PricingConfig
 ): { min: number; max: number } {
   const durations = config.ageBands.map(b => b.sessionDurationMinutes);
-  if (durations.length === 0) return { min: 45, max: 45 };
+  if (durations.length === 0) return { min: 30, max: 60 };
   return { min: Math.min(...durations), max: Math.max(...durations) };
 }
 

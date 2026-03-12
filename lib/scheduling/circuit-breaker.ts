@@ -30,8 +30,9 @@ interface CircuitState {
 
 const memoryCircuits: Map<string, CircuitState> = new Map();
 
-const FAILURE_THRESHOLD = 5;
-const RESET_TIMEOUT_MS = 60000; // 1 minute
+// Infrastructure constants — intentionally hardcoded
+const FAILURE_THRESHOLD = 5;       // trips circuit after 5 consecutive failures
+const RESET_TIMEOUT_MS = 60000;    // 1 minute cooldown before half-open retry
 
 // ============================================================================
 // INTERNAL: load state from Redis, fall back to in-memory

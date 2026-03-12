@@ -147,7 +147,7 @@ function formatAtRiskChildren(data: any, freshness: string): string {
   const names = children.slice(0, 5).map((c: any) => c.child_name).join(', ');
   const moreCount = count > 5 ? ` and ${count - 5} more` : '';
   
-  return `⚠️ ${count} children need attention (no completed session in 14+ days):\n\n${names}${moreCount}\n\nCriteria: ${data.criteria}\n(Updated ${freshness})`;
+  return `${count} children need attention (no completed session in 14+ days):\n\n${names}${moreCount}\n\nCriteria: ${data.criteria}\n(Updated ${freshness})`;
 }
 
 function formatTopCoaches(data: any, freshness: string): string {
@@ -161,34 +161,34 @@ function formatTopCoaches(data: any, freshness: string): string {
     `${i + 1}. ${c.name} - ${c.sessions_completed} sessions (${c.completion_rate}% completion, ${c.student_count} students)`
   ).join('\n');
   
-  return `🏆 Top Performing Coaches (${data.period}):\n\n${top3}\n\n(Updated ${freshness})`;
+  return `Top Performing Coaches (${data.period}):\n\n${top3}\n\n(Updated ${freshness})`;
 }
 
 function formatConversionRate(data: any, freshness: string): string {
-  return `📊 Enrollment Conversion:\n\n• Total Assessed: ${data.total_assessed}\n• Total Enrolled: ${data.total_enrolled}\n• Conversion Rate: ${data.conversion_rate}%\n\nPeriod: ${data.period}\n(Updated ${freshness})`;
+  return `Enrollment Conversion:\n\n• Total Assessed: ${data.total_assessed}\n• Total Enrolled: ${data.total_enrolled}\n• Conversion Rate: ${data.conversion_rate}%\n\nPeriod: ${data.period}\n(Updated ${freshness})`;
 }
 
 function formatInactiveChildren(data: any, freshness: string): string {
   const count = data.count || 0;
   
   if (count === 0) {
-    return `✅ All enrolled children are active! Everyone has sessions scheduled or completed recently. (Updated ${freshness})`;
+    return `All enrolled children are active. Everyone has sessions scheduled or completed recently. (Updated ${freshness})`;
   }
   
   const children = data.children || [];
   const names = children.slice(0, 5).map((c: any) => c.child_name).join(', ');
   const moreCount = count > 5 ? ` and ${count - 5} more` : '';
   
-  return `⚠️ ${count} children inactive for 2+ weeks:\n\n${names}${moreCount}\n\nConsider reaching out to re-engage these families.\n(Updated ${freshness})`;
+  return `${count} children inactive for 2+ weeks:\n\n${names}${moreCount}\n\nConsider reaching out to re-engage these families.\n(Updated ${freshness})`;
 }
 
 function formatRevenueTrends(data: any, freshness: string): string {
   const thisMonth = (data.this_month / 100).toLocaleString('en-IN'); // Convert paise to rupees
   const lastMonth = (data.last_month / 100).toLocaleString('en-IN');
   const growth = data.growth_rate;
-  const growthEmoji = growth > 0 ? '📈' : growth < 0 ? '📉' : '➡️';
-  
-  return `${growthEmoji} Revenue Trends:\n\n• ${data.this_month_name}: ₹${thisMonth}\n• ${data.last_month_name}: ₹${lastMonth}\n• Growth: ${growth > 0 ? '+' : ''}${growth}%\n\n(Updated ${freshness})`;
+  const growthLabel = growth > 0 ? '[UP]' : growth < 0 ? '[DOWN]' : '[FLAT]';
+
+  return `${growthLabel} Revenue Trends:\n\n• ${data.this_month_name}: ₹${thisMonth}\n• ${data.last_month_name}: ₹${lastMonth}\n• Growth: ${growth > 0 ? '+' : ''}${growth}%\n\n(Updated ${freshness})`;
 }
 
 function formatCoachWorkload(data: any, freshness: string): string {
@@ -198,15 +198,15 @@ function formatCoachWorkload(data: any, freshness: string): string {
     `• ${c.name}: ${c.student_count} students, ${c.upcoming_sessions} upcoming sessions`
   ).join('\n');
   
-  return `👥 Coach Workload Distribution:\n\n${distribution}\n\nTotal Students: ${data.total_students}\nAvg per Coach: ${data.average_per_coach}\n\n(Updated ${freshness})`;
+  return `Coach Workload Distribution:\n\n${distribution}\n\nTotal Students: ${data.total_students}\nAvg per Coach: ${data.average_per_coach}\n\n(Updated ${freshness})`;
 }
 
 function formatSessionCompletion(data: any, freshness: string): string {
-  return `📅 Session Stats (${data.period}):\n\n• Total Sessions: ${data.total_sessions}\n• Completed: ${data.completed} ✅\n• No-shows: ${data.no_show} ❌\n• Cancelled: ${data.cancelled} 🚫\n• Completion Rate: ${data.completion_rate}%\n\n(Updated ${freshness})`;
+  return `Session Stats (${data.period}):\n\n• Total Sessions: ${data.total_sessions}\n• Completed: ${data.completed}\n• No-shows: ${data.no_show}\n• Cancelled: ${data.cancelled}\n• Completion Rate: ${data.completion_rate}%\n\n(Updated ${freshness})`;
 }
 
 function formatWeeklySummary(data: any, freshness: string): string {
-  return `📊 Platform Health Summary:\n\n• At-Risk Children: ${data.at_risk_count}\n• Inactive (2+ weeks): ${data.inactive_count}\n• Conversion Rate: ${data.conversion_rate}%\n• Session Completion: ${data.session_completion_rate}%\n• Revenue This Month: ₹${((data.revenue_this_month || 0) / 100).toLocaleString('en-IN')}\n• Revenue Growth: ${data.revenue_growth > 0 ? '+' : ''}${data.revenue_growth}%\n• Active Coaches: ${data.total_coaches}\n\n(Updated ${freshness})`;
+  return `Platform Health Summary:\n\n• At-Risk Children: ${data.at_risk_count}\n• Inactive (2+ weeks): ${data.inactive_count}\n• Conversion Rate: ${data.conversion_rate}%\n• Session Completion: ${data.session_completion_rate}%\n• Revenue This Month: ₹${((data.revenue_this_month || 0) / 100).toLocaleString('en-IN')}\n• Revenue Growth: ${data.revenue_growth > 0 ? '+' : ''}${data.revenue_growth}%\n• Active Coaches: ${data.total_coaches}\n\n(Updated ${freshness})`;
 }
 
 // ============================================================

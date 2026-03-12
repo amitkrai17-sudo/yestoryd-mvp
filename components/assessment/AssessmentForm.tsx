@@ -11,7 +11,6 @@ import {
   Baby,
   Mic,
   Square,
-  Loader2,
   CheckCircle,
   ArrowRight,
   ArrowLeft,
@@ -22,6 +21,7 @@ import {
   Mail,
 } from 'lucide-react';
 import type { AssessmentPassage, SupportedCountryCode } from '@/types/settings';
+import { Spinner } from '@/components/ui/spinner';
 
 // =============================================================================
 // PROPS INTERFACE
@@ -504,7 +504,7 @@ export function AssessmentForm({ passages, countryCodes }: AssessmentFormProps) 
                       Record Again
                     </Button>
                     <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-pink-500 hover:bg-pink-600 text-white px-6">
-                      {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <>Get Results <ArrowRight className="w-4 h-4 ml-2" /></>}
+                      {isSubmitting ? <><Spinner size="sm" className="mr-2" /> Analyzing...</> : <>Get Results <ArrowRight className="w-4 h-4 ml-2" /></>}
                     </Button>
                   </div>
                 </div>

@@ -5,6 +5,7 @@
 
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { Home, Gamepad2, BookOpen, Trophy } from 'lucide-react';
 
 interface BottomNavProps {
   childId: string;
@@ -15,27 +16,27 @@ export default function BottomNav({ childId, activeTab }: BottomNavProps) {
   const router = useRouter();
 
   const tabs = [
-    { 
-      id: 'home', 
-      icon: '🏠', 
+    {
+      id: 'home',
+      icon: Home,
       label: 'Home',
       path: `/child/${childId}/play`
     },
-    { 
-      id: 'games', 
-      icon: '🎮', 
+    {
+      id: 'games',
+      icon: Gamepad2,
       label: 'Practice',
       path: `/child/${childId}/games`
     },
-    { 
-      id: 'stories', 
-      icon: '📚', 
+    {
+      id: 'stories',
+      icon: BookOpen,
       label: 'Library',
       path: `/child/${childId}/stories`
     },
-    { 
-      id: 'rewards', 
-      icon: '🏆', 
+    {
+      id: 'rewards',
+      icon: Trophy,
       label: 'Progress',
       path: `/child/${childId}/rewards`
     },
@@ -55,10 +56,10 @@ export default function BottomNav({ childId, activeTab }: BottomNavProps) {
               whileTap={{ scale: 0.95 }}
             >
               {/* Icon */}
-              <div className={`text-2xl mb-0.5 transition-all ${
-                isActive ? '' : 'grayscale opacity-50'
+              <div className={`mb-0.5 transition-all ${
+                isActive ? 'text-[#FF0099]' : 'text-gray-400'
               }`}>
-                {tab.icon}
+                <tab.icon className="w-6 h-6" />
               </div>
               
               {/* Label */}

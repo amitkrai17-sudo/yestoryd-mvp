@@ -334,14 +334,14 @@ async function showCleanupInstructions(enrollmentId: string, sessions: any[]) {
 
 // --- MAIN ---
 async function main() {
-  console.log('\n🧪 Coach-as-Organizer Calendar Test');
+  console.log('\n[TEST] Coach-as-Organizer Calendar Test');
   console.log('===================================\n');
 
   // Step 1: Get data
   const { child, parent, enrollment, coach, sessions, withoutCalendar } = await getTestData();
 
   if (withoutCalendar.length === 0) {
-    console.log('\n⚠️  All sessions already have calendar events.');
+    console.log('\n[WARN] All sessions already have calendar events.');
     console.log('  To re-test, clear google_event_id from some sessions:');
     console.log(`  UPDATE scheduled_sessions SET google_event_id = NULL, google_meet_link = NULL WHERE enrollment_id = '${enrollment.id}' LIMIT 1;`);
 
@@ -369,12 +369,12 @@ async function main() {
   );
 
   if (status !== 200 || !result.success) {
-    console.error('\n❌ Endpoint call failed. Check dev server logs for details.');
+    console.error('\n[FAIL] Endpoint call failed. Check dev server logs for details.');
     if (result.error) console.error(`  Error: ${result.error}`);
     process.exit(1);
   }
 
-  console.log(`\n✅ Endpoint returned success`);
+  console.log(`\n[OK] Endpoint returned success`);
   console.log(`  Sessions scheduled: ${result.sessionsWithCalendar}`);
   console.log(`  Bots scheduled: ${result.botsScheduled}`);
   console.log(`  Email sent: ${result.emailSent}`);

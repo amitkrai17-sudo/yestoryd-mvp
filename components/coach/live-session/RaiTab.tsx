@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Film, FileText, Gamepad2, Headphones, Monitor, BookOpen, ChevronDown } from 'lucide-react';
+import { Send, Bot, User, Film, FileText, Gamepad2, Headphones, Monitor, BookOpen, ChevronDown } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import type { ChatMessage, ChildData, RecommendedContentItem } from './types';
 
 interface RaiTabProps {
@@ -135,7 +136,7 @@ export default function RaiTab({ childId, child, coachEmail }: RaiTabProps) {
               <Bot className="w-4 h-4 text-[#00ABFF]" />
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl rounded-bl-sm px-3 py-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-[#00ABFF]" />
+              <Spinner size="sm" className="text-[#00ABFF]" />
             </div>
           </div>
         )}

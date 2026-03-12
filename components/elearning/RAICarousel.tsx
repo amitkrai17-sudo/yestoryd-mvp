@@ -200,7 +200,7 @@ export default function RAICarousel({
           </div>
           {data.focus?.reason && (
             <p className="text-xs md:text-sm text-gray-600 mt-2 line-clamp-2">
-              💡 {data.focus.reason}
+              {data.focus.reason}
             </p>
           )}
         </div>
@@ -210,7 +210,7 @@ export default function RAICarousel({
       <div className="bg-white rounded-xl md:rounded-2xl p-4 md:p-5 border border-gray-200">
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm md:text-base">
-            📚 Your Learning Path
+            Your Learning Path
             <span className="text-xs md:text-sm font-normal text-gray-500">
               ({data.carousel.length})
             </span>
@@ -324,9 +324,9 @@ export default function RAICarousel({
                         item.type === 'practice' ? 'bg-purple-100 text-purple-700' :
                         'bg-blue-100 text-blue-700'
                       }`}>
-                        {needsQuizRetry ? '🔄 Retry Quiz' :
+                        {needsQuizRetry ? 'Retry Quiz' :
                          isCompleted ? '✓ Done' :
-                         item.type === 'practice' ? '🎤 Practice' : '🎬 Video'}
+                         item.type === 'practice' ? 'Practice' : 'Video'}
                       </span>
                     </div>
 
@@ -378,10 +378,10 @@ export default function RAICarousel({
                       needsQuizRetry ? 'text-orange-600' :
                       isCompleted ? 'text-green-600' : 'text-[#7b008b]'
                     }`}>
-                      {isLocked ? '🔒 Complete previous first' :
-                       needsQuizRetry ? '🔄 Pass the quiz to earn XP' :
-                       isCompleted ? '✅ Watch again anytime' :
-                       '▶ Start learning'}
+                      {isLocked ? 'Complete previous first' :
+                       needsQuizRetry ? 'Pass the quiz to earn XP' :
+                       isCompleted ? 'Watch again anytime' :
+                       'Start learning'}
                     </p>
                   </div>
                 </div>

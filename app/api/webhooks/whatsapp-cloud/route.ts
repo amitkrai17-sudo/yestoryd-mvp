@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { sendWhatsAppCloudMessage, markMessageAsRead } from '@/lib/communication/whatsapp-cloud';
@@ -72,8 +72,6 @@ const WebhookMessageSchema = z.object({
 });
 
 // ==================== GEMINI CLIENT ====================
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
 // ==================== WEBHOOK VERIFICATION (GET) ====================
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -196,7 +194,7 @@ async function processMessage(
     });
 
     // 5. Call Gemini with tone-only prompt + DB context
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('content_generation') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('content_generation') });
 
     const result = await model.generateContent({
       contents: [

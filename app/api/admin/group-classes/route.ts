@@ -9,10 +9,10 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
-import crypto from 'crypto';
 import { google, calendar_v3 } from 'googleapis';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { withApiHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,18 +94,7 @@ async function scheduleRecallBot(meetLink: string, sessionTitle: string, schedul
 }
 
 // --- GET: List sessions ---
-export async function GET(request: NextRequest) {
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
-  try {
-    const auth = await requireAdmin();
-    
-    if (!auth.authorized) {
-      console.log(JSON.stringify({ requestId, event: 'group_classes_get_auth_failed', error: auth.error }));
-      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
-    }
-
+export const GET = withApiHandler(async (request, { auth, supabase, requestId }) => {
     const { searchParams } = new URL(request.url);
     const validation = getQuerySchema.safeParse({
       status: searchParams.get('status') || undefined,
@@ -118,10 +107,6 @@ export async function GET(request: NextRequest) {
     }
 
     const { status, limit, offset } = validation.data;
-
-    console.log(JSON.stringify({ requestId, event: 'group_classes_get_request', adminEmail: auth.email, status: status || 'all', limit, offset }));
-
-    const supabase = getServiceSupabase();
 
     let query = supabase
       .from('group_sessions')
@@ -150,30 +135,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
     }
 
-    const duration = Date.now() - startTime;
-    console.log(JSON.stringify({ requestId, event: 'group_classes_get_success', count: sessions?.length || 0, total: count, duration: `${duration}ms` }));
-
     return NextResponse.json({ success: true, requestId, sessions, total: count, limit, offset });
-
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'group_classes_get_error', error: error.message }));
-    return NextResponse.json({ error: 'Internal server error', requestId }, { status: 500 });
-  }
-}
+}, { auth: 'admin' });
 
 // --- POST: Create session with Google Meet ---
-export async function POST(request: NextRequest) {
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
-  try {
-    const auth = await requireAdmin();
-    
-    if (!auth.authorized) {
-      console.log(JSON.stringify({ requestId, event: 'group_classes_post_auth_failed', error: auth.error }));
-      return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
-    }
-
+export const POST = withApiHandler(async (request, { auth, supabase, requestId }) => {
     let body;
     try {
       body = await request.json();
@@ -187,10 +153,6 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionData = validation.data;
-
-    console.log(JSON.stringify({ requestId, event: 'group_classes_post_request', adminEmail: auth.email, title: sessionData.title, date: sessionData.scheduledDate }));
-
-    const supabase = getServiceSupabase();
 
     // Get class type
     const { data: classType } = await supabase
@@ -218,7 +180,7 @@ export async function POST(request: NextRequest) {
       }
     }
     // Fallback to engage@ if no instructor assigned
-    const calendarOrganizerEmail = instructorEmail || (process.env.GOOGLE_CALENDAR_DELEGATED_USER || 'engage@yestoryd.com');
+    const calendarOrganizerEmail = instructorEmail || (process.env.GOOGLE_CALENDAR_DELEGATED_USER || COMPANY_CONFIG.supportEmail);
 
     // Build datetime (IST)
     const sessionDateTime = new Date(`${sessionData.scheduledDate}T${sessionData.scheduledTime}:00+05:30`);
@@ -248,7 +210,7 @@ WhatsApp: +91 89762 87997`;
 
         // Build attendees: engage@ for Recall.ai tracking (organizer is implicit attendee)
         const attendees: { email: string; displayName: string }[] = [
-          { email: 'engage@yestoryd.com', displayName: 'Yestoryd (Recording)' },
+          { email: COMPANY_CONFIG.supportEmail, displayName: 'Yestoryd (Recording)' },
         ];
         // If no instructor assigned, organizer is engage@ so no need to add it again
         // If instructor assigned, engage@ is added above as attendee for tracking
@@ -344,18 +306,10 @@ WhatsApp: +91 89762 87997`;
       created_at: new Date().toISOString(),
     });
 
-    const duration = Date.now() - startTime;
-    console.log(JSON.stringify({ requestId, event: 'group_classes_post_success', sessionId: session.id, duration: `${duration}ms` }));
-
     return NextResponse.json({
       success: true,
       requestId,
       session,
       integrations: { googleMeet: !!googleMeetLink, recallBot: !!recallBotId },
     }, { status: 201 });
-
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'group_classes_post_error', error: error.message }));
-    return NextResponse.json({ error: error.message || 'Internal server error', requestId }, { status: 500 });
-  }
-}
+}, { auth: 'admin' });

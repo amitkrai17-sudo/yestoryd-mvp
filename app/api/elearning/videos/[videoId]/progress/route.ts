@@ -149,7 +149,7 @@ export async function POST(
         rewards: isFirstCompletion ? {
           xp: xpToAward,
           coins: coinsToAward,
-          message: '🎬 Video completed! Great job!'
+          message: 'Video completed! Great job!'
         } : null
       }
     });

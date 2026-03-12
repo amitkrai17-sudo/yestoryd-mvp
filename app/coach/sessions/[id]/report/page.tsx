@@ -8,7 +8,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AudioRecorder } from '@/components/coach/AudioRecorder';
 import {
-  Loader2,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -21,6 +20,8 @@ import {
   MapPin,
   Timer,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { TimeInput } from '@/components/ui/time-input';
 
 // ============================================================
 // TYPES
@@ -379,7 +380,7 @@ export default function OfflineReportPage() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00ABFF] mx-auto mb-4" />
+          <Spinner size="lg" className="text-[#00ABFF] mx-auto mb-4" />
           <p className="text-text-tertiary">Loading report form...</p>
         </div>
       </div>
@@ -825,24 +826,18 @@ export default function OfflineReportPage() {
         <section className="bg-surface-1 border border-border rounded-xl p-4">
           <h2 className="text-white text-sm font-semibold mb-3">Session Time</h2>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-text-secondary text-xs mb-1.5 block">Start Time</label>
-              <input
-                type="time"
-                value={actualStartTime}
-                onChange={(e) => setActualStartTime(e.target.value)}
-                className="w-full bg-surface-0 text-white border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent min-h-[48px] [color-scheme:dark]"
-              />
-            </div>
-            <div>
-              <label className="text-text-secondary text-xs mb-1.5 block">End Time</label>
-              <input
-                type="time"
-                value={actualEndTime}
-                onChange={(e) => setActualEndTime(e.target.value)}
-                className="w-full bg-surface-0 text-white border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent min-h-[48px] [color-scheme:dark]"
-              />
-            </div>
+            <TimeInput
+              label="Start Time"
+              value={actualStartTime}
+              onChange={setActualStartTime}
+              step={15}
+            />
+            <TimeInput
+              label="End Time"
+              value={actualEndTime}
+              onChange={setActualEndTime}
+              step={15}
+            />
           </div>
           <p className="text-text-tertiary text-[11px] mt-2">
             Scheduled: {formatTime(session.scheduled_time)} on {new Date(session.scheduled_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
@@ -866,7 +861,7 @@ export default function OfflineReportPage() {
         >
           {submitting ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
               Submitting Report...
             </>
           ) : (

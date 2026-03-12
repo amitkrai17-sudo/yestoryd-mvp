@@ -11,4 +11,4 @@
  */
 
 export { supabase, getSupabaseClient } from './client';
-export { supabaseAdmin, createServerClient } from './server';
+export { supabaseAdmin } from './server';

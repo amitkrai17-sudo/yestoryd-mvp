@@ -3,6 +3,7 @@
 // Replaces all SendGrid usage across the codebase
 
 import { Resend } from 'resend';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Lazy-init singleton
 let resendInstance: Resend | null = null;
@@ -35,8 +36,8 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
   }
 
   try {
-    const fromEmail = params.from?.email || 'engage@yestoryd.com';
-    const fromName = params.from?.name || 'Yestoryd';
+    const fromEmail = params.from?.email || COMPANY_CONFIG.supportEmail;
+    const fromName = params.from?.name || COMPANY_CONFIG.senderEmail.name;
     const toAddresses = Array.isArray(params.to) ? params.to : [params.to];
 
     console.log(`[Email] Sending to ${toAddresses.join(', ')}, subject: ${params.subject}`);

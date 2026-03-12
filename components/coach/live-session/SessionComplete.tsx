@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, AlertTriangle, SkipForward, CircleX, Loader2, PartyPopper, Clock, MessageSquare, ArrowRight } from 'lucide-react';
+import { Check, AlertTriangle, SkipForward, CircleX, PartyPopper, Clock, MessageSquare, ArrowRight } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import type { TrackedActivity } from './types';
 
 interface SessionCompleteProps {
@@ -233,7 +234,7 @@ export default function SessionComplete({ sessionId, activities, elapsedSeconds,
         >
           {saving ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner />
               Saving...
             </>
           ) : (

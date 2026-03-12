@@ -18,6 +18,8 @@ import {
   Target,
   RefreshCw,
   ExternalLink,
+  Sparkles,
+  Lightbulb,
 } from 'lucide-react';
 
 interface CoachInfo {
@@ -120,9 +122,9 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
   const shareOnWhatsApp = () => {
     if (!coach?.referral_link) return;
     const message = encodeURIComponent(
-      `🎯 Get a FREE AI Reading Assessment for your child!\n\n` +
+      `Get a FREE AI Reading Assessment for your child!\n\n` +
       `Yestoryd uses AI to analyze your child's reading and provides personalized coaching.\n\n` +
-      `✨ Click here to start: ${coach.referral_link}`
+      `Click here to start: ${coach.referral_link}`
     );
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
@@ -292,7 +294,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
         </div>
 
         <div className="flex items-center gap-2 text-sm text-text-tertiary bg-surface-2 rounded-lg p-3">
-          <span className="text-amber-500">✨</span>
+          <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
           <span>{referralBonusStr} ({leadPercent}% lead bonus) per enrollment • Paid monthly on 7th</span>
         </div>
       </div>
@@ -357,7 +359,7 @@ export default function MyReferralsTab({ coachEmail }: MyReferralsTabProps) {
 
       {/* How It Works */}
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
-        <h3 className="font-bold text-white mb-3">💡 How Referral Earnings Work</h3>
+        <h3 className="font-bold text-white mb-3 flex items-center gap-1"><Lightbulb className="w-4 h-4 inline" /> How Referral Earnings Work</h3>
         <ul className="space-y-2 text-sm text-text-secondary">
           <li className="flex items-start gap-2">
             <span className="text-blue-500">1.</span>

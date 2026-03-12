@@ -22,7 +22,7 @@ config({ path: '.env.local' });
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
 if (!QSTASH_TOKEN) {
-  console.error('❌ QSTASH_TOKEN not found in .env.local');
+  console.error('[ERROR] QSTASH_TOKEN not found in .env.local');
   process.exit(1);
 }
 
@@ -53,13 +53,13 @@ const SCHEDULES: ScheduleConfig[] = [
 
 // ── Main ─────────────────────────────────────────────────────
 async function main() {
-  console.log('🔧 QStash Schedule Setup');
+  console.log('[SETUP] QStash Schedule Setup');
   console.log(`   APP_URL: ${APP_URL}`);
   console.log(`   Token:   ${QSTASH_TOKEN!.slice(0, 8)}...`);
   console.log('');
 
   // 1. List existing schedules
-  console.log('📋 Existing QStash schedules:');
+  console.log('[LIST] Existing QStash schedules:');
   const existing = await qstash.schedules.list();
 
   if (existing.length === 0) {
@@ -76,9 +76,9 @@ async function main() {
 
   for (const sched of SCHEDULES) {
     if (existingIds.has(sched.scheduleId)) {
-      console.log(`⏭️  "${sched.scheduleId}" already exists — updating...`);
+      console.log(`[SKIP] "${sched.scheduleId}" already exists — updating...`);
     } else {
-      console.log(`➕ Creating "${sched.scheduleId}"...`);
+      console.log(`[CREATE] Creating "${sched.scheduleId}"...`);
     }
 
     try {
@@ -89,24 +89,24 @@ async function main() {
         retries: 3,
       });
 
-      console.log(`   ✅ ${sched.description}`);
+      console.log(`   [OK] ${sched.description}`);
       console.log(`      scheduleId: ${result.scheduleId}`);
       console.log(`      destination: ${sched.destination}`);
       console.log(`      cron:        ${sched.cron}`);
     } catch (err: any) {
-      console.error(`   ❌ Failed: ${err.message}`);
+      console.error(`   [FAIL] Failed: ${err.message}`);
     }
     console.log('');
   }
 
   // 3. Final listing
-  console.log('📋 All schedules after setup:');
+  console.log('[LIST] All schedules after setup:');
   const final = await qstash.schedules.list();
   for (const s of final) {
     console.log(`   • ${s.scheduleId || '(no id)'} → ${s.destination} [${s.cron}]`);
   }
 
-  console.log('\n✅ Done. QStash will call your endpoints on schedule.');
+  console.log('\n[OK] Done. QStash will call your endpoints on schedule.');
   console.log('   Dashboard: https://console.upstash.com/qstash');
 }
 

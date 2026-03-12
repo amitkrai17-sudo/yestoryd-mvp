@@ -9,10 +9,13 @@
 import { useState, useEffect } from 'react';
 import {
   CheckCircle, Clock, Send, Award, AlertCircle,
-  Loader2, Search, RefreshCw, ChevronDown, ChevronUp,
+  Search, RefreshCw, ChevronDown, ChevronUp,
   AlertTriangle, XCircle, Activity, Users,
   Download, Calendar, User, Zap
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface Enrollment {
   id: string;
@@ -171,7 +174,7 @@ export default function CompletionManagementPage() {
     overdue: enrollments.filter(e => e.riskLevel === 'overdue').length,
     atRisk: enrollments.filter(e => e.riskLevel === 'at_risk').length,
     inactive: enrollments.filter(e => e.riskLevel === 'inactive').length,
-    ready: enrollments.filter(e => e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) && e.status !== 'completed')).length,
+    ready: enrollments.filter(e => e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 0) && e.status !== 'completed')).length,
     onTrack: enrollments.filter(e => e.riskLevel === 'on_track' || e.riskLevel === 'active').length,
     completed: enrollments.filter(e => e.status === 'completed').length,
   };
@@ -198,7 +201,7 @@ export default function CompletionManagementPage() {
       case 'inactive':
         return e.riskLevel === 'inactive';
       case 'ready':
-        return e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) && e.status !== 'completed');
+        return e.riskLevel === 'ready' || (e.sessionsCompleted >= (e.sessionsTotal || 0) && e.status !== 'completed');
       case 'on_track':
         return e.riskLevel === 'on_track' || e.riskLevel === 'active';
       case 'completed':
@@ -219,45 +222,11 @@ export default function CompletionManagementPage() {
 
   const getRiskBadge = (enrollment: Enrollment) => {
     if (enrollment.status === 'completed') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-          <CheckCircle className="w-3 h-3" /> Completed
-        </span>
-      );
+      return <StatusBadge status="completed" size="sm" />;
     }
-
-    switch (enrollment.riskLevel) {
-      case 'overdue':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
-            <XCircle className="w-3 h-3" /> Overdue
-          </span>
-        );
-      case 'at_risk':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-            <AlertTriangle className="w-3 h-3" /> At Risk
-          </span>
-        );
-      case 'inactive':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-            <Clock className="w-3 h-3" /> Inactive
-          </span>
-        );
-      case 'ready':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
-            <Zap className="w-3 h-3" /> Ready
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-surface-2 text-text-secondary border border-border">
-            <Activity className="w-3 h-3" /> Active
-          </span>
-        );
-    }
+    // Map risk levels to StatusBadge-compatible statuses
+    const riskStatus = enrollment.riskLevel === 'on_track' ? 'active' : enrollment.riskLevel;
+    return <StatusBadge status={riskStatus || 'active'} size="sm" />;
   };
 
   const getProgressColor = (completed: number, total: number) => {
@@ -271,7 +240,7 @@ export default function CompletionManagementPage() {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        <Spinner size="lg" color="muted" />
       </div>
     );
   }
@@ -279,30 +248,30 @@ export default function CompletionManagementPage() {
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">Completion</h1>
-          <p className="text-xs sm:text-sm text-text-tertiary">Track progress & manage completions</p>
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          <button
-            onClick={runCronManually}
-            disabled={actionLoading === 'cron'}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white/[0.08] text-gray-300 border border-white/[0.08] rounded-lg hover:bg-white/[0.12] transition-colors disabled:opacity-50"
-            title="Run daily alerts check"
-          >
-            {actionLoading === 'cron' ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-            <span className="hidden sm:inline">Run</span> Alerts
-          </button>
-          <button
-            onClick={fetchEnrollments}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-surface-2 text-white rounded-lg hover:bg-surface-3 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Completion"
+        subtitle="Track progress & manage completions"
+        action={
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={runCronManually}
+              disabled={actionLoading === 'cron'}
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white/[0.08] text-gray-300 border border-white/[0.08] rounded-lg hover:bg-white/[0.12] transition-colors disabled:opacity-50"
+              title="Run daily alerts check"
+            >
+              {actionLoading === 'cron' ? <Spinner size="sm" /> : <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+              <span className="hidden sm:inline">Run</span> Alerts
+            </button>
+            <button
+              onClick={fetchEnrollments}
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-surface-2 text-white rounded-lg hover:bg-surface-3 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
+        }
+      />
 
       {/* Stats Cards - Risk Categories */}
       <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2 lg:gap-3">
@@ -550,7 +519,7 @@ export default function CompletionManagementPage() {
                               title="Extend Program"
                             >
                               {actionLoading === enrollment.id + '_extend' ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Spinner size="sm" />
                               ) : (
                                 <Calendar className="w-4 h-4" />
                               )}
@@ -558,7 +527,7 @@ export default function CompletionManagementPage() {
                           )}
 
                           {/* Send Final Assessment */}
-                          {!enrollment.hasFinalAssessment && enrollment.sessionsCompleted >= Math.ceil((enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) * 0.67) && enrollment.status !== 'completed' && (
+                          {!enrollment.hasFinalAssessment && enrollment.sessionsCompleted >= Math.ceil((enrollment.sessionsTotal || 0) * 0.67) && enrollment.status !== 'completed' && (
                             <button
                               onClick={() => sendFinalAssessment(enrollment.id, enrollment.parentEmail, enrollment.childName)}
                               disabled={actionLoading === enrollment.id + '_assessment'}
@@ -570,7 +539,7 @@ export default function CompletionManagementPage() {
                               title={enrollment.finalAssessmentSent ? 'Resend Final Assessment' : 'Send Final Assessment'}
                             >
                               {actionLoading === enrollment.id + '_assessment' ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Spinner size="sm" />
                               ) : (
                                 <Send className="w-4 h-4" />
                               )}
@@ -580,17 +549,17 @@ export default function CompletionManagementPage() {
                           {/* Mark Complete */}
                           {enrollment.status !== 'completed' && (
                             <button
-                              onClick={() => triggerCompletion(enrollment.id, enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */))}
+                              onClick={() => triggerCompletion(enrollment.id, enrollment.sessionsCompleted < (enrollment.sessionsTotal || 0))}
                               disabled={actionLoading === enrollment.id + '_complete'}
                               className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                                enrollment.sessionsCompleted >= (enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */)
+                                enrollment.sessionsCompleted >= (enrollment.sessionsTotal || 0)
                                   ? 'text-green-400 hover:bg-green-500/20'
                                   : 'text-text-tertiary hover:bg-surface-2'
                               }`}
-                              title={enrollment.sessionsCompleted < (enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */) ? `Force Complete (${enrollment.sessionsCompleted}/${enrollment.sessionsTotal || 9 /* V1 fallback – enrollment.total_sessions is authoritative */})` : 'Mark Complete'}
+                              title={enrollment.sessionsCompleted < (enrollment.sessionsTotal || 0) ? `Force Complete (${enrollment.sessionsCompleted}/${enrollment.sessionsTotal || 0})` : 'Mark Complete'}
                             >
                               {actionLoading === enrollment.id + '_complete' ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Spinner size="sm" />
                               ) : (
                                 <CheckCircle className="w-4 h-4" />
                               )}

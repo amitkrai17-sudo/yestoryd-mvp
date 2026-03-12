@@ -11,6 +11,7 @@ import HomePageClient, { ContentSettings } from './HomePageClient';
 import { supabase } from '@/lib/supabase/client';
 import { fetchPricingDisplayData } from '@/lib/pricing-display';
 import { getPricingConfig, getGenericSessionRange, getDurationRange } from '@/lib/config/pricing-config';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Disable caching - always fetch fresh data
 export const dynamic = 'force-dynamic';
@@ -47,7 +48,7 @@ function safeString(value: unknown, fallback: string): string {
 // ==================== DEFAULT VALUES ====================
 const DEFAULTS = {
   stats: {
-    totalAssessments: '1000+',
+    totalAssessments: '500+',
     happyParents: '100+',
     successRate: '95',
     avgImprovement: '2x',
@@ -61,7 +62,7 @@ const DEFAULTS = {
     freeAssessmentWorth: '999',
   },
   contact: {
-    whatsappNumber: '918976287997',
+    whatsappNumber: COMPANY_CONFIG.leadBotWhatsApp,
   },
   videos: {
     homepageStoryVideoUrl: 'https://www.youtube.com/embed/Dz94bVuWH_A',
@@ -134,7 +135,7 @@ async function getHomePageData() {
       coaching: parseInt(String(settings.session_coaching_duration_mins || '45')),
       skillBuilding: parseInt(String(settings.session_skill_building_duration_mins || '45')),
       checkin: parseInt(String(settings.session_checkin_duration_mins || '45')),
-      discovery: parseInt(String(settings.session_discovery_duration_mins || '45')),
+      discovery: parseInt(String(settings.session_discovery_duration_mins || '30')),
     };
 
     // Load pricing config for dynamic session/duration values in content defaults

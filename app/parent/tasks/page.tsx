@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import {
   CheckCircle, Circle, Clock, Flame, Trophy,
-  Loader2, Star, BookOpen, Sparkles,
+  Star, BookOpen, Sparkles,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // Skill labels for display
 const SKILL_COLORS: Record<string, string> = {
@@ -186,7 +187,7 @@ export default function ParentTasksPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -281,7 +282,7 @@ export default function ParentTasksPage() {
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#FF0099] text-white rounded-xl text-sm font-semibold hover:bg-[#FF0099]/90 transition-all active:scale-[0.98] min-h-[44px] disabled:opacity-50"
                 >
                   {completing === todayTask.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" />
                   ) : (
                     <CheckCircle className="w-4 h-4" />
                   )}
@@ -339,7 +340,7 @@ export default function ParentTasksPage() {
                       className="flex-shrink-0 disabled:opacity-30"
                     >
                       {completing === task.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-[#FF0099]" />
+                        <Spinner />
                       ) : (
                         <Circle className="w-5 h-5 text-gray-500 hover:text-[#FF0099] transition-colors" />
                       )}

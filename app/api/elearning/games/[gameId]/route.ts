@@ -266,11 +266,11 @@ export async function POST(
         },
         celebration: {
           type: accuracyPercent === 100 ? 'perfect' : passed ? 'success' : 'try_again',
-          message: accuracyPercent === 100 
-            ? '🌟 PERFECT SCORE! Amazing job!'
-            : passed 
-              ? '🎉 Great work! You passed!'
-              : '💪 Good try! Let\'s practice more!',
+          message: accuracyPercent === 100
+            ? 'PERFECT SCORE! Amazing job!'
+            : passed
+              ? 'Great work! You passed!'
+              : 'Good try! Let\'s practice more!',
           newBadges: earnedBadges
         }
       }

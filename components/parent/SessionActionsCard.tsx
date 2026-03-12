@@ -4,9 +4,12 @@ import { Database } from '@/lib/supabase/database.types';
 import { useState, useEffect } from 'react';
 import {
   XCircle, CalendarClock, AlertCircle, CheckCircle,
-  ChevronDown, ChevronUp, Loader2, X,
+  ChevronDown, ChevronUp, X,
   Thermometer, CalendarX, HelpCircle,
 } from 'lucide-react';
+import { DateInput } from '@/components/ui/date-input';
+import { Spinner } from '@/components/ui/spinner';
+import { TimeInput } from '@/components/ui/time-input';
 
 interface SessionActionsCardProps {
   session: {
@@ -231,7 +234,7 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
             disabled={loading || (!reason || (reason === 'other' && !customReason))}
             className="w-full py-2.5 bg-red-500 text-white rounded-lg font-medium text-sm hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Cancel Request'}
+            {loading ? <Spinner size="sm" /> : 'Submit Cancel Request'}
           </button>
         </div>
       )}
@@ -278,25 +281,17 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
           )}
 
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Preferred Date (optional)</label>
-              <input
-                type="date"
-                value={preferredDate}
-                onChange={(e) => setPreferredDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Preferred Time (optional)</label>
-              <input
-                type="time"
-                value={preferredTime}
-                onChange={(e) => setPreferredTime(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#FF0099] focus:border-[#FF0099]"
-              />
-            </div>
+            <DateInput
+              label="Preferred Date (optional)"
+              value={preferredDate}
+              onChange={setPreferredDate}
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <TimeInput
+              label="Preferred Time (optional)"
+              value={preferredTime}
+              onChange={setPreferredTime}
+            />
           </div>
 
           <button
@@ -304,7 +299,7 @@ export default function SessionActionsCard({ session, childId, onRequestSubmitte
             disabled={loading || (!reason || (reason === 'other' && !customReason))}
             className="w-full py-2.5 bg-amber-500 text-white rounded-lg font-medium text-sm hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Reschedule Request'}
+            {loading ? <Spinner size="sm" /> : 'Submit Reschedule Request'}
           </button>
         </div>
       )}

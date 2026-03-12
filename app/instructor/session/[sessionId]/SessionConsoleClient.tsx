@@ -8,11 +8,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  Loader2, ExternalLink, Play, ChevronLeft, ChevronRight,
+  ExternalLink, Play, ChevronLeft, ChevronRight,
   Clock, Users, AlertCircle, CheckCircle, Square,
   MessageSquare, Mic, MicOff, X, Send, Copy, Check,
   BookOpen, Video, Palette, Star, Award,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import type {
   BlueprintSegment, IndividualMomentConfig, AgeBand, SegmentType,
 } from '@/types/group-classes';
@@ -294,7 +295,7 @@ function VoiceRecorder({
       }`}
       title={recording ? 'Stop recording' : uploading ? 'Uploading...' : 'Record voice note'}
     >
-      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+      {uploading ? <Spinner size="sm" /> : recording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
     </button>
   );
 }
@@ -532,7 +533,7 @@ export default function SessionConsoleClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -1258,7 +1259,7 @@ export default function SessionConsoleClient() {
               className="flex-1 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {submitting ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Submitting...</>
+                <><Spinner color="white" /> Submitting...</>
               ) : (
                 <><CheckCircle className="w-5 h-5" /> Submit & Close</>
               )}

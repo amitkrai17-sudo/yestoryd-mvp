@@ -11,6 +11,7 @@ import { computeIntelligenceScore, getSignalConfidence, DEFAULT_WEIGHTS } from '
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import type { StructuredCapturePayload, CaptureMethod, SessionModality, EngagementLevel } from '@/lib/intelligence/types';
 import type { IntelligenceWeights } from '@/lib/intelligence/score';
+import { getSiteSettings } from '@/lib/config/site-settings-loader';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -134,24 +135,18 @@ function validatePayload(body: unknown): { valid: true; data: StructuredCaptureP
 
 async function loadWeights(): Promise<IntelligenceWeights> {
   try {
-    const supabase = getServiceSupabase();
-    const { data } = await supabase
-      .from('site_settings')
-      .select('key, value')
-      .in('key', [
-        'intelligence_weight_skill_coverage',
-        'intelligence_weight_performance',
-        'intelligence_weight_child_artifact',
-        'intelligence_weight_observations',
-        'intelligence_weight_engagement',
-      ]);
+    const data = await getSiteSettings([
+      'intelligence_weight_skill_coverage',
+      'intelligence_weight_performance',
+      'intelligence_weight_child_artifact',
+      'intelligence_weight_observations',
+      'intelligence_weight_engagement',
+    ]);
 
-    if (!data || data.length === 0) return DEFAULT_WEIGHTS;
+    if (Object.keys(data).length === 0) return DEFAULT_WEIGHTS;
 
     const get = (key: string, fallback: number): number => {
-      const row = data.find(s => s.key === key);
-      if (!row) return fallback;
-      const val = parseFloat(String(row.value));
+      const val = parseFloat(data[key]);
       return isNaN(val) ? fallback : val;
     };
 

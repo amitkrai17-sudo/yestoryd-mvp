@@ -47,7 +47,7 @@ export async function downloadAndStoreAudio(
   sessionDate: string
 ): Promise<AudioDownloadResult> {
   try {
-    console.log(`📥 Downloading audio for bot ${botId}`);
+    console.log(`[DOWNLOAD] Downloading audio for bot ${botId}`);
 
     const recordingUrl = await getRecallRecordingUrl(botId);
     
@@ -64,7 +64,7 @@ export async function downloadAndStoreAudio(
     const audioBuffer = await audioResponse.arrayBuffer();
     const audioBlob = new Uint8Array(audioBuffer);
 
-    console.log(`📦 Downloaded ${(audioBlob.length / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`[DOWNLOAD] Downloaded ${(audioBlob.length / 1024 / 1024).toFixed(2)} MB`);
 
     const dateFolder = sessionDate.substring(0, 7);
     const storagePath = `${childId}/${dateFolder}/${sessionId}.mp3`;
@@ -81,7 +81,7 @@ export async function downloadAndStoreAudio(
       return { success: false, error: error.message };
     }
 
-    console.log(`✅ Audio stored: ${storagePath}`);
+    console.log(`[OK] Audio stored: ${storagePath}`);
 
     const { data: signedData } = await supabase.storage
       .from(STORAGE_BUCKET)

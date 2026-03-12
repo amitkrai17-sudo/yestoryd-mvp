@@ -9,7 +9,8 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
-import { Loader2, Video, BookOpen, Calendar, Sparkles, MessageCircle, Award, Gift, CheckCircle } from 'lucide-react';
+import { Video, BookOpen, Calendar, Sparkles, MessageCircle, Award, Gift, CheckCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { LEARNING_GOALS } from '@/lib/constants/goals';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
 import {
@@ -28,6 +29,7 @@ import {
 } from './_components';
 import { TimeBucketSelector, DayOfWeekSelector } from '@/components/ui/scheduling';
 import { supabase } from '@/lib/supabase/client';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 declare global {
   interface Window {
@@ -126,7 +128,7 @@ function EnrollContent() {
   const [error, setError] = useState('');
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [coach, setCoach] = useState<CoachSettings>(DEFAULT_COACH);
-  const [whatsappNumber, setWhatsappNumber] = useState('918976287997');
+  const [whatsappNumber, setWhatsappNumber] = useState<string>(COMPANY_CONFIG.leadBotWhatsApp);
 
   // === PRODUCT STATE ===
   const productParam = searchParams.get('product') || '';
@@ -194,9 +196,7 @@ function EnrollContent() {
   const displayChildName = formData.childName
     ? formData.childName.charAt(0).toUpperCase() + formData.childName.slice(1).toLowerCase()
     : 'your child';
-  const whatsappMessage = encodeURIComponent(
-    `Hi! I'd like to enroll${formData.childName ? ` ${formData.childName}` : ' my child'} in Yestoryd's reading program.`
-  );
+  const whatsappMessage = `Hi! I'd like to enroll${formData.childName ? ` ${formData.childName}` : ' my child'} in Yestoryd's reading program.`;
 
   // === HANDLERS ===
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -337,7 +337,7 @@ function EnrollContent() {
             const verifyData = await verifyRes.json();
             if (verifyData.success && verifyData.redirectUrl) { window.location.href = verifyData.redirectUrl; return; }
             if (verifyData.success && verifyData.enrollmentId) {
-              const successParams = new URLSearchParams({ childName: formData.childName, enrollmentId: verifyData.enrollmentId || '', coachName: verifyData.data?.coachName || '', sessions: String(pricing?.sessionsIncluded || 9 /* V1 fallback – enrollment.total_sessions is authoritative */), product: selectedProduct?.name || 'Full Program' });
+              const successParams = new URLSearchParams({ childName: formData.childName, enrollmentId: verifyData.enrollmentId || '', coachName: verifyData.data?.coachName || '', sessions: String(pricing?.sessionsIncluded || 0), product: selectedProduct?.name || 'Full Program' });
               if (startOption === 'later' && startDate) { successParams.set('startDate', startDate); successParams.set('delayed', 'true'); }
               if (discountBreakdown?.totalDiscount) { successParams.set('saved', discountBreakdown.totalDiscount.toString()); }
               window.location.href = `/enrollment/success?${successParams.toString()}`;
@@ -580,7 +580,7 @@ function EnrollContent() {
 
 export default function EnrollPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-surface-0"><Loader2 className="w-12 h-12 animate-spin text-[#FF0099]" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-surface-0"><Spinner size="xl" /></div>}>
       <EnrollContent />
     </Suspense>
   );

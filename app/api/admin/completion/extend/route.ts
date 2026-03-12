@@ -9,9 +9,9 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
-import crypto from 'crypto';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { withApiHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,18 +22,7 @@ const extendSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-export async function POST(request: NextRequest) {
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
-  try {
-    const auth = await requireAdmin();
-    
-    if (!auth.authorized) {
-      console.log(JSON.stringify({ requestId, event: 'completion_extend_auth_failed', error: auth.error }));
-      return NextResponse.json({ success: false, error: auth.error }, { status: auth.email ? 403 : 401 });
-    }
-
+export const POST = withApiHandler(async (request, { auth, supabase, requestId }) => {
     let body;
     try {
       body = await request.json();
@@ -47,10 +36,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { enrollmentId, days, reason } = validation.data;
-
-    console.log(JSON.stringify({ requestId, event: 'completion_extend_request', adminEmail: auth.email, enrollmentId, days }));
-
-    const supabase = getServiceSupabase();
 
     // Get current enrollment
     const { data: enrollment, error: fetchError } = await supabase
@@ -142,7 +127,7 @@ export async function POST(request: NextRequest) {
 
         await sendEmail({
           to: parentEmail,
-          from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+          from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
           subject: `Good News! ${childName}'s Program Extended`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -160,9 +145,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const duration = Date.now() - startTime;
-    console.log(JSON.stringify({ requestId, event: 'completion_extend_success', enrollmentId, newExtensionCount, duration: `${duration}ms` }));
-
     return NextResponse.json({
       success: true,
       requestId,
@@ -171,9 +153,4 @@ export async function POST(request: NextRequest) {
       extensionCount: newExtensionCount,
       daysAdded: days,
     });
-
-  } catch (error: any) {
-    console.error(JSON.stringify({ requestId, event: 'completion_extend_error', error: error.message }));
-    return NextResponse.json({ success: false, error: error.message, requestId }, { status: 500 });
-  }
-}
+}, { auth: 'admin' });

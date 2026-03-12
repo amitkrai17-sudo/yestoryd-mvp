@@ -14,11 +14,13 @@ import {
   MessageCircle,
   Phone,
   ArrowRight,
-  Loader2,
   Heart,
   Calendar,
   Sparkles
 } from 'lucide-react';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { Spinner } from '@/components/ui/spinner';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 function ConfirmationPageContent() {
   const searchParams = useSearchParams();
@@ -74,7 +76,7 @@ function ConfirmationPageContent() {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-            Application Submitted! 🎉
+            Application Submitted!
           </h1>
 
           {applicationData?.name && (
@@ -165,15 +167,12 @@ function ConfirmationPageContent() {
               Visit Yestoryd
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <a
-              href="https://wa.me/918976287997?text=Hi!%20I%20just%20submitted%20my%20coach%20application%20for%20Yestoryd%20Academy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-[#25d366] text-white px-8 py-4 rounded-xl font-semibold hover:bg-[#20bd5a] transition-colors"
-            >
-              <MessageCircle className="w-5 h-5" />
-              WhatsApp Us
-            </a>
+            <WhatsAppButton
+              message="Hi! I just submitted my coach application for Yestoryd Academy"
+              label="WhatsApp Us"
+              size="lg"
+              className="px-8"
+            />
           </div>
         </div>
       </main>
@@ -201,7 +200,7 @@ export default function ConfirmationPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     }>
       <ConfirmationPageContent />

@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { getAgeConfig, getAntiHallucinationRules } from '@/lib/gemini/assessment-prompts';
 import { generateEmbedding } from '@/lib/rai/embeddings';
@@ -61,13 +61,6 @@ interface GeminiMicroResult {
 // ============================================================
 // Helpers
 // ============================================================
-
-function getGenAI(): GoogleGenerativeAI {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY not configured');
-  }
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-}
 
 function getMimeType(path: string): string {
   const ext = path.split('.').pop()?.toLowerCase();

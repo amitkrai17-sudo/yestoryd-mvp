@@ -3,7 +3,7 @@
 // Pre-decision shortcuts (zero cost) → Gemini for everything else
 // ============================================================
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import type {
   AgentContext,
   AgentDecision,
@@ -13,8 +13,6 @@ import type {
 import { isValidAgentAction } from './types';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { getPricingConfig, getDurationRange, getPerWeekPrice } from '@/lib/config/pricing-config';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // ============================================================
 // Main entry point
@@ -85,8 +83,8 @@ function buildGreetingDecision(ctx: AgentContext): AgentDecision {
     || (ctx.conversation as any).collected_data?.contact_name
     || '';
   const greeting = contactName
-    ? `Hi ${contactName}! Welcome to Yestoryd 👋`
-    : `Hi there! Welcome to Yestoryd 👋`;
+    ? `Hi ${contactName}! Welcome to Yestoryd.`
+    : `Hi there! Welcome to Yestoryd.`;
 
   const body =
     `${greeting}\n\n` +
@@ -98,9 +96,9 @@ function buildGreetingDecision(ctx: AgentContext): AgentDecision {
     responseMessage: body,
     responseType: 'buttons',
     buttons: [
-      { id: 'btn_assessment', title: '📖 Free Assessment' },
-      { id: 'btn_book_call', title: '📞 Book a Call' },
-      { id: 'btn_more_questions', title: '❓ Ask a Question' },
+      { id: 'btn_assessment', title: 'Free Assessment' },
+      { id: 'btn_book_call', title: 'Book a Call' },
+      { id: 'btn_more_questions', title: 'Ask a Question' },
     ],
     stateTransition: 'engaging',
     confidence: 1.0,
@@ -184,7 +182,7 @@ function mapButtonClick(ctx: AgentContext, message: string): AgentDecision | nul
 
 async function callGemini(ctx: AgentContext): Promise<AgentDecision> {
   try {
-    const model = genAI.getGenerativeModel({
+    const model = getGenAI().getGenerativeModel({
       model: getGeminiModel('classification'),
       generationConfig: {
         temperature: 0.2,
@@ -565,12 +563,12 @@ function buildFallbackDecision(ctx: AgentContext): AgentDecision {
 function buildGenericFallback(): AgentDecision {
   return {
     action: 'FAQ',
-    responseMessage: `Thanks for your message! I'd be happy to help.\n\nWould you like to try our free 3-minute reading assessment, or shall I book a free call with our reading experts?`,
+    responseMessage: `Thanks for your message! I'd be happy to help.\n\nWould you like to try our free 5-minute reading assessment, or shall I book a free call with our reading experts?`,
     responseType: 'buttons',
     buttons: [
-      { id: 'btn_assessment', title: '📖 Free Assessment' },
-      { id: 'btn_book_call', title: '📞 Book a Call' },
-      { id: 'btn_more_questions', title: '❓ Ask a Question' },
+      { id: 'btn_assessment', title: 'Free Assessment' },
+      { id: 'btn_book_call', title: 'Book a Call' },
+      { id: 'btn_more_questions', title: 'Ask a Question' },
     ],
     stateTransition: null,
     confidence: 0.3,

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getSiteSettings } from '@/lib/config/site-settings-loader';
 
 const supabase = createAdminClient();
 
@@ -68,19 +69,11 @@ export async function GET(
       parent = data;
     }
 
-    // Get loyalty discount settings
-    const { data: settings } = await supabase
-      .from('site_settings')
-      .select('key, value')
-      .in('key', ['loyalty_discount_percent', 'loyalty_discount_days']);
+    // Get loyalty discount settings (cached 5 min)
+    const loyaltySettings = await getSiteSettings(['loyalty_discount_percent', 'loyalty_discount_days']);
 
-    const settingsMap: Record<string, string> = {};
-    settings?.forEach(s => {
-      settingsMap[s.key] = typeof s.value === 'string' ? s.value.replace(/"/g, '') : String(s.value || '');
-    });
-
-    const loyaltyDiscountPercent = parseInt(settingsMap.loyalty_discount_percent || '10');
-    const loyaltyDiscountDays = parseInt(settingsMap.loyalty_discount_days || '7');
+    const loyaltyDiscountPercent = parseInt(loyaltySettings.loyalty_discount_percent?.replace(/"/g, '') || '10');
+    const loyaltyDiscountDays = parseInt(loyaltySettings.loyalty_discount_days?.replace(/"/g, '') || '7');
 
     // Calculate if loyalty discount is available
     const programEndDate = enrollment.program_end ? new Date(enrollment.program_end) : new Date();

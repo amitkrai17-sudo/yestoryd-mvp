@@ -9,10 +9,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Papa from 'papaparse';
 import {
   Upload, FileText, Library, Download, CheckCircle2, XCircle,
-  Loader2, Plus, Search, ChevronLeft, ChevronRight, Film,
+  Plus, Search, ChevronLeft, ChevronRight, Film,
   Gamepad2, Headphones, BookOpen, Monitor, FileCheck,
   Trash2, Edit, Eye, EyeOff, X, AlertCircle,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // ==================== TYPES ====================
 
@@ -360,7 +361,7 @@ function CsvUploadTab({ skills }: { skills: Skill[] }) {
               className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
             >
               {uploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Spinner size="sm" />
               ) : (
                 <Upload className="w-4 h-4" />
               )}
@@ -690,7 +691,7 @@ function SingleItemTab({ skills }: { skills: Skill[] }) {
         disabled={!form.title.trim() || !form.content_type || saving}
         className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#0a0a0f] rounded-xl font-medium hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
       >
-        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+        {saving ? <Spinner size="sm" /> : <Plus className="w-4 h-4" />}
         Save Content Item
       </button>
 
@@ -913,7 +914,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
       {/* Stats */}
       <div className="text-sm text-text-tertiary">
         {total} item{total !== 1 ? 's' : ''} found
-        {loading && <Loader2 className="w-4 h-4 animate-spin inline ml-2" />}
+        {loading && <Spinner size="sm" className="inline ml-2" />}
       </div>
 
       {/* Content Cards */}
@@ -1118,7 +1119,7 @@ function ContentLibraryTab({ skills }: { skills: Skill[] }) {
                   disabled={editSaving}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-[#0a0a0f] rounded-xl text-sm font-medium hover:bg-gray-200 disabled:opacity-40 transition-colors"
                 >
-                  {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
+                  {editSaving ? <Spinner size="sm" /> : <FileCheck className="w-4 h-4" />}
                   Save Changes
                 </button>
                 <button

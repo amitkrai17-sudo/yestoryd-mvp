@@ -1,6 +1,7 @@
 'use client';
 
-import { Mic, Square, Play, Pause, RotateCcw, Send, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, RotateCcw, Send } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface RecordingControlsProps {
   isRecording: boolean;
@@ -110,7 +111,7 @@ export function RecordingControls({
       >
         {isAnalyzing ? (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Spinner color="white" />
             Analyzing...
           </>
         ) : (

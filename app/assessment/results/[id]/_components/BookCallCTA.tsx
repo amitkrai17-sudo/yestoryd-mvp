@@ -19,7 +19,7 @@ export function BookCallCTA({ childId, childName, score }: BookCallCTAProps) {
           Want to improve {childName}&apos;s reading?
         </h3>
         <p className="text-text-secondary text-sm mb-4">
-          Book a FREE 15-minute call with our reading coach to discuss these results and create a personalized improvement plan.
+          Book a FREE 30-minute call with our reading coach to discuss these results and create a personalized improvement plan.
         </p>
         <Link
           href={bookCallUrl}

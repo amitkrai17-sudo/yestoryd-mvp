@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star, Flame, Trophy, Sparkles, X } from 'lucide-react';
+import { Star, Flame, Trophy, Sparkles, X, Play, FileText, Gamepad2, BookOpen, PartyPopper } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface Badge {
@@ -87,11 +87,11 @@ export default function XPAwardPopup({
 
   if (!isOpen) return null;
 
-  const activityEmoji = {
-    video: '🎬',
-    quiz: '📝',
-    game: '🎮',
-    reading: '📖',
+  const activityIconMap = {
+    video: Play,
+    quiz: FileText,
+    game: Gamepad2,
+    reading: BookOpen,
   };
 
   const activityText = {
@@ -123,8 +123,8 @@ export default function XPAwardPopup({
 
         {/* Activity Completion */}
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-bounce">
-            {activityEmoji[activityType]}
+          <div className="mb-4 animate-bounce flex justify-center">
+            {(() => { const ActivityIcon = activityIconMap[activityType]; return <ActivityIcon className="w-16 h-16 text-[#FF0099]" />; })()}
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             {activityText[activityType]}
@@ -166,7 +166,7 @@ export default function XPAwardPopup({
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-xl">
               <Flame className="w-5 h-5 text-gray-400" />
               <span className="text-gray-600">
-                Streak reset - but you&apos;re back! 🔥
+                Streak reset - but you&apos;re back!
               </span>
             </div>
           </div>
@@ -221,7 +221,7 @@ export default function XPAwardPopup({
           onClick={onClose}
           className="mt-6 w-full py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:opacity-90 transition"
         >
-          {leveledUp ? '🎉 Awesome!' : 'Continue Learning'}
+          {leveledUp ? 'Awesome!' : 'Continue Learning'}
         </button>
       </div>
 

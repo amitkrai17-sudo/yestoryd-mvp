@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase/client';
 import {
   Send,
-  Loader2,
   User,
   Search,
   Users,
@@ -14,6 +13,7 @@ import {
   ChevronLeft,
   RotateCw,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { readChatSSE } from '@/lib/rai/sse-client';
 
 interface Student {
@@ -376,7 +376,7 @@ export default function AIAssistantPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+        <Spinner size="lg" className="text-[#00ABFF]" />
       </div>
     );
   }
@@ -659,7 +659,7 @@ export default function AIAssistantPage() {
               disabled={sending || !input.trim()}
               className="bg-gradient-to-r from-[#00ABFF] to-[#0066CC] hover:opacity-90 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
             >
-              {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              {sending ? <Spinner color="white" /> : <Send className="w-5 h-5" />}
             </button>
           </div>
         </div>

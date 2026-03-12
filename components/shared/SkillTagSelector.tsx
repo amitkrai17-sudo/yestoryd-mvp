@@ -7,7 +7,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Check, X, Search, Loader2 } from 'lucide-react';
+import { Check, X, Search } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface SkillTag {
   id: string;
@@ -115,7 +116,7 @@ export default function SkillTagSelector({
   if (isLoading) {
     return (
       <div className={`flex items-center justify-center p-4 ${className}`}>
-        <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+        <Spinner color="muted" />
         <span className="ml-2 text-gray-500">Loading skills...</span>
       </div>
     );

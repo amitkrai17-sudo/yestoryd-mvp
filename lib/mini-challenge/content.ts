@@ -4,13 +4,36 @@
 // =============================================================================
 
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { goalToCategory, categoryToGoal } from '@/lib/constants/goals';
 
+/**
+ * GoalArea — legacy goal IDs stored in el_learning_units.goal_area.
+ * Maps to skill_categories slugs via GOAL_TO_CATEGORY.
+ */
 export type GoalArea =
   | 'reading'
   | 'grammar'
   | 'comprehension'
   | 'creative_writing'
   | 'speaking';
+
+/** Convert GoalArea → canonical skill_categories slug. */
+export const GOAL_TO_CATEGORY: Record<GoalArea, string> = {
+  reading: 'phonics_letter_sounds',
+  grammar: 'grammar_syntax',
+  comprehension: 'reading_comprehension',
+  creative_writing: 'creative_writing',
+  speaking: 'pronunciation',
+};
+
+/** Convert canonical slug → GoalArea (for querying el_learning_units). */
+export function categoryToGoalArea(categorySlug: string): GoalArea | null {
+  const goalId = categoryToGoal(categorySlug);
+  if (!goalId) return null;
+  // Validate it's a valid GoalArea (goals.ts has more IDs than GoalArea)
+  const valid: GoalArea[] = ['reading', 'grammar', 'comprehension', 'creative_writing', 'speaking'];
+  return valid.includes(goalId as GoalArea) ? (goalId as GoalArea) : null;
+}
 
 export interface MiniChallengeVideo {
   id: string;

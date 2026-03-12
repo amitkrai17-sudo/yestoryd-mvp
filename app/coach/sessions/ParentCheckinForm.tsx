@@ -6,10 +6,12 @@
 
 import { useState, useRef } from 'react';
 import {
-  X, Mic, Square, Trash2, CheckCircle, Loader2,
+  X, Mic, Square, Trash2, CheckCircle,
   AlertCircle, Calendar, Flag, ChevronRight,
   ChevronLeft, User, Home, MessageSquare, Target
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { DateInput } from '@/components/ui/date-input';
 
 interface ParentCheckinFormProps {
   sessionId: string;
@@ -593,12 +595,10 @@ export default function ParentCheckinForm({
                   <label className="block text-sm font-medium text-text-secondary mb-2">
                     Follow-up by:
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={followUpDate}
-                    onChange={(e) => setFollowUpDate(e.target.value)}
+                    onChange={setFollowUpDate}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full p-3 border border-border rounded-xl text-white focus:ring-2 focus:ring-[#00ABFF]/20 focus:border-[#00ABFF]"
                   />
                 </div>
               )}
@@ -679,7 +679,7 @@ export default function ParentCheckinForm({
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" color="white" />
                     Saving...
                   </>
                 ) : (

@@ -4,6 +4,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Star } from 'lucide-react';
 import StreakFlame from './StreakFlame';
 
 interface ChildHeaderProps {
@@ -20,15 +21,15 @@ interface ChildHeaderProps {
   onBackToParent: () => void;
 }
 
-const AVATAR_EMOJIS: Record<string, string> = {
-  fox: '🦊',
-  bunny: '🐰',
-  bear: '🐻',
-  lion: '🦁',
-  cat: '🐱',
-  owl: '🦉',
-  panda: '🐼',
-  butterfly: '🦋',
+const AVATAR_COLORS: Record<string, string> = {
+  fox: 'bg-orange-500',
+  bunny: 'bg-pink-400',
+  bear: 'bg-amber-600',
+  lion: 'bg-yellow-500',
+  cat: 'bg-purple-400',
+  owl: 'bg-indigo-500',
+  panda: 'bg-gray-700',
+  butterfly: 'bg-teal-400',
 };
 
 export default function ChildHeader({
@@ -39,7 +40,8 @@ export default function ChildHeader({
   level,
   onBackToParent
 }: ChildHeaderProps) {
-  const avatarEmoji = avatar ? AVATAR_EMOJIS[avatar.avatar_type] || '🦊' : '👤';
+  const avatarColor = avatar ? AVATAR_COLORS[avatar.avatar_type] || 'bg-orange-500' : 'bg-gray-400';
+  const avatarLetter = avatar?.avatar_type?.[0]?.toUpperCase() || '?';
 
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
@@ -59,8 +61,8 @@ export default function ChildHeader({
         {/* Center: Avatar & Name */}
         <div className="flex items-center gap-2">
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-[#FF0099]/10 flex items-center justify-center text-xl">
-              {avatarEmoji}
+            <div className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-lg`}>
+              {avatarLetter}
             </div>
             {/* Level badge */}
             <motion.div 
@@ -79,12 +81,12 @@ export default function ChildHeader({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          <motion.span 
+          <motion.span
             className="text-sm"
             animate={{ rotate: [0, -10, 10, 0] }}
             transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
           >
-            ⭐
+            <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
           </motion.span>
           <span className="font-semibold text-gray-700 text-sm">{coins}</span>
         </motion.div>

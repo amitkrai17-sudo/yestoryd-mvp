@@ -9,12 +9,12 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   AlertCircle,
   CheckCircle,
   Check,
   ArrowRight,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 // ============================================================
 // TYPES
@@ -527,7 +527,7 @@ export default function RescheduleModal({
           {/* Loading State */}
           {loadingSlots && (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-[#FF0099] mb-4" />
+              <Spinner size="lg" className="mb-4" />
               <p className="text-gray-400">Loading available slots...</p>
             </div>
           )}
@@ -827,7 +827,7 @@ export default function RescheduleModal({
             >
               {submitState === 'loading' ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Spinner size="sm" />
                   <span className="hidden sm:inline">Rescheduling...</span>
                   <span className="sm:hidden">...</span>
                 </>

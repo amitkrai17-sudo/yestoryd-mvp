@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -75,7 +76,7 @@ async function sendResolutionNotification(ticket: any) {
       to: ticket.user_email,
       subject,
       html,
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
+      from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd Support' },
     });
     console.log('✅ Resolution notification sent to:', ticket.user_email);
   } catch (error) {

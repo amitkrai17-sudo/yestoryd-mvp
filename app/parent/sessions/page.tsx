@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   Calendar,
   Clock,
@@ -11,14 +10,14 @@ import {
   X,
   AlertCircle,
   ChevronDown,
-  ExternalLink,
   Zap,
-  Loader2,
   BookOpen,
   Users,
   Sparkles,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import SessionActionsCard from '@/components/parent/SessionActionsCard';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { getSessionTypeLabel } from '@/lib/utils/session-labels';
 import { supabase } from '@/lib/supabase/client';
 
@@ -106,14 +105,22 @@ export default function ParentSessionsPage() {
         // Get enrollment total_sessions
         const { data: enrollment } = await supabase
           .from('enrollments')
-          .select('total_sessions')
+          .select('total_sessions, age_band')
           .eq('child_id', enrolledChild.id)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        const total = enrollment?.total_sessions || 9; // V1 fallback – enrollment.total_sessions is authoritative
+        let total = enrollment?.total_sessions || 0;
+        if (!total && enrollment?.age_band) {
+          const { data: bandRow } = await supabase
+            .from('age_band_config')
+            .select('sessions_per_season')
+            .eq('id', enrollment.age_band)
+            .single();
+          total = bandRow?.sessions_per_season || 0;
+        }
 
         const { data: sessionsData } = await supabase
           .from('scheduled_sessions')
@@ -233,7 +240,7 @@ export default function ParentSessionsPage() {
     return (
       <div className="p-4 lg:p-8">
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 text-[#FF0099] animate-spin" />
+          <Spinner size="lg" />
         </div>
       </div>
     );
@@ -247,16 +254,13 @@ export default function ParentSessionsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
             <p className="text-gray-500">View and join your scheduled sessions</p>
           </div>
-          <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No Sessions Scheduled</h2>
-            <p className="text-gray-500 mb-6">Sessions will appear here once your enrollment is confirmed.</p>
-            <Link
-              href="/parent/dashboard"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF0099] text-white rounded-xl font-semibold hover:bg-[#FF0099]/80 transition-all"
-            >
-              Go to Dashboard
-            </Link>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-8">
+            <EmptyState
+              icon={Calendar}
+              title="No Sessions Scheduled"
+              description="Sessions will appear here once your enrollment is confirmed."
+              action={{ label: 'Go to Dashboard', href: '/parent/dashboard' }}
+            />
           </div>
         </div>
       </div>
@@ -426,9 +430,11 @@ export default function ParentSessionsPage() {
           })}
 
           {filteredSessions().length === 0 && (
-            <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No {filter === 'all' ? '' : filter} sessions found</p>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-8">
+              <EmptyState
+                icon={Calendar}
+                title={`No ${filter === 'all' ? '' : filter} sessions found`}
+              />
             </div>
           )}
         </div>

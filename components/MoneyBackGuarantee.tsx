@@ -109,7 +109,7 @@ export function TrustBadges() {
       </div>
       <div className="flex items-center gap-1">
         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-        <span>500+ happy parents</span>
+        <span>100+ happy parents</span>
       </div>
     </div>
   );

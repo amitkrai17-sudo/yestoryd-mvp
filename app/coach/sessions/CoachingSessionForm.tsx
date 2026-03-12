@@ -6,11 +6,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  X, Mic, Square, Trash2, CheckCircle, Loader2,
-  AlertCircle, ChevronRight, ChevronLeft, 
+  X, Mic, Square, Trash2, CheckCircle,
+  AlertCircle, ChevronRight, ChevronLeft,
   BookOpen, TrendingUp, Zap, ClipboardList,
   Flag, Sparkles, Volume2, Star
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface CoachingSessionFormProps {
   sessionId: string;
@@ -25,25 +26,25 @@ interface CoachingSessionFormProps {
 
 // Focus area options
 const FOCUS_AREAS = [
-  { value: 'phonics', label: 'Phonics', icon: '🔤', description: 'Letter sounds, blending' },
-  { value: 'fluency', label: 'Fluency', icon: '🎯', description: 'Speed, phrasing' },
-  { value: 'comprehension', label: 'Comprehension', icon: '🧠', description: 'Understanding, inference' },
-  { value: 'vocabulary', label: 'Vocabulary', icon: '📚', description: 'Word meanings, usage' },
-  { value: 'expression', label: 'Expression', icon: '🎭', description: 'Tone, emotion, prosody' },
+  { value: 'phonics', label: 'Phonics', description: 'Letter sounds, blending' },
+  { value: 'fluency', label: 'Fluency', description: 'Speed, phrasing' },
+  { value: 'comprehension', label: 'Comprehension', description: 'Understanding, inference' },
+  { value: 'vocabulary', label: 'Vocabulary', description: 'Word meanings, usage' },
+  { value: 'expression', label: 'Expression', description: 'Tone, emotion, prosody' },
 ];
 
 // Progress options
 const PROGRESS_OPTIONS = [
-  { value: 'improved', label: '📈 Improved', color: 'bg-green-500', bgColor: 'bg-green-50 border-green-500' },
-  { value: 'same', label: '➡️ Same', color: 'bg-yellow-500', bgColor: 'bg-yellow-50 border-yellow-500' },
-  { value: 'struggled', label: '📉 Struggled', color: 'bg-red-500', bgColor: 'bg-red-50 border-red-500' },
+  { value: 'improved', label: 'Improved', color: 'bg-green-500', bgColor: 'bg-green-50 border-green-500' },
+  { value: 'same', label: 'Same', color: 'bg-yellow-500', bgColor: 'bg-yellow-50 border-yellow-500' },
+  { value: 'struggled', label: 'Struggled', color: 'bg-red-500', bgColor: 'bg-red-50 border-red-500' },
 ];
 
 // Engagement levels
 const ENGAGEMENT_LEVELS = [
-  { value: 'high', label: '🔥 High', description: 'Very engaged and participative' },
-  { value: 'medium', label: '😊 Medium', description: 'Generally attentive' },
-  { value: 'low', label: '😔 Low', description: 'Distracted or uninterested' },
+  { value: 'high', label: 'High', description: 'Very engaged and participative' },
+  { value: 'medium', label: 'Medium', description: 'Generally attentive' },
+  { value: 'low', label: 'Low', description: 'Distracted or uninterested' },
 ];
 
 // Skills by category (simplified for quick selection)
@@ -104,7 +105,7 @@ const FLAG_REASONS = [
   { value: 'behavior', label: 'Behavior concern' },
   { value: 'parent_concern', label: 'Parent raised concern' },
   { value: 'schedule_issue', label: 'Scheduling problem' },
-  { value: 'breakthrough', label: '🌟 Breakthrough moment!' },
+  { value: 'breakthrough', label: 'Breakthrough moment' },
 ];
 
 export default function CoachingSessionForm({
@@ -321,19 +322,19 @@ export default function CoachingSessionForm({
           
           {homeworkAssigned && (
             <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg mb-3">
-              📝 Homework on "{homeworkTopic}" assigned
+              Homework on &ldquo;{homeworkTopic}&rdquo; assigned
             </p>
           )}
           
           {quizAssigned && (
             <p className="text-sm text-purple-600 bg-purple-50 p-3 rounded-lg mb-3">
-              🧠 Quiz will be sent to parent
+              Quiz will be sent to parent
             </p>
           )}
           
           {flaggedForAttention && (
             <p className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg mb-3">
-              🚨 Flagged for admin review
+              Flagged for admin review
             </p>
           )}
           
@@ -414,7 +415,6 @@ export default function CoachingSessionForm({
                           : 'border-border hover:border-border'
                       }`}
                     >
-                      <span className="text-lg">{area.icon}</span>
                       <p className="font-medium text-white text-sm">{area.label}</p>
                       <p className="text-xs text-text-tertiary">{area.description}</p>
                     </button>
@@ -557,7 +557,7 @@ export default function CoachingSessionForm({
 
                 {skillsWorkedOn.length > 0 && (
                   <p className="text-sm text-green-600 mt-3">
-                    ✓ {skillsWorkedOn.length} skill(s) selected
+                    {skillsWorkedOn.length} skill(s) selected
                   </p>
                 )}
               </div>
@@ -735,7 +735,7 @@ export default function CoachingSessionForm({
               {/* Breakthrough Moment */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">
-                  🌟 Breakthrough moment? (optional)
+                  Breakthrough moment? (optional)
                 </label>
                 <input
                   type="text"
@@ -793,7 +793,7 @@ export default function CoachingSessionForm({
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" color="white" />
                     Saving...
                   </>
                 ) : (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 interface FaqItem {
   question: string;
@@ -82,15 +82,12 @@ export function FaqSection({
         {/* Still have questions */}
         <div className="mt-10 text-center">
           <p className="text-text-secondary mb-4">{stillQuestionsText}</p>
-          <a
-            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hi! I have a question about Yestoryd.")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-[#25d366] font-semibold hover:underline"
-          >
-            <MessageCircle className="w-5 h-5" />
-            {whatsappCtaText}
-          </a>
+          <WhatsAppButton
+            phone={whatsappNumber}
+            message="Hi! I have a question about Yestoryd."
+            label={whatsappCtaText}
+            variant="link"
+          />
         </div>
       </div>
     </section>

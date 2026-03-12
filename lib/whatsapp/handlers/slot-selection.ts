@@ -29,7 +29,7 @@ export async function handleSlotSelection(
   // --- No slots available → escalate ---
   if (slots.length === 0) {
     const noSlotsMsg =
-      `Our coaches are fully booked this week! Let me connect you with our team to find a time that works. 📅`;
+      `Our coaches are fully booked this week! Let me connect you with our team to find a time that works.`;
 
     await sendText(phone, noSlotsMsg);
 
@@ -45,7 +45,7 @@ export async function handleSlotSelection(
 
   const body =
     `Choose a time that works best for your free discovery call about ${childName}'s reading journey.\n\n` +
-    `It's 15-20 minutes on Google Meet — completely free! 🎯`;
+    `It's 15-20 minutes on Google Meet — completely free!`;
 
   const rows = slots.map(s => ({
     id: s.slotId,
@@ -57,7 +57,7 @@ export async function handleSlotSelection(
     phone,
     body,
     'Pick a Time',
-    [{ title: '📅 Available Times', rows }],
+    [{ title: 'Available Times', rows }],
     { header: 'When works for your free call?' }
   );
 

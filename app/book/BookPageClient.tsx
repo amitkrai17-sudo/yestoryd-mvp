@@ -17,8 +17,9 @@ import {
   Star,
   MessageCircle,
   ArrowRight,
-  Loader2,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 // ==================== TYPES ====================
 interface PricingData {
@@ -116,8 +117,9 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
   // Build dynamic Cal.com URL
   const calBookingUrl = `https://cal.com/${contact.calUsername}/${contact.calSlug}?name=${encodeURIComponent(parentName)}&email=${encodeURIComponent(parentEmail)}&guests=${encodeURIComponent(coach.email)}`;
 
-  // Build dynamic WhatsApp URL
-  const whatsappUrl = `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi, I have questions about the reading program for my child ${childName || ''}`)}`;
+  // WhatsApp message for help section
+  const whatsappPhone = contact.whatsapp.replace(/[^0-9]/g, '');
+  const whatsappMessage = `Hi, I have questions about the reading program for my child ${childName || ''}`;
 
   const handleFreeSession = () => {
     setIsLoading(true);
@@ -327,7 +329,7 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
               } disabled:opacity-50`}
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Spinner color="white" />
               ) : selectedOption === 'free' ? (
                 <>
                   <Calendar className="w-5 h-5" />
@@ -356,15 +358,13 @@ function BookPageContent({ pricing, coach, contact, freeSessionEnabled, testimon
             {/* Help - DYNAMIC WHATSAPP */}
             <div className="bg-surface-2 rounded-xl p-4 text-center border border-border">
               <p className="text-text-secondary text-sm mb-2">Need help deciding?</p>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-green-500 font-medium text-sm hover:text-green-400 min-h-[44px]"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat with us on WhatsApp
-              </a>
+              <WhatsAppButton
+                phone={whatsappPhone}
+                message={whatsappMessage}
+                label="Chat with us on WhatsApp"
+                variant="link"
+                size="sm"
+              />
             </div>
           </div>
         </div>
@@ -378,7 +378,7 @@ export default function BookPageClient(props: BookPageClientProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-surface-0">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff0099]" />
+        <Spinner size="lg" />
       </div>
     }>
       <BookPageContent {...props} />

@@ -1,9 +1,15 @@
 // app/api/coach/earnings-summary/route.ts
 // Single Source of Truth for Coach Earnings
-// Used by: Dashboard, Earnings page, any future earnings display
+// Uses V2 revenue model: coach_groups + payout-config.ts + calculatePerSessionRate()
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  loadCoachGroup,
+  loadPayoutConfig,
+  calculatePerSessionRate,
+} from '@/lib/config/payout-config';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 
 const supabase = createAdminClient();
 
@@ -28,6 +34,8 @@ export interface EarningDetail {
   program_fee: number;
   coach_amount: number;
   yestoryd_amount: number;
+  coach_percent: number;
+  lead_referral_amount: number;
   split_type: string;
   lead_source: string;
   status: string;
@@ -35,8 +43,6 @@ export interface EarningDetail {
 
 export async function GET(request: Request) {
   try {
-    // Get coach email from auth
-    const authHeader = request.headers.get('authorization');
     const url = new URL(request.url);
     const coachEmail = url.searchParams.get('email');
 
@@ -47,7 +53,7 @@ export async function GET(request: Request) {
     // Get coach data
     const { data: coach, error: coachError } = await supabase
       .from('coaches')
-      .select('id, coach_split_percentage')
+      .select('id, group_id')
       .eq('email', coachEmail)
       .single();
 
@@ -55,52 +61,113 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Coach not found' }, { status: 404 });
     }
 
-    // Get all enrolled children for this coach
-    const { data: children } = await supabase
-      .from('children')
-      .select('*')
+    // Load V2 split config + age band config in parallel
+    const [coachGroup, payoutConfig, { data: ageBandRows }] = await Promise.all([
+      loadCoachGroup(coach.id),
+      loadPayoutConfig(),
+      supabase
+        .from('age_band_config')
+        .select('id, sessions_per_season, skill_booster_credits'),
+    ]);
+
+    // Build age_band → session counts map
+    const ageBandMap = new Map<string, { coaching: number; sb: number }>();
+    for (const row of ageBandRows || []) {
+      ageBandMap.set(row.id, {
+        coaching: row.sessions_per_season || 18,
+        sb: row.skill_booster_credits || 6,
+      });
+    }
+    // Foundation fallback
+    const FALLBACK_SESSIONS = { coaching: 18, sb: 6 };
+
+    const coachCostPercent = coachGroup?.coach_cost_percent ?? 50;
+    const leadReferralPercent = payoutConfig.lead_cost_referrer_percent_coach;
+
+    // Get enrollments with age_band (single source of truth)
+    const { data: enrollments } = await supabase
+      .from('enrollments')
+      .select(`
+        id,
+        status,
+        amount,
+        age_band,
+        lead_source,
+        created_at,
+        child:children (
+          id,
+          child_name,
+          parent_name,
+          custom_coach_split
+        )
+      `)
       .eq('coach_id', coach.id)
+      .in('status', ['active', 'pending_start', 'completed'])
       .order('created_at', { ascending: false });
 
-    // Get program price from site_settings (single source of truth)
-    const { data: priceSetting } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', 'program_price')
-      .single();
+    // Calculate earnings per enrollment using V2 per-session model
+    const earnings: EarningDetail[] = (enrollments || []).map((enrollment) => {
+      const child = enrollment.child as any;
+      if (!child) return null;
 
-    const programFee = priceSetting?.value
-      ? parseInt(String(priceSetting.value).replace(/[^0-9]/g, ''))
-      : 5999; // V1 fallback – site_settings 'program_price' is authoritative
+      const programFee = enrollment.amount || 0;
+      const isCoachLead = enrollment.lead_source === 'coach';
 
-    const defaultCoachSplit = (coach.coach_split_percentage || 50) / 100;
-    const coachLeadSplit = 0.70; // 70% for coach leads
+      // Get session counts from enrollment's age_band
+      const band = ageBandMap.get(enrollment.age_band || '') || FALLBACK_SESSIONS;
 
-    // Calculate earnings for each child
-    const earnings: EarningDetail[] = (children || []).map((child) => {
-      const isCoachLead = child.lead_source === 'coach';
-      const splitPercentage = child.custom_coach_split
-        ? child.custom_coach_split / 100
-        : isCoachLead
-        ? coachLeadSplit
-        : defaultCoachSplit;
+      let coachAmount: number;
+      let effectivePercent: number;
+      let leadReferralAmount = 0;
+      let splitType: string;
 
-      const coachAmount = programFee * splitPercentage;
+      if (child.custom_coach_split) {
+        // Custom split: flat percentage (legacy)
+        coachAmount = Math.round(programFee * child.custom_coach_split / 100);
+        effectivePercent = child.custom_coach_split;
+        splitType = 'custom';
+      } else {
+        // V2 model: per-session rates (same math as CoachTierCard + payout-config.ts)
+        const rates = calculatePerSessionRate(
+          programFee,
+          band.coaching,
+          band.sb,
+          coachGroup,
+          payoutConfig,
+        );
+
+        const coachingTotal = rates.coaching_rate * rates.coaching_sessions;
+        const skillBuildingTotal = rates.skill_building_rate * rates.skill_building_sessions;
+        coachAmount = coachingTotal + skillBuildingTotal;
+        effectivePercent = programFee > 0 ? Math.round(coachAmount / programFee * 100) : 0;
+
+        if (isCoachLead) {
+          leadReferralAmount = Math.round(programFee * leadReferralPercent / 100);
+          coachAmount += leadReferralAmount;
+          effectivePercent = programFee > 0 ? Math.round(coachAmount / programFee * 100) : 0;
+          splitType = 'coach_lead';
+        } else {
+          splitType = 'default';
+        }
+      }
+
       const yestorydAmount = programFee - coachAmount;
 
       return {
-        id: child.id,
+        id: enrollment.id,
         child_name: child.child_name || 'Unknown',
         parent_name: child.parent_name || 'Unknown',
-        enrollment_date: child.created_at || '',
+        enrollment_date: enrollment.created_at,
         program_fee: programFee,
         coach_amount: coachAmount,
         yestoryd_amount: yestorydAmount,
-        split_type: child.custom_coach_split ? 'custom' : isCoachLead ? 'coach_lead' : 'default',
-        lead_source: child.lead_source || 'yestoryd',
-        status: child.subscription_status === 'active' ? 'paid' : 'pending',
+        coach_percent: effectivePercent,
+        lead_referral_amount: leadReferralAmount,
+        split_type: splitType,
+        lead_source: enrollment.lead_source || 'yestoryd',
+        status: enrollment.status === 'active' ? 'paid' : 'pending',
       };
-    });
+    }).filter(Boolean) as EarningDetail[];
 
     // Calculate summary
     const now = new Date();
@@ -109,18 +176,18 @@ export async function GET(request: Request) {
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
     const totalEarnings = earnings.reduce((sum, e) => sum + e.coach_amount, 0);
-    
+
     const thisMonthEarnings = earnings
       .filter((e) => new Date(e.enrollment_date) >= startOfMonth)
       .reduce((sum, e) => sum + e.coach_amount, 0);
-    
+
     const lastMonthEarnings = earnings
       .filter((e) => {
         const date = new Date(e.enrollment_date);
         return date >= startOfLastMonth && date <= endOfLastMonth;
       })
       .reduce((sum, e) => sum + e.coach_amount, 0);
-    
+
     const pendingEarnings = earnings
       .filter((e) => e.status === 'pending')
       .reduce((sum, e) => sum + e.coach_amount, 0);
@@ -129,7 +196,7 @@ export async function GET(request: Request) {
       .filter((e) => e.status === 'paid')
       .reduce((sum, e) => sum + e.coach_amount, 0);
 
-    const yestorydLeads = earnings.filter((e) => e.lead_source === 'yestoryd').length;
+    const yestorydLeads = earnings.filter((e) => e.lead_source !== 'coach').length;
     const coachLeads = earnings.filter((e) => e.lead_source === 'coach').length;
 
     const summary: EarningsSummary = {
@@ -143,9 +210,37 @@ export async function GET(request: Request) {
       coachLeads,
     };
 
+    // Compute representative effective percentages (Foundation band, Full Program)
+    // Same calculation as CoachTierCard for header display
+    const pricingConfig = await getPricingConfig();
+    const fullTier = pricingConfig.tiers.find((t) => t.slug === 'full');
+    const representativeAmount = fullTier?.discountedPrice || pricingConfig.tiers[0]?.discountedPrice || 0;
+    const foundationBand = ageBandMap.get('foundation') || FALLBACK_SESSIONS;
+    const representativeRates = calculatePerSessionRate(
+      representativeAmount,
+      foundationBand.coaching,
+      foundationBand.sb,
+      coachGroup,
+      payoutConfig,
+    );
+    const repCoachingTotal = representativeRates.coaching_rate * representativeRates.coaching_sessions;
+    const repSbTotal = representativeRates.skill_building_rate * representativeRates.skill_building_sessions;
+    const repCoachEarnings = repCoachingTotal + repSbTotal;
+    const repLeadAmount = Math.round(representativeAmount * leadReferralPercent / 100);
+    const effectivePercent = Math.round(repCoachEarnings / representativeAmount * 100);
+    const effectivePercentWithLead = Math.round((repCoachEarnings + repLeadAmount) / representativeAmount * 100);
+
     return NextResponse.json({
       summary,
       earnings,
+      splits: {
+        coachCostPercent,
+        leadReferralPercent,
+        // Effective percentages (accounting for per-session rates + skill building)
+        effectivePercent,
+        effectivePercentWithLead,
+        groupName: coachGroup?.display_name || 'Standard',
+      },
     });
   } catch (error) {
     console.error('Earnings summary error:', error);

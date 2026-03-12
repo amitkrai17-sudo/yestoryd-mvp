@@ -2,7 +2,7 @@
 // FIXED: temperature=0 for consistent scores + caching to prevent recalculation
 // SECURITY: Validates applicationId exists before expensive Gemini calls
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/utils/rate-limiter';
@@ -10,8 +10,6 @@ import { loadCoachConfig } from '@/lib/config/loader';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   // Rate limit: 5 requests per minute per IP (expensive Gemini calls)
@@ -105,7 +103,14 @@ export async function POST(request: NextRequest) {
           const audioBase64 = Buffer.from(audioBuffer).toString('base64');
           const contentType = audioResponse.headers.get('content-type') || 'audio/webm';
           
-          const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
+          const model = getGenAI().getGenerativeModel({
+            model: getGeminiModel('assessment_analysis'),
+            generationConfig: {
+              temperature: 0,
+              maxOutputTokens: 1024,
+              responseMimeType: 'application/json',
+            },
+          });
 
           const voicePrompt = `You are evaluating a voice statement from someone applying to be a children's reading coach at Yestoryd.
 
@@ -148,37 +153,79 @@ DURATION ASSESSMENT:
 
 IMPORTANT: Be strict. A short, vague recording should NOT score above 2.
 If they just said "hello" or gave a one-liner, score 1 for content.
+Do NOT hallucinate words the speaker did not say. Score based ONLY on what you actually hear.
 
-Return ONLY valid JSON (no markdown, no explanation):
-{"contentRelevance": X, "clarity": X, "passion": X, "professionalism": X, "averageScore": X.X, "strengths": ["str1"], "concerns": ["con1"], "summary": "1-2 sentence assessment"}`;
+Respond with this exact JSON schema:
+{"contentRelevance": number, "clarity": number, "passion": number, "professionalism": number, "averageScore": number, "strengths": string[], "concerns": string[], "summary": string}`;
 
-          // KEY FIX: Add temperature: 0 for consistent output
-          const result = await model.generateContent({
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  { text: voicePrompt },
-                  { inlineData: { mimeType: contentType, data: audioBase64 } }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0,  // CRITICAL: Zero temperature for deterministic output
-              maxOutputTokens: 500
-            }
-          });
+          // Retry helper: attempt Gemini call, parse JSON, retry once on failure
+          const callGeminiVoice = async () => {
+            const result = await model.generateContent({
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    { text: voicePrompt },
+                    { inlineData: { mimeType: contentType, data: audioBase64 } }
+                  ]
+                }
+              ],
+            });
+            return result.response.text().trim();
+          };
 
-          const responseText = result.response.text().trim();
-          console.log('🎤 Gemini voice response:', responseText);
-          
-          try {
-            let cleanJson = responseText;
+          const tryParseVoiceJson = (raw: string): Record<string, any> => {
+            let cleanJson = raw;
+            // Strip markdown fences
             if (cleanJson.startsWith('```')) {
               cleanJson = cleanJson.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
             }
-            
-            const parsed = JSON.parse(cleanJson);
+            // Extract JSON object if surrounded by text
+            const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              cleanJson = jsonMatch[0];
+            }
+            try {
+              return JSON.parse(cleanJson);
+            } catch {
+              // JSON repair: try fixing common truncation (missing closing braces/brackets)
+              let repaired = cleanJson;
+              const openBraces = (repaired.match(/\{/g) || []).length;
+              const closeBraces = (repaired.match(/\}/g) || []).length;
+              const openBrackets = (repaired.match(/\[/g) || []).length;
+              const closeBrackets = (repaired.match(/\]/g) || []).length;
+              for (let i = 0; i < openBrackets - closeBrackets; i++) repaired += ']';
+              for (let i = 0; i < openBraces - closeBraces; i++) repaired += '}';
+              // Remove trailing comma before closing brace/bracket
+              repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+              return JSON.parse(repaired);
+            }
+          };
+
+          let responseText = '';
+          let parsed: Record<string, any> | null = null;
+
+          // Attempt 1
+          responseText = await callGeminiVoice();
+          console.log('[VoiceAnalysis] Gemini raw response:', responseText);
+
+          try {
+            parsed = tryParseVoiceJson(responseText);
+          } catch (firstParseErr) {
+            console.error('[VoiceAnalysis] Parse attempt 1 failed, retrying Gemini call...');
+
+            // Attempt 2: retry the Gemini call
+            try {
+              responseText = await callGeminiVoice();
+              console.log('[VoiceAnalysis] Retry raw response:', responseText);
+              parsed = tryParseVoiceJson(responseText);
+            } catch (retryErr) {
+              console.error('[VoiceAnalysis] Parse attempt 2 also failed:', retryErr);
+              console.error('[VoiceAnalysis] Final raw response:', responseText);
+            }
+          }
+
+          if (parsed) {
             voiceAnalysis = {
               contentRelevance: parsed.contentRelevance || 1,
               clarity: parsed.clarity || 1,
@@ -188,22 +235,26 @@ Return ONLY valid JSON (no markdown, no explanation):
               concerns: parsed.concerns || [],
               notes: parsed.summary || 'Voice analyzed'
             };
-            
-            let rawScore = parsed.averageScore || 
-              ((voiceAnalysis.contentRelevance + voiceAnalysis.clarity + 
+
+            let rawScore = parsed.averageScore ||
+              ((voiceAnalysis.contentRelevance + voiceAnalysis.clarity +
                 voiceAnalysis.passion + voiceAnalysis.professionalism) / 4);
-            
+
             let durationPenalty = 0;
             if (duration < 30) durationPenalty = -1;
             else if (duration < 45) durationPenalty = -0.5;
-            
+
             voiceAnalysis.durationPenalty = durationPenalty;
             voiceScore = Math.max(1, Math.round((rawScore + durationPenalty) * 10) / 10);
-            
-          } catch (parseErr) {
-            console.error('Failed to parse voice analysis:', parseErr);
-            voiceScore = duration >= 45 ? 2.5 : 1.5;
-            voiceAnalysis.notes = 'AI analysis failed';
+          } else {
+            // All parsing failed — use conservative middle score, flag for manual review
+            voiceScore = 2.5;
+            voiceAnalysis.notes = 'Voice analysis pending manual review (AI response unparseable)';
+            voiceAnalysis.manualReviewRequired = true;
+            voiceAnalysis.contentRelevance = 2.5;
+            voiceAnalysis.clarity = 2.5;
+            voiceAnalysis.passion = 2.5;
+            voiceAnalysis.professionalism = 2.5;
           }
         } else {
           voiceScore = 1;
@@ -255,7 +306,14 @@ Return ONLY valid JSON (no markdown, no explanation):
 
           console.log('💬 Conversation length:', conversationText.length, 'chars');
 
-          const model = genAI.getGenerativeModel({ model: getGeminiModel('assessment_analysis') });
+          const chatModel = getGenAI().getGenerativeModel({
+            model: getGeminiModel('assessment_analysis'),
+            generationConfig: {
+              temperature: 0,
+              maxOutputTokens: 1024,
+              responseMimeType: 'application/json',
+            },
+          });
 
           const chatPrompt = `You are evaluating a coaching applicant's responses. They want to become a children's reading coach at Yestoryd.
 
@@ -294,16 +352,15 @@ IMPORTANT SCORING RULES:
 - Thoughtful, specific responses = Score 4-5
 - If a question wasn't answered, score 1
 
-Return ONLY this JSON structure (no other text):
-{"q1_empathy": X, "q2_communication": X, "q3_sensitivity": X, "q4_honesty": X, "averageScore": X.X, "overallAssessment": "2-3 sentence summary", "strengths": ["str1", "str2"], "concerns": ["con1"], "recommendation": "STRONG_YES|YES|MAYBE|NO|STRONG_NO"}`;
+Do NOT hallucinate or invent answers the applicant did not give. Score based ONLY on what they actually said.
 
-          // KEY FIX: Add temperature: 0 for consistent output
-          const result = await model.generateContent({
+Respond with this exact JSON schema:
+{"q1_empathy": number, "q2_communication": number, "q3_sensitivity": number, "q4_honesty": number, "averageScore": number, "overallAssessment": string, "strengths": string[], "concerns": string[], "recommendation": string}
+
+recommendation must be one of: "STRONG_YES", "YES", "MAYBE", "NO", "STRONG_NO"`;
+
+          const result = await chatModel.generateContent({
             contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],
-            generationConfig: {
-              temperature: 0,  // CRITICAL: Zero temperature for deterministic output
-              maxOutputTokens: 800
-            }
           });
 
           const responseText = result.response.text().trim();

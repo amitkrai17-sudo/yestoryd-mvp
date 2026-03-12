@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface GenerateQuizRequest {
   topic: string;
@@ -65,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate quiz using AI
-    const model = genAI.getGenerativeModel({ model: getGeminiModel('question_generation') });
+    const model = getGenAI().getGenerativeModel({ model: getGeminiModel('question_generation') });
 
     const prompt = `Generate a ${questionCount}-question quiz for a ${childAge}-year-old child on the topic: ${topic}${subtopic ? ` - ${subtopic}` : ''}.
 

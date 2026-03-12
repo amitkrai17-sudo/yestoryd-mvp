@@ -188,29 +188,29 @@ export function checkEnvOnStartup() {
   const result = validateEnvVars();
 
   if (result.missing.length > 0) {
-    console.error('\n❌ MISSING REQUIRED ENVIRONMENT VARIABLES:');
+    console.error('\n[ERROR] MISSING REQUIRED ENVIRONMENT VARIABLES:');
     result.missing.forEach((msg) => console.error(`   - ${msg}`));
   }
 
   if (result.invalid.length > 0) {
-    console.error('\n⚠️ INVALID ENVIRONMENT VARIABLE FORMAT:');
+    console.error('\n[WARN] INVALID ENVIRONMENT VARIABLE FORMAT:');
     result.invalid.forEach((msg) => console.error(`   - ${msg}`));
   }
 
   if (result.warnings.length > 0 && process.env.NODE_ENV === 'development') {
-    console.warn('\n📝 OPTIONAL VARIABLES NOT SET:');
+    console.warn('\n[NOTE] OPTIONAL VARIABLES NOT SET:');
     result.warnings.forEach((msg) => console.warn(`   - ${msg}`));
   }
 
   if (!result.valid) {
-    console.error('\n💡 Please check your .env.local file or Vercel environment variables.\n');
+    console.error('\n[TIP] Please check your .env.local file or Vercel environment variables.\n');
     
     // In production, throw to prevent startup with missing config
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Application cannot start: Missing required environment variables');
     }
   } else if (process.env.NODE_ENV === 'development') {
-    console.log('\n✅ All required environment variables are set.\n');
+    console.log('\n[OK] All required environment variables are set.\n');
   }
 }
 

@@ -14,6 +14,8 @@ import {
   Award
 } from 'lucide-react';
 import { getPricingConfig, getSessionRangeForTier, getDurationRange } from '@/lib/config/pricing-config';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 interface Props {
   params: {
@@ -26,7 +28,7 @@ const DEFAULT_COACHES: Record<string, any> = {
   rucha: {
     coachId: 'coach_rucha',
     name: 'Rucha Rai',
-    email: 'engage@yestoryd.com',
+    email: COMPANY_CONFIG.supportEmail,
     specialization: 'Early Reading, Phonics, Fluency',
     ageGroups: '4-12',
     totalSessions: 150,
@@ -64,10 +66,28 @@ export default async function CoachPage({ params }: Props) {
     notFound();
   }
 
+  // Query actual completed sessions taught by this coach
+  try {
+    const supabase = createAdminClient();
+    const { data: coachRow } = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('subdomain', subdomain.toLowerCase())
+      .single();
+    if (coachRow) {
+      const { count } = await supabase
+        .from('scheduled_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('coach_id', coachRow.id)
+        .eq('status', 'completed');
+      if (count && count > 0) coach.totalSessions = count;
+    }
+  } catch { /* keep default */ }
+
   // Load pricing config for dynamic package display
   const pricingConfig = await getPricingConfig();
   const fullSeasonTier = pricingConfig.tiers.find(t => t.slug === 'full');
-  const packagePrice = fullSeasonTier?.discountedPrice || 5999;
+  const packagePrice = fullSeasonTier?.discountedPrice ?? 0;
   const sessionRange = getSessionRangeForTier(pricingConfig, 'full');
   const durationRange = getDurationRange(pricingConfig);
   const sessionLabel = sessionRange.min === sessionRange.max

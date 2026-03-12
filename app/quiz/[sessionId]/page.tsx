@@ -7,10 +7,10 @@ import {
   XCircle,
   Clock,
   Award,
-  Loader2,
   ChevronRight,
   RefreshCw,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Question {
   id: number;
@@ -165,7 +165,7 @@ export default function QuizPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
+          <Spinner size="xl" className="text-purple-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading quiz...</p>
         </div>
       </div>
@@ -318,7 +318,7 @@ export default function QuizPage() {
         >
           {submitting ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner color="white" />
               Submitting...
             </>
           ) : currentQuestion < quizData.questions.length - 1 ? (

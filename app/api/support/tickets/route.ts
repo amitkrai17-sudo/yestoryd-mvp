@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { loadAuthConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -80,7 +81,7 @@ async function sendAdminNotification(ticket: any) {
   const msg = {
     to: await loadAuthConfig().then(c => c.adminEmails),
     from: {
-      email: 'engage@yestoryd.com',
+      email: COMPANY_CONFIG.supportEmail,
       name: 'Yestoryd Support',
     },
     subject: `${emoji} New Support Ticket: ${ticket.ticket_number} - ${categoryLabel}`,
@@ -212,7 +213,7 @@ async function sendUserConfirmation(ticket: any) {
               <p class="ticket-number">${ticket.ticket_number}</p>
             </div>
             
-            <p>If your issue is urgent, you can also reach us on WhatsApp at <strong>+91 8976287997</strong>.</p>
+            <p>If your issue is urgent, you can also reach us on WhatsApp at <strong>${COMPANY_CONFIG.leadBotWhatsAppDisplay}</strong>.</p>
             
             <p>Thank you for being part of the Yestoryd family!</p>
             
@@ -232,7 +233,7 @@ async function sendUserConfirmation(ticket: any) {
       to: ticket.user_email,
       subject,
       html,
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd Support' },
+      from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd Support' },
     });
     console.log('✅ User confirmation sent to:', ticket.user_email);
   } catch (error) {

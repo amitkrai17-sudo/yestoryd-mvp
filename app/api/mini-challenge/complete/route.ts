@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { getMiniChallengeSettings, type GoalArea } from '@/lib/mini-challenge';
@@ -82,7 +82,7 @@ Return ONLY the sentence, no quotes, no explanation.`;
       let responseText: string;
 
       if (provider.type === 'gemini') {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+        const genAI = getGenAI();
         const model = genAI.getGenerativeModel({ model: provider.model });
         const result = await model.generateContent([{ text: insightPrompt }]);
         responseText = result.response.text();

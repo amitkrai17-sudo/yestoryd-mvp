@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
 import { getPricingConfig } from '@/lib/config/pricing-config';
+import { getParentLabelMap } from '@/lib/config/skill-categories';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -30,8 +31,20 @@ const SKILL_LABELS: Record<string, string> = {
   stamina: 'Reading Stamina',
 };
 
-function friendlySkill(skill: string): string {
-  return SKILL_LABELS[skill] || skill.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+// parentLabelMap is loaded once at first call (category slugs → parent-friendly labels)
+let _parentLabelMap: Record<string, string> | null = null;
+async function loadParentLabels(): Promise<Record<string, string>> {
+  if (!_parentLabelMap) _parentLabelMap = await getParentLabelMap();
+  return _parentLabelMap;
+}
+
+function friendlySkill(skill: string, parentLabels?: Record<string, string>): string {
+  // Level 3 el_skills (phonics, decoding, blending, etc.)
+  if (SKILL_LABELS[skill]) return SKILL_LABELS[skill];
+  // Category-level slugs (phonics_letter_sounds, reading_fluency, etc.)
+  if (parentLabels?.[skill]) return parentLabels[skill];
+  // Fallback: title-case
+  return skill.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 export async function GET(
@@ -48,6 +61,7 @@ export async function GET(
 
     const { childId } = await params;
     const supabase = getServiceSupabase();
+    const parentLabels = await loadParentLabels();
 
     // Verify parent owns this child
     const { data: child } = await supabase
@@ -129,7 +143,7 @@ export async function GET(
             session_number: p.week_number,
             title: template?.title || 'Session',
             template_code: template?.template_code || null,
-            skills: (template?.skill_dimensions || []).map(friendlySkill),
+            skills: (template?.skill_dimensions || []).map((s: string) => friendlySkill(s, parentLabels)),
             duration_minutes: template?.duration_minutes || null,
             is_finale: template?.is_season_finale || false,
             status: p.status,
@@ -201,7 +215,7 @@ export async function GET(
     const sessionSummaries = (recentSummaries || []).map(e => ({
       id: e.id,
       session_number: (e.event_data as any)?.session_number || null,
-      focus: friendlySkill((e.event_data as any)?.focus_area || ''),
+      focus: friendlySkill((e.event_data as any)?.focus_area || '', parentLabels),
       highlights: (e.event_data as any)?.highlights || [],
       progress: (e.event_data as any)?.progress_rating || null,
       summary: e.ai_summary || null,
@@ -230,7 +244,7 @@ export async function GET(
         season_number: activeRoadmap.season_number,
         season_name: activeRoadmap.season_name || `Season ${activeRoadmap.season_number}`,
         status: activeRoadmap.status,
-        focus_areas: activeRoadmap.focus_area ? [friendlySkill(activeRoadmap.focus_area)] : [],
+        focus_areas: activeRoadmap.focus_area ? [friendlySkill(activeRoadmap.focus_area, parentLabels)] : [],
         milestone_description: activeRoadmap.milestone_description || null,
         total_planned_sessions: activeRoadmap.estimated_sessions || planItems.length,
       } : null,
@@ -238,7 +252,7 @@ export async function GET(
       completed_count: completedCount || 0,
       total_sessions: enrollment?.total_sessions || planItems.length
         || (await getPricingConfig()).ageBands.find(b => b.id === child.age_band)?.sessionsPerSeason
-        || 9,
+        || 0,
       next_session: nextSessionData,
       recent_summaries: sessionSummaries,
       future_seasons: futureSeasons,

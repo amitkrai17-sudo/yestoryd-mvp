@@ -7,12 +7,13 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
 import crypto from 'crypto';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { buildFullAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
       let responseText: string;
 
       if (provider.type === 'gemini') {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+        const genAI = getGenAI();
         const model = genAI.getGenerativeModel({ model: provider.model });
         const result = await model.generateContent([
           { inlineData: { mimeType: 'audio/webm', data: audioData } },
@@ -346,11 +347,11 @@ async function sendResultsEmail(
         ${scores.strengths.length ? `<p><strong>Strengths:</strong> ${scores.strengths.join(', ')}</p>` : ''}
         ${scores.areas_to_improve.length ? `<p><strong>Areas to Improve:</strong> ${scores.areas_to_improve.join(', ')}</p>` : ''}
         <p style="margin-top:24px;">
-          <a href="https://yestoryd.com/lets-talk?source=retry_email" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Talk to a Coach</a>
+          <a href="${COMPANY_CONFIG.websiteUrl}/lets-talk?source=retry_email" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Talk to a Coach</a>
         </p>
         <p style="color:#64748b;margin-top:16px;">Team Yestoryd</p>
       </div>`,
-    from: { email: 'engage@yestoryd.com', name: 'Yestoryd Academy' },
+    from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd Academy' },
   });
 
   if (!result.success) {

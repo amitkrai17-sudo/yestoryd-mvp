@@ -27,6 +27,8 @@ import {
   CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
+import { StatCard } from '@/components/shared/StatCard';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 interface CoachGroup {
   id: string;
@@ -76,8 +78,7 @@ export default function AdminCoachGroupsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [assigningCoach, setAssigningCoach] = useState<string | null>(null);
 
-  // V1 fallback – getPricingConfig().tiers[x].discountedPrice is authoritative
-  const ENROLLMENT_AMOUNT = 5999;
+  const [enrollmentAmount, setEnrollmentAmount] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -93,18 +94,14 @@ export default function AdminCoachGroupsPage() {
   async function fetchData() {
     setLoading(true);
 
-    // Fetch groups
-    const { data: groupsData } = await supabase
-      .from('coach_groups')
-      .select('*')
-      .order('sort_order');
+    // Fetch groups, coaches, and pricing in parallel
+    const [{ data: groupsData }, { data: coachesData }, { data: priceRow }] = await Promise.all([
+      supabase.from('coach_groups').select('*').order('sort_order'),
+      supabase.from('coaches').select('id, name, email, group_id, is_active, referral_code').eq('is_active', true).order('name'),
+      supabase.from('pricing_plans').select('discounted_price').eq('slug', 'full').eq('is_active', true).single(),
+    ]);
 
-    // Fetch coaches
-    const { data: coachesData } = await supabase
-      .from('coaches')
-      .select('id, name, email, group_id, is_active, referral_code')
-      .eq('is_active', true)
-      .order('name');
+    if (priceRow?.discounted_price) setEnrollmentAmount(priceRow.discounted_price);
 
     if (groupsData) {
       const groupsWithCount = groupsData.map((group) => ({
@@ -236,12 +233,12 @@ export default function AdminCoachGroupsPage() {
 
   function calculateSplit(group: CoachGroup, isCoachLead: boolean = false) {
     if (group.is_internal) {
-      return { coachGets: 0, platformGets: ENROLLMENT_AMOUNT, totalCoach: 0 };
+      return { coachGets: 0, platformGets: enrollmentAmount, totalCoach: 0 };
     }
 
-    const leadCost = Math.round(ENROLLMENT_AMOUNT * group.lead_cost_percent / 100);
-    const coachCost = Math.round(ENROLLMENT_AMOUNT * group.coach_cost_percent / 100);
-    const platformFee = ENROLLMENT_AMOUNT - leadCost - coachCost;
+    const leadCost = Math.round(enrollmentAmount * group.lead_cost_percent / 100);
+    const coachCost = Math.round(enrollmentAmount * group.coach_cost_percent / 100);
+    const platformFee = enrollmentAmount - leadCost - coachCost;
 
     if (isCoachLead) {
       return {
@@ -279,12 +276,10 @@ export default function AdminCoachGroupsPage() {
   return (
     <div className="p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto bg-surface-0">
       {/* ==================== HEADER ==================== */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-white">Coach Groups</h1>
-            <p className="text-text-tertiary mt-1">Manage revenue splits and coach tiers</p>
-          </div>
+      <PageHeader
+        title="Coach Groups"
+        subtitle="Manage revenue splits and coach tiers"
+        action={
           <button
             onClick={fetchData}
             className="inline-flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-xl text-text-secondary hover:bg-surface-2 transition-colors"
@@ -292,8 +287,8 @@ export default function AdminCoachGroupsPage() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* ==================== ALERT MESSAGE ==================== */}
       {message && (
@@ -315,47 +310,10 @@ export default function AdminCoachGroupsPage() {
 
       {/* ==================== STATS CARDS ==================== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-surface-1 rounded-2xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center">
-              <Users className="w-5 h-5 text-gray-300" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-white">{coaches.length}</p>
-          <p className="text-sm text-text-tertiary">Active Coaches</p>
-        </div>
-
-        <div className="bg-surface-1 rounded-2xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-gray-300" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-white">{groups.length}</p>
-          <p className="text-sm text-text-tertiary">Coach Tiers</p>
-        </div>
-
-        <div className="bg-surface-1 rounded-2xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-              <IndianRupee className="w-5 h-5 text-emerald-400" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-white">₹{ENROLLMENT_AMOUNT.toLocaleString()}</p>
-          <p className="text-sm text-text-tertiary">Per Enrollment</p>
-        </div>
-
-        <div className="bg-surface-1 rounded-2xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center">
-              <Percent className="w-5 h-5 text-gray-300" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-white">
-            {groups.find(g => g.name === 'rising')?.coach_cost_percent || 50}%
-          </p>
-          <p className="text-sm text-text-tertiary">Base Coach Split</p>
-        </div>
+        <StatCard value={coaches.length} label="Active Coaches" icon={Users} color="gray" />
+        <StatCard value={groups.length} label="Coach Tiers" icon={TrendingUp} color="gray" />
+        <StatCard value={`₹${enrollmentAmount.toLocaleString()}`} label="Per Enrollment" icon={IndianRupee} color="green" />
+        <StatCard value={`${groups.find(g => g.name === 'rising')?.coach_cost_percent || 50}%`} label="Base Coach Split" icon={Percent} color="gray" />
       </div>
 
       {/* ==================== GROUPS SECTION ==================== */}

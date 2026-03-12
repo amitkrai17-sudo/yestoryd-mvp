@@ -12,10 +12,10 @@ import {
   ChevronRight,
   Filter,
   Search,
-  Loader2,
-  ExternalLink,
   X,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 
 interface Ticket {
   id: string;
@@ -256,7 +256,7 @@ export default function SupportTicketsTab({ adminEmail }: SupportTicketsTabProps
 
         {loading ? (
           <div className="p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
+            <Spinner size="lg" color="muted" className="mx-auto mb-2" />
             <p className="text-gray-500">Loading tickets...</p>
           </div>
         ) : filteredTickets.length === 0 ? (
@@ -363,15 +363,13 @@ export default function SupportTicketsTab({ adminEmail }: SupportTicketsTabProps
                 >
                   <Mail className="w-4 h-4 text-gray-600" />
                 </a>
-                <a
-                  href={`https://wa.me/${selectedTicket.user_email.includes('@') ? '' : selectedTicket.user_email}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 bg-green-100 border border-green-200 rounded-lg hover:bg-green-50 transition-colors"
-                  title="WhatsApp"
-                >
-                  <ExternalLink className="w-4 h-4 text-green-600" />
-                </a>
+                {!selectedTicket.user_email.includes('@') && (
+                  <WhatsAppButton
+                    phone={selectedTicket.user_email}
+                    variant="icon-only"
+                    size="sm"
+                  />
+                )}
               </div>
 
               {/* Details */}

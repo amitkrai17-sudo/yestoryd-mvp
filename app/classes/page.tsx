@@ -13,7 +13,7 @@ const supabase = createAdminClient();
 // Default metadata
 const DEFAULT_META = {
   title: 'Group Classes for Kids | Kahani Times, Read Aloud & More | Yestoryd',
-  description: 'Join fun, interactive group reading classes for children aged 4-12. Kahani Times storytelling, Read Aloud competitions, Phonics sessions, and Book Clubs. Starting at just ₹199!',
+  description: 'Join fun, interactive group reading classes for children aged 4-12. Kahani Times storytelling, Read Aloud competitions, Phonics sessions, and Book Clubs.',
   keywords: 'kids reading classes, children storytelling, phonics classes india, read aloud competition, book club for kids, kahani times, yestoryd group classes',
 };
 

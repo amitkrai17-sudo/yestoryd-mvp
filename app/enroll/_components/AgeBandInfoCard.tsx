@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, CalendarDays, Layers, Loader2 } from 'lucide-react';
+import { Clock, CalendarDays, Layers } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { AgeBandBadge, getAgeBandFromAge } from '@/components/AgeBandBadge';
 
 interface AgeBandConfig {
@@ -51,7 +52,7 @@ export function AgeBandInfoCard({ childAge }: AgeBandInfoCardProps) {
   if (loading) {
     return (
       <div className="border border-border rounded-xl p-3 bg-surface-2 flex items-center justify-center py-4">
-        <Loader2 className="w-4 h-4 animate-spin text-text-tertiary" />
+        <Spinner size="sm" color="muted" />
       </div>
     );
   }

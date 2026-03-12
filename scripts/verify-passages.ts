@@ -31,10 +31,10 @@ async function verify() {
 
   const renaissance = passages.find((p: any) => p.title === 'The Renaissance');
   if (renaissance) {
-    console.log('\n✅ Renaissance passage FOUND!');
+    console.log('\n[OK] Renaissance passage FOUND!');
     console.log(`Text: "${renaissance.text.substring(0, 100)}..."`);
   } else {
-    console.log('\n❌ Renaissance passage NOT found');
+    console.log('\n[FAIL] Renaissance passage NOT found');
   }
 }
 

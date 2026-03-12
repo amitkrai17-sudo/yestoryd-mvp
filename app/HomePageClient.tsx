@@ -264,20 +264,47 @@ function buildDurationFaqAnswer(pricingDisplayData?: any): string {
     );
     return `Session length depends on your child's age band: ${parts.join(', ')}. This is the optimal duration for each age group with engagement breaks built in. Sessions are scheduled at times convenient for you — weekdays or weekends.`;
   }
-  return `Session length depends on your child's age band: 30 minutes for ages 4-6, 45 minutes for ages 7-9, and 60 minutes for ages 10-12. This is the optimal duration for each age group with engagement breaks built in. Sessions are scheduled at times convenient for you — weekdays or weekends.`;
+  // Fallback only if pricingDisplayData unavailable — values match age_band_config defaults
+  return 'Session length depends on your child\'s age band. This is the optimal duration for each age group with engagement breaks built in. Sessions are scheduled at times convenient for you — weekdays or weekends.';
+}
+
+// Build session count FAQ answer from pricing display data (age bands)
+function buildSessionCountFaqAnswer(pricingDisplayData?: any): string {
+  const ageBands = pricingDisplayData?.ageBands;
+  if (ageBands?.length > 0) {
+    const seasonWeeks = ageBands[0]?.tiers?.find((t: any) => t.slug === 'full')?.durationWeeks || 12;
+    const bandSummaries = ageBands.map((b: any) => {
+      const fullTier = b.tiers?.find((t: any) => t.slug === 'full');
+      return `${b.displayName} (${b.ageMin}-${b.ageMax}): ${fullTier?.sessionsCoaching || '?'} sessions × ${b.sessionDurationMinutes} min`;
+    });
+    return `Your full program runs for ${seasonWeeks} weeks. The number and length of sessions are tailored to your child's age band: ${bandSummaries.join('; ')}. Every child receives personalized 1:1 coaching totalling about 12 hours.`;
+  }
+  return "Your program sessions are tailored to your child's age band. The number and length of sessions vary — younger children get shorter, more frequent sessions while older children get longer, focused sessions. Every child receives personalized 1:1 coaching totalling about 12 hours.";
+}
+
+// Build age group FAQ answer from pricing display data
+function buildAgeGroupFaqAnswer(pricingDisplayData?: any): string {
+  const ageBands = pricingDisplayData?.ageBands;
+  if (ageBands?.length > 0) {
+    const minAge = Math.min(...ageBands.map((b: any) => b.ageMin));
+    const maxAge = Math.max(...ageBands.map((b: any) => b.ageMax));
+    const bandNames = ageBands.map((b: any) => `${b.displayName} (${b.ageMin}-${b.ageMax})`).join(', ');
+    return `Yestoryd is designed for children aged ${minAge}-${maxAge} years, across ${ageBands.length} age bands: ${bandNames}. Our AI adapts the assessment based on your child's age, and coaches personalize sessions accordingly.`;
+  }
+  return "Yestoryd is designed for children across multiple age bands. Our AI adapts the assessment based on your child's age, and coaches personalize sessions accordingly.";
 }
 
 // Default FAQ data - function to inject session durations
 const getDefaultFaqData = (durations: { coaching: number; checkin: number }, pricingDisplayData?: any) => [
   { question: "What device do I need for the assessment?", answer: "Any smartphone, tablet, or laptop with a microphone works! The assessment runs in your browser — no app download needed. 80% of our parents use their phone." },
-  { question: "How many sessions does my child get?", answer: "Your program runs for 12 weeks. The number and length of sessions are tailored to your child's age — younger children (4-6) get shorter, more frequent sessions while older children (10-12) get longer, focused sessions. Every child receives personalized 1:1 coaching totalling about 12 hours." },
+  { question: "How many sessions does my child get?", answer: buildSessionCountFaqAnswer(pricingDisplayData) },
   { question: "How long is each coaching session?", answer: buildDurationFaqAnswer(pricingDisplayData) },
   { question: "Is this a subscription? Will I be charged monthly?", answer: "No subscriptions! It's a one-time payment. Choose from Starter Pack, Continuation, or Full Program based on your needs. No hidden fees, no recurring charges." },
   { question: "What if my child doesn't improve?", answer: "We offer a 100% satisfaction guarantee. If you don't see improvement after completing the program, we'll either continue working with you at no extra cost or provide a full refund." },
   { question: "How will I know my child is improving?", answer: "You'll receive automated Progress Pulse reports after every few sessions showing your child's specific improvements, strengths, and home activities to try. Plus, you can request a coach call once a month for a personal update." },
   { question: "Is the AI safe for my child?", answer: "Absolutely. Unlike ChatGPT which guesses, rAI (our Reading Intelligence) only references our expert-verified knowledge base built on 7+ years of phonics expertise." },
   { question: "Are the coaches certified?", answer: "Our coaches are experienced educators with diverse specializations — including Jolly Phonics certification, ADHD expertise, and child development training. Above all, they excel at connecting with and managing children effectively." },
-  { question: "What age group is this for?", answer: "Yestoryd is designed for children aged 4-12 years, across three age bands: Foundation (4-6), Building (7-9), and Mastery (10-12). Our AI adapts the assessment based on your child's age, and coaches personalize sessions accordingly." }
+  { question: "What age group is this for?", answer: buildAgeGroupFaqAnswer(pricingDisplayData) }
 ];
 
 // Default testimonials
@@ -453,9 +480,9 @@ export default function HomePageClient({
         badge={c.rai_section_badge || 'Meet rAI'}
         title={c.rai_section_title || 'Why rAI is Different (and Safer)'}
         subtitle={c.rai_section_subtitle || 'our AI that never guesses'}
-        genericAi={{ label: c.rai_generic_ai_label || '❌ Generic AI', name: c.rai_generic_ai_name || 'ChatGPT, etc.', type: c.rai_generic_ai_type || 'General Purpose AI', description: c.rai_generic_ai_description || 'based on the internet. No reading expertise. No understanding of phonics rules. May give incorrect or generic advice.' }}
-        safeAi={{ label: c.rai_safe_ai_label || '✓ Safe, Expert-Verified AI', name: c.rai_safe_ai_name || 'rAI Knowledge Engine', type: c.rai_safe_ai_type || 'Expert-Verified AI', description: c.rai_safe_ai_description || "Built on 7+ years of Rucha's phonics expertise. Never guesses — always references proven methods." }}
-        processSteps={c.rai_process_steps || ['Child Error', 'Check Expert DB', 'Perfect Fix ✓']}
+        genericAi={{ label: c.rai_generic_ai_label || 'Generic AI', name: c.rai_generic_ai_name || 'ChatGPT, etc.', type: c.rai_generic_ai_type || 'General Purpose AI', description: c.rai_generic_ai_description || 'based on the internet. No reading expertise. No understanding of phonics rules. May give incorrect or generic advice.' }}
+        safeAi={{ label: c.rai_safe_ai_label || 'Safe, Expert-Verified AI', name: c.rai_safe_ai_name || 'rAI Knowledge Engine', type: c.rai_safe_ai_type || 'Expert-Verified AI', description: c.rai_safe_ai_description || "Built on 7+ years of Rucha's phonics expertise. Never guesses — always references proven methods." }}
+        processSteps={c.rai_process_steps || ['Child Error', 'Check Expert DB', 'Perfect Fix']}
         explanation={{ intro: c.rai_explanation_intro || "Most AI makes things up. We couldn't risk that with your child's education.", analogy: c.rai_explanation_analogy || "Imagine rAI as a librarian with a manual written by Rucha.", detail: c.rai_explanation_detail || "When your child makes a mistake, rAI doesn't guess." }}
       />
 

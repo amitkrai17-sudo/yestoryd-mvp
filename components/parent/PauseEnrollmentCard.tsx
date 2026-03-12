@@ -8,9 +8,11 @@
 import { useState, useEffect } from 'react';
 import {
   PauseCircle, PlayCircle, Calendar, Clock, AlertCircle,
-  CheckCircle, ChevronDown, ChevronUp, Loader2, Info,
+  CheckCircle, ChevronDown, ChevronUp, Info,
   GraduationCap, Plane, Heart, HelpCircle, X
 } from 'lucide-react';
+import { DateInput } from '@/components/ui/date-input';
+import { Spinner } from '@/components/ui/spinner';
 
 interface PauseEnrollmentCardProps {
   enrollmentId: string;
@@ -159,7 +161,7 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
     return (
       <div className="bg-white rounded-2xl border border-pink-200 p-6 shadow-sm">
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-6 h-6 animate-spin text-[#7b008b]" />
+          <Spinner className="text-[#7b008b]" />
         </div>
       </div>
     );
@@ -286,7 +288,7 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
                 className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {actionLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner />
                 ) : (
                   <>
                     <PlayCircle className="w-5 h-5" />
@@ -387,31 +389,19 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
 
               {/* Date Selection */}
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={pauseStartDate}
-                    onChange={(e) => setPauseStartDate(e.target.value)}
-                    min={minStartDateStr}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={pauseEndDate}
-                    onChange={(e) => setPauseEndDate(e.target.value)}
-                    min={pauseStartDate || minStartDateStr}
-                    max={maxEndDateStr}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7b008b] focus:border-[#7b008b] text-sm text-gray-900"
-                  />
-                </div>
+                <DateInput
+                  label="Start Date"
+                  value={pauseStartDate}
+                  onChange={setPauseStartDate}
+                  min={minStartDateStr}
+                />
+                <DateInput
+                  label="End Date"
+                  value={pauseEndDate}
+                  onChange={setPauseEndDate}
+                  min={pauseStartDate || minStartDateStr}
+                  max={maxEndDateStr}
+                />
               </div>
 
               {/* Duration Preview */}
@@ -433,7 +423,7 @@ export default function PauseEnrollmentCard({ enrollmentId, childName, onStatusC
                 className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {actionLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner />
                 ) : (
                   <>
                     <PauseCircle className="w-5 h-5" />

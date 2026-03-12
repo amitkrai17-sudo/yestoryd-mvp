@@ -221,12 +221,12 @@ async function checkQuizBadges(childId: string, stats: { quizzesPassed: number; 
   const newBadges: string[] = [];
 
   const badgeChecks = [
-    { condition: stats.quizzesPassed >= 1, name: 'Quiz Starter', icon: '✅', description: 'Passed your first quiz' },
-    { condition: stats.quizzesPassed >= 5, name: 'Quiz Pro', icon: '🎯', description: 'Passed 5 quizzes' },
-    { condition: stats.quizzesPassed >= 10, name: 'Quiz Master', icon: '🏆', description: 'Passed 10 quizzes' },
-    { condition: stats.perfectScores >= 1, name: 'Perfect!', icon: '💎', description: 'Got your first perfect quiz score' },
-    { condition: stats.perfectScores >= 5, name: 'Perfectionist', icon: '🌈', description: 'Got 5 perfect quiz scores' },
-    { condition: stats.perfectScores >= 10, name: 'Flawless', icon: '👑', description: 'Got 10 perfect quiz scores' },
+    { condition: stats.quizzesPassed >= 1, name: 'Quiz Starter', icon: 'CheckCircle', description: 'Passed your first quiz' },
+    { condition: stats.quizzesPassed >= 5, name: 'Quiz Pro', icon: 'Target', description: 'Passed 5 quizzes' },
+    { condition: stats.quizzesPassed >= 10, name: 'Quiz Master', icon: 'Trophy', description: 'Passed 10 quizzes' },
+    { condition: stats.perfectScores >= 1, name: 'Perfect!', icon: 'Gem', description: 'Got your first perfect quiz score' },
+    { condition: stats.perfectScores >= 5, name: 'Perfectionist', icon: 'Sparkles', description: 'Got 5 perfect quiz scores' },
+    { condition: stats.perfectScores >= 10, name: 'Flawless', icon: 'Crown', description: 'Got 10 perfect quiz scores' },
   ];
 
   for (const badge of badgeChecks) {

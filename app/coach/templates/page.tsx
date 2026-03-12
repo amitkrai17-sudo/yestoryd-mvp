@@ -8,11 +8,11 @@ import {
   Send,
   Copy,
   Check,
-  Loader2,
   Users,
   Search,
   ExternalLink,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Template {
   id: string;
@@ -195,7 +195,7 @@ export default function WhatsAppTemplatesPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#00ABFF] animate-spin" />
+        <Spinner size="lg" className="text-[#00ABFF]" />
       </div>
     );
   }

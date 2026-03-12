@@ -8,9 +8,10 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Ticket, Tag, CheckCircle, XCircle, Loader2, 
+  Ticket, Tag, CheckCircle, XCircle,
   Gift, Percent, AlertCircle, Info, Wallet
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface DiscountBreakdown {
   originalAmount: number;
@@ -186,7 +187,7 @@ export default function CouponSection({
                 className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {validating ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Spinner color="white" />
                 ) : (
                   'Apply'
                 )}

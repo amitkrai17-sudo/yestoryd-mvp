@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isValidPhone, normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const supabase = createAdminClient();
 
@@ -136,7 +137,7 @@ async function sendEmailOTP(email: string, otp: string): Promise<boolean> {
           <p style="color: #999; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
         </div>
       `,
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd' },
+      from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
     });
 
     if (result.success) {

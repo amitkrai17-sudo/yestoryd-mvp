@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,32 +28,7 @@ const getReceiver = () => new Receiver({
 
 const payloadSchema = z.object({
   session_id: z.string().uuid(),
-});
-
-async function verifyAuth(request: NextRequest, body: string): Promise<{ isValid: boolean; source: string }> {
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  const signature = request.headers.get('upstash-signature');
-  if (signature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    try {
-      const receiver = getReceiver();
-      const isValid = await receiver.verify({ signature, body });
-      if (isValid) return { isValid: true, source: 'qstash' };
-    } catch (e) {
-      console.error('[group-class-feedback-request] QStash verification failed:', e);
-    }
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('[group-class-feedback-request] Development mode - skipping signature verification');
-    return { isValid: true, source: 'dev_bypass' };
-  }
-
-  return { isValid: false, source: 'none' };
-}
+});
 
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
@@ -60,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.text();
-    const auth = await verifyAuth(request, body);
+    const auth = await verifyCronRequest(request, body);
 
     if (!auth.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

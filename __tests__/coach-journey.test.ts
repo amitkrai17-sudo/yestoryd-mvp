@@ -74,15 +74,11 @@ import { loadCoachConfig } from '@/lib/config/loader';
 
 describe('Coach Settings', () => {
   it('should fetch and parse settings from DB', async () => {
-    const settings = await getCoachSettings();
-    expect(settings.whatsappNumber).toBe('919999999999');
+    const settings = await loadCoachConfig();
     expect(settings.earningsYestorydLead).toBe(3000);
     expect(settings.earningsCoachLead).toBe(4000);
-    expect(settings.adminEmail).toBe('test@yestoryd.com');
-    expect(settings.ruchaEmail).toBe('rucha@test.com');
     expect(settings.interviewDurationMinutes).toBe(25);
     expect(settings.assessmentPassScore).toBe(7);
-    expect(settings.siteBaseUrl).toBe('https://test.yestoryd.com');
     expect(settings.fromEmail).toBe('Test <test@yestoryd.com>');
     expect(settings.referralBonus).toBe(600);
   });
@@ -91,8 +87,8 @@ describe('Coach Settings', () => {
     const { getSettings } = require('@/lib/settings/getSettings');
     (getSettings as jest.Mock).mockClear();
 
-    await getCoachSettings();
-    await getCoachSettings();
+    await loadCoachConfig();
+    await loadCoachConfig();
 
     // Should only have called getSettings once due to cache
     // (first call was in previous test, cached for 5 min)

@@ -6,7 +6,8 @@
 
 'use client';
 
-import { Volume2, Loader2 } from 'lucide-react';
+import { Volume2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { useTTS } from '@/hooks/useTTS';
 
@@ -88,7 +89,7 @@ export function QuestionCard({
             className="flex items-center gap-2 text-gray-400 hover:text-[#00ABFF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner />
             ) : (
               <Volume2 className={`w-5 h-5 ${isPlaying ? 'text-[#00ABFF]' : ''}`} />
             )}

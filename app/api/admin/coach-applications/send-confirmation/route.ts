@@ -4,11 +4,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email/resend-client';
 import { loadAuthConfig, loadEmailConfig } from '@/lib/config/loader';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { requireAdmin } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
-const WHATSAPP_NUMBER = '+91 89762 87997';
+const WHATSAPP_NUMBER = COMPANY_CONFIG.leadBotWhatsAppDisplay;
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: auth.email ? 403 : 401 });
+  }
+
   try {
     const { 
       applicantEmail, 
@@ -64,7 +71,7 @@ export async function POST(request: NextRequest) {
           
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
             <p style="color: #64748b; font-size: 14px; margin: 0;">
-              Questions? Reply to this email or WhatsApp us at <a href="https://wa.me/918976287997" style="color: #22c55e;">${WHATSAPP_NUMBER}</a>
+              Questions? Reply to this email or WhatsApp us at <a href="https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}" style="color: #22c55e;">${WHATSAPP_NUMBER}</a>
             </p>
             <p style="color: #64748b; font-size: 14px; margin-top: 10px;">
               Warm regards,<br/>

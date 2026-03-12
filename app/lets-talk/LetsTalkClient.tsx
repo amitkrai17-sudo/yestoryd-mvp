@@ -24,16 +24,19 @@ import {
   User, 
   Baby, 
   Calendar,
-  Loader2,
   CheckCircle,
   AlertCircle,
   ArrowRight,
   ArrowLeft,
   Sparkles,
   Clock,
-  Video
+  Video,
+  Lock,
+  Sparkle
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import SlotPicker from '@/components/booking/SlotPicker';
+import { formatDateLong, formatTime12 } from '@/lib/utils/date-format';
 
 // ============================================================================
 // TYPES
@@ -186,24 +189,6 @@ export default function LetsTalkClient() {
   // ============================================================================
   // HELPERS
   // ============================================================================
-
-  function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  }
-
-  function formatTime(time: string): string {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  }
 
   // ============================================================================
   // RENDER - STEP INDICATOR
@@ -477,13 +462,13 @@ export default function LetsTalkClient() {
               <div className="flex items-center gap-3">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-white">
-                  {selectedSlot && formatDate(selectedSlot.date)}
+                  {selectedSlot && formatDateLong(selectedSlot.date)}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="w-4 h-4 text-gray-500" />
                 <span className="text-white">
-                  {selectedSlot && `${formatTime(selectedSlot.time)} - ${formatTime(selectedSlot.endTime)}`}
+                  {selectedSlot && `${formatTime12(selectedSlot.time)} - ${formatTime12(selectedSlot.endTime)}`}
                 </span>
               </div>
             </div>
@@ -552,7 +537,7 @@ export default function LetsTalkClient() {
         >
           {loading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner color="white" />
               Booking...
             </>
           ) : (
@@ -584,7 +569,7 @@ export default function LetsTalkClient() {
 
         <div>
           <h2 className="text-2xl font-bold text-white mb-2">
-            Booking Confirmed! 🎉
+            Booking Confirmed!
           </h2>
           <p className="text-gray-400">
             We've sent confirmation details to your email and WhatsApp
@@ -597,10 +582,10 @@ export default function LetsTalkClient() {
             <Sparkles className="w-6 h-6 text-emerald-400" />
             <div>
               <div className="font-medium text-white">
-                {selectedSlot && formatDate(selectedSlot.date)}
+                {selectedSlot && formatDateLong(selectedSlot.date)}
               </div>
               <div className="text-emerald-400">
-                {selectedSlot && `${formatTime(selectedSlot.time)} - ${formatTime(selectedSlot.endTime)} IST`}
+                {selectedSlot && `${formatTime12(selectedSlot.time)} - ${formatTime12(selectedSlot.endTime)} IST`}
               </div>
             </div>
           </div>
@@ -676,9 +661,9 @@ export default function LetsTalkClient() {
         {/* Trust Badges */}
         {step !== 'success' && (
           <div className="mt-6 flex items-center justify-center gap-4 text-gray-500 text-sm">
-            <span>🔒 Secure booking</span>
+            <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> Secure booking</span>
             <span>•</span>
-            <span>✨ Free consultation</span>
+            <span className="flex items-center gap-1"><Sparkle className="w-3 h-3" /> Free consultation</span>
           </div>
         )}
       </div>

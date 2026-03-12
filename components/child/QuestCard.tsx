@@ -5,6 +5,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { BookOpen, Clock, Star } from 'lucide-react';
 
 interface QuestCardProps {
   quest: {
@@ -131,7 +132,7 @@ export default function QuestCard({ quest, onStart, isActive = true }: QuestCard
               ? 'bg-[#FF0099]/10' 
               : 'bg-gray-100'
           }`}>
-            <span className="text-3xl">📚</span>
+            <BookOpen className="w-8 h-8 text-[#FF0099]" />
           </div>
           
           {/* Title & Description */}
@@ -203,10 +204,10 @@ export default function QuestCard({ quest, onStart, isActive = true }: QuestCard
         {/* Meta Info Row */}
         <div className="flex items-center gap-4 mb-4 text-sm text-gray-400">
           <span className="flex items-center gap-1">
-            <span>⏱</span> {estimatedMinutes} min
+            <Clock className="w-4 h-4" /> {estimatedMinutes} min
           </span>
           <span className="flex items-center gap-1">
-            <span>⭐</span> +{xpReward} points
+            <Star className="w-4 h-4" /> +{xpReward} points
           </span>
         </div>
 

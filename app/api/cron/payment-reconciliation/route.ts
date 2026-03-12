@@ -10,7 +10,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import razorpay from '@/lib/razorpay';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
+import { verifyCronRequest } from '@/lib/api/verify-cron';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,27 +35,6 @@ interface OrphanedPayment {
   notes: Record<string, string>;
 }
 
-// --- AUTH ---
-
-function verifyCronAuth(request: NextRequest): { isValid: boolean; source: string } {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-    return { isValid: true, source: 'vercel_cron' };
-  }
-
-  const qstashSignature = request.headers.get('upstash-signature');
-  if (qstashSignature && process.env.QSTASH_CURRENT_SIGNING_KEY) {
-    return { isValid: true, source: 'qstash' };
-  }
-
-  const internalKey = request.headers.get('x-internal-api-key');
-  if (process.env.INTERNAL_API_KEY && internalKey === process.env.INTERNAL_API_KEY) {
-    return { isValid: true, source: 'internal' };
-  }
-
-  return { isValid: false, source: 'none' };
-}
 
 // --- RAZORPAY: Fetch Captured Payments ---
 
@@ -103,8 +84,8 @@ async function sendOrphanAlert(orphans: OrphanedPayment[], requestId: string) {
   const { sendEmail } = require('@/lib/email/resend-client');
 
   const result = await sendEmail({
-    to: 'engage@yestoryd.com',
-    from: { email: 'engage@yestoryd.com', name: 'Yestoryd System' },
+    to: COMPANY_CONFIG.adminEmail,
+    from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd System' },
     subject: `⚠️ ${orphans.length} Orphaned Payment${orphans.length > 1 ? 's' : ''} Detected — ₹${totalAmount.toLocaleString('en-IN')}`,
     html: `
           <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:20px;">
@@ -156,7 +137,7 @@ async function sendOrphanAlert(orphans: OrphanedPayment[], requestId: string) {
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
 
-  const auth = verifyCronAuth(request);
+  const auth = await verifyCronRequest(request);
   if (!auth.isValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -243,7 +224,7 @@ export async function GET(request: NextRequest) {
     if (orphans.length > 0) {
       for (const orphan of orphans) {
         await supabase.from('activity_log').insert({
-          user_email: 'system@yestoryd.com',
+          user_email: COMPANY_CONFIG.supportEmail,
           user_type: 'system',
           action: 'orphaned_payment_detected',
           metadata: {
@@ -288,7 +269,7 @@ export async function GET(request: NextRequest) {
 
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'system@yestoryd.com',
+        user_email: COMPANY_CONFIG.supportEmail,
         user_type: 'system',
         action: 'payment_reconciliation_error',
         metadata: { request_id: requestId, error: String(error) },
@@ -312,7 +293,7 @@ async function logExecution(
   summary: { checked: number; orphans: number; total_orphan_amount?: number },
 ) {
   await supabase.from('activity_log').insert({
-    user_email: 'system@yestoryd.com',
+    user_email: COMPANY_CONFIG.supportEmail,
     user_type: 'system',
     action: 'payment_reconciliation_completed',
     metadata: {

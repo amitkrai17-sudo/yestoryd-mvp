@@ -18,6 +18,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -180,7 +181,7 @@ function buildEmailHtml(data: {
     if (skillRows) {
       skillsHtml = `
         <div style="background: white; border-radius: 16px; padding: 20px; margin: 16px 0; border: 1px solid #e5e7eb;">
-          <p style="color: ${COLORS.purple}; font-size: 14px; font-weight: bold; margin: 0 0 16px;">📊 Skills Breakdown</p>
+          <p style="color: ${COLORS.purple}; font-size: 14px; font-weight: bold; margin: 0 0 16px;">Skills Breakdown</p>
           <table style="width: 100%;" cellpadding="0" cellspacing="0">${skillRows}</table>
         </div>
       `;
@@ -197,7 +198,7 @@ function buildEmailHtml(data: {
     if (focus || struggling.length > 0 || strong.length > 0) {
       phonicsHtml = `
         <div style="background: white; border-radius: 16px; padding: 20px; margin: 16px 0; border: 1px solid #e5e7eb;">
-          <p style="color: ${COLORS.purple}; font-size: 14px; font-weight: bold; margin: 0 0 12px;">🔤 Phonics Analysis</p>
+          <p style="color: ${COLORS.purple}; font-size: 14px; font-weight: bold; margin: 0 0 12px;">Phonics Analysis</p>
           ${focus ? `<p style="color: ${COLORS.darkGray}; font-size: 13px; margin: 0 0 12px;"><strong style="color: ${COLORS.pink};">Focus:</strong> ${focus}</p>` : ''}
           ${struggling.length > 0 ? `
             <p style="color: ${COLORS.mediumGray}; font-size: 11px; text-transform: uppercase; margin: 0 0 6px;">Needs Practice</p>
@@ -264,7 +265,7 @@ function buildEmailHtml(data: {
 
       errorsHtml = `
         <div style="background: white; border-radius: 16px; padding: 20px; margin: 16px 0; border: 1px solid #e5e7eb;">
-          <p style="color: ${COLORS.orange}; font-size: 14px; font-weight: bold; margin: 0 0 12px;">📝 Reading Errors (${totalErrors} found)</p>
+          <p style="color: ${COLORS.orange}; font-size: 14px; font-weight: bold; margin: 0 0 12px;">Reading Errors (${totalErrors} found)</p>
           ${errorItems}
         </div>
       `;
@@ -280,12 +281,12 @@ function buildEmailHtml(data: {
     if (words.length > 0 || activity) {
       practiceHtml = `
         <div style="background: white; border-radius: 16px; padding: 20px; margin: 16px 0; border: 1px solid #e5e7eb;">
-          <p style="color: ${COLORS.purple}; font-size: 14px; font-weight: bold; margin: 0 0 12px;">📝 Practice at Home</p>
+          <p style="color: ${COLORS.purple}; font-size: 14px; font-weight: bold; margin: 0 0 12px;">Practice at Home</p>
           ${words.length > 0 ? `
             <p style="color: ${COLORS.mediumGray}; font-size: 11px; text-transform: uppercase; margin: 0 0 6px;">Daily Words</p>
             <div style="margin-bottom: 12px;">${words.map((w: string) => `<span style="display: inline-block; background: #eff6ff; color: ${COLORS.blue}; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin: 3px;">${w}</span>`).join('')}</div>
           ` : ''}
-          ${activity ? `<p style="color: ${COLORS.darkGray}; font-size: 13px; margin: 0;"><strong style="color: ${COLORS.green};">🎯 Activity:</strong> ${activity}</p>` : ''}
+          ${activity ? `<p style="color: ${COLORS.darkGray}; font-size: 13px; margin: 0;"><strong style="color: ${COLORS.green};">Activity:</strong> ${activity}</p>` : ''}
         </div>
       `;
     }
@@ -316,7 +317,7 @@ function buildEmailHtml(data: {
       
       <!-- Star + Headline -->
       <div style="text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 40px; margin-bottom: 8px;">⭐</div>
+        <div style="font-size: 18px; font-weight: bold; color: #7B008B; margin-bottom: 8px;">READING REPORT</div>
         <h2 style="color: ${COLORS.darkGray}; font-size: 22px; margin: 0 0 4px; text-transform: capitalize;">${headline}</h2>
         <p style="color: ${COLORS.mediumGray}; font-size: 14px; margin: 0;">${subheadline}</p>
       </div>
@@ -343,7 +344,7 @@ function buildEmailHtml(data: {
         
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9d5ff;">
           <p style="color: ${COLORS.mediumGray}; font-size: 13px; margin: 0;">
-            <span style="color: ${COLORS.yellow}; font-size: 14px;">💡</span> ${insight}
+            <span style="color: ${COLORS.yellow}; font-size: 14px;">Insight:</span> ${insight}
           </p>
         </div>
       </div>
@@ -369,7 +370,7 @@ function buildEmailHtml(data: {
       ${feedback ? `
         <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; border-left: 4px solid ${COLORS.pink}; border: 1px solid #fce7f3; border-left: 4px solid ${COLORS.pink};">
           <p style="color: ${COLORS.pink}; font-size: 14px; font-weight: bold; margin: 0 0 8px;">
-            <span style="margin-right: 6px;">🤖</span> rAI Analysis
+            rAI Analysis
           </p>
           <p style="color: ${COLORS.darkGray}; font-size: 13px; line-height: 1.6; margin: 0;">${feedback}</p>
         </div>
@@ -377,7 +378,7 @@ function buildEmailHtml(data: {
       
       <div style="background: linear-gradient(135deg, #fef9c3, #fef08a); border-radius: 12px; padding: 14px; margin-bottom: 16px; text-align: center;">
         <p style="color: #854d0e; font-size: 14px; font-weight: 600; margin: 0;">
-          ✨ Keep reading daily, ${childName}! Every page makes you stronger.
+          Keep reading daily, ${childName}! Every page makes you stronger.
         </p>
       </div>
       
@@ -387,11 +388,11 @@ function buildEmailHtml(data: {
       ${practiceHtml}
       
       <p style="text-align: center; color: ${COLORS.mediumGray}; font-size: 13px; margin: 16px 0;">
-        ❤️ Join 100+ families already improving
+        Join 100+ families already improving
       </p>
       
       <a href="https://yestoryd.com/enroll?source=email${childIdParam}${childNameParam}${goalsParam}" style="display: block; background: ${COLORS.pink}; color: white; padding: 16px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 16px; text-align: center; margin-bottom: 12px;">
-        🚀 Boost ${childName}'s Reading
+        Boost ${childName}'s Reading
       </a>
 
       <p style="text-align: center; color: ${COLORS.mediumGray}; font-size: 12px; margin: 0 0 16px;">
@@ -399,7 +400,7 @@ function buildEmailHtml(data: {
       </p>
 
       <a href="https://yestoryd.com/lets-talk?source=email${childIdParam}${childNameParam}${goalsParam}" style="display: block; background: white; color: ${COLORS.darkGray}; padding: 14px; border-radius: 30px; text-decoration: none; font-weight: 600; font-size: 14px; text-align: center; border: 1px solid #e5e7eb;">
-        📅 Questions? Talk to Coach
+        Questions? Talk to Coach
       </a>
       
       <p style="text-align: center; color: ${COLORS.mediumGray}; font-size: 11px; margin: 20px 0 0;">
@@ -553,9 +554,9 @@ export async function POST(request: NextRequest) {
     // 8. Send email
     await sendEmail({
       to: email,
-      subject: `⭐ ${childName}'s Reading Assessment Report - Score: ${finalScore}/10`,
+      subject: `${childName}'s Reading Assessment Report - Score: ${finalScore}/10`,
       html: emailHtml,
-      from: { email: 'engage@yestoryd.com', name: 'Yestoryd - Reading Coach' },
+      from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd - Reading Coach' },
     });
 
     console.log(`[Certificate] Email sent to ${email} for child ${childId || 'unknown'}`);

@@ -22,6 +22,7 @@ import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -259,7 +260,7 @@ export async function POST(request: NextRequest) {
     // 11. Audit log
     try {
       await supabase.from('activity_log').insert({
-        user_email: 'engage@yestoryd.com',
+        user_email: COMPANY_CONFIG.supportEmail,
       user_type: 'system',
         action: 'goals_capture_job_executed',
         metadata: {

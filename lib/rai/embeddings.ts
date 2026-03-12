@@ -2,23 +2,11 @@
 // rAI v2.0 - Embedding generation utilities
 // SINGLE SOURCE OF TRUTH for all embedding generation across the platform
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getGenAI } from '@/lib/gemini/client';
 
 export const EMBEDDING_MODEL = 'gemini-embedding-001';
 export const EMBEDDING_DIMENSION = 768; // gemini-embedding-001 supports outputDimensionality
 
-// Lazy initialization — avoids empty API key at module load time in serverless
-let _genAI: GoogleGenerativeAI | null = null;
-function getGenAI(): GoogleGenerativeAI {
-  if (!_genAI) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is not set');
-    }
-    _genAI = new GoogleGenerativeAI(apiKey);
-  }
-  return _genAI;
-}
 
 /**
  * Generate embedding vector for text using Google's gemini-embedding-001

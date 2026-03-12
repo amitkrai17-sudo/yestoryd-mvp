@@ -10,7 +10,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Loader2, CheckCircle2, AlertCircle, Zap, Mic, MicOff } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Zap, Mic, MicOff } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { computeIntelligenceScore, DEFAULT_WEIGHTS } from '@/lib/intelligence/score';
 import type { SignalInputs } from '@/lib/intelligence/score';
@@ -392,7 +393,7 @@ export default function GroupCaptureForm({ sessionId, participants, blueprintSki
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Skills Observed</p>
                     {loadingSkills ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                      <Spinner size="sm" color="muted" />
                     ) : (
                       <div className="space-y-2">
                         {modules.map(mod => (
@@ -528,7 +529,7 @@ export default function GroupCaptureForm({ sessionId, participants, blueprintSki
         >
           {submitting ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
               Submitting...
             </>
           ) : (

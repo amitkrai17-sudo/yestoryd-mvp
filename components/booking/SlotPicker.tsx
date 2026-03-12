@@ -18,16 +18,27 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  ChevronRight, 
+import {
+  Calendar,
+  Clock,
+  ChevronRight,
   ChevronLeft,
-  Loader2,
   CheckCircle,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Sunrise,
+  Sun,
+  CloudSun,
+  Sunset,
+  Moon,
 } from 'lucide-react';
+import { formatDateRelative, formatTime12 } from '@/lib/utils/date-format';
+import { Spinner } from '@/components/ui/spinner';
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
+
+const BUCKET_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Sunrise, Sun, CloudSun, Sunset, Moon,
+};
 
 // ============================================================================
 // TYPES
@@ -45,7 +56,7 @@ interface TimeSlot {
 interface TimeBucket {
   name: string;
   displayName: string;
-  emoji: string;
+  icon: string;
   startHour: number;
   endHour: number;
   totalSlots: number;
@@ -128,13 +139,24 @@ export default function SlotPicker({
   // HANDLERS
   // ============================================================================
 
+  function getTodayISTString(): string {
+    const now = new Date();
+    const istMs = now.getTime() + (5.5 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000);
+    const ist = new Date(istMs);
+    const y = ist.getFullYear();
+    const m = String(ist.getMonth() + 1).padStart(2, '0');
+    const d = String(ist.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   function handleBucketSelect(bucket: TimeBucket) {
     if (bucket.totalSlots === 0) return;
-    
+
     setSelectedBucket(bucket);
-    
-    // Find first date with available slots in this bucket
-    const dates = Object.keys(slotsByDate).sort();
+
+    // Find first future date with available slots in this bucket
+    const todayIST = getTodayISTString();
+    const dates = Object.keys(slotsByDate).filter(d => d >= todayIST).sort();
     for (const date of dates) {
       const hasSlots = slotsByDate[date]?.some(s => s.bucketName === bucket.name);
       if (hasSlots) {
@@ -142,7 +164,7 @@ export default function SlotPicker({
         break;
       }
     }
-    
+
     setStep('slot');
   }
 
@@ -159,39 +181,11 @@ export default function SlotPicker({
   // HELPERS
   // ============================================================================
 
-  function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (dateStr === today.toISOString().split('T')[0]) {
-      return 'Today';
-    }
-    if (dateStr === tomorrow.toISOString().split('T')[0]) {
-      return 'Tomorrow';
-    }
-
-    return date.toLocaleDateString('en-IN', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-  }
-
-  function formatTime(time: string): string {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  }
-
   function getAvailableDates(): string[] {
     if (!selectedBucket) return [];
-    
+    const todayIST = getTodayISTString();
     return Object.keys(slotsByDate)
-      .filter(date => slotsByDate[date]?.some(s => s.bucketName === selectedBucket.name))
+      .filter(date => date >= todayIST && slotsByDate[date]?.some(s => s.bucketName === selectedBucket.name))
       .sort();
   }
 
@@ -214,7 +208,7 @@ export default function SlotPicker({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-8 min-h-[300px]">
-        <Loader2 className="w-10 h-10 animate-spin text-[#00ABFF] mb-4" />
+        <Spinner size="xl" className="text-[#00ABFF] mb-4" />
         <p className="text-gray-400">Finding available times...</p>
       </div>
     );
@@ -231,7 +225,7 @@ export default function SlotPicker({
         <p className="text-red-400 text-center mb-4">{error}</p>
         <button
           onClick={fetchSlots}
-          className="px-4 py-2 bg-[#00ABFF] hover:bg-[#0095e0] text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-[#00ABFF] hover:bg-[#0095e0] text-white rounded-xl transition-colors"
         >
           Try Again
         </button>
@@ -251,14 +245,9 @@ export default function SlotPicker({
         <p className="text-gray-400 mb-4">
           We're fully booked for the next 2 weeks. Please check back later or contact us directly.
         </p>
-        <a
-          href="https://wa.me/919876543210"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-        >
-          Contact on WhatsApp
-        </a>
+        <WhatsAppButton
+          label="Contact on WhatsApp"
+        />
       </div>
     );
   }
@@ -307,8 +296,8 @@ export default function SlotPicker({
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {/* Emoji */}
-                    <span className="text-2xl">{bucket.emoji}</span>
+                    {/* Icon */}
+                    {(() => { const Icon = BUCKET_ICONS[bucket.icon] || Clock; return <Icon className="w-6 h-6 text-[#00ABFF]" />; })()}
                     
                     {/* Details */}
                     <div>
@@ -382,13 +371,13 @@ export default function SlotPicker({
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={handleBack}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-2 hover:bg-gray-700 rounded-xl transition-colors"
         >
           <ChevronLeft className="w-5 h-5 text-gray-400" />
         </button>
         <div>
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <span>{selectedBucket?.emoji}</span>
+            {(() => { const Icon = selectedBucket?.icon ? (BUCKET_ICONS[selectedBucket.icon] || Clock) : Clock; return <Icon className="w-5 h-5 text-[#00ABFF]" />; })()}
             {selectedBucket?.displayName}
           </h3>
           <p className="text-gray-400 text-sm">
@@ -407,13 +396,13 @@ export default function SlotPicker({
             <button
               key={date}
               onClick={() => setSelectedDate(date)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg border transition-colors snap-start ${
+              className={`flex-shrink-0 px-4 py-2 rounded-xl border transition-colors snap-start ${
                 selectedDate === date
                   ? 'bg-[#00ABFF] border-[#00ABFF] text-white'
                   : 'bg-[#1a1a24] border-gray-700 text-gray-300 hover:border-gray-600'
               }`}
             >
-              <div className="font-medium">{formatDate(date)}</div>
+              <div className="font-medium">{formatDateRelative(date)}</div>
               <div className="text-xs opacity-75">{slotsCount} slots</div>
             </button>
           );
@@ -429,7 +418,7 @@ export default function SlotPicker({
             <button
               key={slot.datetime}
               onClick={() => handleSlotSelect(slot)}
-              className={`p-3 rounded-lg border transition-all ${
+              className={`p-3 rounded-xl border transition-all ${
                 isSelected
                   ? 'bg-[#00ABFF] border-[#00ABFF] text-white'
                   : 'bg-[#1a1a24] border-gray-700 text-white hover:border-[#00ABFF] hover:bg-[#1a1a24]/80'
@@ -437,14 +426,14 @@ export default function SlotPicker({
             >
               <div className="flex items-center justify-between">
                 <div className="font-medium">
-                  {formatTime(slot.time)}
+                  {formatTime12(slot.time)}
                 </div>
                 {isSelected && (
                   <CheckCircle className="w-5 h-5" />
                 )}
               </div>
               <div className="text-xs opacity-75 mt-1">
-                to {formatTime(slot.endTime)}
+                to {formatTime12(slot.endTime)}
               </div>
             </button>
           );
@@ -465,7 +454,7 @@ export default function SlotPicker({
             <CheckCircle className="w-6 h-6 text-emerald-400" />
             <div>
               <div className="font-medium text-white">
-                {formatDate(selectedSlot.date)} at {formatTime(selectedSlot.time)}
+                {formatDateRelative(selectedSlot.date)} at {formatTime12(selectedSlot.time)}
               </div>
               <div className="text-sm text-emerald-400">
                 {durationMinutes}-minute {sessionType} session

@@ -19,9 +19,10 @@
 
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import { getServiceSupabase } from '@/lib/api-auth';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Admin phone - from env or fallback
-const ADMIN_PHONE = process.env.ADMIN_WHATSAPP_PHONE || '+919687606177';
+const ADMIN_PHONE = COMPANY_CONFIG.adminWhatsApp;
 
 // ============================================================
 // TYPES

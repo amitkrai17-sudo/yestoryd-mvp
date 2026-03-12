@@ -25,6 +25,11 @@ import {
   Calendar, Clock, ChevronLeft, ChevronRight,
   Check, X, Sun, Sunrise, Sunset, Moon
 } from 'lucide-react';
+import {
+  formatTime12 as _formatTime12,
+  formatDateRelative as _formatDateRelative,
+  formatDateLong as _formatDateLong,
+} from '@/lib/utils/date-format';
 
 // ============================================================================
 // SHARED CONSTANTS
@@ -41,10 +46,10 @@ export const DAYS_OF_WEEK = [
 ] as const;
 
 export const TIME_BUCKETS = [
-  { name: 'early_morning', label: 'Early Morning', emoji: '🌅', startHour: 6, endHour: 9 },
-  { name: 'morning', label: 'Morning', emoji: '☀️', startHour: 9, endHour: 12 },
-  { name: 'afternoon', label: 'Afternoon', emoji: '🌤️', startHour: 12, endHour: 17 },
-  { name: 'evening', label: 'Evening', emoji: '🌆', startHour: 17, endHour: 21 },
+  { name: 'early_morning', label: 'Early Morning', icon: 'Sunrise' as const, startHour: 6, endHour: 9 },
+  { name: 'morning', label: 'Morning', icon: 'Sun' as const, startHour: 9, endHour: 12 },
+  { name: 'afternoon', label: 'Afternoon', icon: 'Sun' as const, startHour: 12, endHour: 17 },
+  { name: 'evening', label: 'Evening', icon: 'Sunset' as const, startHour: 17, endHour: 21 },
 ] as const;
 
 export const TIME_OPTIONS = [
@@ -99,43 +104,10 @@ const COLORS = {
 // SHARED UTILITIES
 // ============================================================================
 
-export function formatTime12(timeStr: string): string {
-  const [hours, minutes] = timeStr.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
-}
-
-export function formatDateShort(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const dateOnly = new Date(dateStr + 'T00:00:00');
-  dateOnly.setHours(0, 0, 0, 0);
-
-  if (dateOnly.getTime() === today.getTime()) return 'Today';
-  if (dateOnly.getTime() === tomorrow.getTime()) return 'Tomorrow';
-
-  return date.toLocaleDateString('en-IN', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
-}
-
-export function formatDateLong(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
+// Delegate to shared date-format module, re-export for backward compat
+export const formatTime12 = _formatTime12;
+export const formatDateShort = _formatDateRelative;
+export const formatDateLong = (dateStr: string) => _formatDateLong(dateStr);
 
 export function isPastDate(dateStr: string): boolean {
   const date = new Date(dateStr);

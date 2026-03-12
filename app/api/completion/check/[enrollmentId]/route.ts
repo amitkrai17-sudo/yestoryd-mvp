@@ -73,7 +73,7 @@ export async function GET(
     // V3: completion based on coaching sessions vs enrollment.total_sessions
     const pricingConfig = await getPricingConfig();
     const bandSessions = pricingConfig.ageBands.find(b => b.id === ((enrollment as any).age_band || 'building'))?.sessionsPerSeason;
-    const totalExpected = enrollment.total_sessions || bandSessions || 9;
+    const totalExpected = enrollment.total_sessions || bandSessions || 0;
     const isEligible = coachingCompleted >= totalExpected;
 
     return NextResponse.json({

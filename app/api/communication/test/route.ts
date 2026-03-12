@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sendCommunication } from '@/lib/communication';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +12,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     const testType = body.type || 'email'; // 'email', 'whatsapp', 'both'
-    const testPhone = body.phone || '918976287997';
-    const testEmail = body.email || 'engage@yestoryd.com';
+    const testPhone = body.phone || COMPANY_CONFIG.aiSensyWhatsApp;
+    const testEmail = body.email || COMPANY_CONFIG.supportEmail;
 
     console.log(`[Test] Running ${testType} test...`);
 
@@ -43,8 +44,8 @@ export async function POST(request: NextRequest) {
       testEmail,
       results: result.results,
       message: result.success 
-        ? `✅ Test ${testType} sent successfully!` 
-        : `❌ Test failed. Check results for details.`,
+        ? `[OK] Test ${testType} sent successfully!`
+        : `[FAIL] Test failed. Check results for details.`,
     });
 
   } catch (error) {
@@ -64,8 +65,8 @@ export async function GET() {
       method: 'POST',
       body: {
         type: 'email | whatsapp | both (default: email)',
-        phone: 'Phone number with country code (default: 918976287997)',
-        email: 'Email address (default: engage@yestoryd.com)',
+        phone: `Phone number with country code (default: ${COMPANY_CONFIG.aiSensyWhatsApp})`,
+        email: `Email address (default: ${COMPANY_CONFIG.supportEmail})`,
       },
     },
     examples: [
@@ -79,7 +80,7 @@ export async function GET() {
       },
       {
         description: 'Test both channels',
-        body: { type: 'both', phone: '918976287997', email: 'engage@yestoryd.com' },
+        body: { type: 'both', phone: COMPANY_CONFIG.aiSensyWhatsApp, email: COMPANY_CONFIG.supportEmail },
       },
     ],
   });

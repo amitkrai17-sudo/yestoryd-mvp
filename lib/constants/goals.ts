@@ -5,11 +5,12 @@ export interface LearningGoal {
   id: string;
   label: string;
   shortLabel: string;
-  emoji: string; // Keep for backward compatibility (WhatsApp messages)
-  icon: string;  // Lucide icon name for UI display
+  icon: string;
   description: string;
   minAge: number;
   maxAge: number;
+  /** Maps to skill_categories.slug — canonical taxonomy link */
+  categorySlug: string;
 }
 
 export const LEARNING_GOALS: Record<string, LearningGoal> = {
@@ -17,71 +18,71 @@ export const LEARNING_GOALS: Record<string, LearningGoal> = {
     id: 'reading',
     label: 'Reading & Phonics',
     shortLabel: 'Reading',
-    emoji: '📖',
     icon: 'BookOpen',
     description: 'Decoding, fluency, phonemic awareness',
     minAge: 4,
     maxAge: 12,
+    categorySlug: 'phonics_letter_sounds',
   },
   grammar: {
     id: 'grammar',
     label: 'Grammar & Sentences',
     shortLabel: 'Grammar',
-    emoji: '✏️',
-    icon: 'PenTool',
+    icon: 'Pencil',
     description: 'Sentence structure, tenses, parts of speech',
     minAge: 4,
     maxAge: 12,
+    categorySlug: 'grammar_syntax',
   },
   comprehension: {
     id: 'comprehension',
     label: 'Reading Comprehension',
     shortLabel: 'Comprehension',
-    emoji: '🧠',
     icon: 'Brain',
     description: 'Understanding, inference, analysis',
     minAge: 4,
     maxAge: 12,
+    categorySlug: 'reading_comprehension',
   },
   creative_writing: {
     id: 'creative_writing',
     label: 'Creative Writing',
     shortLabel: 'Writing',
-    emoji: '🎨',
     icon: 'Palette',
     description: 'Storytelling, essays, expression',
     minAge: 4,
     maxAge: 12,
+    categorySlug: 'creative_writing',
   },
   olympiad: {
     id: 'olympiad',
     label: 'Olympiad Prep',
     shortLabel: 'Olympiad',
-    emoji: '🏅',
-    icon: 'Medal',
+    icon: 'Award',
     description: 'English Olympiad, Spell Bee preparation',
     minAge: 4,
     maxAge: 12,
+    categorySlug: 'olympiad_prep',
   },
   competition_prep: {
     id: 'competition_prep',
     label: 'Competition Prep',
     shortLabel: 'Competitions',
-    emoji: '🏆',
     icon: 'Trophy',
     description: 'Spell Bee, quiz competitions',
     minAge: 4,
     maxAge: 12,
+    categorySlug: 'competition_prep',
   },
   speaking: {
     id: 'speaking',
     label: 'Speaking Confidence',
     shortLabel: 'Speaking',
-    emoji: '🎤',
     icon: 'Mic',
     description: 'Public speaking, presentation skills',
     minAge: 4,
     maxAge: 12,
+    categorySlug: 'pronunciation',
   },
 };
 
@@ -114,3 +115,22 @@ export const WHATSAPP_GOAL_MAPPING: Record<string, LearningGoalId> = {
   '4': 'olympiad',
   '5': 'competition_prep',
 };
+
+/**
+ * Convert a goal ID to its canonical skill_categories slug.
+ */
+export function goalToCategory(goalId: string): string | null {
+  const goal = LEARNING_GOALS[goalId];
+  return goal?.categorySlug ?? null;
+}
+
+/**
+ * Convert a skill_categories slug to the matching goal ID.
+ * Returns null if no goal maps to that category.
+ */
+export function categoryToGoal(categorySlug: string): LearningGoalId | null {
+  for (const [id, goal] of Object.entries(LEARNING_GOALS)) {
+    if (goal.categorySlug === categorySlug) return id as LearningGoalId;
+  }
+  return null;
+}
