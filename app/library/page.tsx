@@ -8,6 +8,8 @@ import { notFound } from 'next/navigation';
 import { getSiteSettings } from '@/lib/config/site-settings-loader';
 import LibraryPageClient from './LibraryPageClient';
 
+export const dynamic = 'force-dynamic';
+
 const DEFAULT_META = {
   title: 'Reading Library - 1,500+ Expert-Curated Books for Kids | Yestoryd',
   description: 'Browse 1,500+ children\'s books curated by certified reading instructor Rucha Rai. Expert picks matched to your child\'s reading level. Ages 4-12. Phonics, fluency, comprehension.',
