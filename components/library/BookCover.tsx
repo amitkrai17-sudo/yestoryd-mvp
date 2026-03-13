@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import { BookOpen } from 'lucide-react';
 
 const GRADIENTS = [
@@ -35,7 +36,9 @@ const SIZES = {
 };
 
 export function BookCover({ coverUrl, title, size = 'md', className = '' }: BookCoverProps) {
-  if (coverUrl) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  if (coverUrl && !imgFailed) {
     return (
       <div className={`${SIZES[size]} rounded-xl overflow-hidden flex-shrink-0 ${className}`}>
         <img
@@ -43,6 +46,7 @@ export function BookCover({ coverUrl, title, size = 'md', className = '' }: Book
           alt={title}
           className="w-full h-full object-cover"
           loading="lazy"
+          onError={() => setImgFailed(true)}
         />
       </div>
     );

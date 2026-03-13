@@ -108,9 +108,13 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
     }
   }
 
+  // Auto-populate cover from ISBN if not provided
+  const coverImageUrl = bookData.cover_image_url
+    || (bookData.isbn ? `https://covers.openlibrary.org/b/isbn/${bookData.isbn}-M.jpg` : null);
+
   const { data, error } = await supabase
     .from('books')
-    .insert({ ...bookData, slug, is_active: true })
+    .insert({ ...bookData, slug, is_active: true, cover_image_url: coverImageUrl })
     .select()
     .single();
 

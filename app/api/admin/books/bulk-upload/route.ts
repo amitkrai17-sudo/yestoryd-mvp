@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { Database } from '@/lib/database.types';
-import { getCategorySlugs } from '@/lib/config/skill-categories';
+import { getSkillCategories } from '@/lib/config/skill-categories';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +20,7 @@ const rowSchema = z.object({
   genres: z.string().optional().default(''),
   themes: z.string().optional().default(''),
   skills_targeted: z.string().optional().default(''),
+  cover_image_url: z.string().optional().default(''),
   source_url: z.string().optional().default(''),
   affiliate_url: z.string().optional().default(''),
   rucha_review: z.string().optional().default(''),
@@ -75,8 +76,14 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
     .select('slug');
   const slugSet = new Set((existingSlugs || []).map((b: { slug: string | null }) => b.slug));
 
-  // Fetch valid skill category slugs for validation
-  const validSkillSlugs = new Set(await getCategorySlugs());
+  // Build skill label→slug map for validation (accepts both slugs and labels)
+  const skillCategories = await getSkillCategories();
+  const validSkillSlugs = new Set(skillCategories.map(c => c.slug));
+  const labelToSlug = new Map<string, string>();
+  for (const cat of skillCategories) {
+    labelToSlug.set(cat.label.toLowerCase(), cat.slug);
+    if (cat.parentLabel) labelToSlug.set(cat.parentLabel.toLowerCase(), cat.slug);
+  }
 
   let inserted = 0;
   let skipped = 0;
@@ -121,13 +128,17 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
       difficulty_score: row.difficulty_score ? Number(row.difficulty_score) : null,
       genres: parseArray(row.genres),
       themes: parseArray(row.themes),
-      skills_targeted: parseArray(row.skills_targeted).filter(s => {
-        if (!validSkillSlugs.has(s)) {
-          errors.push({ row: i + 2, reason: `Invalid skill slug "${s}". Valid: ${Array.from(validSkillSlugs).join(', ')}` });
-          return false;
-        }
-        return true;
-      }),
+      skills_targeted: parseArray(row.skills_targeted).map(s => {
+        // Accept slugs directly
+        if (validSkillSlugs.has(s)) return s;
+        // Try mapping label to slug (case-insensitive)
+        const mapped = labelToSlug.get(s.toLowerCase());
+        if (mapped) return mapped;
+        // Unknown skill — warn but skip
+        errors.push({ row: i + 2, reason: `Unknown skill "${s}" — skipped. Use slugs or labels from skill_categories.` });
+        return null;
+      }).filter((s): s is string => s !== null),
+      cover_image_url: row.cover_image_url || (row.isbn ? `https://covers.openlibrary.org/b/isbn/${row.isbn}-M.jpg` : null),
       source_url: row.source_url || null,
       affiliate_url: row.affiliate_url || null,
       rucha_review: row.rucha_review || null,
