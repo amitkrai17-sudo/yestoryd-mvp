@@ -21,7 +21,7 @@ export const GET = withApiHandler(async (request, { supabase, requestId }) => {
 
   let query = supabase
     .from('books')
-    .select('id, title, author, slug, cover_image_url, age_min, age_max, reading_level, genres, skills_targeted, is_active, is_featured, vote_count, times_read_in_sessions, is_available_for_coaching, is_available_for_kahani_times, rucha_review, created_at', { count: 'exact' });
+    .select('id, title, author, slug, cover_image_url, age_min, age_max, reading_level, genres, skills_targeted, is_active, is_featured, vote_count, times_read_in_sessions, is_available_for_coaching, is_available_for_kahani_times, rucha_review, added_at', { count: 'exact' });
 
   if (search) {
     query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`);
@@ -35,7 +35,7 @@ export const GET = withApiHandler(async (request, { supabase, requestId }) => {
   }
 
   const { data, error, count } = await query
-    .order('created_at', { ascending: false })
+    .order('added_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) {

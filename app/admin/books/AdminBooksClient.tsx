@@ -40,7 +40,7 @@ interface Book {
   is_available_for_coaching: boolean | null;
   is_available_for_kahani_times: boolean | null;
   rucha_review: string | null;
-  created_at: string | null;
+  added_at: string | null;
 }
 
 interface BookDetail extends Book {

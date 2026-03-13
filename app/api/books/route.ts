@@ -33,7 +33,7 @@ export const GET = withApiHandler(async (request, { supabase }) => {
   // Sort
   switch (sort) {
     case 'newest':
-      query = query.order('created_at', { ascending: false });
+      query = query.order('added_at', { ascending: false });
       break;
     case 'alphabetical':
       query = query.order('title', { ascending: true });
