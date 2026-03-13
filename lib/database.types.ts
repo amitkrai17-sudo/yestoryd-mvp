@@ -5695,6 +5695,7 @@ export type Database = {
           coins_reward: number | null
           color_hex: string | null
           content_code: string | null
+          content_for_embedding: string | null
           created_at: string | null
           description: string | null
           difficulty: string | null
@@ -5741,6 +5742,7 @@ export type Database = {
           coins_reward?: number | null
           color_hex?: string | null
           content_code?: string | null
+          content_for_embedding?: string | null
           created_at?: string | null
           description?: string | null
           difficulty?: string | null
@@ -5787,6 +5789,7 @@ export type Database = {
           coins_reward?: number | null
           color_hex?: string | null
           content_code?: string | null
+          content_for_embedding?: string | null
           created_at?: string | null
           description?: string | null
           difficulty?: string | null

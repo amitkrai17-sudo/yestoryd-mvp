@@ -1,6 +1,10 @@
 // ============================================================
 // FILE: app/api/admin/backfill-embeddings/route.ts
 // ============================================================
+// DEPRECATED for normal use — prefer /api/admin/generate-embeddings (targets NULL only, has dry-run).
+// This route re-embeds ALL learning_events (even those with existing embeddings).
+// Keep for model migration scenarios only. Remove after June 2026 if unused.
+// ============================================================
 // Re-embed all learning_events with gemini-embedding-001 (unified model)
 // Idempotent — safe to re-run. Processes in batches of 10 with 1s delay.
 // ============================================================

@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         // Store
         const { error: updateError } = await supabase
           .from('el_learning_units')
-          .update({ embedding: embedding as any })
+          .update({ embedding: embedding as any, content_for_embedding: searchText })
           .eq('id', unit.id);
 
         if (updateError) {
@@ -193,7 +193,7 @@ export async function PUT(request: NextRequest) {
 
         const { error: updateError } = await supabase
           .from('el_learning_units')
-          .update({ embedding: embedding as any })
+          .update({ embedding: embedding as any, content_for_embedding: searchText })
           .eq('id', unit.id);
 
         if (updateError) {

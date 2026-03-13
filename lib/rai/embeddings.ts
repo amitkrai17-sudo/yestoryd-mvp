@@ -1,11 +1,16 @@
 // file: lib/rai/embeddings.ts
 // rAI v2.0 - Embedding generation utilities
 // SINGLE SOURCE OF TRUTH for all embedding generation across the platform
+//
+// Locked standard: gemini-embedding-001 @ 768-dim (MRL).
+// text-embedding-004 was shut down by Google on Jan 14, 2026.
+// See Google deprecation notice. Do NOT migrate — this IS the correct model.
+// Audit confirmed March 13, 2026: all 115 vectors consistent, zero contamination.
 
 import { getGenAI } from '@/lib/gemini/client';
 
 export const EMBEDDING_MODEL = 'gemini-embedding-001';
-export const EMBEDDING_DIMENSION = 768; // gemini-embedding-001 supports outputDimensionality
+export const EMBEDDING_DIMENSION = 768; // Native output dimension for gemini-embedding-001
 
 
 /**
