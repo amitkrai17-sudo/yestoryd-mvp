@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import SkillCategorySelect from '@/components/shared/SkillCategorySelect';
 import * as Papa from 'papaparse';
 
 // =============================================================================
@@ -111,7 +112,7 @@ export default function AdminBooksClient() {
   const [createForm, setCreateForm] = useState({
     title: '', author: '', description: '', age_min: 4, age_max: 6,
     reading_level: '', illustrator: '', publisher: '', isbn: '',
-    genres: '', themes: '', skills_targeted: '',
+    genres: '', themes: '', skills_targeted: [] as string[],
     rucha_review: '', affiliate_url: '', source_url: '',
     is_available_for_coaching: false, is_available_for_kahani_times: false,
   });
@@ -251,7 +252,7 @@ export default function AdminBooksClient() {
           ...createForm,
           genres: createForm.genres ? createForm.genres.split(',').map(s => s.trim()).filter(Boolean) : [],
           themes: createForm.themes ? createForm.themes.split(',').map(s => s.trim()).filter(Boolean) : [],
-          skills_targeted: createForm.skills_targeted ? createForm.skills_targeted.split(',').map(s => s.trim()).filter(Boolean) : [],
+          skills_targeted: createForm.skills_targeted,
         }),
       });
       const data = await res.json();
@@ -261,7 +262,7 @@ export default function AdminBooksClient() {
         setCreateForm({
           title: '', author: '', description: '', age_min: 4, age_max: 6,
           reading_level: '', illustrator: '', publisher: '', isbn: '',
-          genres: '', themes: '', skills_targeted: '',
+          genres: '', themes: '', skills_targeted: [],
           rucha_review: '', affiliate_url: '', source_url: '',
           is_available_for_coaching: false, is_available_for_kahani_times: false,
         });
@@ -905,6 +906,17 @@ export default function AdminBooksClient() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Skills Targeted</label>
+                  <SkillCategorySelect
+                    value={editBook.skills_targeted || []}
+                    onChange={(v) => setEditBook({ ...editBook, skills_targeted: v as string[] } as BookDetail)}
+                    multiple
+                    context="admin"
+                    placeholder="Select skills..."
+                  />
+                </div>
+
                 {/* Toggles */}
                 <div className="space-y-3 pt-2">
                   {([
@@ -1082,13 +1094,13 @@ export default function AdminBooksClient() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs text-gray-400 mb-1">Skills Targeted (comma-separated)</label>
-                <input
-                  type="text"
+                <label className="block text-xs text-gray-400 mb-1">Skills Targeted</label>
+                <SkillCategorySelect
                   value={createForm.skills_targeted}
-                  onChange={(e) => setCreateForm(f => ({ ...f, skills_targeted: e.target.value }))}
-                  placeholder="Vocabulary, Comprehension, Fluency"
-                  className="w-full h-10 px-3 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+                  onChange={(v) => setCreateForm(f => ({ ...f, skills_targeted: v as string[] }))}
+                  multiple
+                  context="admin"
+                  placeholder="Select skills..."
                 />
               </div>
               <div>

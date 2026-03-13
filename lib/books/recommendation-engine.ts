@@ -93,19 +93,24 @@ function isLevelWithinRange(bookLevel: string | null, childLevel: string | null)
 
 const WEAKNESS_THRESHOLD_RATINGS = new Set(['struggling', 'emerging', 'developing']);
 
+/** Normalize a skill name (label or slug) to slug format for matching. */
+function toSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+
 function getWeakSkills(
   areasToImprove: string[] | null,
   skillRatings: SkillRating[] | null
 ): Set<string> {
   const weak = new Set<string>();
 
-  // From assessment areas_to_improve
-  (areasToImprove || []).forEach(a => weak.add(a.toLowerCase()));
+  // From assessment areas_to_improve (normalize labels to slug format)
+  (areasToImprove || []).forEach(a => weak.add(toSlug(a)));
 
   // From intelligence profile skill_ratings
   (skillRatings || []).forEach(sr => {
     if (WEAKNESS_THRESHOLD_RATINGS.has(sr.rating.toLowerCase())) {
-      weak.add(sr.skill_name.toLowerCase());
+      weak.add(toSlug(sr.skill_name));
     }
   });
 
@@ -116,7 +121,7 @@ function getMediumSkills(skillRatings: SkillRating[] | null): Set<string> {
   const medium = new Set<string>();
   (skillRatings || []).forEach(sr => {
     if (sr.rating.toLowerCase() === 'proficient') {
-      medium.add(sr.skill_name.toLowerCase());
+      medium.add(toSlug(sr.skill_name));
     }
   });
   return medium;
@@ -225,13 +230,12 @@ export async function getBookRecommendations(
     const scored: { book: BookCandidate; score: number; matchedSkills: string[] }[] = candidates.map(book => {
       let score = 0;
       const matchedSkills: string[] = [];
-      const bookSkills = (book.skills_targeted || []).map(s => s.toLowerCase());
+      const bookSkills = (book.skills_targeted || []).map(s => toSlug(s));
 
       for (const skill of bookSkills) {
-        // Check each word of the skill against weakness sets
-        const skillWords = skill.split(/[\s,]+/);
-        const isWeak = skillWords.some(w => weakSkills.has(w)) || weakSkills.has(skill);
-        const isMedium = skillWords.some(w => mediumSkills.has(w)) || mediumSkills.has(skill);
+        // Exact slug matching against child's weak/medium skills
+        const isWeak = weakSkills.has(skill);
+        const isMedium = mediumSkills.has(skill);
 
         if (isWeak) {
           score += 3;
