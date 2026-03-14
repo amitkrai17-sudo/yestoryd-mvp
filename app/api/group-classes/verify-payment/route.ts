@@ -54,7 +54,7 @@ async function sendConfirmationEmail(
     
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #ff0099, #7b008b); padding: 30px; text-align: center;">
-      <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Registration Confirmed!</h1>
+      <h1 style="color: white; margin: 0; font-size: 28px;">Registration Confirmed!</h1>
     </div>
     
     <!-- Content -->
@@ -67,18 +67,18 @@ async function sendConfirmationEmail(
       
       <!-- Session Details Card -->
       <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #ff0099;">
-        <h2 style="color: #333; margin-top: 0; font-size: 20px;">📚 ${sessionTitle}</h2>
+        <h2 style="color: #333; margin-top: 0; font-size: 20px;">${sessionTitle}</h2>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
-            <td style="padding: 8px 0; color: #666;">📅 Date</td>
+            <td style="padding: 8px 0; color: #666;">Date</td>
             <td style="padding: 8px 0; color: #333; font-weight: 600;">${formattedDate}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 0; color: #666;">🕐 Time</td>
+            <td style="padding: 8px 0; color: #666;">Time</td>
             <td style="padding: 8px 0; color: #333; font-weight: 600;">${formattedTime} IST</td>
           </tr>
           <tr>
-            <td style="padding: 8px 0; color: #666;">💰 Amount Paid</td>
+            <td style="padding: 8px 0; color: #666;">Amount Paid</td>
             <td style="padding: 8px 0; color: #ff0099; font-weight: 600;">₹${priceInr}</td>
           </tr>
         </table>
@@ -89,7 +89,7 @@ async function sendConfirmationEmail(
       <div style="text-align: center; margin: 30px 0;">
         <p style="color: #666; margin-bottom: 15px;">Join the session using this link:</p>
         <a href="${meetLink}" style="display: inline-block; background: linear-gradient(135deg, #ff0099, #7b008b); color: white; padding: 15px 40px; border-radius: 30px; text-decoration: none; font-weight: 600; font-size: 16px;">
-          🎥 Join Google Meet
+          Join Google Meet
         </a>
         <p style="color: #999; font-size: 12px; margin-top: 10px;">
           Or copy: <a href="${meetLink}" style="color: #ff0099;">${meetLink}</a>
@@ -99,7 +99,7 @@ async function sendConfirmationEmail(
       
       <!-- Instructions -->
       <div style="background: #fff8e1; border-radius: 12px; padding: 20px; margin: 20px 0;">
-        <h3 style="color: #f57c00; margin-top: 0;">📝 Before the Session</h3>
+        <h3 style="color: #f57c00; margin-top: 0;">Before the Session</h3>
         <ul style="color: #666; line-height: 1.8; padding-left: 20px;">
           <li>Test your camera and microphone</li>
           <li>Find a quiet, well-lit space</li>
@@ -109,11 +109,11 @@ async function sendConfirmationEmail(
       </div>
       
       <p style="color: #666; line-height: 1.6;">
-        We'll send a reminder before the session. If you have any questions, just reply to this email or WhatsApp us at <strong>+91 89762 87997</strong>.
+        We'll send a reminder before the session. If you have any questions, just reply to this email or WhatsApp us at <strong>+91 ${COMPANY_CONFIG.leadBotWhatsApp.slice(2, 7)} ${COMPANY_CONFIG.leadBotWhatsApp.slice(7)}</strong>.
       </p>
       
       <p style="color: #333; margin-top: 30px;">
-        See you soon! 🌟<br>
+        See you soon!<br>
         <strong>Team Yestoryd</strong>
       </p>
     </div>
@@ -136,20 +136,20 @@ async function sendConfirmationEmail(
 
     const result = await sendEmail({
       to: parentEmail,
-      subject: `🎉 ${childName} is registered for ${sessionTitle}!`,
+      subject: `${childName} is registered for ${sessionTitle}!`,
       html: emailContent,
       from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
     });
 
     if (result.success) {
-      console.log('✅ Confirmation email sent to:', parentEmail);
+      console.log('Confirmation email sent to:', parentEmail);
       return true;
     } else {
-      console.error('❌ Email error:', result.error);
+      console.error('Email error:', result.error);
       return false;
     }
   } catch (error) {
-    console.error('❌ Email sending error:', error);
+    console.error('Email sending error:', error);
     return false;
   }
 }
@@ -191,7 +191,12 @@ export async function POST(request: NextRequest) {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    if (expectedSignature !== razorpay_signature) {
+    const sigBuffer = Buffer.from(expectedSignature, 'utf-8');
+    const providedBuffer = Buffer.from(razorpay_signature, 'utf-8');
+    const isValid = sigBuffer.length === providedBuffer.length &&
+      crypto.timingSafeEqual(sigBuffer, providedBuffer);
+
+    if (!isValid) {
       console.error('Payment signature verification failed');
       return NextResponse.json(
         { error: 'Payment verification failed' },
@@ -199,7 +204,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Payment signature verified');
+    console.log('Payment signature verified');
 
     // Get registration record
     const { data: registration, error: regError } = await supabase
@@ -245,7 +250,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Registration updated to paid');
+    console.log('Registration updated to paid');
 
     // Get session details
     const { data: session } = await supabase

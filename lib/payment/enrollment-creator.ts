@@ -418,9 +418,10 @@ export async function awardReferralCredit(
       expires_at: expiryDate.toISOString(),
     });
 
+    // NOTE: current_uses and successful_conversions are now incremented
+    // universally in verify/webhook routes for ALL coupon types (including referrals).
+    // Only update total_referrals here (referral-specific counter).
     await supabase.from('coupons').update({
-      current_uses: (coupon.current_uses || 0) + 1,
-      successful_conversions: (coupon.successful_conversions || 0) + 1,
       total_referrals: (coupon.total_referrals || 0) + 1,
       updated_at: new Date().toISOString(),
     }).eq('id', coupon.id);

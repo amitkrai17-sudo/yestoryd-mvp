@@ -11,6 +11,16 @@ import { z } from 'zod';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import { loadCoachConfig, loadPaymentConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getSessionsForTier, getBoosterCreditsForTier } from '@/types/v2-schema';
+import {
+  getAgeBandConfig,
+  getProductDetails,
+  getStarterEnrollment,
+  markStarterCompleted,
+  awardReferralCredit,
+} from '@/lib/payment/enrollment-creator';
+import { getCoach } from '@/lib/payment/coach-assigner';
+import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
 
 const supabase = createAdminClient();
 
@@ -233,29 +243,103 @@ async function processPaymentCaptured(
     coupon_code: bookingData.coupon_code,
   });
 
-  // 7. Create enrollment (with unique constraint handling)
+  // 7. Create enrollment (with full data — matching verify route quality)
+
+  // 7a. Resolve product info from booking metadata
+  const productCode = (meta.product_code || 'full') as 'starter' | 'continuation' | 'full';
+  const productId = meta.product_id || '';
+
+  // 7b. Get product details from pricing_plans
+  const productDetails = await getProductDetails(productCode, requestId);
+  const durationMonths = productDetails?.duration_months || (productCode === 'starter' ? 1 : 3);
+  const durationWeeks = productDetails?.duration_weeks || (productCode === 'starter' ? 4 : productCode === 'continuation' ? 8 : 12);
+
+  // 7c. Get child age for age_band config
+  const childId = booking.child_id ?? '';
+  const { data: childRecord } = await supabase
+    .from('children')
+    .select('age')
+    .eq('id', childId)
+    .single();
+
+  const childAge = childRecord?.age || 8; // fallback to building band
+  const ageBandConfig = await getAgeBandConfig(childAge, requestId);
+
+  // 7d. Compute session counts from weekly_pattern + duration
+  const weeklyPattern = ageBandConfig?.weekly_pattern || [];
+  let startWeek = 0;
+  let sessionsCount: number;
+  let remedialSessionsMax: number;
+
+  // Handle continuation: mark starter completed, adjust start week
+  let starterEnrollmentId: string | null = null;
+  if (productCode === 'continuation' && childId) {
+    startWeek = 4;
+    const starterEnrollment = await getStarterEnrollment(childId, requestId);
+    if (starterEnrollment) {
+      starterEnrollmentId = starterEnrollment.id;
+      await markStarterCompleted(starterEnrollment.id, requestId);
+    }
+  }
+
+  if (weeklyPattern.length > 0) {
+    sessionsCount = getSessionsForTier(weeklyPattern, durationWeeks, startWeek);
+    remedialSessionsMax = getBoosterCreditsForTier(ageBandConfig!.skill_booster_credits, durationWeeks, ageBandConfig!.program_duration_weeks);
+  } else {
+    sessionsCount = ageBandConfig?.total_sessions || productDetails?.sessions_included || 0;
+    remedialSessionsMax = productDetails?.sessions_skill_building ?? 3;
+  }
+
+  // 7e. Compute proper program dates
   const programStart = new Date();
-  const programEnd = new Date();
-  programEnd.setMonth(programEnd.getMonth() + 3);
+  const programEnd = new Date(programStart);
+  programEnd.setMonth(programEnd.getMonth() + durationMonths);
+
+  let continuationDeadline: string | null = null;
+  if (productCode === 'starter') {
+    const deadline = new Date(programEnd);
+    deadline.setDate(deadline.getDate() + 7);
+    continuationDeadline = deadline.toISOString();
+  }
+
+  // 7f. Build full enrollment data
+  const enrollmentData: Record<string, unknown> = {
+    child_id: childId,
+    parent_id: booking.parent_id,
+    coach_id: finalCoachId,
+    payment_id: paymentId,
+    amount: amount,
+    status: 'active',
+    program_start: programStart.toISOString(),
+    program_end: programEnd.toISOString(),
+    schedule_confirmed: false,
+    sessions_scheduled: 0,
+    lead_source: bookingData.lead_source,
+    lead_source_coach_id: bookingData.lead_source === 'coach' ? bookingData.lead_source_coach_id : null,
+    referral_code_used: bookingData.coupon_code,
+    enrollment_type: productCode,
+    product_id: productId || productDetails?.id || null,
+    sessions_purchased: sessionsCount,
+    remedial_sessions_max: remedialSessionsMax,
+    remedial_sessions_used: 0,
+    age_band: ageBandConfig?.age_band || null,
+    season_number: 1,
+    total_sessions: sessionsCount,
+    session_duration_minutes: ageBandConfig?.session_duration_minutes || 45,
+    sessions_per_week: ageBandConfig?.sessions_per_week || null,
+    source: 'webhook_fallback',
+  };
+
+  if (productCode === 'continuation' && starterEnrollmentId) {
+    enrollmentData.starter_enrollment_id = starterEnrollmentId;
+  }
+  if (productCode === 'starter' && continuationDeadline) {
+    enrollmentData.continuation_deadline = continuationDeadline;
+  }
 
   const { data: enrollment, error: enrollmentError } = await supabase
     .from('enrollments')
-    .insert({
-      child_id: booking.child_id,
-      parent_id: booking.parent_id,
-      coach_id: finalCoachId,
-      payment_id: paymentId,
-      amount: amount,
-      status: 'active',
-      program_start: programStart.toISOString(),
-      program_end: programEnd.toISOString(),
-      schedule_confirmed: false,
-      sessions_scheduled: 0,
-      lead_source: bookingData.lead_source,
-      lead_source_coach_id: bookingData.lead_source === 'coach' ? bookingData.lead_source_coach_id : null,
-      referral_code_used: bookingData.coupon_code,
-      source: 'webhook',
-    })
+    .insert(enrollmentData)
     .select('id')
     .single();
 
@@ -303,8 +387,72 @@ async function processPaymentCaptured(
     enrollmentId: enrollment.id,
   }));
 
+  // 7b. Record coupon usage (if coupon was applied at order creation)
+  try {
+    const couponCode = bookingData.coupon_code;
+    const couponId = meta.coupon_id || null;
+    const couponDiscount = Number(meta.coupon_discount) || 0;
+    const originalAmount = Number(meta.original_amount) || amount;
+    const referralCreditUsed = Number(meta.referral_credit_used) || 0;
+
+    if (couponCode && couponDiscount > 0) {
+      // Resolve couponId if not in booking metadata (legacy bookings)
+      let resolvedCouponId = couponId;
+      if (!resolvedCouponId) {
+        const { data: couponRow } = await supabase
+          .from('coupons')
+          .select('id')
+          .eq('code', couponCode.toUpperCase())
+          .single();
+        resolvedCouponId = couponRow?.id || null;
+      }
+
+      if (resolvedCouponId && booking.parent_id) {
+        // Idempotency: check if already recorded (verify route may have beaten us)
+        const { count: existingUsage } = await supabase
+          .from('coupon_usages')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', resolvedCouponId)
+          .eq('parent_id', booking.parent_id)
+          .eq('enrollment_id', enrollment.id);
+
+        if (!existingUsage || existingUsage === 0) {
+          await supabase.from('coupon_usages').insert({
+            coupon_id: resolvedCouponId,
+            parent_id: booking.parent_id,
+            enrollment_id: enrollment.id,
+            coupon_discount: couponDiscount,
+            original_amount: originalAmount,
+            final_amount: amount,
+            total_discount: couponDiscount + referralCreditUsed,
+            product_type: productCode,
+          });
+
+          // Increment current_uses + successful_conversions on coupons table
+          const { data: couponRow } = await supabase
+            .from('coupons')
+            .select('current_uses, successful_conversions')
+            .eq('id', resolvedCouponId)
+            .single();
+
+          if (couponRow) {
+            await supabase.from('coupons').update({
+              current_uses: (couponRow.current_uses || 0) + 1,
+              successful_conversions: (couponRow.successful_conversions || 0) + 1,
+              updated_at: new Date().toISOString(),
+            }).eq('id', resolvedCouponId);
+          }
+
+          console.log(JSON.stringify({ requestId, event: 'coupon_usage_recorded_via_webhook', couponId: resolvedCouponId, couponCode, enrollmentId: enrollment.id }));
+        }
+      }
+    }
+  } catch (couponErr: any) {
+    console.error(JSON.stringify({ requestId, event: 'webhook_coupon_usage_error', error: couponErr.message }));
+  }
+
   // 8. Update child status
-  if (booking.child_id) {
+  if (childId) {
     await supabase
       .from('children')
       .update({
@@ -314,29 +462,66 @@ async function processPaymentCaptured(
         enrolled_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', booking.child_id);
+      .eq('id', childId);
   }
 
-  // 9. Queue background job
+  // 9. Referral credit (same as verify route)
   try {
-    const { data: coach } = await supabase
+    if (bookingData.coupon_code) {
+      await awardReferralCredit(
+        bookingData.coupon_code,
+        enrollment.id,
+        booking.parent_id ?? '',
+        amount,
+        requestId,
+      );
+    }
+  } catch (creditErr: any) {
+    console.error(JSON.stringify({ requestId, event: 'webhook_referral_credit_error', error: creditErr.message }));
+  }
+
+  // 10. Revenue split via Calculator B (V2 — same as verify route)
+  try {
+    const coach = await getCoach(finalCoachId, requestId);
+    const leadSource = (bookingData.lead_source === 'coach' ? 'coach' : 'yestoryd') as 'yestoryd' | 'coach';
+
+    await calculateRevenueSplit(
+      enrollment.id,
+      amount,
+      coach,
+      leadSource,
+      bookingData.lead_source_coach_id || null,
+      childId,
+      bookingData.child_name,
+      requestId,
+      durationMonths,
+    );
+
+    console.log(JSON.stringify({ requestId, event: 'revenue_split_calculated_via_webhook', enrollmentId: enrollment.id }));
+  } catch (revenueErr: any) {
+    console.error(JSON.stringify({ requestId, event: 'webhook_revenue_split_error', error: revenueErr.message }));
+  }
+
+  // 11. Queue background job
+  try {
+    const { data: coachData } = await supabase
       .from('coaches')
       .select('id, name, email')
       .eq('id', finalCoachId)
       .single();
 
-    if (coach) {
+    if (coachData) {
       const queueResult = await queueEnrollmentComplete({
         enrollmentId: enrollment.id,
-        childId: booking.child_id ?? '',
+        childId: childId,
         childName: bookingData.child_name,
         parentId: booking.parent_id ?? '',
         parentEmail: bookingData.parent_email,
         parentName: bookingData.parent_name,
         parentPhone: bookingData.parent_phone,
-        coachId: coach.id,
-        coachEmail: coach.email,
-        coachName: coach.name,
+        coachId: coachData.id,
+        coachEmail: coachData.email,
+        coachName: coachData.name,
         source: 'webhook',
       });
 
@@ -354,7 +539,7 @@ async function processPaymentCaptured(
     }));
   }
 
-  // 10. Log webhook event
+  // 12. Log webhook enrollment event
   await supabase.from('enrollment_events').insert({
     enrollment_id: enrollment.id,
     event_type: 'created_via_webhook',
@@ -362,10 +547,37 @@ async function processPaymentCaptured(
       payment_id: paymentId,
       order_id: orderId,
       amount,
+      product_code: productCode,
+      sessions_purchased: sessionsCount,
+      age_band: ageBandConfig?.age_band || null,
       request_id: requestId,
     },
     triggered_by: 'razorpay_webhook',
   });
+
+  // 13. Activity log for admin visibility (webhook-created enrollments)
+  try {
+    await supabase.from('activity_log').insert({
+      action: 'webhook_enrollment_created',
+      user_email: bookingData.parent_email || 'unknown',
+      user_type: 'system',
+      metadata: {
+        enrollment_id: enrollment.id,
+        child_id: childId,
+        child_name: bookingData.child_name,
+        parent_id: booking.parent_id,
+        amount,
+        product_code: productCode,
+        sessions_purchased: sessionsCount,
+        age_band: ageBandConfig?.age_band || null,
+        razorpay_payment_id: paymentId,
+        razorpay_order_id: orderId,
+        reason: 'verify route did not create enrollment, webhook fallback activated',
+      },
+    });
+  } catch (logErr: any) {
+    console.error(JSON.stringify({ requestId, event: 'webhook_activity_log_error', error: logErr.message }));
+  }
 
   return { status: 'success', enrollmentId: enrollment.id };
 }

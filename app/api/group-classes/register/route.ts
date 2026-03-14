@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
+import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const supabase = createAdminClient();
@@ -16,9 +17,35 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
+const RegisterSchema = z.object({
+  sessionId: z.string().uuid(),
+  childId: z.string().uuid().optional().nullable(),
+  parentId: z.string().uuid().optional().nullable(),
+  childName: z.string().min(1).max(100),
+  childAge: z.union([z.string(), z.number()]).transform((v) => Number(v)).pipe(z.number().int().min(3).max(16)),
+  parentName: z.string().min(1).max(100),
+  parentEmail: z.string().email().transform((v) => v.toLowerCase().trim()),
+  parentPhone: z.string().min(10).max(15),
+  couponCode: z.string().max(30).optional().nullable(),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let rawBody;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const validation = RegisterSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
     const {
       sessionId,
       childId,
@@ -29,15 +56,7 @@ export async function POST(request: NextRequest) {
       parentEmail,
       parentPhone,
       couponCode,
-    } = body;
-
-    // Validate required fields
-    if (!sessionId || !childName || !childAge || !parentName || !parentEmail || !parentPhone) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     // Get session details
     const { data: session, error: sessionError } = await supabase
@@ -183,9 +202,12 @@ export async function POST(request: NextRequest) {
         if (coupon.discount_type === 'percentage') {
           discountAmount = Math.round((originalPrice * coupon.discount_value) / 100);
         } else {
-          discountAmount = Math.min(coupon.discount_value / 100, originalPrice);
+          // Fixed discount — discount_value is already in rupees
+          discountAmount = coupon.discount_value;
         }
-        finalPrice = Math.max(originalPrice - discountAmount, 0);
+        // Ensure discount doesn't exceed price
+        discountAmount = Math.min(discountAmount, originalPrice);
+        finalPrice = originalPrice - discountAmount;
         appliedCouponId = coupon.id;
         appliedCouponCode = coupon.code;
       }

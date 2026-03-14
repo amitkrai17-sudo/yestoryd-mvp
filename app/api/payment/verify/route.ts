@@ -366,6 +366,73 @@ export async function POST(request: NextRequest) {
     }
 
     // =====================================================
+    // RECORD COUPON USAGE (after enrollment created)
+    // =====================================================
+    try {
+      const orderNotes = paymentVerification.orderNotes || {};
+      const couponCode = orderNotes.couponCode || body.couponCode || null;
+      const couponId = orderNotes.couponId || null;
+      const couponDiscount = Number(orderNotes.couponDiscount) || 0;
+      const basePriceFromNotes = Number(orderNotes.basePrice) || verifiedAmount;
+      const referralCreditFromNotes = Number(orderNotes.referralCreditUsed) || 0;
+
+      if (couponCode && couponDiscount > 0) {
+        // Resolve couponId if not in order notes (legacy orders)
+        let resolvedCouponId = couponId;
+        if (!resolvedCouponId) {
+          const { data: couponRow } = await supabase
+            .from('coupons')
+            .select('id')
+            .eq('code', couponCode.toUpperCase())
+            .single();
+          resolvedCouponId = couponRow?.id || null;
+        }
+
+        if (resolvedCouponId) {
+          // Idempotency: check if already recorded for this order
+          const { count: existingUsage } = await supabase
+            .from('coupon_usages')
+            .select('*', { count: 'exact', head: true })
+            .eq('coupon_id', resolvedCouponId)
+            .eq('parent_id', parent.id)
+            .eq('enrollment_id', enrollment.id);
+
+          if (!existingUsage || existingUsage === 0) {
+            await supabase.from('coupon_usages').insert({
+              coupon_id: resolvedCouponId,
+              parent_id: parent.id,
+              enrollment_id: enrollment.id,
+              coupon_discount: couponDiscount,
+              original_amount: basePriceFromNotes,
+              final_amount: verifiedAmount,
+              total_discount: couponDiscount + referralCreditFromNotes,
+              product_type: productInfo.productCode,
+            });
+
+            // Increment current_uses + successful_conversions on coupons table
+            const { data: couponRow } = await supabase
+              .from('coupons')
+              .select('current_uses, successful_conversions')
+              .eq('id', resolvedCouponId)
+              .single();
+
+            if (couponRow) {
+              await supabase.from('coupons').update({
+                current_uses: (couponRow.current_uses || 0) + 1,
+                successful_conversions: (couponRow.successful_conversions || 0) + 1,
+                updated_at: new Date().toISOString(),
+              }).eq('id', resolvedCouponId);
+            }
+
+            console.log(JSON.stringify({ requestId, event: 'coupon_usage_recorded', couponId: resolvedCouponId, couponCode, enrollmentId: enrollment.id }));
+          }
+        }
+      }
+    } catch (couponErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'coupon_usage_record_error', error: couponErr.message }));
+    }
+
+    // =====================================================
     // POST-ENROLLMENT TASKS (non-blocking)
     // =====================================================
 

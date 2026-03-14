@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -6380,12 +6380,15 @@ export type Database = {
           coaching_bonus_amount: number | null
           coaching_bonus_paid: boolean | null
           coaching_coach_id: string
+          coaching_rate_per_session: number | null
           config_snapshot: Json
           created_at: string | null
           enrollment_id: string
+          enrollment_sequence: string | null
           id: string
           lead_bonus_coach_id: string | null
           lead_cost_amount: number
+          lead_cost_decay_applied: number | null
           lead_cost_paid: boolean | null
           lead_cost_paid_at: string | null
           lead_cost_trigger: string | null
@@ -6395,7 +6398,10 @@ export type Database = {
           net_to_coach: number
           net_to_lead_source: number
           platform_fee_amount: number
+          re_enrollment_bonus: number | null
           referrer_id: string | null
+          skill_building_cost: number | null
+          skill_building_rate_per_session: number | null
           status: string | null
           tds_amount: number | null
           tds_applicable: boolean | null
@@ -6410,12 +6416,15 @@ export type Database = {
           coaching_bonus_amount?: number | null
           coaching_bonus_paid?: boolean | null
           coaching_coach_id: string
+          coaching_rate_per_session?: number | null
           config_snapshot: Json
           created_at?: string | null
           enrollment_id: string
+          enrollment_sequence?: string | null
           id?: string
           lead_bonus_coach_id?: string | null
           lead_cost_amount: number
+          lead_cost_decay_applied?: number | null
           lead_cost_paid?: boolean | null
           lead_cost_paid_at?: string | null
           lead_cost_trigger?: string | null
@@ -6425,7 +6434,10 @@ export type Database = {
           net_to_coach: number
           net_to_lead_source: number
           platform_fee_amount: number
+          re_enrollment_bonus?: number | null
           referrer_id?: string | null
+          skill_building_cost?: number | null
+          skill_building_rate_per_session?: number | null
           status?: string | null
           tds_amount?: number | null
           tds_applicable?: boolean | null
@@ -6440,12 +6452,15 @@ export type Database = {
           coaching_bonus_amount?: number | null
           coaching_bonus_paid?: boolean | null
           coaching_coach_id?: string
+          coaching_rate_per_session?: number | null
           config_snapshot?: Json
           created_at?: string | null
           enrollment_id?: string
+          enrollment_sequence?: string | null
           id?: string
           lead_bonus_coach_id?: string | null
           lead_cost_amount?: number
+          lead_cost_decay_applied?: number | null
           lead_cost_paid?: boolean | null
           lead_cost_paid_at?: string | null
           lead_cost_trigger?: string | null
@@ -6455,7 +6470,10 @@ export type Database = {
           net_to_coach?: number
           net_to_lead_source?: number
           platform_fee_amount?: number
+          re_enrollment_bonus?: number | null
           referrer_id?: string | null
+          skill_building_cost?: number | null
+          skill_building_rate_per_session?: number | null
           status?: string | null
           tds_amount?: number | null
           tds_applicable?: boolean | null

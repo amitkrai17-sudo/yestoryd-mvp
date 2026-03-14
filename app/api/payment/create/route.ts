@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
       notes: {
         requestId, childId, childName: body.childName, parentId, parentEmail: body.parentEmail,
         productCode: body.productCode, productId: product.id, sessionsTotal: String(product.sessions_included),
-        basePrice: String(basePrice), couponCode: pricing.couponCode || '', couponDiscount: String(pricing.couponDiscount),
+        basePrice: String(basePrice), couponCode: pricing.couponCode || '', couponId: pricing.couponId || '', couponDiscount: String(pricing.couponDiscount),
         referralCreditUsed: String(pricing.referralCreditUsed), leadSource: body.leadSource, coachId: body.coachId || '',
       },
     });
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           child_name: body.childName, parent_email: body.parentEmail, parent_name: body.parentName, parent_phone: body.parentPhone,
           product_code: body.productCode, product_id: product.id, sessions_total: product.sessions_included,
-          original_amount: basePrice, coupon_code: pricing.couponCode, coupon_discount: pricing.couponDiscount,
+          original_amount: basePrice, coupon_code: pricing.couponCode, coupon_id: pricing.couponId, coupon_discount: pricing.couponDiscount,
           referral_credit_used: pricing.referralCreditUsed, lead_source: body.leadSource, lead_source_coach_id: body.leadSourceCoachId,
           requested_start_date: body.requestedStartDate, receipt_id: receiptId, request_id: requestId,
         },
@@ -250,15 +250,6 @@ export async function POST(request: NextRequest) {
 
     // Update child status
     await supabase.from('children').update({ lead_status: 'payment_initiated', updated_at: new Date().toISOString() }).eq('id', childId);
-
-    // Record coupon usage
-    if (pricing.couponId) {
-      await supabase.from('coupon_usages').insert({
-        coupon_id: pricing.couponId, parent_id: parentId, coupon_discount: pricing.couponDiscount,
-        original_amount: basePrice, final_amount: pricing.finalAmount, total_discount: pricing.couponDiscount + pricing.referralCreditUsed,
-        product_type: body.productCode,
-      });
-    }
 
     const duration = Date.now() - startTime;
     console.log(JSON.stringify({ requestId, event: 'create_order_complete', orderId: order.id, duration: `${duration}ms` }));
