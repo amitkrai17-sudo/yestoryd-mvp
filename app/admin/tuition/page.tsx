@@ -65,8 +65,8 @@ export default function AdminTuitionPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newForm, setNewForm] = useState({
-    childName: '', childApproximateAge: 8, sessionRate: 250,
-    sessionsPurchased: 10, sessionDurationMinutes: 60, sessionsPerWeek: 2,
+    childName: '', childApproximateAge: 0, sessionRate: 250,
+    sessionsPurchased: 0, sessionDurationMinutes: 60, sessionsPerWeek: 2,
     scheduleDays: [] as string[],
     scheduleTimeSlot: '',
     schedulePreferredTime: '',
@@ -149,8 +149,8 @@ export default function AdminTuitionPage() {
       if (res.ok) {
         setShowNewForm(false);
         setNewForm({
-          childName: '', childApproximateAge: 8, sessionRate: 250,
-          sessionsPurchased: 10, sessionDurationMinutes: 60, sessionsPerWeek: 2,
+          childName: '', childApproximateAge: 0, sessionRate: 250,
+          sessionsPurchased: 0, sessionDurationMinutes: 60, sessionsPerWeek: 2,
           scheduleDays: [], scheduleTimeSlot: '', schedulePreferredTime: '',
           defaultSessionMode: 'offline', parentPhone: '',
           parentNameHint: '', coachId: '', adminNotes: '',
@@ -288,9 +288,9 @@ export default function AdminTuitionPage() {
               <input value={newForm.childName} onChange={e => setNewForm(p => ({ ...p, childName: e.target.value }))}
                 placeholder="Child name *" required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
-              <input type="number" value={newForm.childApproximateAge} onChange={e => setNewForm(p => ({ ...p, childApproximateAge: +e.target.value }))}
-                placeholder="Age" min={3} max={16}
-                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white" />
+              <input type="number" value={newForm.childApproximateAge || ''} onChange={e => setNewForm(p => ({ ...p, childApproximateAge: +e.target.value }))}
+                placeholder="Age *" min={3} max={16} required
+                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
               <input value={newForm.parentPhone} onChange={e => setNewForm(p => ({ ...p, parentPhone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
                 placeholder="Parent phone *" required inputMode="numeric"
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
@@ -303,9 +303,9 @@ export default function AdminTuitionPage() {
                   placeholder="Rate/session" min={50} max={1000}
                   className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white w-full" />
               </div>
-              <input type="number" value={newForm.sessionsPurchased} onChange={e => setNewForm(p => ({ ...p, sessionsPurchased: +e.target.value }))}
-                placeholder="Sessions" min={1} max={50}
-                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white" />
+              <input type="number" value={newForm.sessionsPurchased || ''} onChange={e => setNewForm(p => ({ ...p, sessionsPurchased: +e.target.value }))}
+                placeholder="Sessions *" min={1} max={50} required
+                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
               <select value={newForm.coachId} onChange={e => setNewForm(p => ({ ...p, coachId: e.target.value }))} required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white">
                 <option value="">Select coach *</option>
