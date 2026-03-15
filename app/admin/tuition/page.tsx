@@ -67,7 +67,10 @@ export default function AdminTuitionPage() {
   const [newForm, setNewForm] = useState({
     childName: '', childApproximateAge: 8, sessionRate: 250,
     sessionsPurchased: 10, sessionDurationMinutes: 60, sessionsPerWeek: 2,
-    schedulePreference: '', defaultSessionMode: 'offline' as const,
+    scheduleDays: [] as string[],
+    scheduleTimeSlot: '',
+    schedulePreferredTime: '',
+    defaultSessionMode: 'offline' as const,
     parentPhone: '', parentNameHint: '', coachId: '', adminNotes: '',
   });
 
@@ -91,7 +94,7 @@ export default function AdminTuitionPage() {
       const [statsRes, listRes, coachRes] = await Promise.all([
         fetch('/api/admin/tuition/stats'),
         fetch('/api/admin/tuition'),
-        fetch('/api/admin/coaches?active=true'),
+        fetch('/api/admin/crm/coaches'),
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (listRes.ok) {
@@ -125,8 +128,22 @@ export default function AdminTuitionPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newForm,
+          childName: newForm.childName,
+          childApproximateAge: newForm.childApproximateAge,
           sessionRate: newForm.sessionRate * 100, // rupees to paise
+          sessionsPurchased: newForm.sessionsPurchased,
+          sessionDurationMinutes: newForm.sessionDurationMinutes,
+          sessionsPerWeek: newForm.sessionsPerWeek,
+          schedulePreference: JSON.stringify({
+            days: newForm.scheduleDays,
+            timeSlot: newForm.scheduleTimeSlot,
+            preferredTime: newForm.schedulePreferredTime,
+          }),
+          defaultSessionMode: newForm.defaultSessionMode,
+          parentPhone: newForm.parentPhone,
+          parentNameHint: newForm.parentNameHint,
+          coachId: newForm.coachId,
+          adminNotes: newForm.adminNotes,
         }),
       });
       if (res.ok) {
@@ -134,7 +151,8 @@ export default function AdminTuitionPage() {
         setNewForm({
           childName: '', childApproximateAge: 8, sessionRate: 250,
           sessionsPurchased: 10, sessionDurationMinutes: 60, sessionsPerWeek: 2,
-          schedulePreference: '', defaultSessionMode: 'offline', parentPhone: '',
+          scheduleDays: [], scheduleTimeSlot: '', schedulePreferredTime: '',
+          defaultSessionMode: 'offline', parentPhone: '',
           parentNameHint: '', coachId: '', adminNotes: '',
         });
         fetchData();
@@ -293,8 +311,45 @@ export default function AdminTuitionPage() {
                 <option value="">Select coach *</option>
                 {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <input value={newForm.schedulePreference} onChange={e => setNewForm(p => ({ ...p, schedulePreference: e.target.value }))}
-                placeholder="Schedule preference"
+              {/* Schedule: Days */}
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="text-xs text-text-tertiary block mb-1.5">Preferred Days</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                    const selected = newForm.scheduleDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setNewForm(p => ({
+                          ...p,
+                          scheduleDays: selected
+                            ? p.scheduleDays.filter(d => d !== day)
+                            : [...p.scheduleDays, day],
+                        }))}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+                          selected
+                            ? 'bg-white text-[#0a0a0f]'
+                            : 'bg-surface-2 text-text-tertiary border border-border hover:text-white'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Schedule: Time slot + preferred time */}
+              <select value={newForm.scheduleTimeSlot} onChange={e => setNewForm(p => ({ ...p, scheduleTimeSlot: e.target.value }))}
+                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white">
+                <option value="">Time slot</option>
+                <option value="Morning (9-12)">Morning (9-12)</option>
+                <option value="Afternoon (12-3)">Afternoon (12-3)</option>
+                <option value="Evening (3-6)">Evening (3-6)</option>
+                <option value="Late Evening (6-9)">Late Evening (6-9)</option>
+              </select>
+              <input value={newForm.schedulePreferredTime} onChange={e => setNewForm(p => ({ ...p, schedulePreferredTime: e.target.value }))}
+                placeholder="Preferred time (optional)"
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
               <input value={newForm.adminNotes} onChange={e => setNewForm(p => ({ ...p, adminNotes: e.target.value }))}
                 placeholder="Admin notes"
