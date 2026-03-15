@@ -9,16 +9,20 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  BookOpen, User, Mail, Phone, Calendar, GraduationCap,
-  School, MessageSquare, ArrowRight, Clock, AlertCircle,
-  CheckCircle, IndianRupee,
+  BookOpen, ArrowRight, Clock, AlertCircle,
+  CheckCircle, IndianRupee, MessageSquare,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import {
+  ParentDetailsForm,
+  ChildDetailsForm,
+  AddressForm,
+  LearningConcernsForm,
+} from '@/components/forms';
+import type { ParentDetailsValues, ChildDetailsValues, AddressValues } from '@/components/forms';
 
 interface OnboardingData {
-  childName: string;
-  childApproximateAge: number;
   sessionRate: number;
   sessionRateDisplay: number;
   sessionsPurchased: number;
@@ -28,19 +32,8 @@ interface OnboardingData {
   coachName: string;
   totalAmount: number;
   parentPhone: string;
-  parentNameHint: string | null;
   alreadyCompleted: boolean;
   enrollmentId: string | null;
-}
-
-interface FormData {
-  parentName: string;
-  parentEmail: string;
-  parentPhone: string;
-  childDob: string;
-  childGrade: string;
-  childSchool: string;
-  learningConcerns: string;
 }
 
 export default function TuitionOnboardPage() {
@@ -57,43 +50,32 @@ export default function TuitionOnboardPage() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
-  const [form, setForm] = useState<FormData>({
-    parentName: '',
-    parentEmail: '',
-    parentPhone: '',
-    childDob: '',
-    childGrade: '',
-    childSchool: '',
-    learningConcerns: '',
+  // Form state — split by section
+  const [parentDetails, setParentDetails] = useState<ParentDetailsValues>({
+    parentName: '', parentEmail: '', parentPhone: '',
   });
+  const [childDetails, setChildDetails] = useState<ChildDetailsValues>({
+    childFullName: '', childDob: '', childGrade: '', childSchool: '',
+  });
+  const [address, setAddress] = useState<AddressValues>({
+    pincode: '', city: '', state: '', country: 'India',
+  });
+  const [learningConcerns, setLearningConcerns] = useState('');
 
   // Fetch onboarding data on mount
   useEffect(() => {
     async function fetchData() {
       try {
         const res = await fetch(`/api/tuition/onboard/${token}`);
-        if (res.status === 410) {
-          setExpired(true);
-          return;
-        }
-        if (res.status === 404) {
-          setNotFound(true);
-          return;
-        }
-        if (!res.ok) {
-          setNotFound(true);
-          return;
-        }
+        if (res.status === 410) { setExpired(true); return; }
+        if (res.status === 404 || !res.ok) { setNotFound(true); return; }
 
         const json: OnboardingData = await res.json();
         setData(json);
 
         // Pre-fill phone from onboarding data
         if (json.parentPhone) {
-          setForm(prev => ({ ...prev, parentPhone: json.parentPhone }));
-        }
-        if (json.parentNameHint) {
-          setForm(prev => ({ ...prev, parentName: json.parentNameHint || '' }));
+          setParentDetails(prev => ({ ...prev, parentPhone: json.parentPhone }));
         }
 
         // If already completed, show success state
@@ -110,9 +92,20 @@ export default function TuitionOnboardPage() {
     fetchData();
   }, [token]);
 
-  function updateField(field: keyof FormData, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setFieldErrors(prev => ({ ...prev, [field]: [] }));
+  // Clear field errors when any section changes
+  function handleParentChange(v: ParentDetailsValues) {
+    setParentDetails(v);
+    setFieldErrors({});
+    setError('');
+  }
+  function handleChildChange(v: ChildDetailsValues) {
+    setChildDetails(v);
+    setFieldErrors({});
+    setError('');
+  }
+  function handleAddressChange(v: AddressValues) {
+    setAddress(v);
+    setFieldErrors({});
     setError('');
   }
 
@@ -127,22 +120,25 @@ export default function TuitionOnboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          parentName: form.parentName.trim(),
-          parentEmail: form.parentEmail.trim(),
-          parentPhone: form.parentPhone.trim(),
-          childDob: form.childDob || undefined,
-          childGrade: form.childGrade.trim() || undefined,
-          childSchool: form.childSchool.trim() || undefined,
-          learningConcerns: form.learningConcerns.trim() || undefined,
+          ...parentDetails,
+          parentName: parentDetails.parentName.trim(),
+          parentEmail: parentDetails.parentEmail.trim(),
+          parentPhone: parentDetails.parentPhone.trim(),
+          childFullName: childDetails.childFullName.trim(),
+          childDob: childDetails.childDob,
+          childGrade: childDetails.childGrade.trim(),
+          childSchool: childDetails.childSchool.trim(),
+          pincode: address.pincode.trim(),
+          city: address.city.trim(),
+          state: address.state,
+          country: address.country,
+          learningConcerns: learningConcerns.trim() || undefined,
         }),
       });
 
       const json = await res.json();
 
-      if (res.status === 410) {
-        setExpired(true);
-        return;
-      }
+      if (res.status === 410) { setExpired(true); return; }
 
       if (!res.ok) {
         if (json.details) setFieldErrors(json.details);
@@ -158,6 +154,11 @@ export default function TuitionOnboardPage() {
       setSubmitting(false);
     }
   }
+
+  const isFormComplete =
+    parentDetails.parentName && parentDetails.parentEmail && parentDetails.parentPhone &&
+    childDetails.childFullName && childDetails.childDob && childDetails.childGrade && childDetails.childSchool &&
+    address.pincode && address.city && address.state;
 
   // ---- LOADING ----
   if (loading) {
@@ -226,7 +227,7 @@ export default function TuitionOnboardPage() {
             You&apos;re All Set!
           </h1>
           <p className="text-gray-600 mb-2">
-            {data.childName}&apos;s learning journey with {data.coachName} is ready to begin.
+            {childDetails.childFullName ? `${childDetails.childFullName}'s` : 'Your child\'s'} learning journey with {data.coachName} is ready to begin.
           </p>
           <p className="text-gray-500 text-sm mb-6">
             A payment link has been sent to your WhatsApp.
@@ -272,7 +273,7 @@ export default function TuitionOnboardPage() {
             </h1>
           </div>
           <p className="text-gray-600 text-sm">
-            Complete your details to begin {data.childName}&apos;s sessions with {data.coachName}.
+            Complete your details to begin {childDetails.childFullName ? `${childDetails.childFullName}'s` : 'your child\'s'} sessions with {data.coachName}.
           </p>
         </div>
       </div>
@@ -282,10 +283,6 @@ export default function TuitionOnboardPage() {
         <div className="bg-white rounded-2xl shadow-sm p-4">
           <h2 className="font-display font-semibold text-gray-900 mb-3">Session Summary</h2>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Student</span>
-              <span className="font-medium text-gray-900">{data.childName} (age {data.childApproximateAge})</span>
-            </div>
             <div className="flex justify-between text-gray-600">
               <span>Coach</span>
               <span className="font-medium text-gray-900">{data.coachName}</span>
@@ -338,136 +335,46 @@ export default function TuitionOnboardPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
-            <h2 className="font-display font-semibold text-gray-900">Parent Details</h2>
-
-            {/* Parent Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Your Name <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={form.parentName}
-                  onChange={e => updateField('parentName', e.target.value)}
-                  placeholder="Full name"
-                  required
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm"
-                />
-              </div>
-              {fieldErrors.parentName && <p className="text-red-500 text-xs mt-1">{fieldErrors.parentName[0]}</p>}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="email"
-                  value={form.parentEmail}
-                  onChange={e => updateField('parentEmail', e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm"
-                />
-              </div>
-              {fieldErrors.parentEmail && <p className="text-red-500 text-xs mt-1">{fieldErrors.parentEmail[0]}</p>}
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="tel"
-                  value={form.parentPhone}
-                  onChange={e => updateField('parentPhone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="10-digit mobile number"
-                  required
-                  inputMode="numeric"
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm"
-                />
-              </div>
-              {fieldErrors.parentPhone && <p className="text-red-500 text-xs mt-1">{fieldErrors.parentPhone[0]}</p>}
-            </div>
+          {/* Parent Details */}
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <h2 className="font-display font-semibold text-gray-900 mb-4">Parent Details</h2>
+            <ParentDetailsForm
+              values={parentDetails}
+              onChange={handleParentChange}
+              errors={fieldErrors}
+            />
           </div>
 
-          {/* Child details (optional) */}
-          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
-            <h2 className="font-display font-semibold text-gray-900">
-              About {data.childName}
+          {/* Child Details */}
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <h2 className="font-display font-semibold text-gray-900 mb-4">Child Details</h2>
+            <ChildDetailsForm
+              values={childDetails}
+              onChange={handleChildChange}
+              errors={fieldErrors}
+            />
+          </div>
+
+          {/* Address */}
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <h2 className="font-display font-semibold text-gray-900 mb-4">Address</h2>
+            <AddressForm
+              values={address}
+              onChange={handleAddressChange}
+              errors={fieldErrors}
+            />
+          </div>
+
+          {/* Learning Concerns (optional) */}
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <h2 className="font-display font-semibold text-gray-900 mb-4">
+              Learning Concerns
               <span className="text-xs font-normal text-gray-400 ml-2">Optional</span>
             </h2>
-
-            {/* DOB */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="date"
-                  value={form.childDob}
-                  onChange={e => updateField('childDob', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Grade */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Grade / Class</label>
-              <div className="relative">
-                <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={form.childGrade}
-                  onChange={e => updateField('childGrade', e.target.value)}
-                  placeholder="e.g., Class 3"
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm"
-                />
-              </div>
-            </div>
-
-            {/* School */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">School</label>
-              <div className="relative">
-                <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={form.childSchool}
-                  onChange={e => updateField('childSchool', e.target.value)}
-                  placeholder="School name"
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Learning concerns */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Learning Concerns
-              </label>
-              <div className="relative">
-                <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                <textarea
-                  value={form.learningConcerns}
-                  onChange={e => updateField('learningConcerns', e.target.value)}
-                  placeholder="Any specific areas you'd like the coach to focus on?"
-                  rows={3}
-                  maxLength={500}
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#FF0099]/30 focus:border-[#FF0099] text-sm resize-none"
-                />
-              </div>
-            </div>
+            <LearningConcernsForm
+              value={learningConcerns}
+              onChange={v => { setLearningConcerns(v); setError(''); }}
+            />
           </div>
 
           {/* Error */}
@@ -481,7 +388,7 @@ export default function TuitionOnboardPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting || !form.parentName || !form.parentEmail || !form.parentPhone}
+            disabled={submitting || !isFormComplete}
             className="w-full flex items-center justify-center gap-2 bg-[#FF0099] text-white font-semibold py-3 rounded-xl hover:bg-[#FF0099]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-12"
           >
             {submitting ? (

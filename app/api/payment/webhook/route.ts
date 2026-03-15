@@ -279,6 +279,7 @@ async function processPaymentCaptured(
     // Update child
     if (tuitionEnrollment.child_id) {
       await supabase.from('children').update({
+        is_enrolled: true,
         enrollment_status: 'enrolled',
         lead_status: 'enrolled',
         coach_id: tuitionEnrollment.coach_id,

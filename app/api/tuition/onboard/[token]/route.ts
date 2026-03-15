@@ -6,11 +6,12 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import crypto from 'crypto';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { parentDetailsSchema, childDetailsSchema, addressSchema } from '@/components/forms/schemas';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,8 +89,6 @@ export async function GET(
   const totalRupees = rateRupees * onboarding.sessions_purchased;
 
   return NextResponse.json({
-    childName: onboarding.child_name,
-    childApproximateAge: onboarding.child_approximate_age,
     sessionRate: onboarding.session_rate,
     sessionRateDisplay: rateRupees,
     sessionsPurchased: onboarding.sessions_purchased,
@@ -99,7 +98,6 @@ export async function GET(
     coachName: coach?.name || 'Your coach',
     totalAmount: totalRupees,
     parentPhone: onboarding.parent_phone,
-    parentNameHint: onboarding.parent_name_hint,
     alreadyCompleted: onboarding.status === 'parent_completed',
     enrollmentId: onboarding.enrollment_id,
   });
@@ -109,15 +107,12 @@ export async function GET(
 // POST — Parent submits form → create child, parent, enrollment
 // ============================================================
 
-const SubmitSchema = z.object({
-  parentName: z.string().min(1, 'Name is required').max(100),
-  parentEmail: z.string().email('Valid email required').transform(v => v.toLowerCase().trim()),
-  parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Valid 10-digit mobile number required'),
-  childDob: z.string().optional(),
-  childGrade: z.string().max(20).optional(),
-  childSchool: z.string().max(200).optional(),
-  learningConcerns: z.string().max(500).optional(),
-});
+const SubmitSchema = parentDetailsSchema
+  .merge(childDetailsSchema)
+  .merge(addressSchema)
+  .extend({
+    learningConcerns: z.string().max(500).optional(),
+  });
 
 export async function POST(
   request: NextRequest,
@@ -183,40 +178,46 @@ export async function POST(
     }
 
     // 4. Upsert child (by name + parent)
+    const childAge = Math.floor((Date.now() - new Date(input.childDob).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const learningProfile = {
+      school: input.childSchool,
+      grade: input.childGrade,
+      address: { pincode: input.pincode, city: input.city, state: input.state, country: input.country },
+    };
+
     let childId: string;
     const { data: existingChild } = await supabase
       .from('children')
       .select('id')
       .eq('parent_id', parent.id)
-      .eq('child_name', onboarding.child_name)
+      .eq('child_name', input.childFullName)
       .maybeSingle();
 
     if (existingChild) {
       childId = existingChild.id;
-      // Update with any new info
-      const childUpdate: Record<string, unknown> = {
-        age: onboarding.child_approximate_age,
+      await supabase.from('children').update({
+        age: childAge,
+        dob: input.childDob,
+        grade: input.childGrade,
+        school_name: input.childSchool,
         parent_email: input.parentEmail,
         parent_phone: input.parentPhone,
+        learning_profile: learningProfile,
         updated_at: new Date().toISOString(),
-      };
-      if (input.childDob) childUpdate.date_of_birth = input.childDob;
-      if (input.childGrade) childUpdate.grade = input.childGrade;
-      if (input.childSchool) childUpdate.school = input.childSchool;
-
-      await supabase.from('children').update(childUpdate).eq('id', childId);
+      }).eq('id', childId);
     } else {
       const { data: newChild, error: childErr } = await supabase
         .from('children')
         .insert({
-          child_name: onboarding.child_name,
-          age: onboarding.child_approximate_age,
-          date_of_birth: input.childDob || null,
-          grade: input.childGrade || null,
-          school: input.childSchool || null,
+          child_name: input.childFullName,
+          age: childAge,
+          dob: input.childDob,
+          grade: input.childGrade,
+          school_name: input.childSchool,
           parent_id: parent.id,
           parent_email: input.parentEmail,
           parent_phone: input.parentPhone,
+          learning_profile: learningProfile,
           lead_status: 'tuition_onboarding',
         })
         .select('id')
@@ -254,13 +255,16 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to create enrollment' }, { status: 500 });
     }
 
-    // 6. Update tuition_onboarding
+    // 6. Update tuition_onboarding with real child name
     await supabase
       .from('tuition_onboarding')
       .update({
+        child_name: input.childFullName,
+        child_approximate_age: childAge,
         enrollment_id: enrollment.id,
         child_id: childId,
         parent_id: parent.id,
+        parent_name_hint: input.parentName,
         parent_form_completed_at: new Date().toISOString(),
         status: 'parent_completed',
         updated_at: new Date().toISOString(),
@@ -302,7 +306,7 @@ export async function POST(
         templateName: 'tuition_payment_link',
         variables: [
           input.parentName.split(' ')[0],
-          onboarding.child_name,
+          input.childFullName,
           String(onboarding.sessions_purchased),
           String(rateRupees),
           String(totalRupees),
@@ -322,7 +326,7 @@ export async function POST(
         templateName: 'tuition_assessment_invite',
         variables: [
           input.parentName.split(' ')[0],
-          onboarding.child_name,
+          input.childFullName,
           assessmentLink,
         ],
       });

@@ -15,8 +15,6 @@ export const dynamic = 'force-dynamic';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
 const CreateTuitionSchema = z.object({
-  childName: z.string().min(1).max(100),
-  childApproximateAge: z.number().int().min(3).max(16),
   sessionRate: z.number().int().min(5000).max(100000), // paise — Rs 50 to Rs 1,000
   sessionsPurchased: z.number().int().min(1).max(50),
   sessionDurationMinutes: z.number().int().min(15).max(120).default(60),
@@ -24,7 +22,6 @@ const CreateTuitionSchema = z.object({
   schedulePreference: z.string().max(500).optional(),
   defaultSessionMode: z.enum(['offline', 'online']).default('offline'),
   parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Valid 10-digit Indian mobile number required'),
-  parentNameHint: z.string().max(100).optional(),
   coachId: z.string().uuid(),
   adminNotes: z.string().max(1000).optional(),
 });
@@ -57,11 +54,11 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   // 4. Insert tuition_onboarding
+  const placeholderChildName = `Pending - ${input.parentPhone}`;
   const { data: onboarding, error: insertErr } = await supabase
     .from('tuition_onboarding')
     .insert({
-      child_name: input.childName,
-      child_approximate_age: input.childApproximateAge,
+      child_name: placeholderChildName,
       session_rate: input.sessionRate,
       sessions_purchased: input.sessionsPurchased,
       session_duration_minutes: input.sessionDurationMinutes,
@@ -69,7 +66,6 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
       schedule_preference: input.schedulePreference ?? null,
       default_session_mode: input.defaultSessionMode,
       parent_phone: input.parentPhone,
-      parent_name_hint: input.parentNameHint ?? null,
       coach_id: input.coachId,
       admin_notes: input.adminNotes ?? null,
       admin_filled_by: auth.email ?? null,
@@ -96,7 +92,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
       templateName: 'tuition_onboarding_form',
       variables: [
         coachFirstName,
-        input.childName,
+        'your child',
         magicLink,
         String(input.sessionsPurchased),
         String(Math.round(input.sessionRate / 100)),
@@ -126,7 +122,6 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     user_type: 'admin',
     metadata: {
       onboarding_id: onboarding.id,
-      child_name: input.childName,
       coach_id: input.coachId,
       sessions_purchased: input.sessionsPurchased,
       session_rate: input.sessionRate,

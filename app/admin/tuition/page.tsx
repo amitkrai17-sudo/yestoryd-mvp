@@ -65,13 +65,13 @@ export default function AdminTuitionPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newForm, setNewForm] = useState({
-    childName: '', childApproximateAge: 0, sessionRate: 250,
-    sessionsPurchased: 0, sessionDurationMinutes: 60, sessionsPerWeek: 2,
+    sessionRate: 250,
+    sessionsPurchased: 0, sessionDurationMinutes: 0, sessionsPerWeek: 0,
     scheduleDays: [] as string[],
     scheduleTimeSlot: '',
     schedulePreferredTime: '',
     defaultSessionMode: 'offline' as const,
-    parentPhone: '', parentNameHint: '', coachId: '', adminNotes: '',
+    parentPhone: '', coachId: '', adminNotes: '',
   });
 
   // Adjust modal
@@ -128,8 +128,6 @@ export default function AdminTuitionPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          childName: newForm.childName,
-          childApproximateAge: newForm.childApproximateAge,
           sessionRate: newForm.sessionRate * 100, // rupees to paise
           sessionsPurchased: newForm.sessionsPurchased,
           sessionDurationMinutes: newForm.sessionDurationMinutes,
@@ -141,7 +139,6 @@ export default function AdminTuitionPage() {
           }),
           defaultSessionMode: newForm.defaultSessionMode,
           parentPhone: newForm.parentPhone,
-          parentNameHint: newForm.parentNameHint,
           coachId: newForm.coachId,
           adminNotes: newForm.adminNotes,
         }),
@@ -149,11 +146,11 @@ export default function AdminTuitionPage() {
       if (res.ok) {
         setShowNewForm(false);
         setNewForm({
-          childName: '', childApproximateAge: 0, sessionRate: 250,
-          sessionsPurchased: 0, sessionDurationMinutes: 60, sessionsPerWeek: 2,
+          sessionRate: 250,
+          sessionsPurchased: 0, sessionDurationMinutes: 0, sessionsPerWeek: 0,
           scheduleDays: [], scheduleTimeSlot: '', schedulePreferredTime: '',
           defaultSessionMode: 'offline', parentPhone: '',
-          parentNameHint: '', coachId: '', adminNotes: '',
+          coachId: '', adminNotes: '',
         });
         fetchData();
       }
@@ -285,17 +282,8 @@ export default function AdminTuitionPage() {
           <div className="bg-surface-1 rounded-2xl p-5 border border-border">
             <h2 className="text-sm font-semibold text-white mb-4">New Tuition Student</h2>
             <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <input value={newForm.childName} onChange={e => setNewForm(p => ({ ...p, childName: e.target.value }))}
-                placeholder="Child name *" required
-                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
-              <input type="number" value={newForm.childApproximateAge || ''} onChange={e => setNewForm(p => ({ ...p, childApproximateAge: +e.target.value }))}
-                placeholder="Age *" min={3} max={16} required
-                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
               <input value={newForm.parentPhone} onChange={e => setNewForm(p => ({ ...p, parentPhone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
                 placeholder="Parent phone *" required inputMode="numeric"
-                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
-              <input value={newForm.parentNameHint} onChange={e => setNewForm(p => ({ ...p, parentNameHint: e.target.value }))}
-                placeholder="Parent name (hint)"
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
               <div className="flex items-center gap-2">
                 <IndianRupee className="w-4 h-4 text-text-tertiary flex-shrink-0" />
@@ -306,6 +294,18 @@ export default function AdminTuitionPage() {
               <input type="number" value={newForm.sessionsPurchased || ''} onChange={e => setNewForm(p => ({ ...p, sessionsPurchased: +e.target.value }))}
                 placeholder="Sessions *" min={1} max={50} required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
+              <input type="number" value={newForm.sessionsPerWeek || ''} onChange={e => setNewForm(p => ({ ...p, sessionsPerWeek: +e.target.value }))}
+                placeholder="Per week *" min={1} max={7} required
+                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary" />
+              <select value={newForm.sessionDurationMinutes || ''} onChange={e => setNewForm(p => ({ ...p, sessionDurationMinutes: +e.target.value }))} required
+                className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white">
+                <option value="">Duration *</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">60 min</option>
+                <option value="90">90 min</option>
+                <option value="120">120 min</option>
+              </select>
               <select value={newForm.coachId} onChange={e => setNewForm(p => ({ ...p, coachId: e.target.value }))} required
                 className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white">
                 <option value="">Select coach *</option>
@@ -359,7 +359,7 @@ export default function AdminTuitionPage() {
                   className="px-4 py-2 text-sm text-text-tertiary hover:text-white rounded-xl">
                   Cancel
                 </button>
-                <button type="submit" disabled={creating || !newForm.childName || !newForm.parentPhone || !newForm.coachId}
+                <button type="submit" disabled={creating || !newForm.parentPhone || !newForm.coachId}
                   className="flex items-center gap-1.5 bg-white text-[#0a0a0f] font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 text-sm h-9">
                   {creating ? <Spinner size="sm" color="muted" /> : <Plus className="w-4 h-4" />}
                   Create & Send Link

@@ -68,7 +68,7 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
       templateName: 'tuition_onboarding_form',
       variables: [
         coachFirstName,
-        onboarding.child_name,
+        'your child',
         magicLink,
         String(onboarding.sessions_purchased),
         String(Math.round(onboarding.session_rate / 100)),
