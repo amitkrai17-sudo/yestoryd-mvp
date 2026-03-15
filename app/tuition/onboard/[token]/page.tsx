@@ -6,8 +6,8 @@
 
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import {
   BookOpen, User, Mail, Phone, Calendar, GraduationCap,
   School, MessageSquare, ArrowRight, Clock, AlertCircle,
@@ -43,8 +43,8 @@ interface FormData {
   learningConcerns: string;
 }
 
-export default function TuitionOnboardPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = use(params);
+export default function TuitionOnboardPage() {
+  const { token } = useParams<{ token: string }>();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);

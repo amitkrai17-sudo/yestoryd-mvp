@@ -6,7 +6,8 @@
 
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import {
   BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck,
 } from 'lucide-react';
@@ -37,8 +38,8 @@ interface EnrollmentData {
   status: string;
 }
 
-export default function TuitionPayPage({ params }: { params: Promise<{ enrollmentId: string }> }) {
-  const { enrollmentId } = use(params);
+export default function TuitionPayPage() {
+  const { enrollmentId } = useParams<{ enrollmentId: string }>();
 
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
