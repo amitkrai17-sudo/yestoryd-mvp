@@ -15,7 +15,7 @@ import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 declare global {
   interface Window {
-    Razorpay: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    Razorpay: any;
   }
 }
 
