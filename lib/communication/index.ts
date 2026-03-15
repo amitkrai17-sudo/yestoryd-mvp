@@ -31,6 +31,11 @@ export interface SendCommunicationParams {
   relatedEntityType?: string;
   relatedEntityId?: string;
   skipChannels?: ('whatsapp' | 'email' | 'sms')[];
+  // Manual trigger metadata (populated by /api/communication/trigger)
+  triggeredBy?: 'system' | 'coach' | 'admin';
+  triggeredByUserId?: string;
+  contextType?: string;
+  contextId?: string;
 }
 
 export interface SendCommunicationResult {
@@ -159,6 +164,10 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
         errorMessage: result.error,
         relatedEntityType: params.relatedEntityType,
         relatedEntityId: params.relatedEntityId,
+        triggeredBy: params.triggeredBy,
+        triggeredByUserId: params.triggeredByUserId,
+        contextType: params.contextType,
+        contextId: params.contextId,
       });
     }
 
@@ -261,6 +270,10 @@ async function logCommunication(params: {
   errorMessage?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
+  triggeredBy?: string;
+  triggeredByUserId?: string;
+  contextType?: string;
+  contextId?: string;
 }): Promise<void> {
   try {
     await supabase.from('communication_logs').insert({
@@ -279,6 +292,10 @@ async function logCommunication(params: {
       related_entity_id: params.relatedEntityId,
       sent_at: params.status === 'sent' ? new Date().toISOString() : null,
       failed_at: params.status === 'failed' ? new Date().toISOString() : null,
+      triggered_by: params.triggeredBy || 'system',
+      triggered_by_user_id: params.triggeredByUserId || null,
+      context_type: params.contextType || null,
+      context_id: params.contextId || null,
     });
   } catch (error) {
     console.error('[Comm] Failed to log communication:', error);

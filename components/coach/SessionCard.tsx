@@ -9,6 +9,7 @@ import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck
 import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
 import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';
+import { CommunicationTrigger } from '@/components/shared/CommunicationTrigger';
 
 interface Session {
   id: string;
@@ -42,7 +43,6 @@ interface SessionCardProps {
   onReschedule: () => void;
   onCancel: () => void;
   onMissed: () => void;
-  onParentUpdate?: () => void;
   onRequestOffline?: () => void;
   coachEmail?: string;
 }
@@ -114,7 +114,6 @@ export function SessionCard({
   onReschedule,
   onCancel,
   onMissed,
-  onParentUpdate,
   onRequestOffline,
 }: SessionCardProps) {
   const isOffline = session.session_mode === 'offline';
@@ -162,15 +161,18 @@ export function SessionCard({
       );
     }
 
-    if (needsParentUpdate && onParentUpdate) {
+    if (needsParentUpdate) {
       return (
-        <button
-          onClick={onParentUpdate}
-          className="flex items-center gap-1.5 lg:gap-2 bg-[#00ABFF] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
-        >
-          <MessageSquare className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-          <span className="hidden sm:inline">Update</span>
-        </button>
+        <CommunicationTrigger
+          contextType="session"
+          contextId={session.id}
+          recipientType="parent"
+          recipientPhone={session.parent_phone}
+          recipientName={session.parent_name}
+          userRole="coach"
+          triggerLabel="Update"
+          triggerVariant="button"
+        />
       );
     }
 

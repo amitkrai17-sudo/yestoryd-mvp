@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { PreSessionBrief, SessionCard } from '@/components/coach';
-import { ParentUpdateButton } from '@/components/coach/ParentUpdateButton';
+// ParentUpdateButton replaced by CommunicationTrigger inside SessionCard
 // Structured capture form (v3.0) with intelligence scoring
 import StructuredCaptureForm from '@/components/coach/structured-capture';
 import { RescheduleModal } from '@/components/shared';

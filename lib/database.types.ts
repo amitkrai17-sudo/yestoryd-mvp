@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -3821,6 +3821,8 @@ export type Database = {
       communication_logs: {
         Row: {
           context_data: Json | null
+          context_id: string | null
+          context_type: string | null
           created_at: string | null
           email_sent: boolean | null
           error_message: string | null
@@ -3832,10 +3834,14 @@ export type Database = {
           sent_at: string | null
           sms_sent: boolean | null
           template_code: string
+          triggered_by: string | null
+          triggered_by_user_id: string | null
           wa_sent: boolean | null
         }
         Insert: {
           context_data?: Json | null
+          context_id?: string | null
+          context_type?: string | null
           created_at?: string | null
           email_sent?: boolean | null
           error_message?: string | null
@@ -3847,10 +3853,14 @@ export type Database = {
           sent_at?: string | null
           sms_sent?: boolean | null
           template_code: string
+          triggered_by?: string | null
+          triggered_by_user_id?: string | null
           wa_sent?: boolean | null
         }
         Update: {
           context_data?: Json | null
+          context_id?: string | null
+          context_type?: string | null
           created_at?: string | null
           email_sent?: boolean | null
           error_message?: string | null
@@ -3862,6 +3872,8 @@ export type Database = {
           sent_at?: string | null
           sms_sent?: boolean | null
           template_code?: string
+          triggered_by?: string | null
+          triggered_by_user_id?: string | null
           wa_sent?: boolean | null
         }
         Relationships: []
@@ -3979,7 +3991,9 @@ export type Database = {
       }
       communication_templates: {
         Row: {
+          admin_can_trigger: boolean | null
           channels: Json | null
+          coach_can_trigger: boolean | null
           cost_tier: string | null
           created_at: string | null
           created_by: string | null
@@ -4006,6 +4020,7 @@ export type Database = {
           sms_body: string | null
           stage: string | null
           template_code: string
+          trigger_contexts: string[] | null
           updated_at: string | null
           use_email: boolean | null
           use_sms: boolean | null
@@ -4016,7 +4031,9 @@ export type Database = {
           wa_variables: string[] | null
         }
         Insert: {
+          admin_can_trigger?: boolean | null
           channels?: Json | null
+          coach_can_trigger?: boolean | null
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4043,6 +4060,7 @@ export type Database = {
           sms_body?: string | null
           stage?: string | null
           template_code: string
+          trigger_contexts?: string[] | null
           updated_at?: string | null
           use_email?: boolean | null
           use_sms?: boolean | null
@@ -4053,7 +4071,9 @@ export type Database = {
           wa_variables?: string[] | null
         }
         Update: {
+          admin_can_trigger?: boolean | null
           channels?: Json | null
+          coach_can_trigger?: boolean | null
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4080,6 +4100,7 @@ export type Database = {
           sms_body?: string | null
           stage?: string | null
           template_code?: string
+          trigger_contexts?: string[] | null
           updated_at?: string | null
           use_email?: boolean | null
           use_sms?: boolean | null
