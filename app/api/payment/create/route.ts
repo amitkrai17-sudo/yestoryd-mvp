@@ -32,7 +32,8 @@ const razorpay = new Razorpay({
 
 // --- VALIDATION SCHEMA ---
 const CreateOrderSchema = z.object({
-  productCode: z.enum(['starter', 'continuation', 'full']).default('full'),
+  productCode: z.enum(['starter', 'continuation', 'full', 'tuition']).default('full'),
+  enrollmentId: z.string().uuid().optional().nullable(),
   childId: z.string().uuid().optional().nullable(),
   childName: z.string().min(1, 'Child name required').max(100),
   childAge: z.union([z.string(), z.number()])
@@ -145,6 +146,87 @@ export async function POST(request: NextRequest) {
     if (!checkRateLimit(body.parentEmail, paymentConfig.rateLimitRequests, paymentConfig.rateLimitWindowSeconds)) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     }
+
+    // ============================================================
+    // TUITION BRANCH: Server-side pricing from enrollment record
+    // ============================================================
+    if (body.productCode === 'tuition') {
+      if (!body.enrollmentId) {
+        return NextResponse.json({ success: false, error: 'enrollmentId required for tuition', code: 'MISSING_ENROLLMENT' }, { status: 400 });
+      }
+
+      const { data: tuitionEnrollment, error: tuitionErr } = await supabase
+        .from('enrollments')
+        .select('id, session_rate, sessions_purchased, child_id, parent_id, coach_id, enrollment_type')
+        .eq('id', body.enrollmentId)
+        .eq('enrollment_type', 'tuition')
+        .single();
+
+      if (tuitionErr || !tuitionEnrollment) {
+        return NextResponse.json({ success: false, error: 'Tuition enrollment not found', code: 'ENROLLMENT_NOT_FOUND' }, { status: 404 });
+      }
+
+      const tuitionAmountRupees = ((tuitionEnrollment.session_rate || 0) * (tuitionEnrollment.sessions_purchased || 0)) / 100;
+      if (tuitionAmountRupees < 1) {
+        return NextResponse.json({ success: false, error: 'Invalid tuition amount', code: 'INVALID_AMOUNT' }, { status: 400 });
+      }
+
+      const parentId = tuitionEnrollment.parent_id || await getOrCreateParent(body.parentEmail, body.parentName, body.parentPhone, requestId);
+      const childId = tuitionEnrollment.child_id || await getOrCreateChild(body.childId, body.childName, body.childAge, parentId, body.parentEmail, requestId);
+
+      const receiptId = `${paymentConfig.receiptPrefix}${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+      const order = await razorpay.orders.create({
+        amount: tuitionAmountRupees * 100,
+        currency: paymentConfig.currency,
+        receipt: receiptId,
+        notes: {
+          requestId, childId, childName: body.childName, parentId, parentEmail: body.parentEmail,
+          productCode: 'tuition', enrollmentId: body.enrollmentId, enrollment_type: 'tuition',
+          sessionsTotal: String(tuitionEnrollment.sessions_purchased || 0),
+          basePrice: String(tuitionAmountRupees), coachId: tuitionEnrollment.coach_id || '',
+        },
+      });
+
+      // Save booking
+      const { data: booking } = await supabase
+        .from('bookings')
+        .insert({
+          razorpay_order_id: order.id,
+          child_id: childId,
+          parent_id: parentId,
+          coach_id: tuitionEnrollment.coach_id,
+          amount: tuitionAmountRupees,
+          status: 'confirmed',
+          metadata: {
+            child_name: body.childName, parent_email: body.parentEmail, parent_name: body.parentName, parent_phone: body.parentPhone,
+            product_code: 'tuition', enrollment_type: 'tuition', enrollment_id: body.enrollmentId,
+            sessions_total: tuitionEnrollment.sessions_purchased, session_rate: tuitionEnrollment.session_rate,
+            lead_source: body.leadSource, receipt_id: receiptId, request_id: requestId,
+          },
+        })
+        .select('id')
+        .single();
+
+      console.log(JSON.stringify({ requestId, event: 'tuition_order_created', orderId: order.id, amount: tuitionAmountRupees }));
+
+      return NextResponse.json({
+        success: true,
+        orderId: order.id,
+        amount: tuitionAmountRupees,
+        currency: order.currency,
+        product: { code: 'tuition', id: null, name: 'Tuition Sessions', sessionsIncluded: tuitionEnrollment.sessions_purchased, durationMonths: 0 },
+        pricing: { basePrice: tuitionAmountRupees, couponDiscount: 0, referralCreditUsed: 0, finalAmount: tuitionAmountRupees },
+        bookingId: booking?.id,
+        childId,
+        parentId,
+        key: process.env.RAZORPAY_KEY_ID,
+      });
+    }
+
+    // ============================================================
+    // STANDARD COACHING BRANCH (starter/continuation/full)
+    // ============================================================
 
     // Get product
     const productResult = await getProductBySlug(body.productCode, requestId);

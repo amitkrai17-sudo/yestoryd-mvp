@@ -11,6 +11,7 @@ import { dispatch } from '@/lib/scheduling/orchestrator';
 import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
 import { queueProgressPulse } from '@/lib/qstash';
 import { getCategoryBySlug } from '@/lib/config/skill-categories';
+import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,7 @@ export async function POST(
       async () => {
         const result = await supabase
           .from('scheduled_sessions')
-          .select('id, child_id, coach_id, session_number, status')
+          .select('id, child_id, coach_id, session_number, status, enrollment_id')
           .eq('id', sessionId)
           .single();
         return result;
@@ -318,6 +319,30 @@ export async function POST(
       });
     } catch (logErr) {
       console.error('Activity log error:', logErr);
+    }
+
+    // Tuition balance deduction
+    if (session.enrollment_id) {
+      try {
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('enrollment_type')
+          .eq('id', session.enrollment_id)
+          .single();
+
+        if (enrollment?.enrollment_type === 'tuition') {
+          const sessionsDelivered = payload.sessionsDelivered || 1;
+          await deductTuitionBalance(
+            session.enrollment_id,
+            sessionId,
+            sessionsDelivered,
+            session.coach_id || 'coach',
+            crypto.randomUUID(),
+          );
+        }
+      } catch (tuitionErr) {
+        console.error('Tuition balance deduction error:', tuitionErr);
+      }
     }
 
     return NextResponse.json({

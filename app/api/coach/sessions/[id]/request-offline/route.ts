@@ -103,7 +103,7 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
     // Fetch enrollment total_sessions for cap calculation
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('total_sessions, age_band')
+      .select('total_sessions, age_band, enrollment_type')
       .eq('id', enrollmentId)
       .single();
 
@@ -111,6 +111,11 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
       console.error(JSON.stringify({ requestId, event: 'enrollment_not_found', enrollmentId }));
       return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
     }
+
+    // Tuition enrollments: skip offline cap (100% physical by design)
+    if (enrollment.enrollment_type === 'tuition') {
+      console.log(JSON.stringify({ requestId, event: 'tuition_offline_cap_bypassed', enrollmentId }));
+    } else {
 
     let totalSessions = enrollment.total_sessions;
     if (!totalSessions && enrollment.age_band) {
@@ -140,6 +145,8 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
         { status: 403 }
       );
     }
+
+    } // end of non-tuition offline cap check
 
     // 6. Coach qualification check (live query)
     const { count: qualifiedCount, error: qualCountError } = await supabase

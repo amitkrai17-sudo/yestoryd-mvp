@@ -138,10 +138,10 @@ export async function POST(request: NextRequest) {
       coachName: data.coachName,
     }));
 
-    // 4. Get enrollment details (include V2 fields)
+    // 4. Get enrollment details (include V2 fields + tuition)
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date, session_duration_minutes, total_sessions, age_band')
+      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date, session_duration_minutes, total_sessions, age_band, enrollment_type')
       .eq('id', data.enrollmentId)
       .single();
 
@@ -178,26 +178,65 @@ export async function POST(request: NextRequest) {
       errors: calendarResult.errors.length,
     }));
 
-    // 6. Schedule Recall.ai bots for session recording
-    let botsScheduled = 0;
-    try {
-      console.log(JSON.stringify({ requestId, event: 'scheduling_recall_bots' }));
-      const botResult = await scheduleBotsForEnrollment(data.enrollmentId);
-      botsScheduled = botResult.botsCreated;
+    // 5b. Tuition: set default session_mode for offline sessions
+    const isTuition = enrollment.enrollment_type === 'tuition';
+    if (isTuition) {
+      try {
+        // Look up tuition_onboarding for default session mode
+        const { data: onboarding } = await supabase
+          .from('tuition_onboarding')
+          .select('default_session_mode')
+          .eq('enrollment_id', data.enrollmentId)
+          .single();
 
-      console.log(JSON.stringify({
-        requestId,
-        event: 'recall_bots_scheduled',
-        botsCreated: botResult.botsCreated,
-        errors: botResult.errors.length,
-      }));
-    } catch (botError: any) {
-      console.error(JSON.stringify({
-        requestId,
-        event: 'recall_bot_error',
-        error: botError.message,
-      }));
-      // Non-fatal - continue with enrollment
+        const defaultMode = onboarding?.default_session_mode || 'offline';
+
+        if (defaultMode === 'offline') {
+          // Set all sessions to offline mode
+          await supabase
+            .from('scheduled_sessions')
+            .update({
+              session_mode: 'offline',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('enrollment_id', data.enrollmentId)
+            .eq('session_mode', 'online');
+
+          console.log(JSON.stringify({
+            requestId,
+            event: 'tuition_sessions_set_offline',
+            enrollmentId: data.enrollmentId,
+          }));
+        }
+      } catch (tuitionErr: any) {
+        console.error(JSON.stringify({ requestId, event: 'tuition_session_mode_error', error: tuitionErr.message }));
+      }
+    }
+
+    // 6. Schedule Recall.ai bots for session recording (skip for tuition offline)
+    let botsScheduled = 0;
+    if (!isTuition) {
+      try {
+        console.log(JSON.stringify({ requestId, event: 'scheduling_recall_bots' }));
+        const botResult = await scheduleBotsForEnrollment(data.enrollmentId);
+        botsScheduled = botResult.botsCreated;
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'recall_bots_scheduled',
+          botsCreated: botResult.botsCreated,
+          errors: botResult.errors.length,
+        }));
+      } catch (botError: any) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'recall_bot_error',
+          error: botError.message,
+        }));
+        // Non-fatal - continue with enrollment
+      }
+    } else {
+      console.log(JSON.stringify({ requestId, event: 'recall_bots_skipped', reason: 'tuition enrollment' }));
     }
 
     // 7. Send confirmation email

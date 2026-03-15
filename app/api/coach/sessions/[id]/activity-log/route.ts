@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { qstash } from '@/lib/qstash';
 import crypto from 'crypto';
+import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -391,6 +392,30 @@ export async function POST(
       struggledCount: struggledActivities.length,
       transcriptStatus,
     }));
+
+    // Tuition balance deduction
+    if (session.enrollment_id) {
+      try {
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('enrollment_type')
+          .eq('id', session.enrollment_id)
+          .single();
+
+        if (enrollment?.enrollment_type === 'tuition') {
+          const sessionsDelivered = body.sessions_delivered || 1;
+          await deductTuitionBalance(
+            session.enrollment_id,
+            sessionId,
+            sessionsDelivered,
+            auth.email || 'coach',
+            requestId,
+          );
+        }
+      } catch (tuitionErr: any) {
+        console.error(JSON.stringify({ requestId, event: 'tuition_balance_error', error: tuitionErr.message }));
+      }
+    }
 
     return NextResponse.json({
       success: true,

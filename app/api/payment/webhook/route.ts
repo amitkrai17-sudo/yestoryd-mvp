@@ -160,7 +160,18 @@ async function processPaymentCaptured(
     amount,
   }));
 
-  // 1. Check existing enrollment (first line of defense)
+  // 1. Check existing payment record (first line of defense)
+  const { data: existingPayment } = await supabase
+    .from('payments')
+    .select('id')
+    .eq('razorpay_payment_id', paymentId)
+    .maybeSingle();
+
+  if (existingPayment) {
+    return { status: 'already_processed', message: 'Payment already recorded by verify route' };
+  }
+
+  // 2. Check existing enrollment by payment_id
   const { data: existingEnrollment } = await supabase
     .from('enrollments')
     .select('id')
@@ -174,17 +185,6 @@ async function processPaymentCaptured(
       enrollmentId: existingEnrollment.id,
     }));
     return { status: 'already_processed', enrollmentId: existingEnrollment.id };
-  }
-
-  // 2. Check payment record
-  const { data: existingPayment } = await supabase
-    .from('payments')
-    .select('id')
-    .eq('razorpay_payment_id', paymentId)
-    .maybeSingle();
-
-  if (existingPayment) {
-    return { status: 'already_processed', message: 'Payment already recorded' };
   }
 
   // 3. Find booking
@@ -210,6 +210,133 @@ async function processPaymentCaptured(
     lead_source_coach_id: meta.lead_source_coach_id || null,
     coupon_code: meta.coupon_code || null,
   };
+
+  // ============================================================
+  // TUITION BRANCH: Update existing enrollment, don't create new
+  // ============================================================
+  if (meta.enrollment_type === 'tuition' || meta.product_code === 'tuition') {
+    const tuitionEnrollmentId = meta.enrollment_id;
+    if (!tuitionEnrollmentId) {
+      console.error(JSON.stringify({ requestId, event: 'tuition_webhook_no_enrollment_id', orderId }));
+      return { status: 'error', message: 'Tuition enrollment ID missing from booking metadata' };
+    }
+
+    const { data: tuitionEnrollment } = await supabase
+      .from('enrollments')
+      .select('id, child_id, parent_id, coach_id, session_rate, sessions_purchased, sessions_remaining, amount, status, program_start')
+      .eq('id', tuitionEnrollmentId)
+      .single();
+
+    if (!tuitionEnrollment) {
+      return { status: 'error', message: 'Tuition enrollment not found' };
+    }
+
+    // Record payment
+    await supabase.from('payments').insert({
+      parent_id: booking.parent_id,
+      child_id: booking.child_id,
+      razorpay_order_id: orderId,
+      razorpay_payment_id: paymentId,
+      amount,
+      currency: (await loadPaymentConfig()).currency,
+      status: 'captured',
+      captured_at: new Date().toISOString(),
+      source: 'webhook',
+    });
+
+    // Update enrollment
+    const currentRemaining = tuitionEnrollment.sessions_remaining || 0;
+    const sessionsPurchased = tuitionEnrollment.sessions_purchased || 0;
+    const newRemaining = currentRemaining + sessionsPurchased;
+    const isFirstPayment = !tuitionEnrollment.program_start;
+    const existingAmount = tuitionEnrollment.amount || 0;
+
+    const enrollmentUpdate: Record<string, unknown> = {
+      status: 'active',
+      sessions_remaining: newRemaining,
+      amount: existingAmount + amount,
+      payment_id: paymentId,
+      updated_at: new Date().toISOString(),
+    };
+    if (isFirstPayment) {
+      enrollmentUpdate.program_start = new Date().toISOString();
+      enrollmentUpdate.actual_start_date = new Date().toISOString().split('T')[0];
+    }
+
+    await supabase.from('enrollments').update(enrollmentUpdate).eq('id', tuitionEnrollmentId);
+
+    // Ledger entry
+    await supabase.from('tuition_session_ledger').insert({
+      enrollment_id: tuitionEnrollmentId,
+      change_amount: sessionsPurchased,
+      balance_after: newRemaining,
+      reason: isFirstPayment ? 'initial_purchase' : 'renewal',
+      payment_id: paymentId,
+      notes: `Webhook: Payment of ₹${amount} — ${sessionsPurchased} sessions credited`,
+      created_by: 'webhook',
+    });
+
+    // Update child
+    if (tuitionEnrollment.child_id) {
+      await supabase.from('children').update({
+        enrollment_status: 'enrolled',
+        lead_status: 'enrolled',
+        coach_id: tuitionEnrollment.coach_id,
+        enrolled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq('id', tuitionEnrollment.child_id);
+    }
+
+    // Revenue split
+    try {
+      const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
+      await calculateRevenueSplit(
+        tuitionEnrollmentId, amount, coach, 'yestoryd', null,
+        tuitionEnrollment.child_id || '', bookingData.child_name, requestId, 1,
+      );
+    } catch (revErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'tuition_webhook_revenue_error', error: revErr.message }));
+    }
+
+    // Queue enrollment-complete on first payment
+    if (isFirstPayment && tuitionEnrollment.coach_id) {
+      try {
+        const { data: coachData } = await supabase.from('coaches').select('id, name, email').eq('id', tuitionEnrollment.coach_id).single();
+        if (coachData) {
+          await queueEnrollmentComplete({
+            enrollmentId: tuitionEnrollmentId,
+            childId: tuitionEnrollment.child_id || '',
+            childName: bookingData.child_name,
+            parentId: booking.parent_id ?? '',
+            parentEmail: bookingData.parent_email,
+            parentName: bookingData.parent_name,
+            parentPhone: bookingData.parent_phone,
+            coachId: coachData.id,
+            coachEmail: coachData.email,
+            coachName: coachData.name,
+            source: 'webhook',
+          });
+        }
+      } catch (queueErr: any) {
+        console.error(JSON.stringify({ requestId, event: 'tuition_webhook_queue_error', error: queueErr.message }));
+      }
+    }
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'tuition_webhook_processed',
+      enrollmentId: tuitionEnrollmentId,
+      amount,
+      newBalance: newRemaining,
+      isFirstPayment,
+    }));
+
+    return { status: 'success', enrollmentId: tuitionEnrollmentId };
+  }
+
+  // ============================================================
+  // STANDARD COACHING BRANCH (starter/continuation/full)
+  // ============================================================
 
   // 4. Get coach
   const finalCoachId = await getCoachId(booking.coach_id, requestId);

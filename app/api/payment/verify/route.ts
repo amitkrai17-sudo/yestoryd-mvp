@@ -50,7 +50,8 @@ const VerifyPaymentSchema = z.object({
   razorpay_order_id: z.string().min(10, 'Invalid order ID'),
   razorpay_payment_id: z.string().min(10, 'Invalid payment ID'),
   razorpay_signature: z.string().min(64, 'Invalid signature'),
-  productCode: z.enum(['starter', 'continuation', 'full']).optional().nullable(),
+  productCode: z.enum(['starter', 'continuation', 'full', 'tuition']).optional().nullable(),
+  enrollmentId: z.string().uuid().optional().nullable(),
   childName: z.string().min(1).max(100),
   childAge: z.union([z.string(), z.number()]).transform((val) => Number(val)),
   childId: z.string().uuid().optional().nullable(),
@@ -184,6 +185,166 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: paymentVerification.error }, { status: 400 });
     }
     const verifiedAmount = paymentVerification.amount;
+
+    // ============================================================
+    // TUITION BRANCH: Update existing enrollment, don't create new
+    // ============================================================
+    const orderNotes = paymentVerification.orderNotes || {};
+    const isTuition = orderNotes.enrollment_type === 'tuition' || orderNotes.productCode === 'tuition' || body.productCode === 'tuition';
+
+    if (isTuition) {
+      const tuitionEnrollmentId = orderNotes.enrollmentId || body.enrollmentId;
+      if (!tuitionEnrollmentId) {
+        return NextResponse.json({ success: false, error: 'Missing tuition enrollment ID' }, { status: 400 });
+      }
+
+      // Fetch existing tuition enrollment
+      const { data: tuitionEnrollment, error: tuitionErr } = await supabase
+        .from('enrollments')
+        .select('id, child_id, parent_id, coach_id, session_rate, sessions_purchased, sessions_remaining, amount, status, program_start')
+        .eq('id', tuitionEnrollmentId)
+        .single();
+
+      if (tuitionErr || !tuitionEnrollment) {
+        return NextResponse.json({ success: false, error: 'Tuition enrollment not found' }, { status: 404 });
+      }
+
+      // Record payment
+      const { error: paymentError } = await supabase.from('payments').insert({
+        parent_id: tuitionEnrollment.parent_id,
+        child_id: tuitionEnrollment.child_id,
+        razorpay_order_id: body.razorpay_order_id,
+        razorpay_payment_id: body.razorpay_payment_id,
+        amount: verifiedAmount,
+        currency: (await loadPaymentConfig()).currency,
+        status: 'captured',
+        captured_at: new Date().toISOString(),
+      });
+      if (paymentError) {
+        console.error(JSON.stringify({ requestId, event: 'tuition_payment_record_error', error: paymentError.message }));
+      }
+
+      // Calculate new balance
+      const currentRemaining = tuitionEnrollment.sessions_remaining || 0;
+      const sessionsPurchased = tuitionEnrollment.sessions_purchased || 0;
+      const newRemaining = currentRemaining + sessionsPurchased;
+      const isFirstPayment = !tuitionEnrollment.program_start;
+      const existingAmount = tuitionEnrollment.amount || 0;
+
+      // Update enrollment
+      const enrollmentUpdate: Record<string, unknown> = {
+        status: 'active',
+        sessions_remaining: newRemaining,
+        amount: existingAmount + verifiedAmount,
+        payment_id: body.razorpay_payment_id,
+        updated_at: new Date().toISOString(),
+      };
+      if (isFirstPayment) {
+        enrollmentUpdate.program_start = new Date().toISOString();
+        enrollmentUpdate.actual_start_date = new Date().toISOString().split('T')[0];
+      }
+
+      await supabase.from('enrollments').update(enrollmentUpdate).eq('id', tuitionEnrollmentId);
+
+      // Ledger entry
+      await supabase.from('tuition_session_ledger').insert({
+        enrollment_id: tuitionEnrollmentId,
+        change_amount: sessionsPurchased,
+        balance_after: newRemaining,
+        reason: isFirstPayment ? 'initial_purchase' : 'renewal',
+        payment_id: body.razorpay_payment_id,
+        notes: `Payment of ₹${verifiedAmount} — ${sessionsPurchased} sessions credited`,
+        created_by: body.parentEmail || 'system',
+      });
+
+      // Update child as enrolled
+      if (tuitionEnrollment.child_id) {
+        await supabase.from('children').update({
+          enrollment_status: 'enrolled',
+          lead_status: 'enrolled',
+          coach_id: tuitionEnrollment.coach_id,
+          enrolled_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq('id', tuitionEnrollment.child_id);
+      }
+
+      // Revenue split — internal coach path (Rucha)
+      try {
+        const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
+        await calculateRevenueSplit(
+          tuitionEnrollmentId, verifiedAmount, coach, 'yestoryd', null,
+          tuitionEnrollment.child_id || '', body.childName, requestId, 1,
+        );
+      } catch (revErr: unknown) {
+        console.error(JSON.stringify({ requestId, event: 'tuition_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
+      }
+
+      // Queue enrollment-complete for calendar scheduling (only on first payment)
+      if (isFirstPayment) {
+        try {
+          const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
+          const { data: parentData } = await supabase.from('parents').select('name, email, phone').eq('id', tuitionEnrollment.parent_id!).single();
+
+          await queueEnrollmentComplete({
+            enrollmentId: tuitionEnrollmentId,
+            childId: tuitionEnrollment.child_id || '',
+            childName: body.childName,
+            parentId: tuitionEnrollment.parent_id || '',
+            parentEmail: parentData?.email || body.parentEmail,
+            parentName: parentData?.name || body.parentName,
+            parentPhone: parentData?.phone || body.parentPhone || '',
+            coachId: coach.id,
+            coachEmail: coach.email,
+            coachName: coach.name,
+          });
+        } catch (queueErr: unknown) {
+          console.error(JSON.stringify({ requestId, event: 'tuition_queue_error', error: queueErr instanceof Error ? queueErr.message : String(queueErr) }));
+        }
+      }
+
+      // Activity log
+      await supabase.from('activity_log').insert({
+        action: 'tuition_payment_verified',
+        user_email: body.parentEmail || 'unknown',
+        user_type: 'parent',
+        metadata: {
+          enrollment_id: tuitionEnrollmentId,
+          amount: verifiedAmount,
+          sessions_purchased: sessionsPurchased,
+          new_balance: newRemaining,
+          is_first_payment: isFirstPayment,
+          payment_id: body.razorpay_payment_id,
+        },
+      });
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'tuition_payment_verified',
+        enrollmentId: tuitionEnrollmentId,
+        amount: verifiedAmount,
+        newBalance: newRemaining,
+        isFirstPayment,
+      }));
+
+      return NextResponse.json({
+        success: true,
+        message: 'Payment verified — sessions credited',
+        enrollmentId: tuitionEnrollmentId,
+        redirectUrl: `/tuition/pay/${tuitionEnrollmentId}?success=true`,
+        data: {
+          enrollmentId: tuitionEnrollmentId,
+          childId: tuitionEnrollment.child_id,
+          amountPaid: verifiedAmount,
+          sessionsAdded: sessionsPurchased,
+          newBalance: newRemaining,
+          enrollmentType: 'tuition',
+        },
+      });
+    }
+
+    // ============================================================
+    // STANDARD COACHING BRANCH (starter/continuation/full)
+    // ============================================================
 
     // 5. Product info + age band (fetched early so sessions_included fallback is accurate)
     const productInfo = extractProductInfo(paymentVerification.orderNotes, body.productCode);

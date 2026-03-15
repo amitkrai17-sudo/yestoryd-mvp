@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { qstash } from '@/lib/qstash';
 import { transcribeVoiceNote, analyzeChildReading } from '@/lib/gemini/audio-analysis';
+import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
 import type { ReadingAnalysis } from '@/lib/gemini/audio-analysis';
 import crypto from 'crypto';
 
@@ -38,6 +39,7 @@ interface OfflineReportBody {
   words_struggled?: string[];
   words_mastered?: string[];
   coach_notes?: string;
+  sessions_delivered?: number; // Tuition: 1 or 2 sessions in one sitting
 }
 
 export async function POST(
@@ -456,6 +458,44 @@ export async function POST(
     } catch (streakError: unknown) {
       const msg = streakError instanceof Error ? streakError.message : 'Unknown error';
       console.error(JSON.stringify({ requestId, event: 'coach_streak_error', error: msg }));
+    }
+
+    // ============================================================
+    // STEP H2: Tuition balance deduction (if tuition enrollment)
+    // ============================================================
+
+    if (session.enrollment_id) {
+      try {
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('enrollment_type')
+          .eq('id', session.enrollment_id)
+          .single();
+
+        if (enrollment?.enrollment_type === 'tuition') {
+          const sessionsDelivered = body.sessions_delivered || 1;
+          const balanceResult = await deductTuitionBalance(
+            session.enrollment_id,
+            sessionId,
+            sessionsDelivered,
+            auth.email || 'coach',
+            requestId,
+          );
+
+          console.log(JSON.stringify({
+            requestId,
+            event: 'tuition_balance_updated',
+            sessionId,
+            sessionsDelivered,
+            newBalance: balanceResult.newBalance,
+            alertSent: balanceResult.alertSent,
+          }));
+        }
+      } catch (tuitionErr: unknown) {
+        const msg = tuitionErr instanceof Error ? tuitionErr.message : 'Unknown error';
+        console.error(JSON.stringify({ requestId, event: 'tuition_balance_error', error: msg }));
+        // Non-fatal — session is already completed
+      }
     }
 
     // ============================================================

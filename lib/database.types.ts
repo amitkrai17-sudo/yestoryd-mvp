@@ -6718,6 +6718,7 @@ export type Database = {
           amount: number | null
           at_risk: boolean | null
           at_risk_reason: string | null
+          billing_model: string | null
           certificate_id: string | null
           certificate_number: string | null
           child_id: string | null
@@ -6787,6 +6788,7 @@ export type Database = {
           schedule_confirmed_by: string | null
           season_number: number
           session_duration_minutes: number | null
+          session_rate: number | null
           sessions_cancelled_count: number | null
           sessions_completed: number | null
           sessions_per_week: number | null
@@ -6811,6 +6813,7 @@ export type Database = {
           amount?: number | null
           at_risk?: boolean | null
           at_risk_reason?: string | null
+          billing_model?: string | null
           certificate_id?: string | null
           certificate_number?: string | null
           child_id?: string | null
@@ -6880,6 +6883,7 @@ export type Database = {
           schedule_confirmed_by?: string | null
           season_number?: number
           session_duration_minutes?: number | null
+          session_rate?: number | null
           sessions_cancelled_count?: number | null
           sessions_completed?: number | null
           sessions_per_week?: number | null
@@ -6904,6 +6908,7 @@ export type Database = {
           amount?: number | null
           at_risk?: boolean | null
           at_risk_reason?: string | null
+          billing_model?: string | null
           certificate_id?: string | null
           certificate_number?: string | null
           child_id?: string | null
@@ -6973,6 +6978,7 @@ export type Database = {
           schedule_confirmed_by?: string | null
           season_number?: number
           session_duration_minutes?: number | null
+          session_rate?: number | null
           sessions_cancelled_count?: number | null
           sessions_completed?: number | null
           sessions_per_week?: number | null
@@ -12938,6 +12944,247 @@ export type Database = {
           start_hour?: number
         }
         Relationships: []
+      }
+      tuition_onboarding: {
+        Row: {
+          admin_filled_at: string | null
+          admin_filled_by: string | null
+          admin_notes: string | null
+          child_approximate_age: number | null
+          child_id: string | null
+          child_name: string
+          coach_id: string
+          created_at: string | null
+          default_session_mode: string | null
+          enrollment_id: string | null
+          id: string
+          parent_form_completed_at: string | null
+          parent_form_token: string
+          parent_form_token_expires_at: string
+          parent_id: string | null
+          parent_name_hint: string | null
+          parent_phone: string
+          schedule_preference: string | null
+          session_duration_minutes: number | null
+          session_rate: number
+          sessions_per_week: number | null
+          sessions_purchased: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_filled_at?: string | null
+          admin_filled_by?: string | null
+          admin_notes?: string | null
+          child_approximate_age?: number | null
+          child_id?: string | null
+          child_name: string
+          coach_id: string
+          created_at?: string | null
+          default_session_mode?: string | null
+          enrollment_id?: string | null
+          id?: string
+          parent_form_completed_at?: string | null
+          parent_form_token: string
+          parent_form_token_expires_at: string
+          parent_id?: string | null
+          parent_name_hint?: string | null
+          parent_phone: string
+          schedule_preference?: string | null
+          session_duration_minutes?: number | null
+          session_rate: number
+          sessions_per_week?: number | null
+          sessions_purchased: number
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_filled_at?: string | null
+          admin_filled_by?: string | null
+          admin_notes?: string | null
+          child_approximate_age?: number | null
+          child_id?: string | null
+          child_name?: string
+          coach_id?: string
+          created_at?: string | null
+          default_session_mode?: string | null
+          enrollment_id?: string | null
+          id?: string
+          parent_form_completed_at?: string | null
+          parent_form_token?: string
+          parent_form_token_expires_at?: string
+          parent_id?: string | null
+          parent_name_hint?: string | null
+          parent_phone?: string
+          schedule_preference?: string | null
+          session_duration_minutes?: number | null
+          session_rate?: number
+          sessions_per_week?: number | null
+          sessions_purchased?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tuition_onboarding_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_activity_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_workload"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches_with_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "tuition_onboarding_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tuition_session_ledger: {
+        Row: {
+          balance_after: number
+          change_amount: number
+          created_at: string | null
+          created_by: string | null
+          enrollment_id: string
+          id: string
+          notes: string | null
+          payment_id: string | null
+          reason: string
+          session_id: string | null
+        }
+        Insert: {
+          balance_after: number
+          change_amount: number
+          created_at?: string | null
+          created_by?: string | null
+          enrollment_id: string
+          id?: string
+          notes?: string | null
+          payment_id?: string | null
+          reason: string
+          session_id?: string | null
+        }
+        Update: {
+          balance_after?: number
+          change_amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          enrollment_id?: string
+          id?: string
+          notes?: string | null
+          payment_id?: string | null
+          reason?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tuition_session_ledger_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_session_ledger_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_session_ledger_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_session_ledger_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "tuition_session_ledger_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tuition_session_ledger_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_recording_status"
+            referencedColumns: ["session_id"]
+          },
+        ]
       }
       verification_tokens: {
         Row: {

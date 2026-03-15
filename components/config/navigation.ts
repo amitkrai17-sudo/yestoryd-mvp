@@ -112,6 +112,7 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
       { id: 'coaches', label: 'Coaches', href: '/admin/coaches', icon: GraduationCap, group: 'Operations' },
       { id: 'coach-apps', label: 'Applications', href: '/admin/coach-applications', icon: UserPlus, group: 'Operations' },
       { id: 'group-classes', label: 'Group Classes', href: '/admin/group-classes', icon: Calendar, group: 'Operations' },
+      { id: 'tuition', label: 'Tuition', href: '/admin/tuition', icon: BookOpen, group: 'Operations' },
       { id: 'communication', label: 'Communication', href: '/admin/communication', icon: Radio, group: 'Operations' },
       { id: 'templates', label: 'Templates', href: '/admin/templates', icon: FileText, group: 'Content' },
       { id: 'content', label: 'Content', href: '/admin/content-upload', icon: BookOpen, group: 'Content' },
