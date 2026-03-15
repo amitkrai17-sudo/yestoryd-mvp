@@ -9,7 +9,6 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
-import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,11 +95,12 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
       to: `91${input.parentPhone}`,
       templateName: 'tuition_parent_form',
       variables: [
-        input.parentNameHint || 'Parent',
         coachFirstName,
         input.childName,
+        input.childName,
         magicLink,
-        `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
+        String(input.sessionsPurchased),
+        String(Math.round(input.sessionRate / 100)),
       ],
     });
 

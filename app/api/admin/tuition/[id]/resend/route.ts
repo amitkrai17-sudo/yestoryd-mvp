@@ -8,7 +8,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
-import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +17,7 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
   // 1. Fetch existing onboarding
   const { data: onboarding, error: fetchErr } = await supabase
     .from('tuition_onboarding')
-    .select('id, child_name, parent_phone, parent_name_hint, coach_id, status')
+    .select('id, child_name, parent_phone, parent_name_hint, coach_id, status, sessions_purchased, session_rate')
     .eq('id', id)
     .single();
 
@@ -68,11 +67,12 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
       to: `91${onboarding.parent_phone}`,
       templateName: 'tuition_parent_form',
       variables: [
-        onboarding.parent_name_hint || 'Parent',
         coachFirstName,
         onboarding.child_name,
+        onboarding.child_name,
         magicLink,
-        `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
+        String(onboarding.sessions_purchased),
+        String(Math.round(onboarding.session_rate / 100)),
       ],
     });
 
