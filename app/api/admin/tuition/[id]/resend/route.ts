@@ -65,14 +65,14 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
   try {
     await sendWhatsAppMessage({
       to: `91${onboarding.parent_phone}`,
-      templateName: 'tuition_parent_form',
+      templateName: 'tuition_onboarding_form',
       variables: [
         coachFirstName,
-        onboarding.child_name,
         onboarding.child_name,
         magicLink,
         String(onboarding.sessions_purchased),
         String(Math.round(onboarding.session_rate / 100)),
+        coachFirstName,
       ],
     });
 

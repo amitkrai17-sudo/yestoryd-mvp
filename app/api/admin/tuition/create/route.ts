@@ -93,14 +93,14 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   try {
     await sendWhatsAppMessage({
       to: `91${input.parentPhone}`,
-      templateName: 'tuition_parent_form',
+      templateName: 'tuition_onboarding_form',
       variables: [
         coachFirstName,
-        input.childName,
         input.childName,
         magicLink,
         String(input.sessionsPurchased),
         String(Math.round(input.sessionRate / 100)),
+        coachFirstName,
       ],
     });
 
