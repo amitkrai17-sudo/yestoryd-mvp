@@ -84,17 +84,22 @@ export async function sendWhatsAppMessage(params: AiSensyMessageParams): Promise
     const data = await response.json();
     console.log('[AiSensy] Full response:', JSON.stringify(data));
 
-    if (response.ok && data.status === 'success') {
+    // AiSensy v2 returns HTTP 200 for both success and failure.
+    // Response shapes vary: { status: 'success' } or { success: true/"true" }
+    const isSuccess = response.ok && (
+      data.status === 'success' ||
+      data.success === true ||
+      data.success === 'true'
+    );
+
+    if (isSuccess) {
       console.log('[AiSensy] SUCCESS - messageId:', data.messageId || data.id || 'N/A');
       console.log('[AiSensy] ========== sendWhatsAppMessage END ==========');
       return { success: true, messageId: data.messageId || data.id };
     } else {
-      console.error('[AiSensy] FAILED - Status:', data.status);
-      console.error('[AiSensy] FAILED - Message:', data.message);
-      console.error('[AiSensy] FAILED - Error:', data.error);
-      console.error('[AiSensy] FAILED - Full data:', JSON.stringify(data));
+      console.error('[AiSensy] FAILED - HTTP:', response.status, '- Body:', JSON.stringify(data));
       console.log('[AiSensy] ========== sendWhatsAppMessage END ==========');
-      return { success: false, error: data.message || data.error || 'Unknown error' };
+      return { success: false, error: data.message || data.error || `HTTP ${response.status}: ${data.status || 'unknown'}` };
     }
   } catch (error) {
     console.error('[AiSensy] EXCEPTION:', error);
