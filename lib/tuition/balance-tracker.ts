@@ -65,7 +65,7 @@ export async function deductTuitionBalance(
     // 1. Fetch enrollment with child/parent info
     const { data: enrollment, error: fetchErr } = await supabase
       .from('enrollments')
-      .select('id, sessions_remaining, child_id, parent_id, session_rate, sessions_purchased, enrollment_type, status')
+      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, sessions_purchased, enrollment_type, status')
       .eq('id', enrollmentId)
       .single();
 
@@ -138,6 +138,18 @@ export async function deductTuitionBalance(
       }
     }
 
+    let coachName = 'Coach';
+    if (enrollment.coach_id) {
+      const { data: coach } = await supabase
+        .from('coaches')
+        .select('name')
+        .eq('id', enrollment.coach_id)
+        .single();
+      if (coach) {
+        coachName = coach.name?.split(' ')[0] || 'Coach';
+      }
+    }
+
     let alertSent: DeductResult['alertSent'] = 'none';
 
     // 5. Balance alerts
@@ -156,8 +168,10 @@ export async function deductTuitionBalance(
             variables: [
               parentName.split(' ')[0],
               childName,
+              String(enrollment.sessions_purchased || 0),
+              coachName,
+              childName,
               renewalUrl,
-              `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
             ],
           });
           if (result.success) {

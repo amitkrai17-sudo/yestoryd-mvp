@@ -311,28 +311,14 @@ export async function POST(
           String(rateRupees),
           String(totalRupees),
           checkoutUrl,
-          `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
         ],
       });
     } catch (waErr) {
       console.error(JSON.stringify({ requestId, event: 'tuition_payment_wa_error', error: waErr instanceof Error ? waErr.message : String(waErr) }));
     }
 
-    // 10. Send rAI assessment link
-    try {
-      const assessmentLink = `${APP_URL}/assessment`;
-      await sendWhatsAppMessage({
-        to: `91${input.parentPhone}`,
-        templateName: 'tuition_assessment_invite',
-        variables: [
-          input.parentName.split(' ')[0],
-          input.childFullName,
-          assessmentLink,
-        ],
-      });
-    } catch {
-      // Non-fatal
-    }
+    // 10. Assessment invite disabled — tuition students don't need diagnostic
+    // TODO: Re-enable when tuition-to-coaching upgrade adds diagnostic assessment
 
     // 11. Activity log
     await supabase.from('activity_log').insert({
