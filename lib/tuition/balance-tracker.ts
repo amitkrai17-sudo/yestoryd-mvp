@@ -19,6 +19,30 @@ interface DeductResult {
 }
 
 /**
+ * Log a tuition WA send attempt to communication_logs for observability.
+ */
+async function logTuitionWaSend(
+  templateCode: string,
+  recipientPhone: string,
+  success: boolean,
+  errorMessage?: string,
+) {
+  try {
+    const supabase = createAdminClient();
+    await supabase.from('communication_logs').insert({
+      template_code: templateCode,
+      recipient_type: 'parent',
+      recipient_phone: recipientPhone,
+      wa_sent: success,
+      email_sent: false,
+      error_message: errorMessage || null,
+    });
+  } catch {
+    // Logging failure must never block the main flow
+  }
+}
+
+/**
  * Deduct sessions from a tuition enrollment and handle alerts.
  * Called after session completion for tuition enrollments.
  *
@@ -120,11 +144,14 @@ export async function deductTuitionBalance(
     if (newBalance <= 0) {
       // Zero or negative — send renewal link
       const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
+      const formattedPhone = parentPhone
+        ? (parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`)
+        : null;
 
-      if (parentPhone) {
+      if (formattedPhone) {
         try {
-          await sendWhatsAppMessage({
-            to: parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`,
+          const result = await sendWhatsAppMessage({
+            to: formattedPhone,
             templateName: 'tuition_renewal_link',
             variables: [
               parentName.split(' ')[0],
@@ -133,9 +160,22 @@ export async function deductTuitionBalance(
               `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
             ],
           });
-          alertSent = 'renewal';
-        } catch {
-          // Non-fatal
+          if (result.success) {
+            alertSent = 'renewal';
+          } else {
+            console.error(JSON.stringify({
+              requestId, event: 'tuition_renewal_wa_failed',
+              enrollmentId, phone: formattedPhone, error: result.error,
+            }));
+          }
+          await logTuitionWaSend('tuition_renewal_link', formattedPhone, result.success, result.error);
+        } catch (waErr) {
+          const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
+          console.error(JSON.stringify({
+            requestId, event: 'tuition_renewal_wa_exception',
+            enrollmentId, phone: formattedPhone, error: errMsg,
+          }));
+          await logTuitionWaSend('tuition_renewal_link', formattedPhone, false, errMsg);
         }
       }
 
@@ -144,6 +184,7 @@ export async function deductTuitionBalance(
         event: 'tuition_renewal_alert_sent',
         enrollmentId,
         newBalance,
+        alertSent,
       }));
 
       // 6. Pause check — only if balance has been at 0 for 3+ days
@@ -151,10 +192,14 @@ export async function deductTuitionBalance(
 
     } else if (newBalance <= 2) {
       // Low balance alert
-      if (parentPhone) {
+      const formattedPhone = parentPhone
+        ? (parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`)
+        : null;
+
+      if (formattedPhone) {
         try {
-          await sendWhatsAppMessage({
-            to: parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`,
+          const result = await sendWhatsAppMessage({
+            to: formattedPhone,
             templateName: 'tuition_low_balance',
             variables: [
               parentName.split(' ')[0],
@@ -163,9 +208,22 @@ export async function deductTuitionBalance(
               `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
             ],
           });
-          alertSent = 'low_balance';
-        } catch {
-          // Non-fatal
+          if (result.success) {
+            alertSent = 'low_balance';
+          } else {
+            console.error(JSON.stringify({
+              requestId, event: 'tuition_low_balance_wa_failed',
+              enrollmentId, phone: formattedPhone, error: result.error,
+            }));
+          }
+          await logTuitionWaSend('tuition_low_balance', formattedPhone, result.success, result.error);
+        } catch (waErr) {
+          const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
+          console.error(JSON.stringify({
+            requestId, event: 'tuition_low_balance_wa_exception',
+            enrollmentId, phone: formattedPhone, error: errMsg,
+          }));
+          await logTuitionWaSend('tuition_low_balance', formattedPhone, false, errMsg);
         }
       }
 
@@ -174,6 +232,7 @@ export async function deductTuitionBalance(
         event: 'tuition_low_balance_alert',
         enrollmentId,
         newBalance,
+        alertSent,
       }));
     }
 
@@ -241,10 +300,14 @@ async function checkAndPause(
 
   // Send paused WA
   const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
-  if (parentPhone) {
+  const formattedPhone = parentPhone
+    ? (parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`)
+    : null;
+
+  if (formattedPhone) {
     try {
-      await sendWhatsAppMessage({
-        to: parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`,
+      const result = await sendWhatsAppMessage({
+        to: formattedPhone,
         templateName: 'tuition_paused',
         variables: [
           parentName.split(' ')[0],
@@ -253,8 +316,20 @@ async function checkAndPause(
           `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
         ],
       });
-    } catch {
-      // Non-fatal
+      if (!result.success) {
+        console.error(JSON.stringify({
+          requestId, event: 'tuition_paused_wa_failed',
+          enrollmentId, phone: formattedPhone, error: result.error,
+        }));
+      }
+      await logTuitionWaSend('tuition_paused', formattedPhone, result.success, result.error);
+    } catch (waErr) {
+      const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
+      console.error(JSON.stringify({
+        requestId, event: 'tuition_paused_wa_exception',
+        enrollmentId, phone: formattedPhone, error: errMsg,
+      }));
+      await logTuitionWaSend('tuition_paused', formattedPhone, false, errMsg);
     }
   }
 
