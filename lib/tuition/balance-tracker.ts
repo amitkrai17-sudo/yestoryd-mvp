@@ -206,6 +206,7 @@ export async function deductTuitionBalance(
 
     } else if (newBalance <= 2) {
       // Low balance alert
+      const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
       const formattedPhone = parentPhone
         ? (parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`)
         : null;
@@ -219,7 +220,7 @@ export async function deductTuitionBalance(
               parentName.split(' ')[0],
               childName,
               String(newBalance),
-              `wa.me/${COMPANY_CONFIG.leadBotWhatsApp}`,
+              renewalUrl,
             ],
           });
           if (result.success) {
