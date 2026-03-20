@@ -23,11 +23,77 @@ interface Session {
   motivators: string[];
   sessions_completed: number;
   total_sessions: number;
+  enrollment_type?: string | null;
 }
 
 interface PreSessionBriefProps {
   session: Session;
   onClose: () => void;
+}
+
+/**
+ * Parse and format last_session_summary — handles both JSON and plain text.
+ * JSON shape from session-complete: { focus, progress, highlights, next_focus, homework }
+ */
+function LastSessionSummary({ raw }: { raw: string }) {
+  // Try parsing as JSON first
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const focus = parsed.focus?.replace(/_/g, ' ');
+      const progress = parsed.progress?.replace(/_/g, ' ');
+      const highlights = Array.isArray(parsed.highlights)
+        ? parsed.highlights.join(', ')
+        : parsed.highlights;
+      const nextFocus = parsed.next_focus?.replace(/_/g, ' ');
+      const homework = Array.isArray(parsed.homework)
+        ? parsed.homework.length > 0 ? parsed.homework.join(', ') : null
+        : parsed.homework;
+
+      return (
+        <div className="space-y-2 text-sm">
+          {focus && (
+            <div className="flex gap-2">
+              <span className="text-gray-400 flex-shrink-0">Focus:</span>
+              <span className="text-white/90 capitalize">{focus}</span>
+            </div>
+          )}
+          {progress && (
+            <div className="flex gap-2">
+              <span className="text-gray-400 flex-shrink-0">Progress:</span>
+              <span className="text-white/90 capitalize">{progress}</span>
+            </div>
+          )}
+          {highlights && (
+            <div className="flex gap-2">
+              <span className="text-gray-400 flex-shrink-0">Highlights:</span>
+              <span className="text-white/90">{highlights}</span>
+            </div>
+          )}
+          {nextFocus && (
+            <div className="flex gap-2">
+              <span className="text-gray-400 flex-shrink-0">Next focus:</span>
+              <span className="text-white/90 capitalize">{nextFocus}</span>
+            </div>
+          )}
+          {homework && (
+            <div className="flex gap-2">
+              <span className="text-gray-400 flex-shrink-0">Homework:</span>
+              <span className="text-white/90">{homework}</span>
+            </div>
+          )}
+          {!focus && !progress && !highlights && (
+            <p className="text-white/90 leading-relaxed">{raw}</p>
+          )}
+        </div>
+      );
+    }
+  } catch {
+    // Not JSON — fall through to plain text
+  }
+
+  // Plain text (AI-generated summary or legacy format)
+  return <p className="text-white/90 text-sm leading-relaxed">{raw}</p>;
 }
 
 export default function PreSessionBrief({ session, onClose }: PreSessionBriefProps) {
@@ -112,7 +178,11 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
             </div>
             <div>
               <p className="text-white font-semibold text-lg">{session.child_name || 'Unknown'}</p>
-              <p className="text-white/70 text-sm">{session.child_age || '?'} years - Session {sessionNumber}/{session.total_sessions || '?'}</p>
+              <p className="text-white/70 text-sm">
+                {session.child_age || '?'} years - {session.enrollment_type === 'tuition'
+                  ? 'Tuition Session'
+                  : `Session ${sessionNumber}/${session.total_sessions || '?'}`}
+              </p>
             </div>
           </div>
         </div>
@@ -146,15 +216,24 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
                   <p className="text-2xl font-bold text-[#00ABFF]">{progress}%</p>
                 </div>
               </div>
-              <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-400">Sessions Completed</span>
-                  <span className="text-white font-medium">{session.sessions_completed}/{session.total_sessions}</span>
+              {session.enrollment_type === 'tuition' ? (
+                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Sessions Completed</span>
+                    <span className="text-white font-medium">{session.sessions_completed}</span>
+                  </div>
                 </div>
-                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-[#00ABFF] to-[#00ABFF] rounded-full" style={{ width: `${progress}%` }} />
+              ) : (
+                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-400">Sessions Completed</span>
+                    <span className="text-white font-medium">{session.sessions_completed}/{session.total_sessions}</span>
+                  </div>
+                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-[#00ABFF] to-[#00ABFF] rounded-full" style={{ width: `${progress}%` }} />
+                  </div>
                 </div>
-              </div>
+              )}
               {favoriteTopics.length > 0 && (
                 <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                   <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
@@ -193,14 +272,14 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
                       <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
                         <Target className="w-4 h-4 text-[#00ABFF]" />Focus Area
                       </div>
-                      <p className="text-white">{session.last_session_focus}</p>
+                      <p className="text-white">{session.last_session_focus?.replace(/_/g, ' ')}</p>
                     </div>
                   )}
                   <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                     <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
                       <BookOpen className="w-4 h-4 text-[#00ABFF]" />Summary
                     </div>
-                    <p className="text-white/90 text-sm leading-relaxed">{session.last_session_summary}</p>
+                    <LastSessionSummary raw={session.last_session_summary} />
                   </div>
                 </>
               ) : (

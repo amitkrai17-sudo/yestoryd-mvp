@@ -635,7 +635,7 @@ export async function POST(request: NextRequest) {
         {
           focusArea: analysis.focus_area,
           skillsWorkedOn: analysis.skills_worked_on,
-          homeworkDescription: analysis.homework_description,
+          homeworkDescription: analysis.homework_description || undefined,
         }
       );
     }

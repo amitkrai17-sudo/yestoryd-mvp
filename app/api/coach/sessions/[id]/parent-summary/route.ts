@@ -270,7 +270,7 @@ export async function POST(
 
     // Derive highlight from best-performing activities
     const highlightActivity = activityLogs.find((a: any) => a.status === 'completed' && a.coach_note);
-    const highlight = highlightActivity
+    const highlight = highlightActivity?.coach_note
       ? highlightActivity.coach_note
       : statusCounts.completed > 0
         ? `Completed ${statusCounts.completed} of ${activityLogs.length} activities successfully`
@@ -335,7 +335,7 @@ export async function POST(
       summary,
       practice_items_assigned: practiceItems.length,
       whatsapp_sent: waResult.success,
-      whatsapp_message_id: waResult.messageId || null,
+      whatsapp_message_id: ('messageId' in waResult ? waResult.messageId : null) || null,
     });
   } catch (error: any) {
     console.error(JSON.stringify({ requestId, event: 'parent_summary_error', error: error.message }));

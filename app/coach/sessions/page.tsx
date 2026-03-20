@@ -94,6 +94,7 @@ interface Session {
   report_submitted_at?: string | null;
   report_deadline?: string | null;
   enrollment_id?: string | null;
+  enrollment_type?: string | null;
 }
 
 type FilterValue = typeof FILTER_OPTIONS[number]['value'];
