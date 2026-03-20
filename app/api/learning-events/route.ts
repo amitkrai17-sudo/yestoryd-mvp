@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { insertLearningEvent, type LearningEventType } from '@/lib/rai/learning-events';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     // Insert via canonical helper (embedding always generated inside)
     const inserted = await insertLearningEvent({
       childId: child_id,
-      eventType: event_type,
+      eventType: event_type as LearningEventType,
       eventDate: event_date || new Date().toISOString(),
       eventData: data,
       contentForEmbedding: searchableText,
