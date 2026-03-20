@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 import { sendCommunication } from '@/lib/communication';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 import crypto from 'crypto';
 import {
   generateParentWhatsAppSummary,
@@ -139,10 +140,19 @@ export async function POST(
     }
 
     // 5. Store summary in learning_events
+    const summaryContentForEmbedding = `Parent session summary for ${child.child_name}: ${summary}`;
+    let summaryEmbedding: string | null = null;
+    try {
+      const summaryEmbVec = await generateEmbedding(summaryContentForEmbedding);
+      summaryEmbedding = JSON.stringify(summaryEmbVec);
+    } catch (embErr) {
+      console.error(JSON.stringify({ requestId, event: 'summary_embedding_error', error: (embErr as Error).message }));
+    }
+
     await supabase
       .from('learning_events')
       .insert({
-        child_id: session.child_id as string, // Already verified not null above
+        child_id: session.child_id as string,
         event_type: 'parent_session_summary',
         event_data: {
           session_id: sessionId,
@@ -152,6 +162,10 @@ export async function POST(
           sent_to: child.parent_phone,
         },
         ai_summary: summary,
+        content_for_embedding: summaryContentForEmbedding,
+        embedding: summaryEmbedding,
+        signal_source: 'coach_form',
+        signal_confidence: 'medium',
         event_date: new Date().toISOString().split('T')[0],
       });
 

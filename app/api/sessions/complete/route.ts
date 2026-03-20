@@ -9,6 +9,7 @@ import {
   transcribeVoiceNoteBase64,
   generateSessionSummary,
 } from '@/lib/gemini/audio-analysis';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 const supabase = createAdminClient();
 
@@ -274,6 +275,14 @@ export async function POST(request: NextRequest) {
       aiSummary,
     ].filter(Boolean).join(' ');
 
+    let sessionEmbedding: string | null = null;
+    try {
+      const sessionEmbVec = await generateEmbedding(contentForEmbedding);
+      sessionEmbedding = JSON.stringify(sessionEmbVec);
+    } catch (embErr) {
+      console.error('Embedding generation failed:', embErr);
+    }
+
     const { error: eventError } = await supabase
       .from('learning_events')
       .insert({
@@ -286,6 +295,9 @@ export async function POST(request: NextRequest) {
         ai_summary: aiSummary,
         voice_note_transcript: voiceTranscript || null,
         content_for_embedding: contentForEmbedding,
+        embedding: sessionEmbedding,
+        signal_source: 'coach_form',
+        signal_confidence: 'medium',
         created_at: new Date().toISOString(),
       });
 
@@ -350,6 +362,15 @@ export async function POST(request: NextRequest) {
 
     // Create breakthrough milestone if applicable
     if (data.breakthroughMoment) {
+      const breakthroughContent = `Breakthrough: ${data.breakthroughMoment}`;
+      let breakthroughEmbedding: string | null = null;
+      try {
+        const breakthroughEmbVec = await generateEmbedding(breakthroughContent);
+        breakthroughEmbedding = JSON.stringify(breakthroughEmbVec);
+      } catch (embErr) {
+        console.error('Embedding generation failed:', embErr);
+      }
+
       await supabase
         .from('learning_events')
         .insert({
@@ -362,7 +383,10 @@ export async function POST(request: NextRequest) {
             description: data.breakthroughMoment,
             session_focus: data.focusArea,
           },
-          content_for_embedding: `Breakthrough: ${data.breakthroughMoment}`,
+          content_for_embedding: breakthroughContent,
+          embedding: breakthroughEmbedding,
+          signal_source: 'coach_form',
+          signal_confidence: 'medium',
         });
     }
 

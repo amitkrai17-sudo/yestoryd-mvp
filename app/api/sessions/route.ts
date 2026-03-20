@@ -10,6 +10,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { rescheduleEvent, cancelEvent, scheduleCalendarEvent } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/rai/embeddings';
 
 // ============================================================
 // CONSTANTS
@@ -365,6 +366,15 @@ export async function PATCH(request: NextRequest) {
 
     // Create learning event for tracking (non-blocking)
     try {
+      const rescheduleContentForEmbedding = `Session ${typedSession.session_number || '?'} rescheduled from ${typedSession.scheduled_date} to ${formatDateForDB(newDate)}`;
+      let rescheduleEmbedding: string | null = null;
+      try {
+        const rescheduleEmbVec = await generateEmbedding(rescheduleContentForEmbedding);
+        rescheduleEmbedding = JSON.stringify(rescheduleEmbVec);
+      } catch (embErr) {
+        console.error('Embedding generation failed:', embErr);
+      }
+
       const { error: insertError } = await supabase.from('learning_events').insert({
         child_id: typedSession.child_id,
         coach_id: typedSession.coach_id,
@@ -379,9 +389,12 @@ export async function PATCH(request: NextRequest) {
           new_time: formatTimeForDB(newDate),
           calendar_updated: calendarUpdated,
         },
-        content_for_embedding: `Session ${typedSession.session_number || '?'} rescheduled from ${typedSession.scheduled_date} to ${formatDateForDB(newDate)}`,
+        content_for_embedding: rescheduleContentForEmbedding,
+        embedding: rescheduleEmbedding,
+        signal_source: 'system_generated',
+        signal_confidence: 'low',
       });
-      
+
       if (insertError) {
         logError('PATCH insert learning_event', insertError);
       } else {
@@ -518,6 +531,15 @@ export async function DELETE(request: NextRequest) {
 
     // Create learning event for tracking (non-blocking)
     try {
+      const cancelContentForEmbedding = `Session ${typedSession.session_number || '?'} cancelled: ${reason}`;
+      let cancelEmbedding: string | null = null;
+      try {
+        const cancelEmbVec = await generateEmbedding(cancelContentForEmbedding);
+        cancelEmbedding = JSON.stringify(cancelEmbVec);
+      } catch (embErr) {
+        console.error('Embedding generation failed:', embErr);
+      }
+
       const { error: insertError } = await supabase.from('learning_events').insert({
         child_id: typedSession.child_id,
         coach_id: typedSession.coach_id,
@@ -531,9 +553,12 @@ export async function DELETE(request: NextRequest) {
           reason,
           calendar_cancelled: calendarCancelled,
         },
-        content_for_embedding: `Session ${typedSession.session_number || '?'} cancelled: ${reason}`,
+        content_for_embedding: cancelContentForEmbedding,
+        embedding: cancelEmbedding,
+        signal_source: 'system_generated',
+        signal_confidence: 'low',
       });
-      
+
       if (insertError) {
         logError('DELETE insert learning_event', insertError);
       } else {
