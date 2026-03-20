@@ -9,7 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGenAI } from '@/lib/gemini/client';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { generateEmbedding, buildSearchableContent } from '@/lib/rai/embeddings';
+import { buildSearchableContent } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { buildFullAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
@@ -262,23 +263,20 @@ export async function POST(request: NextRequest) {
       };
 
       const searchableContent = buildSearchableContent('assessment', name, eventData, analysisResult.feedback);
-      let embedding: number[] | null = null;
-      try {
-        embedding = await generateEmbedding(searchableContent);
-      } catch { /* non-critical */ }
 
       const fluencyDesc = fluencyScore >= 7 ? 'smooth' : fluencyScore >= 5 ? 'moderate' : 'developing';
       const phonicsFocus = analysisResult.phonics_analysis?.recommended_focus || 'general practice';
       const aiSummary = `${name} scored ${overallScore}/10 with ${fluencyDesc} fluency at ${analysisResult.wpm} WPM. Focus area: ${phonicsFocus}. ${analysisResult.strengths?.[0] || 'Showed good effort'}.`;
 
-      await supabase.from('learning_events').insert({
-        child_id: childId,
-        event_type: 'assessment',
-        event_date: new Date().toISOString(),
-        event_data: eventData,
-        ai_summary: aiSummary,
-        content_for_embedding: searchableContent,
-        embedding: embedding ? JSON.stringify(embedding) : null,
+      await insertLearningEvent({
+        childId,
+        eventType: 'assessment',
+        eventData,
+        contentForEmbedding: searchableContent,
+        signalSource: 'diagnostic_assessment',
+        signalConfidence: 'high',
+        sessionModality: 'assessment',
+        aiSummary,
       });
     } catch (eventErr) {
       console.error(JSON.stringify({ requestId, event: 'retry_learning_event_failed', error: (eventErr as Error).message }));

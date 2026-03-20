@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
 
@@ -169,13 +169,12 @@ export async function POST(
 
       (async () => {
         try {
-          const embedding = await generateEmbedding(npsContent);
-          await supabase.from('learning_events').insert({
-            child_id: npsChildId,
-            coach_id: npsCoachId,
-            event_type: 'nps_feedback',
-            event_date: new Date().toISOString(),
-            event_data: {
+          await insertLearningEvent({
+            childId: npsChildId,
+            coachId: npsCoachId ?? undefined,
+            eventType: 'nps_feedback',
+            eventDate: new Date().toISOString(),
+            eventData: {
               nps_score: score,
               category,
               feedback: feedback || null,
@@ -185,9 +184,10 @@ export async function POST(
               content_rating: contentRating,
               enrollment_id: enrollmentId,
             },
-            ai_summary: `Parent rated ${score}/10 (${category}). ${feedback ? `Said: "${feedback.substring(0, 200)}"` : 'No written feedback.'}`,
-            content_for_embedding: npsContent,
-            embedding: JSON.stringify(embedding),
+            aiSummary: `Parent rated ${score}/10 (${category}). ${feedback ? `Said: "${feedback.substring(0, 200)}"` : 'No written feedback.'}`,
+            contentForEmbedding: npsContent,
+            signalSource: 'nps_survey',
+            signalConfidence: 'medium',
           });
         } catch (e) {
           console.error('Failed to create NPS learning_event:', e);

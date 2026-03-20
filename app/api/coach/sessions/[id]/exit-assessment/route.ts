@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { completeSeason } from '@/lib/completion/complete-season';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -227,21 +228,19 @@ export async function POST(
         .single();
       eventId = updated!.id;
     } else {
-      const { data: created } = await supabase
-        .from('learning_events')
-        .insert({
-          child_id: session.child_id,
-          coach_id: session.coach_id,
-          session_id: sessionId,
-          event_type: 'exit_assessment',
-          event_date: new Date().toISOString(),
-          event_data: eventData,
-          data: eventData,
-          content_for_embedding: contentParts.join('\n'),
-          created_by: auth.email,
-        })
-        .select('id')
-        .single();
+      const created = await insertLearningEvent({
+        childId: session.child_id,
+        coachId: session.coach_id,
+        sessionId,
+        eventType: 'exit_assessment',
+        eventDate: new Date().toISOString(),
+        eventData: eventData as Record<string, unknown>,
+        legacyData: eventData as Record<string, unknown>,
+        contentForEmbedding: contentParts.join('\n'),
+        signalSource: 'coach_form',
+        signalConfidence: 'high',
+        createdBy: auth.email,
+      });
       eventId = created!.id;
     }
 

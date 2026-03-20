@@ -14,7 +14,7 @@ import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { getAgeConfig, getAntiHallucinationRules } from '@/lib/gemini/assessment-prompts';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -366,40 +366,27 @@ export async function POST(request: NextRequest) {
       geminiResult.areas_to_improve.length > 0 ? `Areas to improve: ${geminiResult.areas_to_improve.join(', ')}.` : '',
     ].filter(Boolean).join(' ');
 
-    let embeddingStr: string | null = null;
-    try {
-      const embedding = await generateEmbedding(contentForEmbedding);
-      embeddingStr = JSON.stringify(embedding);
-    } catch (embErr) {
-      console.error(JSON.stringify({ requestId, event: 'micro_embedding_error', error: embErr instanceof Error ? embErr.message : 'Unknown' }));
-    }
-
-    const { data: eventRow } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id,
-        coach_id: auth.coachId || null,
-        event_type: 'micro_assessment',
-        event_date: now.split('T')[0],
-        signal_confidence: 'high',
-        signal_source: 'micro_assessment',
-        intelligence_score: intelligenceScore,
-        session_modality: 'online_group',
-        event_data: {
-          micro_assessment_id: microAssessmentRow?.id || null,
-          fluency_rating: geminiResult.fluency_rating,
-          estimated_wpm: geminiResult.estimated_wpm,
-          accuracy_percent: geminiResult.accuracy_percent,
-          comprehension_score: comprehensionScore,
-          passage_id: resolvedPassageId,
-          group_session_id: group_session_id || null,
-        },
-        content_for_embedding: contentForEmbedding,
-        embedding: embeddingStr,
-        created_by: auth.email || null,
-      })
-      .select('id')
-      .single();
+    const eventRow = await insertLearningEvent({
+      childId: child_id,
+      coachId: auth.coachId || undefined,
+      eventType: 'micro_assessment',
+      eventDate: now.split('T')[0],
+      signalConfidence: 'high',
+      signalSource: 'micro_assessment',
+      intelligenceScore,
+      sessionModality: 'online_group',
+      eventData: {
+        micro_assessment_id: microAssessmentRow?.id || null,
+        fluency_rating: geminiResult.fluency_rating,
+        estimated_wpm: geminiResult.estimated_wpm,
+        accuracy_percent: geminiResult.accuracy_percent,
+        comprehension_score: comprehensionScore,
+        passage_id: resolvedPassageId,
+        group_session_id: group_session_id || null,
+      },
+      contentForEmbedding,
+      createdBy: auth.email || undefined,
+    });
 
     // ─── Update child_intelligence_profiles ───
     try {

@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 import { sendCommunication } from '@/lib/communication';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
 import {
   generateParentWhatsAppSummary,
@@ -141,33 +141,23 @@ export async function POST(
 
     // 5. Store summary in learning_events
     const summaryContentForEmbedding = `Parent session summary for ${child.child_name}: ${summary}`;
-    let summaryEmbedding: string | null = null;
-    try {
-      const summaryEmbVec = await generateEmbedding(summaryContentForEmbedding);
-      summaryEmbedding = JSON.stringify(summaryEmbVec);
-    } catch (embErr) {
-      console.error(JSON.stringify({ requestId, event: 'summary_embedding_error', error: (embErr as Error).message }));
-    }
 
-    await supabase
-      .from('learning_events')
-      .insert({
-        child_id: session.child_id as string,
-        event_type: 'parent_session_summary',
-        event_data: {
-          session_id: sessionId,
-          session_number: session.session_number,
-          summary,
-          status_counts: statusCounts,
-          sent_to: child.parent_phone,
-        },
-        ai_summary: summary,
-        content_for_embedding: summaryContentForEmbedding,
-        embedding: summaryEmbedding,
-        signal_source: 'coach_form',
-        signal_confidence: 'medium',
-        event_date: new Date().toISOString().split('T')[0],
-      });
+    await insertLearningEvent({
+      childId: session.child_id as string,
+      eventType: 'parent_session_summary',
+      eventData: {
+        session_id: sessionId,
+        session_number: session.session_number,
+        summary,
+        status_counts: statusCounts,
+        sent_to: child.parent_phone,
+      },
+      aiSummary: summary,
+      contentForEmbedding: summaryContentForEmbedding,
+      signalSource: 'coach_form',
+      signalConfidence: 'medium',
+      eventDate: new Date().toISOString().split('T')[0],
+    });
 
     // 5b. Extract practice materials from session template content_refs
     // Primary: single query to el_content_items; Fallback: legacy tables
@@ -243,19 +233,23 @@ export async function POST(
     // 5c. Create parent_practice_assigned learning event (if content found)
     if (practiceItems.length > 0) {
       try {
-        await supabase
-          .from('learning_events')
-          .insert({
-            child_id: session.child_id,
-            event_type: 'parent_practice_assigned',
-            event_data: {
-              session_id: sessionId,
-              session_number: session.session_number,
-              items: practiceItems,
-              assigned_at: new Date().toISOString(),
-            },
-            event_date: new Date().toISOString().split('T')[0],
-          });
+        const practiceTitles = practiceItems.map(item => `${item.title} (${item.type})`).join(', ');
+        const practiceContentForEmbedding = `Practice assigned for ${child.child_name} after session ${session.session_number}: ${practiceTitles}`;
+
+        await insertLearningEvent({
+          childId: session.child_id as string,
+          eventType: 'parent_practice_assigned',
+          eventData: {
+            session_id: sessionId,
+            session_number: session.session_number,
+            items: practiceItems,
+            assigned_at: new Date().toISOString(),
+          },
+          contentForEmbedding: practiceContentForEmbedding,
+          signalSource: 'system_generated',
+          signalConfidence: 'low',
+          eventDate: new Date().toISOString().split('T')[0],
+        });
       } catch (evtErr: any) {
         console.warn(JSON.stringify({ requestId, event: 'practice_event_creation_error', error: evtErr.message }));
       }

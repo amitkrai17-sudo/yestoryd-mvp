@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { buildLiteAssessmentPrompt } from '@/lib/gemini/assessment-prompts';
 import { generateAssessmentAISummary } from '@/lib/gemini/session-prompts';
@@ -143,27 +143,19 @@ export async function POST(request: NextRequest) {
     // Create searchable text for embedding
     const searchableText = `assessment reading score ${assessmentData.score} wpm ${assessmentData.wpm} fluency ${assessmentData.fluency} pronunciation ${assessmentData.pronunciation} completeness ${assessmentData.completeness} ${assessmentData.feedback} ${aiSummary}`;
 
-    // Generate embedding
-    const embedding = await generateEmbedding(searchableText);
-
     // Save to learning_events
-    const { data: learningEvent, error: insertError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        event_type: 'assessment',
-        event_date: new Date().toISOString(),
-        data: JSON.parse(JSON.stringify(assessmentData)),
-        ai_summary: aiSummary,
-        embedding: embedding ? JSON.stringify(embedding) : null,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Failed to save to learning_events:', insertError);
-      // Don't fail the request, just log it
-    }
+    const learningEvent = await insertLearningEvent({
+      childId,
+      eventType: 'assessment',
+      eventData: {},
+      contentForEmbedding: searchableText,
+      signalSource: 'diagnostic_assessment',
+      signalConfidence: 'high',
+      sessionModality: 'assessment',
+      aiSummary,
+      legacyData: JSON.parse(JSON.stringify(assessmentData)),
+    });
+    const insertError = learningEvent === null;
 
     // Update child's latest_assessment_score
     await supabase

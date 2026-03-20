@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { decodeActivityToken } from '@/lib/group-classes/activity-token';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -127,29 +127,22 @@ export async function POST(request: NextRequest) {
     // Build content for embedding
     const contentForEmbedding = `${child_name} response in ${classType?.name || 'Group Class'} (${ageBand}): ${response_text}`;
 
-    // Generate embedding (non-blocking failure — insert even if embedding fails)
-    let embedding: number[] | null = null;
-    try {
-      embedding = await generateEmbedding(contentForEmbedding);
-    } catch (embErr) {
-      console.error(JSON.stringify({ requestId, event: 'activity_submit_embedding_failed', error: (embErr as Error).message }));
-      // TODO: Queue background re-embedding via QStash
-    }
-
-    // Insert learning_event
-    const { error: eventError } = await supabase.from('learning_events').insert({
-      child_id,
-      event_type: 'group_class_response',
-      event_date: now,
-      event_data: eventData,
-      session_id,
-      ai_summary: `Typed response in ${classType?.name || 'group class'}: ${response_text.slice(0, 200)}${response_text.length > 200 ? '...' : ''}`,
-      content_for_embedding: contentForEmbedding,
-      embedding: embedding ? JSON.stringify(embedding) : null,
+    // Insert learning_event (embedding generated internally by insertLearningEvent)
+    const insertResult = await insertLearningEvent({
+      childId: child_id,
+      eventType: 'group_class_response',
+      eventDate: now,
+      eventData,
+      sessionId: session_id,
+      aiSummary: `Typed response in ${classType?.name || 'group class'}: ${response_text.slice(0, 200)}${response_text.length > 200 ? '...' : ''}`,
+      contentForEmbedding,
+      signalSource: 'child_artifact',
+      signalConfidence: 'medium',
+      sessionModality: 'group_class',
     });
 
-    if (eventError) {
-      console.error(JSON.stringify({ requestId, event: 'activity_submit_event_insert_error', error: eventError.message }));
+    if (!insertResult) {
+      console.error(JSON.stringify({ requestId, event: 'activity_submit_event_insert_error' }));
       // Don't block submission — mark participant even if event insert fails
     }
 

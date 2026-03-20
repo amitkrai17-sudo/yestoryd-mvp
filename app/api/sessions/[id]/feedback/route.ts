@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
 
@@ -240,17 +241,29 @@ export async function POST(
     }
 
     // Create learning event for RAG
-    await supabase
-      .from('learning_events')
-      .insert({
-        child_id: session.child_id!,
-        event_type: 'session_feedback',
-        event_data: {
-          session_id: sessionId,
-          feedback,
-          coach_id: session.coach_id,
-        },
-      });
+    const feedbackContentParts = [
+      `Session feedback for session ${sessionId}`,
+      feedback.focus_area ? `Focus area: ${feedback.focus_area}` : '',
+      feedback.progress_rating ? `Progress: ${feedback.progress_rating}` : '',
+      feedback.engagement_level ? `Engagement: ${feedback.engagement_level}` : '',
+      feedback.skills_improved?.length ? `Skills improved: ${feedback.skills_improved.join(', ')}` : '',
+      feedback.skills_need_work?.length ? `Skills needing work: ${feedback.skills_need_work.join(', ')}` : '',
+      feedback.breakthrough_moment ? `Breakthrough: ${feedback.breakthrough_moment}` : '',
+      feedback.concerns_noted ? `Concerns: ${feedback.concerns_noted}` : '',
+      feedback.coach_notes ? `Coach notes: ${feedback.coach_notes}` : '',
+    ].filter(Boolean);
+    await insertLearningEvent({
+      childId: session.child_id!,
+      eventType: 'session_feedback',
+      eventData: {
+        session_id: sessionId,
+        feedback,
+        coach_id: session.coach_id,
+      },
+      contentForEmbedding: feedbackContentParts.join('\n'),
+      signalSource: 'parent_observation',
+      signalConfidence: 'medium',
+    });
 
     // Update child's learning needs based on feedback
     if (feedback.skills_need_work && feedback.skills_need_work.length > 0) {

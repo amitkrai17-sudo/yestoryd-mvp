@@ -5,6 +5,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPricingConfig } from '@/lib/config/pricing-config';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 const getSupabase = createAdminClient;
 
 // ============================================================
@@ -176,18 +177,18 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
       exit_data: exitData,
     };
 
-    await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        coach_id: enrollment.coach_id,
-        event_type: 'season_completion',
-        event_date: new Date().toISOString(),
-        event_data: completionEventData,
-        data: completionEventData,
-        content_for_embedding: `Season ${seasonNumber} completed for ${ageBand} program. ${sessionsCompleted}/${sessionsTotal} sessions (${Math.round(completionRate * 100)}%). Focus areas: ${Object.keys(beforeAfter).join(', ')}.`,
-        created_by: 'system',
-      });
+    await insertLearningEvent({
+      childId,
+      coachId: enrollment.coach_id,
+      eventType: 'season_completion',
+      eventDate: new Date().toISOString(),
+      eventData: completionEventData as Record<string, unknown>,
+      legacyData: completionEventData as Record<string, unknown>,
+      contentForEmbedding: `Season ${seasonNumber} completed for ${ageBand} program. ${sessionsCompleted}/${sessionsTotal} sessions (${Math.round(completionRate * 100)}%). Focus areas: ${Object.keys(beforeAfter).join(', ')}.`,
+      signalSource: 'system_generated',
+      signalConfidence: 'high',
+      createdBy: 'system',
+    });
 
     // 9. Generate next season preview (if applicable)
     let nextSeasonPreview = null;

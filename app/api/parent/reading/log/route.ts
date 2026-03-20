@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
 
@@ -79,33 +79,36 @@ ${notes ? `Parent notes: ${notes}` : ''}`;
 
     const aiSummary = await generateAISummary(summaryPrompt);
 
-    // Generate embedding for RAG
+    // Generate embedding content for RAG
     const searchableText = `reading log book ${bookTitle} ${bookAuthor || ''} ${notes || ''} ${aiSummary}`;
-    const embedding = await generateEmbedding(searchableText);
 
     // Insert learning_event
-    const { data: event, error: insertError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        event_type: 'reading_log',
-        event_date: new Date().toISOString(),
-        data: logData,
-        ai_summary: aiSummary,
-        embedding: JSON.stringify(embedding) as unknown as string,
-        created_by: user.id,
-      })
-      .select('id, event_date, ai_summary')
-      .single();
+    const eventDate = new Date().toISOString();
+    const inserted = await insertLearningEvent({
+      childId,
+      eventType: 'reading_log',
+      eventData: {},
+      contentForEmbedding: searchableText,
+      signalSource: 'parent_observation',
+      signalConfidence: 'medium',
+      eventDate,
+      aiSummary,
+      createdBy: user.id,
+      legacyData: logData,
+    });
 
-    if (insertError) {
-      console.error('[READING_LOG] Insert error:', insertError);
+    if (!inserted) {
+      console.error('[READING_LOG] Insert error: insertLearningEvent returned null');
       return NextResponse.json({ error: 'Failed to save reading log' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      event,
+      event: {
+        id: inserted.id,
+        event_date: eventDate,
+        ai_summary: aiSummary,
+      },
     });
   } catch (error) {
     console.error('[READING_LOG] Error:', error);

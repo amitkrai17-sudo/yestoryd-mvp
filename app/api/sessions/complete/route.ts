@@ -9,7 +9,7 @@ import {
   transcribeVoiceNoteBase64,
   generateSessionSummary,
 } from '@/lib/gemini/audio-analysis';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
 
@@ -130,20 +130,21 @@ async function sendQuizToChild(childId: string, sessionId: string, quizTopic: st
       // TODO: Send WhatsApp/Email with quiz link
 
       // Create learning event for quiz assignment
-      await supabase
-        .from('learning_events')
-        .insert({
-          child_id: childId,
-          session_id: sessionId,
-          event_type: 'quiz',
-          event_subtype: 'assigned',
-          event_data: {
-            quiz_id: quiz.id,
-            quiz_title: quiz.title,
-            topic: quizTopic,
-            status: 'sent',
-          },
-        });
+      await insertLearningEvent({
+        childId,
+        sessionId,
+        eventType: 'quiz',
+        eventSubtype: 'assigned',
+        eventData: {
+          quiz_id: quiz.id,
+          quiz_title: quiz.title,
+          topic: quizTopic,
+          status: 'sent',
+        },
+        contentForEmbedding: `Quiz "${quiz.title}" assigned for topic: ${quizTopic}`,
+        signalSource: 'coach_form',
+        signalConfidence: 'medium',
+      });
     }
   }
 }
@@ -275,34 +276,22 @@ export async function POST(request: NextRequest) {
       aiSummary,
     ].filter(Boolean).join(' ');
 
-    let sessionEmbedding: string | null = null;
-    try {
-      const sessionEmbVec = await generateEmbedding(contentForEmbedding);
-      sessionEmbedding = JSON.stringify(sessionEmbVec);
-    } catch (embErr) {
-      console.error('Embedding generation failed:', embErr);
-    }
+    const eventResult = await insertLearningEvent({
+      childId: data.childId,
+      coachId: data.coachId,
+      sessionId: data.sessionId,
+      eventType: 'session',
+      eventSubtype: data.sessionType,
+      eventData,
+      aiSummary,
+      voiceNoteTranscript: voiceTranscript || undefined,
+      contentForEmbedding,
+      signalSource: 'coach_form',
+      signalConfidence: 'medium',
+    });
 
-    const { error: eventError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: data.childId,
-        coach_id: data.coachId,
-        session_id: data.sessionId,
-        event_type: 'session',
-        event_subtype: data.sessionType,
-        event_data: eventData,
-        ai_summary: aiSummary,
-        voice_note_transcript: voiceTranscript || null,
-        content_for_embedding: contentForEmbedding,
-        embedding: sessionEmbedding,
-        signal_source: 'coach_form',
-        signal_confidence: 'medium',
-        created_at: new Date().toISOString(),
-      });
-
-    if (eventError) {
-      console.error('Event creation error:', eventError);
+    if (!eventResult) {
+      console.error('Event creation error (see activity_log for details)');
       // Don't fail - session is already updated
     }
 
@@ -362,32 +351,20 @@ export async function POST(request: NextRequest) {
 
     // Create breakthrough milestone if applicable
     if (data.breakthroughMoment) {
-      const breakthroughContent = `Breakthrough: ${data.breakthroughMoment}`;
-      let breakthroughEmbedding: string | null = null;
-      try {
-        const breakthroughEmbVec = await generateEmbedding(breakthroughContent);
-        breakthroughEmbedding = JSON.stringify(breakthroughEmbVec);
-      } catch (embErr) {
-        console.error('Embedding generation failed:', embErr);
-      }
-
-      await supabase
-        .from('learning_events')
-        .insert({
-          child_id: data.childId,
-          coach_id: data.coachId,
-          session_id: data.sessionId,
-          event_type: 'milestone',
-          event_subtype: 'breakthrough',
-          event_data: {
-            description: data.breakthroughMoment,
-            session_focus: data.focusArea,
-          },
-          content_for_embedding: breakthroughContent,
-          embedding: breakthroughEmbedding,
-          signal_source: 'coach_form',
-          signal_confidence: 'medium',
-        });
+      await insertLearningEvent({
+        childId: data.childId,
+        coachId: data.coachId,
+        sessionId: data.sessionId,
+        eventType: 'milestone',
+        eventSubtype: 'breakthrough',
+        eventData: {
+          description: data.breakthroughMoment,
+          session_focus: data.focusArea,
+        },
+        contentForEmbedding: `Breakthrough: ${data.breakthroughMoment}`,
+        signalSource: 'coach_form',
+        signalConfidence: 'medium',
+      });
     }
 
     return NextResponse.json({

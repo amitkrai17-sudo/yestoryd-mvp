@@ -12,7 +12,8 @@ import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
 import { queueProgressPulse } from '@/lib/qstash';
 import { getCategoryBySlug } from '@/lib/config/skill-categories';
 import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
-import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -164,17 +165,8 @@ export async function POST(
       summary: eventData.coach_notes || undefined,
     });
 
-    // Generate embedding vector
-    let embeddingStr: string | null = null;
-    try {
-      const embedding = await generateEmbedding(contentForEmbedding);
-      embeddingStr = JSON.stringify(embedding);
-    } catch (embErr) {
-      console.error('Embedding generation failed:', embErr);
-    }
-
     // Detect modality from enrollment
-    let sessionModality: string | null = null;
+    let sessionModality: 'tuition' | 'online_1on1' | null = null;
     if (session.enrollment_id) {
       const { data: enr } = await supabase
         .from('enrollments')
@@ -185,24 +177,21 @@ export async function POST(
     }
 
     // 6. Insert learning_event
-    const { error: eventError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: session.child_id!,
-        coach_id: session.coach_id,
-        session_id: sessionId,
-        event_type: 'session',
-        event_date: new Date().toISOString(),
-        event_data: eventData,
-        content_for_embedding: contentForEmbedding,
-        embedding: embeddingStr,
-        signal_source: 'coach_form',
-        signal_confidence: 'medium',
-        ...(sessionModality ? { session_modality: sessionModality } : {}),
-      });
+    const eventResult = await insertLearningEvent({
+      childId: session.child_id!,
+      coachId: session.coach_id ?? undefined,
+      sessionId,
+      eventType: 'session',
+      eventDate: new Date().toISOString(),
+      eventData,
+      contentForEmbedding,
+      signalSource: 'coach_form',
+      signalConfidence: 'medium',
+      ...(sessionModality ? { sessionModality } : {}),
+    });
 
-    if (eventError) {
-      console.error('Learning event insert error:', eventError);
+    if (!eventResult) {
+      console.error('Learning event insert error (see activity_log for details)');
       // Log but don't fail - session is marked complete
     }
 

@@ -13,7 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -256,39 +257,22 @@ async function saveSessionData(
   // Data Stream Merge: If companion panel already logged (event_type='session_companion_log'),
   // merge transcript analysis into that existing event. Otherwise create new 'session' event.
   if (childId && coachId) {
-    let embedding: number[] | null = null;
-    const embeddingStr = () => embedding ? JSON.stringify(embedding) : null;
-
-    try {
-      const searchableContent = buildSessionSearchableContent(childName, {
-        session_type: analysis.session_type,
-        focus_area: analysis.focus_area,
-        skills_worked_on: analysis.skills_worked_on,
-        progress_rating: analysis.progress_rating,
-        engagement_level: analysis.engagement_level,
-        breakthrough_moment: analysis.breakthrough_moment || undefined,
-        concerns_noted: analysis.concerns_noted || undefined,
-        homework_assigned: analysis.homework_assigned,
-        homework_description: analysis.homework_description || undefined,
-        next_session_focus: analysis.next_session_focus || undefined,
-        key_observations: analysis.key_observations,
-        coach_talk_ratio: analysis.coach_talk_ratio,
-        child_reading_samples: analysis.child_reading_samples,
-        summary: analysis.summary,
-      });
-
-      embedding = await generateEmbedding(searchableContent);
-      console.log(JSON.stringify({
-        requestId,
-        event: 'embedding_generated',
-      }));
-    } catch (error) {
-      console.error(JSON.stringify({
-        requestId,
-        event: 'embedding_error',
-        error: (error as Error).message,
-      }));
-    }
+    const contentForEmbedding = buildSessionSearchableContent(childName, {
+      session_type: analysis.session_type,
+      focus_area: analysis.focus_area,
+      skills_worked_on: analysis.skills_worked_on,
+      progress_rating: analysis.progress_rating,
+      engagement_level: analysis.engagement_level,
+      breakthrough_moment: analysis.breakthrough_moment || undefined,
+      concerns_noted: analysis.concerns_noted || undefined,
+      homework_assigned: analysis.homework_assigned,
+      homework_description: analysis.homework_description || undefined,
+      next_session_focus: analysis.next_session_focus || undefined,
+      key_observations: analysis.key_observations,
+      coach_talk_ratio: analysis.coach_talk_ratio,
+      child_reading_samples: analysis.child_reading_samples,
+      summary: analysis.summary,
+    });
 
     const transcriptAnalysisData = {
       session_id: sessionId,
@@ -336,8 +320,7 @@ async function saveSessionData(
             event_type: 'session', // Upgrade from companion_log to unified session event
             event_data: mergedData,
             ai_summary: analysis.summary,
-            content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-            embedding: embeddingStr(),
+            content_for_embedding: contentForEmbedding,
           })
           .eq('id', existingCompanionEvent.id);
 
@@ -348,16 +331,17 @@ async function saveSessionData(
         }));
       } else {
         // No companion event — create 'session' event as usual
-        await supabase.from('learning_events').insert({
-          child_id: childId,
-          coach_id: coachId,
-          session_id: sessionId,
-          event_type: 'session',
-          event_subtype: analysis.session_type,
-          event_data: transcriptAnalysisData,
-          ai_summary: analysis.summary,
-          content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-          embedding: embeddingStr(),
+        await insertLearningEvent({
+          childId,
+          coachId,
+          sessionId: sessionId ?? undefined,
+          eventType: 'session',
+          eventSubtype: analysis.session_type,
+          eventData: transcriptAnalysisData,
+          aiSummary: analysis.summary,
+          contentForEmbedding,
+          signalSource: 'transcript_analysis',
+          signalConfidence: 'high',
         });
 
         console.log(JSON.stringify({
@@ -373,16 +357,17 @@ async function saveSessionData(
         error: (mergeError as Error).message,
       }));
 
-      await supabase.from('learning_events').insert({
-        child_id: childId,
-        coach_id: coachId,
-        session_id: sessionId,
-        event_type: 'session',
-        event_subtype: analysis.session_type,
-        event_data: transcriptAnalysisData,
-        ai_summary: analysis.summary,
-        content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-        embedding: embeddingStr(),
+      await insertLearningEvent({
+        childId,
+        coachId,
+        sessionId: sessionId ?? undefined,
+        eventType: 'session',
+        eventSubtype: analysis.session_type,
+        eventData: transcriptAnalysisData,
+        aiSummary: analysis.summary,
+        contentForEmbedding,
+        signalSource: 'transcript_analysis',
+        signalConfidence: 'high',
       });
     }
   }

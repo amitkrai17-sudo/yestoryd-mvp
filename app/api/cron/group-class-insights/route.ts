@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { getGenAI } from '@/lib/gemini/client';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { z } from 'zod';
@@ -227,20 +227,13 @@ export async function POST(request: NextRequest) {
 
         // (c) Store micro-insight as learning_event
 
-        let insightEmbedding: number[] | null = null;
-        try {
-          insightEmbedding = await generateEmbedding(insightText);
-        } catch (embErr) {
-          console.error(JSON.stringify({ requestId, event: 'insight_embedding_failed', childId: rating.childId, error: embErr instanceof Error ? embErr.message : 'Unknown' }));
-        }
-
         const { ctaType } = isEnrolled ? { ctaType: 'none' } : getCtaBucket(totalAttendance);
 
-        await supabase.from('learning_events').insert({
-          child_id: rating.childId,
-          event_type: 'group_class_micro_insight',
-          event_date: new Date().toISOString(),
-          event_data: {
+        await insertLearningEvent({
+          childId: rating.childId,
+          eventType: 'group_class_micro_insight',
+          eventDate: new Date().toISOString(),
+          eventData: {
             session_id,
             insight_text: insightText,
             attendance_count: totalAttendance,
@@ -248,9 +241,11 @@ export async function POST(request: NextRequest) {
             badges_earned: childBadges,
             cta_type: ctaType,
           },
-          content_for_embedding: insightText,
-          embedding: insightEmbedding ? JSON.stringify(insightEmbedding) : null,
-          ai_summary: insightText.substring(0, 300),
+          contentForEmbedding: insightText,
+          aiSummary: insightText.substring(0, 300),
+          signalSource: 'system_generated',
+          signalConfidence: 'medium',
+          sessionModality: 'group_class',
         });
 
         insightsGenerated++;

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
@@ -165,20 +166,30 @@ export async function POST(request: NextRequest) {
           perfectScores: newPerfectCount,
         });
 
-        await supabase
-          .from('learning_events')
-          .insert({
-            child_id: childId,
-            event_type: 'quiz',
-            event_data: {
-              videoId,
-              score: scorePercent,
-              passed: isPassed,
-              perfect: isPerfect,
-              xpAwarded: actualXPAwarded,
-              attempt: quizProgressUpdate.quiz_attempts,
-            },
-          });
+        const contentForEmbedding = [
+          `Quiz for video ${videoId}: score ${scorePercent}%.`,
+          isPassed ? 'Passed.' : 'Did not pass.',
+          isPerfect ? 'Perfect score.' : '',
+          `XP awarded: ${actualXPAwarded}.`,
+          `Attempt ${quizProgressUpdate.quiz_attempts}.`,
+        ].filter(Boolean).join(' ');
+
+        await insertLearningEvent({
+          childId,
+          eventType: 'quiz',
+          eventData: {
+            videoId,
+            score: scorePercent,
+            passed: isPassed,
+            perfect: isPerfect,
+            xpAwarded: actualXPAwarded,
+            attempt: quizProgressUpdate.quiz_attempts,
+          },
+          contentForEmbedding,
+          signalSource: 'elearning_system',
+          signalConfidence: 'medium',
+          sessionModality: 'elearning',
+        });
       }
     }
 

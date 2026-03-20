@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
 import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import {
   buildPronunciationAnalysisPrompt,
   buildComprehensionEvalPrompt,
@@ -161,38 +161,25 @@ export async function POST(
           capturedFeedback,
         ].join(' ');
 
-        let embeddingStr: string | null = null;
-        try {
-          const embedding = await generateEmbedding(contentForEmbedding);
-          embeddingStr = JSON.stringify(embedding);
-        } catch {
-          // embedding failure is non-fatal
-        }
-
-        const { data: eventRow } = await supabase
-          .from('learning_events')
-          .insert({
-            child_id: capturedChildId,
-            event_type: 'elearning_interaction',
-            event_subtype: response_type,
-            event_date: new Date().toISOString().split('T')[0],
-            signal_confidence: 'medium',
-            signal_source: 'elearning',
-            session_modality: 'elearning',
-            event_data: {
-              session_id: sessionId,
-              segment_index,
-              response_type,
-              score: capturedScore,
-              feedback: capturedFeedback,
-              xp_earned: result.xp_earned,
-            } as any,
-            content_for_embedding: contentForEmbedding,
-            embedding: embeddingStr,
-            created_by: capturedAuthEmail,
-          })
-          .select('id')
-          .single();
+        const eventRow = await insertLearningEvent({
+          childId: capturedChildId,
+          eventType: 'elearning_interaction',
+          eventSubtype: response_type,
+          eventDate: new Date().toISOString().split('T')[0],
+          signalConfidence: 'medium',
+          signalSource: 'elearning',
+          sessionModality: 'elearning',
+          eventData: {
+            session_id: sessionId,
+            segment_index,
+            response_type,
+            score: capturedScore,
+            feedback: capturedFeedback,
+            xp_earned: result.xp_earned,
+          },
+          contentForEmbedding,
+          createdBy: capturedAuthEmail ?? undefined,
+        });
 
         // Attach learning_event_id to result (already returned, so this is for logs)
         if (eventRow) {

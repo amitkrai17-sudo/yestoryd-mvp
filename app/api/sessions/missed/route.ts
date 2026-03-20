@@ -8,7 +8,7 @@ import { requireAdminOrCoach } from '@/lib/api-auth';
 import { randomUUID } from 'crypto';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,29 +172,20 @@ export async function POST(request: NextRequest) {
 
     // 6. Create learning event for tracking
     const missedContentForEmbedding = `Session ${session.session_number} missed. ${reason || ''}`;
-    let missedEmbedding: string | null = null;
-    try {
-      const missedEmbVec = await generateEmbedding(missedContentForEmbedding);
-      missedEmbedding = JSON.stringify(missedEmbVec);
-    } catch (embErr) {
-      console.error('Embedding generation failed:', embErr);
-    }
 
-    await supabase.from('learning_events').insert({
-      child_id: session.child_id,
-      event_type: 'session_missed',
-      event_date: session.scheduled_date,
-      event_data: {
+    await insertLearningEvent({
+      childId: session.child_id,
+      eventType: 'session_missed',
+      eventDate: session.scheduled_date,
+      eventData: {
         session_id: sessionId,
         session_number: session.session_number,
         reason: reason || 'No reason provided',
         marked_by: coachId,
       },
-      searchable_content: missedContentForEmbedding,
-      content_for_embedding: missedContentForEmbedding,
-      embedding: missedEmbedding,
-      signal_source: 'system_generated',
-      signal_confidence: 'low',
+      contentForEmbedding: missedContentForEmbedding,
+      signalSource: 'system_generated',
+      signalConfidence: 'low',
     });
 
     // 7. No-show cascade via orchestrator (handles counters, at_risk, auto-pause, admin alerts)

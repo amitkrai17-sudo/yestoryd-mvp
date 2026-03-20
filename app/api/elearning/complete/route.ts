@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
 export const dynamic = 'force-dynamic';
@@ -172,18 +172,10 @@ export async function POST(request: NextRequest) {
     // Log to learning events for RAG
     const contentForEmbedding = `E-learning unit completed. Score: ${score}%. XP earned: ${totalXP}.${isPerfect ? ' Perfect score.' : ''}${levelUp ? ` Leveled up to level ${newLevel}.` : ''}`;
 
-    let embedding: string | null = null;
-    try {
-      const embVec = await generateEmbedding(contentForEmbedding);
-      embedding = JSON.stringify(embVec);
-    } catch (embErr) {
-      console.error('Embedding generation failed:', embErr);
-    }
-
-    await supabase.from('learning_events').insert({
-      child_id: childId,
-      event_type: 'unit_completed',
-      event_data: {
+    await insertLearningEvent({
+      childId,
+      eventType: 'unit_completed',
+      eventData: {
         unit_id: unitId,
         score,
         xp_earned: totalXP,
@@ -191,11 +183,10 @@ export async function POST(request: NextRequest) {
         level_up: levelUp,
         new_level: newLevel,
       },
-      content_for_embedding: contentForEmbedding,
-      embedding,
-      signal_source: 'elearning_system',
-      signal_confidence: 'low',
-      session_modality: 'elearning',
+      contentForEmbedding,
+      signalSource: 'elearning_system',
+      signalConfidence: 'low',
+      sessionModality: 'elearning',
     });
     
     return NextResponse.json({

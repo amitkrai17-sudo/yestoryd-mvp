@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -86,25 +87,25 @@ export async function POST(
     }
 
     // Log approval event
-    await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        event_type: 'milestone',
-        event_date: new Date().toISOString(),
-        data: {
-          type: 'plan_approved',
-          roadmap_id: roadmap.id,
-          season_name: roadmap.season_name,
-          approved_by: auth.email,
-        },
-        event_data: {
-          type: 'plan_approved',
-          roadmap_id: roadmap.id,
-        },
-        content_for_embedding: `Learning plan approved: ${roadmap.season_name || 'Season'}. Templates assigned to scheduled sessions.`,
-        created_by: auth.email,
-      });
+    await insertLearningEvent({
+      childId,
+      eventType: 'milestone',
+      eventDate: new Date().toISOString(),
+      legacyData: {
+        type: 'plan_approved',
+        roadmap_id: roadmap.id,
+        season_name: roadmap.season_name,
+        approved_by: auth.email,
+      },
+      eventData: {
+        type: 'plan_approved',
+        roadmap_id: roadmap.id,
+      },
+      contentForEmbedding: `Learning plan approved: ${roadmap.season_name || 'Season'}. Templates assigned to scheduled sessions.`,
+      signalSource: 'system_generated',
+      signalConfidence: 'medium',
+      createdBy: auth.email,
+    });
 
     console.log(JSON.stringify({
       requestId,

@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { qstash } from '@/lib/qstash';
+import { insertLearningEvent, insertLearningEventsBatch } from '@/lib/rai/learning-events';
 import { transcribeVoiceNote, analyzeChildReading } from '@/lib/gemini/audio-analysis';
 import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
 import type { ReadingAnalysis } from '@/lib/gemini/audio-analysis';
@@ -243,17 +244,31 @@ export async function POST(
     // Offline sessions never have a Recall.ai event, so always create new
     // JSON round-trip ensures plain JSON type compatibility with Supabase Json column
     const eventData = JSON.parse(JSON.stringify(companionData));
-    const { error: eventError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        event_type: 'session_companion_log',
-        event_data: eventData,
-        event_date: new Date().toISOString().split('T')[0],
-      });
 
-    if (eventError) {
-      console.error(JSON.stringify({ requestId, event: 'learning_event_error', error: eventError.message }));
+    const companionContentForEmbedding = [
+      `Session ${session.session_number} offline report for child ${childId}`,
+      `Activities: ${allActivities.map((a) => a.activity_name).join(', ')}`,
+      statusCounts.struggled > 0 ? `Struggled: ${allActivities.filter((a) => a.status === 'struggled').map((a) => a.activity_name).join(', ')}` : '',
+      body.words_struggled?.length ? `Words struggled: ${body.words_struggled.join(', ')}` : '',
+      body.words_mastered?.length ? `Words mastered: ${body.words_mastered.join(', ')}` : '',
+      body.coach_notes ? `Coach notes: ${body.coach_notes}` : '',
+      voiceNoteTranscript ? `Transcript: ${voiceNoteTranscript.substring(0, 300)}` : '',
+    ].filter(Boolean).join('. ');
+
+    const companionResult = await insertLearningEvent({
+      childId,
+      coachId: session.coach_id ?? undefined,
+      sessionId,
+      eventType: 'session_companion_log',
+      eventData,
+      contentForEmbedding: companionContentForEmbedding,
+      eventDate: new Date().toISOString().split('T')[0],
+      signalSource: 'companion_panel',
+      signalConfidence: 'medium',
+    });
+
+    if (!companionResult) {
+      console.error(JSON.stringify({ requestId, event: 'learning_event_error', error: 'insertLearningEvent returned null' }));
     }
 
     // ============================================================
@@ -264,9 +279,11 @@ export async function POST(
     const struggledActivities = allActivities.filter((a) => a.status === 'struggled');
     if (struggledActivities.length > 0) {
       const struggleEvents = struggledActivities.map((a) => ({
-        child_id: childId,
-        event_type: 'activity_struggle_flag' as const,
-        event_data: {
+        childId,
+        coachId: session.coach_id ?? undefined,
+        sessionId,
+        eventType: 'activity_struggle_flag' as const,
+        eventData: {
           session_id: sessionId,
           session_number: session.session_number,
           activity_name: a.activity_name,
@@ -275,17 +292,18 @@ export async function POST(
           logged_by: auth.email,
           source: 'offline_report',
         },
-        event_date: new Date().toISOString().split('T')[0],
+        contentForEmbedding: `Activity struggle: ${a.activity_name} in session #${session.session_number}`,
+        eventDate: new Date().toISOString().split('T')[0],
+        signalSource: 'companion_panel' as const,
+        signalConfidence: 'medium' as const,
       }));
 
-      const { error: struggleError } = await supabase
-        .from('learning_events')
-        .insert(struggleEvents);
+      const insertedCount = await insertLearningEventsBatch(struggleEvents);
 
-      if (struggleError) {
-        console.error(JSON.stringify({ requestId, event: 'struggle_flags_error', error: struggleError.message }));
+      if (insertedCount < struggledActivities.length) {
+        console.error(JSON.stringify({ requestId, event: 'struggle_flags_error', inserted: insertedCount, expected: struggledActivities.length }));
       } else {
-        console.log(JSON.stringify({ requestId, event: 'struggle_flags_created', count: struggledActivities.length }));
+        console.log(JSON.stringify({ requestId, event: 'struggle_flags_created', count: insertedCount }));
       }
     }
 

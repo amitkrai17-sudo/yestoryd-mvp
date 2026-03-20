@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { generateLearningPlan } from '@/lib/plan-generation/generate-learning-plan';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -225,24 +226,22 @@ export async function POST(
       eventId = updated.id;
     } else {
       // Insert new
-      const { data: created, error: insertError } = await supabase
-        .from('learning_events')
-        .insert({
-          child_id: session.child_id,
-          coach_id: session.coach_id,
-          session_id: sessionId,
-          event_type: 'diagnostic_assessment',
-          event_date: new Date().toISOString(),
-          event_data: eventData,
-          data: eventData, // legacy field
-          content_for_embedding: contentForEmbedding,
-          created_by: auth.email,
-        })
-        .select('id')
-        .single();
+      const created = await insertLearningEvent({
+        childId: session.child_id,
+        coachId: session.coach_id,
+        sessionId,
+        eventType: 'diagnostic_assessment',
+        eventDate: new Date().toISOString(),
+        eventData: eventData as Record<string, unknown>,
+        legacyData: eventData as Record<string, unknown>,
+        contentForEmbedding,
+        signalSource: 'diagnostic_assessment',
+        signalConfidence: 'high',
+        createdBy: auth.email,
+      });
 
-      if (insertError) {
-        console.error(JSON.stringify({ requestId, event: 'diagnostic_insert_error', error: insertError.message }));
+      if (!created) {
+        console.error(JSON.stringify({ requestId, event: 'diagnostic_insert_error', error: 'insertLearningEvent returned null' }));
         return NextResponse.json({ error: 'Failed to save diagnostic' }, { status: 500 });
       }
       eventId = created.id;

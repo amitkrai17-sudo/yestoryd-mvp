@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import {
   getGeminiRecommendations,
   smartSortVideos,
@@ -178,12 +179,15 @@ export async function GET(request: NextRequest) {
     };
 
     // Cache (fire-and-forget)
-    supabase.from('learning_events').insert({
-      child_id: childId,
-      event_type: 'daily_recommendations',
-      event_data: responseData as any,
-    }).then(({ error }) => {
-      if (error) console.error('Failed to cache recommendations:', error);
+    insertLearningEvent({
+      childId,
+      eventType: 'daily_recommendations',
+      eventData: responseData as Record<string, unknown>,
+      contentForEmbedding: `Daily recommendations for child ${childId}`,
+      signalSource: 'system_generated',
+      signalConfidence: 'low',
+    }).then((result) => {
+      if (!result) console.error('Failed to cache recommendations');
     });
 
     return NextResponse.json(responseData);

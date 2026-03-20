@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { computeIntelligenceScore, getSignalConfidence, DEFAULT_WEIGHTS } from '@/lib/intelligence/score';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import type { StructuredCapturePayload, CaptureMethod, SessionModality, EngagementLevel } from '@/lib/intelligence/types';
 import type { IntelligenceWeights } from '@/lib/intelligence/score';
 import { getSiteSettings } from '@/lib/config/site-settings-loader';
@@ -259,55 +259,47 @@ export async function POST(request: NextRequest) {
     if (payload.childArtifact?.text) embeddingParts.push(`artifact: ${payload.childArtifact.text}`);
     const contentForEmbedding = embeddingParts.join(' ').trim();
 
-    // 4. Generate embedding (non-blocking failure)
-    let embeddingStr: string | null = null;
-    try {
-      const embedding = await generateEmbedding(contentForEmbedding);
-      embeddingStr = JSON.stringify(embedding);
-    } catch (err) {
-      console.error(JSON.stringify({
-        requestId,
-        event: 'capture_embedding_error',
-        error: err instanceof Error ? err.message : 'Unknown',
-      }));
-    }
+    // 4 + 5. Create learning_event (embedding generated internally by insertLearningEvent)
+    const learningEvent = await insertLearningEvent({
+      childId: payload.childId,
+      coachId: payload.coachId,
+      sessionId: payload.sessionId ?? undefined,
+      eventType: 'structured_capture',
+      eventSubtype: payload.captureMethod,
+      eventDate: payload.sessionDate,
+      signalConfidence: confidence,
+      signalSource: 'structured_capture',
+      intelligenceScore: score,
+      sessionModality: payload.sessionModality as import('@/lib/rai/learning-events').SessionModality,
+      legacyData: {
+        captureId: capture.id,
+        skillsCovered: payload.skillsCovered,
+        skillPerformances: payload.skillPerformances as any,
+        engagementLevel: payload.engagementLevel,
+        strengthObservations: payload.strengthObservations,
+        struggleObservations: payload.struggleObservations,
+        captureMethod: payload.captureMethod,
+        hasArtifact: !!payload.childArtifact,
+      },
+      eventData: {
+        captureId: capture.id,
+        skillsCovered: payload.skillsCovered,
+        skillPerformances: payload.skillPerformances as any,
+        engagementLevel: payload.engagementLevel,
+        strengthObservations: payload.strengthObservations,
+        struggleObservations: payload.struggleObservations,
+        captureMethod: payload.captureMethod,
+        hasArtifact: !!payload.childArtifact,
+      },
+      contentForEmbedding,
+      createdBy: auth.userId || undefined,
+    });
 
-    // 5. Create learning_event
-    const { data: learningEvent, error: eventError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: payload.childId,
-        coach_id: payload.coachId,
-        event_type: 'structured_capture',
-        event_subtype: payload.captureMethod,
-        event_date: payload.sessionDate,
-        session_id: payload.sessionId,
-        signal_confidence: confidence,
-        signal_source: 'structured_capture',
-        intelligence_score: score,
-        session_modality: payload.sessionModality,
-        data: {
-          captureId: capture.id,
-          skillsCovered: payload.skillsCovered,
-          skillPerformances: payload.skillPerformances as any,
-          engagementLevel: payload.engagementLevel,
-          strengthObservations: payload.strengthObservations,
-          struggleObservations: payload.struggleObservations,
-          captureMethod: payload.captureMethod,
-          hasArtifact: !!payload.childArtifact,
-        } as any,
-        content_for_embedding: contentForEmbedding,
-        embedding: embeddingStr,
-        created_by: auth.userId || null,
-      })
-      .select('id')
-      .single();
-
-    if (eventError) {
+    if (!learningEvent) {
       console.error(JSON.stringify({
         requestId,
         event: 'capture_learning_event_error',
-        error: eventError.message,
+        error: 'insertLearningEvent returned null (see activity_log)',
       }));
       // Non-fatal — capture was saved. Log but don't fail.
     }

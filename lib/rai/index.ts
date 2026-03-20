@@ -3,6 +3,8 @@
 
 export * from './types';
 
+export { insertLearningEvent, insertLearningEventsBatch, type LearningEventType, type SignalSource, type SignalConfidence, type SessionModality } from './learning-events';
+
 export { generateEmbedding, buildSearchableContent, buildSessionSearchableContent, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from './embeddings';
 
 export { tier0Router, tier1Classifier, classifyIntent, isRecentSessionQuery } from './intent-classifier';

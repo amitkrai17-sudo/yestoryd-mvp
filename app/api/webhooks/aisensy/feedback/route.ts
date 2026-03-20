@@ -20,7 +20,7 @@ import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizePhone } from '@/lib/utils/phone';
 import { getGeminiModel } from '@/lib/gemini-config';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
@@ -211,20 +211,11 @@ export async function POST(request: NextRequest) {
         analysis?.concerns?.length ? `Concerns: ${analysis.concerns.join(', ')}` : '',
       ].filter(Boolean).join(' ');
 
-      // Generate embedding (non-blocking failure)
-      let embeddingStr: string | null = null;
-      try {
-        const embedding = await generateEmbedding(contentForEmbedding);
-        embeddingStr = JSON.stringify(embedding);
-      } catch (embErr) {
-        console.error(JSON.stringify({ requestId, event: 'embedding_failed', childId, error: String(embErr) }));
-      }
-
-      const { error: insertErr } = await supabase.from('learning_events').insert({
-        child_id: childId,
-        event_type: 'group_class_parent_feedback',
-        event_date: today,
-        event_data: {
+      const insertResult = await insertLearningEvent({
+        childId,
+        eventType: 'group_class_parent_feedback',
+        eventDate: today,
+        eventData: {
           session_id: sessionId,
           parent_id: parentId,
           parent_reply: text,
@@ -232,16 +223,16 @@ export async function POST(request: NextRequest) {
           gemini_analysis: analysis ? JSON.parse(JSON.stringify(analysis)) : null,
           wa_message_id: payload.messageId,
         },
-        data: {}, // required field
-        content_for_embedding: contentForEmbedding,
-        embedding: embeddingStr,
-        signal_source: 'parent_whatsapp',
-        signal_confidence: analysis ? 'high' : 'medium',
-        created_by: 'system',
+        legacyData: {}, // required field
+        contentForEmbedding,
+        signalSource: 'parent_whatsapp',
+        signalConfidence: analysis ? 'high' : 'medium',
+        createdBy: 'system',
+        sessionModality: 'group_class',
       });
 
-      if (insertErr) {
-        console.error(JSON.stringify({ requestId, event: 'learning_event_insert_failed', childId, error: insertErr.message }));
+      if (!insertResult) {
+        console.error(JSON.stringify({ requestId, event: 'learning_event_insert_failed', childId }));
       } else {
         eventsCreated++;
       }

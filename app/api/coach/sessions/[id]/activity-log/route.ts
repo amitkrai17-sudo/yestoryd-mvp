@@ -10,6 +10,7 @@ import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { qstash } from '@/lib/qstash';
 import crypto from 'crypto';
 import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
+import { insertLearningEvent, insertLearningEventsBatch } from '@/lib/rai/learning-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,57 +130,81 @@ export async function POST(
         console.log(JSON.stringify({ requestId, event: 'companion_merged_into_session', existingEventId: existingEvent.id }));
       } else {
         // No existing Recall event — create companion log as usual
-        const { error: eventError } = await supabase
-          .from('learning_events')
-          .insert({
-            child_id: session.child_id,
-            event_type: 'session_companion_log',
-            event_data: companionData,
-            event_date: new Date().toISOString().split('T')[0],
-          });
+        const activityNames = activities.map((a: any) => `${a.activity_name} (${a.status})`).join(', ');
+        const companionContentForEmbedding = `Session ${session.session_number} companion log: ${activityNames}. Completed: ${statusCounts.completed}, Struggled: ${statusCounts.struggled}. ${coach_notes || ''}`.trim();
 
-        if (eventError) {
-          console.error(JSON.stringify({ requestId, event: 'learning_event_error', error: eventError.message }));
+        const companionResult = await insertLearningEvent({
+          childId: session.child_id as string,
+          eventType: 'session_companion_log',
+          eventData: companionData,
+          contentForEmbedding: companionContentForEmbedding,
+          sessionId,
+          coachId: session.coach_id || undefined,
+          signalSource: 'companion_panel',
+          signalConfidence: 'medium',
+          eventDate: new Date().toISOString().split('T')[0],
+        });
+
+        if (!companionResult) {
+          console.error(JSON.stringify({ requestId, event: 'learning_event_error', error: 'insertLearningEvent returned null' }));
         }
       }
     } catch (mergeError: any) {
       // Fallback: create companion log if merge check fails
       console.error(JSON.stringify({ requestId, event: 'merge_check_error', error: mergeError.message }));
-      await supabase
-        .from('learning_events')
-        .insert({
-          child_id: session.child_id,
-          event_type: 'session_companion_log',
-          event_data: companionData,
-          event_date: new Date().toISOString().split('T')[0],
-        });
+      const activityNamesFallback = activities.map((a: any) => `${a.activity_name} (${a.status})`).join(', ');
+      const companionContentForEmbeddingFallback = `Session ${session.session_number} companion log: ${activityNamesFallback}. Completed: ${statusCounts.completed}, Struggled: ${statusCounts.struggled}. ${coach_notes || ''}`.trim();
+
+      await insertLearningEvent({
+        childId: session.child_id as string,
+        eventType: 'session_companion_log',
+        eventData: companionData,
+        contentForEmbedding: companionContentForEmbeddingFallback,
+        sessionId,
+        coachId: session.coach_id || undefined,
+        signalSource: 'companion_panel',
+        signalConfidence: 'medium',
+        eventDate: new Date().toISOString().split('T')[0],
+      });
     }
 
     // 4. Create activity_struggle_flag learning_events for struggled activities
     const struggledActivities = activities.filter((a: any) => a.status === 'struggled');
     if (struggledActivities.length > 0) {
-      const struggleEvents = struggledActivities.map((a: any) => ({
-        child_id: session.child_id as string, // Already verified not null above
-        event_type: 'activity_struggle_flag',
-        event_data: {
-          session_id: sessionId,
-          session_number: session.session_number,
-          activity_name: a.activity_name,
-          activity_purpose: a.activity_purpose || null,
-          coach_note: a.coach_note || null,
-          logged_by: auth.email,
-        },
-        event_date: new Date().toISOString().split('T')[0],
-      }));
+      const struggleEvents = struggledActivities.map((a: any) => {
+        const struggleContentForEmbedding = [
+          `Struggle flag: ${a.activity_name}`,
+          a.activity_purpose ? `Purpose: ${a.activity_purpose}` : '',
+          `Session ${session.session_number}`,
+          a.coach_note ? `Coach note: ${a.coach_note}` : '',
+        ].filter(Boolean).join('. ');
 
-      const { error: struggleError } = await supabase
-        .from('learning_events')
-        .insert(struggleEvents);
+        return {
+          childId: session.child_id as string,
+          eventType: 'activity_struggle_flag' as const,
+          eventData: {
+            session_id: sessionId,
+            session_number: session.session_number,
+            activity_name: a.activity_name,
+            activity_purpose: a.activity_purpose || null,
+            coach_note: a.coach_note || null,
+            logged_by: auth.email,
+          },
+          contentForEmbedding: struggleContentForEmbedding,
+          sessionId,
+          coachId: session.coach_id || undefined,
+          signalSource: 'companion_panel' as const,
+          signalConfidence: 'medium' as const,
+          eventDate: new Date().toISOString().split('T')[0],
+        };
+      });
 
-      if (struggleError) {
-        console.error(JSON.stringify({ requestId, event: 'struggle_flags_error', error: struggleError.message }));
+      const insertedCount = await insertLearningEventsBatch(struggleEvents);
+
+      if (insertedCount < struggledActivities.length) {
+        console.error(JSON.stringify({ requestId, event: 'struggle_flags_error', inserted: insertedCount, expected: struggledActivities.length }));
       } else {
-        console.log(JSON.stringify({ requestId, event: 'struggle_flags_created', count: struggledActivities.length }));
+        console.log(JSON.stringify({ requestId, event: 'struggle_flags_created', count: insertedCount }));
       }
     }
 

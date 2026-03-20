@@ -6,6 +6,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const getSupabase = createAdminClient;
 
@@ -115,14 +116,15 @@ export async function summarizeLeadConversation(
         event_date: new Date().toISOString(),
       }).eq('id', existing.id);
     } else {
-      await supabase.from('learning_events').insert({
-        child_id: childId,
-        event_type: 'lead_conversation',
-        event_date: new Date().toISOString(),
-        event_data: eventData,
-        ai_summary: aiSummary,
-        content_for_embedding: searchableContent,
-        embedding: JSON.stringify(embedding),
+      await insertLearningEvent({
+        childId,
+        eventType: 'lead_conversation',
+        eventDate: new Date().toISOString(),
+        eventData,
+        aiSummary,
+        contentForEmbedding: searchableContent,
+        signalSource: 'whatsapp_webhook',
+        signalConfidence: 'medium',
       });
     }
 

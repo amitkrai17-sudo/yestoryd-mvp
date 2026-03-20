@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { getMiniChallengeSettings, type GoalArea } from '@/lib/mini-challenge';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -285,20 +286,27 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. Log to learning_events
-    const { error: eventError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        event_type: 'mini_challenge_completed',
-        event_date: new Date().toISOString(),
-        event_data: challengeData,
-      });
+    const contentForEmbedding = [
+      `${child.name ?? 'Child'} mini challenge: ${goal}.`,
+      `Score ${correctCount}/${totalQuestions}.`,
+      `Video watched: ${videoWatched ? 'yes' : 'no'}.`,
+      discoveryInsight,
+    ].join(' ');
 
-    if (eventError) {
+    const eventRow = await insertLearningEvent({
+      childId,
+      eventType: 'mini_challenge_completed',
+      eventDate: new Date().toISOString(),
+      eventData: challengeData as unknown as Record<string, unknown>,
+      contentForEmbedding,
+      signalSource: 'elearning_system',
+      signalConfidence: 'medium',
+    });
+
+    if (!eventRow) {
       console.error(JSON.stringify({
         requestId,
         event: 'learning_event_failed',
-        error: eventError.message,
       }));
       // Don't fail the request, just log
     }

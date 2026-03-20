@@ -18,7 +18,7 @@ import { requireAdminOrCoach } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -207,13 +207,12 @@ export async function POST(
       if (discoveryContent.length > 50) {
         (async () => {
           try {
-            const embedding = await generateEmbedding(discoveryContent);
-            await supabase.from('learning_events').insert({
-              child_id: discoveryChildId,
-              coach_id: discoveryCoachId,
-              event_type: 'discovery_notes',
-              event_date: new Date().toISOString(),
-              event_data: {
+            await insertLearningEvent({
+              childId: discoveryChildId,
+              coachId: discoveryCoachId ?? undefined,
+              eventType: 'discovery_notes',
+              eventDate: new Date().toISOString(),
+              eventData: {
                 discovery_call_id: id,
                 reading_frequency: q.reading_frequency,
                 parent_goal: q.parent_goal,
@@ -225,9 +224,10 @@ export async function POST(
                 coach_notes: q.coach_notes,
                 recommended_focus_areas: q.recommended_focus_areas,
               },
-              ai_summary: `Discovery call: Parent goal is ${q.parent_goal || 'not specified'}. Child attitude: ${q.child_attitude || 'not specified'}. ${q.coach_notes ? `Coach notes: ${q.coach_notes.substring(0, 150)}` : ''}`,
-              content_for_embedding: discoveryContent,
-              embedding: JSON.stringify(embedding),
+              aiSummary: `Discovery call: Parent goal is ${q.parent_goal || 'not specified'}. Child attitude: ${q.child_attitude || 'not specified'}. ${q.coach_notes ? `Coach notes: ${q.coach_notes.substring(0, 150)}` : ''}`,
+              contentForEmbedding: discoveryContent,
+              signalSource: 'discovery_call',
+              signalConfidence: 'medium',
             });
             console.log(JSON.stringify({ requestId, event: 'discovery_learning_event_created', childId: discoveryChildId }));
           } catch (e) {

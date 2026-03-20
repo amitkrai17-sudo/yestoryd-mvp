@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { computeIntelligenceScore, getSignalConfidence, DEFAULT_WEIGHTS } from '@/lib/intelligence/score';
 import type { IntelligenceWeights } from '@/lib/intelligence/score';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { z } from 'zod';
 import { getSiteSettings } from '@/lib/config/site-settings-loader';
 import crypto from 'crypto';
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           console.error(JSON.stringify({ requestId, event: 'capture_insert_error', childId: capture.child_id, error: captureErr.message }));
         }
 
-        // ─── (c) Build embedding content + generate embedding ───
+        // ─── (c) Build embedding content ───
         const embeddingParts: string[] = [
           `${childInfo.name} attended ${classTypeName} on ${sessionDate}.`,
           `Engagement: ${capture.engagement_level}.`,
@@ -238,50 +238,36 @@ export async function POST(request: NextRequest, context: RouteContext) {
         ].filter(Boolean);
         const contentForEmbedding = embeddingParts.join(' ').trim();
 
-        let embeddingStr: string | null = null;
-        try {
-          const embedding = await generateEmbedding(contentForEmbedding);
-          embeddingStr = JSON.stringify(embedding);
-        } catch (embErr) {
-          console.error(JSON.stringify({ requestId, event: 'capture_embedding_error', childId: capture.child_id, error: embErr instanceof Error ? embErr.message : 'Unknown' }));
-        }
-
         // ─── (d) Create learning_event ───
-        const { data: eventRow, error: eventErr } = await supabase
-          .from('learning_events')
-          .insert({
-            child_id: capture.child_id,
-            coach_id: coachId,
-            event_type: 'group_class_observation',
-            event_date: sessionDate,
-            signal_confidence: confidence,
-            signal_source: 'group_class',
-            intelligence_score: score,
-            session_modality: 'group_class',
-            event_data: {
-              session_id: sessionId,
-              capture_id: captureRow?.id || null,
-              class_type_name: classTypeName,
-              engagement_level: capture.engagement_level,
-              skills_covered: capture.skill_ids,
-              skill_performances: capture.skill_performances,
-              strength_observations: capture.strength_observations,
-              struggle_observations: capture.struggle_observations,
-              custom_note: capture.custom_note || null,
-              voice_note_url: capture.voice_note_url || null,
-              blueprint_id: session.blueprint_id || null,
-              capture_method: 'instructor_console',
-            },
-            content_for_embedding: contentForEmbedding,
-            embedding: embeddingStr,
+        const eventRow = await insertLearningEvent({
+          childId: capture.child_id,
+          coachId,
+          eventType: 'group_class_observation',
+          eventDate: sessionDate,
+          signalConfidence: confidence,
+          signalSource: 'group_class',
+          intelligenceScore: score,
+          sessionModality: 'group_class',
+          eventData: {
+            session_id: sessionId,
+            capture_id: captureRow?.id || null,
+            class_type_name: classTypeName,
+            engagement_level: capture.engagement_level,
+            skills_covered: capture.skill_ids,
+            skill_performances: capture.skill_performances,
+            strength_observations: capture.strength_observations,
+            struggle_observations: capture.struggle_observations,
+            custom_note: capture.custom_note || null,
             voice_note_url: capture.voice_note_url || null,
-            created_by: auth.email || null,
-          })
-          .select('id')
-          .single();
+            blueprint_id: session.blueprint_id || null,
+            capture_method: 'instructor_console',
+          },
+          contentForEmbedding,
+          createdBy: auth.email || undefined,
+        });
 
-        if (eventErr) {
-          console.error(JSON.stringify({ requestId, event: 'learning_event_error', childId: capture.child_id, error: eventErr.message }));
+        if (!eventRow) {
+          console.error(JSON.stringify({ requestId, event: 'learning_event_error', childId: capture.child_id, error: 'insertLearningEvent returned null' }));
         }
 
         // ─── (e) Update child_intelligence_profiles freshness ───
@@ -325,7 +311,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           intelligenceScore: score,
           signalConfidence: confidence,
           captureId: captureRow?.id || null,
-          learningEventId: eventRow?.id || null,
+          learningEventId: eventRow?.id ?? null,
         });
       } catch (childErr) {
         console.error(JSON.stringify({ requestId, event: 'child_capture_error', childId: capture.child_id, error: childErr instanceof Error ? childErr.message : 'Unknown' }));

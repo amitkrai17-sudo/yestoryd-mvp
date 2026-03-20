@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import {
   queueGroupClassInsights,
   queueGroupClassNotifications,
@@ -166,19 +166,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
           rating.note ? `Instructor notes: ${rating.note}` : '',
         ].filter(Boolean).join(' ');
 
-        let embedding: number[] | null = null;
-        try {
-          embedding = await generateEmbedding(contentForEmbedding);
-        } catch (embErr) {
-          console.error(JSON.stringify({ requestId, event: 'embedding_failed', childId: rating.childId, error: embErr instanceof Error ? embErr.message : 'Unknown' }));
-        }
-
-        await supabase.from('learning_events').insert({
-          child_id: rating.childId,
-          coach_id: coachId,
-          event_type: 'group_class_observation',
-          event_date: sessionDate,
-          event_data: {
+        await insertLearningEvent({
+          childId: rating.childId,
+          coachId: coachId || undefined,
+          eventType: 'group_class_observation',
+          eventDate: sessionDate,
+          eventData: {
             session_id: id,
             class_type_id: classTypeId,
             class_type_name: classTypeName,
@@ -189,8 +182,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
             voice_note_url: rating.voiceNoteUrl || null,
             blueprint_id: session.blueprint_id || null,
           },
-          content_for_embedding: contentForEmbedding,
-          embedding: embedding ? JSON.stringify(embedding) : null,
+          contentForEmbedding,
+          signalSource: 'instructor_observation',
+          signalConfidence: 'medium',
+          sessionModality: 'group_class',
         });
 
         learningEventsCreated++;
@@ -211,25 +206,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
         try {
           const verbalContent = `${childName} verbal observation in ${classTypeName}: ${noteText}`;
 
-          let embedding: number[] | null = null;
-          try {
-            embedding = await generateEmbedding(verbalContent);
-          } catch (embErr) {
-            console.error(JSON.stringify({ requestId, event: 'verbal_embedding_failed', childId, error: embErr instanceof Error ? embErr.message : 'Unknown' }));
-          }
-
-          await supabase.from('learning_events').insert({
-            child_id: childId,
-            coach_id: coachId,
-            event_type: 'group_class_verbal',
-            event_date: sessionDate,
-            event_data: {
+          await insertLearningEvent({
+            childId,
+            coachId: coachId || undefined,
+            eventType: 'group_class_verbal',
+            eventDate: sessionDate,
+            eventData: {
               session_id: id,
               class_type_name: classTypeName,
               quick_note: noteText,
             },
-            content_for_embedding: verbalContent,
-            embedding: embedding ? JSON.stringify(embedding) : null,
+            contentForEmbedding: verbalContent,
+            signalSource: 'instructor_observation',
+            signalConfidence: 'medium',
+            sessionModality: 'group_class',
           });
 
           learningEventsCreated++;

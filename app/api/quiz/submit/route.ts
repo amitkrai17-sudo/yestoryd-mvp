@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
 
@@ -142,23 +142,22 @@ export async function POST(request: NextRequest) {
     // Create searchable text for embedding
     const searchableText = `quiz ${topic} score ${score} out of ${total} ${percentage} percent ${performanceLevel} ${wrongAnswers.length > 0 ? 'missed questions' : 'perfect score'} ${aiSummary}`;
 
-    // Generate embedding
-    const embedding = await generateEmbedding(searchableText);
-
     // Save to learning_events
-    const { error: eventError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        event_type: 'quiz',
-        event_date: new Date().toISOString(),
-        data: quizData,
-        ai_summary: aiSummary,
-        embedding: embedding ? JSON.stringify(embedding) : null,
-      });
+    const learningEvent = await insertLearningEvent({
+      childId,
+      eventType: 'quiz',
+      eventDate: new Date().toISOString(),
+      eventData: quizData,
+      contentForEmbedding: searchableText,
+      aiSummary,
+      legacyData: quizData,
+      signalSource: 'elearning_system',
+      signalConfidence: 'medium',
+    });
 
+    const eventError = learningEvent === null;
     if (eventError) {
-      console.error('Learning event save error:', eventError);
+      console.error('Learning event save error: insertLearningEvent returned null');
     }
 
     // If linked to a session, update session with quiz completion

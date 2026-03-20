@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 const supabase = createAdminClient();
@@ -131,33 +131,30 @@ export async function POST(request: NextRequest) {
     // Generate AI summary
     const aiSummary = await generateAISummary(event_type, data);
 
-    // Create searchable text and generate embedding
+    // Create searchable text for embedding
     const searchableText = createSearchableText(event_type, data, aiSummary);
-    const embedding = await generateEmbedding(searchableText);
 
-    // Insert into database
-    const { data: event, error } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id,
-        event_type,
-        event_date: event_date || new Date().toISOString(),
-        data,
-        ai_summary: aiSummary,
-        embedding: embedding ? JSON.stringify(embedding) : null,
-        created_by,
-      })
-      .select()
-      .single();
+    // Insert via canonical helper (embedding always generated inside)
+    const inserted = await insertLearningEvent({
+      childId: child_id,
+      eventType: event_type,
+      eventDate: event_date || new Date().toISOString(),
+      eventData: data,
+      contentForEmbedding: searchableText,
+      aiSummary,
+      legacyData: data,
+      createdBy: created_by,
+      signalSource: 'unknown',
+      signalConfidence: 'medium',
+    });
 
-    if (error) {
-      console.error('Insert error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!inserted) {
+      return NextResponse.json({ error: 'Failed to insert learning event' }, { status: 500 });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      event,
+    return NextResponse.json({
+      success: true,
+      event: { id: inserted.id },
       message: 'Learning event created with AI summary and embedding'
     });
   } catch (error: any) {

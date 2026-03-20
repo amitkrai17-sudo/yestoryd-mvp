@@ -5,6 +5,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPricingConfig } from '@/lib/config/pricing-config';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 const getSupabase = () => createAdminClient();
 
 // ============================================================
@@ -558,33 +559,33 @@ export async function generateLearningPlan(
     }
 
     // 9. Log decision to learning_events for audit
-    await supabase
-      .from('learning_events')
-      .insert({
-        child_id: childId,
-        event_type: 'milestone',
-        event_date: new Date().toISOString(),
-        data: {
-          type: 'plan_generated',
-          season_name: seasonName,
-          season_number: seasonNumber,
-          age_band: ageBand,
-          focus_areas: focusAreas,
-          template_count: sequenced.length,
-          selections: sequenced.map(s => ({
-            code: s.template_code,
-            session: s.session_number,
-            reason: s.reason,
-          })),
-        },
-        event_data: {
-          type: 'plan_generated',
-          roadmap_id: roadmap.id,
-          season_name: seasonName,
-        },
-        content_for_embedding: `Learning plan generated for Season ${seasonNumber}: ${seasonName}. Focus: ${focusAreas.join(', ')}. ${sequenced.length} sessions planned.`,
-        created_by: 'system',
-      });
+    await insertLearningEvent({
+      childId,
+      eventType: 'milestone',
+      eventDate: new Date().toISOString(),
+      legacyData: {
+        type: 'plan_generated',
+        season_name: seasonName,
+        season_number: seasonNumber,
+        age_band: ageBand,
+        focus_areas: focusAreas,
+        template_count: sequenced.length,
+        selections: sequenced.map(s => ({
+          code: s.template_code,
+          session: s.session_number,
+          reason: s.reason,
+        })),
+      },
+      eventData: {
+        type: 'plan_generated',
+        roadmap_id: roadmap.id,
+        season_name: seasonName,
+      },
+      contentForEmbedding: `Learning plan generated for Season ${seasonNumber}: ${seasonName}. Focus: ${focusAreas.join(', ')}. ${sequenced.length} sessions planned.`,
+      signalSource: 'system_generated',
+      signalConfidence: 'medium',
+      createdBy: 'system',
+    });
 
     return {
       success: true,

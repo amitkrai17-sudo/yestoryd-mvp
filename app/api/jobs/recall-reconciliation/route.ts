@@ -17,7 +17,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { getGenAI } from '@/lib/gemini/client';
-import { generateEmbedding, buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
@@ -314,37 +315,30 @@ async function saveReconciliationData(
     .eq('id', sessionId);
 
   // 3. Create learning event with embedding
-  let embedding: number[] | null = null;
-  const embeddingStr = () => embedding ? JSON.stringify(embedding) : null;
-  try {
-    const searchableContent = buildSessionSearchableContent(childName, {
-      session_type: analysis.session_type,
-      focus_area: analysis.focus_area,
-      skills_worked_on: analysis.skills_worked_on,
-      progress_rating: analysis.progress_rating,
-      engagement_level: analysis.engagement_level,
-      breakthrough_moment: analysis.breakthrough_moment || undefined,
-      concerns_noted: analysis.concerns_noted || undefined,
-      homework_assigned: analysis.homework_assigned,
-      homework_description: analysis.homework_description || undefined,
-      next_session_focus: analysis.next_session_focus || undefined,
-      key_observations: analysis.key_observations,
-      coach_talk_ratio: analysis.coach_talk_ratio,
-      child_reading_samples: analysis.child_reading_samples,
-      summary: analysis.summary,
-    });
-    embedding = await generateEmbedding(searchableContent);
-  } catch (err: any) {
-    console.error('Reconciliation embedding error:', err.message);
-  }
+  const contentForEmbedding = buildSessionSearchableContent(childName, {
+    session_type: analysis.session_type,
+    focus_area: analysis.focus_area,
+    skills_worked_on: analysis.skills_worked_on,
+    progress_rating: analysis.progress_rating,
+    engagement_level: analysis.engagement_level,
+    breakthrough_moment: analysis.breakthrough_moment || undefined,
+    concerns_noted: analysis.concerns_noted || undefined,
+    homework_assigned: analysis.homework_assigned,
+    homework_description: analysis.homework_description || undefined,
+    next_session_focus: analysis.next_session_focus || undefined,
+    key_observations: analysis.key_observations,
+    coach_talk_ratio: analysis.coach_talk_ratio,
+    child_reading_samples: analysis.child_reading_samples,
+    summary: analysis.summary,
+  });
 
-  await supabase.from('learning_events').insert({
-    child_id: childId,
-    coach_id: coachId,
-    session_id: sessionId,
-    event_type: 'session',
-    event_subtype: analysis.session_type,
-    event_data: {
+  await insertLearningEvent({
+    childId,
+    coachId,
+    sessionId,
+    eventType: 'session',
+    eventSubtype: analysis.session_type,
+    eventData: {
       focus_area: analysis.focus_area,
       skills_worked_on: analysis.skills_worked_on,
       progress_rating: analysis.progress_rating,
@@ -360,9 +354,10 @@ async function saveReconciliationData(
       next_session_focus: analysis.next_session_focus,
       reconciled: true,
     },
-    ai_summary: analysis.summary,
-    content_for_embedding: `${childName} session: ${analysis.focus_area}`,
-    embedding: embeddingStr(),
+    aiSummary: analysis.summary,
+    contentForEmbedding,
+    signalSource: 'transcript_analysis',
+    signalConfidence: 'high',
   });
 
   // 4. Increment sessions completed

@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGenAI } from '@/lib/gemini/client';
 import { getArtifactSignedUrl } from '@/lib/storage/artifact-storage';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 import {
   buildQualityGatePrompt,
   buildImageAnalysisPrompt,
@@ -396,32 +396,27 @@ export async function POST(request: NextRequest) {
         assignmentDescription: artifact.description,
       });
 
-      const embedding = await generateEmbedding(embeddingContent);
-
-      const { data: leEvent } = await supabase
-        .from('learning_events')
-        .insert({
-          child_id: artifact.child_id,
-          session_id: artifact.session_id || null,
-          event_type: 'child_artifact',
-          event_subtype: analysis.content_type,
-          event_data: JSON.parse(JSON.stringify({
-            artifact_id,
-            artifact_type: artifact.artifact_type,
-            content_type: analysis.content_type,
-            skills_demonstrated: analysis.skills_demonstrated,
-            observations_count: analysis.specific_observations.length,
-            error_patterns: analysis.error_patterns,
-            age_appropriate: analysis.age_appropriate,
-            readability_score: readabilityScore,
-            source_type: artifact.upload_context,
-          })),
-          ai_summary: analysis.parent_summary,
-          content_for_embedding: embeddingContent,
-          embedding: JSON.stringify(embedding),
-        })
-        .select('id')
-        .single();
+      const leEvent = await insertLearningEvent({
+        childId: artifact.child_id,
+        sessionId: artifact.session_id || undefined,
+        eventType: 'child_artifact',
+        eventSubtype: analysis.content_type,
+        eventData: JSON.parse(JSON.stringify({
+          artifact_id,
+          artifact_type: artifact.artifact_type,
+          content_type: analysis.content_type,
+          skills_demonstrated: analysis.skills_demonstrated,
+          observations_count: analysis.specific_observations.length,
+          error_patterns: analysis.error_patterns,
+          age_appropriate: analysis.age_appropriate,
+          readability_score: readabilityScore,
+          source_type: artifact.upload_context,
+        })),
+        aiSummary: analysis.parent_summary,
+        contentForEmbedding: embeddingContent,
+        signalSource: 'child_artifact',
+        signalConfidence: 'high',
+      });
 
       learningEventId = leEvent?.id || null;
 

@@ -10,7 +10,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { rescheduleEvent, cancelEvent, scheduleCalendarEvent } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 // ============================================================
 // CONSTANTS
@@ -367,21 +367,14 @@ export async function PATCH(request: NextRequest) {
     // Create learning event for tracking (non-blocking)
     try {
       const rescheduleContentForEmbedding = `Session ${typedSession.session_number || '?'} rescheduled from ${typedSession.scheduled_date} to ${formatDateForDB(newDate)}`;
-      let rescheduleEmbedding: string | null = null;
-      try {
-        const rescheduleEmbVec = await generateEmbedding(rescheduleContentForEmbedding);
-        rescheduleEmbedding = JSON.stringify(rescheduleEmbVec);
-      } catch (embErr) {
-        console.error('Embedding generation failed:', embErr);
-      }
 
-      const { error: insertError } = await supabase.from('learning_events').insert({
-        child_id: typedSession.child_id,
-        coach_id: typedSession.coach_id,
-        session_id: sessionId,
-        event_type: 'session_rescheduled',
-        event_date: new Date().toISOString(),
-        event_data: {
+      const insertResult = await insertLearningEvent({
+        childId: typedSession.child_id,
+        coachId: typedSession.coach_id,
+        sessionId,
+        eventType: 'session_rescheduled',
+        eventDate: new Date().toISOString(),
+        eventData: {
           session_number: typedSession.session_number,
           old_date: typedSession.scheduled_date,
           old_time: typedSession.scheduled_time,
@@ -389,14 +382,13 @@ export async function PATCH(request: NextRequest) {
           new_time: formatTimeForDB(newDate),
           calendar_updated: calendarUpdated,
         },
-        content_for_embedding: rescheduleContentForEmbedding,
-        embedding: rescheduleEmbedding,
-        signal_source: 'system_generated',
-        signal_confidence: 'low',
+        contentForEmbedding: rescheduleContentForEmbedding,
+        signalSource: 'system_generated',
+        signalConfidence: 'low',
       });
 
-      if (insertError) {
-        logError('PATCH insert learning_event', insertError);
+      if (!insertResult) {
+        logError('PATCH insert learning_event', 'insertLearningEvent returned null');
       } else {
         logInfo('PATCH', 'Learning event created for reschedule');
       }
@@ -532,35 +524,27 @@ export async function DELETE(request: NextRequest) {
     // Create learning event for tracking (non-blocking)
     try {
       const cancelContentForEmbedding = `Session ${typedSession.session_number || '?'} cancelled: ${reason}`;
-      let cancelEmbedding: string | null = null;
-      try {
-        const cancelEmbVec = await generateEmbedding(cancelContentForEmbedding);
-        cancelEmbedding = JSON.stringify(cancelEmbVec);
-      } catch (embErr) {
-        console.error('Embedding generation failed:', embErr);
-      }
 
-      const { error: insertError } = await supabase.from('learning_events').insert({
-        child_id: typedSession.child_id,
-        coach_id: typedSession.coach_id,
-        session_id: sessionId,
-        event_type: 'session_cancelled',
-        event_date: new Date().toISOString(),
-        event_data: {
+      const insertResult = await insertLearningEvent({
+        childId: typedSession.child_id,
+        coachId: typedSession.coach_id,
+        sessionId,
+        eventType: 'session_cancelled',
+        eventDate: new Date().toISOString(),
+        eventData: {
           session_number: typedSession.session_number,
           scheduled_date: typedSession.scheduled_date,
           scheduled_time: typedSession.scheduled_time,
           reason,
           calendar_cancelled: calendarCancelled,
         },
-        content_for_embedding: cancelContentForEmbedding,
-        embedding: cancelEmbedding,
-        signal_source: 'system_generated',
-        signal_confidence: 'low',
+        contentForEmbedding: cancelContentForEmbedding,
+        signalSource: 'system_generated',
+        signalConfidence: 'low',
       });
 
-      if (insertError) {
-        logError('DELETE insert learning_event', insertError);
+      if (!insertResult) {
+        logError('DELETE insert learning_event', 'insertLearningEvent returned null');
       } else {
         logInfo('DELETE', 'Learning event created for cancellation');
       }

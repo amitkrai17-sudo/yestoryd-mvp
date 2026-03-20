@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
 
@@ -416,46 +417,44 @@ export async function POST(request: NextRequest) {
       aiSummary,
     ].filter(Boolean).join(' ');
 
-    const { error: eventError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: data.childId,
-        coach_id: data.coachId,
-        session_id: data.sessionId,
-        event_type: 'session',
-        event_subtype: 'parent_checkin',
-        event_data: eventData,
-        ai_summary: aiSummary,
-        voice_note_transcript: voiceTranscript || null,
-        content_for_embedding: contentForEmbedding,
-        created_at: new Date().toISOString(),
-      });
+    const checkinResult = await insertLearningEvent({
+      childId: data.childId,
+      coachId: data.coachId,
+      sessionId: data.sessionId,
+      eventType: 'session',
+      eventSubtype: 'parent_checkin',
+      eventData,
+      aiSummary,
+      voiceNoteTranscript: voiceTranscript || undefined,
+      contentForEmbedding,
+      signalSource: 'parent_observation',
+      signalConfidence: 'medium',
+    });
 
-    if (eventError) {
-      console.error('Event creation error:', eventError);
+    if (!checkinResult) {
+      console.error('Event creation error: insertLearningEvent returned null');
       // Don't fail if event creation fails - session is already updated
     }
 
     // Also create parent_feedback event for easier querying
-    const { error: feedbackError } = await supabase
-      .from('learning_events')
-      .insert({
-        child_id: data.childId,
-        coach_id: data.coachId,
-        session_id: data.sessionId,
-        event_type: 'parent_feedback',
-        event_data: {
-          sentiment: data.parentSentiment,
-          sees_progress: data.parentSeesProgress,
-          feedback: data.concernDetails || aiSummary,
-          concerns: data.concernsRaised,
-        },
-        content_for_embedding: `Parent feedback: ${data.parentSentiment}. ${data.concernDetails || ''} ${aiSummary}`,
-        created_at: new Date().toISOString(),
-      });
+    const feedbackResult = await insertLearningEvent({
+      childId: data.childId,
+      coachId: data.coachId,
+      sessionId: data.sessionId,
+      eventType: 'parent_feedback',
+      eventData: {
+        sentiment: data.parentSentiment,
+        sees_progress: data.parentSeesProgress,
+        feedback: data.concernDetails || aiSummary,
+        concerns: data.concernsRaised,
+      },
+      contentForEmbedding: `Parent feedback: ${data.parentSentiment}. ${data.concernDetails || ''} ${aiSummary}`,
+      signalSource: 'parent_observation',
+      signalConfidence: 'medium',
+    });
 
-    if (feedbackError) {
-      console.error('Feedback event creation error:', feedbackError);
+    if (!feedbackResult) {
+      console.error('Feedback event creation error: insertLearningEvent returned null');
     }
 
     // Update child's renewal likelihood

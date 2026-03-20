@@ -1,9 +1,6 @@
 import { getGenAI } from '@/lib/gemini/client';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/rai/embeddings';
 import { getGeminiModel } from '@/lib/gemini-config';
-
-const supabase = createAdminClient();
+import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 // Generate AI summary
 async function generateAISummary(prompt: string): Promise<string> {
@@ -33,7 +30,7 @@ export async function saveAssessmentToLearningEvents(
     feedback?: string;
   },
   createdBy?: string
-) {
+): Promise<{ id: string } | null> {
   const summaryPrompt = `Summarize this reading assessment in 1-2 encouraging sentences for a parent:
 Score: ${assessmentData.score}/10
 Reading Speed: ${assessmentData.wpm || 'N/A'} WPM
@@ -45,29 +42,18 @@ Areas to improve: ${assessmentData.areas_to_improve?.join(', ') || 'None noted'}
   const aiSummary = await generateAISummary(summaryPrompt);
 
   const searchableText = `assessment score ${assessmentData.score} reading wpm ${assessmentData.wpm} fluency ${assessmentData.fluency} pronunciation ${assessmentData.pronunciation} comprehension ${assessmentData.comprehension} ${aiSummary}`;
-  
-  const embedding = await generateEmbedding(searchableText);
 
-  const { data, error } = await supabase
-    .from('learning_events')
-    .insert({
-      child_id: childId,
-      event_type: 'assessment',
-      event_date: new Date().toISOString(),
-      data: assessmentData,
-      ai_summary: aiSummary,
-      embedding: JSON.stringify(embedding) as any,
-      created_by: createdBy,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Failed to save assessment to learning_events:', error);
-    throw error;
-  }
-
-  return data;
+  return insertLearningEvent({
+    childId,
+    eventType: 'assessment',
+    eventData: assessmentData as Record<string, unknown>,
+    legacyData: assessmentData as Record<string, unknown>,
+    contentForEmbedding: searchableText,
+    aiSummary,
+    signalSource: 'diagnostic_assessment',
+    signalConfidence: 'high',
+    createdBy,
+  });
 }
 
 /**
@@ -88,7 +74,7 @@ export async function saveSessionToLearningEvents(
     next_steps?: string;
   },
   createdBy?: string
-) {
+): Promise<{ id: string } | null> {
   const summaryPrompt = `Summarize this coaching session in 1-2 sentences highlighting progress:
 Session: ${sessionData.session_title || 'Reading coaching'}
 Duration: ${sessionData.duration || 30} minutes
@@ -101,29 +87,18 @@ Homework: ${sessionData.homework || 'None assigned'}`;
   const aiSummary = await generateAISummary(summaryPrompt);
 
   const searchableText = `session coaching ${sessionData.session_title} focus ${sessionData.focus_area} activities ${sessionData.activities} notes ${sessionData.coach_notes} ${sessionData.session_notes} homework ${sessionData.homework} progress ${sessionData.progress_observed} ${aiSummary}`;
-  
-  const embedding = await generateEmbedding(searchableText);
 
-  const { data, error } = await supabase
-    .from('learning_events')
-    .insert({
-      child_id: childId,
-      event_type: 'session',
-      event_date: new Date().toISOString(),
-      data: sessionData,
-      ai_summary: aiSummary,
-      embedding: JSON.stringify(embedding) as any,
-      created_by: createdBy,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Failed to save session to learning_events:', error);
-    throw error;
-  }
-
-  return data;
+  return insertLearningEvent({
+    childId,
+    eventType: 'session',
+    eventData: sessionData as Record<string, unknown>,
+    legacyData: sessionData as Record<string, unknown>,
+    contentForEmbedding: searchableText,
+    aiSummary,
+    signalSource: 'coach_form',
+    signalConfidence: 'medium',
+    createdBy,
+  });
 }
 
 /**
@@ -141,9 +116,9 @@ export async function saveQuizToLearningEvents(
     passed?: boolean;
   },
   createdBy?: string
-) {
+): Promise<{ id: string } | null> {
   const percentage = Math.round((quizData.score / quizData.total) * 100);
-  
+
   const summaryPrompt = `Summarize this quiz result in 1 encouraging sentence:
 Topic: ${quizData.topic}
 Score: ${quizData.score}/${quizData.total} (${percentage}%)
@@ -153,29 +128,18 @@ Status: ${quizData.passed !== false ? 'Passed' : 'Needs practice'}`;
   const aiSummary = await generateAISummary(summaryPrompt);
 
   const searchableText = `quiz ${quizData.topic} score ${quizData.score} out of ${quizData.total} percentage ${percentage} ${quizData.passed ? 'passed' : 'practice needed'} ${aiSummary}`;
-  
-  const embedding = await generateEmbedding(searchableText);
 
-  const { data, error } = await supabase
-    .from('learning_events')
-    .insert({
-      child_id: childId,
-      event_type: 'quiz',
-      event_date: new Date().toISOString(),
-      data: quizData,
-      ai_summary: aiSummary,
-      embedding: JSON.stringify(embedding) as any,
-      created_by: createdBy,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Failed to save quiz to learning_events:', error);
-    throw error;
-  }
-
-  return data;
+  return insertLearningEvent({
+    childId,
+    eventType: 'quiz',
+    eventData: quizData as Record<string, unknown>,
+    legacyData: quizData as Record<string, unknown>,
+    contentForEmbedding: searchableText,
+    aiSummary,
+    signalSource: 'elearning_system',
+    signalConfidence: 'medium',
+    createdBy,
+  });
 }
 
 /**
@@ -189,35 +153,24 @@ export async function saveMilestoneToLearningEvents(
     badge_type?: string;
   },
   createdBy?: string
-) {
+): Promise<{ id: string } | null> {
   const summaryPrompt = `Create a celebratory 1-sentence summary: ${milestoneData.title}. ${milestoneData.description || ''}`;
-  
+
   const aiSummary = await generateAISummary(summaryPrompt);
 
   const searchableText = `milestone achievement ${milestoneData.title} ${milestoneData.description} ${milestoneData.badge_type} ${aiSummary}`;
-  
-  const embedding = await generateEmbedding(searchableText);
 
-  const { data, error } = await supabase
-    .from('learning_events')
-    .insert({
-      child_id: childId,
-      event_type: 'milestone',
-      event_date: new Date().toISOString(),
-      data: milestoneData,
-      ai_summary: aiSummary,
-      embedding: JSON.stringify(embedding) as any,
-      created_by: createdBy,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Failed to save milestone to learning_events:', error);
-    throw error;
-  }
-
-  return data;
+  return insertLearningEvent({
+    childId,
+    eventType: 'milestone',
+    eventData: milestoneData as Record<string, unknown>,
+    legacyData: milestoneData as Record<string, unknown>,
+    contentForEmbedding: searchableText,
+    aiSummary,
+    signalSource: 'system_generated',
+    signalConfidence: 'medium',
+    createdBy,
+  });
 }
 
 /**
@@ -240,7 +193,7 @@ export async function saveProgressPulseToLearningEvents(
     enrollment_id: string;
   },
   coachId?: string
-) {
+): Promise<{ id: string }> {
   const summaryPrompt = `Summarize this progress report in 1-2 sentences:
 Progress: ${pulseData.overall_progress}
 Headline: ${pulseData.headline}
@@ -252,27 +205,21 @@ ${pulseData.milestone_reached ? `Milestone: ${pulseData.milestone_reached}` : ''
 
   const searchableText = `progress pulse report ${pulseData.headline} progress ${pulseData.overall_progress} confidence ${pulseData.confidence_trend} strengths ${pulseData.strengths.join(' ')} focus ${pulseData.focus_areas.join(' ')} ${pulseData.milestone_reached || ''} ${aiSummary}`;
 
-  const embedding = await generateEmbedding(searchableText);
+  const result = await insertLearningEvent({
+    childId,
+    coachId,
+    eventType: 'progress_pulse',
+    eventData: pulseData as Record<string, unknown>,
+    legacyData: pulseData as Record<string, unknown>,
+    contentForEmbedding: searchableText,
+    aiSummary,
+    signalSource: 'system_generated',
+    signalConfidence: 'medium',
+  });
 
-  const { data, error } = await supabase
-    .from('learning_events')
-    .insert({
-      child_id: childId,
-      coach_id: coachId,
-      event_type: 'progress_pulse',
-      event_date: new Date().toISOString(),
-      data: pulseData,
-      event_data: pulseData,
-      ai_summary: aiSummary,
-      embedding: JSON.stringify(embedding) as any,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Failed to save progress pulse to learning_events:', error);
-    throw error;
+  if (!result) {
+    throw new Error(`Failed to save progress pulse to learning_events for child ${childId}`);
   }
 
-  return data;
+  return result;
 }
