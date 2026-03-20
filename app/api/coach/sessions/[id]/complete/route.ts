@@ -245,6 +245,38 @@ export async function POST(
       }
     }
 
+    // Ensure child_intelligence_profiles row exists (created lazily)
+    try {
+      const { data: existingProfile } = await supabase
+        .from('child_intelligence_profiles')
+        .select('id')
+        .eq('child_id', session.child_id!)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        await supabase
+          .from('child_intelligence_profiles')
+          .insert({
+            child_id: session.child_id!,
+            freshness_status: 'fresh',
+            overall_confidence: 'medium',
+            last_any_signal_at: new Date().toISOString(),
+            total_event_count: 1,
+            medium_confidence_event_count: 1,
+          });
+      } else {
+        await supabase
+          .from('child_intelligence_profiles')
+          .update({
+            freshness_status: 'fresh',
+            last_any_signal_at: new Date().toISOString(),
+          })
+          .eq('child_id', session.child_id!);
+      }
+    } catch (profileErr) {
+      console.error('Intelligence profile upsert error:', profileErr);
+    }
+
     // Dispatch to orchestrator for consistent post-completion handling
     try {
       await dispatch('session.completed', {

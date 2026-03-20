@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { readChatSSE } from '@/lib/rai/sse-client';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Avatar } from '@/components/shared/Avatar';
@@ -220,11 +221,50 @@ export default function StudentDetailPage() {
         }),
       });
 
-      const data = await response.json();
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.response || 'Sorry, I could not generate a response.'
-      }]);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      let assistantContent = '';
+      await readChatSSE(response, {
+        onStatus: () => {},
+        onChunk: (text) => {
+          assistantContent += text;
+          setChatMessages(prev => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+              updated[lastIdx] = { role: 'assistant', content: assistantContent };
+            } else {
+              updated.push({ role: 'assistant', content: assistantContent });
+            }
+            return updated;
+          });
+        },
+        onResponse: (content) => {
+          assistantContent = content;
+          setChatMessages(prev => [...prev, { role: 'assistant', content }]);
+        },
+        onChildren: () => {},
+        onDone: () => {},
+        onError: (msg) => {
+          setChatMessages(prev => [...prev, {
+            role: 'assistant',
+            content: msg || 'Error getting response. Please try again.'
+          }]);
+        },
+      });
+
+      // If no response was added via callbacks (edge case)
+      if (!assistantContent) {
+        setChatMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role !== 'assistant') {
+            return [...prev, { role: 'assistant', content: 'Sorry, I could not generate a response.' }];
+          }
+          return prev;
+        });
+      }
     } catch (error) {
       setChatMessages(prev => [...prev, {
         role: 'assistant',
