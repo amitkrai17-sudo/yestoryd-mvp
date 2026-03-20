@@ -220,17 +220,45 @@ export async function middleware(request: NextRequest) {
     }
 
     // 12. Coach route → verify coach is active in database
+    //     Try user_id first; fall back to email (handles coaches who haven't
+    //     had their auth user linked yet, e.g. user_id is NULL).
     if (isCoachRoute(pathname)) {
-      const { data: coach } = await supabase
+      const { data: coachById } = await supabase
         .from('coaches')
         .select('id, is_active')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .single();
 
-      if (!coach) {
-        console.log(`[Middleware] Unauthorized coach access attempt: ${userEmail} (DB check)`);
-        return NextResponse.redirect(new URL('/coach/login?error=unauthorized', request.url));
+      if (!coachById) {
+        // Fallback: match by email (covers user_id = NULL case)
+        const { data: coachByEmail } = await supabase
+          .from('coaches')
+          .select('id, is_active')
+          .eq('email', userEmail)
+          .eq('is_active', true)
+          .single();
+
+        if (!coachByEmail) {
+          console.log(`[Middleware] Unauthorized coach access attempt: ${userEmail} (DB check)`);
+          return NextResponse.redirect(new URL('/coach/login?error=unauthorized', request.url));
+        }
+
+        // Auto-link: set user_id on the coach record so future checks are fast.
+        // Uses service-role client since anon can't update coaches.
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (serviceKey) {
+          const serviceClient = createServerClient(
+            supabaseUrl,
+            serviceKey,
+            { cookies: { getAll() { return []; }, setAll() {} } }
+          );
+          await serviceClient
+            .from('coaches')
+            .update({ user_id: user.id })
+            .eq('id', coachByEmail.id);
+          console.log(`[Middleware] Auto-linked coach ${userEmail} → user_id ${user.id}`);
+        }
       }
     }
 

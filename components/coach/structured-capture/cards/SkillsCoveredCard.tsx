@@ -113,11 +113,11 @@ export function SkillsCoveredCard({ state, onUpdate, modules, loading }: SkillsC
                         type="button"
                         onClick={() => toggleSkill(skill.id)}
                         className={cn(
-                          'px-3 py-1.5 rounded-full text-xs font-medium border transition-all min-h-[36px]',
+                          'px-3 py-2 rounded-xl text-xs font-medium border transition-all min-h-[44px]',
                           'active:scale-95',
                           selected
-                            ? 'bg-[#00ABFF]/20 text-[#00ABFF] border-[#00ABFF]/40'
-                            : 'bg-surface-3 text-text-secondary border-border hover:border-text-tertiary',
+                            ? 'bg-[#FF0099] text-white border-[#FF0099]'
+                            : 'bg-gray-800 text-gray-300 border-gray-700 hover:border-gray-500',
                         )}
                       >
                         {skill.name}

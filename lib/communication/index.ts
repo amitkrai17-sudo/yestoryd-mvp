@@ -101,11 +101,13 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
 
       // Merge name into variables if available
       const mergedVariables = { ...params.variables };
-      if (name && !mergedVariables.parent_name && !mergedVariables.coach_name) {
-        if (params.recipientType === 'parent') {
-          mergedVariables.parent_name = name;
-        } else {
-          mergedVariables.coach_name = name;
+      if (params.recipientType === 'parent') {
+        if (!mergedVariables.parent_name) {
+          mergedVariables.parent_name = name?.split(' ')[0] || 'there';
+        }
+      } else {
+        if (!mergedVariables.coach_name) {
+          mergedVariables.coach_name = name || '';
         }
       }
 
@@ -222,6 +224,10 @@ async function sendEmailToRecipient(
     subject = subject.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
     body = body.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
   }
+
+  // Clean up any remaining unresolved {{variables}} so they never show as raw text
+  subject = subject.replace(/\{\{[a-zA-Z_]+\}\}/g, '');
+  body = body.replace(/\{\{[a-zA-Z_]+\}\}/g, '');
 
   return sendEmail({
     to: email,

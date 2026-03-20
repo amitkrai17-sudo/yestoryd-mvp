@@ -1,35 +1,14 @@
 // ============================================================
 // GET /api/intelligence/skills
-// Returns el_skills grouped by el_modules, filtered by
-// scope IN ('observation', 'both'). Used by structured capture
-// form to populate skill selectors.
+// Returns el_skills grouped by skill_categories (Level 1),
+// filtered by scope IN ('observation', 'both').
+// Used by structured capture form to populate skill selectors.
 // ============================================================
 
 import { NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
-
-interface SkillRow {
-  id: string;
-  name: string;
-  skill_tag: string;
-  description: string | null;
-  difficulty: number | null;
-  order_index: number;
-  scope: string | null;
-  module_id: string | null;
-  is_active: boolean | null;
-}
-
-interface ModuleRow {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string | null;
-  order_index: number;
-  is_active: boolean | null;
-}
 
 export async function GET() {
   const auth = await requireAdminOrCoach();
@@ -39,10 +18,10 @@ export async function GET() {
 
   const supabase = getServiceSupabase();
 
-  // Fetch active skills with scope = observation or both
+  // 1. Fetch active skills with scope = observation or both, including category_id
   const { data: skills, error: skillsError } = await supabase
     .from('el_skills')
-    .select('id, name, skill_tag, description, difficulty, order_index, scope, module_id, is_active')
+    .select('id, name, skill_tag, description, difficulty, order_index, scope, category_id, is_active')
     .eq('is_active', true)
     .in('scope', ['observation', 'both'])
     .order('order_index', { ascending: true });
@@ -52,52 +31,67 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch skills' }, { status: 500 });
   }
 
-  // Fetch active modules
-  const { data: modules, error: modulesError } = await supabase
-    .from('el_modules')
-    .select('id, name, slug, icon, order_index, is_active')
+  // 2. Fetch coach-visible skill_categories (Level 1 grouping)
+  const { data: categories, error: catError } = await supabase
+    .from('skill_categories')
+    .select('id, slug, label, icon, sort_order, scope, is_active')
     .eq('is_active', true)
-    .order('order_index', { ascending: true });
+    .in('scope', ['coach', 'both'])
+    .order('sort_order', { ascending: true });
 
-  if (modulesError) {
-    console.error('Failed to fetch modules:', modulesError);
-    return NextResponse.json({ error: 'Failed to fetch modules' }, { status: 500 });
+  if (catError) {
+    console.error('Failed to fetch skill_categories:', catError);
+    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
   }
 
-  // Group skills by module
-  const moduleMap = new Map<string, ModuleRow>();
-  for (const mod of (modules || []) as ModuleRow[]) {
-    moduleMap.set(mod.id, mod);
+  // 3. Build category lookup
+  const categoryMap = new Map<string, {
+    id: string;
+    slug: string;
+    label: string;
+    icon: string | null;
+    sortOrder: number;
+  }>();
+  for (const cat of categories || []) {
+    categoryMap.set(cat.id, {
+      id: cat.id,
+      slug: cat.slug,
+      label: cat.label,
+      icon: cat.icon,
+      sortOrder: cat.sort_order,
+    });
   }
 
+  // 4. Group skills by category_id
+  const skillsByCategory = new Map<string, typeof skills>();
+  for (const skill of skills || []) {
+    const key = skill.category_id || '__general__';
+    if (!skillsByCategory.has(key)) {
+      skillsByCategory.set(key, []);
+    }
+    skillsByCategory.get(key)!.push(skill);
+  }
+
+  // 5. Build grouped response in category sort order
+  //    Response shape matches existing ModuleGroup type (module → category)
   const grouped: Array<{
     module: { id: string; name: string; slug: string; icon: string | null; orderIndex: number };
     skills: Array<{ id: string; name: string; skillTag: string; description: string | null; difficulty: number | null; orderIndex: number }>;
   }> = [];
 
-  // Skills without a module go into "Other"
-  const skillsByModule = new Map<string, SkillRow[]>();
-  for (const skill of (skills || []) as SkillRow[]) {
-    const key = skill.module_id || '__other__';
-    if (!skillsByModule.has(key)) {
-      skillsByModule.set(key, []);
-    }
-    skillsByModule.get(key)!.push(skill);
-  }
-
-  // Build grouped response in module order
-  for (const mod of (modules || []) as ModuleRow[]) {
-    const moduleSkills = skillsByModule.get(mod.id);
-    if (moduleSkills && moduleSkills.length > 0) {
+  for (const cat of categories || []) {
+    const catSkills = skillsByCategory.get(cat.id);
+    if (catSkills && catSkills.length > 0) {
+      const info = categoryMap.get(cat.id)!;
       grouped.push({
         module: {
-          id: mod.id,
-          name: mod.name,
-          slug: mod.slug,
-          icon: mod.icon,
-          orderIndex: mod.order_index,
+          id: info.id,
+          name: info.label,
+          slug: info.slug,
+          icon: info.icon,
+          orderIndex: info.sortOrder,
         },
-        skills: moduleSkills.map(s => ({
+        skills: catSkills.map(s => ({
           id: s.id,
           name: s.name,
           skillTag: s.skill_tag,
@@ -109,12 +103,12 @@ export async function GET() {
     }
   }
 
-  // Add ungrouped skills
-  const otherSkills = skillsByModule.get('__other__');
-  if (otherSkills && otherSkills.length > 0) {
+  // 6. Skills without a category_id (should be rare)
+  const generalSkills = skillsByCategory.get('__general__');
+  if (generalSkills && generalSkills.length > 0) {
     grouped.push({
-      module: { id: '__other__', name: 'Other', slug: 'other', icon: null, orderIndex: 999 },
-      skills: otherSkills.map(s => ({
+      module: { id: '__general__', name: 'General Skills', slug: 'general', icon: null, orderIndex: 999 },
+      skills: generalSkills.map(s => ({
         id: s.id,
         name: s.name,
         skillTag: s.skill_tag,

@@ -32,9 +32,13 @@ export async function POST(
     const { id: sessionId } = await params;
     const payload = await request.json();
 
+    // Structured capture path: captureId present means intelligence/capture
+    // already saved the learning event. We just mark session complete.
+    const isStructuredCapture = !!payload.captureId;
+
     // Extract fields (support both new form and legacy formats)
-    const primaryFocus = payload.primaryFocus || payload.focusArea;
-    const focusProgress = payload.focusProgress || payload.progressRating;
+    const primaryFocus = payload.primaryFocus || payload.focusArea || null;
+    const focusProgress = payload.focusProgress || payload.progressRating || null;
     const overallRating = payload.overallRating || 4;
     const highlights = payload.highlights || payload.sessionHighlights || [];
     const challenges = payload.challenges || payload.sessionStruggles || [];
@@ -42,8 +46,8 @@ export async function POST(
     const engagementLevel = payload.engagementLevel || 'medium';
     const nextSessionFocus = payload.nextSessionFocus || (payload.nextSessionFocus?.[0]) || null;
 
-    // Validate required fields
-    if (!primaryFocus || !focusProgress) {
+    // Validate required fields (skip for structured capture — data saved separately)
+    if (!isStructuredCapture && !primaryFocus) {
       return NextResponse.json(
         { error: 'Missing required fields: primaryFocus/focusArea and focusProgress/progressRating' },
         { status: 400 }
@@ -73,18 +77,28 @@ export async function POST(
       return NextResponse.json({ error: 'Session already completed' }, { status: 409 });
     }
 
-    // 2. Resolve category_id from focus area slug
-    const category = await getCategoryBySlug(primaryFocus);
+    // 2. Resolve category_id from focus area slug (skip if structured capture)
+    const category = primaryFocus ? await getCategoryBySlug(primaryFocus) : null;
 
     // 3. Update scheduled_sessions status + focus metadata
+    const sessionUpdate: Record<string, any> = {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+    };
+    if (primaryFocus) {
+      sessionUpdate.focus_area = primaryFocus;
+      sessionUpdate.category_id = category?.id ?? null;
+    }
+    if (payload.captureId) {
+      sessionUpdate.capture_id = payload.captureId;
+    }
+    if (payload.intelligenceScore != null) {
+      sessionUpdate.intelligence_score = payload.intelligenceScore;
+    }
+
     const { error: sessionError } = await supabase
       .from('scheduled_sessions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        focus_area: primaryFocus,
-        category_id: category?.id ?? null,
-      })
+      .update(sessionUpdate)
       .eq('id', sessionId);
 
     if (sessionError) {
@@ -93,6 +107,12 @@ export async function POST(
     }
 
     // 4. Build event_data for learning_events (SINGLE SOURCE OF TRUTH)
+    //    Skip when structured capture already created the learning event
+    if (isStructuredCapture) {
+      // Structured capture path — learning event already exists.
+      // Still run post-completion hooks below.
+    } else {
+
     const eventData = {
       // Identifiers
       session_id: sessionId,
@@ -201,6 +221,21 @@ export async function POST(
     if (childError) {
       console.error('Children cache update error:', childError);
       // Log but don't fail
+    }
+
+    } // end of legacy (non-structured-capture) learning event path
+
+    // Update children last_session_date for both paths
+    if (isStructuredCapture) {
+      const { error: childDateError } = await supabase
+        .from('children')
+        .update({
+          last_session_date: new Date().toISOString(),
+        })
+        .eq('id', session.child_id!);
+      if (childDateError) {
+        console.error('Children date update error:', childDateError);
+      }
     }
 
     // Dispatch to orchestrator for consistent post-completion handling

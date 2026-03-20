@@ -25,7 +25,7 @@ const CARD_TITLES = ['Skills', 'Performance', 'Artifact', 'Observations', 'Submi
 const SWIPE_THRESHOLD = 50;
 
 export default function StructuredCaptureForm(props: CaptureFormProps) {
-  const { onClose, onComplete, childName, childAge, sessionId, sessionNumber } = props;
+  const { onClose, onComplete, childName, childAge, sessionId, sessionNumber, modality } = props;
 
   const {
     state,
@@ -184,6 +184,7 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
                 state={state}
                 onUpdate={updateState}
                 sessionId={sessionId}
+                isOnline={!modality || modality.startsWith('online')}
               />
             )}
             {currentCard === 3 && (

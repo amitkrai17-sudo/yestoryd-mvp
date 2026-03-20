@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { getPricingConfig } from '@/lib/config/pricing-config';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendCommunication } from '@/lib/communication';
 import crypto from 'crypto';
 import {
   generateParentWhatsAppSummary,
@@ -256,20 +256,61 @@ export async function POST(
       fullSummary += `\n\nPractice Materials:\n${materialLines.join('\n')}`;
     }
 
-    // 6. Send to parent via AiSensy WhatsApp
+    // 6. Build template variables for both WhatsApp + email
     const parentFirstName = (child.parent_name || 'Parent').split(' ')[0];
     const childFirstName = child.child_name.split(' ')[0];
 
-    const waResult = await sendWhatsAppMessage({
-      to: child.parent_phone,
-      templateName: 'session_summary_parent',
-      variables: [
-        parentFirstName,
-        childFirstName,
-        String(session.session_number || ''),
-        fullSummary,
-      ],
+    // Derive topic from completed activity names
+    const completedActivities = activityLogs
+      .filter((a: any) => a.status === 'completed' || a.status === 'partial')
+      .map((a: any) => a.activity_name);
+    const topic = completedActivities.length > 0
+      ? completedActivities.slice(0, 3).join(', ')
+      : 'Reading skills practice';
+
+    // Derive highlight from best-performing activities
+    const highlightActivity = activityLogs.find((a: any) => a.status === 'completed' && a.coach_note);
+    const highlight = highlightActivity
+      ? highlightActivity.coach_note
+      : statusCounts.completed > 0
+        ? `Completed ${statusCounts.completed} of ${activityLogs.length} activities successfully`
+        : 'Showed great effort throughout the session';
+
+    // Derive homework from practice items or default
+    const homework = practiceItems.length > 0
+      ? practiceItems.map((item: any) => item.title).slice(0, 3).join(', ')
+      : 'Keep reading daily!';
+
+    // Derive new_words from activity purposes or default
+    const vocabActivities = activityLogs
+      .filter((a: any) => a.activity_purpose && /vocab|word|sight|phonics/i.test(a.activity_purpose))
+      .map((a: any) => a.activity_name);
+    const newWords = vocabActivities.length > 0
+      ? vocabActivities.join(', ')
+      : 'Various reading skills';
+
+    // Send via communication engine (handles both WhatsApp + email)
+    const commResult = await sendCommunication({
+      templateCode: 'session_summary_parent',
+      recipientType: 'parent',
+      recipientPhone: child.parent_phone,
+      recipientEmail: child.parent_email || null,
+      recipientName: child.parent_name || null,
+      variables: {
+        parent_name: parentFirstName,
+        child_name: childFirstName,
+        session_number: String(session.session_number || ''),
+        summary: fullSummary,
+        topic,
+        new_words: newWords,
+        highlight,
+        homework,
+      },
+      relatedEntityType: 'session',
+      relatedEntityId: sessionId,
     });
+
+    const waResult = commResult.results.find(r => r.channel === 'whatsapp') || { success: false };
 
     console.log(JSON.stringify({
       requestId,
@@ -277,6 +318,7 @@ export async function POST(
       sessionId,
       childName: child.child_name,
       whatsappSuccess: waResult.success,
+      emailSuccess: commResult.results.find(r => r.channel === 'email')?.success || false,
       summaryLength: summary.length,
     }));
 

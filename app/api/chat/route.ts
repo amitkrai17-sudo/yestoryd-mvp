@@ -25,6 +25,7 @@ import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
 import {
   ChatResponse,
   Complexity,
+  SearchMode,
   UserRole,
   ChildWithCache,
   Coach,
@@ -101,7 +102,8 @@ async function trackAIUsage(
   intent: string,
   source: string,
   latencyMs: number,
-  model?: string
+  model?: string,
+  extra?: { search_mode?: string; events_retrieved?: number }
 ) {
   try {
     const supabase = getSupabase();
@@ -116,6 +118,7 @@ async function trackAIUsage(
         user_role: userRole,
         latency_ms: latencyMs,
         model,
+        ...extra,
         timestamp: new Date().toISOString(),
       },
       created_at: new Date().toISOString(),
@@ -283,8 +286,8 @@ export async function POST(request: NextRequest) {
 
       try {
         // 1. CLASSIFY INTENT
-        const { intent, tier0Match, complexity } = await classifyIntent(message, userRole);
-        console.log(JSON.stringify({ requestId, event: 'intent_classified', intent, tier0Match, complexity }));
+        const { intent, tier0Match, complexity, search_mode } = await classifyIntent(message, userRole);
+        console.log(JSON.stringify({ requestId, event: 'intent_classified', intent, tier0Match, complexity, search_mode }));
 
         // 2. ADMIN INSIGHT CHECK (fast path)
         if (userRole === 'admin') {
@@ -304,7 +307,7 @@ export async function POST(request: NextRequest) {
           // --- LEARNING: Streaming path ---
           await handleLearningStreaming(
             send, message, userRole, userEmail, childId,
-            validChatHistory, coachId, complexity, intent, requestId, startTime
+            validChatHistory, coachId, complexity, intent, requestId, startTime, search_mode
           );
         } else {
           // --- NON-LEARNING: Instant response ---
@@ -369,7 +372,8 @@ async function handleLearningStreaming(
   complexity: Complexity,
   intent: string,
   requestId: string,
-  startTime: number
+  startTime: number,
+  searchMode: SearchMode = 'balanced',
 ) {
   const supabase = getSupabase();
 
@@ -490,6 +494,7 @@ async function handleLearningStreaming(
     coachId: userRole === 'coach' ? sessionCoachId : null,
     userRole,
     limit: 15,
+    searchMode,
   });
 
   const eventsContext = formatEventsForContext(searchResult.events);
@@ -560,11 +565,15 @@ async function handleLearningStreaming(
       eventsRetrieved: searchResult.events.length,
       model: modelName,
       complexity,
+      searchMode,
     },
   });
 
   const latency = Date.now() - startTime;
-  trackAIUsage(requestId, userEmail, userRole, intent, 'rag', latency, modelName);
+  trackAIUsage(requestId, userEmail, userRole, intent, 'rag', latency, modelName, {
+    search_mode: searchMode,
+    events_retrieved: searchResult.events.length,
+  });
 
   // Fire-and-forget: log parent LEARNING queries as learning_events for RAG
   if (userRole === 'parent' && intent === 'LEARNING' && child?.id) {

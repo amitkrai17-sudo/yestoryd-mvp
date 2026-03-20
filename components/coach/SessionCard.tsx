@@ -5,7 +5,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck, MapPin, Clock, Send, ClipboardList } from 'lucide-react';
+import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck, MapPin, Clock, Send, ClipboardList, BookOpen } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
 import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';
@@ -31,6 +31,8 @@ interface Session {
   session_mode?: string;
   offline_request_status?: string | null;
   report_submitted_at?: string | null;
+  // Enrollment type
+  enrollment_type?: string | null;
 }
 
 interface SessionCardProps {
@@ -44,6 +46,7 @@ interface SessionCardProps {
   onCancel: () => void;
   onMissed: () => void;
   onRequestOffline?: () => void;
+  onSwitchToOnline?: () => void;
   coachEmail?: string;
 }
 
@@ -115,6 +118,7 @@ export function SessionCard({
   onCancel,
   onMissed,
   onRequestOffline,
+  onSwitchToOnline,
 }: SessionCardProps) {
   const isOffline = session.session_mode === 'offline';
   const isPending = session.status === 'scheduled' || session.status === 'pending' || session.status === 'confirmed';
@@ -220,9 +224,8 @@ export function SessionCard({
     });
   }
 
-  // Mark as Complete - show for all pending/scheduled sessions (not completed/cancelled)
-  // For offline sessions, completion happens through the report flow
-  if (canTakeAction && !isOffline) {
+  // Mark as Complete - show for ALL pending/scheduled sessions regardless of mode
+  if (canTakeAction) {
     dropdownActions.push({
       label: 'Mark as Complete',
       icon: ActionIcons.complete,
@@ -240,6 +243,15 @@ export function SessionCard({
       label: 'Switch to In-Person',
       icon: <MapPin className="w-4 h-4" />,
       onClick: onRequestOffline,
+    });
+  }
+
+  // Switch to Online — for offline, upcoming, scheduled sessions
+  if (onSwitchToOnline && isOffline && canTakeAction && !isPast && isPending) {
+    dropdownActions.push({
+      label: 'Switch to Online',
+      icon: <Video className="w-4 h-4" />,
+      onClick: onSwitchToOnline,
     });
   }
 
@@ -289,7 +301,7 @@ export function SessionCard({
   });
 
   return (
-    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-3 hover:border-gray-700 transition-colors w-full overflow-hidden">
+    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-3 hover:border-gray-700 transition-colors w-full">
       <div className="flex items-center gap-2.5 w-full">
         {/* Avatar - smaller on mobile */}
         <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0">
@@ -315,13 +327,28 @@ export function SessionCard({
                 Diagnostic
               </span>
             )}
+            {session.enrollment_type === 'tuition' && (
+              <span className="px-1.5 py-0.5 text-[9px] rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium flex items-center gap-0.5">
+                <BookOpen className="w-2.5 h-2.5" />
+                Tuition
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 mt-0.5">
             <p className="text-gray-500 text-[11px] lg:text-xs truncate">
-              {getSessionTypeLabel(session.session_type)}
-              {session.session_number && ` #${session.session_number}`}
-              {session.session_number && session.total_sessions && ` of ${session.total_sessions}`}
-              {session.duration_minutes && ` • ${session.duration_minutes}m`}
+              {session.enrollment_type === 'tuition' ? (
+                <>
+                  Tuition Session
+                  {session.duration_minutes && ` • ${session.duration_minutes}m`}
+                </>
+              ) : (
+                <>
+                  {getSessionTypeLabel(session.session_type)}
+                  {session.session_number && ` #${session.session_number}`}
+                  {session.session_number && session.total_sessions && ` of ${session.total_sessions}`}
+                  {session.duration_minutes && ` • ${session.duration_minutes}m`}
+                </>
+              )}
               <span className="sm:hidden"> • {formatTime(session.scheduled_time)}</span>
             </p>
             {/* In-person status indicator */}

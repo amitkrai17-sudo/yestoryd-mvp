@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, Users, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
@@ -20,6 +20,8 @@ export default function CoachLoginPage() {
   const [whatsappNumber, setWhatsappNumber] = useState<string>(COMPANY_CONFIG.leadBotWhatsApp);
   const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const unauthorizedError = searchParams.get('error') === 'unauthorized';
 
   // WhatsApp OTP states
   const [phone, setPhone] = useState('');
@@ -64,7 +66,7 @@ export default function CoachLoginPage() {
   // components can read them — no more client/server mismatch.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      if (event === 'SIGNED_IN' && session && !unauthorizedError) {
         setTimeout(() => { window.location.href = '/coach/dashboard'; }, 500);
       }
       if (event === 'INITIAL_SESSION') {
@@ -73,8 +75,13 @@ export default function CoachLoginPage() {
     });
 
     // Check existing session on mount (handles already-logged-in users)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session && unauthorizedError) {
+        // Middleware rejected this user — sign out to break redirect loop
+        await supabase.auth.signOut();
+        setError('Your account is not registered as an active coach. Contact support if this is unexpected.');
+        setCheckingSession(false);
+      } else if (session) {
         setTimeout(() => { window.location.href = '/coach/dashboard'; }, 500);
       } else {
         setCheckingSession(false);

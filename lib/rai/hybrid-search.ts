@@ -3,8 +3,14 @@
 
 import { generateEmbedding } from './embeddings';
 import { extractQueryFilters } from './query-filters';
-import { LearningEvent, UserRole } from './types';
+import { LearningEvent, SearchMode, UserRole } from './types';
 import { createAdminClient } from '@/lib/supabase/admin';
+
+export const SEARCH_MODE_CONFIG: Record<SearchMode, { multiplier: number; maxBoost: number }> = {
+  semantic_heavy: { multiplier: 0.03, maxBoost: 0.10 },
+  balanced:       { multiplier: 0.10, maxBoost: 0.25 },
+  keyword_heavy:  { multiplier: 0.15, maxBoost: 0.40 },
+};
 
 const supabase = createAdminClient();
 
@@ -15,6 +21,7 @@ interface HybridSearchOptions {
   userRole: UserRole;
   limit?: number;
   threshold?: number;
+  searchMode?: SearchMode;
 }
 
 interface HybridSearchResult {
@@ -41,7 +48,10 @@ export async function hybridSearch(
     userRole,
     limit = 15,
     threshold = 0.4,
+    searchMode = 'balanced',
   } = options;
+
+  const { multiplier, maxBoost } = SEARCH_MODE_CONFIG[searchMode];
 
   const debug = {
     queryEmbeddingGenerated: false,
@@ -50,7 +60,8 @@ export async function hybridSearch(
   };
 
   const filters = extractQueryFilters(query);
-  
+  debug.filtersApplied.push(`search_mode: ${searchMode} (kw_mult=${multiplier}, max=${maxBoost})`);
+
   if (filters.dateRange) {
     debug.filtersApplied.push(`date: ${filters.dateRange.from.toISOString().split('T')[0]} to ${filters.dateRange.to.toISOString().split('T')[0]}`);
   }
@@ -81,6 +92,9 @@ export async function hybridSearch(
       filter_keywords: filters.keywords.length > 0 ? filters.keywords : undefined,
       match_threshold: threshold,
       match_count: limit,
+      // Dynamic search weighting — new params with backward-compatible defaults in RPC
+      keyword_weight_multiplier: multiplier,
+      keyword_max_boost: maxBoost,
     });
 
     if (error) {

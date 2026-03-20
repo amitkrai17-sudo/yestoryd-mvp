@@ -599,6 +599,13 @@ export async function GET(request: NextRequest) {
 
         // 2g. Queue parent summary
         if (analysis.parent_summary) {
+          const childFirstName = childName.split(' ')[0];
+          const topic = analysis.focus_area?.replace(/_/g, ' ') || 'Reading skills practice';
+          const newWords = analysis.skills_worked_on?.length
+            ? analysis.skills_worked_on.slice(0, 3).join(', ')
+            : 'Various reading skills';
+          const homework = analysis.homework_description || 'Keep reading daily!';
+
           await supabase.from('communication_queue').insert({
             template_code: 'session_summary_parent',
             recipient_id: session.child_id ?? session.id,
@@ -607,10 +614,14 @@ export async function GET(request: NextRequest) {
             related_entity_id: session.child_id,
             scheduled_for: new Date().toISOString(),
             variables: {
-              child_name: childName,
+              child_name: childFirstName,
               summary: analysis.parent_summary,
               session_id: session.id,
               request_id: requestId,
+              topic,
+              new_words: newWords,
+              highlight: analysis.parent_summary.split('.')[0] || 'Great session today',
+              homework,
             },
             status: 'pending',
           });

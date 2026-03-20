@@ -408,10 +408,22 @@ async function queueParentSummary(
   childId: string,
   childName: string,
   summary: string,
-  requestId: string
+  requestId: string,
+  extra?: {
+    focusArea?: string;
+    skillsWorkedOn?: string[];
+    homeworkDescription?: string;
+  }
 ) {
   const supabase = getServiceSupabase();
-  
+
+  const childFirstName = childName.split(' ')[0];
+  const topic = extra?.focusArea?.replace(/_/g, ' ') || 'Reading skills practice';
+  const newWords = extra?.skillsWorkedOn?.length
+    ? extra.skillsWorkedOn.slice(0, 3).join(', ')
+    : 'Various reading skills';
+  const homework = extra?.homeworkDescription || 'Keep reading daily!';
+
   await supabase.from('communication_queue').insert({
     template_code: 'session_summary_parent',
     recipient_id: childId,
@@ -420,10 +432,14 @@ async function queueParentSummary(
     related_entity_id: childId,
     scheduled_for: new Date().toISOString(),
     variables: {
-      child_name: childName,
+      child_name: childFirstName,
       summary,
       session_id: sessionId,
       request_id: requestId,
+      topic,
+      new_words: newWords,
+      highlight: summary.split('.')[0] || 'Great session today',
+      homework,
     },
     status: 'pending',
   });
@@ -615,7 +631,12 @@ export async function POST(request: NextRequest) {
         payload.childId,
         childName,
         analysis.parent_summary,
-        requestId
+        requestId,
+        {
+          focusArea: analysis.focus_area,
+          skillsWorkedOn: analysis.skills_worked_on,
+          homeworkDescription: analysis.homework_description,
+        }
       );
     }
 

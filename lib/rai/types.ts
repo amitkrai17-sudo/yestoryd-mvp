@@ -7,6 +7,8 @@ export type Intent = 'LEARNING' | 'OPERATIONAL' | 'SCHEDULE' | 'OFF_LIMITS';
 
 export type Complexity = 'low' | 'medium' | 'high';
 
+export type SearchMode = 'semantic_heavy' | 'balanced' | 'keyword_heavy';
+
 export type ResponseSource = 'cache' | 'rag' | 'sql' | 'redirect';
 
 export interface ChatMessage {
@@ -45,6 +47,7 @@ export interface IntentClassification {
   entities: string[];
   confidence: number;
   complexity: Complexity;
+  search_mode: SearchMode;
 }
 
 export interface QueryFilters {

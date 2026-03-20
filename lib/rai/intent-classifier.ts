@@ -2,7 +2,7 @@
 // rAI v2.0 - Two-tier intent classification
 
 import { getGenAI } from '@/lib/gemini/client';
-import { Complexity, Intent, IntentClassification, UserRole } from './types';
+import { Complexity, Intent, IntentClassification, SearchMode, UserRole } from './types';
 import { getGeminiModel } from '@/lib/gemini-config';
 
 // ============================================================
@@ -114,11 +114,16 @@ Also rate the complexity:
 - "medium": Requires some context, 1-2 data points, session summary
 - "high": Requires multiple data points, trend analysis, pedagogical reasoning, comparison across sessions, or detailed recommendations
 
+Also classify search_mode (how to weight keyword vs semantic search):
+- "keyword_heavy": query contains specific dates, session numbers, specific skill names, or named events (e.g. "session 14 March", "blending practice on Tuesday", "phonics assessment last week")
+- "semantic_heavy": query asks about trends, feelings, confidence, development trajectory, or open-ended recommendations (e.g. "how is reading confidence developing", "what should we focus on next", "overall progress")
+- "balanced": everything else (default)
+
 User role: {role}
 Query: "{message}"
 
 Respond ONLY with JSON (no markdown, no backticks):
-{"intent": "LEARNING|OPERATIONAL|SCHEDULE|OFF_LIMITS", "complexity": "low|medium|high", "entities": ["extracted names or topics"], "confidence": 0.0-1.0}`;
+{"intent": "LEARNING|OPERATIONAL|SCHEDULE|OFF_LIMITS", "complexity": "low|medium|high", "search_mode": "semantic_heavy|balanced|keyword_heavy", "entities": ["extracted names or topics"], "confidence": 0.0-1.0}`;
 
 export async function tier1Classifier(
   message: string,
@@ -145,19 +150,22 @@ export async function tier1Classifier(
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       const complexity = (['low', 'medium', 'high'].includes(parsed.complexity) ? parsed.complexity : 'medium') as Complexity;
+      const validSearchModes: SearchMode[] = ['semantic_heavy', 'balanced', 'keyword_heavy'];
+      const search_mode = (validSearchModes.includes(parsed.search_mode) ? parsed.search_mode : 'balanced') as SearchMode;
       return {
         intent: parsed.intent as Intent,
         entities: parsed.entities || [],
         confidence: parsed.confidence || 0.8,
         complexity,
+        search_mode,
       };
     }
 
-    return { intent: 'LEARNING', entities: [], confidence: 0.5, complexity: 'medium' };
+    return { intent: 'LEARNING', entities: [], confidence: 0.5, complexity: 'medium', search_mode: 'balanced' as SearchMode };
 
   } catch (error) {
     console.error('Intent classification error:', error);
-    return { intent: 'LEARNING', entities: [], confidence: 0.5, complexity: 'medium' };
+    return { intent: 'LEARNING', entities: [], confidence: 0.5, complexity: 'medium', search_mode: 'balanced' as SearchMode };
   }
 }
 
@@ -168,7 +176,7 @@ export async function tier1Classifier(
 export async function classifyIntent(
   message: string,
   userRole: UserRole
-): Promise<{ intent: Intent; entities: string[]; tier0Match: boolean; complexity: Complexity }> {
+): Promise<{ intent: Intent; entities: string[]; tier0Match: boolean; complexity: Complexity; search_mode: SearchMode }> {
   const tier0Intent = tier0Router(message);
 
   if (tier0Intent) {
@@ -177,6 +185,7 @@ export async function classifyIntent(
       entities: [],
       tier0Match: true,
       complexity: 'low', // Tier 0 matches are always simple/canned
+      search_mode: 'balanced', // Tier 0 never reaches hybrid search
     };
   }
 
@@ -187,6 +196,7 @@ export async function classifyIntent(
     entities: tier1Result.entities,
     tier0Match: false,
     complexity: tier1Result.complexity,
+    search_mode: tier1Result.search_mode,
   };
 }
 

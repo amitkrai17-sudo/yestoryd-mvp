@@ -5,13 +5,14 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Mic, FileText, Camera, XCircle, ImageIcon } from 'lucide-react';
+import { Mic, FileText, Camera, XCircle, ImageIcon, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AudioRecorder } from '@/components/coach/AudioRecorder';
 import type { CardProps, ArtifactType } from '../types';
 
 interface ChildArtifactCardProps extends CardProps {
   sessionId: string;
+  isOnline?: boolean;
 }
 
 const ARTIFACT_OPTIONS: { type: ArtifactType; label: string; icon: typeof Mic }[] = [
@@ -21,7 +22,7 @@ const ARTIFACT_OPTIONS: { type: ArtifactType; label: string; icon: typeof Mic }[
   { type: 'none', label: 'None', icon: XCircle },
 ];
 
-export function ChildArtifactCard({ state, onUpdate, sessionId }: ChildArtifactCardProps) {
+export function ChildArtifactCard({ state, onUpdate, sessionId, isOnline }: ChildArtifactCardProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,8 +87,22 @@ export function ChildArtifactCard({ state, onUpdate, sessionId }: ChildArtifactC
         })}
       </div>
 
-      {/* Audio recorder */}
-      {state.artifactType === 'audio' && (
+      {/* Audio: online → Recall.ai info, offline → record + upload */}
+      {state.artifactType === 'audio' && isOnline && (
+        <div className="bg-surface-2 border border-border rounded-xl p-4 flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#00ABFF]/20 flex items-center justify-center flex-shrink-0">
+            <Video className="w-5 h-5 text-[#00ABFF]" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-medium">Audio captured automatically</p>
+            <p className="text-text-tertiary text-xs mt-1">
+              Recall.ai records online sessions automatically. No manual recording needed.
+              Use Text or Photo to capture additional artifacts.
+            </p>
+          </div>
+        </div>
+      )}
+      {state.artifactType === 'audio' && !isOnline && (
         <AudioRecorder
           sessionId={sessionId === 'new' ? 'capture-' + Date.now() : sessionId}
           audioType="reading_clip"

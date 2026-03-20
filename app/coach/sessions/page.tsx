@@ -331,6 +331,24 @@ export default function CoachSessionsPage() {
     setShowOfflineModal(true);
   }, []);
 
+  const handleSwitchToOnline = useCallback(async (session: Session) => {
+    if (!confirm(`Switch "${session.child_name}" session to online? A Google Meet link will be created.`)) return;
+    try {
+      const res = await fetch(`/api/coach/sessions/${session.id}/switch-to-online`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to switch to online');
+        return;
+      }
+      loadSessions();
+    } catch {
+      alert('Network error. Please try again.');
+    }
+  }, [loadSessions]);
+
   const handleMarkMissed = useCallback(async () => {
     if (!selectedSession) return;
     setMarkingMissed(selectedSession.id);
@@ -602,6 +620,7 @@ export default function CoachSessionsPage() {
                           onCancel={() => openCancelConfirm(session)}
                           onMissed={() => openMissedConfirm(session)}
                           onRequestOffline={() => openOfflineModal(session)}
+                          onSwitchToOnline={() => handleSwitchToOnline(session)}
                           coachEmail={coach?.email}
                         />
                       ))}
@@ -717,7 +736,7 @@ export default function CoachSessionsPage() {
           childAge={selectedSession.child_age}
           coachId={coach.id}
           sessionNumber={selectedSession.session_number || 1}
-          modality="online_1on1"
+          modality={selectedSession.session_mode === 'offline' ? 'in_person_1on1' : 'online_1on1'}
           onClose={() => {
             setShowCompleteModal(false);
             setSelectedSession(null);

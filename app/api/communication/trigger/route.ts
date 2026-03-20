@@ -132,7 +132,9 @@ export async function POST(request: NextRequest) {
         const child = (session as any).children;
         const coach = (session as any).coaches;
         resolvedVariables.child_name = child?.child_name || '';
-        resolvedVariables.parent_name = child?.parent_name || '';
+        resolvedVariables.parent_name = child?.parent_name
+          ? child.parent_name.split(' ')[0]
+          : '';
         resolvedVariables.coach_name = coach?.name || '';
         resolvedVariables.session_date = new Date(
           `${session.scheduled_date}T${session.scheduled_time}`
@@ -140,6 +142,65 @@ export async function POST(request: NextRequest) {
           weekday: 'long', day: 'numeric', month: 'short',
         });
         resolvedVariables.session_number = String(session.session_number || '');
+
+        // Resolve session content variables from activity logs + structured capture
+        try {
+          // Try activity logs first (online sessions)
+          const { data: activityLogs } = await supabase
+            .from('session_activity_log')
+            .select('activity_name, activity_purpose, status, coach_note')
+            .eq('session_id', params.contextId!)
+            .order('activity_index', { ascending: true });
+
+          if (activityLogs && activityLogs.length > 0) {
+            const completed = activityLogs.filter((a: any) => a.status === 'completed' || a.status === 'partial');
+            resolvedVariables.topic = completed.length > 0
+              ? completed.slice(0, 3).map((a: any) => a.activity_name).join(', ')
+              : 'Reading skills practice';
+
+            const vocabActivities = activityLogs.filter(
+              (a: any) => a.activity_purpose && /vocab|word|sight|phonics/i.test(a.activity_purpose)
+            );
+            resolvedVariables.new_words = vocabActivities.length > 0
+              ? vocabActivities.map((a: any) => a.activity_name).join(', ')
+              : 'Various reading skills';
+
+            const highlightActivity = activityLogs.find((a: any) => a.status === 'completed' && a.coach_note);
+            resolvedVariables.highlight = highlightActivity?.coach_note
+              || `Completed ${completed.length} of ${activityLogs.length} activities successfully`;
+          }
+
+          // Try structured capture for homework/skills data
+          const { data: capture } = await supabase
+            .from('structured_capture_responses')
+            .select('skills_covered, custom_strength_note, custom_struggle_note')
+            .eq('session_id', params.contextId!)
+            .order('submitted_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (capture) {
+            if (!resolvedVariables.topic && capture.skills_covered?.length) {
+              resolvedVariables.topic = 'Skills practice session';
+            }
+            if (capture.custom_strength_note) {
+              resolvedVariables.highlight = capture.custom_strength_note;
+            }
+          }
+
+          // Fallback defaults
+          if (!resolvedVariables.topic) resolvedVariables.topic = 'Reading skills practice';
+          if (!resolvedVariables.new_words) resolvedVariables.new_words = 'Various reading skills';
+          if (!resolvedVariables.highlight) resolvedVariables.highlight = 'Great effort throughout the session';
+          if (!resolvedVariables.homework) resolvedVariables.homework = 'Keep reading daily!';
+        } catch (resolveErr) {
+          console.error('[CommunicationTrigger] Session variable resolution error:', resolveErr);
+          // Set defaults so email never shows raw {{variables}}
+          resolvedVariables.topic = resolvedVariables.topic || 'Reading skills practice';
+          resolvedVariables.new_words = resolvedVariables.new_words || 'Various reading skills';
+          resolvedVariables.highlight = resolvedVariables.highlight || 'Great effort throughout the session';
+          resolvedVariables.homework = resolvedVariables.homework || 'Keep reading daily!';
+        }
 
         // Auto-fill recipient if not provided
         if (!params.recipientPhone && child?.parent_phone) {

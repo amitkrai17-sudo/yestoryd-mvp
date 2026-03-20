@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
         ai_prefilled: payload.aiPrefilled ?? null,
         coach_confirmed: payload.coachConfirmed ?? null,
         voice_input_url: payload.voiceInputUrl || null,
-        child_artifact_type: payload.childArtifact?.type || null,
+        child_artifact_type: payload.childArtifact?.type || 'none',
         child_artifact_url: payload.childArtifact?.url || null,
         child_artifact_text: payload.childArtifact?.text || null,
         child_artifact_duration_seconds: payload.childArtifact?.durationSeconds || null,
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
         } as any,
         content_for_embedding: contentForEmbedding,
         embedding: embeddingStr,
-        created_by: auth.email || null,
+        created_by: auth.userId || null,
       })
       .select('id')
       .single();
