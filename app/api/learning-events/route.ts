@@ -142,7 +142,6 @@ export async function POST(request: NextRequest) {
       eventData: data,
       contentForEmbedding: searchableText,
       aiSummary,
-      legacyData: data,
       createdBy: created_by,
       signalSource: 'unknown',
       signalConfidence: 'medium',

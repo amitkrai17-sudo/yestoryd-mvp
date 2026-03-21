@@ -94,7 +94,6 @@ ${notes ? `Parent notes: ${notes}` : ''}`;
       eventDate,
       aiSummary,
       createdBy: user.id,
-      legacyData: logData,
     });
 
     if (!inserted) {

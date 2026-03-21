@@ -235,7 +235,6 @@ export async function POST(
         eventType: 'exit_assessment',
         eventDate: new Date().toISOString(),
         eventData: eventData as Record<string, unknown>,
-        legacyData: eventData as Record<string, unknown>,
         contentForEmbedding: contentParts.join('\n'),
         signalSource: 'coach_form',
         signalConfidence: 'high',

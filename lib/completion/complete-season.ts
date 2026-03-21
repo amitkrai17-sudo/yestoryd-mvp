@@ -183,7 +183,6 @@ export async function completeSeason(enrollmentId: string): Promise<SeasonComple
       eventType: 'season_completion',
       eventDate: new Date().toISOString(),
       eventData: completionEventData as Record<string, unknown>,
-      legacyData: completionEventData as Record<string, unknown>,
       contentForEmbedding: `Season ${seasonNumber} completed for ${ageBand} program. ${sessionsCompleted}/${sessionsTotal} sessions (${Math.round(completionRate * 100)}%). Focus areas: ${Object.keys(beforeAfter).join(', ')}.`,
       signalSource: 'system_generated',
       signalConfidence: 'high',

@@ -271,16 +271,6 @@ export async function POST(request: NextRequest) {
       signalSource: 'structured_capture',
       intelligenceScore: score,
       sessionModality: payload.sessionModality as import('@/lib/rai/learning-events').SessionModality,
-      legacyData: {
-        captureId: capture.id,
-        skillsCovered: payload.skillsCovered,
-        skillPerformances: payload.skillPerformances as any,
-        engagementLevel: payload.engagementLevel,
-        strengthObservations: payload.strengthObservations,
-        struggleObservations: payload.struggleObservations,
-        captureMethod: payload.captureMethod,
-        hasArtifact: !!payload.childArtifact,
-      },
       eventData: {
         captureId: capture.id,
         skillsCovered: payload.skillsCovered,

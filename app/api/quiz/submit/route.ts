@@ -150,7 +150,6 @@ export async function POST(request: NextRequest) {
       eventData: quizData,
       contentForEmbedding: searchableText,
       aiSummary,
-      legacyData: quizData,
       signalSource: 'elearning_system',
       signalConfidence: 'medium',
     });

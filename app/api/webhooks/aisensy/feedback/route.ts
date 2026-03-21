@@ -223,7 +223,6 @@ export async function POST(request: NextRequest) {
           gemini_analysis: analysis ? JSON.parse(JSON.stringify(analysis)) : null,
           wa_message_id: payload.messageId,
         },
-        legacyData: {}, // required field
         contentForEmbedding,
         signalSource: 'parent_whatsapp',
         signalConfidence: analysis ? 'high' : 'medium',

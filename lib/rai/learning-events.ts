@@ -55,8 +55,6 @@ interface InsertLearningEventParams {
   createdBy?: string;
   voiceNoteTranscript?: string;
   intelligenceScore?: number;
-  /** Legacy `data` column — prefer eventData. Only set if the caller still needs it. */
-  legacyData?: Record<string, unknown>;
 }
 
 /**
@@ -95,7 +93,6 @@ export async function insertLearningEvent(
         ...(params.createdBy != null ? { created_by: params.createdBy } : {}),
         ...(params.voiceNoteTranscript != null ? { voice_note_transcript: params.voiceNoteTranscript } : {}),
         ...(params.intelligenceScore != null ? { intelligence_score: params.intelligenceScore } : {}),
-        ...(params.legacyData != null ? { data: params.legacyData as unknown as Json } : {}),
       })
       .select('id')
       .single();

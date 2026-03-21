@@ -233,7 +233,6 @@ export async function POST(
         eventType: 'diagnostic_assessment',
         eventDate: new Date().toISOString(),
         eventData: eventData as Record<string, unknown>,
-        legacyData: eventData as Record<string, unknown>,
         contentForEmbedding,
         signalSource: 'diagnostic_assessment',
         signalConfidence: 'high',

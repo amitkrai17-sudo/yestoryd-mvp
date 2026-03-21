@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -1580,93 +1606,6 @@ export type Database = {
           },
           {
             foreignKeyName: "child_intelligence_profiles_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: true
-            referencedRelation: "v_remedial_eligibility"
-            referencedColumns: ["child_id"]
-          },
-        ]
-      }
-      child_rag_profiles: {
-        Row: {
-          ai_recommendations: Json | null
-          ai_summary: string | null
-          areas_of_improvement: string[] | null
-          assessment_data: Json | null
-          book_preferences: Json | null
-          child_id: string
-          clarity_score: number | null
-          coaching_history: Json | null
-          created_at: string | null
-          engagement_patterns: Json | null
-          fluency_score: number | null
-          group_class_history: Json | null
-          id: string
-          is_active: boolean | null
-          last_updated_at: string | null
-          preferred_genres: string[] | null
-          preferred_themes: string[] | null
-          profile_embedding: string | null
-          reading_level: string | null
-          speed_score: number | null
-          strengths: string[] | null
-        }
-        Insert: {
-          ai_recommendations?: Json | null
-          ai_summary?: string | null
-          areas_of_improvement?: string[] | null
-          assessment_data?: Json | null
-          book_preferences?: Json | null
-          child_id: string
-          clarity_score?: number | null
-          coaching_history?: Json | null
-          created_at?: string | null
-          engagement_patterns?: Json | null
-          fluency_score?: number | null
-          group_class_history?: Json | null
-          id?: string
-          is_active?: boolean | null
-          last_updated_at?: string | null
-          preferred_genres?: string[] | null
-          preferred_themes?: string[] | null
-          profile_embedding?: string | null
-          reading_level?: string | null
-          speed_score?: number | null
-          strengths?: string[] | null
-        }
-        Update: {
-          ai_recommendations?: Json | null
-          ai_summary?: string | null
-          areas_of_improvement?: string[] | null
-          assessment_data?: Json | null
-          book_preferences?: Json | null
-          child_id?: string
-          clarity_score?: number | null
-          coaching_history?: Json | null
-          created_at?: string | null
-          engagement_patterns?: Json | null
-          fluency_score?: number | null
-          group_class_history?: Json | null
-          id?: string
-          is_active?: boolean | null
-          last_updated_at?: string | null
-          preferred_genres?: string[] | null
-          preferred_themes?: string[] | null
-          profile_embedding?: string | null
-          reading_level?: string | null
-          speed_score?: number | null
-          strengths?: string[] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "child_rag_profiles_child_id_fkey"
-            columns: ["child_id"]
-            isOneToOne: true
-            referencedRelation: "children"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "child_rag_profiles_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: true
             referencedRelation: "v_remedial_eligibility"
@@ -8518,7 +8457,6 @@ export type Database = {
           content_for_embedding: string | null
           created_at: string | null
           created_by: string | null
-          data: Json
           embedding: string | null
           event_data: Json | null
           event_date: string | null
@@ -8543,7 +8481,6 @@ export type Database = {
           content_for_embedding?: string | null
           created_at?: string | null
           created_by?: string | null
-          data?: Json
           embedding?: string | null
           event_data?: Json | null
           event_date?: string | null
@@ -8568,7 +8505,6 @@ export type Database = {
           content_for_embedding?: string | null
           created_at?: string | null
           created_by?: string | null
-          data?: Json
           embedding?: string | null
           event_data?: Json | null
           event_date?: string | null
@@ -10999,6 +10935,7 @@ export type Database = {
           bot_error_reason: string | null
           breakthrough_moment: string | null
           cal_booking_id: string | null
+          capture_id: string | null
           category_id: string | null
           child_id: string | null
           child_reading_clip_path: string | null
@@ -11038,6 +10975,7 @@ export type Database = {
           homework_due_date: string | null
           homework_topic: string | null
           id: string
+          intelligence_score: number | null
           is_diagnostic: boolean
           is_group_session: boolean | null
           is_makeup_session: boolean | null
@@ -11131,6 +11069,7 @@ export type Database = {
           bot_error_reason?: string | null
           breakthrough_moment?: string | null
           cal_booking_id?: string | null
+          capture_id?: string | null
           category_id?: string | null
           child_id?: string | null
           child_reading_clip_path?: string | null
@@ -11170,6 +11109,7 @@ export type Database = {
           homework_due_date?: string | null
           homework_topic?: string | null
           id?: string
+          intelligence_score?: number | null
           is_diagnostic?: boolean
           is_group_session?: boolean | null
           is_makeup_session?: boolean | null
@@ -11263,6 +11203,7 @@ export type Database = {
           bot_error_reason?: string | null
           breakthrough_moment?: string | null
           cal_booking_id?: string | null
+          capture_id?: string | null
           category_id?: string | null
           child_id?: string | null
           child_reading_clip_path?: string | null
@@ -11302,6 +11243,7 @@ export type Database = {
           homework_due_date?: string | null
           homework_topic?: string | null
           id?: string
+          intelligence_score?: number | null
           is_diagnostic?: boolean
           is_group_session?: boolean | null
           is_makeup_session?: boolean | null
@@ -15088,10 +15030,6 @@ export type Database = {
         Returns: Json
       }
       generate_certificate_number: { Args: never; Returns: string }
-      generate_embedding_content: {
-        Args: { p_event_data: Json; p_event_type: string }
-        Returns: string
-      }
       generate_parent_referral_code: {
         Args: { p_parent_id: string; p_parent_name: string }
         Returns: string
@@ -15350,24 +15288,6 @@ export type Database = {
           worksheet_count: number
         }[]
       }
-      match_learning_events: {
-        Args: {
-          filter_child_id?: string
-          match_count?: number
-          match_threshold?: number
-          query_embedding: string
-        }
-        Returns: {
-          ai_summary: string
-          child_id: string
-          created_at: string
-          data: Json
-          event_date: string
-          event_type: string
-          id: string
-          similarity: number
-        }[]
-      }
       process_payout_batch: {
         Args: {
           p_admin_email: string
@@ -15584,6 +15504,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

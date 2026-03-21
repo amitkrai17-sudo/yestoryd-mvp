@@ -153,7 +153,6 @@ export async function POST(request: NextRequest) {
       signalConfidence: 'high',
       sessionModality: 'assessment',
       aiSummary,
-      legacyData: JSON.parse(JSON.stringify(assessmentData)),
     });
     const insertError = learningEvent === null;
 

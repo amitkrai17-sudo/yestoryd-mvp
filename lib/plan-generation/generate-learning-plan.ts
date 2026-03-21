@@ -563,19 +563,6 @@ export async function generateLearningPlan(
       childId,
       eventType: 'milestone',
       eventDate: new Date().toISOString(),
-      legacyData: {
-        type: 'plan_generated',
-        season_name: seasonName,
-        season_number: seasonNumber,
-        age_band: ageBand,
-        focus_areas: focusAreas,
-        template_count: sequenced.length,
-        selections: sequenced.map(s => ({
-          code: s.template_code,
-          session: s.session_number,
-          reason: s.reason,
-        })),
-      },
       eventData: {
         type: 'plan_generated',
         roadmap_id: roadmap.id,

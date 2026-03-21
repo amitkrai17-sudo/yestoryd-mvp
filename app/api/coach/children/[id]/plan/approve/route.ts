@@ -91,12 +91,6 @@ export async function POST(
       childId,
       eventType: 'milestone',
       eventDate: new Date().toISOString(),
-      legacyData: {
-        type: 'plan_approved',
-        roadmap_id: roadmap.id,
-        season_name: roadmap.season_name,
-        approved_by: auth.email,
-      },
       eventData: {
         type: 'plan_approved',
         roadmap_id: roadmap.id,
