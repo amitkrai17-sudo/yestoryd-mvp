@@ -151,7 +151,7 @@ function IntelligenceProfileContent() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile Building</h2>
           <p className="text-gray-600 mb-6">
             {childName}&apos;s reading intelligence profile is being built.
-            Complete more coaching sessions to unlock detailed insights.
+            Complete more sessions to unlock detailed insights.
           </p>
           <Link
             href="/parent/dashboard"

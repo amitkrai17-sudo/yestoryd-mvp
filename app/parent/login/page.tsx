@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, BookOpen, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
@@ -20,7 +20,10 @@ export default function ParentLoginPage() {
   const [mode, setMode] = useState<'login' | 'phone' | 'phone-otp'>('login');
   const [message, setMessage] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
+  const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const unauthorizedError = searchParams.get('error') === 'unauthorized';
 
   // WhatsApp OTP states
   const [phone, setPhone] = useState('');
@@ -30,6 +33,34 @@ export default function ParentLoginPage() {
   const [countdown, setCountdown] = useState(0);
   const [actualOtpMethod, setActualOtpMethod] = useState<'whatsapp' | 'email'>('whatsapp');
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Handle existing sessions + break redirect loops on ?error=unauthorized
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session && !unauthorizedError) {
+        setTimeout(() => { window.location.href = '/parent/dashboard'; }, 500);
+      }
+      if (event === 'INITIAL_SESSION') {
+        setCheckingSession(false);
+      }
+    });
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session && unauthorizedError) {
+        // Middleware rejected this user — sign out to break redirect loop
+        await supabase.auth.signOut();
+        setError('Your account is not registered as a parent. Please take a free assessment first or contact support.');
+        setCheckingSession(false);
+      } else if (session) {
+        setTimeout(() => { window.location.href = '/parent/dashboard'; }, 500);
+      } else {
+        setCheckingSession(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch video URL from site_settings
   useEffect(() => {
@@ -253,6 +284,17 @@ export default function ParentLoginPage() {
     } finally {
       setOtpLoading(false);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // RENDER: CHECKING SESSION (loading state — prevents redirect loop flash)
+  // ─────────────────────────────────────────────────────────
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#ff0099] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   // ─────────────────────────────────────────────────────────

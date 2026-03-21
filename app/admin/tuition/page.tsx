@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   GraduationCap, Users, Clock, AlertTriangle, Plus,
   RefreshCw, Send, ChevronDown, ChevronUp, IndianRupee,
-  BookOpen, UserCheck, Pause, ArrowUpDown,
+  BookOpen, UserCheck, Pause, ArrowUpDown, ArrowLeftRight, Play,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -51,6 +51,17 @@ interface LedgerEntry {
   created_at: string;
 }
 
+interface PausedEnrollment {
+  id: string;
+  child_name: string;
+  enrollment_type: string;
+  pause_reason: string | null;
+  paused_at: string | null;
+  resume_eligible_until: string | null;
+  sessions_remaining: number | null;
+  coach_name: string | null;
+}
+
 // ============================================================
 // COMPONENT
 // ============================================================
@@ -87,6 +98,19 @@ export default function AdminTuitionPage() {
 
   // Coach list for dropdown
   const [coaches, setCoaches] = useState<{ id: string; name: string }[]>([]);
+
+  // Switch modal
+  const [switchTarget, setSwitchTarget] = useState<Onboarding | null>(null);
+  const [switchType, setSwitchType] = useState<'coaching' | 'tuition'>('coaching');
+  const [switchReason, setSwitchReason] = useState('coach_recommendation');
+  const [switchNotes, setSwitchNotes] = useState('');
+  const [switchSessionRate, setSwitchSessionRate] = useState(250);
+  const [switchSessionCount, setSwitchSessionCount] = useState(10);
+  const [switchSubmitting, setSwitchSubmitting] = useState(false);
+
+  // Paused enrollments
+  const [pausedEnrollments, setPausedEnrollments] = useState<PausedEnrollment[]>([]);
+  const [resuming, setResuming] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -177,6 +201,51 @@ export default function AdminTuitionPage() {
     setAdjustSubmitting(false);
   }
 
+  async function handleSwitch() {
+    if (!switchTarget?.enrollment_id) return;
+    setSwitchSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/enrollment/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enrollmentId: switchTarget.enrollment_id,
+          targetType: switchType,
+          sessionRate: switchType === 'tuition' ? switchSessionRate * 100 : undefined,
+          sessionCount: switchType === 'tuition' ? switchSessionCount : undefined,
+          reason: switchReason,
+          notes: switchNotes || undefined,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSwitchTarget(null);
+        setSwitchNotes('');
+        fetchData();
+        // Copy payment link to clipboard
+        if (data.paymentLink) {
+          navigator.clipboard.writeText(window.location.origin + data.paymentLink).catch(() => {});
+        }
+      }
+    } catch { /* */ }
+    setSwitchSubmitting(false);
+  }
+
+  async function handleResume(enrollmentId: string) {
+    setResuming(enrollmentId);
+    try {
+      const res = await fetch('/api/admin/enrollment/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enrollmentId }),
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch { /* */ }
+    setResuming(null);
+  }
+
   async function loadLedger(enrollmentId: string) {
     if (ledgerOpen === enrollmentId) {
       setLedgerOpen(null);
@@ -217,6 +286,9 @@ export default function AdminTuitionPage() {
   // ---- Derived data ----
   const pendingOnboardings = onboardings.filter(o => o.status !== 'parent_completed' || !o.enrollment_id);
   const activeStudents = onboardings.filter(o => o.enrollment_id);
+  const pausedStudents = onboardings.filter(o =>
+    o.enrollment_id && (o.enrollment_status === 'paused' || o.enrollment_status === 'tuition_paused')
+  );
 
   if (loading) {
     return (
@@ -465,6 +537,13 @@ export default function AdminTuitionPage() {
                             >
                               {ledgerOpen === o.enrollment_id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                             </button>
+                            <button
+                              onClick={() => { setSwitchTarget(o); setSwitchType('coaching'); }}
+                              className="text-xs text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg hover:bg-surface-2"
+                              title="Switch to Coaching"
+                            >
+                              <ArrowLeftRight className="w-3.5 h-3.5" />
+                            </button>
                           </>
                         )}
                       </div>
@@ -529,7 +608,114 @@ export default function AdminTuitionPage() {
             </div>
           )}
         </div>
+
+        {/* Paused Students */}
+        {pausedStudents.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <Pause className="w-4 h-4 text-red-400" />
+              Paused Students ({pausedStudents.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {pausedStudents.map(o => {
+                const isExpired = false; // TODO: check resume_eligible_until when available from API
+                return (
+                  <div key={o.id} className="bg-surface-1 rounded-2xl p-4 border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-white text-sm">{o.child_name}</span>
+                      <span className="bg-red-500/10 text-red-400 text-xs px-2 py-0.5 rounded-lg font-medium">Paused</span>
+                    </div>
+                    <div className="text-xs text-text-tertiary space-y-1">
+                      <p>Balance: {o.enrollment_sessions_remaining ?? 0} sessions</p>
+                      {o.coach_name && <p>Coach: {o.coach_name}</p>}
+                    </div>
+                    {o.enrollment_id && !isExpired && (
+                      <button
+                        onClick={() => handleResume(o.enrollment_id!)}
+                        disabled={resuming === o.enrollment_id}
+                        className="mt-3 flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 disabled:opacity-50"
+                      >
+                        {resuming === o.enrollment_id ? <Spinner size="sm" color="muted" /> : <Play className="w-3 h-3" />}
+                        Resume
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Switch Modal */}
+      {switchTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-4">
+            <h2 className="text-lg font-bold text-white">
+              Change {switchTarget.child_name}&apos;s Program
+            </h2>
+
+            {/* Current enrollment info */}
+            <div className="bg-gray-700/50 rounded-xl p-3 text-sm">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-text-tertiary">Current</span>
+                <span className="bg-amber-500/10 text-amber-400 text-xs px-2 py-0.5 rounded-lg font-medium">Tuition</span>
+              </div>
+              <div className="text-text-secondary text-xs space-y-0.5">
+                <p>Balance: {switchTarget.enrollment_sessions_remaining ?? 0} / {switchTarget.sessions_purchased} sessions</p>
+                <p>Rate: &#8377;{switchTarget.session_rate / 100}/session</p>
+                {switchTarget.coach_name && <p>Coach: {switchTarget.coach_name}</p>}
+              </div>
+            </div>
+
+            {/* Target type display */}
+            <div className="bg-blue-500/10 rounded-xl p-3 text-sm">
+              <div className="flex items-center gap-2 text-blue-400 font-medium text-xs">
+                <GraduationCap className="w-4 h-4" />
+                Switching to Coaching Program
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="text-xs text-text-tertiary block mb-1">Reason</label>
+              <select value={switchReason} onChange={e => setSwitchReason(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white">
+                <option value="coach_recommendation">Coach recommendation</option>
+                <option value="parent_request">Parent request</option>
+                <option value="financial">Financial reasons</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="text-xs text-text-tertiary block mb-1">Notes (optional)</label>
+              <textarea value={switchNotes} onChange={e => setSwitchNotes(e.target.value)}
+                rows={2} placeholder="Additional context..."
+                className="w-full bg-gray-700 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white placeholder:text-text-tertiary resize-none" />
+            </div>
+
+            {/* Warning */}
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-400">
+              Current enrollment will be paused. Upcoming sessions will be cancelled. Parent will receive a payment link.
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setSwitchTarget(null)}
+                className="px-4 py-2 text-sm text-text-tertiary hover:text-white rounded-xl">
+                Cancel
+              </button>
+              <button onClick={handleSwitch} disabled={switchSubmitting}
+                className="flex items-center gap-1.5 bg-[#FF0099] text-white font-semibold px-4 py-2 rounded-xl hover:bg-[#FF0099]/90 disabled:opacity-50 text-sm h-10">
+                {switchSubmitting ? <Spinner size="sm" color="white" /> : <ArrowLeftRight className="w-4 h-4" />}
+                Confirm Switch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

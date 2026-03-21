@@ -64,6 +64,7 @@ export default function ParentJourneyPage() {
   const [data, setData] = useState<any>(null);
   const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
   const [practiceEvents, setPracticeEvents] = useState<any[]>([]);
+  const [enrollmentType, setEnrollmentType] = useState<string | null>(null);
 
   const fetchChildId = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -128,6 +129,18 @@ export default function ParentJourneyPage() {
       const child = await fetchChildId();
       if (child) {
         setChildId(child.id);
+
+        // Fetch enrollment type for tuition-aware rendering
+        const { data: activeEnrollment } = await supabase
+          .from('enrollments')
+          .select('enrollment_type')
+          .eq('child_id', child.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (activeEnrollment) setEnrollmentType(activeEnrollment.enrollment_type);
+
         const res = await fetch(`/api/parent/roadmap/${child.id}`);
         const result = await res.json();
         if (result.success) {
@@ -168,13 +181,18 @@ export default function ParentJourneyPage() {
   }
 
   if (!data || !data.roadmap) {
+    const childName = data?.child?.name || 'Your child';
+    const isTuition = enrollmentType === 'tuition';
     return (
       <div className="p-4 lg:p-8">
         <div className="max-w-2xl mx-auto text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <MapPin className="w-12 h-12 text-gray-500 mx-auto mb-3" />
           <h2 className="text-lg font-bold text-gray-900 mb-1">Learning Journey</h2>
           <p className="text-gray-500 text-sm mb-4">
-            {data?.child?.name || 'Your child'}&apos;s personalized roadmap will appear here after the diagnostic session.
+            {isTuition
+              ? `${childName}'s learning journey will grow with each session. Check back after your next tuition session.`
+              : `${childName}'s personalized roadmap will appear here after the diagnostic session.`
+            }
           </p>
         </div>
       </div>

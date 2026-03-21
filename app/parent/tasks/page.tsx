@@ -305,7 +305,7 @@ export default function ParentTasksPage() {
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-center">
             <BookOpen className="w-10 h-10 text-gray-500 mx-auto mb-2" />
             <p className="text-gray-900 font-medium">No tasks yet</p>
-            <p className="text-gray-500 text-sm mt-1">Daily practice tasks will appear after {childName}&apos;s next coaching session.</p>
+            <p className="text-gray-500 text-sm mt-1">Daily practice tasks will appear after {childName}&apos;s next session.</p>
           </div>
         )}
 

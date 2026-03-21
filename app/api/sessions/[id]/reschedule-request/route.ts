@@ -108,9 +108,10 @@ export async function POST(
           .insert({
             session_id: sessionId,
             enrollment_id: enrollmentId,
-            initiated_by: parent.id,
+            initiated_by: 'parent',
             change_type: 'reschedule',
             reason,
+            reason_category: reason,
             original_datetime: originalDatetime,
             requested_new_datetime: preferredDate && preferredTime ? `${preferredDate}T${preferredTime}` : null,
           })

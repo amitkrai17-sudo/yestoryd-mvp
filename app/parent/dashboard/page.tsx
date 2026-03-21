@@ -57,9 +57,12 @@ interface Enrollment {
   program_end: string;
   coach_id: string;
   // New fields for multi-product support
-  enrollment_type: 'starter' | 'continuation' | 'full' | null;
+  enrollment_type: 'starter' | 'continuation' | 'full' | 'tuition' | null;
   product_id: string | null;
   sessions_purchased: number | null;
+  sessions_remaining: number | null;
+  session_rate: number | null; // paise
+  billing_model: string | null;
   starter_completed_at: string | null;
   continuation_deadline: string | null;
   coaches: {
@@ -775,6 +778,12 @@ function OverviewTab({
           color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
           Icon: Star,
         };
+      case 'tuition':
+        return {
+          label: 'Tuition Sessions',
+          color: 'bg-amber-50 text-amber-700 border-amber-200',
+          Icon: BookOpen,
+        };
       default:
         return {
           label: 'Program',
@@ -805,8 +814,36 @@ function OverviewTab({
         enrollmentType={enrollment?.enrollment_type}
       />
 
-      {/* RE-ENROLLMENT BANNER — show when sessions remaining <= 2 */}
+      {/* RE-ENROLLMENT / RENEWAL BANNER */}
       {enrollment && childId && (() => {
+        const isTuition = enrollment.enrollment_type === 'tuition';
+        if (isTuition) {
+          // For tuition: use sessions_remaining from DB (accurate after renewals)
+          const remaining = enrollment.sessions_remaining ?? 0;
+          if (remaining <= 2) {
+            return (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-amber-800 font-semibold text-sm">
+                    {remaining <= 0
+                      ? `${childName}'s sessions have run out`
+                      : `Only ${remaining} session${remaining === 1 ? '' : 's'} left`
+                    }
+                  </p>
+                  <p className="text-amber-600 text-xs mt-0.5">Add more sessions to continue learning</p>
+                </div>
+                <a
+                  href={`/tuition/pay/${enrollment.id}?renewal=true`}
+                  className="flex-shrink-0 bg-[#FF0099] text-white font-semibold px-4 py-2 rounded-xl text-sm hover:bg-[#FF0099]/90 transition-colors h-10 flex items-center"
+                >
+                  Renew Sessions
+                </a>
+              </div>
+            );
+          }
+          return null;
+        }
+        // Coaching: existing re-enrollment logic
         const sessionsRemaining = (enrollment.sessions_purchased || totalSessions) - completedSessions;
         return sessionsRemaining <= 2 && sessionsRemaining >= 0 ? (
           <ReEnrollmentBanner
@@ -936,8 +973,8 @@ function OverviewTab({
         <PendingSkillBoosterCard session={pendingSkillBooster} childName={childName} />
       )}
 
-      {/* PARENT CALL CARD */}
-      {enrollment && enrollment.status === 'active' && (
+      {/* PARENT CALL CARD — hidden for tuition (parents already have direct coach access) */}
+      {enrollment && enrollment.status === 'active' && enrollment.enrollment_type !== 'tuition' && (
         <ParentCallCard
           enrollmentId={enrollment.id}
           coachName={enrollment.coaches?.name || 'Your Coach'}
@@ -952,8 +989,8 @@ function OverviewTab({
         <ProgressPulseCard pulse={latestPulse} childName={childName} />
       )}
 
-      {/* Pause/Resume Card */}
-      {enrollment && (
+      {/* Pause/Resume Card — not shown for tuition (pay-per-session model) */}
+      {enrollment && enrollment.enrollment_type !== 'tuition' && (
         <PauseEnrollmentCard
           enrollmentId={enrollment.id}
           childName={childName}
@@ -969,6 +1006,10 @@ function OverviewTab({
         latestScore={latestScore}
         getDaysRemaining={getDaysRemaining}
         getProgressPercentage={getProgressPercentage}
+        isTuition={enrollment?.enrollment_type === 'tuition'}
+        sessionsRemaining={enrollment?.sessions_remaining ?? null}
+        sessionRate={enrollment?.session_rate ?? null}
+        upcomingSessionDate={upcomingSessions[0]?.scheduled_date ?? null}
       />
 
       {/* Group Classes Section */}
@@ -987,6 +1028,7 @@ function OverviewTab({
             totalSessions={totalSessions}
             sessionsPurchased={enrollment?.sessions_purchased ?? null}
             getProgressPercentage={getProgressPercentage}
+            isTuition={enrollment?.enrollment_type === 'tuition'}
           />
         </div>
 

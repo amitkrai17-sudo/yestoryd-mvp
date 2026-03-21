@@ -34,10 +34,14 @@ interface TimelineEvent {
   created_at: string | null;
 }
 
-function buildEventTitle(eventType: string, eventData: Record<string, unknown> | null): string {
+function buildEventTitle(eventType: string, eventData: Record<string, unknown> | null, enrollmentType?: string): string {
   switch (eventType) {
-    case 'session':
-      return `Coaching Session${eventData?.session_number ? ` #${eventData.session_number}` : ''}`;
+    case 'session': {
+      const label = enrollmentType === 'tuition' ? 'Session' : 'Coaching Session';
+      // For tuition: show just "Session" without a number (numbers are unreliable across renewals)
+      if (enrollmentType === 'tuition') return label;
+      return `${label}${eventData?.session_number ? ` #${eventData.session_number}` : ''}`;
+    }
     case 'diagnostic_assessment':
       return 'Diagnostic Assessment';
     case 'assessment':
@@ -159,6 +163,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Fetch enrollment type for tuition-aware labels
+    const { data: activeEnrollment } = await supabase
+      .from('enrollments')
+      .select('enrollment_type')
+      .eq('child_id', childId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const enrollmentType = activeEnrollment?.enrollment_type || undefined;
+
     // Pagination
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '15', 10), 50);
@@ -186,7 +201,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         id: e.id,
         event_type: e.event_type,
         event_date: e.event_date,
-        title: buildEventTitle(e.event_type, eventData),
+        title: buildEventTitle(e.event_type, eventData, enrollmentType),
         summary: e.ai_summary || null,
         details: extractDetails(e.event_type, eventData, e.ai_summary),
         created_at: e.created_at,

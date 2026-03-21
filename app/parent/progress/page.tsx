@@ -24,6 +24,7 @@ interface Enrollment {
   status: string;
   program_start: string;
   program_end: string;
+  enrollment_type?: string;
 }
 
 interface LearningEvent {
@@ -37,6 +38,7 @@ export default function ParentProgressPage() {
   const [childId, setChildId] = useState<string | null>(null);
   const [childName, setChildName] = useState('');
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [enrollmentType, setEnrollmentType] = useState<string | null>(null);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
   const [latestScore, setLatestScore] = useState<number | null>(null);
@@ -109,7 +111,7 @@ export default function ParentProgressPage() {
       // Fetch enrollment
       const { data: enrollmentData } = await supabase
         .from('enrollments')
-        .select('*')
+        .select('*, enrollment_type')
         .eq('child_id', enrolledChild.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
@@ -118,6 +120,7 @@ export default function ParentProgressPage() {
 
       if (enrollmentData) {
         setEnrollment(enrollmentData as any);
+        setEnrollmentType(enrollmentData.enrollment_type || null);
       }
 
       // Count completed sessions
@@ -203,76 +206,108 @@ export default function ParentProgressPage() {
         </div>
 
         {/* Session Progress Track */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-          <h2 className="font-semibold text-gray-900 mb-5 flex items-center gap-2">
-            <Target className="w-5 h-5 text-[#FF0099]" />
-            Session Progress
-          </h2>
-
-          {/* Visual Progress Track */}
-          <div className="relative mb-6">
-            {/* Track Line */}
-            <div className="h-2 bg-gray-100 rounded-full">
-              <div
-                className="h-2 bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
-                style={{ width: `${(sessionsCompleted / totalSessions) * 100}%` }}
-              />
-            </div>
-
-            {/* Milestone Dots */}
-            <div className="flex justify-between mt-3">
-              {Array.from({ length: totalSessions }, (_, i) => (
-                <div key={i} className="flex flex-col items-center">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    i < sessionsCompleted
-                      ? 'bg-[#FF0099] text-white shadow-sm'
-                      : i === sessionsCompleted
-                        ? 'bg-pink-50 text-[#FF0099] border-2 border-[#FF0099]'
-                        : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {i < sessionsCompleted ? <Check className="w-3.5 h-3.5" /> : i + 1}
-                  </div>
-                </div>
-              ))}
-            </div>
+        {enrollmentType === 'tuition' ? (
+          <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-[#FF0099]" />
+              Sessions Completed
+            </h2>
+            <p className="text-center text-4xl font-bold text-[#FF0099] mb-2">{sessionsCompleted}</p>
+            <p className="text-center text-sm text-gray-500">sessions completed with your coach</p>
           </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+            <h2 className="font-semibold text-gray-900 mb-5 flex items-center gap-2">
+              <Target className="w-5 h-5 text-[#FF0099]" />
+              Session Progress
+            </h2>
 
-          <p className="text-center text-base text-gray-600">
-            <span className="font-bold text-[#FF0099]">{sessionsCompleted}</span> of <span className="font-bold text-gray-900">{totalSessions}</span> sessions completed
-          </p>
-        </div>
+            {/* Visual Progress Track */}
+            <div className="relative mb-6">
+              {/* Track Line */}
+              <div className="h-2 bg-gray-100 rounded-full">
+                <div
+                  className="h-2 bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
+                  style={{ width: `${(sessionsCompleted / totalSessions) * 100}%` }}
+                />
+              </div>
+
+              {/* Milestone Dots */}
+              <div className="flex justify-between mt-3">
+                {Array.from({ length: totalSessions }, (_, i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      i < sessionsCompleted
+                        ? 'bg-[#FF0099] text-white shadow-sm'
+                        : i === sessionsCompleted
+                          ? 'bg-pink-50 text-[#FF0099] border-2 border-[#FF0099]'
+                          : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {i < sessionsCompleted ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-center text-base text-gray-600">
+              <span className="font-bold text-[#FF0099]">{sessionsCompleted}</span> of <span className="font-bold text-gray-900">{totalSessions}</span> sessions completed
+            </p>
+          </div>
+        )}
 
         {/* Stats Cards Row */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {/* Progress % */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <div className="w-10 h-10 mx-auto mb-2 bg-pink-50 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-[#FF0099]" />
+        {enrollmentType === 'tuition' ? (
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
+              <div className="w-10 h-10 mx-auto mb-2 bg-emerald-50 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-emerald-700" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{sessionsCompleted}</p>
+              <p className="text-sm text-gray-500">Sessions Done</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
-            <p className="text-sm text-gray-500">Progress</p>
+            {latestScore !== null && (
+              <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
+                <div className="w-10 h-10 mx-auto mb-2 bg-pink-50 rounded-lg flex items-center justify-center">
+                  <Star className="w-5 h-5 text-[#FF0099]" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{latestScore}/10</p>
+                <p className="text-sm text-gray-500">Latest Score</p>
+              </div>
+            )}
           </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {/* Progress % */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+              <div className="w-10 h-10 mx-auto mb-2 bg-pink-50 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-[#FF0099]" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
+              <p className="text-sm text-gray-500">Progress</p>
+            </div>
 
-          {/* Sessions */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <div className="w-10 h-10 mx-auto mb-2 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-emerald-700" />
+            {/* Sessions */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+              <div className="w-10 h-10 mx-auto mb-2 bg-emerald-50 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-emerald-700" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{sessionsCompleted}/{totalSessions}</p>
+              <p className="text-sm text-gray-500">Sessions</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{sessionsCompleted}/{totalSessions}</p>
-            <p className="text-sm text-gray-500">Sessions</p>
-          </div>
 
-          {/* Latest Score */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <div className="w-10 h-10 mx-auto mb-2 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Star className="w-5 h-5 text-blue-700" />
+            {/* Latest Score */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+              <div className="w-10 h-10 mx-auto mb-2 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Star className="w-5 h-5 text-blue-700" />
+              </div>
+              <p className={`text-2xl font-bold ${latestScore ? getScoreColor(latestScore) : 'text-gray-400'}`}>
+                {latestScore ?? '--'}/10
+              </p>
+              <p className="text-sm text-gray-500">Score</p>
             </div>
-            <p className={`text-2xl font-bold ${latestScore ? getScoreColor(latestScore) : 'text-gray-400'}`}>
-              {latestScore ?? '--'}/10
-            </p>
-            <p className="text-sm text-gray-500">Score</p>
           </div>
-        </div>
+        )}
 
         {/* Timeline */}
         {learningEvents.length > 0 && (
@@ -364,56 +399,100 @@ export default function ParentProgressPage() {
               {sessionsCompleted >= 3 && <p className="text-[10px] mt-0.5 opacity-70">3 sessions</p>}
             </div>
 
-            {/* Halfway Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-              sessionsCompleted >= 5 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
-            }`}>
-              <div className="flex justify-center mb-2">
-                {sessionsCompleted >= 5 ? <Star className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-              </div>
-              <p className="text-xs font-semibold">Halfway!</p>
-              {sessionsCompleted >= 5 && <p className="text-[10px] mt-0.5 opacity-70">5 sessions</p>}
-            </div>
+            {enrollmentType === 'tuition' ? (
+              <>
+                {/* Consistent Badge (tuition: 10+ sessions) */}
+                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+                  sessionsCompleted >= 10 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
+                }`}>
+                  <div className="flex justify-center mb-2">
+                    {sessionsCompleted >= 10 ? <Star className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
+                  </div>
+                  <p className="text-xs font-semibold">Consistent!</p>
+                  {sessionsCompleted >= 10 && <p className="text-[10px] mt-0.5 opacity-70">10 sessions</p>}
+                </div>
 
-            {/* Graduate Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-              sessionsCompleted >= totalSessions ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-400'
-            }`}>
-              <div className="flex justify-center mb-2">
-                {sessionsCompleted >= totalSessions ? <GraduationCap className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-              </div>
-              <p className="text-xs font-semibold">Graduate</p>
-              {sessionsCompleted >= totalSessions && <p className="text-[10px] mt-0.5 opacity-70">Complete!</p>}
-            </div>
+                {/* Champion Badge (tuition: 20+ sessions) */}
+                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+                  sessionsCompleted >= 20 ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-400'
+                }`}>
+                  <div className="flex justify-center mb-2">
+                    {sessionsCompleted >= 20 ? <GraduationCap className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
+                  </div>
+                  <p className="text-xs font-semibold">Champion!</p>
+                  {sessionsCompleted >= 20 && <p className="text-[10px] mt-0.5 opacity-70">20 sessions</p>}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Halfway Badge */}
+                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+                  sessionsCompleted >= 5 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
+                }`}>
+                  <div className="flex justify-center mb-2">
+                    {sessionsCompleted >= 5 ? <Star className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
+                  </div>
+                  <p className="text-xs font-semibold">Halfway!</p>
+                  {sessionsCompleted >= 5 && <p className="text-[10px] mt-0.5 opacity-70">5 sessions</p>}
+                </div>
+
+                {/* Graduate Badge */}
+                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
+                  sessionsCompleted >= totalSessions ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-400'
+                }`}>
+                  <div className="flex justify-center mb-2">
+                    {sessionsCompleted >= totalSessions ? <GraduationCap className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
+                  </div>
+                  <p className="text-xs font-semibold">Graduate</p>
+                  {sessionsCompleted >= totalSessions && <p className="text-[10px] mt-0.5 opacity-70">Complete!</p>}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         {/* Motivational Banner */}
-        <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              {sessionsCompleted < totalSessions ? (
-                <Target className="w-6 h-6" />
-              ) : (
-                <Trophy className="w-6 h-6" />
-              )}
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">
-                {sessionsCompleted < totalSessions
-                  ? `${totalSessions - sessionsCompleted} sessions to go!`
-                  : 'Congratulations! Program Complete!'
-                }
-              </h3>
-              <p className="text-white/80 text-sm">
-                {sessionsCompleted < totalSessions
-                  ? 'Keep up the great work. Consistency is key!'
-                  : 'You\'ve completed all sessions. Amazing progress!'
-                }
-              </p>
+        {enrollmentType === 'tuition' ? (
+          <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Great progress!</h3>
+                <p className="text-white/80 text-sm">
+                  {sessionsCompleted} sessions completed. Keep up the great work!
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                {sessionsCompleted < totalSessions ? (
+                  <Target className="w-6 h-6" />
+                ) : (
+                  <Trophy className="w-6 h-6" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">
+                  {sessionsCompleted < totalSessions
+                    ? `${totalSessions - sessionsCompleted} sessions to go!`
+                    : 'Congratulations! Program Complete!'
+                  }
+                </h3>
+                <p className="text-white/80 text-sm">
+                  {sessionsCompleted < totalSessions
+                    ? 'Keep up the great work. Consistency is key!'
+                    : 'You\'ve completed all sessions. Amazing progress!'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -21,6 +21,7 @@ interface SessionListProps {
   totalSessions: number;
   sessionsPurchased: number | null;
   getProgressPercentage: () => number;
+  isTuition?: boolean;
 }
 
 function formatDate(dateStr: string): string {
@@ -56,6 +57,7 @@ export default function SessionList({
   totalSessions,
   sessionsPurchased,
   getProgressPercentage,
+  isTuition = false,
 }: SessionListProps) {
   const displayTotal = sessionsPurchased || totalSessions;
 
@@ -83,11 +85,11 @@ export default function SessionList({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-gray-900 text-base truncate">
-                    {session.title || getSessionTypeLabel(session.session_type)}
+                    {session.title || (isTuition ? 'Tuition Session' : getSessionTypeLabel(session.session_type))}
                   </p>
                   <p className="text-sm text-gray-500">
                     {formatDate(session.scheduled_date)} &bull; {formatTime(session.scheduled_time)}
-                    {session.session_number ? ` \u2022 ${session.session_number}/${displayTotal}` : ''}
+                    {session.session_number ? ` \u2022 Session ${session.session_number}${isTuition ? '' : `/${displayTotal}`}` : ''}
                   </p>
                 </div>
               </div>
@@ -112,16 +114,22 @@ export default function SessionList({
         </div>
       )}
       <div className="px-5 py-3 border-t border-gray-100">
-        <div className="flex justify-between text-xs text-gray-500 mb-1">
-          <span>{completedSessions} of {displayTotal} completed</span>
-          <span>{getProgressPercentage()}%</span>
-        </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
-            style={{ width: `${getProgressPercentage()}%` }}
-          />
-        </div>
+        {isTuition ? (
+          <p className="text-xs text-gray-500">{completedSessions} sessions completed</p>
+        ) : (
+          <>
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>{completedSessions} of {displayTotal} completed</span>
+              <span>{getProgressPercentage()}%</span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
+                style={{ width: `${getProgressPercentage()}%` }}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

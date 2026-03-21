@@ -44,6 +44,7 @@ export default function ParentSessionsPage() {
   const [childName, setChildName] = useState('');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
+  const [enrollmentType, setEnrollmentType] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -102,15 +103,17 @@ export default function ParentSessionsPage() {
       if (enrolledChild) {
         setChildName(enrolledChild.name || 'Your Child');
 
-        // Get enrollment total_sessions
+        // Get enrollment total_sessions and enrollment_type
         const { data: enrollment } = await supabase
           .from('enrollments')
-          .select('total_sessions, age_band')
+          .select('total_sessions, age_band, enrollment_type')
           .eq('child_id', enrolledChild.id)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
+
+        if (enrollment?.enrollment_type) setEnrollmentType(enrollment.enrollment_type);
 
         let total = enrollment?.total_sessions || 0;
         if (!total && enrollment?.age_band) {
@@ -202,7 +205,7 @@ export default function ParentSessionsPage() {
     if (session.title) return session.title;
     if (session.is_diagnostic) return 'Diagnostic Session';
     if (session.session_type === 'remedial') return 'Skill Booster Session';
-    if (session.session_type === 'coaching') return 'Coaching Session';
+    if (session.session_type === 'coaching') return enrollmentType === 'tuition' ? 'Tuition Session' : 'Coaching Session';
     if (session.session_type === 'parent_checkin') return getSessionTypeLabel('parent_checkin');
     return 'Session';
   }
@@ -293,14 +296,20 @@ export default function ParentSessionsPage() {
         {/* Progress bar */}
         {sessions.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4">
-            <div className="flex justify-between text-sm text-gray-500 mb-2">
-              <span>{completedCount} of {totalSessions} sessions completed</span>
-              <span>{totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0}%</span>
-            </div>
+            {enrollmentType === 'tuition' ? (
+              <p className="text-sm text-gray-600 mb-2">
+                <span className="font-bold text-gray-900">{completedCount}</span> sessions completed
+              </p>
+            ) : (
+              <div className="flex justify-between text-sm text-gray-500 mb-2">
+                <span>{completedCount} of {totalSessions} sessions completed</span>
+                <span>{totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0}%</span>
+              </div>
+            )}
             <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
-                style={{ width: `${totalSessions > 0 ? (completedCount / totalSessions) * 100 : 0}%` }}
+                style={{ width: `${enrollmentType === 'tuition' ? (completedCount > 0 ? 100 : 0) : totalSessions > 0 ? (completedCount / totalSessions) * 100 : 0}%` }}
               />
             </div>
           </div>
@@ -355,7 +364,9 @@ export default function ParentSessionsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-900 truncate">
-                        {getSessionTitle(session)}
+                        {enrollmentType === 'tuition' && !session.template_title && !session.title
+                          ? 'Tuition Session'
+                          : getSessionTitle(session)}
                       </span>
                       {isSkillBooster && (
                         <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-medium">
@@ -375,8 +386,12 @@ export default function ParentSessionsPage() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5">
-                      {!isSkillBooster && session.session_number && session.total_sessions
-                        ? `Session ${session.session_number} of ${session.total_sessions} · `
+                      {!isSkillBooster && session.session_number
+                        ? enrollmentType === 'tuition'
+                          ? `Session ${session.session_number} · `
+                          : session.total_sessions
+                            ? `Session ${session.session_number} of ${session.total_sessions} · `
+                            : `Session ${session.session_number} · `
                         : ''}
                       {formatDate(session.scheduled_date)} · {formatTime(session.scheduled_time)} · {session.duration_minutes || 45 /* V1 fallback */} min
                       {isSkillBooster && session.focus_area && ` · ${session.focus_area.replace(/_/g, ' ')}`}
@@ -442,20 +457,27 @@ export default function ParentSessionsPage() {
         {/* Session Types Info */}
         <div className="mt-8 p-4 bg-pink-50 rounded-xl border border-pink-200">
           <h3 className="font-medium text-[#FF0099] mb-3">Session Types</h3>
-          <div className="grid sm:grid-cols-3 gap-3 text-sm">
-            <div className="flex items-center gap-2 text-gray-600">
+          {enrollmentType === 'tuition' ? (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
               <BookOpen className="w-4 h-4 text-[#FF0099]" />
-              <span><strong>Coaching</strong> - 1:1 session</span>
+              <span><strong>Tuition</strong> - Session with your coach</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Users className="w-4 h-4 text-[#FF0099]" />
-              <span><strong>Check-in (Legacy)</strong> - 15 min</span>
+          ) : (
+            <div className="grid sm:grid-cols-3 gap-3 text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                <BookOpen className="w-4 h-4 text-[#FF0099]" />
+                <span><strong>Coaching</strong> - 1:1 session</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-600">
+                <Users className="w-4 h-4 text-[#FF0099]" />
+                <span><strong>Check-in (Legacy)</strong> - 15 min</span>
+              </div>
+              <div className="flex items-center gap-2 text-amber-700">
+                <Zap className="w-4 h-4" />
+                <span><strong>Skill Booster</strong> - Bonus session</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-amber-700">
-              <Zap className="w-4 h-4" />
-              <span><strong>Skill Booster</strong> - Bonus session</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

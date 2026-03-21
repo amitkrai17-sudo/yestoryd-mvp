@@ -262,11 +262,55 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // 13. Parent route → verify parent exists from metadata
+    // 13. Parent route → verify parent exists in database
+    //     Try user_id first; fall back to email (handles parents who haven't
+    //     had their auth user linked yet, e.g. user_id is NULL).
     if (isParentRoute(pathname)) {
-      if (user.user_metadata?.role !== 'parent') {
-        console.log(`[Middleware] Unauthorized parent access attempt: ${userEmail} (metadata check)`);
-        return NextResponse.redirect(new URL('/parent/login?error=unauthorized', request.url));
+      const { data: parentById } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!parentById) {
+        // Fallback: match by email (covers user_id = NULL case)
+        const { data: parentByEmail } = await supabase
+          .from('parents')
+          .select('id')
+          .eq('email', userEmail)
+          .single();
+
+        if (!parentByEmail) {
+          // Last resort: check children table for parent_email
+          const { data: childByEmail } = await supabase
+            .from('children')
+            .select('id')
+            .eq('parent_email', userEmail)
+            .limit(1)
+            .single();
+
+          if (!childByEmail) {
+            console.log(`[Middleware] Unauthorized parent access attempt: ${userEmail} (DB check)`);
+            return NextResponse.redirect(new URL('/parent/login?error=unauthorized', request.url));
+          }
+        }
+
+        // Auto-link: set user_id on the parent record so future checks are fast.
+        if (parentByEmail) {
+          const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          if (serviceKey) {
+            const serviceClient = createServerClient(
+              supabaseUrl,
+              serviceKey,
+              { cookies: { getAll() { return []; }, setAll() {} } }
+            );
+            await serviceClient
+              .from('parents')
+              .update({ user_id: user.id })
+              .eq('id', parentByEmail.id);
+            console.log(`[Middleware] Auto-linked parent ${userEmail} → user_id ${user.id}`);
+          }
+        }
       }
     }
 

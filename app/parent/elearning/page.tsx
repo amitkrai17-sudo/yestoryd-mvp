@@ -67,7 +67,7 @@ export default function ELearningPage() {
         setChildId(data.child.id);
         setChildName(data.child.child_name || 'Learner');
       } else {
-        setError('No enrolled child found. E-learning is available after coaching enrollment.');
+        setError('No enrolled child found. E-learning is available after enrollment.');
       }
     } catch (err) {
       console.error('Error fetching enrolled child:', err);

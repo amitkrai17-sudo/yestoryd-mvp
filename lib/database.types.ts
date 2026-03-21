@@ -6693,6 +6693,7 @@ export type Database = {
           pause_end_date: string | null
           pause_reason: string | null
           pause_start_date: string | null
+          paused_at: string | null
           payment_id: string | null
           platform_settlement: number | null
           preference_days: Json | null
@@ -6716,6 +6717,7 @@ export type Database = {
           renewed_from_enrollment_id: string | null
           requested_start_date: string | null
           reschedules_used: number | null
+          resume_eligible_until: string | null
           risk_level: string | null
           schedule_confirmed: boolean | null
           schedule_confirmed_at: string | null
@@ -6733,6 +6735,8 @@ export type Database = {
           starter_completed_at: string | null
           starter_enrollment_id: string | null
           status: string | null
+          switch_reason: string | null
+          switched_from_enrollment_id: string | null
           terminated_at: string | null
           terminated_by: string | null
           termination_reason: string | null
@@ -6788,6 +6792,7 @@ export type Database = {
           pause_end_date?: string | null
           pause_reason?: string | null
           pause_start_date?: string | null
+          paused_at?: string | null
           payment_id?: string | null
           platform_settlement?: number | null
           preference_days?: Json | null
@@ -6811,6 +6816,7 @@ export type Database = {
           renewed_from_enrollment_id?: string | null
           requested_start_date?: string | null
           reschedules_used?: number | null
+          resume_eligible_until?: string | null
           risk_level?: string | null
           schedule_confirmed?: boolean | null
           schedule_confirmed_at?: string | null
@@ -6828,6 +6834,8 @@ export type Database = {
           starter_completed_at?: string | null
           starter_enrollment_id?: string | null
           status?: string | null
+          switch_reason?: string | null
+          switched_from_enrollment_id?: string | null
           terminated_at?: string | null
           terminated_by?: string | null
           termination_reason?: string | null
@@ -6883,6 +6891,7 @@ export type Database = {
           pause_end_date?: string | null
           pause_reason?: string | null
           pause_start_date?: string | null
+          paused_at?: string | null
           payment_id?: string | null
           platform_settlement?: number | null
           preference_days?: Json | null
@@ -6906,6 +6915,7 @@ export type Database = {
           renewed_from_enrollment_id?: string | null
           requested_start_date?: string | null
           reschedules_used?: number | null
+          resume_eligible_until?: string | null
           risk_level?: string | null
           schedule_confirmed?: boolean | null
           schedule_confirmed_at?: string | null
@@ -6923,6 +6933,8 @@ export type Database = {
           starter_completed_at?: string | null
           starter_enrollment_id?: string | null
           status?: string | null
+          switch_reason?: string | null
+          switched_from_enrollment_id?: string | null
           terminated_at?: string | null
           terminated_by?: string | null
           termination_reason?: string | null
@@ -7131,6 +7143,34 @@ export type Database = {
           {
             foreignKeyName: "enrollments_starter_enrollment_id_fkey"
             columns: ["starter_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "enrollments_switched_from_enrollment_id_fkey"
+            columns: ["switched_from_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_switched_from_enrollment_id_fkey"
+            columns: ["switched_from_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pause_ending"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_switched_from_enrollment_id_fkey"
+            columns: ["switched_from_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments_pending_start"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_switched_from_enrollment_id_fkey"
+            columns: ["switched_from_enrollment_id"]
             isOneToOne: false
             referencedRelation: "v_remedial_eligibility"
             referencedColumns: ["enrollment_id"]
