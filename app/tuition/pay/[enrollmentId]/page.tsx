@@ -191,6 +191,15 @@ export default function TuitionPayPage() {
     }
   }
 
+  // Auto-redirect to dashboard 3s after success
+  const goToDashboard = useCallback(() => router.push('/parent/dashboard'), [router]);
+
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(goToDashboard, 3000);
+    return () => clearTimeout(timer);
+  }, [success, goToDashboard]);
+
   // ---- LOADING ----
   if (loading) {
     return (
@@ -220,15 +229,6 @@ export default function TuitionPayPage() {
       </div>
     );
   }
-
-  // Auto-redirect to dashboard 3s after success
-  const goToDashboard = useCallback(() => router.push('/parent/dashboard'), [router]);
-
-  useEffect(() => {
-    if (!success) return;
-    const timer = setTimeout(goToDashboard, 3000);
-    return () => clearTimeout(timer);
-  }, [success, goToDashboard]);
 
   // ---- SUCCESS ----
   if (success && data) {

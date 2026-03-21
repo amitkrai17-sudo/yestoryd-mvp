@@ -337,7 +337,7 @@ export default function ParentDashboardPage() {
         try {
           const { data: pulseHistory } = await supabase
             .from('learning_events')
-            .select('id, event_date, data, event_data')
+            .select('id, event_date, event_data')
             .eq('child_id', enrolledChild.id)
             .eq('event_type', 'progress_pulse')
             .order('event_date', { ascending: false })
@@ -348,14 +348,14 @@ export default function ParentDashboardPage() {
             setLatestPulse({
               id: latest.id,
               event_date: latest.event_date,
-              data: latest.event_data || latest.data,
+              data: latest.event_data,
             });
             if (pulseHistory.length > 1) {
               const prev = pulseHistory[1];
               setPreviousPulse({
                 id: prev.id,
                 event_date: prev.event_date,
-                data: prev.event_data || prev.data,
+                data: prev.event_data,
               });
             }
           } else {

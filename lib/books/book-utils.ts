@@ -30,7 +30,7 @@ export interface ReadingStats {
 export async function getChildReadingHistory(childId: string): Promise<ReadingHistoryEntry[]> {
   const { data } = await supabase
     .from('learning_events')
-    .select('id, event_date, data')
+    .select('id, event_date, event_data')
     .eq('child_id', childId)
     .eq('event_type', 'reading_log')
     .order('event_date', { ascending: false })
@@ -38,10 +38,10 @@ export async function getChildReadingHistory(childId: string): Promise<ReadingHi
 
   if (!data) return [];
 
-  return data.map((e: Record<string, unknown>) => {
-    const d = e.data as Record<string, unknown> | null;
+  return data.map((e) => {
+    const d = e.event_data as Record<string, unknown> | null;
     return {
-      event_id: e.id as string,
+      event_id: e.id,
       book_title: (d?.book_title as string) || 'Unknown',
       book_author: (d?.book_author as string) || null,
       book_id: (d?.book_id as string) || null,
@@ -58,7 +58,7 @@ export async function getChildCurrentlyReading(childId: string): Promise<Reading
   // The most recent reading log entry is treated as "currently reading"
   const { data } = await supabase
     .from('learning_events')
-    .select('id, event_date, data')
+    .select('id, event_date, event_data')
     .eq('child_id', childId)
     .eq('event_type', 'reading_log')
     .order('event_date', { ascending: false })
@@ -67,7 +67,7 @@ export async function getChildCurrentlyReading(childId: string): Promise<Reading
   if (!data || data.length === 0) return null;
 
   const e = data[0];
-  const d = e.data as Record<string, unknown> | null;
+  const d = e.event_data as Record<string, unknown> | null;
   return {
     event_id: e.id,
     book_title: (d?.book_title as string) || 'Unknown',
@@ -94,7 +94,7 @@ export async function getChildReadingStats(
   // Count books read this month
   const { data: monthLogs } = await supabase
     .from('learning_events')
-    .select('id, event_date, data')
+    .select('id, event_date, event_data')
     .eq('child_id', childId)
     .eq('event_type', 'reading_log')
     .gte('event_date', monthStart)
@@ -107,7 +107,7 @@ export async function getChildReadingStats(
   // Sum minutes
   let totalMinutes = 0;
   for (const log of logs) {
-    const d = log.data as Record<string, unknown> | null;
+    const d = log.event_data as Record<string, unknown> | null;
     totalMinutes += (d?.minutes_read as number) || 0;
   }
 
@@ -155,7 +155,7 @@ export async function isBookReadByChild(childId: string, bookId: string): Promis
     .select('id', { count: 'exact', head: true })
     .eq('child_id', childId)
     .eq('event_type', 'reading_log')
-    .contains('data', { book_id: bookId });
+    .contains('event_data', { book_id: bookId });
 
   return (count || 0) > 0;
 }
@@ -165,13 +165,13 @@ export async function isBookReadByChild(childId: string, bookId: string): Promis
 export async function getChildReadBookTitles(childId: string): Promise<Set<string>> {
   const { data } = await supabase
     .from('learning_events')
-    .select('data')
+    .select('event_data')
     .eq('child_id', childId)
     .eq('event_type', 'reading_log');
 
   const titles = new Set<string>();
-  (data || []).forEach((e: Record<string, unknown>) => {
-    const d = e.data as Record<string, unknown> | null;
+  (data || []).forEach((e) => {
+    const d = e.event_data as Record<string, unknown> | null;
     const title = d?.book_title as string;
     if (title) titles.add(title.toLowerCase());
   });

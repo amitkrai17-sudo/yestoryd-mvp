@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     // Get reading log entries (learning_events with event_type = 'reading_log')
     const { data: readingLogs } = await supabase
       .from('learning_events')
-      .select('id, event_date, data, ai_summary, created_at')
+      .select('id, event_date, event_data, ai_summary, created_at')
       .eq('child_id', childId)
       .eq('event_type', 'reading_log')
       .order('event_date', { ascending: false })
