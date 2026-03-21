@@ -7,8 +7,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import {
   BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck, RefreshCw,
 } from 'lucide-react';
@@ -44,6 +44,7 @@ interface EnrollmentData {
 export default function TuitionPayPage() {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const isRenewal = searchParams.get('renewal') === 'true';
 
   const [loading, setLoading] = useState(true);
@@ -220,6 +221,15 @@ export default function TuitionPayPage() {
     );
   }
 
+  // Auto-redirect to dashboard 3s after success
+  const goToDashboard = useCallback(() => router.push('/parent/dashboard'), [router]);
+
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(goToDashboard, 3000);
+    return () => clearTimeout(timer);
+  }, [success, goToDashboard]);
+
   // ---- SUCCESS ----
   if (success && data) {
     return (
@@ -237,7 +247,7 @@ export default function TuitionPayPage() {
               : `${data.childName}'s ${data.sessionsPurchased} sessions with ${data.coachName} are confirmed. Your coach will reach out to schedule the first session.`
             }
           </p>
-          <div className="bg-gray-50 rounded-2xl p-4 text-sm text-gray-600">
+          <div className="bg-gray-50 rounded-2xl p-4 text-sm text-gray-600 mb-4">
             <div className="flex justify-between mb-1">
               <span>Sessions {data.isRenewal ? 'added' : ''}</span>
               <span className="font-medium text-gray-900">{data.sessionsPurchased}</span>
@@ -249,6 +259,13 @@ export default function TuitionPayPage() {
               </span>
             </div>
           </div>
+          <button
+            onClick={goToDashboard}
+            className="w-full bg-[#FF0099] text-white font-semibold py-3 rounded-xl hover:bg-[#FF0099]/90 transition-colors h-12 text-base"
+          >
+            Go to Dashboard
+          </button>
+          <p className="text-gray-400 text-xs mt-3">Redirecting automatically...</p>
         </div>
       </div>
     );
