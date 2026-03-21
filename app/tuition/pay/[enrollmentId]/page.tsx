@@ -2,14 +2,15 @@
 // FILE: app/tuition/pay/[enrollmentId]/page.tsx
 // PURPOSE: Tuition checkout page — loads enrollment, opens
 //          Razorpay modal, calls payment/verify on success.
+//          Supports ?renewal=true for session top-ups.
 // ============================================================
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
-  BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck,
+  BookOpen, IndianRupee, CheckCircle, AlertCircle, ShieldCheck, RefreshCw,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
@@ -36,10 +37,14 @@ interface EnrollmentData {
   totalAmountRupees: number;
   sessionDurationMinutes: number;
   status: string;
+  isRenewal: boolean;
+  sessionsRemaining: number;
 }
 
 export default function TuitionPayPage() {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
+  const searchParams = useSearchParams();
+  const isRenewal = searchParams.get('renewal') === 'true';
 
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
@@ -64,7 +69,8 @@ export default function TuitionPayPage() {
   useEffect(() => {
     async function fetchEnrollment() {
       try {
-        const res = await fetch(`/api/tuition/pay/${enrollmentId}`);
+        const renewalParam = isRenewal ? '?renewal=true' : '';
+        const res = await fetch(`/api/tuition/pay/${enrollmentId}${renewalParam}`);
         if (!res.ok) {
           const json = await res.json();
           setError(json.error || 'Failed to load enrollment');
@@ -78,7 +84,7 @@ export default function TuitionPayPage() {
       }
     }
     fetchEnrollment();
-  }, [enrollmentId]);
+  }, [enrollmentId, isRenewal]);
 
   async function handlePay() {
     if (!data || !razorpayLoaded) return;
@@ -109,12 +115,16 @@ export default function TuitionPayPage() {
       if (!createRes.ok) throw new Error(orderData.error || 'Failed to create order');
 
       // 2. Open Razorpay checkout
+      const description = data.isRenewal
+        ? `Renew ${data.sessionsPurchased} Sessions`
+        : `${data.sessionsPurchased} Tuition Sessions`;
+
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount * 100,
         currency: 'INR',
         name: 'Yestoryd',
-        description: `${data.sessionsPurchased} Tuition Sessions`,
+        description,
         order_id: orderData.orderId,
         prefill: {
           name: data.parentName,
@@ -219,15 +229,17 @@ export default function TuitionPayPage() {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h1 className="font-display text-xl font-bold text-gray-900 mb-2">
-            Payment Successful!
+            {data.isRenewal ? 'Sessions Renewed!' : 'Payment Successful!'}
           </h1>
           <p className="text-gray-600 mb-4">
-            {data.childName}&apos;s {data.sessionsPurchased} sessions with {data.coachName} are confirmed.
-            Your coach will reach out to schedule the first session.
+            {data.isRenewal
+              ? `${data.sessionsPurchased} sessions have been added for ${data.childName}. Coaching continues with ${data.coachName}.`
+              : `${data.childName}'s ${data.sessionsPurchased} sessions with ${data.coachName} are confirmed. Your coach will reach out to schedule the first session.`
+            }
           </p>
           <div className="bg-gray-50 rounded-2xl p-4 text-sm text-gray-600">
             <div className="flex justify-between mb-1">
-              <span>Sessions</span>
+              <span>Sessions {data.isRenewal ? 'added' : ''}</span>
               <span className="font-medium text-gray-900">{data.sessionsPurchased}</span>
             </div>
             <div className="flex justify-between">
@@ -245,21 +257,37 @@ export default function TuitionPayPage() {
   if (!data) return null;
 
   // ---- CHECKOUT ----
+  const heading = data.isRenewal ? 'Renew Sessions' : 'Complete Payment';
+  const subheading = data.isRenewal
+    ? `Add more sessions for ${data.childName}`
+    : `Secure checkout for ${data.childName}'s sessions`;
+  const HeadingIcon = data.isRenewal ? RefreshCw : BookOpen;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-lg mx-auto px-4 py-6">
           <div className="flex items-center gap-3 mb-1">
-            <BookOpen className="w-6 h-6 text-[#FF0099]" />
-            <h1 className="font-display text-xl font-bold text-gray-900">Complete Payment</h1>
+            <HeadingIcon className="w-6 h-6 text-[#FF0099]" />
+            <h1 className="font-display text-xl font-bold text-gray-900">{heading}</h1>
           </div>
-          <p className="text-gray-600 text-sm">
-            Secure checkout for {data.childName}&apos;s sessions
-          </p>
+          <p className="text-gray-600 text-sm">{subheading}</p>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        {/* Renewal context banner */}
+        {data.isRenewal && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-amber-800 text-sm font-medium">
+              {data.sessionsRemaining <= 0
+                ? `${data.childName}'s sessions have run out. Add more to continue coaching.`
+                : `${data.childName} has ${data.sessionsRemaining} session${data.sessionsRemaining === 1 ? '' : 's'} remaining.`
+              }
+            </p>
+          </div>
+        )}
+
         {/* Order summary */}
         <div className="bg-white rounded-2xl shadow-sm p-5">
           <h2 className="font-display font-semibold text-gray-900 mb-4">Order Summary</h2>
@@ -273,7 +301,7 @@ export default function TuitionPayPage() {
               <span className="font-medium text-gray-900">{data.coachName}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>Sessions</span>
+              <span>{data.isRenewal ? 'Sessions to add' : 'Sessions'}</span>
               <span className="font-medium text-gray-900">{data.sessionsPurchased} sessions</span>
             </div>
             <div className="flex justify-between text-gray-600">
@@ -311,7 +339,7 @@ export default function TuitionPayPage() {
           ) : (
             <>
               <IndianRupee className="w-5 h-5" />
-              Pay &#8377;{data.totalAmountRupees.toLocaleString('en-IN')}
+              {data.isRenewal ? 'Renew' : 'Pay'} &#8377;{data.totalAmountRupees.toLocaleString('en-IN')}
             </>
           )}
         </button>

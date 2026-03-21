@@ -284,10 +284,21 @@ async function sendBookingNotification(
       recipient_id: data.phone,
       scheduled_for: new Date().toISOString(),
       variables: {
+        parent_first_name: (data.parentName || 'Parent').split(' ')[0],
         parent_name: data.parentName,
         child_name: data.childName,
         recipient_phone: data.phone,
         recipient_email: data.email,
+        date: data.scheduledAt.toLocaleDateString('en-IN', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+        }),
+        time: data.scheduledAt.toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }),
         scheduled_date: data.scheduledAt.toLocaleDateString('en-IN', {
           weekday: 'long',
           day: 'numeric',
