@@ -217,6 +217,13 @@ const JOBS: Job[] = [
     description: 'Nudge parents with overdue practice tasks (48h+)',
   },
   {
+    name: 'tuition-onboarding-nudge',
+    path: '/api/cron/tuition-onboarding-nudge',
+    schedule: { type: 'daily', istHour: 11, istMinute: 0 },
+    method: 'GET',
+    description: 'Nudge parents to complete tuition onboarding form + expire stale records',
+  },
+  {
     name: 'payment-reconciliation',
     path: '/api/cron/payment-reconciliation',
     schedule: { type: 'daily', istHour: 22, istMinute: 30 },
