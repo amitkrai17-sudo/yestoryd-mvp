@@ -65,7 +65,11 @@ export async function GET(
 
     const { data: weekTasks } = await supabase
       .from('parent_daily_tasks')
-      .select('*')
+      .select(`
+        *,
+        enrollment:enrollments(id, billing_model, enrollment_type),
+        session:scheduled_sessions(id, scheduled_date, session_number)
+      `)
       .eq('child_id', childId)
       .gte('task_date', mondayStr)
       .lte('task_date', sundayStr)
@@ -136,23 +140,32 @@ export async function GET(
         if (match) recommended_reason = match[0].replace(/[()]/g, '');
       }
 
+      // Derive program label from enrollment
+      const enrollmentData = t.enrollment as { id: string; billing_model: string; enrollment_type: string } | null;
+      const sessionData = t.session as { id: string; scheduled_date: string; session_number: number } | null;
+      const programLabel = enrollmentData?.enrollment_type === 'tuition'
+        ? 'Tuition'
+        : enrollmentData ? 'Coaching' : null;
+
       return {
         ...t,
         skill_label: SKILL_LABELS[t.linked_skill ?? ''] || t.linked_skill,
         is_today: t.task_date === todayStr,
         is_past: t.task_date < todayStr,
         recommended_reason,
+        program_label: programLabel,
+        session_date: sessionData?.scheduled_date || null,
+        session_number: sessionData?.session_number || null,
+        source: t.source || 'template_generated',
       };
     });
 
     return NextResponse.json({
       success: true,
       child_name: child.child_name || child.name,
-      today_task: todayTask ? {
-        ...todayTask,
-        skill_label: SKILL_LABELS[todayTask.linked_skill ?? ''] || todayTask.linked_skill,
-        recommended_reason: enrichedTasks.find(t => t.id === todayTask.id)?.recommended_reason || null,
-      } : null,
+      today_task: todayTask
+        ? enrichedTasks.find(t => t.id === todayTask.id) || null
+        : null,
       week_tasks: enrichedTasks,
       stats: {
         completed_this_week: completedThisWeek,

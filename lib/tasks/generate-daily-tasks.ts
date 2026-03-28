@@ -664,9 +664,25 @@ export async function generateAndInsertDailyTasks(
       const dayTasks = generateDailyTasks(template, childName, i);
 
       for (const task of dayTasks) {
+        // Try to link to a content warehouse item matching the skill
+        let contentItemId: string | null = null;
+        if (task.linked_skill) {
+          const { data: contentItem } = await supabase
+            .from('el_content_items')
+            .select('id')
+            .eq('is_active', true)
+            .textSearch('search_text', task.linked_skill, { type: 'plain' })
+            .limit(1)
+            .maybeSingle();
+          contentItemId = contentItem?.id || null;
+        }
+
         tasksToInsert.push({
           child_id: childId,
           enrollment_id: session.enrollment_id,
+          session_id: sessionId,
+          source: 'template_generated' as const,
+          content_item_id: contentItemId,
           task_date: dateStr,
           title: task.title,
           description: task.description,

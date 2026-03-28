@@ -203,6 +203,11 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
                 submitting={submitting}
                 submitError={submitError}
                 onSubmit={handleSubmit}
+                selectedSkillSlugs={
+                  modules.flatMap(m => m.skills)
+                    .filter(s => state.selectedSkillIds.includes(s.id))
+                    .map(s => s.skillTag)
+                }
               />
             )}
           </motion.div>

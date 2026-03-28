@@ -4,6 +4,7 @@
 
 'use client';
 
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 import { ScorePreview } from '../ScorePreview';
@@ -14,6 +15,7 @@ import {
   CONTEXT_TAGS,
   CONTEXT_TAG_LABELS,
 } from '../types';
+import { getHomeworkSuggestions } from '@/lib/homework/suggestion-templates';
 
 interface EngagementSubmitCardProps extends CardProps {
   scorePreview: {
@@ -29,6 +31,7 @@ interface EngagementSubmitCardProps extends CardProps {
   submitting: boolean;
   submitError: string | null;
   onSubmit: () => void;
+  selectedSkillSlugs?: string[];
 }
 
 const ENGAGEMENT_LEVELS: EngagementLevel[] = ['exceptional', 'high', 'moderate', 'low'];
@@ -47,7 +50,13 @@ export function EngagementSubmitCard({
   submitting,
   submitError,
   onSubmit,
+  selectedSkillSlugs = [],
 }: EngagementSubmitCardProps) {
+  const homeworkChips = useMemo(
+    () => getHomeworkSuggestions(selectedSkillSlugs),
+    [selectedSkillSlugs]
+  );
+
   return (
     <div className="space-y-5">
       {/* Engagement Level */}
@@ -129,13 +138,30 @@ export function EngagementSubmitCard({
           </button>
         </div>
         {state.homeworkAssigned && (
-          <textarea
-            value={state.homeworkDescription}
-            onChange={e => onUpdate({ homeworkDescription: e.target.value })}
-            placeholder="Describe the homework..."
-            rows={2}
-            className="w-full mt-2.5 bg-surface-3 border border-border rounded-lg px-3 py-2 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#00ABFF] resize-none"
-          />
+          <div className="mt-2.5 space-y-2">
+            {/* Suggestion chips */}
+            {homeworkChips.length > 0 && !state.homeworkDescription && (
+              <div className="flex flex-wrap gap-1.5">
+                {homeworkChips.map((chip, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => onUpdate({ homeworkDescription: chip })}
+                    className="text-xs px-2.5 py-1.5 rounded-xl bg-surface-3 border border-border text-text-secondary hover:border-[#00ABFF] hover:text-[#00ABFF] transition-colors text-left"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
+            <textarea
+              value={state.homeworkDescription}
+              onChange={e => onUpdate({ homeworkDescription: e.target.value })}
+              placeholder="Describe the homework..."
+              rows={2}
+              className="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#00ABFF] resize-none"
+            />
+          </div>
         )}
       </div>
 

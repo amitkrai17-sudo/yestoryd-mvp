@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react';
 import { X, BookOpen, Target, TrendingUp, Star, AlertCircle, Heart, Calendar, Video, ChevronRight } from 'lucide-react';
 
+interface HomeworkStatus {
+  total: number;
+  completed: number;
+  pending: { id: string; title: string; task_date: string; linked_skill: string | null }[];
+}
+
 interface Session {
   id: string;
   child_id: string;
@@ -24,6 +30,7 @@ interface Session {
   sessions_completed: number;
   total_sessions: number;
   enrollment_type?: string | null;
+  homework_status?: HomeworkStatus | null;
 }
 
 interface PreSessionBriefProps {
@@ -110,6 +117,10 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
     recommended_activities?: string[];
   } | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [fetchedHomework, setFetchedHomework] = useState<HomeworkStatus | null>(null);
+
+  // Resolve homework: use prop if available, otherwise fetch from brief API
+  const homeworkStatus = session.homework_status || fetchedHomework;
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -133,7 +144,19 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
       }
     };
     fetchInsights();
-  }, [session.child_id, session.scheduled_date, session.scheduled_time, session.session_type]);
+
+    // Fetch homework status if not provided via props
+    if (!session.homework_status && session.id) {
+      fetch(`/api/coach/sessions/${session.id}/brief`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.homework_status) {
+            setFetchedHomework(data.homework_status);
+          }
+        })
+        .catch(() => { /* Non-fatal */ });
+    }
+  }, [session.child_id, session.scheduled_date, session.scheduled_time, session.session_type, session.id, session.homework_status]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -252,6 +275,59 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
                     <BookOpen className="w-4 h-4 text-purple-400" />Learning Style
                   </div>
                   <p className="text-white">{session.learning_style}</p>
+                </div>
+              )}
+              {homeworkStatus && homeworkStatus.total > 0 && (
+                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-gray-400 text-sm">
+                      <Target className="w-4 h-4 text-emerald-400" />Homework
+                    </div>
+                    <span className={`text-sm font-medium ${
+                      homeworkStatus.completed === homeworkStatus.total
+                        ? 'text-emerald-400'
+                        : homeworkStatus.completed === 0
+                          ? 'text-red-400'
+                          : 'text-amber-400'
+                    }`}>
+                      {homeworkStatus.completed}/{homeworkStatus.total}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden mb-2">
+                    <div
+                      className={`h-full rounded-full ${
+                        homeworkStatus.completed === homeworkStatus.total
+                          ? 'bg-emerald-400'
+                          : homeworkStatus.completed === 0
+                            ? 'bg-red-400'
+                            : 'bg-amber-400'
+                      }`}
+                      style={{ width: `${Math.round((homeworkStatus.completed / homeworkStatus.total) * 100)}%` }}
+                    />
+                  </div>
+                  {homeworkStatus.pending.length > 0 ? (
+                    <div className="space-y-1">
+                      {homeworkStatus.pending.slice(0, 3).map((task) => (
+                        <p key={task.id} className="text-xs text-amber-300/80 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />
+                          {task.title}
+                        </p>
+                      ))}
+                      {homeworkStatus.pending.length > 3 && (
+                        <p className="text-xs text-gray-500">+{homeworkStatus.pending.length - 3} more pending</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-emerald-400">All homework completed!</p>
+                  )}
+                </div>
+              )}
+              {(!homeworkStatus || homeworkStatus.total === 0) && session.sessions_completed > 0 && (
+                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center gap-2 text-gray-400 text-sm">
+                    <Target className="w-4 h-4" />Homework
+                  </div>
+                  <p className="text-gray-500 text-sm mt-1">No homework was assigned last session</p>
                 </div>
               )}
             </>

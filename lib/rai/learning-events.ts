@@ -21,6 +21,7 @@ export type LearningEventType =
   | 'micro_assessment' | 'session_companion_log' | 'activity_struggle_flag' | 'parent_practice_assigned'
   | 'reading_log' | 'child_artifact' | 'exit_assessment' | 'mini_challenge_completed'
   | 'elearning_interaction' | 'session_feedback' | 'season_completion'
+  | 'practice_completed'
   | 'note' | 'handwritten'; // generic types used by learning-events API
 
 export type SignalSource =

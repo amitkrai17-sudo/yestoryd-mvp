@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ab_test_events: {
@@ -9182,42 +9157,63 @@ export type Database = {
         Row: {
           child_id: string
           completed_at: string | null
+          content_item_id: string | null
           created_at: string
           description: string
+          difficulty_rating: string | null
           duration_minutes: number | null
           enrollment_id: string | null
           id: string
           is_completed: boolean
           linked_skill: string | null
           linked_template_code: string | null
+          photo_analysis: Json | null
+          photo_url: string | null
+          practice_duration: string | null
+          session_id: string | null
+          source: string | null
           task_date: string
           title: string
         }
         Insert: {
           child_id: string
           completed_at?: string | null
+          content_item_id?: string | null
           created_at?: string
           description: string
+          difficulty_rating?: string | null
           duration_minutes?: number | null
           enrollment_id?: string | null
           id?: string
           is_completed?: boolean
           linked_skill?: string | null
           linked_template_code?: string | null
+          photo_analysis?: Json | null
+          photo_url?: string | null
+          practice_duration?: string | null
+          session_id?: string | null
+          source?: string | null
           task_date: string
           title: string
         }
         Update: {
           child_id?: string
           completed_at?: string | null
+          content_item_id?: string | null
           created_at?: string
           description?: string
+          difficulty_rating?: string | null
           duration_minutes?: number | null
           enrollment_id?: string | null
           id?: string
           is_completed?: boolean
           linked_skill?: string | null
           linked_template_code?: string | null
+          photo_analysis?: Json | null
+          photo_url?: string | null
+          practice_duration?: string | null
+          session_id?: string | null
+          source?: string | null
           task_date?: string
           title?: string
         }
@@ -9235,6 +9231,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_remedial_eligibility"
             referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "el_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_content_with_skills"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "parent_daily_tasks_enrollment_id_fkey"
@@ -9263,6 +9273,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_remedial_eligibility"
             referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_daily_tasks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_recording_status"
+            referencedColumns: ["session_id"]
           },
         ]
       }
@@ -15543,9 +15567,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

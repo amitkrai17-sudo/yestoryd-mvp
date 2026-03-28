@@ -153,6 +153,7 @@ export async function GET(request: NextRequest) {
           await supabase.from('parent_daily_tasks').insert({
             child_id: profile.child_id,
             enrollment_id: enrollment?.id || null,
+            source: 'ai_recommended',
             task_date: today,
             title: `Update ${childName}'s Reading Profile`,
             description: `${childName}'s reading profile hasn't been updated recently. Schedule a coaching session to get fresh insights about their progress.`,
@@ -169,10 +170,46 @@ export async function GET(request: NextRequest) {
           rating?: string;
         }>;
 
+        // Query recent practice history for adaptive task generation
+        const { data: recentPractice } = await supabase
+          .from('learning_events')
+          .select('event_data')
+          .eq('child_id', profile.child_id)
+          .eq('event_type', 'practice_completed')
+          .gte('created_at', new Date(Date.now() - 14 * 86400000).toISOString())
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        // Build practice pattern awareness
+        const practiceSkillHistory: Record<string, { count: number; struggled: number; easy: number }> = {};
+        for (const p of recentPractice || []) {
+          const ed = p.event_data as Record<string, any> | null;
+          if (!ed?.task_type) continue;
+          const skill = ed.task_type;
+          if (!practiceSkillHistory[skill]) practiceSkillHistory[skill] = { count: 0, struggled: 0, easy: 0 };
+          practiceSkillHistory[skill].count++;
+          if (ed.difficulty_rating === 'struggled') practiceSkillHistory[skill].struggled++;
+          if (ed.difficulty_rating === 'easy') practiceSkillHistory[skill].easy++;
+        }
+
         // Find growth area skills (struggling/developing)
         const growthSkills = Object.values(skillRatings)
           .filter(sr => sr.rating === 'struggling' || sr.rating === 'developing')
           .map(sr => sr.skillName?.toLowerCase().replace(/\s+/g, '_') || '');
+
+        // Boost skills parent reported as "struggled" in practice; deprioritize "easy" ones
+        const boostedSkills = Object.entries(practiceSkillHistory)
+          .filter(([, h]) => h.struggled > h.easy)
+          .map(([skill]) => skill);
+        const deprioritizedSkills = Object.entries(practiceSkillHistory)
+          .filter(([, h]) => h.easy > 1 && h.struggled === 0)
+          .map(([skill]) => skill);
+
+        // Combine: growth skills first, then boosted, filtering out deprioritized
+        const prioritizedSkills = [
+          ...growthSkills.filter(s => !deprioritizedSkills.includes(s)),
+          ...boostedSkills.filter(s => !growthSkills.includes(s)),
+        ].slice(0, 5);
 
         // Match skills to task templates
         const tasksToCreate: {
@@ -182,7 +219,7 @@ export async function GET(request: NextRequest) {
           duration_minutes: number | null;
         }[] = [];
 
-        for (const skill of growthSkills) {
+        for (const skill of prioritizedSkills) {
           if (tasksToCreate.length >= 2) break;
 
           // Find matching template
@@ -245,6 +282,7 @@ export async function GET(request: NextRequest) {
         const insertTasks = tasksToCreate.slice(0, 3).map(t => ({
           child_id: profile.child_id,
           enrollment_id: enrollment?.id || null,
+          source: 'ai_recommended' as const,
           task_date: today,
           title: t.title,
           description: t.description,
@@ -297,6 +335,7 @@ export async function GET(request: NextRequest) {
         await supabase.from('parent_daily_tasks').insert({
           child_id: child.id,
           enrollment_id: enrollment?.id || null,
+          source: 'ai_recommended' as const,
           task_date: today,
           title: 'Daily Reading Time',
           description: `Read together for 15 minutes. Complete a reading assessment to unlock personalized practice for ${childName}.`,

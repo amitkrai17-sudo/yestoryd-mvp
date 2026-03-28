@@ -243,6 +243,126 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
       // Non-fatal — engagement data is optional
     }
 
+    // 7c. Homework / daily task status since last session
+    let homeworkStatus: { total: number; completed: number; pending: { id: string; title: string; task_date: string; linked_skill: string | null }[]; items: any[] } | null = null;
+    let hwSinceDate: string | null = null;
+    try {
+      // Find previous session date for this child
+      if (session.session_number && session.session_number > 1) {
+        const { data: prevSess } = await supabase
+          .from('scheduled_sessions')
+          .select('scheduled_date')
+          .eq('child_id', session.child_id)
+          .eq('status', 'completed')
+          .lt('session_number', session.session_number)
+          .order('session_number', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        hwSinceDate = prevSess?.scheduled_date || null;
+      }
+
+      let hwQuery = supabase
+        .from('parent_daily_tasks')
+        .select('id, title, task_date, linked_skill, is_completed, photo_url, created_at')
+        .eq('child_id', session.child_id)
+        .order('task_date', { ascending: false });
+
+      if (hwSinceDate) {
+        hwQuery = hwQuery.gte('task_date', hwSinceDate);
+      } else {
+        // No previous session — show last 7 days
+        const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+        hwQuery = hwQuery.gte('task_date', sevenDaysAgo);
+      }
+
+      const { data: hwTasks } = await hwQuery.limit(20);
+
+      if (hwTasks && hwTasks.length > 0) {
+        const completedCount = hwTasks.filter(t => t.is_completed).length;
+        const pendingTasks = hwTasks
+          .filter(t => !t.is_completed)
+          .map(t => ({ id: t.id, title: t.title, task_date: t.task_date, linked_skill: t.linked_skill }));
+
+        // Generate signed URLs for tasks with photos
+        const itemsWithUrls = await Promise.all(hwTasks.map(async (t) => {
+          if (t.photo_url && !t.photo_url.startsWith('http')) {
+            try {
+              const { data: signed } = await supabase.storage
+                .from('child-artifacts')
+                .createSignedUrl(t.photo_url, 3600);
+              return { ...t, photo_signed_url: signed?.signedUrl || null };
+            } catch {
+              return { ...t, photo_signed_url: null };
+            }
+          }
+          return { ...t, photo_signed_url: t.photo_url || null };
+        }));
+
+        homeworkStatus = {
+          total: hwTasks.length,
+          completed: completedCount,
+          pending: pendingTasks,
+          items: itemsWithUrls,
+        };
+      }
+    } catch {
+      // Non-fatal
+    }
+
+    // 7d. Practice intelligence — correlate practice events since last session
+    let practiceIntelligence: {
+      total_events: number;
+      completed_on_time: number;
+      struggled_skills: string[];
+      easy_skills: string[];
+      avg_days_to_complete: number | null;
+      has_photos: number;
+    } | null = null;
+    try {
+      const peSince = hwSinceDate || new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+      const { data: practiceEvents } = await supabase
+        .from('learning_events')
+        .select('event_data')
+        .eq('child_id', session.child_id)
+        .eq('event_type', 'practice_completed')
+        .gte('event_date', peSince)
+        .order('event_date', { ascending: false })
+        .limit(30);
+
+      if (practiceEvents && practiceEvents.length > 0) {
+        const struggled: string[] = [];
+        const easy: string[] = [];
+        let daysSum = 0;
+        let daysCount = 0;
+        let photoCount = 0;
+        let onTimeCount = 0;
+
+        for (const pe of practiceEvents) {
+          const ed = pe.event_data as Record<string, any> | null;
+          if (!ed) continue;
+          if (ed.difficulty_rating === 'struggled' && ed.task_type) struggled.push(ed.task_type);
+          if (ed.difficulty_rating === 'easy' && ed.task_type) easy.push(ed.task_type);
+          if (ed.days_to_complete) {
+            daysSum += ed.days_to_complete;
+            daysCount++;
+            if (ed.days_to_complete <= 2) onTimeCount++;
+          }
+          if (ed.has_photo) photoCount++;
+        }
+
+        practiceIntelligence = {
+          total_events: practiceEvents.length,
+          completed_on_time: onTimeCount,
+          struggled_skills: Array.from(new Set(struggled)),
+          easy_skills: Array.from(new Set(easy)),
+          avg_days_to_complete: daysCount > 0 ? Math.round((daysSum / daysCount) * 10) / 10 : null,
+          has_photos: photoCount,
+        };
+      }
+    } catch {
+      // Non-fatal
+    }
+
     // 8. Find next scheduled session for this child (useful for completed + in_progress)
     if (session.status === 'completed' || session.status === 'in_progress') {
       const { data: nextSession } = await supabase
@@ -289,6 +409,8 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
       companion_log_notes: companionLogNotes,
       next_session_id: nextSessionId,
       parent_content_engagement: parentContentEngagement,
+      homework_status: homeworkStatus,
+      practice_intelligence: practiceIntelligence,
       group_class_activity: (groupClassEvents || []).map(e => ({
         id: e.id,
         event_type: e.event_type,

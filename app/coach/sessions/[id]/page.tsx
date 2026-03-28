@@ -84,7 +84,7 @@ export default function SessionBriefPage() {
     );
   }
 
-  const { session, child, template, recent_sessions, diagnostic_completed, activity_logs, companion_log_notes, next_session_id, group_class_activity } = data;
+  const { session, child, template, recent_sessions, diagnostic_completed, activity_logs, companion_log_notes, next_session_id, group_class_activity, homework_status } = data;
 
   const isCompleted = session.status === 'completed' && session.companion_panel_completed;
   const isInProgress = session.status === 'in_progress';
@@ -437,6 +437,94 @@ export default function SessionBriefPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Homework Status */}
+        {homework_status && homework_status.total > 0 && (
+          <div className="bg-surface-1 border border-border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 text-emerald-400" />
+                  <span className="text-white text-sm font-medium">Homework Status</span>
+                </div>
+                <span className={`text-xs font-medium ${
+                  homework_status.completed === homework_status.total
+                    ? 'text-emerald-400'
+                    : homework_status.completed === 0
+                      ? 'text-red-400'
+                      : 'text-amber-400'
+                }`}>
+                  {homework_status.completed} of {homework_status.total} done
+                </span>
+              </div>
+              {/* Progress bar */}
+              <div className="mt-2 h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    homework_status.completed === homework_status.total
+                      ? 'bg-emerald-400'
+                      : homework_status.completed === 0
+                        ? 'bg-red-400'
+                        : 'bg-amber-400'
+                  }`}
+                  style={{ width: `${Math.round((homework_status.completed / homework_status.total) * 100)}%` }}
+                />
+              </div>
+            </div>
+            {homework_status.pending.length > 0 && (
+              <div className="px-4 py-3 space-y-2">
+                <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-medium">Pending</p>
+                {homework_status.pending.slice(0, 5).map((task: any) => (
+                  <div key={task.id} className="flex items-center gap-2 text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                    <span className="text-white truncate flex-1">{task.title}</span>
+                    <span className="text-text-tertiary flex-shrink-0">
+                      {new Date(task.task_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                ))}
+                {homework_status.pending.length > 5 && (
+                  <p className="text-[10px] text-text-tertiary">+{homework_status.pending.length - 5} more</p>
+                )}
+              </div>
+            )}
+            {/* Completed items with photos */}
+            {homework_status.items?.some((t: any) => t.is_completed && t.photo_signed_url) && (
+              <div className="px-4 py-3 space-y-2">
+                <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-medium">Completed with Photos</p>
+                <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1">
+                  {homework_status.items
+                    .filter((t: any) => t.is_completed && t.photo_signed_url)
+                    .map((task: any) => (
+                      <div key={task.id} className="flex-shrink-0 snap-start">
+                        <a
+                          href={task.photo_signed_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-border bg-surface-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={task.photo_signed_url} alt={task.title} className="w-full h-full object-cover" />
+                          </div>
+                        </a>
+                        <p className="text-[9px] text-text-tertiary mt-0.5 truncate w-16">{task.title}</p>
+                        {task.photo_analysis && (
+                          <p className="text-[9px] text-emerald-400 truncate w-16">
+                            {task.photo_analysis.completeness} / {task.photo_analysis.effort_level}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+            {homework_status.completed === homework_status.total && (
+              <div className="px-4 py-3">
+                <p className="text-xs text-emerald-400">All homework completed — great engagement!</p>
               </div>
             )}
           </div>

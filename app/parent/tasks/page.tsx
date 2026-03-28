@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import {
   CheckCircle, Circle, Clock, Flame, Trophy,
-  Star, BookOpen, Sparkles,
+  Star, BookOpen, Sparkles, Camera, X,
+  Smile, ThumbsUp, Frown,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -37,6 +38,11 @@ interface Task {
   completed_at: string | null;
   is_today: boolean;
   is_past: boolean;
+  program_label: 'Coaching' | 'Tuition' | null;
+  session_date: string | null;
+  session_number: number | null;
+  source: string;
+  photo_url: string | null;
 }
 
 function formatDay(dateStr: string): string {
@@ -63,6 +69,13 @@ export default function ParentTasksPage() {
   const [weekTasks, setWeekTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState({ completed_this_week: 0, total_this_week: 0, current_streak: 0, longest_streak: 0 });
   const [completing, setCompleting] = useState<string | null>(null);
+  const [showPhotoSheet, setShowPhotoSheet] = useState<string | null>(null); // taskId
+  const [uploading, setUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [feedbackStep, setFeedbackStep] = useState(false);
+  const [difficultyRating, setDifficultyRating] = useState<string | null>(null);
+  const [practiceDuration, setPracticeDuration] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchChildId = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -156,7 +169,7 @@ export default function ParentTasksPage() {
     return () => window.removeEventListener('childChanged', handleChildChange);
   }, [fetchChildId, fetchTasks]);
 
-  const handleComplete = async (taskId: string) => {
+  const handleCompleteTask = async (taskId: string) => {
     if (!childId || completing) return;
     setCompleting(taskId);
 
@@ -164,7 +177,11 @@ export default function ParentTasksPage() {
       const res = await fetch(`/api/parent/tasks/${childId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskId }),
+        body: JSON.stringify({
+          taskId,
+          difficulty_rating: difficultyRating,
+          practice_duration: practiceDuration,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -174,13 +191,58 @@ export default function ParentTasksPage() {
           current_streak: data.streak.current,
           longest_streak: data.streak.longest,
         }));
-        // Refresh tasks
         await fetchTasks(childId);
       }
     } catch (err) {
       console.error('Complete task error:', err);
     } finally {
       setCompleting(null);
+      setShowPhotoSheet(null);
+      setPhotoPreview(null);
+      setFeedbackStep(false);
+      setDifficultyRating(null);
+      setPracticeDuration(null);
+    }
+  };
+
+  const handleComplete = (taskId: string) => {
+    setShowPhotoSheet(taskId);
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !childId || !showPhotoSheet) return;
+
+    // Show preview
+    setPhotoPreview(URL.createObjectURL(file));
+
+    // Validate size client-side
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo must be under 5 MB');
+      setPhotoPreview(null);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('taskId', showPhotoSheet);
+
+      const res = await fetch(`/api/parent/tasks/${childId}/upload-photo`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!data.success) {
+        console.error('Photo upload failed:', data.error);
+      }
+    } catch (err) {
+      console.error('Photo upload error:', err);
+    } finally {
+      setUploading(false);
+      // Show feedback step after photo upload
+      setFeedbackStep(true);
     }
   };
 
@@ -252,6 +314,15 @@ export default function ParentTasksPage() {
                 <h2 className="text-lg font-bold text-gray-900 mt-0.5">{todayTask.title}</h2>
               </div>
               <div className="flex items-center gap-2">
+                {todayTask.program_label && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
+                    todayTask.program_label === 'Tuition'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {todayTask.program_label}
+                  </span>
+                )}
                 <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
                   SKILL_COLORS[todayTask.skill_label] || 'bg-gray-50 text-gray-500 border-gray-200'
                 }`}>
@@ -355,15 +426,29 @@ export default function ParentTasksPage() {
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[10px] text-gray-500">{formatDay(task.task_date)}</span>
                       <span className="text-[10px] text-gray-500">{task.duration_minutes}m</span>
+                      {task.session_number && (
+                        <span className="text-[10px] text-gray-400">Session #{task.session_number}</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Skill badge */}
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full border whitespace-nowrap flex-shrink-0 ${
-                    SKILL_COLORS[task.skill_label] || 'bg-gray-50 text-gray-500 border-gray-200'
-                  }`}>
-                    {task.skill_label}
-                  </span>
+                  {/* Badges */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {task.program_label && (
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
+                        task.program_label === 'Tuition'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                        {task.program_label}
+                      </span>
+                    )}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
+                      SKILL_COLORS[task.skill_label] || 'bg-gray-50 text-gray-500 border-gray-200'
+                    }`}>
+                      {task.skill_label}
+                    </span>
+                  </div>
 
                   {/* Today indicator */}
                   {task.is_today && !task.is_completed && (
@@ -386,6 +471,141 @@ export default function ParentTasksPage() {
           </div>
         )}
       </div>
+
+      {/* Hidden file input for photo capture */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
+
+      {/* Photo + feedback completion bottom sheet */}
+      {showPhotoSheet && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center" onClick={() => { setShowPhotoSheet(null); setPhotoPreview(null); setFeedbackStep(false); setDifficultyRating(null); setPracticeDuration(null); }}>
+          <div
+            className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-8 space-y-4 animate-in slide-in-from-bottom"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">{feedbackStep ? 'How did it go?' : 'Mark as Done'}</h3>
+              <button onClick={() => { setShowPhotoSheet(null); setPhotoPreview(null); setFeedbackStep(false); setDifficultyRating(null); setPracticeDuration(null); }} className="p-1">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {feedbackStep ? (
+              /* Step 2: Micro-feedback */
+              <div className="space-y-4">
+                {/* Difficulty rating */}
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">How was the difficulty?</p>
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'easy', label: 'Easy', icon: Smile, color: 'bg-emerald-50 border-emerald-300 text-emerald-700' },
+                      { value: 'just_right', label: 'Just right', icon: ThumbsUp, color: 'bg-blue-50 border-blue-300 text-blue-700' },
+                      { value: 'struggled', label: 'Struggled', icon: Frown, color: 'bg-amber-50 border-amber-300 text-amber-700' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setDifficultyRating(difficultyRating === opt.value ? null : opt.value)}
+                        className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all min-h-[44px] ${
+                          difficultyRating === opt.value ? opt.color : 'bg-gray-50 border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        <opt.icon className="w-5 h-5" />
+                        <span className="text-xs font-medium">{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Practice duration */}
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">How long did they practice?</p>
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'under_5', label: '<5 min' },
+                      { value: '5_to_15', label: '5-15 min' },
+                      { value: '15_to_30', label: '15-30 min' },
+                      { value: 'over_30', label: '30+ min' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setPracticeDuration(practiceDuration === opt.value ? null : opt.value)}
+                        className={`flex-1 py-2.5 rounded-xl border text-xs font-medium transition-all min-h-[44px] ${
+                          practiceDuration === opt.value
+                            ? 'bg-[#FF0099]/10 border-[#FF0099] text-[#FF0099]'
+                            : 'bg-gray-50 border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Submit / Skip */}
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={() => handleCompleteTask(showPhotoSheet)}
+                    disabled={!!completing}
+                    className="w-full flex items-center justify-center gap-2 p-3 bg-[#FF0099] text-white rounded-xl text-sm font-medium min-h-[44px] disabled:opacity-50"
+                  >
+                    {completing ? <Spinner size="sm" /> : <CheckCircle className="w-4 h-4" />}
+                    Submit
+                  </button>
+                  <button
+                    onClick={() => { setDifficultyRating(null); setPracticeDuration(null); handleCompleteTask(showPhotoSheet); }}
+                    disabled={!!completing}
+                    className="w-full text-center text-xs text-gray-400 py-1"
+                  >
+                    Skip feedback
+                  </button>
+                </div>
+              </div>
+            ) : photoPreview ? (
+              /* Uploading photo preview */
+              <div className="space-y-3">
+                <div className="relative rounded-xl overflow-hidden bg-gray-100 aspect-[4/3]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photoPreview} alt="Homework photo" className="w-full h-full object-cover" />
+                </div>
+                {uploading && (
+                  <div className="flex items-center gap-2 text-sm text-[#FF0099]">
+                    <Spinner size="sm" />
+                    <span>Uploading photo...</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Step 1: Photo or skip */
+              <div className="space-y-3">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center gap-3 p-4 bg-pink-50 border border-pink-200 rounded-xl text-left hover:bg-pink-100 transition-colors min-h-[56px]"
+                >
+                  <Camera className="w-5 h-5 text-[#FF0099]" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Attach photo</p>
+                    <p className="text-xs text-gray-500">Take a photo of the completed work</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setFeedbackStep(true)}
+                  className="w-full flex items-center justify-center gap-2 p-3 bg-gray-100 rounded-xl text-sm text-gray-600 hover:bg-gray-200 transition-colors min-h-[44px]"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Done without photo
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

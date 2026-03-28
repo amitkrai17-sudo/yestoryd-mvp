@@ -210,6 +210,13 @@ const JOBS: Job[] = [
     description: 'Admin digest of new leads',
   },
   {
+    name: 'practice-nudge',
+    path: '/api/cron/practice-nudge',
+    schedule: { type: 'daily', istHour: 10, istMinute: 0 },
+    method: 'GET',
+    description: 'Nudge parents with overdue practice tasks (48h+)',
+  },
+  {
     name: 'payment-reconciliation',
     path: '/api/cron/payment-reconciliation',
     schedule: { type: 'daily', istHour: 22, istMinute: 30 },

@@ -118,7 +118,7 @@
 | `support_tickets` | 17 | Support ticket tracking |
 | `testimonials` | 13 | User testimonials |
 | `feature_flags` | 6 | Feature flag toggles |
-| `parent_daily_tasks` | 12 | Parent practice tasks + streaks |
+| `parent_daily_tasks` | 19 | Parent practice tasks + streaks + photo + intelligence (difficulty_rating, practice_duration, content_item_id, photo_analysis — Mar 2026) |
 | `re_enrollment_nudges` | 9 | Re-enrollment nudge tracking |
 | `completion_certificates` | 23 | PDF certificate records |
 | `referral_credit_transactions` | 12 | Referral program credits |
