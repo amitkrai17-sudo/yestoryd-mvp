@@ -18,7 +18,7 @@ import {
 interface BackOpsSummary {
   status: 'healthy' | 'degraded' | 'critical';
   last_24h: {
-    total_events: number;
+    total: number;
     cron_runs: number;
     cron_failures: number;
     decisions_made: number;
@@ -163,7 +163,7 @@ export default function BackOpsWidget() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
           <StatMini icon={CheckCircle} label="Cron Runs" value={stats.cron_runs} sub={`${data.cron_health.success_rate}% success`} />
           <StatMini icon={Send} label="Nudges" value={stats.nudges_sent} sub={stats.nudges_suppressed > 0 ? `${stats.nudges_suppressed} suppressed` : 'none suppressed'} />
-          <StatMini icon={Activity} label="Decisions" value={stats.decisions_made} sub={`${stats.total_events} total events`} />
+          <StatMini icon={Activity} label="Decisions" value={stats.decisions_made} sub={`${stats.total || 0} total events`} />
           <StatMini
             icon={data.outcome_stats.success_rate > 0 ? CheckCircle : Clock}
             label="Outcomes"
