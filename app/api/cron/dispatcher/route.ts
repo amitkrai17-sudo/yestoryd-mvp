@@ -94,6 +94,14 @@ const JOBS: Job[] = [
 
   // ── Interval: every 30 min ────────────────────────────────
   {
+    name: 'backops-outcome-tracker',
+    path: '/api/cron/backops-outcome-tracker',
+    schedule: { type: 'interval', minutes: 30 },
+    method: 'GET',
+    description: 'BackOps outcome tracker — checks if actions achieved desired outcomes',
+  },
+
+  {
     name: 'payment-reconciliation-alert',
     path: '/api/cron/payment-reconciliation-alert',
     schedule: { type: 'interval', minutes: 30 },

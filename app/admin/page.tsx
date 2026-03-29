@@ -26,6 +26,7 @@ import {
   Mic,
 } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
+import BackOpsWidget from '@/components/admin/BackOpsWidget';
 
 // ============================================================
 // TYPES
@@ -678,6 +679,9 @@ export default function AdminDashboardPage() {
             );
           })}
         </div>
+
+        {/* BACKOPS HEALTH */}
+        <BackOpsWidget />
 
         {/* SESSION INTELLIGENCE CARD */}
         <SessionIntelligenceCard />
