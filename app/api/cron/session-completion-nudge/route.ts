@@ -11,6 +11,8 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { getPolicy, logDecision } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,8 +36,12 @@ export async function GET(request: NextRequest) {
       source: auth.source,
     }));
 
-    // Find sessions that are in_progress for >45 min and not completed via companion panel
-    const fortyFiveMinAgo = new Date(Date.now() - 45 * 60 * 1000).toISOString();
+    // Load threshold from BackOps policy
+    const scPolicy = await getPolicy('session_completion_nudge', { stale_threshold_minutes: 45 });
+    const staleMinutes = (scPolicy as Record<string, number>).stale_threshold_minutes || 45;
+
+    // Find sessions that are in_progress for >threshold and not completed via companion panel
+    const fortyFiveMinAgo = new Date(Date.now() - staleMinutes * 60 * 1000).toISOString();
 
     const { data: staleSessions, error: queryError } = await supabase
       .from('scheduled_sessions')
@@ -76,6 +82,8 @@ export async function GET(request: NextRequest) {
       const childFirstName = (child?.child_name || 'student').split(' ')[0];
 
       try {
+        try { await logDecision({ source: 'cron:session-completion-nudge', entity_type: 'session', entity_id: session.id, decision: 'send_completion_nudge', reason: { stale_minutes: staleMinutes, coach: coachFirstName, child: childFirstName } as Json, action: 'aisensy:session_completion_nudge', outcome: 'pending' }); } catch {}
+
         const waResult = await sendWhatsAppMessage({
           to: coach.phone,
           templateName: 'session_completion_nudge',

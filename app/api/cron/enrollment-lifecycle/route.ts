@@ -26,6 +26,8 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { logOpsEvent } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -169,6 +171,8 @@ export async function GET(request: NextRequest) {
               requested_start_date: enrollment.requested_start_date,
             },
           });
+
+          try { await logOpsEvent({ event_type: 'enrollment_event', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'enrollment', entity_id: enrollment.id, decision_made: 'start_delayed_enrollment', metadata: { child_id: enrollment.child_id } as Json, action_outcome: 'success', resolved_by: 'auto' }); } catch {}
 
           // Queue session scheduling via enrollment-complete job
           try {
@@ -384,6 +388,8 @@ export async function GET(request: NextRequest) {
             results.coachReminders24h.failed++;
             results.coachReminders24h.errors.push(`Session ${session.id}: ${errText}`);
           }
+
+          try { await logOpsEvent({ event_type: 'nudge_sent', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'session', entity_id: session.id, action_taken: 'aisensy:coach_session_reminder', action_outcome: waResponse.ok ? 'success' : 'failed', resolved_by: 'auto' }); } catch {}
         } catch (e: any) {
           results.coachReminders24h.failed++;
           results.coachReminders24h.errors.push(`Session ${session.id}: ${e.message}`);

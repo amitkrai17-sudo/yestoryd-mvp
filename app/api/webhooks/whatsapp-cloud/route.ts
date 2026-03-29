@@ -21,6 +21,8 @@ import {
   getSiteSettings,
   findParentByPhone,
 } from '@/lib/rai/queries/prospect-queries';
+import { logOpsEvent } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -294,6 +296,8 @@ async function processMessage(
       error_message: error instanceof Error ? error.message : 'AI processing failed',
       failed_at: new Date().toISOString(),
     });
+
+    try { await logOpsEvent({ event_type: 'communication_failed', source: 'webhook:whatsapp-cloud', severity: 'warning', entity_type: 'communication', metadata: { error: 'ai_processing_failed', phone: senderPhone, message: error instanceof Error ? error.message : 'Unknown' } as Json }); } catch {}
   }
 }
 

@@ -8,6 +8,8 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -68,6 +70,14 @@ export async function GET(request: NextRequest) {
 
     for (const nudge of pendingNudges) {
       try {
+        // Check BackOps override
+        if (await isNudgeSuppressed('child', nudge.child_id)) {
+          try { await logSkippedDecision({ source: 'cron:re-enrollment-nudge', entity_type: 'child', entity_id: nudge.child_id, decision: 'send_re_enrollment_nudge', reason: { override: 'nudge_suppressed' } as Json }); } catch {}
+          await supabase.from('re_enrollment_nudges').update({ status: 'skipped', sent_at: now }).eq('id', nudge.id);
+          skipped++;
+          continue;
+        }
+
         // Check if child already re-enrolled (skip nudge)
         const { data: activeEnrollment } = await supabase
           .from('enrollments')
@@ -83,6 +93,7 @@ export async function GET(request: NextRequest) {
             .from('re_enrollment_nudges')
             .update({ status: 'skipped', sent_at: now })
             .eq('id', nudge.id);
+          try { await logSkippedDecision({ source: 'cron:re-enrollment-nudge', entity_type: 'child', entity_id: nudge.child_id, decision: 'send_re_enrollment_nudge', reason: { skipped: 'already_re_enrolled' } as Json }); } catch {}
           skipped++;
           continue;
         }
@@ -152,6 +163,8 @@ export async function GET(request: NextRequest) {
           .from('re_enrollment_nudges')
           .update({ status: 'sent', sent_at: now })
           .eq('id', nudge.id);
+
+        try { await logDecision({ source: 'cron:re-enrollment-nudge', entity_type: 'child', entity_id: nudge.child_id, decision: 'send_re_enrollment_nudge', reason: { nudge_number: nudge.nudge_number, season: seasonNumber } as Json, action: `re_enrollment_nudge_${nudge.nudge_number}`, outcome: 'success' }); } catch {}
 
         sent++;
       } catch (err: any) {

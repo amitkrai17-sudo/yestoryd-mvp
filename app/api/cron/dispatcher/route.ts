@@ -17,10 +17,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { logOpsEvent, logOpsEventBatch, generateCorrelationId } from '@/lib/backops';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // 2 minutes — jobs dispatched in parallel
@@ -59,6 +60,14 @@ interface Job {
 
 const JOBS: Job[] = [
   // ── Interval: every 15 min ────────────────────────────────
+  {
+    name: 'backops-signal-detector',
+    path: '/api/cron/backops-signal-detector',
+    schedule: { type: 'interval', minutes: 15 },
+    method: 'GET',
+    description: 'BackOps signal detection — scan ops_events for anomalies',
+  },
+
   {
     name: 'session-completion-nudge',
     path: '/api/cron/session-completion-nudge',
@@ -413,10 +422,7 @@ async function handler(request: NextRequest) {
 
   // Log to activity_log for health check monitoring
   try {
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const sb = createAdminClient();
     await sb.from('activity_log').insert({
       user_email: COMPANY_CONFIG.supportEmail,
       user_type: 'system',
@@ -438,6 +444,55 @@ async function handler(request: NextRequest) {
   } catch (err: any) {
     console.error(
       JSON.stringify({ requestId, event: 'activity_log_failed', error: err.message }),
+    );
+  }
+
+  // Log to BackOps ops_events — per-job results + dispatcher summary
+  try {
+    const dispatcherCorrelationId = generateCorrelationId();
+
+    // Batch log each job result
+    const jobEvents = results.map((r) => {
+      const eventType: 'cron_run' | 'cron_failure' = r.success ? 'cron_run' : 'cron_failure';
+      const sev: 'info' | 'error' = r.success ? 'info' : 'error';
+      return {
+        event_type: eventType,
+        source: `cron:${r.name}`,
+        severity: sev,
+        correlation_id: dispatcherCorrelationId,
+        entity_type: 'cron' as const,
+        metadata: {
+          dispatcher_run_id: requestId,
+          duration_ms: r.durationMs,
+          status_code: r.status,
+          error: r.error || null,
+        },
+      };
+    });
+
+    await logOpsEventBatch(jobEvents);
+
+    // Dispatcher summary event
+    await logOpsEvent({
+      event_type: 'cron_run',
+      source: 'cron:dispatcher',
+      severity: failed.length > 0 ? 'warning' : 'info',
+      correlation_id: dispatcherCorrelationId,
+      entity_type: 'system',
+      metadata: {
+        dispatcher_run_id: requestId,
+        ist_time: `${ist.hour}:${String(ist.slot).padStart(2, '0')}`,
+        total_jobs: results.length,
+        succeeded,
+        failed: failed.length,
+        failed_jobs: failed.map((f) => f.name),
+        duration_ms: duration,
+      },
+    });
+  } catch (err: any) {
+    // ops_events logging must NEVER crash the dispatcher
+    console.error(
+      JSON.stringify({ requestId, event: 'ops_events_log_failed', error: err.message }),
     );
   }
 

@@ -15,6 +15,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { getPolicy, logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,9 +34,15 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient();
 
   try {
+    // Load windows from BackOps policy
+    const toPolicy = await getPolicy('tuition_onboarding_nudge', {
+      first_nudge_hours: 24, second_nudge_hours: 72, expire_hours: 168, max_nudges: 2, dedup_hours: 48,
+    });
+    const tp = toPolicy as Record<string, number>;
+
     const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const twentyFourHoursAgo = new Date(now.getTime() - (tp.first_nudge_hours || 24) * 60 * 60 * 1000).toISOString();
+    const sevenDaysAgo = new Date(now.getTime() - (tp.expire_hours || 168) * 60 * 60 * 1000).toISOString();
 
     // ── Phase A: Find parent_pending records 24h–7d old ──────────
     const { data: pendingRecords } = await supabase
@@ -65,26 +73,33 @@ export async function GET(request: NextRequest) {
 
         const alreadySent = nudgeCount || 0;
 
-        // Max 2 nudges: at ~24h and ~72h
-        if (alreadySent >= 2) {
+        // Check BackOps override
+        if (await isNudgeSuppressed('tuition', record.id)) {
+          try { await logSkippedDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { override: 'nudge_suppressed' } as Json }); } catch {}
           skipped++;
           continue;
         }
 
-        // Only nudge at the right windows:
-        // 1st nudge: 24h+ (alreadySent === 0)
-        // 2nd nudge: 72h+ (alreadySent === 1)
+        // Max nudges from policy
+        if (alreadySent >= (tp.max_nudges || 2)) {
+          skipped++;
+          continue;
+        }
+
+        // Only nudge at the right windows (from policy):
+        // 1st nudge: first_nudge_hours+ (alreadySent === 0)
+        // 2nd nudge: second_nudge_hours+ (alreadySent === 1)
         const shouldNudge =
-          (alreadySent === 0 && ageHours >= 24) ||
-          (alreadySent === 1 && ageHours >= 72);
+          (alreadySent === 0 && ageHours >= (tp.first_nudge_hours || 24)) ||
+          (alreadySent === 1 && ageHours >= (tp.second_nudge_hours || 72));
 
         if (!shouldNudge) {
           skipped++;
           continue;
         }
 
-        // Check dedup: no nudge to same phone in last 48h
-        const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+        // Check dedup: no nudge to same phone in dedup window (from policy)
+        const fortyEightHoursAgo = new Date(now.getTime() - (tp.dedup_hours || 48) * 60 * 60 * 1000).toISOString();
         const { count: recentCount } = await supabase
           .from('communication_logs')
           .select('*', { count: 'exact', head: true })
@@ -106,6 +121,8 @@ export async function GET(request: NextRequest) {
 
         const coachFirstName = (coach?.name || 'Your coach').split(' ')[0];
         const magicLink = `${APP_URL}/tuition/onboard/${record.parent_form_token}`;
+
+        try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:tuition_onboarding_form', outcome: 'pending' }); } catch {}
 
         // Send the same tuition_onboarding_form template (magic link still valid)
         await sendWhatsAppMessage({

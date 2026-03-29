@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendCommunication } from '@/lib/communication';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { getPolicy, logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +25,26 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Load thresholds from BackOps policy
+  const policy = await getPolicy('practice_nudge', {
+    high_engagement_skip: 0.8,
+    low_engagement_24h: 0.4,
+    zero_engagement_coach_alert_min_tasks: 5,
+    default_nudge_hours: 48,
+    overdue_min_hours: 48,
+    overdue_max_days: 7,
+    lookback_days: 30,
+    max_recent_tasks: 20,
+  });
+  const p = policy as Record<string, number>;
+
   try {
-    // Find overdue tasks: incomplete, created 48h-7d ago, no nudge sent in last 48h
+    // Find overdue tasks: incomplete, created within policy windows
     const now = new Date();
-    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const overdueMinMs = (p.overdue_min_hours || 48) * 60 * 60 * 1000;
+    const overdueMaxMs = (p.overdue_max_days || 7) * 24 * 60 * 60 * 1000;
+    const fortyEightHoursAgo = new Date(now.getTime() - overdueMinMs).toISOString();
+    const sevenDaysAgo = new Date(now.getTime() - overdueMaxMs).toISOString();
 
     const { data: overdueTasks } = await supabase
       .from('parent_daily_tasks')
@@ -114,16 +131,25 @@ export async function GET(request: NextRequest) {
           ? recentHistory.filter(t => t.is_completed).length / recentHistory.length
           : 0;
 
-        // Adaptive nudge thresholds based on engagement
-        let nudgeThresholdHours = 48; // Default: medium engagement
-        if (completionRate >= 0.8) {
-          // High engagement — skip nudge, they'll do it
+        // Check BackOps override
+        const firstChildId = childIds[0];
+        if (firstChildId && await isNudgeSuppressed('child', firstChildId)) {
+          try { await logSkippedDecision({ source: 'cron:practice-nudge', entity_type: 'child', entity_id: firstChildId, decision: 'send_practice_nudge', reason: { override: 'nudge_suppressed' } as Json }); } catch {}
           skipped++;
           continue;
-        } else if (completionRate > 0 && completionRate < 0.4) {
+        }
+
+        // Adaptive nudge thresholds based on engagement (from BackOps policy)
+        let nudgeThresholdHours = p.default_nudge_hours || 48;
+        if (completionRate >= (p.high_engagement_skip || 0.8)) {
+          // High engagement — skip nudge, they'll do it
+          try { await logSkippedDecision({ source: 'cron:practice-nudge', entity_type: 'parent', entity_id: parentData.parentId, decision: 'send_practice_nudge', reason: { engagement: completionRate, threshold: p.high_engagement_skip, branch: 'high_engagement_skip' } as Json }); } catch {}
+          skipped++;
+          continue;
+        } else if (completionRate > 0 && completionRate < (p.low_engagement_24h || 0.4)) {
           // Low engagement — nudge earlier at 24h
           nudgeThresholdHours = 24;
-        } else if (completionRate === 0 && recentHistory && recentHistory.length >= 5) {
+        } else if (completionRate === 0 && recentHistory && recentHistory.length >= (p.zero_engagement_coach_alert_min_tasks || 5)) {
           // Zero engagement with 5+ tasks — alert coach instead
           const childEntries = Array.from(parentData.children.entries());
           for (const [childId, childData] of childEntries) {
@@ -182,6 +208,8 @@ export async function GET(request: NextRequest) {
         const allTasks = allChildren.flatMap((c: { childName: string; tasks: string[] }) => c.tasks);
         const pendingCount = String(allTasks.length);
         const taskList = allTasks.slice(0, 3).join(', ') + (allTasks.length > 3 ? ` +${allTasks.length - 3} more` : '');
+
+        try { await logDecision({ source: 'cron:practice-nudge', entity_type: 'parent', entity_id: parentData.parentId, decision: 'send_practice_nudge', reason: { engagement: completionRate, nudge_threshold_hours: nudgeThresholdHours, pending_count: allTasks.length } as Json, action: 'sendCommunication:practice_nudge', outcome: 'pending' }); } catch {}
 
         await sendCommunication({
           templateCode: 'practice_nudge',

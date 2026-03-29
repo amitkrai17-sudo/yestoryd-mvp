@@ -21,6 +21,8 @@ import {
 } from '@/lib/payment/enrollment-creator';
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
+import { logOpsEvent, generateCorrelationId } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 const supabase = createAdminClient();
 
@@ -950,6 +952,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
+    const correlationId = generateCorrelationId();
+
     // Parse payload
     let payload;
     try {
@@ -1030,6 +1034,8 @@ export async function POST(request: NextRequest) {
       duration: `${duration}ms`,
     }));
 
+    try { await logOpsEvent({ event_type: 'payment_event', source: 'webhook:razorpay', severity: result.status === 'error' ? 'warning' : 'info', correlation_id: correlationId, entity_type: 'payment', metadata: { razorpay_order_id: payment?.order_id || refundEntity?.payment_id, amount: payment?.amount, event: event, result: result.status, duration_ms: duration } as Json, action_outcome: result.status === 'error' ? 'failed' : 'success' }); } catch {}
+
     return NextResponse.json({
       status: result.status,
       message: result.message,
@@ -1046,6 +1052,8 @@ export async function POST(request: NextRequest) {
       error: error.message,
       duration: `${duration}ms`,
     }));
+
+    try { await logOpsEvent({ event_type: 'payment_event', source: 'webhook:razorpay', severity: 'warning', entity_type: 'payment', metadata: { error: error.message, duration_ms: duration } as Json }); } catch {}
 
     return NextResponse.json({
       status: 'error',

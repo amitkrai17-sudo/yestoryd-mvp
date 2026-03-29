@@ -14,6 +14,8 @@ import crypto from 'crypto';
 import { Client } from '@upstash/qstash';
 import { Webhook } from 'svix';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logOpsEvent, generateCorrelationId } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 const supabase = createAdminClient();
 
@@ -357,7 +359,8 @@ async function queueSessionProcessing(data: {
 
 async function handleStatusChange(
   payload: RecallWebhookPayload,
-  requestId: string
+  requestId: string,
+  correlationId?: string
 ) {
   const { bot_id, status, status_changes } = payload.data;
 
@@ -427,6 +430,8 @@ async function handleStatusChange(
           variables: { session_id: sessionId, reason: latestChange.message, request_id: requestId },
           status: 'pending',
         });
+
+        try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'warning', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, decision_made: 'no_show_detected', metadata: { outcome: 'no_show', reason: latestChange.message, code: latestChange.code } as Json }); } catch {}
       }
     }
   }
@@ -467,7 +472,8 @@ async function handleRecordingReady(
 // ============================================================
 async function handleBotDone(
   payload: RecallWebhookPayload,
-  requestId: string
+  requestId: string,
+  correlationId?: string
 ) {
   const { bot_id, transcript, meeting_metadata, meeting_participants, recording } = payload.data;
 
@@ -528,6 +534,8 @@ async function handleBotDone(
           status: 'pending',
         });
       }
+
+      try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'warning', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, decision_made: 'no_show_detected', metadata: { outcome: outcome.status, participants: attendance.totalParticipants, reason: outcome.reason } as Json }); } catch {}
     }
 
     return {
@@ -598,6 +606,8 @@ async function handleBotDone(
     requestId,
   });
 
+  try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'info', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, metadata: { event: 'bot_done', outcome: outcome?.status, participants: attendance.totalParticipants, duration_minutes: attendance.durationMinutes, queued: queueResult.success } as Json }); } catch {}
+
   // 9. Return immediately (< 2 seconds total)
   return {
     status: 'queued',
@@ -615,6 +625,7 @@ async function handleBotDone(
 
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
+  const correlationId = generateCorrelationId();
   const startTime = Date.now();
 
   try {
@@ -675,7 +686,7 @@ export async function POST(request: NextRequest) {
     let result;
     switch (payload.event) {
       case 'bot.status_change':
-        result = await handleStatusChange(payload, requestId);
+        result = await handleStatusChange(payload, requestId, correlationId);
         break;
       case 'bot.transcription':
         result = await handleTranscription(payload, requestId);
@@ -684,7 +695,7 @@ export async function POST(request: NextRequest) {
         result = await handleRecordingReady(payload, requestId);
         break;
       case 'bot.done':
-        result = await handleBotDone(payload, requestId);
+        result = await handleBotDone(payload, requestId, correlationId);
         break;
       default:
         result = { status: 'ignored' };

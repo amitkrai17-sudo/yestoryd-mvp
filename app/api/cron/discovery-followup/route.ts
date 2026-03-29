@@ -28,6 +28,8 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { logDecision } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -194,6 +196,8 @@ export async function GET(request: NextRequest) {
             hoursSincePaymentLink: Math.round(call.hours_since_payment_link || 0),
             status: 'sent',
           });
+
+          try { await logDecision({ source: 'cron:discovery-followup', entity_type: 'discovery_call', entity_id: call.id, decision: 'send_discovery_followup', reason: { child_name: call.child_name || 'unknown' } as Json, action: 'aisensy:discovery_followup', outcome: 'success' }); } catch {}
 
           console.log(JSON.stringify({
             requestId,

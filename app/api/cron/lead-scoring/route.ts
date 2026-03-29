@@ -10,6 +10,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { logOpsEvent } from '@/lib/backops';
+import type { Json } from '@/lib/supabase/database.types';
 
 const supabase = createAdminClient();
 
@@ -123,6 +125,25 @@ export async function POST(request: NextRequest) {
     wa_leads: { processed: waResult.processed, errors: waResult.errors },
     timestamp: now.toISOString(),
   }));
+
+  // Log aggregate to BackOps
+  try {
+    await logOpsEvent({
+      event_type: 'decision_made',
+      source: 'cron:lead-scoring',
+      severity: (childrenErrors + waResult.errors) > 0 ? 'warning' : 'info',
+      entity_type: 'system',
+      decision_made: 'lead_scoring_batch',
+      decision_reason: {
+        children_processed: childrenProcessed,
+        children_errors: childrenErrors,
+        wa_leads_processed: waResult.processed,
+        wa_leads_errors: waResult.errors,
+      } as Json,
+      action_outcome: 'success',
+      resolved_by: 'auto',
+    });
+  } catch {}
 
   return NextResponse.json({
     success: true,
