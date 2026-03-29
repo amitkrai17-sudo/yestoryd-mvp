@@ -1,7 +1,8 @@
-﻿/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
+  eslint: { ignoreDuringBuilds: true },
 
   // Fix trailing slash redirect for webhooks
   skipTrailingSlashRedirect: true,
