@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
     ]);
 
     // 4. Calculate totals
-    const totalRevenue = paymentsResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-    const thisMonthRevenue = monthPaymentsResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+    const totalRevenue = paymentsResult.data?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+    const thisMonthRevenue = monthPaymentsResult.data?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
 
     // 5. Format recent enrollments
     const recentEnrollments = recentEnrollmentsResult.data?.map((enrollment: any) => {
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         childName: child?.name || 'Unknown',
         parentName: parent?.name || 'Unknown',
         parentEmail: parent?.email || '',
-        amount: enrollment.amount || 0,
+        amount: Number(enrollment.amount || 0),
         createdAt: enrollment.created_at,
       };
     }) || [];

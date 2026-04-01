@@ -53,13 +53,13 @@ export async function GET() {
   ]);
 
   const sumAmounts = (rows: { amount: number }[] | null) =>
-    (rows || []).reduce((sum, r) => sum + (r.amount || 0), 0);
+    (rows || []).reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
   const refundRows = refundRes.data || [];
-  const refundTotal = refundRows.reduce((sum, r) => sum + (r.refund_amount || 0), 0);
+  const refundTotal = refundRows.reduce((sum, r) => sum + Number(r.refund_amount || 0), 0);
   const refundPending = refundRows
     .filter((r) => r.refund_status === 'initiated')
-    .reduce((sum, r) => sum + (r.refund_amount || 0), 0);
+    .reduce((sum, r) => sum + Number(r.refund_amount || 0), 0);
 
   return NextResponse.json({
     today: {
