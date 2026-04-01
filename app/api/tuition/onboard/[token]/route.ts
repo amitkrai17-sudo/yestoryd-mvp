@@ -196,6 +196,7 @@ export async function POST(
     if (existingChild) {
       childId = existingChild.id;
       await supabase.from('children').update({
+        name: input.childFullName,
         age: childAge,
         dob: input.childDob,
         grade: input.childGrade,
@@ -210,6 +211,7 @@ export async function POST(
         .from('children')
         .insert({
           child_name: input.childFullName,
+          name: input.childFullName,
           age: childAge,
           dob: input.childDob,
           grade: input.childGrade,

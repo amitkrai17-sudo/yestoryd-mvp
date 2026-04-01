@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
         created_by: body.parentEmail || 'system',
       });
 
-      // Update child as enrolled
+      // Update child as enrolled + safety net: ensure name is populated
       if (tuitionEnrollment.child_id) {
         await supabase.from('children').update({
           is_enrolled: true,
@@ -267,6 +267,15 @@ export async function POST(request: NextRequest) {
           enrolled_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq('id', tuitionEnrollment.child_id);
+
+        // Safety net: backfill children.name if still NULL
+        if (body.childName) {
+          await supabase
+            .from('children')
+            .update({ name: body.childName, child_name: body.childName })
+            .eq('id', tuitionEnrollment.child_id)
+            .is('name', null);
+        }
       }
 
       // Revenue split — internal coach path (Rucha)
