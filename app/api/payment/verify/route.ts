@@ -303,6 +303,44 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Send payment confirmation WhatsApp + Email (all payments: first + renewals)
+      try {
+        const { sendCommunication } = await import('@/lib/communication');
+        await sendCommunication({
+          templateCode: 'P14_payment_confirmed',
+          recipientType: 'parent',
+          recipientId: tuitionEnrollment.parent_id || undefined,
+          recipientPhone: body.parentPhone,
+          recipientEmail: body.parentEmail,
+          recipientName: body.parentName,
+          variables: {
+            parent_first_name: body.parentName?.split(' ')[0] || 'Parent',
+            amount: String(verifiedAmount),
+            child_name: body.childName,
+            enrollment_id: tuitionEnrollmentId,
+            sessions_count: String(sessionsPurchased),
+          },
+          relatedEntityType: 'enrollment',
+          relatedEntityId: tuitionEnrollmentId,
+        });
+      } catch (waErr: unknown) {
+        console.error(JSON.stringify({ requestId, event: 'payment_wa_send_failed', path: 'tuition_verify', error: waErr instanceof Error ? waErr.message : String(waErr) }));
+        try {
+          await supabase.from('activity_log').insert({
+            action: 'payment_wa_send_failed',
+            user_email: body.parentEmail || 'unknown',
+            user_type: 'system',
+            metadata: {
+              error: waErr instanceof Error ? waErr.message : String(waErr),
+              template: 'P14_payment_confirmed',
+              parent_id: tuitionEnrollment.parent_id,
+              enrollment_id: tuitionEnrollmentId,
+              payment_path: 'tuition_verify',
+            },
+          });
+        } catch (_) { /* swallow logging failure */ }
+      }
+
       // Activity log
       await supabase.from('activity_log').insert({
         action: 'tuition_payment_verified',
@@ -656,6 +694,44 @@ export async function POST(request: NextRequest) {
       );
     } catch (revenueErr: any) {
       console.error(JSON.stringify({ requestId, event: 'revenue_split_error', error: revenueErr.message }));
+    }
+
+    // Send payment confirmation WhatsApp + Email
+    try {
+      const { sendCommunication } = await import('@/lib/communication');
+      await sendCommunication({
+        templateCode: 'P14_payment_confirmed',
+        recipientType: 'parent',
+        recipientId: parent.id,
+        recipientPhone: body.parentPhone,
+        recipientEmail: body.parentEmail,
+        recipientName: body.parentName,
+        variables: {
+          parent_first_name: body.parentName?.split(' ')[0] || 'Parent',
+          amount: String(verifiedAmount),
+          child_name: body.childName,
+          enrollment_id: enrollment.id,
+          sessions_count: String(sessionsCount),
+        },
+        relatedEntityType: 'enrollment',
+        relatedEntityId: enrollment.id,
+      });
+    } catch (waErr: unknown) {
+      console.error(JSON.stringify({ requestId, event: 'payment_wa_send_failed', path: 'standard_verify', error: waErr instanceof Error ? waErr.message : String(waErr) }));
+      try {
+        await supabase.from('activity_log').insert({
+          action: 'payment_wa_send_failed',
+          user_email: body.parentEmail || 'unknown',
+          user_type: 'system',
+          metadata: {
+            error: waErr instanceof Error ? waErr.message : String(waErr),
+            template: 'P14_payment_confirmed',
+            parent_id: parent.id,
+            enrollment_id: enrollment.id,
+            payment_path: 'standard_verify',
+          },
+        });
+      } catch (_) { /* swallow logging failure */ }
     }
 
     // Queue background jobs

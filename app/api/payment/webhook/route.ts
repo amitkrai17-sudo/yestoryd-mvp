@@ -325,6 +325,56 @@ async function processPaymentCaptured(
       }
     }
 
+    // Send payment confirmation WhatsApp + Email (with dedup — verify may have sent already)
+    try {
+      const { data: existingSend } = await supabase
+        .from('communication_logs')
+        .select('id')
+        .eq('template_code', 'P14_payment_confirmed')
+        .eq('related_entity_id', tuitionEnrollmentId)
+        .eq('related_entity_type', 'enrollment')
+        .eq('status', 'sent')
+        .limit(1)
+        .maybeSingle();
+
+      if (!existingSend) {
+        const { sendCommunication } = await import('@/lib/communication');
+        await sendCommunication({
+          templateCode: 'P14_payment_confirmed',
+          recipientType: 'parent',
+          recipientId: tuitionEnrollment.parent_id || undefined,
+          recipientPhone: bookingData.parent_phone,
+          recipientEmail: bookingData.parent_email,
+          recipientName: bookingData.parent_name,
+          variables: {
+            parent_first_name: bookingData.parent_name?.split(' ')[0] || 'Parent',
+            amount: String(amount),
+            child_name: bookingData.child_name,
+            enrollment_id: tuitionEnrollmentId,
+            sessions_count: String(sessionsPurchased),
+          },
+          relatedEntityType: 'enrollment',
+          relatedEntityId: tuitionEnrollmentId,
+        });
+      }
+    } catch (waErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'payment_wa_send_failed', path: 'tuition_webhook', error: waErr.message }));
+      try {
+        await supabase.from('activity_log').insert({
+          action: 'payment_wa_send_failed',
+          user_email: bookingData.parent_email || 'unknown',
+          user_type: 'system',
+          metadata: {
+            error: waErr.message,
+            template: 'P14_payment_confirmed',
+            parent_id: tuitionEnrollment.parent_id,
+            enrollment_id: tuitionEnrollmentId,
+            payment_path: 'tuition_webhook',
+          },
+        });
+      } catch (_) { /* swallow logging failure */ }
+    }
+
     console.log(JSON.stringify({
       requestId,
       event: 'tuition_webhook_processed',
@@ -630,6 +680,56 @@ async function processPaymentCaptured(
     console.log(JSON.stringify({ requestId, event: 'revenue_split_calculated_via_webhook', enrollmentId: enrollment.id }));
   } catch (revenueErr: any) {
     console.error(JSON.stringify({ requestId, event: 'webhook_revenue_split_error', error: revenueErr.message }));
+  }
+
+  // 10b. Send payment confirmation WhatsApp + Email (with dedup — verify may have sent already)
+  try {
+    const { data: existingSend } = await supabase
+      .from('communication_logs')
+      .select('id')
+      .eq('template_code', 'P14_payment_confirmed')
+      .eq('related_entity_id', enrollment.id)
+      .eq('related_entity_type', 'enrollment')
+      .eq('status', 'sent')
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingSend) {
+      const { sendCommunication } = await import('@/lib/communication');
+      await sendCommunication({
+        templateCode: 'P14_payment_confirmed',
+        recipientType: 'parent',
+        recipientId: booking.parent_id ?? undefined,
+        recipientPhone: bookingData.parent_phone,
+        recipientEmail: bookingData.parent_email,
+        recipientName: bookingData.parent_name,
+        variables: {
+          parent_first_name: bookingData.parent_name?.split(' ')[0] || 'Parent',
+          amount: String(amount),
+          child_name: bookingData.child_name,
+          enrollment_id: enrollment.id,
+          sessions_count: String(sessionsCount),
+        },
+        relatedEntityType: 'enrollment',
+        relatedEntityId: enrollment.id,
+      });
+    }
+  } catch (waErr: any) {
+    console.error(JSON.stringify({ requestId, event: 'payment_wa_send_failed', path: 'standard_webhook', error: waErr.message }));
+    try {
+      await supabase.from('activity_log').insert({
+        action: 'payment_wa_send_failed',
+        user_email: bookingData.parent_email || 'unknown',
+        user_type: 'system',
+        metadata: {
+          error: waErr.message,
+          template: 'P14_payment_confirmed',
+          parent_id: booking.parent_id,
+          enrollment_id: enrollment.id,
+          payment_path: 'standard_webhook',
+        },
+      });
+    } catch (_) { /* swallow logging failure */ }
   }
 
   // 11. Queue background job
