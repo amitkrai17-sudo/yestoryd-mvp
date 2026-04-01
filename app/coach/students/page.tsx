@@ -20,6 +20,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import StudentCard, { type StudentData } from '@/components/coach/StudentCard';
 import { EmptyState } from '@/components/shared/EmptyState';
+import RecordPaymentSheet from '@/components/coach/RecordPaymentSheet';
 
 type FilterType = 'all' | 'coaching' | 'tuition' | 'active';
 
@@ -46,6 +47,9 @@ export default function CoachStudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [error, setError] = useState<string | null>(null);
+
+  // Record Payment bottom sheet state
+  const [paymentTarget, setPaymentTarget] = useState<StudentData | null>(null);
 
   // Schedule bottom sheet state
   const [scheduleTarget, setScheduleTarget] = useState<StudentData | null>(null);
@@ -262,10 +266,29 @@ export default function CoachStudentsPage() {
               key={student.enrollment_id}
               student={student}
               onSchedule={openSchedule}
+              onRecordPayment={setPaymentTarget}
             />
           ))
         )}
       </div>
+
+      {/* ──────────────────────────────────────────── */}
+      {/* Record Payment Bottom Sheet                 */}
+      {/* ──────────────────────────────────────────── */}
+      <RecordPaymentSheet
+        enrollment={paymentTarget ? {
+          id: paymentTarget.enrollment_id,
+          child_name: paymentTarget.child_name,
+          session_rate: paymentTarget.session_rate || 0,
+          sessions_remaining: paymentTarget.sessions_remaining ?? 0,
+          parent_name: paymentTarget.parent_name,
+        } : null}
+        onClose={() => setPaymentTarget(null)}
+        onSuccess={() => {
+          setPaymentTarget(null);
+          loadStudents();
+        }}
+      />
 
       {/* ──────────────────────────────────────────── */}
       {/* Schedule Session Bottom Sheet               */}

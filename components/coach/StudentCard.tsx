@@ -48,6 +48,7 @@ export interface StudentData {
 interface StudentCardProps {
   student: StudentData;
   onSchedule?: (student: StudentData) => void;
+  onRecordPayment?: (student: StudentData) => void;
 }
 
 function formatDateShort(dateStr: string): string {
@@ -102,7 +103,7 @@ function getStatusBadge(status: string) {
   }
 }
 
-export default function StudentCard({ student, onSchedule }: StudentCardProps) {
+export default function StudentCard({ student, onSchedule, onRecordPayment }: StudentCardProps) {
   const isTuition = student.enrollment_type === 'tuition';
   const progress = student.total_sessions > 0
     ? (student.sessions_completed / student.total_sessions) * 100
@@ -297,6 +298,17 @@ export default function StudentCard({ student, onSchedule }: StudentCardProps) {
           triggerVariant="icon-only"
         />
 
+        {/* Record Payment — tuition only */}
+        {isTuition && onRecordPayment && (
+          <button
+            onClick={() => onRecordPayment(student)}
+            className="flex items-center justify-center gap-1.5 px-3 h-10 rounded-xl bg-[#00ABFF]/10 text-[#00ABFF] text-xs font-medium hover:bg-[#00ABFF]/20 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Payment
+          </button>
+        )}
+
         {/* Schedule Session — tuition only */}
         {isTuition && student.status === 'active' && (student.sessions_remaining ?? 0) > 0 && onSchedule && (
           <button
@@ -304,7 +316,7 @@ export default function StudentCard({ student, onSchedule }: StudentCardProps) {
             className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl bg-[#FF0099] hover:bg-[#FF0099]/90 text-white text-xs font-semibold transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Schedule Session
+            Schedule
           </button>
         )}
 
