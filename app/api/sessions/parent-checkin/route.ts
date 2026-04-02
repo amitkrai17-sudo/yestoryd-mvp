@@ -10,6 +10,7 @@ import { getPricingConfig } from '@/lib/config/pricing-config';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { getProgramLabel } from '@/lib/utils/program-label';
 
 const supabase = createAdminClient();
 
@@ -77,7 +78,7 @@ async function generateCheckinSummary(
     const model = getGenAI().getGenerativeModel({ model: getGeminiModel('formatting') });
 
     const prompt = `
-You are summarizing a parent check-in call for a children's reading coaching program.
+You are summarizing a parent check-in call for a children's coaching program.
 
 Child: ${childName}
 Parent: ${parentName}
@@ -121,7 +122,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
     // Get enrollment for this child (includes V2 total_sessions)
     const { data: enrollment } = await supabase
       .from('enrollments')
-      .select('id, status, parent_id, child_id, total_sessions, age_band')
+      .select('id, status, parent_id, child_id, total_sessions, age_band, billing_model, program_description')
       .eq('child_id', childId)
       .in('status', ['active', 'pending_start'])
       .order('created_at', { ascending: false })
@@ -209,65 +210,67 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
     try {
       const { sendEmail } = require('@/lib/email/resend-client');
 
+      const programLabel = getProgramLabel(enrollment);
+
       await sendEmail({
         to: parentEmail,
         from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
-        subject: `🎉 ${childName}'s Final Reading Assessment - See Their Amazing Progress!`,
+        subject: `${childName}'s Final Assessment — See Their Amazing Progress!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #FF0099, #7B008B); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">🎉 Congratulations!</h1>
+              <h1 style="color: white; margin: 0; font-size: 24px;">Congratulations!</h1>
               <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">All Sessions Completed!</p>
             </div>
-            
+
             <div style="background: #fff; padding: 30px; border: 1px solid #eee; border-top: none;">
               <p style="font-size: 16px; color: #333;">Hi ${parentName},</p>
-              
+
               <p style="color: #555; line-height: 1.6;">
-                <strong>${childName}</strong> has successfully completed all sessions of the reading program! 🌟
+                <strong>${childName}</strong> has successfully completed all sessions of ${programLabel}!
               </p>
-              
+
               <p style="color: #555; line-height: 1.6;">
-                It's time for the <strong>Final Assessment</strong> to measure how much they've improved. 
-                This takes just 5 minutes and will help us create a beautiful progress report comparing 
-                their reading skills from Day 1 to now.
+                It's time for the <strong>Final Assessment</strong> to measure how much they've improved.
+                This takes just 5 minutes and will help us create a beautiful progress report comparing
+                their skills from Day 1 to now.
               </p>
-              
+
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${assessmentLink}" 
-                   style="background: linear-gradient(to right, #FF0099, #7B008B); 
-                          color: white; 
-                          padding: 15px 40px; 
-                          text-decoration: none; 
+                <a href="${assessmentLink}"
+                   style="background: linear-gradient(to right, #FF0099, #7B008B);
+                          color: white;
+                          padding: 15px 40px;
+                          text-decoration: none;
                           border-radius: 8px;
                           font-weight: bold;
                           font-size: 16px;
                           display: inline-block;">
-                  📖 Take Final Assessment
+                  Take Final Assessment
                 </a>
               </div>
-              
+
               <div style="background: #FEF3C7; border-radius: 8px; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0; color: #92400E; font-size: 14px;">
                   <strong>What happens next?</strong><br>
-                  After the assessment, you'll receive ${childName}'s official Completion Certificate 
-                  with a detailed Progress Report showing their improvement! 🏆
+                  After the assessment, you'll receive ${childName}'s official Completion Certificate
+                  with a detailed Progress Report showing their improvement!
                 </p>
               </div>
-              
+
               <p style="color: #888; font-size: 14px;">
                 Questions? Reply to this email or WhatsApp us at ${COMPANY_CONFIG.leadBotWhatsAppDisplay}.
               </p>
-              
+
               <p style="color: #555;">
                 Best regards,<br>
                 <strong>Team Yestoryd</strong>
               </p>
             </div>
-            
+
             <div style="background: #f9f9f9; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
               <p style="margin: 0; color: #888; font-size: 12px;">
-                Yestoryd • AI-Powered Reading Coaching for Kids
+                Yestoryd - Personalized Learning for Kids
               </p>
             </div>
           </div>

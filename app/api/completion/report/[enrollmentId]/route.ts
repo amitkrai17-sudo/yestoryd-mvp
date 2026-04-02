@@ -8,6 +8,7 @@ import { getGenAI } from '@/lib/gemini/client';
 import { capitalizeName } from '@/lib/utils';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { getProgramLabel } from '@/lib/utils/program-label';
 
 const supabase = createAdminClient();
 
@@ -167,7 +168,8 @@ export async function POST(
     // Generate report using Gemini
     const model = getGenAI().getGenerativeModel({ model: getGeminiModel('feedback_generation') });
 
-    const prompt = `You are an expert reading coach and child development specialist. Generate a comprehensive, warm, and encouraging progress report for a child who completed a 12-week reading coaching program.
+    const programLabel = getProgramLabel(enrollment);
+    const prompt = `You are an expert coach and child development specialist. Generate a comprehensive, warm, and encouraging progress report for a child who completed ${programLabel}.
 
 ## Child Information
 - Name: ${reportData.child.name}

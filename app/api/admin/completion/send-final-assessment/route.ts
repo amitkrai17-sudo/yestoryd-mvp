@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { withApiHandler } from '@/lib/api/with-api-handler';
+import { getProgramLabel } from '@/lib/utils/program-label';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,8 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
         id,
         child_id,
         parent_id,
+        billing_model,
+        program_description,
         children!child_id (age)
       `)
       .eq('id', enrollmentId)
@@ -93,16 +96,18 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
     try {
       const { sendEmail } = require('@/lib/email/resend-client');
 
+      const programLabel = getProgramLabel(enrollment);
+
       await sendEmail({
         to: parentEmail,
         from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
-        subject: `🎉 ${childName}'s Final Reading Assessment - See How Far They've Come!`,
+        subject: `${childName}'s Final Assessment — See How Far They've Come!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #FF0099;">Congratulations! 🎉</h2>
+            <h2 style="color: #FF0099;">Congratulations!</h2>
             <p>Hi there,</p>
-            <p><strong>${childName}</strong> has almost completed the 12-week reading program! It's time to see how much they've improved.</p>
-            <p>Please complete the final reading assessment so we can create a personalized progress report comparing their journey from Day 1 to now.</p>
+            <p><strong>${childName}</strong> has almost completed ${programLabel}! It's time to see how much they've improved.</p>
+            <p>Please complete the final assessment so we can create a personalized progress report comparing their journey from Day 1 to now.</p>
             <div style="text-align: center; margin: 30px 0;">
               <a href="${assessmentLink}"
                  style="background: linear-gradient(to right, #FF0099, #7B008B);

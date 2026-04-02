@@ -17,6 +17,7 @@ import {
 import { getGenAI } from '@/lib/gemini/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { getProgramLabel, isTuitionEnrollment } from '@/lib/utils/program-label';
 
 const supabase = createAdminClient();
 
@@ -260,6 +261,7 @@ interface CertificateProps {
   certificateNumber: string;
   completedDate: string;
   programDuration: string;
+  programLabel: string;
   sessionsCompleted: number;
   initialScores: {
     overall: number;
@@ -290,6 +292,7 @@ const CertificateDocument: React.FC<CertificateProps> = ({
   certificateNumber,
   completedDate,
   programDuration,
+  programLabel,
   sessionsCompleted,
   initialScores,
   finalScores,
@@ -313,7 +316,7 @@ const CertificateDocument: React.FC<CertificateProps> = ({
           <View style={styles.header}>
             <Text style={styles.logo}>Yestoryd</Text>
             <Text style={styles.certificateTitle}>Certificate of Achievement</Text>
-            <Text style={styles.mainTitle}>Reading Excellence Program</Text>
+            <Text style={styles.mainTitle}>{programLabel}</Text>
           </View>
 
           {/* Badge */}
@@ -449,7 +452,7 @@ async function generateGeminiFeedback(data: {
   try {
     const model = getGenAI().getGenerativeModel({ model: getGeminiModel('formatting') });
 
-    const prompt = `You are a reading coach writing a certificate feedback for a child who completed a 12-week reading program.
+    const prompt = `You are a coach writing a certificate feedback for a child who completed a learning program.
 
 CHILD DETAILS:
 - Name: ${data.childName}
@@ -495,7 +498,7 @@ Return ONLY valid JSON, no markdown.`;
     console.error('Gemini feedback error:', error);
     // Return default feedback
     return {
-      summary: `${data.childName} has shown remarkable progress in their reading journey! Their dedication and hard work over the past 12 weeks have resulted in significant improvements across all reading skills.`,
+      summary: `${data.childName} has shown remarkable progress in their learning journey! Their dedication and hard work have resulted in significant improvements across all skills.`,
       strengths: [
         'Consistent effort throughout the program',
         'Improved reading confidence',
@@ -534,6 +537,8 @@ export async function GET(request: NextRequest) {
         program_end,
         child_id,
         coach_id,
+        billing_model,
+        program_description,
         children!child_id (
           id,
           name,
@@ -624,11 +629,16 @@ export async function GET(request: NextRequest) {
         })
       : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    // Calculate program duration
-    const startDate = enrollment.program_start ? new Date(enrollment.program_start) : new Date();
-    const endDate = enrollment.completed_at ? new Date(enrollment.completed_at) : new Date();
-    const monthsDiff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    const programDuration = `${monthsDiff || 3} Months`;
+    // Calculate program duration — tuition uses session count, coaching uses months
+    let programDuration: string;
+    if (isTuitionEnrollment(enrollment)) {
+      programDuration = `${sessionsCompleted || 0} Sessions`;
+    } else {
+      const startDate = enrollment.program_start ? new Date(enrollment.program_start) : new Date();
+      const endDate = enrollment.completed_at ? new Date(enrollment.completed_at) : new Date();
+      const monthsDiff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
+      programDuration = `${monthsDiff || 3} Months`;
+    }
 
     // Generate Gemini feedback
     const geminiFeedback = await generateGeminiFeedback({
@@ -642,6 +652,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Generate PDF
+    const certProgramLabel = getProgramLabel(enrollment);
     const pdfBuffer = await renderToBuffer(
       <CertificateDocument
         childName={childName}
@@ -650,6 +661,7 @@ export async function GET(request: NextRequest) {
         certificateNumber={certificateNumber}
         completedDate={completedDate}
         programDuration={programDuration}
+        programLabel={certProgramLabel}
         sessionsCompleted={sessionsCompleted || 0}
         initialScores={initialScores}
         finalScores={finalScores}

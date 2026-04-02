@@ -27,6 +27,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { getProgramContext, type ProgramContext } from '@/lib/utils/program-label';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,10 +139,10 @@ export async function POST(request: NextRequest) {
       coachName: data.coachName,
     }));
 
-    // 4. Get enrollment details (include V2 fields + tuition)
+    // 4. Get enrollment details (include V2 fields + tuition + program label)
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
-      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date, session_duration_minutes, total_sessions, age_band, enrollment_type')
+      .select('id, schedule_confirmed, sessions_scheduled, program_start, preference_start_date, session_duration_minutes, total_sessions, age_band, enrollment_type, billing_model, program_description, sessions_remaining')
       .eq('id', data.enrollmentId)
       .single();
 
@@ -239,9 +240,21 @@ export async function POST(request: NextRequest) {
       console.log(JSON.stringify({ requestId, event: 'recall_bots_skipped', reason: 'tuition enrollment' }));
     }
 
-    // 7. Send confirmation email
+    // 7. Build program context for email
+    let categoryParentLabel: string | null = null;
+    if (enrollment.billing_model === 'prepaid_sessions') {
+      const { data: onboarding } = await supabase
+        .from('tuition_onboarding')
+        .select('category_id, skill_categories!category_id(parent_label)')
+        .eq('enrollment_id', data.enrollmentId)
+        .single();
+      categoryParentLabel = (onboarding?.skill_categories as any)?.parent_label ?? null;
+    }
+    const programCtx = getProgramContext(enrollment, categoryParentLabel);
+
+    // 7b. Send confirmation email
     console.log(JSON.stringify({ requestId, event: 'sending_confirmation_email' }));
-    const emailResult = await sendConfirmationEmail(data, calendarResult.sessions);
+    const emailResult = await sendConfirmationEmail(data, calendarResult.sessions, programCtx);
 
     // 8. Update enrollment with calendar confirmation timestamp
     // Note: schedule_confirmed is already true (set by payment/verify)
@@ -472,8 +485,8 @@ async function scheduleCalendarForExistingSessions(
         : `Yestoryd: ${data.childName} - Parent Check-in`;
 
       const baseDescription = isCoaching
-        ? `1:1 Reading Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`
-        : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: +91 89762 87997`;
+        ? `1:1 Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
+        : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
 
       const eventDescription = isOffline
         ? baseDescription + '\n\n[OFFLINE SESSION - In Person]'
@@ -639,7 +652,8 @@ function calculateSessionDate(
  */
 async function sendConfirmationEmail(
   data: z.infer<typeof enrollmentJobSchema>,
-  sessions: CalendarSession[]
+  sessions: CalendarSession[],
+  ctx: ProgramContext
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const sessionList = sessions
@@ -665,8 +679,8 @@ async function sendConfirmationEmail(
 
     const result = await sendEmail({
       to: data.parentEmail,
-      subject: `Welcome to Yestoryd! ${data.childName}'s Reading Journey Begins`,
-      html: generateEmailHtml(data, sessionList, sessions.length),
+      subject: ctx.emailSubject(data.childName),
+      html: generateEmailHtml(data, sessionList, sessions.length, ctx),
       from: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd' },
       replyTo: { email: COMPANY_CONFIG.supportEmail, name: 'Yestoryd Support' },
     });
@@ -684,43 +698,20 @@ async function sendConfirmationEmail(
 }
 
 /**
- * Generate email HTML
+ * Generate email HTML — enrollment-type-aware
  */
 function generateEmailHtml(
   data: z.infer<typeof enrollmentJobSchema>,
   sessionList: string,
-  sessionCount: number
+  sessionCount: number,
+  ctx: ProgramContext
 ): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9;">
-  <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <div style="text-align: center; margin-bottom: 24px;">
-      <h1 style="color: #FF0099; margin: 0; font-size: 28px;">Welcome to Yestoryd!</h1>
-      <p style="color: #666; margin-top: 8px;">Your child's reading transformation begins now</p>
-    </div>
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+  const dashboardUrl = `${baseUrl}/parent/dashboard`;
 
-    <p style="font-size: 16px; color: #333;">Hi ${data.parentName},</p>
-    <p style="font-size: 16px; color: #333;">
-      Great news! <strong style="color: #FF0099;">${data.childName}</strong> is officially enrolled in the
-      <strong>Yestoryd Reading Program</strong>.
-    </p>
-
-    <div style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); color: white; padding: 24px; border-radius: 12px; margin: 24px 0;">
-      <h2 style="margin: 0 0 16px 0; font-size: 18px;">Enrollment Summary</h2>
-      <table style="width: 100%; color: white;">
-        <tr><td>Child:</td><td><strong>${data.childName}</strong></td></tr>
-        <tr><td>Coach:</td><td><strong>${data.coachName}</strong></td></tr>
-        <tr><td>Sessions:</td><td><strong>${sessionCount} sessions</strong></td></tr>
-        <tr><td>Program:</td><td><strong>Season 1</strong></td></tr>
-      </table>
-    </div>
-
+  // Schedule section differs for tuition vs coaching
+  const scheduleSection = ctx.showSchedule
+    ? `
     <h2 style="color: #00ABFF; font-size: 18px; margin-top: 32px;">Your Session Schedule</h2>
     <p style="color: #666; font-size: 14px;">Calendar invites have been sent to your email.</p>
 
@@ -735,9 +726,49 @@ function generateEmailHtml(
         ${sessionList || '<tr><td colspan="2" style="padding: 12px; color: #666;">Sessions are being scheduled...</td></tr>'}
       </tbody>
     </table>
+    `
+    : `
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <h3 style="color: #166534; font-size: 16px; margin: 0 0 8px 0;">Session Balance</h3>
+      <p style="color: #333; font-size: 16px; margin: 0;"><strong>${sessionCount} sessions</strong> available</p>
+      <p style="color: #666; font-size: 14px; margin: 8px 0 0 0;">${ctx.scheduleDescription}</p>
+    </div>
+    `;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9;">
+  <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h1 style="color: #FF0099; margin: 0; font-size: 28px;">Welcome to Yestoryd!</h1>
+      <p style="color: #666; margin-top: 8px;">${data.childName}'s learning journey begins now</p>
+    </div>
+
+    <p style="font-size: 16px; color: #333;">Hi ${data.parentName},</p>
+    <p style="font-size: 16px; color: #333;">
+      Great news! <strong style="color: #FF0099;">${data.childName}</strong> is officially enrolled in
+      <strong>${ctx.label}</strong>.
+    </p>
+
+    <div style="background: linear-gradient(135deg, #FF0099 0%, #7B008B 100%); color: white; padding: 24px; border-radius: 12px; margin: 24px 0;">
+      <h2 style="margin: 0 0 16px 0; font-size: 18px;">Enrollment Summary</h2>
+      <table style="width: 100%; color: white;">
+        <tr><td>Child:</td><td><strong>${data.childName}</strong></td></tr>
+        <tr><td>Coach:</td><td><strong>${data.coachName}</strong></td></tr>
+        <tr><td>Sessions:</td><td><strong>${sessionCount} sessions</strong></td></tr>
+        <tr><td>Program:</td><td><strong>${ctx.label}</strong></td></tr>
+      </table>
+    </div>
+
+    ${scheduleSection}
 
     <div style="text-align: center; margin: 32px 0;">
-      <a href="https://yestoryd.com/parent/dashboard"
+      <a href="${dashboardUrl}"
          style="background: #FF0099; color: white; padding: 16px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
         View Your Dashboard
       </a>
@@ -752,7 +783,7 @@ function generateEmailHtml(
     </div>
 
     <div style="text-align: center; margin-top: 32px; color: #999; font-size: 12px;">
-      <p>Let's make reading fun!</p>
+      <p>Let's make learning fun!</p>
       <p>- Team Yestoryd</p>
     </div>
   </div>

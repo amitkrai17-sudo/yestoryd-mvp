@@ -339,6 +339,15 @@ async function processPaymentCaptured(
 
       if (!existingSend) {
         const { sendCommunication } = await import('@/lib/communication');
+        const { getProgramLabel, getScheduleDescription } = await import('@/lib/utils/program-label');
+        const { data: onboardingForLabel } = await supabase
+          .from('tuition_onboarding')
+          .select('category_id, skill_categories!category_id(parent_label)')
+          .eq('enrollment_id', tuitionEnrollmentId)
+          .single();
+        const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
+        const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
         await sendCommunication({
           templateCode: 'P14_payment_confirmed',
           recipientType: 'parent',
@@ -352,6 +361,9 @@ async function processPaymentCaptured(
             child_name: bookingData.child_name,
             enrollment_id: tuitionEnrollmentId,
             sessions_count: String(sessionsPurchased),
+            dashboard_link: `${baseUrl}/parent/dashboard`,
+            program_label: getProgramLabel(tuitionEnr, catLabel),
+            schedule_description: getScheduleDescription(tuitionEnr),
           },
           relatedEntityType: 'enrollment',
           relatedEntityId: tuitionEnrollmentId,
@@ -696,6 +708,9 @@ async function processPaymentCaptured(
 
     if (!existingSend) {
       const { sendCommunication } = await import('@/lib/communication');
+      const { getScheduleDescription } = await import('@/lib/utils/program-label');
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+      const coachingEnr = { billing_model: 'prepaid_season' as const };
       await sendCommunication({
         templateCode: 'P14_payment_confirmed',
         recipientType: 'parent',
@@ -709,6 +724,9 @@ async function processPaymentCaptured(
           child_name: bookingData.child_name,
           enrollment_id: enrollment.id,
           sessions_count: String(sessionsCount),
+          dashboard_link: `${baseUrl}/parent/dashboard`,
+          program_label: 'English Coaching Program',
+          schedule_description: getScheduleDescription(coachingEnr),
         },
         relatedEntityType: 'enrollment',
         relatedEntityId: enrollment.id,

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import SkillCategorySelect from '@/components/shared/SkillCategorySelect';
 
 // ============================================================
 // TYPES
@@ -83,6 +84,7 @@ export default function AdminTuitionPage() {
     schedulePreferredTime: '',
     defaultSessionMode: 'offline' as const,
     parentPhone: '', coachId: '', adminNotes: '',
+    categorySlug: '',
   });
 
   // Adjust modal
@@ -165,6 +167,7 @@ export default function AdminTuitionPage() {
           parentPhone: newForm.parentPhone,
           coachId: newForm.coachId,
           adminNotes: newForm.adminNotes,
+          categorySlug: newForm.categorySlug || undefined,
         }),
       });
       if (res.ok) {
@@ -174,7 +177,7 @@ export default function AdminTuitionPage() {
           sessionsPurchased: 0, sessionDurationMinutes: 0, sessionsPerWeek: 0,
           scheduleDays: [], scheduleTimeSlot: '', schedulePreferredTime: '',
           defaultSessionMode: 'offline', parentPhone: '',
-          coachId: '', adminNotes: '',
+          coachId: '', adminNotes: '', categorySlug: '',
         });
         fetchData();
       }
@@ -383,6 +386,16 @@ export default function AdminTuitionPage() {
                 <option value="">Select coach *</option>
                 {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {/* Subject / Category */}
+              <div>
+                <label className="text-xs text-text-tertiary block mb-1.5">Subject</label>
+                <SkillCategorySelect
+                  value={newForm.categorySlug}
+                  onChange={(v) => setNewForm(p => ({ ...p, categorySlug: v as string }))}
+                  context="parent"
+                  placeholder="Select subject..."
+                />
+              </div>
               {/* Schedule: Days */}
               <div className="sm:col-span-2 lg:col-span-3">
                 <label className="text-xs text-text-tertiary block mb-1.5">Preferred Days</label>

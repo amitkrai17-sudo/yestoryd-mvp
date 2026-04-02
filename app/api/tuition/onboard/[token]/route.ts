@@ -28,8 +28,9 @@ async function resolveOnboarding(token: string, supabase: ReturnType<typeof getS
       id, child_name, child_approximate_age, session_rate, sessions_purchased,
       session_duration_minutes, sessions_per_week, schedule_preference,
       default_session_mode, coach_id, parent_phone, parent_name_hint,
-      enrollment_id, child_id, parent_id,
-      parent_form_token_expires_at, status
+      enrollment_id, child_id, parent_id, category_id,
+      parent_form_token_expires_at, status,
+      skill_categories!category_id(parent_label)
     `)
     .eq('parent_form_token', token)
     .single();
@@ -232,7 +233,12 @@ export async function POST(
       childId = newChild.id;
     }
 
-    // 5. Create enrollment
+    // 5. Create enrollment — auto-populate program_description from category
+    const categoryParentLabel = (onboarding.skill_categories as any)?.parent_label ?? null;
+    const programDescription = categoryParentLabel
+      ? `${categoryParentLabel} Sessions`
+      : null; // falls back to "Tuition Sessions" in getProgramLabel()
+
     const { data: enrollment, error: enrollErr } = await supabase
       .from('enrollments')
       .insert({
@@ -248,6 +254,7 @@ export async function POST(
         sessions_per_week: onboarding.sessions_per_week,
         total_sessions: onboarding.sessions_purchased,
         status: 'payment_pending',
+        program_description: programDescription,
       })
       .select('id')
       .single();

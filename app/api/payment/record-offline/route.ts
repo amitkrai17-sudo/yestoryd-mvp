@@ -164,6 +164,16 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
   // 8. Send payment confirmation WhatsApp + Email
   try {
     const { sendCommunication } = await import('@/lib/communication');
+    const { getProgramLabel, getScheduleDescription } = await import('@/lib/utils/program-label');
+    // Offline payments are always tuition (session_pack)
+    const { data: onboardingForLabel } = await supabase
+      .from('tuition_onboarding')
+      .select('category_id, skill_categories!category_id(parent_label)')
+      .eq('enrollment_id', body.enrollment_id)
+      .single();
+    const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
+    const offlineEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: body.sessions_purchased };
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
     await sendCommunication({
       templateCode: 'P14_payment_confirmed',
       recipientType: 'parent',
@@ -177,6 +187,9 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
         child_name: childName,
         enrollment_id: body.enrollment_id,
         sessions_count: String(body.sessions_purchased),
+        dashboard_link: `${baseUrl}/parent/dashboard`,
+        program_label: getProgramLabel(offlineEnr, catLabel),
+        schedule_description: getScheduleDescription(offlineEnr),
       },
       relatedEntityType: 'enrollment',
       relatedEntityId: body.enrollment_id,

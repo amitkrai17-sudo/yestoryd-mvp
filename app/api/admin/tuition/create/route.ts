@@ -24,6 +24,7 @@ const CreateTuitionSchema = z.object({
   parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Valid 10-digit Indian mobile number required'),
   coachId: z.string().uuid(),
   adminNotes: z.string().max(1000).optional(),
+  categorySlug: z.string().max(100).optional(),
 });
 
 export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, requestId }) => {
@@ -49,11 +50,23 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     return NextResponse.json({ error: 'Coach not found' }, { status: 404 });
   }
 
-  // 3. Generate magic-link token
+  // 3. Resolve category_id from slug (if provided)
+  let categoryId: string | null = null;
+  if (input.categorySlug) {
+    const { data: cat } = await supabase
+      .from('skill_categories')
+      .select('id')
+      .eq('slug', input.categorySlug)
+      .eq('is_active', true)
+      .single();
+    categoryId = cat?.id ?? null;
+  }
+
+  // 4. Generate magic-link token
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  // 4. Insert tuition_onboarding
+  // 5. Insert tuition_onboarding
   const placeholderChildName = `Pending - ${input.parentPhone}`;
   const { data: onboarding, error: insertErr } = await supabase
     .from('tuition_onboarding')
@@ -73,6 +86,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
       parent_form_token: token,
       parent_form_token_expires_at: expiresAt.toISOString(),
       status: 'parent_pending',
+      category_id: categoryId,
     })
     .select('id')
     .single();
@@ -85,7 +99,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   const magicLink = `${APP_URL}/tuition/onboard/${token}`;
   const coachFirstName = (coach.name || 'Your coach').split(' ')[0];
 
-  // 5. Send WhatsApp to parent
+  // 6. Send WhatsApp to parent
   try {
     await sendWhatsAppMessage({
       to: `91${input.parentPhone}`,
@@ -115,7 +129,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
     }));
   }
 
-  // 6. Activity log
+  // 7. Activity log
   await supabase.from('activity_log').insert({
     action: 'tuition_onboarding_created',
     user_email: auth.email ?? 'admin',

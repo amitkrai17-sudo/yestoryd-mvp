@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { withApiHandler } from '@/lib/api/with-api-handler';
+import { getProgramLabel } from '@/lib/utils/program-label';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,8 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
         original_program_end,
         extension_count,
         child_id,
+        billing_model,
+        program_description,
         children!child_id (name, child_name, parent_email)
       `)
       .eq('id', enrollmentId)
@@ -131,8 +134,8 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
           subject: `Good News! ${childName}'s Program Extended`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #1F2937;">Program Extended! 📚</h2>
-              <p>We've extended ${childName}'s reading program to ensure they complete all sessions.</p>
+              <h2 style="color: #1F2937;">Program Extended!</h2>
+              <p>We've extended ${childName}'s ${getProgramLabel(enrollment)} to ensure they complete all sessions.</p>
               <p><strong>New End Date:</strong> ${newEndDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
               <p>Please ensure remaining sessions are scheduled. Contact us if you need any assistance.</p>
               <p>Best,<br>Team Yestoryd</p>
