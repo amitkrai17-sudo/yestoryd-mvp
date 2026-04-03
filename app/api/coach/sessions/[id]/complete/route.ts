@@ -301,6 +301,8 @@ export async function POST(
         .eq('session_id', sessionId)
         .eq('is_completed', false);
 
+      console.log(JSON.stringify({ event: 'practice_notify_check', sessionId, taskCount }));
+
       if (taskCount && taskCount > 0) {
         const { data: childInfo } = await supabase
           .from('children')
@@ -312,7 +314,7 @@ export async function POST(
           const { sendCommunication } = await import('@/lib/communication');
           const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
 
-          await sendCommunication({
+          const commResult = await sendCommunication({
             templateCode: 'P22_practice_tasks_assigned',
             recipientType: 'parent',
             recipientId: childInfo.parent_id || undefined,
@@ -328,6 +330,10 @@ export async function POST(
             relatedEntityType: 'session',
             relatedEntityId: sessionId,
           });
+
+          console.log(JSON.stringify({ event: 'practice_notify_result', sessionId, success: commResult.success, results: commResult.results }));
+        } else {
+          console.log(JSON.stringify({ event: 'practice_notify_skip', sessionId, reason: 'no_contact_info' }));
         }
       }
     } catch (notifyErr) {

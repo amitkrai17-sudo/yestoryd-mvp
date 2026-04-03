@@ -252,19 +252,80 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save capture response' }, { status: 500 });
     }
 
-    // 3. Build content_for_embedding
-    const embeddingParts: string[] = [
-      `structured capture ${payload.sessionModality}`,
-      `engagement: ${payload.engagementLevel}`,
-    ];
-    if (payload.skillPerformances.length > 0) {
-      embeddingParts.push(`skills: ${payload.skillPerformances.map(sp => `${sp.skillId}=${sp.rating}`).join(', ')}`);
+    // 3. Build content_for_embedding with human-readable names
+    const allSkillIds = payload.skillsCovered.length > 0
+      ? payload.skillsCovered
+      : payload.skillPerformances.map(sp => sp.skillId);
+
+    // Batch-fetch: skill names + category IDs, child name (parallel)
+    const [skillResult, childResult] = await Promise.all([
+      allSkillIds.length > 0
+        ? supabase.from('el_skills').select('id, name, category_id').in('id', allSkillIds)
+        : Promise.resolve({ data: [] as { id: string; name: string; category_id: string | null }[] }),
+      supabase.from('children').select('child_name, name').eq('id', payload.childId).single(),
+    ]);
+
+    const skillNameMap = new Map<string, string>();
+    const skillCatIdMap = new Map<string, string>();
+    for (const s of skillResult.data || []) {
+      skillNameMap.set(s.id, s.name);
+      if (s.category_id) skillCatIdMap.set(s.id, s.category_id);
     }
-    if (payload.customStrengthNote) embeddingParts.push(`strengths: ${payload.customStrengthNote}`);
-    if (payload.customStruggleNote) embeddingParts.push(`struggles: ${payload.customStruggleNote}`);
-    if (payload.childArtifact?.text) embeddingParts.push(`artifact: ${payload.childArtifact.text}`);
-    if (payload.wordsStruggled?.length) embeddingParts.push(`words struggled: ${payload.wordsStruggled.join(', ')}`);
-    if (payload.wordsMastered?.length) embeddingParts.push(`words mastered: ${payload.wordsMastered.join(', ')}`);
+
+    // Fetch category labels for covered categories
+    const uniqueCatIds = Array.from(new Set(Array.from(skillCatIdMap.values())));
+    const catLabelMap = new Map<string, string>();
+    if (uniqueCatIds.length > 0) {
+      const { data: cats } = await supabase
+        .from('skill_categories')
+        .select('id, parent_label, label')
+        .in('id', uniqueCatIds);
+      for (const c of cats || []) {
+        catLabelMap.set(c.id, c.parent_label || c.label);
+      }
+    }
+
+    const childName = childResult.data?.child_name || childResult.data?.name || 'Student';
+    const ratingLabel: Record<string, string> = {
+      struggling: 'Emerging', developing: 'Developing', proficient: 'Proficient', advanced: 'Mastered',
+    };
+    const mod = payload.sessionModality as string;
+    const isInPerson = mod === 'in_person_1on1' || mod === 'in_person' || mod === 'offline';
+
+    const embeddingParts: string[] = [
+      `${childName} ${isInPerson ? 'in-person' : 'online'} session on ${payload.sessionDate}.`,
+    ];
+
+    // Category-level skill names
+    const coveredCategories = new Set<string>();
+    for (const skillId of allSkillIds) {
+      const catId = skillCatIdMap.get(skillId);
+      if (catId) {
+        const label = catLabelMap.get(catId);
+        if (label) coveredCategories.add(label);
+      }
+    }
+    if (coveredCategories.size > 0) {
+      embeddingParts.push(`Skills covered: ${Array.from(coveredCategories).join(', ')}.`);
+    }
+
+    // Performance ratings with human-readable skill names
+    if (payload.skillPerformances.length > 0) {
+      const perfParts = payload.skillPerformances.map(sp => {
+        const name = skillNameMap.get(sp.skillId) || 'Unknown Skill';
+        const level = ratingLabel[sp.rating] || sp.rating;
+        return `${name}: ${level}`;
+      });
+      embeddingParts.push(`Performance: ${perfParts.join(', ')}.`);
+    }
+
+    embeddingParts.push(`Engagement: ${payload.engagementLevel}.`);
+    if (payload.customStrengthNote) embeddingParts.push(`Strengths: ${payload.customStrengthNote}`);
+    if (payload.customStruggleNote) embeddingParts.push(`Struggles: ${payload.customStruggleNote}`);
+    if (payload.childArtifact?.text) embeddingParts.push(`Artifact: ${payload.childArtifact.text}`);
+    if (payload.wordsStruggled?.length) embeddingParts.push(`Words struggled: ${payload.wordsStruggled.join(', ')}.`);
+    if (payload.wordsMastered?.length) embeddingParts.push(`Words mastered: ${payload.wordsMastered.join(', ')}.`);
+    if (payload.homeworkAssigned && payload.homeworkDescription) embeddingParts.push(`Homework: ${payload.homeworkDescription}`);
     const contentForEmbedding = embeddingParts.join(' ').trim();
 
     // 4 + 5. Create learning_event (embedding generated internally by insertLearningEvent)
