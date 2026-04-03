@@ -25,11 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate date is not in the past
-    const today = new Date().toISOString().split('T')[0];
-    if (date < today) {
-      return NextResponse.json({ error: 'Cannot schedule in the past' }, { status: 400 });
-    }
+    // Past dates allowed — coaches may backdate sessions that already happened
 
     // Verify enrollment
     const { createClient } = await import('@supabase/supabase-js');
