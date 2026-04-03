@@ -302,9 +302,9 @@ export default function ParentLoginPage() {
   // ─────────────────────────────────────────────────────────
   if (mode === 'phone-otp') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex items-center justify-center px-4 py-6 sm:p-6">
         <div className="w-full max-w-md">
-          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-8 lg:p-10 border border-border">
+          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-5 sm:p-8 lg:p-10 border border-border">
             <div className="text-center mb-8">
               <div className={`w-14 h-14 ${actualOtpMethod === 'whatsapp' ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600'} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${actualOtpMethod === 'whatsapp' ? 'shadow-green-500/30' : 'shadow-blue-500/30'}`}>
                 {actualOtpMethod === 'whatsapp' ? (
@@ -400,9 +400,9 @@ export default function ParentLoginPage() {
   // ─────────────────────────────────────────────────────────
   if (mode === 'phone') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-surface-0 via-[#0a1628] to-surface-0 flex items-center justify-center px-4 py-6 sm:p-6">
         <div className="w-full max-w-md">
-          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-8 lg:p-10 border border-border">
+          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-5 sm:p-8 lg:p-10 border border-border">
             <div className="text-center mb-8">
               <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30">
                 <MessageCircle className="w-7 h-7 text-white" />
@@ -417,10 +417,11 @@ export default function ParentLoginPage() {
               </div>
             )}
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-text-secondary mb-2">Mobile Number</label>
-              <div className="flex">
-                <input
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Mobile Number</label>
+                <div className="flex w-full">
+                  <input
                     type="text"
                     value={countryCode}
                     onChange={(e) => {
@@ -429,22 +430,22 @@ export default function ParentLoginPage() {
                       else val = '+' + val.slice(1).replace(/\D/g, '');
                       if (val.length <= 5) setCountryCode(val || '+');
                     }}
-                    className="w-[70px] px-2 py-3.5 rounded-l-xl border border-r-0 border-border bg-surface-2 text-white text-center text-sm font-medium focus:ring-2 focus:ring-[#00abff] outline-none"
+                    className="w-[60px] px-1.5 py-3.5 rounded-l-xl border border-r-0 border-border bg-surface-2 text-white text-center text-sm font-medium focus:ring-2 focus:ring-[#00abff] outline-none"
                     placeholder="+91"
                   />
-                <input
-                  type="tel"
-                  value={formatPhoneDisplay(phone)}
-                  onChange={handlePhoneChange}
-                  placeholder="98765 43210"
-                  className="flex-1 px-4 py-3.5 text-lg text-white bg-surface-2 border border-border rounded-r-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none placeholder:text-text-muted"
-                  maxLength={11}
-                  autoFocus
-                />
+                  <input
+                    type="tel"
+                    value={formatPhoneDisplay(phone)}
+                    onChange={handlePhoneChange}
+                    placeholder="98765 43210"
+                    className="flex-1 min-w-0 px-4 py-3.5 text-lg text-white bg-surface-2 border border-border rounded-r-xl focus:ring-2 focus:ring-[#00abff] focus:border-transparent outline-none placeholder:text-text-muted"
+                    maxLength={11}
+                    autoFocus
+                  />
+                </div>
               </div>
-            </div>
 
-            <button
+              <button
               onClick={sendWhatsAppOtp}
               disabled={otpLoading || phone.length !== 10}
               className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -457,7 +458,8 @@ export default function ParentLoginPage() {
                   Send OTP via WhatsApp
                 </>
               )}
-            </button>
+              </button>
+            </div>
 
             <button
               onClick={() => {
@@ -602,7 +604,7 @@ export default function ParentLoginPage() {
             </div>
           )}
 
-          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-8 lg:p-10 border border-border">
+          <div className="bg-surface-1 rounded-3xl shadow-2xl shadow-black/30 p-5 sm:p-8 lg:p-10 border border-border">
             <div className="text-center mb-8">
               <div className="w-14 h-14 bg-gradient-to-br from-[#00abff] to-[#0066cc] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#00abff]/30">
                 <BookOpen className="w-7 h-7 text-white" />
