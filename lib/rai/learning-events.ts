@@ -99,8 +99,50 @@ export async function insertLearningEvent(
       .single();
 
     if (error) {
-      console.error('[insertLearningEvent] DB insert failed:', error.message);
-      // Log to activity_log for admin visibility — fire and forget
+      console.error('[insertLearningEvent] DB insert failed:', error.message, error.code, error.details, error.hint);
+      // Retry without embedding — better to have the event without embedding than nothing
+      try {
+        const { data: retryData, error: retryError } = await supabase
+          .from('learning_events')
+          .insert({
+            child_id: params.childId,
+            event_type: params.eventType,
+            event_data: params.eventData as unknown as Json,
+            content_for_embedding: params.contentForEmbedding,
+            session_id: params.sessionId || null,
+            coach_id: params.coachId || null,
+            signal_source: params.signalSource,
+            signal_confidence: params.signalConfidence,
+            session_modality: params.sessionModality || null,
+            event_date: params.eventDate || new Date().toISOString(),
+            ...(params.eventSubtype != null ? { event_subtype: params.eventSubtype } : {}),
+            ...(params.intelligenceScore != null ? { intelligence_score: params.intelligenceScore } : {}),
+          })
+          .select('id')
+          .single();
+
+        if (!retryError && retryData) {
+          console.warn('[insertLearningEvent] Retry without embedding succeeded:', retryData.id);
+          // Log for backfill
+          try {
+            await supabase.from('activity_log').insert({
+              action: 'learning_event_embedding_skipped',
+              user_type: 'system',
+              user_email: 'system@yestoryd.com',
+              metadata: {
+                learning_event_id: retryData.id,
+                original_error: error.message,
+                error_code: error.code,
+                event_type: params.eventType,
+                child_id: params.childId,
+              },
+            });
+          } catch { /* Don't fail on logging failure */ }
+          return retryData;
+        }
+      } catch { /* Retry failed too */ }
+
+      // Log original failure to activity_log for admin visibility
       try {
         await supabase.from('activity_log').insert({
           action: 'learning_event_insert_failed',
@@ -109,6 +151,7 @@ export async function insertLearningEvent(
           metadata: {
             error: error.message,
             error_code: error.code,
+            error_details: error.details,
             event_type: params.eventType,
             child_id: params.childId,
             signal_source: params.signalSource,
