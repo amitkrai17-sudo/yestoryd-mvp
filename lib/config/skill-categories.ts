@@ -19,6 +19,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
 // TYPES
 // =============================================================================
 
+export interface RubricDefinitions {
+  emerging: string;
+  developing: string;
+  proficient: string;
+  mastered: string;
+}
+
 export interface SkillCategory {
   id: string;
   slug: string;
@@ -30,6 +37,7 @@ export interface SkillCategory {
   sortOrder: number;
   scope: 'coach' | 'parent' | 'both';
   isActive: boolean;
+  rubric: RubricDefinitions | null;
 }
 
 export interface SkillCategoryWithModules extends SkillCategory {
@@ -69,16 +77,16 @@ export function invalidateSkillCategoriesCache(): void {
 // =============================================================================
 
 const FALLBACK_CATEGORIES: SkillCategory[] = [
-  { id: '', slug: 'phonics_letter_sounds', label: 'Phonics & Letter Sounds', parentLabel: 'Reading & Phonics', labelHindi: null, icon: 'Volume2', color: '#ef4444', sortOrder: 1, scope: 'both', isActive: true },
-  { id: '', slug: 'reading_fluency', label: 'Reading Fluency', parentLabel: 'Reading & Fluency', labelHindi: null, icon: 'BookOpen', color: '#f97316', sortOrder: 2, scope: 'both', isActive: true },
-  { id: '', slug: 'reading_comprehension', label: 'Reading Comprehension', parentLabel: 'Comprehension', labelHindi: null, icon: 'Brain', color: '#eab308', sortOrder: 3, scope: 'both', isActive: true },
-  { id: '', slug: 'vocabulary_building', label: 'Vocabulary Building', parentLabel: 'Vocabulary', labelHindi: null, icon: 'Library', color: '#22c55e', sortOrder: 4, scope: 'both', isActive: true },
-  { id: '', slug: 'grammar_syntax', label: 'Grammar & Syntax', parentLabel: 'Grammar', labelHindi: null, icon: 'PenTool', color: '#3b82f6', sortOrder: 5, scope: 'both', isActive: true },
-  { id: '', slug: 'creative_writing', label: 'Creative Writing', parentLabel: 'Creative Writing', labelHindi: null, icon: 'Feather', color: '#8b5cf6', sortOrder: 6, scope: 'both', isActive: true },
-  { id: '', slug: 'pronunciation', label: 'Pronunciation & Speaking', parentLabel: 'Speaking & Confidence', labelHindi: null, icon: 'Mic', color: '#ec4899', sortOrder: 7, scope: 'both', isActive: true },
-  { id: '', slug: 'story_analysis', label: 'Story Analysis', parentLabel: 'Story Analysis', labelHindi: null, icon: 'Search', color: '#06b6d4', sortOrder: 8, scope: 'both', isActive: true },
-  { id: '', slug: 'olympiad_prep', label: 'Olympiad Prep', parentLabel: 'Olympiad Preparation', labelHindi: null, icon: 'Trophy', color: '#f59e0b', sortOrder: 9, scope: 'parent', isActive: true },
-  { id: '', slug: 'competition_prep', label: 'Competition Prep', parentLabel: 'Competition Preparation', labelHindi: null, icon: 'Award', color: '#10b981', sortOrder: 10, scope: 'parent', isActive: true },
+  { id: '', slug: 'phonics_letter_sounds', label: 'Phonics & Letter Sounds', parentLabel: 'Reading & Phonics', labelHindi: null, icon: 'Volume2', color: '#ef4444', sortOrder: 1, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'reading_fluency', label: 'Reading Fluency', parentLabel: 'Reading & Fluency', labelHindi: null, icon: 'BookOpen', color: '#f97316', sortOrder: 2, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'reading_comprehension', label: 'Reading Comprehension', parentLabel: 'Comprehension', labelHindi: null, icon: 'Brain', color: '#eab308', sortOrder: 3, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'vocabulary_building', label: 'Vocabulary Building', parentLabel: 'Vocabulary', labelHindi: null, icon: 'Library', color: '#22c55e', sortOrder: 4, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'grammar_syntax', label: 'Grammar & Syntax', parentLabel: 'Grammar', labelHindi: null, icon: 'PenTool', color: '#3b82f6', sortOrder: 5, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'creative_writing', label: 'Creative Writing', parentLabel: 'Creative Writing', labelHindi: null, icon: 'Feather', color: '#8b5cf6', sortOrder: 6, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'pronunciation', label: 'Pronunciation & Speaking', parentLabel: 'Speaking & Confidence', labelHindi: null, icon: 'Mic', color: '#ec4899', sortOrder: 7, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'story_analysis', label: 'Story Analysis', parentLabel: 'Story Analysis', labelHindi: null, icon: 'Search', color: '#06b6d4', sortOrder: 8, scope: 'both', isActive: true, rubric: null },
+  { id: '', slug: 'olympiad_prep', label: 'Olympiad Prep', parentLabel: 'Olympiad Preparation', labelHindi: null, icon: 'Trophy', color: '#f59e0b', sortOrder: 9, scope: 'parent', isActive: true, rubric: null },
+  { id: '', slug: 'competition_prep', label: 'Competition Prep', parentLabel: 'Competition Preparation', labelHindi: null, icon: 'Award', color: '#10b981', sortOrder: 10, scope: 'parent', isActive: true, rubric: null },
 ];
 
 // =============================================================================
@@ -116,6 +124,7 @@ async function loadFromDB(): Promise<CacheEntry> {
       sortOrder: row.sort_order,
       scope: row.scope as SkillCategory['scope'],
       isActive: row.is_active,
+      rubric: (row as any).rubric as RubricDefinitions | null,
     }));
 
     const modules: SkillModule[] = (modResult.data || []).map(row => ({
@@ -221,6 +230,12 @@ export async function getParentLabel(slug: string): Promise<string> {
   const cat = await getCategoryBySlug(slug);
   if (!cat) return slug;
   return cat.parentLabel ?? cat.label;
+}
+
+/** Get rubric definitions for a category by slug. */
+export async function getCategoryRubric(slug: string): Promise<RubricDefinitions | null> {
+  const cat = await getCategoryBySlug(slug);
+  return cat?.rubric ?? null;
 }
 
 /** Get slug → parent-facing label map. */

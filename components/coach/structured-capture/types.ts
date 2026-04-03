@@ -29,6 +29,7 @@ export interface ModuleGroup {
     slug: string;
     icon: string | null;
     orderIndex: number;
+    rubric?: Record<string, string> | null;
   };
   skills: SkillItem[];
 }

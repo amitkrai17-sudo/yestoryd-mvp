@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
+import { getCoachCategories } from '@/lib/config/skill-categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,18 +32,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch skills' }, { status: 500 });
   }
 
-  // 2. Fetch coach-visible skill_categories (Level 1 grouping)
-  const { data: categories, error: catError } = await supabase
-    .from('skill_categories')
-    .select('id, slug, label, icon, sort_order, scope, is_active')
-    .eq('is_active', true)
-    .in('scope', ['coach', 'both'])
-    .order('sort_order', { ascending: true });
-
-  if (catError) {
-    console.error('Failed to fetch skill_categories:', catError);
-    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
-  }
+  // 2. Fetch coach-visible skill_categories via shared loader (includes rubric, 5-min cache)
+  const coachCategories = await getCoachCategories();
 
   // 3. Build category lookup
   const categoryMap = new Map<string, {
@@ -51,14 +42,16 @@ export async function GET() {
     label: string;
     icon: string | null;
     sortOrder: number;
+    rubric: Record<string, string> | null;
   }>();
-  for (const cat of categories || []) {
+  for (const cat of coachCategories) {
     categoryMap.set(cat.id, {
       id: cat.id,
       slug: cat.slug,
       label: cat.label,
       icon: cat.icon,
-      sortOrder: cat.sort_order,
+      sortOrder: cat.sortOrder,
+      rubric: cat.rubric as Record<string, string> | null,
     });
   }
 
@@ -75,11 +68,11 @@ export async function GET() {
   // 5. Build grouped response in category sort order
   //    Response shape matches existing ModuleGroup type (module → category)
   const grouped: Array<{
-    module: { id: string; name: string; slug: string; icon: string | null; orderIndex: number };
+    module: { id: string; name: string; slug: string; icon: string | null; orderIndex: number; rubric: Record<string, string> | null };
     skills: Array<{ id: string; name: string; skillTag: string; description: string | null; difficulty: number | null; orderIndex: number }>;
   }> = [];
 
-  for (const cat of categories || []) {
+  for (const cat of coachCategories) {
     const catSkills = skillsByCategory.get(cat.id);
     if (catSkills && catSkills.length > 0) {
       const info = categoryMap.get(cat.id)!;
@@ -90,6 +83,7 @@ export async function GET() {
           slug: info.slug,
           icon: info.icon,
           orderIndex: info.sortOrder,
+          rubric: info.rubric,
         },
         skills: catSkills.map(s => ({
           id: s.id,
@@ -107,7 +101,7 @@ export async function GET() {
   const generalSkills = skillsByCategory.get('__general__');
   if (generalSkills && generalSkills.length > 0) {
     grouped.push({
-      module: { id: '__general__', name: 'General Skills', slug: 'general', icon: null, orderIndex: 999 },
+      module: { id: '__general__', name: 'General Skills', slug: 'general', icon: null, orderIndex: 999, rubric: null },
       skills: generalSkills.map(s => ({
         id: s.id,
         name: s.name,
