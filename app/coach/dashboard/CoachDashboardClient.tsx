@@ -26,6 +26,7 @@ import {
 import ChatWidget from '@/components/chat/ChatWidget';
 import CoachTierCard from '@/components/coach/CoachTierCard';
 import CoachAvailabilityCard from '@/components/coach/CoachAvailabilityCard';
+import PendingRescheduleRequests from '@/components/coach/PendingRescheduleRequests';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 type Coach = Database['public']['Tables']['coaches']['Row'];
@@ -126,6 +127,9 @@ export default function CoachDashboardClient({
             Here&apos;s what&apos;s happening with your coaching today.
           </p>
         </div>
+
+        {/* Pending Reschedule Requests */}
+        <PendingRescheduleRequests />
 
         {/* Pending Skill Boosters Alert */}
         {pendingSkillBoosters.length > 0 && (

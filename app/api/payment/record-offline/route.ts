@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { loadPaymentConfig } from '@/lib/config/loader';
+import { scheduleTuitionSessions } from '@/lib/scheduling';
+import { queueEnrollmentComplete } from '@/lib/qstash';
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
 
@@ -159,6 +161,59 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
     );
   } catch (revErr: unknown) {
     console.error(JSON.stringify({ requestId, event: 'offline_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
+  }
+
+  // 7b. Auto-schedule tuition sessions
+  try {
+    let startAfter: string | undefined;
+    if (!isFirstPayment) {
+      const { data: lastSession } = await supabase
+        .from('scheduled_sessions')
+        .select('scheduled_date')
+        .eq('enrollment_id', body.enrollment_id)
+        .order('scheduled_date', { ascending: false })
+        .limit(1)
+        .single();
+      startAfter = lastSession?.scheduled_date || undefined;
+    }
+
+    const schedResult = await scheduleTuitionSessions(
+      body.enrollment_id, startAfter, supabase as any
+    );
+    console.log(JSON.stringify({
+      requestId, event: 'offline_tuition_sessions_scheduled',
+      sessionsCreated: schedResult.sessionsCreated,
+      errors: schedResult.errors,
+    }));
+  } catch (schedErr: unknown) {
+    console.error(JSON.stringify({
+      requestId, event: 'offline_tuition_schedule_error',
+      error: schedErr instanceof Error ? schedErr.message : String(schedErr),
+    }));
+  }
+
+  // 7c. Queue enrollment-complete for calendar scheduling
+  try {
+    if (enrollment.coach_id) {
+      const coach = await getCoach(enrollment.coach_id, requestId);
+      await queueEnrollmentComplete({
+        enrollmentId: body.enrollment_id,
+        childId: enrollment.child_id || '',
+        childName,
+        parentId: enrollment.parent_id || '',
+        parentEmail,
+        parentName,
+        parentPhone,
+        coachId: coach.id,
+        coachEmail: coach.email,
+        coachName: coach.name,
+      });
+    }
+  } catch (queueErr: unknown) {
+    console.error(JSON.stringify({
+      requestId, event: 'offline_enrollment_complete_error',
+      error: queueErr instanceof Error ? queueErr.message : String(queueErr),
+    }));
   }
 
   // 8. Send payment confirmation WhatsApp + Email

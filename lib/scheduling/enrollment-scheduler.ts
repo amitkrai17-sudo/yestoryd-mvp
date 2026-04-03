@@ -35,7 +35,7 @@ export interface ScheduledSession {
   child_id: string;
   coach_id: string;
   session_number: number;
-  session_type: 'coaching' | 'parent_checkin';
+  session_type: 'coaching' | 'parent_checkin' | 'tuition';
   session_title: string;
   week_number: number;
   scheduled_date: string;
@@ -44,6 +44,13 @@ export interface ScheduledSession {
   duration_minutes: number;
   slot_match_type?: SlotMatchType;
   is_diagnostic?: boolean;
+  session_mode?: string;
+}
+
+export interface TuitionSchedulerResult {
+  success: boolean;
+  sessionsCreated: number;
+  errors: string[];
 }
 
 export interface EnrollmentSchedulerOptions {
@@ -764,6 +771,273 @@ export async function createSessionsSimple(
       sessions: [],
       manualRequired: 0,
       errors: [`Error: ${error.message}`],
+    };
+  }
+}
+
+// ============================================================================
+// TUITION: Auto-schedule all sessions at payment time
+// ============================================================================
+
+/** Default day distribution when no schedule_preference is set */
+const DEFAULT_DAY_SETS: Record<number, number[]> = {
+  1: [2],            // 1x/week → Tuesday
+  2: [2, 4],         // 2x/week → Tuesday + Thursday
+  3: [1, 3, 5],      // 3x/week → Monday + Wednesday + Friday
+  4: [1, 2, 4, 5],   // 4x/week → Mon + Tue + Thu + Fri
+  5: [1, 2, 3, 4, 5], // 5x/week → weekdays
+};
+
+/** Convert day name to JS getDay() number (0=Sun) */
+function dayNameToNumber(name: string): number | null {
+  const map: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+    thursday: 4, friday: 5, saturday: 6,
+    sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+  };
+  return map[name.toLowerCase()] ?? null;
+}
+
+/** Convert timeSlot bucket to a default time string */
+function timeSlotToTime(slot?: string, preferredTime?: string): string {
+  // If exact time given like "4:00 PM" or "16:00", parse it
+  if (preferredTime) {
+    const match24 = preferredTime.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) return `${match24[1].padStart(2, '0')}:${match24[2]}:00`;
+
+    const match12 = preferredTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (match12) {
+      let h = parseInt(match12[1]);
+      const ampm = match12[3].toUpperCase();
+      if (ampm === 'PM' && h < 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
+      return `${h.toString().padStart(2, '0')}:${match12[2]}:00`;
+    }
+  }
+
+  // Fall back to bucket
+  switch (slot?.toLowerCase()) {
+    case 'morning': return '10:00:00';
+    case 'afternoon': return '14:00:00';
+    case 'evening': return '17:00:00';
+    case 'late evening': return '19:00:00';
+    default: return '16:00:00'; // 4 PM IST default for tuition
+  }
+}
+
+/**
+ * Auto-schedule all tuition sessions for an enrollment.
+ *
+ * Reads tuition_onboarding for: schedule_preference, sessions_per_week,
+ * session_duration_minutes, default_session_mode.
+ *
+ * @param enrollmentId  The tuition enrollment to schedule for
+ * @param startAfterDate  Optional — schedule sessions starting after this date
+ *                        (used for top-ups to avoid overlapping existing sessions)
+ */
+export async function scheduleTuitionSessions(
+  enrollmentId: string,
+  startAfterDate?: string,
+  supabaseClient?: ReturnType<typeof createAdminClient>
+): Promise<TuitionSchedulerResult> {
+  const supabase = supabaseClient || createAdminClient();
+  const errors: string[] = [];
+
+  try {
+    // 1. Fetch enrollment
+    const { data: enrollment, error: enrErr } = await supabase
+      .from('enrollments')
+      .select('id, child_id, coach_id, sessions_remaining, program_start')
+      .eq('id', enrollmentId)
+      .single();
+
+    if (enrErr || !enrollment) {
+      return { success: false, sessionsCreated: 0, errors: [`Enrollment not found: ${enrErr?.message}`] };
+    }
+
+    // Count existing non-completed/non-cancelled sessions to avoid double-scheduling
+    const { count: existingScheduledCount } = await supabase
+      .from('scheduled_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('enrollment_id', enrollmentId)
+      .not('status', 'in', '("completed","cancelled","missed")');
+
+    const alreadyScheduled = existingScheduledCount || 0;
+    const totalRemaining = enrollment.sessions_remaining || 0;
+    const sessionsToSchedule = Math.max(0, totalRemaining - alreadyScheduled);
+
+    if (sessionsToSchedule <= 0) {
+      return { success: true, sessionsCreated: 0, errors: ['All remaining sessions are already scheduled'] };
+    }
+
+    // 2. Fetch tuition_onboarding config
+    const { data: onboarding } = await supabase
+      .from('tuition_onboarding')
+      .select('schedule_preference, sessions_per_week, session_duration_minutes, default_session_mode')
+      .eq('enrollment_id', enrollmentId)
+      .single();
+
+    const sessionsPerWeek = onboarding?.sessions_per_week || 2;
+    const durationMinutes = onboarding?.session_duration_minutes || 60;
+    const defaultMode = onboarding?.default_session_mode || 'offline';
+
+    // 3. Parse schedule_preference
+    let preferredDays: number[] = [];
+    let sessionTime = '16:00:00';
+
+    if (onboarding?.schedule_preference) {
+      try {
+        const pref = typeof onboarding.schedule_preference === 'string'
+          ? JSON.parse(onboarding.schedule_preference)
+          : onboarding.schedule_preference;
+
+        // Extract days
+        if (Array.isArray(pref.days) && pref.days.length > 0) {
+          for (const day of pref.days) {
+            const num = typeof day === 'number' ? day : dayNameToNumber(String(day));
+            if (num !== null) preferredDays.push(num);
+          }
+        }
+
+        // Extract time
+        sessionTime = timeSlotToTime(pref.timeSlot, pref.preferredTime);
+      } catch {
+        console.warn(`[TuitionScheduler] Failed to parse schedule_preference for enrollment ${enrollmentId}`);
+      }
+    }
+
+    // Fallback days if none set
+    if (preferredDays.length === 0) {
+      preferredDays = DEFAULT_DAY_SETS[sessionsPerWeek] || DEFAULT_DAY_SETS[2]!;
+      errors.push('No schedule_preference days found — using defaults');
+    }
+
+    // Sort days for consistent ordering
+    preferredDays.sort((a, b) => a - b);
+
+    // 4. Determine start date
+    let startDate: Date;
+    if (startAfterDate) {
+      startDate = new Date(startAfterDate + 'T00:00:00+05:30');
+      startDate.setDate(startDate.getDate() + 1); // Day after last existing session
+    } else if (enrollment.program_start) {
+      startDate = new Date(enrollment.program_start);
+    } else {
+      startDate = new Date();
+    }
+
+    // 5. Get existing session count for numbering
+    const { count: existingCount } = await supabase
+      .from('scheduled_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('enrollment_id', enrollmentId);
+
+    let sessionNumber = (existingCount || 0) + 1;
+
+    // 6. Generate sessions — distribute across preferred days
+    const sessionsToCreate: ScheduledSession[] = [];
+    const cursor = new Date(startDate);
+    let weekNumber = 1;
+
+    while (sessionsToCreate.length < sessionsToSchedule) {
+      // Find next occurrence of a preferred day
+      let found = false;
+      for (let daysAhead = 0; daysAhead < 14; daysAhead++) {
+        const candidate = new Date(cursor);
+        candidate.setDate(candidate.getDate() + daysAhead);
+        const candidateDay = candidate.getDay();
+
+        if (preferredDays.includes(candidateDay)) {
+          const dateStr = candidate.toISOString().split('T')[0];
+
+          sessionsToCreate.push({
+            enrollment_id: enrollmentId,
+            child_id: enrollment.child_id!,
+            coach_id: enrollment.coach_id!,
+            session_number: sessionNumber,
+            session_type: 'tuition',
+            session_title: `Tuition Session #${sessionNumber}`,
+            week_number: weekNumber,
+            scheduled_date: dateStr,
+            scheduled_time: sessionTime,
+            status: 'pending_scheduling',
+            duration_minutes: durationMinutes,
+            session_mode: defaultMode,
+          });
+
+          sessionNumber++;
+
+          // Move cursor to day after this one
+          cursor.setTime(candidate.getTime());
+          cursor.setDate(cursor.getDate() + 1);
+          found = true;
+
+          // Track week boundaries (every 7 days from start)
+          const daysSinceStart = Math.floor(
+            (candidate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          weekNumber = Math.floor(daysSinceStart / 7) + 1;
+
+          break;
+        }
+      }
+
+      if (!found) {
+        // Safety: no preferred day found in 14 days — force next day
+        cursor.setDate(cursor.getDate() + 1);
+        errors.push(`Could not find preferred day near ${cursor.toISOString().split('T')[0]}`);
+        // Prevent infinite loops
+        if (errors.length > sessionsToSchedule + 10) break;
+      }
+    }
+
+    if (sessionsToCreate.length === 0) {
+      return { success: true, sessionsCreated: 0, errors: ['No sessions generated'] };
+    }
+
+    console.log(`[TuitionScheduler] Scheduling ${sessionsToCreate.length} sessions for enrollment ${enrollmentId}:`, {
+      sessionsPerWeek,
+      durationMinutes,
+      defaultMode,
+      preferredDays,
+      sessionTime,
+      firstDate: sessionsToCreate[0].scheduled_date,
+      lastDate: sessionsToCreate[sessionsToCreate.length - 1].scheduled_date,
+    });
+
+    // 7. Insert sessions
+    const { error: insertError } = await supabase
+      .from('scheduled_sessions')
+      .insert(sessionsToCreate as Database['public']['Tables']['scheduled_sessions']['Insert'][]);
+
+    if (insertError) {
+      console.error(`[TuitionScheduler] Insert error:`, insertError);
+      return { success: false, sessionsCreated: 0, errors: [`Insert failed: ${insertError.message}`] };
+    }
+
+    // 8. Update enrollment
+    const totalScheduled = (existingCount || 0) + sessionsToCreate.length;
+    await supabase
+      .from('enrollments')
+      .update({
+        schedule_confirmed: true,
+        sessions_scheduled: totalScheduled,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', enrollmentId);
+
+    return {
+      success: true,
+      sessionsCreated: sessionsToCreate.length,
+      errors,
+    };
+
+  } catch (error: any) {
+    console.error(`[TuitionScheduler] Error:`, error);
+    return {
+      success: false,
+      sessionsCreated: 0,
+      errors: [`Tuition scheduling failed: ${error.message}`],
     };
   }
 }

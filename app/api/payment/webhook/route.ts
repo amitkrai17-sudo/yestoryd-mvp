@@ -22,6 +22,7 @@ import {
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
 import { logOpsEvent, generateCorrelationId } from '@/lib/backops';
+import { scheduleTuitionSessions } from '@/lib/scheduling';
 import type { Json } from '@/lib/supabase/database.types';
 
 const supabase = createAdminClient();
@@ -301,8 +302,34 @@ async function processPaymentCaptured(
       console.error(JSON.stringify({ requestId, event: 'tuition_webhook_revenue_error', error: revErr.message }));
     }
 
-    // Queue enrollment-complete on first payment
-    if (isFirstPayment && tuitionEnrollment.coach_id) {
+    // Auto-schedule tuition sessions
+    try {
+      let startAfter: string | undefined;
+      if (!isFirstPayment) {
+        const { data: lastSession } = await supabase
+          .from('scheduled_sessions')
+          .select('scheduled_date')
+          .eq('enrollment_id', tuitionEnrollmentId)
+          .order('scheduled_date', { ascending: false })
+          .limit(1)
+          .single();
+        startAfter = lastSession?.scheduled_date || undefined;
+      }
+
+      const schedResult = await scheduleTuitionSessions(
+        tuitionEnrollmentId, startAfter, supabase as any
+      );
+      console.log(JSON.stringify({
+        requestId, event: 'tuition_webhook_sessions_scheduled',
+        sessionsCreated: schedResult.sessionsCreated,
+        errors: schedResult.errors,
+      }));
+    } catch (schedErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'tuition_webhook_schedule_error', error: schedErr.message }));
+    }
+
+    // Queue enrollment-complete for calendar scheduling (all payments — new sessions need Calendar events)
+    if (tuitionEnrollment.coach_id) {
       try {
         const { data: coachData } = await supabase.from('coaches').select('id, name, email').eq('id', tuitionEnrollment.coach_id).single();
         if (coachData) {

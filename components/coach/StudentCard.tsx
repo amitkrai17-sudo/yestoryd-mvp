@@ -309,14 +309,14 @@ export default function StudentCard({ student, onSchedule, onRecordPayment }: St
           </button>
         )}
 
-        {/* Schedule Session — tuition only */}
+        {/* Add Extra Session — tuition only (sessions are now auto-scheduled) */}
         {isTuition && student.status === 'active' && (student.sessions_remaining ?? 0) > 0 && onSchedule && (
           <button
             onClick={() => onSchedule(student)}
-            className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl bg-[#FF0099] hover:bg-[#FF0099]/90 text-white text-xs font-semibold transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 h-10 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Schedule
+            Add Session
           </button>
         )}
 

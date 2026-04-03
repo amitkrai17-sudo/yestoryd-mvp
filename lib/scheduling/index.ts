@@ -48,9 +48,11 @@ export {
   type ScheduledSession,
   type EnrollmentSchedulerOptions,
   type EnrollmentSchedulerResult,
+  type TuitionSchedulerResult,
   // Functions
   scheduleEnrollmentSessions,
   createSessionsSimple,
+  scheduleTuitionSessions,
 } from './enrollment-scheduler';
 
 // Config Provider

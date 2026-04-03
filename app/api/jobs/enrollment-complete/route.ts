@@ -214,30 +214,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. Schedule Recall.ai bots for session recording (skip for tuition offline)
+    // 6. Schedule Recall.ai bots for session recording
+    //    (scheduleBotsForEnrollment already filters: only sessions with Meet links, skips offline)
     let botsScheduled = 0;
-    if (!isTuition) {
-      try {
-        console.log(JSON.stringify({ requestId, event: 'scheduling_recall_bots' }));
-        const botResult = await scheduleBotsForEnrollment(data.enrollmentId);
-        botsScheduled = botResult.botsCreated;
+    try {
+      console.log(JSON.stringify({ requestId, event: 'scheduling_recall_bots' }));
+      const botResult = await scheduleBotsForEnrollment(data.enrollmentId);
+      botsScheduled = botResult.botsCreated;
 
-        console.log(JSON.stringify({
-          requestId,
-          event: 'recall_bots_scheduled',
-          botsCreated: botResult.botsCreated,
-          errors: botResult.errors.length,
-        }));
-      } catch (botError: any) {
-        console.error(JSON.stringify({
-          requestId,
-          event: 'recall_bot_error',
-          error: botError.message,
-        }));
-        // Non-fatal - continue with enrollment
-      }
-    } else {
-      console.log(JSON.stringify({ requestId, event: 'recall_bots_skipped', reason: 'tuition enrollment' }));
+      console.log(JSON.stringify({
+        requestId,
+        event: 'recall_bots_scheduled',
+        botsCreated: botResult.botsCreated,
+        errors: botResult.errors.length,
+        isTuition,
+      }));
+    } catch (botError: any) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'recall_bot_error',
+        error: botError.message,
+      }));
+      // Non-fatal - continue with enrollment
     }
 
     // 7. Build program context for email
@@ -463,30 +461,42 @@ async function scheduleCalendarForExistingSessions(
 
     try {
       // Calculate session date based on session_number and week_number
-      const sessionDate = calculateSessionDate(
-        startDate,
-        session.session_number ?? 0,
-        session.week_number ?? 0,
-        session.session_type ?? 'coaching'
-      );
+      // Use session's existing date/time if set (tuition sessions have pre-set dates),
+      // otherwise calculate from start date + week number (coaching pattern)
+      let sessionDate: Date;
+      if (session.scheduled_date && session.scheduled_time && session.scheduled_time !== '00:00:00') {
+        sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}+05:30`);
+      } else {
+        sessionDate = calculateSessionDate(
+          startDate,
+          session.session_number ?? 0,
+          session.week_number ?? 0,
+          session.session_type ?? 'coaching'
+        );
+      }
 
+      const isTuitionSession = session.session_type === 'tuition';
       const isCoaching = session.session_type === 'coaching';
       // V2: Use session's own duration, then enrollment config, then legacy fallback
       const duration = session.duration_minutes
-        || (isCoaching ? (enrollment.session_duration_minutes || 45) : 30);
+        || (isCoaching ? (enrollment.session_duration_minutes || 45) : isTuitionSession ? 60 : 30);
 
       const endDate = new Date(sessionDate);
       endDate.setMinutes(endDate.getMinutes() + duration);
 
       // Build event title and description
       const isOffline = session.session_mode === 'offline';
-      const eventTitle = isCoaching
-        ? `Yestoryd: ${data.childName} - Coaching Session ${session.session_number}`
-        : `Yestoryd: ${data.childName} - Parent Check-in`;
+      const eventTitle = isTuitionSession
+        ? `Yestoryd: ${data.childName} - Tuition Session ${session.session_number}`
+        : isCoaching
+          ? `Yestoryd: ${data.childName} - Coaching Session ${session.session_number}`
+          : `Yestoryd: ${data.childName} - Parent Check-in`;
 
-      const baseDescription = isCoaching
-        ? `1:1 Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
-        : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
+      const baseDescription = isTuitionSession
+        ? `1:1 Tuition Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
+        : isCoaching
+          ? `1:1 Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
+          : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
 
       const eventDescription = isOffline
         ? baseDescription + '\n\n[OFFLINE SESSION - In Person]'
@@ -523,7 +533,7 @@ async function scheduleCalendarForExistingSessions(
               { method: 'popup', minutes: 30 },
             ],
           },
-          colorId: isCoaching ? '9' : '5',
+          colorId: isTuitionSession ? '6' : isCoaching ? '9' : '5', // 6=orange for tuition
         },
       });
 

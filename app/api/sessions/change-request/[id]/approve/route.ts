@@ -1,5 +1,13 @@
+// ============================================================
+// POST /api/sessions/change-request/[id]/approve
+// Coach or admin approves/rejects a parent reschedule request.
+// On approve: updates session, Calendar, Recall.ai, notifies parent.
+// ============================================================
+
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
+import { dispatch } from '@/lib/scheduling/orchestrator';
+import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,10 +30,10 @@ export async function POST(
 
     const supabase = getServiceSupabase();
 
-    // Get the change request
+    // Get the change request with session and enrollment details
     const { data: changeRequest } = await supabase
       .from('session_change_requests')
-      .select('*, scheduled_sessions(*)')
+      .select('*')
       .eq('id', requestId)
       .single();
 
@@ -43,35 +51,177 @@ export async function POST(
       .update({
         status: action === 'approve' ? 'approved' : 'rejected',
         rejection_reason: action === 'reject' ? (adminNotes || null) : null,
-        processed_by: auth.userId || null,
+        processed_by: auth.userId || auth.coachId || null,
         processed_at: new Date().toISOString(),
       })
       .eq('id', requestId);
 
     if (updateError) {
-      console.error('Error updating request:', updateError);
+      console.error('[change-request-approve] Update error:', updateError);
       return NextResponse.json({ error: 'Failed to update request' }, { status: 500 });
     }
 
-    // If approved, update the session
+    // Get session + child + parent info for notifications
+    const { data: session } = await supabase
+      .from('scheduled_sessions')
+      .select('id, child_id, coach_id, session_mode, google_event_id, enrollment_id, scheduled_date, scheduled_time')
+      .eq('id', changeRequest.session_id)
+      .single();
+
+    let childName = 'Student';
+    let parentPhone = '';
+    let parentName = '';
+    let parentId: string | null = null;
+
+    if (session?.child_id) {
+      const { data: child } = await supabase
+        .from('children')
+        .select('child_name, parent_name, parent_phone, parent_id')
+        .eq('id', session.child_id)
+        .single();
+      if (child) {
+        childName = child.child_name || 'Student';
+        parentName = child.parent_name || 'Parent';
+        parentPhone = child.parent_phone || '';
+        parentId = child.parent_id;
+      }
+    }
+
     if (action === 'approve') {
       if (changeRequest.change_type === 'cancel') {
+        // Cancel session
         await supabase
           .from('scheduled_sessions')
-          .update({ status: 'cancelled' })
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
           .eq('id', changeRequest.session_id);
+
       } else if (changeRequest.change_type === 'reschedule') {
-        const updateData: Record<string, string> = { status: 'rescheduled' };
+        // Reschedule: update session date/time + Calendar + Recall
         if (changeRequest.requested_new_datetime) {
           const dt = new Date(changeRequest.requested_new_datetime);
-          updateData.scheduled_date = dt.toISOString().split('T')[0];
-          updateData.scheduled_time = dt.toTimeString().slice(0, 5);
+          const newDate = dt.toISOString().split('T')[0];
+          const newTime = dt.toTimeString().slice(0, 5);
+
+          // Dispatch through orchestrator (handles Calendar + Recall updates)
+          const orchResult = await dispatch('session.reschedule', {
+            sessionId: changeRequest.session_id,
+            newDate,
+            newTime,
+            reason: changeRequest.reason || 'Approved reschedule',
+            requestId: randomUUID(),
+          });
+
+          if (!orchResult.success) {
+            // Fallback: update session directly
+            console.warn('[change-request-approve] Orchestrator failed, updating directly');
+            await supabase
+              .from('scheduled_sessions')
+              .update({
+                scheduled_date: newDate,
+                scheduled_time: newTime,
+                status: 'scheduled',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', changeRequest.session_id);
+          }
+        } else {
+          // No new date specified — just mark as approved (coach will schedule)
+          await supabase
+            .from('scheduled_sessions')
+            .update({ status: 'scheduled', updated_at: new Date().toISOString() })
+            .eq('id', changeRequest.session_id);
         }
-        await supabase
-          .from('scheduled_sessions')
-          .update(updateData)
-          .eq('id', changeRequest.session_id);
+
+        // Increment reschedules_used
+        const enrollmentId = changeRequest.enrollment_id || session?.enrollment_id;
+        if (enrollmentId) {
+          const { data: enrollment } = await supabase
+            .from('enrollments')
+            .select('reschedules_used')
+            .eq('id', enrollmentId)
+            .single();
+
+          if (enrollment) {
+            await supabase
+              .from('enrollments')
+              .update({ reschedules_used: (enrollment.reschedules_used || 0) + 1 })
+              .eq('id', enrollmentId);
+          }
+        }
       }
+
+      // Notify parent: approved
+      try {
+        const { sendCommunication } = await import('@/lib/communication');
+        const newDateStr = changeRequest.requested_new_datetime
+          ? new Date(changeRequest.requested_new_datetime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })
+          : 'a new date';
+
+        if (parentPhone) {
+          await sendCommunication({
+            templateCode: 'P15_reschedule_approved',
+            recipientType: 'parent',
+            recipientId: parentId || undefined,
+            recipientPhone: parentPhone,
+            recipientName: parentName,
+            variables: {
+              parent_first_name: parentName.split(' ')[0] || 'Parent',
+              child_name: childName,
+              new_date: newDateStr,
+            },
+            relatedEntityType: 'session',
+            relatedEntityId: changeRequest.session_id,
+          });
+        }
+      } catch (notifyErr) {
+        console.error('[change-request-approve] Parent notification failed:', notifyErr);
+      }
+
+    } else {
+      // Rejected — notify parent
+      try {
+        const { sendCommunication } = await import('@/lib/communication');
+        const originalDateStr = changeRequest.original_datetime
+          ? new Date(changeRequest.original_datetime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })
+          : 'the original date';
+
+        if (parentPhone) {
+          await sendCommunication({
+            templateCode: 'P16_reschedule_rejected',
+            recipientType: 'parent',
+            recipientId: parentId || undefined,
+            recipientPhone: parentPhone,
+            recipientName: parentName,
+            variables: {
+              parent_first_name: parentName.split(' ')[0] || 'Parent',
+              child_name: childName,
+              original_date: originalDateStr,
+            },
+            relatedEntityType: 'session',
+            relatedEntityId: changeRequest.session_id,
+          });
+        }
+      } catch (notifyErr) {
+        console.error('[change-request-approve] Rejection notification failed:', notifyErr);
+      }
+    }
+
+    // Activity log
+    try {
+      await supabase.from('activity_log').insert({
+        action: `reschedule_${action}d`,
+        user_email: auth.email || 'unknown',
+        user_type: auth.role || 'coach',
+        metadata: {
+          request_id: requestId,
+          session_id: changeRequest.session_id,
+          change_type: changeRequest.change_type,
+          child_name: childName,
+          admin_notes: adminNotes || null,
+        },
+      });
+    } catch {
+      // Non-blocking
     }
 
     return NextResponse.json({
@@ -79,7 +229,7 @@ export async function POST(
       status: action === 'approve' ? 'approved' : 'rejected',
     });
   } catch (error) {
-    console.error('Approve/reject error:', error);
+    console.error('[change-request-approve] Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

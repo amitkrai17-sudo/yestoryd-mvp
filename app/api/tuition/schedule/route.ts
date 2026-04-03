@@ -76,7 +76,17 @@ export async function POST(request: NextRequest) {
       .eq('enrollment_id', enrollmentId);
 
     const sessionNumber = (count || 0) + 1;
-    const duration = durationMinutes || 45;
+
+    // Duration SSOT: explicit param → tuition_onboarding → fallback 60
+    let duration = durationMinutes;
+    if (!duration) {
+      const { data: onboarding } = await supabase
+        .from('tuition_onboarding')
+        .select('session_duration_minutes')
+        .eq('enrollment_id', enrollmentId)
+        .single();
+      duration = onboarding?.session_duration_minutes || 60;
+    }
     const isOnline = mode === 'online';
 
     // Use existing scheduling infrastructure
@@ -85,7 +95,7 @@ export async function POST(request: NextRequest) {
         enrollmentId,
         childId: enrollment.child_id!,
         coachId: enrollment.coach_id!,
-        sessionType: 'coaching',
+        sessionType: 'tuition',
         sessionNumber,
         sessionTitle: `Tuition Session #${sessionNumber}`,
         durationMinutes: duration,

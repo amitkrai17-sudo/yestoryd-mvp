@@ -404,7 +404,14 @@ export default function CoachStudentsPage() {
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">Duration</label>
                   <div className="flex gap-2">
-                    {[30, 45, 60].map(d => (
+                    {(() => {
+                      const base = [30, 45, 60];
+                      const configured = scheduleTarget.default_duration_minutes;
+                      if (configured && configured > 60 && !base.includes(configured)) {
+                        base.push(configured);
+                      }
+                      return base;
+                    })().map(d => (
                       <button
                         key={d}
                         onClick={() => setScheduleDuration(d)}

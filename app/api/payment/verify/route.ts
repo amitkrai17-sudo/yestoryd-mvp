@@ -12,6 +12,7 @@ import { queueEnrollmentComplete } from '@/lib/qstash';
 import {
   scheduleEnrollmentSessions,
   createSessionsSimple,
+  scheduleTuitionSessions,
   type TimePreference,
 } from '@/lib/scheduling';
 import { loadPaymentConfig } from '@/lib/config/loader';
@@ -289,27 +290,63 @@ export async function POST(request: NextRequest) {
         console.error(JSON.stringify({ requestId, event: 'tuition_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
       }
 
-      // Queue enrollment-complete for calendar scheduling (only on first payment)
-      if (isFirstPayment) {
-        try {
-          const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
-          const { data: parentData } = await supabase.from('parents').select('name, email, phone').eq('id', tuitionEnrollment.parent_id!).single();
-
-          await queueEnrollmentComplete({
-            enrollmentId: tuitionEnrollmentId,
-            childId: tuitionEnrollment.child_id || '',
-            childName: body.childName,
-            parentId: tuitionEnrollment.parent_id || '',
-            parentEmail: parentData?.email || body.parentEmail,
-            parentName: parentData?.name || body.parentName,
-            parentPhone: parentData?.phone || body.parentPhone || '',
-            coachId: coach.id,
-            coachEmail: coach.email,
-            coachName: coach.name,
-          });
-        } catch (queueErr: unknown) {
-          console.error(JSON.stringify({ requestId, event: 'tuition_queue_error', error: queueErr instanceof Error ? queueErr.message : String(queueErr) }));
+      // Auto-schedule tuition sessions
+      let tuitionSessionsCreated = 0;
+      try {
+        // For renewals, schedule after last existing session
+        let startAfter: string | undefined;
+        if (!isFirstPayment) {
+          const { data: lastSession } = await supabase
+            .from('scheduled_sessions')
+            .select('scheduled_date')
+            .eq('enrollment_id', tuitionEnrollmentId)
+            .order('scheduled_date', { ascending: false })
+            .limit(1)
+            .single();
+          startAfter = lastSession?.scheduled_date || undefined;
         }
+
+        const schedResult = await scheduleTuitionSessions(
+          tuitionEnrollmentId, startAfter, supabase as any
+        );
+        tuitionSessionsCreated = schedResult.sessionsCreated;
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'tuition_sessions_auto_scheduled',
+          enrollmentId: tuitionEnrollmentId,
+          sessionsCreated: schedResult.sessionsCreated,
+          isFirstPayment,
+          errors: schedResult.errors,
+        }));
+      } catch (schedErr: unknown) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'tuition_auto_schedule_error',
+          error: schedErr instanceof Error ? schedErr.message : String(schedErr),
+        }));
+        // Non-fatal: coach can manually schedule as fallback
+      }
+
+      // Queue enrollment-complete for calendar scheduling (all payments — new sessions need Calendar events)
+      try {
+        const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
+        const { data: parentData } = await supabase.from('parents').select('name, email, phone').eq('id', tuitionEnrollment.parent_id!).single();
+
+        await queueEnrollmentComplete({
+          enrollmentId: tuitionEnrollmentId,
+          childId: tuitionEnrollment.child_id || '',
+          childName: body.childName,
+          parentId: tuitionEnrollment.parent_id || '',
+          parentEmail: parentData?.email || body.parentEmail,
+          parentName: parentData?.name || body.parentName,
+          parentPhone: parentData?.phone || body.parentPhone || '',
+          coachId: coach.id,
+          coachEmail: coach.email,
+          coachName: coach.name,
+        });
+      } catch (queueErr: unknown) {
+        console.error(JSON.stringify({ requestId, event: 'tuition_queue_error', error: queueErr instanceof Error ? queueErr.message : String(queueErr) }));
       }
 
       // Send payment confirmation WhatsApp + Email (all payments: first + renewals)
@@ -375,6 +412,7 @@ export async function POST(request: NextRequest) {
           new_balance: newRemaining,
           is_first_payment: isFirstPayment,
           payment_id: body.razorpay_payment_id,
+          sessions_auto_scheduled: tuitionSessionsCreated,
         },
       });
 

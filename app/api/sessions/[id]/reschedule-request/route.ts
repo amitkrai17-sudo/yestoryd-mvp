@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
-import { dispatch } from '@/lib/scheduling/orchestrator';
-import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,9 +58,18 @@ export async function POST(
       return NextResponse.json({ error: 'Only scheduled sessions can be rescheduled' }, { status: 400 });
     }
 
-    const sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
-    if (sessionDate <= new Date()) {
+    const sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}+05:30`);
+    const now = new Date();
+    if (sessionDate <= now) {
       return NextResponse.json({ error: 'Cannot reschedule past sessions' }, { status: 400 });
+    }
+
+    // 24-hour minimum notice enforcement
+    const hoursUntilSession = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (hoursUntilSession < 24) {
+      return NextResponse.json({
+        error: 'Reschedule requests must be made at least 24 hours before the session. Please contact your coach directly.',
+      }, { status: 400 });
     }
 
     // Check reschedule limits via enrollment
@@ -124,29 +130,13 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
     }
 
-    // If preferred date/time provided, dispatch reschedule through orchestrator
-    if (preferredDate && preferredTime) {
-      const newDateTime = new Date(`${preferredDate}T${preferredTime}`);
-      const orchestratorResult = await dispatch('session.reschedule', {
-        sessionId,
-        newDate: format(newDateTime, 'yyyy-MM-dd'),
-        newTime: format(newDateTime, 'HH:mm'),
-        reason,
-        requestId: randomUUID(),
-      });
-
-      if (!orchestratorResult.success) {
-        console.error('Orchestrator reschedule failed:', orchestratorResult.error);
-      }
-
-      return NextResponse.json({
-        success: true,
-        requestId: changeRequest?.id,
-        orchestratorResult: orchestratorResult.success,
-      });
-    }
-
-    return NextResponse.json({ success: true, requestId: changeRequest?.id });
+    // All reschedule requests go through coach approval — no auto-dispatch
+    return NextResponse.json({
+      success: true,
+      requestId: changeRequest?.id,
+      message: 'Reschedule request submitted. Your coach will review it shortly.',
+      status: 'pending',
+    });
   } catch (error) {
     console.error('Reschedule request error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

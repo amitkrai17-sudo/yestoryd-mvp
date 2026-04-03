@@ -1,14 +1,12 @@
 // ============================================================
-// POST /api/parent/session/reschedule — Self-service reschedule
-// Validates limits, updates session directly (no approval needed)
+// POST /api/parent/session/reschedule — Unified reschedule flow
+// Parent requests → coach approves. 24h minimum notice enforced.
+// Works for both coaching and tuition sessions.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
-import { dispatch } from '@/lib/scheduling/orchestrator';
-import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +39,7 @@ export async function POST(request: NextRequest) {
   // Verify parent
   const { data: parent } = await supabase
     .from('parents')
-    .select('id')
+    .select('id, name')
     .eq('email', auth.email ?? '')
     .single();
 
@@ -51,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   const { data: children } = await supabase
     .from('children')
-    .select('id')
+    .select('id, child_name')
     .eq('parent_id', parent.id);
 
   const childIds = (children || []).map((c) => c.id);
@@ -59,7 +57,7 @@ export async function POST(request: NextRequest) {
   // Verify session ownership and status
   const { data: session } = await supabase
     .from('scheduled_sessions')
-    .select('id, child_id, coach_id, status, scheduled_date, scheduled_time, enrollment_id')
+    .select('id, child_id, coach_id, status, scheduled_date, scheduled_time, enrollment_id, session_number')
     .eq('id', sessionId)
     .single();
 
@@ -71,100 +69,123 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Only scheduled sessions can be rescheduled' }, { status: 400 });
   }
 
-  const sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
-  if (sessionDate <= new Date()) {
-    return NextResponse.json({ error: 'Cannot reschedule past sessions' }, { status: 400 });
+  // 24-hour minimum notice enforcement
+  const sessionDateTime = new Date(`${session.scheduled_date}T${session.scheduled_time}+05:30`);
+  const now = new Date();
+  const hoursUntilSession = (sessionDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  if (hoursUntilSession < 24) {
+    return NextResponse.json({
+      error: 'Reschedule requests must be made at least 24 hours before the session. Please contact your coach directly.',
+    }, { status: 400 });
   }
 
   // New date must be in the future
-  const newDateTime = new Date(`${newDate}T${newTime}`);
-  if (newDateTime <= new Date()) {
+  const newDateTime = new Date(`${newDate}T${newTime}:00+05:30`);
+  if (newDateTime <= now) {
     return NextResponse.json({ error: 'New time must be in the future' }, { status: 400 });
   }
 
   // Check reschedule limits
   const enrollmentId = session.enrollment_id;
-  if (enrollmentId) {
-    const { data: enrollment } = await supabase
-      .from('enrollments')
-      .select('id, max_reschedules, reschedules_used')
-      .eq('id', enrollmentId)
-      .single();
+  if (!enrollmentId) {
+    return NextResponse.json({ error: 'Session has no enrollment' }, { status: 400 });
+  }
 
-    if (enrollment) {
-      const remaining = (enrollment.max_reschedules || 3) - (enrollment.reschedules_used || 0);
-      if (remaining <= 0) {
-        return NextResponse.json({
-          error: 'Reschedule limit reached. Please contact support.',
-          maxReschedules: enrollment.max_reschedules,
-          rescheduleUsed: enrollment.reschedules_used,
-        }, { status: 422 });
-      }
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select('id, max_reschedules, reschedules_used')
+    .eq('id', enrollmentId)
+    .single();
+
+  if (enrollment) {
+    const remaining = (enrollment.max_reschedules || 3) - (enrollment.reschedules_used || 0);
+    if (remaining <= 0) {
+      return NextResponse.json({
+        error: 'Reschedule limit reached. Please contact support.',
+        maxReschedules: enrollment.max_reschedules,
+        rescheduleUsed: enrollment.reschedules_used,
+      }, { status: 422 });
     }
   }
 
-  // Create change request record
-  const { data: changeRequest } = enrollmentId ? await supabase
+  // Check for existing pending request
+  const { data: existingRequest } = await supabase
+    .from('session_change_requests')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existingRequest) {
+    return NextResponse.json({ error: 'A pending reschedule request already exists for this session' }, { status: 409 });
+  }
+
+  // Create pending change request (coach must approve)
+  const { data: changeRequest, error: insertError } = await supabase
     .from('session_change_requests')
     .insert({
       session_id: sessionId,
       enrollment_id: enrollmentId,
       initiated_by: parent.id,
       change_type: 'reschedule',
-      status: 'approved',
+      status: 'pending',
       reason,
       original_datetime: `${session.scheduled_date}T${session.scheduled_time}`,
       requested_new_datetime: `${newDate}T${newTime}`,
-      processed_by: parent.id,
-      processed_at: new Date().toISOString(),
     })
     .select('id')
-    .single() : { data: null };
+    .single();
 
-  // Dispatch reschedule through orchestrator (updates Google Calendar etc.)
-  const requestId = randomUUID();
-  const orchestratorResult = await dispatch('session.reschedule', {
-    sessionId,
-    newDate: format(newDateTime, 'yyyy-MM-dd'),
-    newTime: format(newDateTime, 'HH:mm'),
-    reason,
-    requestId,
-  });
-
-  if (!orchestratorResult.success) {
-    // Fallback: update session directly
-    await supabase
-      .from('scheduled_sessions')
-      .update({
-        scheduled_date: newDate,
-        scheduled_time: newTime,
-        status: 'scheduled',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId);
+  if (insertError) {
+    console.error('[parent-reschedule] Insert error:', insertError);
+    return NextResponse.json({ error: 'Failed to create reschedule request' }, { status: 500 });
   }
 
-  // Increment reschedules_used
-  if (enrollmentId) {
-    const { data: e } = await supabase
-      .from('enrollments')
-      .select('reschedules_used')
-      .eq('id', enrollmentId)
+  // Notify coach via WhatsApp
+  try {
+    const childName = children?.find(c => c.id === session.child_id)?.child_name || 'Student';
+    const { sendCommunication } = await import('@/lib/communication');
+    const { data: coach } = await supabase
+      .from('coaches')
+      .select('id, name, email, phone')
+      .eq('id', session.coach_id!)
       .single();
 
-    if (e) {
-      await supabase
-        .from('enrollments')
-        .update({ reschedules_used: (e.reschedules_used || 0) + 1 })
-        .eq('id', enrollmentId);
+    if (coach?.phone) {
+      const oldDateStr = new Date(`${session.scheduled_date}T00:00:00+05:30`)
+        .toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      const newDateStr = new Date(`${newDate}T00:00:00+05:30`)
+        .toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+      await sendCommunication({
+        templateCode: 'C10_reschedule_request',
+        recipientType: 'coach',
+        recipientId: coach.id,
+        recipientPhone: coach.phone,
+        recipientEmail: coach.email,
+        recipientName: coach.name,
+        variables: {
+          coach_name: coach.name?.split(' ')[0] || 'Coach',
+          parent_name: parent.name?.split(' ')[0] || 'Parent',
+          child_name: childName,
+          old_date: oldDateStr,
+          new_date: newDateStr,
+          reason,
+        },
+        relatedEntityType: 'session',
+        relatedEntityId: sessionId,
+      });
     }
+  } catch (notifyErr) {
+    // Non-fatal — request was already created
+    console.error('[parent-reschedule] Coach notification failed:', notifyErr);
   }
 
   return NextResponse.json({
     success: true,
     requestId: changeRequest?.id,
-    newDate,
-    newTime,
-    orchestratorSuccess: orchestratorResult.success,
+    message: 'Reschedule request submitted. Your coach will review it shortly.',
+    status: 'pending',
   });
 }
