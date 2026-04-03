@@ -147,6 +147,8 @@ export interface StructuredCapturePayload {
   wordsStruggled?: string[];
   /** Words the child mastered */
   wordsMastered?: string[];
+  /** Coach voice note URL (optional audio debrief) */
+  coachVoiceNoteUrl?: string;
   /** Whether homework was assigned this session */
   homeworkAssigned?: boolean;
   /** Coach's homework description */

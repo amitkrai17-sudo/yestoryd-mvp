@@ -25,6 +25,7 @@ const CreateTuitionSchema = z.object({
   coachId: z.string().uuid(),
   adminNotes: z.string().max(1000).optional(),
   categorySlug: z.string().max(100).optional(),
+  batchId: z.string().uuid().optional(),
 });
 
 export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, requestId }) => {
@@ -66,28 +67,59 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+  // 4b. Resolve batch — join existing or create new
+  let batchId: string | null = null;
+  let batchMeetLink: string | null = null;
+  let batchCalendarEventId: string | null = null;
+
+  if (input.batchId) {
+    // Join existing batch — copy persistent classroom link from sibling
+    // Note: batch_id, meet_link, calendar_event_id added via migration — not in generated types
+    const { data: sibling } = await supabase
+      .from('tuition_onboarding')
+      .select('*')
+      .eq('batch_id' as any, input.batchId)
+      .limit(1)
+      .maybeSingle();
+
+    batchId = input.batchId;
+    // Copy persistent classroom link to new batch member
+    batchMeetLink = (sibling as any)?.meet_link ?? null;
+    batchCalendarEventId = (sibling as any)?.calendar_event_id ?? null;
+  }
+  // If no batchId provided, DEFAULT gen_random_uuid() on the column creates a new solo batch
+
   // 5. Insert tuition_onboarding
   const placeholderChildName = `Pending - ${input.parentPhone}`;
+  const insertData: Record<string, unknown> = {
+    child_name: placeholderChildName,
+    session_rate: input.sessionRate,
+    sessions_purchased: input.sessionsPurchased,
+    session_duration_minutes: input.sessionDurationMinutes,
+    sessions_per_week: input.sessionsPerWeek,
+    schedule_preference: input.schedulePreference ?? null,
+    default_session_mode: input.defaultSessionMode,
+    parent_phone: input.parentPhone,
+    coach_id: input.coachId,
+    admin_notes: input.adminNotes ?? null,
+    admin_filled_by: auth.email ?? null,
+    admin_filled_at: new Date().toISOString(),
+    parent_form_token: token,
+    parent_form_token_expires_at: expiresAt.toISOString(),
+    status: 'parent_pending',
+    category_id: categoryId,
+  };
+
+  // Set batch fields if joining existing batch
+  if (batchId) {
+    insertData.batch_id = batchId;
+    if (batchMeetLink) insertData.meet_link = batchMeetLink;
+    if (batchCalendarEventId) insertData.calendar_event_id = batchCalendarEventId;
+  }
+
   const { data: onboarding, error: insertErr } = await supabase
     .from('tuition_onboarding')
-    .insert({
-      child_name: placeholderChildName,
-      session_rate: input.sessionRate,
-      sessions_purchased: input.sessionsPurchased,
-      session_duration_minutes: input.sessionDurationMinutes,
-      sessions_per_week: input.sessionsPerWeek,
-      schedule_preference: input.schedulePreference ?? null,
-      default_session_mode: input.defaultSessionMode,
-      parent_phone: input.parentPhone,
-      coach_id: input.coachId,
-      admin_notes: input.adminNotes ?? null,
-      admin_filled_by: auth.email ?? null,
-      admin_filled_at: new Date().toISOString(),
-      parent_form_token: token,
-      parent_form_token_expires_at: expiresAt.toISOString(),
-      status: 'parent_pending',
-      category_id: categoryId,
-    })
+    .insert(insertData as any)
     .select('id')
     .single();
 

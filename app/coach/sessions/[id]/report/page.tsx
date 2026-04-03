@@ -1,3 +1,7 @@
+// DEPRECATED: All session completion now uses StructuredCaptureForm
+// → /coach/sessions page → Mark as Complete / Report button → StructuredCaptureForm modal
+// This page is kept for historical compatibility. No UI links here anymore.
+//
 // app/coach/sessions/[id]/report/page.tsx
 // Post-session report form for offline sessions
 // Mobile-first — 80%+ users are on phone after a home visit

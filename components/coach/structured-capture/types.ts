@@ -142,6 +142,9 @@ export interface CaptureFormState {
   wordsStruggled: string[];
   wordsMastered: string[];
 
+  // Card 4c: Coach Voice Note
+  coachVoiceNoteUrl: string;
+
   // Card 5: Engagement & Submit
   engagementLevel: EngagementLevel | null;
   contextTags: string[];
@@ -164,6 +167,7 @@ export function createInitialCaptureState(): CaptureFormState {
     customStruggleNote: '',
     wordsStruggled: [],
     wordsMastered: [],
+    coachVoiceNoteUrl: '',
     engagementLevel: null,
     contextTags: [],
     homeworkAssigned: false,

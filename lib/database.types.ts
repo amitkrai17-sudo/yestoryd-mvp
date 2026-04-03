@@ -11062,6 +11062,7 @@ export type Database = {
           attendance_summary: Json | null
           audio_storage_path: string | null
           audio_url: string | null
+          batch_id: string | null
           book_id: string | null
           bot_error_at: string | null
           bot_error_reason: string | null
@@ -11196,6 +11197,7 @@ export type Database = {
           attendance_summary?: Json | null
           audio_storage_path?: string | null
           audio_url?: string | null
+          batch_id?: string | null
           book_id?: string | null
           bot_error_at?: string | null
           bot_error_reason?: string | null
@@ -11330,6 +11332,7 @@ export type Database = {
           attendance_summary?: Json | null
           audio_storage_path?: string | null
           audio_url?: string | null
+          batch_id?: string | null
           book_id?: string | null
           bot_error_at?: string | null
           bot_error_reason?: string | null
@@ -12459,6 +12462,7 @@ export type Database = {
           label: string
           label_hindi: string | null
           parent_label: string | null
+          rubric: Json | null
           scope: string
           slug: string
           sort_order: number
@@ -12473,6 +12477,7 @@ export type Database = {
           label: string
           label_hindi?: string | null
           parent_label?: string | null
+          rubric?: Json | null
           scope?: string
           slug: string
           sort_order?: number
@@ -12487,6 +12492,7 @@ export type Database = {
           label?: string
           label_hindi?: string | null
           parent_label?: string | null
+          rubric?: Json | null
           scope?: string
           slug?: string
           sort_order?: number
@@ -12539,6 +12545,7 @@ export type Database = {
           child_id: string
           coach_confirmed: boolean | null
           coach_id: string
+          coach_voice_note_url: string | null
           context_tags: string[] | null
           created_at: string | null
           custom_strength_note: string | null
@@ -12556,6 +12563,8 @@ export type Database = {
           struggle_observations: string[] | null
           submitted_at: string | null
           voice_input_url: string | null
+          words_mastered: string[] | null
+          words_struggled: string[] | null
         }
         Insert: {
           ai_prefilled?: boolean | null
@@ -12568,6 +12577,7 @@ export type Database = {
           child_id: string
           coach_confirmed?: boolean | null
           coach_id: string
+          coach_voice_note_url?: string | null
           context_tags?: string[] | null
           created_at?: string | null
           custom_strength_note?: string | null
@@ -12585,6 +12595,8 @@ export type Database = {
           struggle_observations?: string[] | null
           submitted_at?: string | null
           voice_input_url?: string | null
+          words_mastered?: string[] | null
+          words_struggled?: string[] | null
         }
         Update: {
           ai_prefilled?: boolean | null
@@ -12597,6 +12609,7 @@ export type Database = {
           child_id?: string
           coach_confirmed?: boolean | null
           coach_id?: string
+          coach_voice_note_url?: string | null
           context_tags?: string[] | null
           created_at?: string | null
           custom_strength_note?: string | null
@@ -12614,6 +12627,8 @@ export type Database = {
           struggle_observations?: string[] | null
           submitted_at?: string | null
           voice_input_url?: string | null
+          words_mastered?: string[] | null
+          words_struggled?: string[] | null
         }
         Relationships: [
           {
@@ -13020,6 +13035,8 @@ export type Database = {
           admin_filled_at: string | null
           admin_filled_by: string | null
           admin_notes: string | null
+          batch_id: string | null
+          calendar_event_id: string | null
           category_id: string | null
           child_approximate_age: number | null
           child_id: string | null
@@ -13029,6 +13046,7 @@ export type Database = {
           default_session_mode: string | null
           enrollment_id: string | null
           id: string
+          meet_link: string | null
           parent_form_completed_at: string | null
           parent_form_token: string
           parent_form_token_expires_at: string
@@ -13047,6 +13065,8 @@ export type Database = {
           admin_filled_at?: string | null
           admin_filled_by?: string | null
           admin_notes?: string | null
+          batch_id?: string | null
+          calendar_event_id?: string | null
           category_id?: string | null
           child_approximate_age?: number | null
           child_id?: string | null
@@ -13056,6 +13076,7 @@ export type Database = {
           default_session_mode?: string | null
           enrollment_id?: string | null
           id?: string
+          meet_link?: string | null
           parent_form_completed_at?: string | null
           parent_form_token: string
           parent_form_token_expires_at: string
@@ -13074,6 +13095,8 @@ export type Database = {
           admin_filled_at?: string | null
           admin_filled_by?: string | null
           admin_notes?: string | null
+          batch_id?: string | null
+          calendar_event_id?: string | null
           category_id?: string | null
           child_approximate_age?: number | null
           child_id?: string | null
@@ -13083,6 +13106,7 @@ export type Database = {
           default_session_mode?: string | null
           enrollment_id?: string | null
           id?: string
+          meet_link?: string | null
           parent_form_completed_at?: string | null
           parent_form_token?: string
           parent_form_token_expires_at?: string

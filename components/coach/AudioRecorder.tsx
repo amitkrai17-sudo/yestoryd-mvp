@@ -228,7 +228,8 @@ export function AudioRecorder({
       const result = await response.json();
       setUploadProgress(100);
       setState('uploaded');
-      onUploadComplete(result.storage_path);
+      // Use full public URL for immediate playback, fall back to storage path
+      onUploadComplete(result.public_url || result.storage_path);
     } catch (err) {
       setState('recorded');
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');

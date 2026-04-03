@@ -96,16 +96,19 @@ export async function POST(
       return NextResponse.json({ error: 'Session does not belong to this coach' }, { status: 403 });
     }
 
-    if (session.session_mode !== 'offline') {
-      return NextResponse.json({ error: 'Audio upload is only for offline sessions' }, { status: 400 });
-    }
-
-    const approvedStatuses = ['approved', 'auto_approved'];
-    if (!session.offline_request_status || !approvedStatuses.includes(session.offline_request_status)) {
-      return NextResponse.json(
-        { error: 'Offline session must be approved before uploading audio' },
-        { status: 400 }
-      );
+    // Voice notes allowed for all sessions (structured capture use case).
+    // Reading clips restricted to offline approved sessions.
+    if (type === 'reading_clip') {
+      if (session.session_mode !== 'offline') {
+        return NextResponse.json({ error: 'Reading clip upload is only for offline sessions' }, { status: 400 });
+      }
+      const approvedStatuses = ['approved', 'auto_approved'];
+      if (!session.offline_request_status || !approvedStatuses.includes(session.offline_request_status)) {
+        return NextResponse.json(
+          { error: 'Offline session must be approved before uploading audio' },
+          { status: 400 }
+        );
+      }
     }
 
     // 5. Upload to Supabase Storage
@@ -154,10 +157,16 @@ export async function POST(
       mimeType: file.type,
     }));
 
+    // Build full public URL for immediate playback
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(storagePath);
+
     return NextResponse.json({
       success: true,
       type,
       storage_path: storagePath,
+      public_url: urlData.publicUrl,
       size_bytes: file.size,
     });
   } catch (error: unknown) {

@@ -1,4 +1,8 @@
 // ============================================================
+// DEPRECATED: All session completion now uses StructuredCaptureForm
+// → POST /api/intelligence/capture → POST /api/coach/sessions/[id]/complete
+// This route is kept for historical compatibility but no UI points to it.
+// ============================================================
 // FILE: app/api/coach/sessions/[id]/offline-report/route.ts
 // PURPOSE: Coach submits offline session report — converges with
 //          the online companion panel pipeline. Produces identical

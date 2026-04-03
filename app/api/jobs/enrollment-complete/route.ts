@@ -420,16 +420,322 @@ async function scheduleCalendarForExistingSessions(
   }
 
   // 3. Initialize Google Calendar API (coach as organizer)
-  const auth = new google.auth.JWT(
+  const calAuth = new google.auth.JWT(
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     undefined,
     process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     ['https://www.googleapis.com/auth/calendar'],
     data.coachEmail // Impersonate coach so they become the organizer
   );
-  const calendar = google.calendar({ version: 'v3', auth });
+  const calendar = google.calendar({ version: 'v3', auth: calAuth });
 
-  // 4. DETERMINE START DATE for scheduling
+  // ================================================================
+  // 3b. BATCH CALENDAR HANDLING (tuition batches)
+  // ================================================================
+  // Check if this enrollment has a tuition_onboarding with a batch_id.
+  // If so, handle Calendar events at batch level (one recurring event per batch)
+  // rather than per-session.
+  const adminSupabase = createAdminClient();
+  const { data: onboardingBatch } = await adminSupabase
+    .from('tuition_onboarding')
+    .select('*')
+    .eq('enrollment_id', enrollmentId)
+    .single();
+
+  const batchId = onboardingBatch?.batch_id ?? null;
+  const isTuitionBatch = batchId !== null && existingSessions.some(s => s.session_type === 'tuition');
+
+  if (isTuitionBatch && onboardingBatch) {
+    try {
+      let batchMeetLink = onboardingBatch.meet_link;
+      let batchCalendarEventId = onboardingBatch.calendar_event_id;
+
+      if (!batchMeetLink) {
+        // Check if a sibling in the same batch already has a meet_link
+        const { data: sibling } = await adminSupabase
+          .from('tuition_onboarding')
+          .select('meet_link, calendar_event_id')
+          .eq('batch_id', batchId)
+          .not('meet_link', 'is', null)
+          .limit(1)
+          .maybeSingle();
+
+        if (sibling?.meet_link) {
+          // Copy persistent classroom link from sibling
+          batchMeetLink = sibling.meet_link;
+          batchCalendarEventId = sibling.calendar_event_id;
+
+          // Update this onboarding record with the batch's classroom link
+          await adminSupabase
+            .from('tuition_onboarding')
+            .update({ meet_link: batchMeetLink, calendar_event_id: batchCalendarEventId })
+            .eq('id', onboardingBatch.id);
+
+          // Add this child's parent as attendee to existing Calendar event
+          if (batchCalendarEventId) {
+            try {
+              const existingEvent = await calendar.events.get({
+                calendarId: data.coachEmail,
+                eventId: batchCalendarEventId,
+              });
+
+              const currentAttendees = existingEvent.data.attendees || [];
+              const parentAlreadyAdded = currentAttendees.some(
+                (a: any) => a.email === data.parentEmail
+              );
+
+              if (!parentAlreadyAdded) {
+                await calendar.events.patch({
+                  calendarId: data.coachEmail,
+                  eventId: batchCalendarEventId,
+                  sendUpdates: 'all',
+                  requestBody: {
+                    attendees: [
+                      ...currentAttendees,
+                      { email: data.parentEmail, displayName: data.parentName },
+                    ],
+                  },
+                });
+                console.log(JSON.stringify({
+                  requestId,
+                  event: 'batch_attendee_added',
+                  batchId,
+                  parentEmail: data.parentEmail,
+                  calendarEventId: batchCalendarEventId,
+                }));
+              }
+            } catch (attendeeErr: any) {
+              console.error(JSON.stringify({
+                requestId,
+                event: 'batch_attendee_add_error',
+                error: attendeeErr.message,
+              }));
+            }
+          }
+        } else {
+          // First payment in this batch — create recurring Calendar event
+          // Parse schedule_preference for recurrence rule
+          const DAY_MAP: Record<string, string> = {
+            Mon: 'MO', Tue: 'TU', Wed: 'WE', Thu: 'TH', Fri: 'FR', Sat: 'SA', Sun: 'SU',
+            Monday: 'MO', Tuesday: 'TU', Wednesday: 'WE', Thursday: 'TH', Friday: 'FR', Saturday: 'SA', Sunday: 'SU',
+          };
+
+          let rruleDays = 'MO,FR'; // default
+          let startHour = 16; // default 4 PM
+          let startMinute = 0;
+
+          if (onboardingBatch.schedule_preference) {
+            try {
+              const pref = JSON.parse(onboardingBatch.schedule_preference);
+              if (Array.isArray(pref.days) && pref.days.length > 0) {
+                rruleDays = pref.days.map((d: string) => DAY_MAP[d] || d.slice(0, 2).toUpperCase()).join(',');
+              }
+              // Parse preferredTime (e.g., "7 to 8 pm", "5:30 PM", "16:00")
+              if (pref.preferredTime) {
+                const match = pref.preferredTime.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+                if (match) {
+                  startHour = parseInt(match[1]);
+                  startMinute = parseInt(match[2] || '0');
+                  if (match[3]?.toLowerCase() === 'pm' && startHour < 12) startHour += 12;
+                  if (match[3]?.toLowerCase() === 'am' && startHour === 12) startHour = 0;
+                }
+              }
+            } catch { /* use defaults */ }
+          }
+
+          const duration = onboardingBatch.session_duration_minutes || 60;
+          const isOffline = onboardingBatch.default_session_mode === 'offline';
+
+          // Fetch subject label for title
+          let subjectLabel = 'Tuition';
+          if (onboardingBatch.category_id) {
+            const { data: cat } = await adminSupabase
+              .from('skill_categories')
+              .select('label')
+              .eq('id', onboardingBatch.category_id)
+              .single();
+            if (cat?.label) subjectLabel = cat.label;
+          }
+
+          // Gather ALL parent emails in this batch for attendees
+          const { data: batchSiblings } = await adminSupabase
+            .from('tuition_onboarding')
+            .select('enrollment_id, child_name')
+            .eq('batch_id', batchId);
+
+          const attendeeEmails: { email: string; displayName: string }[] = [];
+          for (const sib of batchSiblings || []) {
+            if (!sib.enrollment_id) continue;
+            const { data: enr } = await adminSupabase
+              .from('enrollments')
+              .select('parent_id')
+              .eq('id', sib.enrollment_id)
+              .single();
+            if (enr?.parent_id) {
+              const { data: parent } = await adminSupabase
+                .from('parents')
+                .select('email, name')
+                .eq('id', enr.parent_id)
+                .single();
+              if (parent?.email && !attendeeEmails.some(a => a.email === parent.email)) {
+                attendeeEmails.push({ email: parent.email, displayName: parent.name || 'Parent' });
+              }
+            }
+          }
+
+          // Add support email for recording
+          attendeeEmails.push({ email: COMPANY_CONFIG.supportEmail, displayName: 'Yestoryd (Recording)' });
+
+          // Build child names for title
+          const childNames = (batchSiblings || []).map(s => s.child_name).filter(Boolean);
+          const eventTitle = `Yestoryd: ${subjectLabel} — ${data.coachName}`;
+          const eventDescription = `${subjectLabel} session\nCoach: ${data.coachName}\nStudents: ${childNames.join(', ')}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
+
+          // Find the first session date as the recurring event start
+          const firstSession = existingSessions.find(s => s.scheduled_date);
+          const eventStartDate = firstSession?.scheduled_date || new Date().toISOString().split('T')[0];
+          const eventStart = new Date(`${eventStartDate}T${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}:00+05:30`);
+          const eventEnd = new Date(eventStart);
+          eventEnd.setMinutes(eventEnd.getMinutes() + duration);
+
+          const recurringEvent = await calendar.events.insert({
+            calendarId: data.coachEmail,
+            conferenceDataVersion: isOffline ? 0 : 1,
+            sendUpdates: 'all',
+            requestBody: {
+              summary: eventTitle,
+              description: eventDescription,
+              start: { dateTime: eventStart.toISOString(), timeZone: 'Asia/Kolkata' },
+              end: { dateTime: eventEnd.toISOString(), timeZone: 'Asia/Kolkata' },
+              recurrence: [`RRULE:FREQ=WEEKLY;BYDAY=${rruleDays}`],
+              attendees: attendeeEmails,
+              ...(isOffline ? {} : {
+                conferenceData: {
+                  createRequest: {
+                    requestId: `yestoryd-batch-${batchId}-${Date.now()}`,
+                    conferenceSolutionKey: { type: 'hangoutsMeet' },
+                  },
+                },
+              }),
+              reminders: {
+                useDefault: false,
+                overrides: [
+                  { method: 'email', minutes: 24 * 60 },
+                  { method: 'email', minutes: 60 },
+                  { method: 'popup', minutes: 30 },
+                ],
+              },
+              colorId: '6', // Orange for tuition
+            },
+          });
+
+          batchMeetLink = isOffline ? '' : (recurringEvent.data.conferenceData?.entryPoints?.find(
+            (ep: any) => ep.entryPointType === 'video'
+          )?.uri || '');
+          batchCalendarEventId = recurringEvent.data.id || null;
+
+          // Store persistent classroom link on ALL tuition_onboarding records in this batch
+          if (batchCalendarEventId) {
+            await adminSupabase
+              .from('tuition_onboarding')
+              .update({
+                meet_link: batchMeetLink,
+                calendar_event_id: batchCalendarEventId,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('batch_id', batchId);
+          }
+
+          console.log(JSON.stringify({
+            requestId,
+            event: 'batch_recurring_calendar_created',
+            batchId,
+            calendarEventId: batchCalendarEventId,
+            meetLink: batchMeetLink,
+            rrule: `RRULE:FREQ=WEEKLY;BYDAY=${rruleDays}`,
+            childCount: childNames.length,
+          }));
+        }
+      } else {
+        // meet_link already set on this record — just add parent as attendee if needed
+        if (batchCalendarEventId) {
+          try {
+            const existingEvent = await calendar.events.get({
+              calendarId: data.coachEmail,
+              eventId: batchCalendarEventId,
+            });
+            const currentAttendees = existingEvent.data.attendees || [];
+            if (!currentAttendees.some((a: any) => a.email === data.parentEmail)) {
+              await calendar.events.patch({
+                calendarId: data.coachEmail,
+                eventId: batchCalendarEventId,
+                sendUpdates: 'all',
+                requestBody: {
+                  attendees: [
+                    ...currentAttendees,
+                    { email: data.parentEmail, displayName: data.parentName },
+                  ],
+                },
+              });
+            }
+          } catch (attendeeErr: any) {
+            console.error(JSON.stringify({ requestId, event: 'batch_attendee_add_error', error: attendeeErr.message }));
+          }
+        }
+      }
+
+      // Apply batch meet_link to all sessions that need it
+      // Copy persistent classroom link to session (tuition_onboarding.meet_link → scheduled_sessions.google_meet_link)
+      if (batchMeetLink || batchCalendarEventId) {
+        const updateFields: Record<string, unknown> = {
+          status: 'scheduled',
+          updated_at: new Date().toISOString(),
+        };
+        if (batchMeetLink) updateFields.google_meet_link = batchMeetLink;
+        if (batchCalendarEventId) updateFields.google_event_id = batchCalendarEventId;
+
+        await supabase
+          .from('scheduled_sessions')
+          .update(updateFields)
+          .eq('enrollment_id', enrollmentId)
+          .is('google_event_id', null);
+
+        console.log(JSON.stringify({
+          requestId,
+          event: 'batch_sessions_updated_with_classroom',
+          enrollmentId,
+          meetLink: batchMeetLink,
+          sessionsCount: sessionsNeedingCalendar.length,
+        }));
+      }
+
+      // Return all sessions for email
+      return {
+        sessionsUpdated: existingSessions.length,
+        sessions: existingSessions.map(s => ({
+          id: s.id,
+          sessionNumber: s.session_number ?? 0,
+          type: s.session_type ?? '',
+          date: s.scheduled_date ?? '',
+          meetLink: batchMeetLink || s.google_meet_link || '',
+          eventId: batchCalendarEventId || s.google_event_id || '',
+        })),
+        errors: [],
+      };
+    } catch (batchCalErr: any) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'batch_calendar_error',
+        batchId,
+        error: batchCalErr.message,
+      }));
+      // Fall through to per-session Calendar creation as fallback
+    }
+  }
+
+  // ================================================================
+  // 4. PER-SESSION CALENDAR EVENTS (non-batch path, or batch fallback)
+  // ================================================================
   const startDate = enrollment.preference_start_date
     ? new Date(enrollment.preference_start_date)
     : enrollment.program_start

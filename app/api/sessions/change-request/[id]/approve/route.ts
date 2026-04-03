@@ -62,9 +62,10 @@ export async function POST(
     }
 
     // Get session + child + parent info for notifications
+    // select('*') to include batch_id (added via migration, not in generated types)
     const { data: session } = await supabase
       .from('scheduled_sessions')
-      .select('id, child_id, coach_id, session_mode, google_event_id, enrollment_id, scheduled_date, scheduled_time')
+      .select('*')
       .eq('id', changeRequest.session_id)
       .single();
 
@@ -123,6 +124,76 @@ export async function POST(
                 updated_at: new Date().toISOString(),
               })
               .eq('id', changeRequest.session_id);
+          }
+          // Batch reschedule: move all sibling sessions at the same original datetime
+          const batchId = (session as any)?.batch_id as string | null;
+          if (batchId && session) {
+            try {
+              const originalDate = session.scheduled_date;
+              const originalTime = session.scheduled_time;
+
+              const { data: siblings } = await supabase
+                .from('scheduled_sessions')
+                .select('id, child_id')
+                .eq('batch_id' as any, batchId)
+                .eq('scheduled_date', originalDate!)
+                .eq('scheduled_time', originalTime!)
+                .neq('id', changeRequest.session_id);
+
+              if (siblings && siblings.length > 0) {
+                // Move all siblings to the new datetime
+                await supabase
+                  .from('scheduled_sessions')
+                  .update({
+                    scheduled_date: newDate,
+                    scheduled_time: newTime,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('batch_id' as any, batchId)
+                  .eq('scheduled_date', originalDate!)
+                  .eq('scheduled_time', originalTime!)
+                  .neq('id', changeRequest.session_id);
+
+                console.log(`[change-request-approve] Batch reschedule: moved ${siblings.length} siblings for batch ${batchId}`);
+
+                // Notify all sibling parents
+                try {
+                  const { sendCommunication } = await import('@/lib/communication');
+                  const newDateStr = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' });
+
+                  for (const sib of siblings) {
+                    if (!sib.child_id) continue;
+                    const { data: sibChild } = await supabase
+                      .from('children')
+                      .select('child_name, parent_phone, parent_name, parent_id')
+                      .eq('id', sib.child_id)
+                      .single();
+
+                    if (sibChild?.parent_phone) {
+                      await sendCommunication({
+                        templateCode: 'P15_reschedule_approved',
+                        recipientType: 'parent',
+                        recipientId: sibChild.parent_id || undefined,
+                        recipientPhone: sibChild.parent_phone,
+                        recipientName: sibChild.parent_name || undefined,
+                        variables: {
+                          parent_first_name: (sibChild.parent_name || 'Parent').split(' ')[0],
+                          child_name: sibChild.child_name || 'your child',
+                          new_date: newDateStr,
+                        },
+                        relatedEntityType: 'session',
+                        relatedEntityId: sib.id,
+                      });
+                    }
+                  }
+                } catch (sibNotifyErr) {
+                  console.error('[change-request-approve] Batch sibling notification failed:', sibNotifyErr);
+                }
+              }
+            } catch (batchErr) {
+              console.error('[change-request-approve] Batch reschedule failed:', batchErr);
+              // Non-fatal — primary session was already rescheduled
+            }
           }
         } else {
           // No new date specified — just mark as approved (coach will schedule)

@@ -194,6 +194,7 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
                 onUpdate={updateState}
                 observations={observations}
                 loading={loadingObservations}
+                sessionId={sessionId}
               />
             )}
             {currentCard === 4 && (

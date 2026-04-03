@@ -139,19 +139,10 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
 
   try {
     // Get all sessions for this enrollment that have Google Meet links
+    // Select includes batch_id (added via migration, not yet in generated types)
     const { data: sessions, error } = await supabase
       .from('scheduled_sessions')
-      .select(`
-        id,
-        child_id,
-        coach_id,
-        session_type,
-        scheduled_date,
-        scheduled_time,
-        google_meet_link,
-        session_mode,
-        children (name)
-      `)
+      .select('*')
       .eq('enrollment_id', enrollmentId)
       .not('google_meet_link', 'is', null);
 
@@ -167,11 +158,14 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
 
     console.log(`[SCHEDULE] Scheduling ${sessions.length} Recall bots for enrollment ${enrollmentId}`);
 
+    // Track batch+datetime combos that already have a bot scheduled (avoid duplicates)
+    const batchBotsScheduled = new Set<string>();
+
     // Create bot for each session
     for (const session of sessions) {
       // Combine date and time to get scheduled datetime
       const scheduledDateTime = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
-      
+
       // Skip sessions in the past
       if (scheduledDateTime < new Date()) {
         console.log(`Skipping past session: ${session.id}`);
@@ -188,7 +182,24 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
         continue;
       }
 
-      const childName = (session.children as any)?.name || 'Child';
+      // Batch dedup: one Recall bot per batch per datetime
+      // Sessions sharing a batch_id + date + time share one Meet link — only need one bot
+      const batchId = (session as any).batch_id as string | null;
+      if (batchId) {
+        const batchKey = `${batchId}:${session.scheduled_date}:${session.scheduled_time}`;
+        if (batchBotsScheduled.has(batchKey)) {
+          console.log(`[SCHEDULE] Skipping batch sibling — bot already scheduled for batch ${batchId} at ${session.scheduled_date} ${session.scheduled_time}`);
+          continue;
+        }
+        batchBotsScheduled.add(batchKey);
+      }
+
+      // Fetch child name (select('*') doesn't include joins)
+      let childName = 'Child';
+      if (session.child_id) {
+        const { data: child } = await supabase.from('children').select('name').eq('id', session.child_id).single();
+        childName = child?.name || 'Child';
+      }
 
       const result = await createRecallBot({
         sessionId: session.id,

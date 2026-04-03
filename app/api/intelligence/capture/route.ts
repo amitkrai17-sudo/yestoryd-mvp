@@ -124,6 +124,7 @@ function validatePayload(body: unknown): { valid: true; data: StructuredCaptureP
       aiPrefilled: typeof b.aiPrefilled === 'boolean' ? b.aiPrefilled : undefined,
       coachConfirmed: typeof b.coachConfirmed === 'boolean' ? b.coachConfirmed : undefined,
       voiceInputUrl: typeof b.voiceInputUrl === 'string' ? b.voiceInputUrl : undefined,
+      coachVoiceNoteUrl: typeof b.coachVoiceNoteUrl === 'string' ? b.coachVoiceNoteUrl : undefined,
       wordsStruggled: Array.isArray(b.wordsStruggled) ? b.wordsStruggled.filter((w): w is string => typeof w === 'string') : undefined,
       wordsMastered: Array.isArray(b.wordsMastered) ? b.wordsMastered.filter((w): w is string => typeof w === 'string') : undefined,
       homeworkAssigned: typeof b.homeworkAssigned === 'boolean' ? b.homeworkAssigned : undefined,
@@ -237,6 +238,7 @@ export async function POST(request: NextRequest) {
         child_artifact_analysis: (payload.childArtifact?.analysis as any) || null,
         words_struggled: payload.wordsStruggled || [],
         words_mastered: payload.wordsMastered || [],
+        coach_voice_note_url: payload.coachVoiceNoteUrl || null,
         intelligence_score: score,
         submitted_at: new Date().toISOString(),
       } as any)

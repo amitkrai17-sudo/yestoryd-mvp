@@ -18,6 +18,7 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
       session_rate, sessions_purchased, session_duration_minutes, sessions_per_week,
       default_session_mode, schedule_preference, admin_notes,
       coach_id, enrollment_id, child_id, parent_id,
+      batch_id,
       status, admin_filled_at, parent_form_completed_at,
       created_at, updated_at
     `)

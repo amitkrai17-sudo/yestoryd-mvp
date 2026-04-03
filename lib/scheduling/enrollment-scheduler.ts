@@ -870,16 +870,20 @@ export async function scheduleTuitionSessions(
       return { success: true, sessionsCreated: 0, errors: ['All remaining sessions are already scheduled'] };
     }
 
-    // 2. Fetch tuition_onboarding config
+    // 2. Fetch tuition_onboarding config (including batch fields)
+    // Note: batch_id, meet_link added via migration — not in generated types yet, use select('*')
     const { data: onboarding } = await supabase
       .from('tuition_onboarding')
-      .select('schedule_preference, sessions_per_week, session_duration_minutes, default_session_mode')
+      .select('*')
       .eq('enrollment_id', enrollmentId)
       .single();
 
     const sessionsPerWeek = onboarding?.sessions_per_week || 2;
     const durationMinutes = onboarding?.session_duration_minutes || 60;
     const defaultMode = onboarding?.default_session_mode || 'offline';
+    const batchId = (onboarding as any)?.batch_id as string | null;
+    // Persistent classroom link from tuition_onboarding (may be null for new/offline batches)
+    const batchMeetLink = (onboarding as any)?.meet_link as string | null;
 
     // 3. Parse schedule_preference
     let preferredDays: number[] = [];
@@ -950,7 +954,7 @@ export async function scheduleTuitionSessions(
         if (preferredDays.includes(candidateDay)) {
           const dateStr = candidate.toISOString().split('T')[0];
 
-          sessionsToCreate.push({
+          const sessionData: ScheduledSession & Record<string, unknown> = {
             enrollment_id: enrollmentId,
             child_id: enrollment.child_id!,
             coach_id: enrollment.coach_id!,
@@ -963,7 +967,13 @@ export async function scheduleTuitionSessions(
             status: 'pending_scheduling',
             duration_minutes: durationMinutes,
             session_mode: defaultMode,
-          });
+          };
+          // Set batch_id from tuition_onboarding
+          if (batchId) sessionData.batch_id = batchId;
+          // Copy persistent classroom link to session (tuition_onboarding.meet_link → scheduled_sessions.google_meet_link)
+          if (batchMeetLink && defaultMode === 'online') sessionData.google_meet_link = batchMeetLink;
+
+          sessionsToCreate.push(sessionData as ScheduledSession);
 
           sessionNumber++;
 

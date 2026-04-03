@@ -18,7 +18,7 @@ import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { analyzeSessionTranscript, type SessionAnalysis } from '@/lib/gemini/session-prompts';
+import { analyzeSessionTranscript, type SessionAnalysis, type BatchContext } from '@/lib/gemini/session-prompts';
 
 export const dynamic = 'force-dynamic';
 
@@ -331,13 +331,19 @@ async function saveSessionData(
         }));
       } else {
         // No companion event — create 'session' event as usual
+        // Include per-child observations for primary child if batch analysis provided them
+        const primaryChildObs = analysis.per_child_observations?.[childName];
+        const primaryEventData: Record<string, unknown> = { ...transcriptAnalysisData };
+        if (primaryChildObs) primaryEventData.child_observations = primaryChildObs;
+        if (analysis.per_child_observations?.['group_level']) primaryEventData.group_observations = analysis.per_child_observations['group_level'];
+
         await insertLearningEvent({
           childId,
           coachId,
           sessionId: sessionId ?? undefined,
           eventType: 'session',
           eventSubtype: analysis.session_type,
-          eventData: transcriptAnalysisData,
+          eventData: primaryEventData,
           aiSummary: analysis.summary,
           contentForEmbedding,
           signalSource: 'transcript_analysis',
@@ -370,7 +376,109 @@ async function saveSessionData(
         signalConfidence: 'high',
       });
     }
+
+    // 3b. Batch fan-out: if this session is part of a batch, create learning events
+  // for sibling children sharing the same batch + datetime (same transcript)
+  if (sessionId) {
+    try {
+      const { data: thisSession } = await supabase
+        .from('scheduled_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+
+      const batchId = (thisSession as any)?.batch_id as string | null;
+      if (batchId && thisSession) {
+        // Find sibling sessions in the same batch at the same datetime
+        const { data: siblings } = await supabase
+          .from('scheduled_sessions')
+          .select('id, child_id, coach_id')
+          .eq('batch_id' as any, batchId)
+          .eq('scheduled_date', thisSession.scheduled_date!)
+          .eq('scheduled_time', thisSession.scheduled_time!)
+          .neq('id', sessionId)
+          .neq('child_id', childId || '');
+
+        if (siblings && siblings.length > 0) {
+          console.log(JSON.stringify({
+            requestId,
+            event: 'batch_fanout_start',
+            batchId,
+            primaryChild: childId,
+            siblingCount: siblings.length,
+          }));
+
+          for (const sibling of siblings) {
+            if (!sibling.child_id) continue;
+
+            // Get sibling child name for embedding
+            const siblingContext = await getChildContext(sibling.child_id);
+            const siblingName = siblingContext?.name || 'Child';
+
+            // Use per-child observations from Gemini if available
+            const childObs = analysis.per_child_observations?.[siblingName];
+            const groupObs = analysis.per_child_observations?.['group_level'];
+
+            // Build personalized embedding using child-specific observations
+            const embeddingData: Record<string, unknown> = {
+              session_type: analysis.session_type,
+              focus_area: analysis.focus_area,
+              skills_worked_on: analysis.skills_worked_on,
+              progress_rating: analysis.progress_rating,
+              engagement_level: analysis.engagement_level,
+              summary: analysis.summary,
+            };
+            // Enrich with child-specific observations for better rAI retrieval
+            if (childObs) {
+              if (childObs.strengths?.length) embeddingData.key_observations = childObs.strengths;
+              if (childObs.struggles?.length) embeddingData.concerns_noted = childObs.struggles.join(', ');
+            }
+
+            const siblingEmbedding = buildSessionSearchableContent(siblingName, embeddingData);
+
+            // Merge per-child observations into event_data
+            const siblingEventData: Record<string, unknown> = {
+              ...transcriptAnalysisData,
+              session_id: sibling.id,
+              batch_id: batchId,
+              batch_size: siblings.length + 1,
+              batch_source_session_id: sessionId,
+            };
+            if (childObs) siblingEventData.child_observations = childObs;
+            if (groupObs) siblingEventData.group_observations = groupObs;
+
+            await insertLearningEvent({
+              childId: sibling.child_id,
+              coachId: sibling.coach_id ?? undefined,
+              sessionId: sibling.id,
+              eventType: 'session',
+              eventSubtype: analysis.session_type,
+              eventData: siblingEventData,
+              aiSummary: analysis.summary,
+              contentForEmbedding: siblingEmbedding,
+              signalSource: 'transcript_analysis',
+              signalConfidence: childObs ? 'medium' : 'low', // Higher if per-child attribution available
+            });
+          }
+
+          console.log(JSON.stringify({
+            requestId,
+            event: 'batch_fanout_complete',
+            batchId,
+            siblingsProcessed: siblings.length,
+          }));
+        }
+      }
+    } catch (batchErr) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'batch_fanout_error',
+        error: (batchErr as Error).message,
+      }));
+      // Non-fatal — primary child event was already created
+    }
   }
+  } // end if (childId && coachId)
 
   // 4. Increment sessions completed + reset consecutive no-shows
   if (childId) {
@@ -498,10 +606,62 @@ export async function POST(request: NextRequest) {
 
     // 5. AI Analysis (5-15 seconds) — uses shared builder from lib/gemini/session-prompts.ts
     console.log(JSON.stringify({ requestId, event: 'starting_ai_analysis' }));
+
+    // Detect batch context for group tuition sessions
+    let batchContext: BatchContext | undefined;
+    if (payload.sessionId) {
+      try {
+        const batchSupabase = getServiceSupabase();
+        const { data: sessionForBatch } = await batchSupabase
+          .from('scheduled_sessions')
+          .select('*')
+          .eq('id', payload.sessionId)
+          .single();
+
+        const batchId = (sessionForBatch as any)?.batch_id as string | null;
+        if (batchId) {
+          // Find all children in this batch at the same datetime
+          const { data: batchSiblings } = await batchSupabase
+            .from('scheduled_sessions')
+            .select('child_id')
+            .eq('batch_id' as any, batchId)
+            .eq('scheduled_date', sessionForBatch!.scheduled_date!)
+            .eq('scheduled_time', sessionForBatch!.scheduled_time!);
+
+          if (batchSiblings && batchSiblings.length > 1) {
+            const childIds = batchSiblings.map(s => s.child_id).filter(Boolean) as string[];
+            const { data: children } = await batchSupabase
+              .from('children')
+              .select('child_name, name')
+              .in('id', childIds);
+
+            const childNames = (children || []).map(c => c.child_name || c.name || 'Child');
+
+            batchContext = {
+              batchId,
+              childNames,
+              batchSize: childNames.length,
+            };
+
+            console.log(JSON.stringify({
+              requestId,
+              event: 'batch_context_detected',
+              batchId,
+              batchSize: childNames.length,
+              childNames,
+            }));
+          }
+        }
+      } catch (batchDetectErr) {
+        console.warn(JSON.stringify({ requestId, event: 'batch_detect_error', error: (batchDetectErr as Error).message }));
+        // Non-fatal — proceed without batch context
+      }
+    }
+
     let analysis: SessionAnalysis;
     try {
       const sanitizedTranscript = sanitizeForPrompt(payload.transcriptText);
-      analysis = await analyzeSessionTranscript(sanitizedTranscript, childContext, childName);
+      analysis = await analyzeSessionTranscript(sanitizedTranscript, childContext, childName, batchContext);
       console.log(JSON.stringify({
         requestId,
         event: 'ai_analysis_complete',

@@ -654,12 +654,34 @@ export async function generateAndInsertDailyTasks(
       return { inserted: 0 };
     }
 
+    // Pre-fetch all session dates for this child in the task range
+    // Skip generating practice tasks on days the child has a session
+    const rangeStart = new Date(sessionDate);
+    rangeStart.setDate(rangeStart.getDate() + 1);
+    const rangeEnd = new Date(sessionDate);
+    rangeEnd.setDate(rangeEnd.getDate() + daysBetween);
+
+    const { data: sessionDays } = await supabase
+      .from('scheduled_sessions')
+      .select('scheduled_date')
+      .eq('child_id', childId)
+      .gte('scheduled_date', rangeStart.toISOString().split('T')[0])
+      .lte('scheduled_date', rangeEnd.toISOString().split('T')[0])
+      .in('status', ['scheduled', 'completed', 'confirmed', 'in_progress']);
+
+    const sessionDateSet = new Set(
+      (sessionDays || []).map(s => s.scheduled_date)
+    );
+
     const tasksToInsert = [];
 
     for (let i = 0; i < daysBetween; i++) {
       const taskDate = new Date(sessionDate);
       taskDate.setDate(taskDate.getDate() + i + 1); // Start from day after session
       const dateStr = taskDate.toISOString().split('T')[0];
+
+      // Skip days that already have a session — no practice tasks needed on session days
+      if (sessionDateSet.has(dateStr)) continue;
 
       const dayTasks = generateDailyTasks(template, childName, i);
 

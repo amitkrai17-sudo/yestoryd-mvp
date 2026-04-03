@@ -61,7 +61,7 @@ export async function POST(
       async () => {
         const result = await supabase
           .from('scheduled_sessions')
-          .select('id, child_id, coach_id, session_number, status, enrollment_id, children!scheduled_sessions_child_id_fkey (child_name)')
+          .select('id, child_id, coach_id, session_number, status, enrollment_id, session_mode, google_meet_link, children!scheduled_sessions_child_id_fkey (child_name)')
           .eq('id', sessionId)
           .single();
         return result;
@@ -165,16 +165,14 @@ export async function POST(
       summary: eventData.coach_notes || undefined,
     });
 
-    // Detect modality from enrollment
-    let sessionModality: 'tuition' | 'online_1on1' | null = null;
-    if (session.enrollment_id) {
-      const { data: enr } = await supabase
-        .from('enrollments')
-        .select('enrollment_type')
-        .eq('id', session.enrollment_id)
-        .single();
-      sessionModality = enr?.enrollment_type === 'tuition' ? 'tuition' : 'online_1on1';
-    }
+    // Derive modality from actual delivery mode (not enrollment type)
+    // 'tuition' is an enrollment type, not a modality — don't use it here
+    const sessionModality: 'online' | 'in_person' | null =
+      (session as any).session_mode === 'online' || (session as any).google_meet_link
+        ? 'online'
+        : (session as any).session_mode === 'offline'
+          ? 'in_person'
+          : null;
 
     // 6. Insert learning_event
     const eventResult = await insertLearningEvent({

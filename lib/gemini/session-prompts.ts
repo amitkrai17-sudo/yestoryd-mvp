@@ -161,6 +161,12 @@ RULES:
 // Session Transcript Analysis
 // ============================================================
 
+export interface PerChildObservation {
+  strengths: string[];
+  struggles: string[];
+  notable_moments: string[];
+}
+
 export interface SessionAnalysis {
   session_type?: string;
   child_name?: string | null;
@@ -185,6 +191,15 @@ export interface SessionAnalysis {
   sentiment_score?: number;
   summary?: string;
   parent_summary?: string;
+  /** Per-child observations for batch/group sessions */
+  per_child_observations?: Record<string, PerChildObservation>;
+}
+
+/** Batch context passed to transcript analysis for group sessions */
+export interface BatchContext {
+  batchId: string;
+  childNames: string[];
+  batchSize: number;
 }
 
 /**
@@ -201,6 +216,7 @@ export async function analyzeSessionTranscript(
     recentSessions: string;
   } | null,
   childName: string,
+  batchContext?: BatchContext,
 ): Promise<SessionAnalysis> {
   const genAI = getGenAI();
 
@@ -208,12 +224,31 @@ export async function analyzeSessionTranscript(
   const slugs = await getCategorySlugs();
   const focusAreaEnum = slugs.join('|');
 
+  const isBatch = batchContext && batchContext.batchSize > 1;
+
+  const batchSection = isBatch ? `
+SESSION TYPE: Group tuition session with ${batchContext.batchSize} children: ${batchContext.childNames.join(', ')}.
+
+BATCH ANALYSIS RULES:
+- Attribute observations to specific children by name where speaker identification is clear from the conversation.
+- The coach may address children by name — use these cues for attribution.
+- When attribution is uncertain, classify the observation as "group_level" rather than guessing.
+- Do not invent observations. If you cannot clearly identify which child is speaking or being discussed, classify as group_level.
+- Note any child-specific interactions, questions asked, struggles mentioned, or praise given.
+` : '';
+
+  const perChildSchema = isBatch ? `,
+  "per_child_observations": {
+    ${batchContext.childNames.map(n => `"${n}": { "strengths": ["..."], "struggles": ["..."], "notable_moments": ["..."] }`).join(',\n    ')},
+    "group_level": { "strengths": ["..."], "struggles": ["..."], "notable_moments": ["..."] }
+  }` : '';
+
   const prompt = `You are an AI assistant for Yestoryd, a reading coaching platform for children aged 4-12 in India.
 
-TASK: Analyze this coaching session transcript and generate TWO outputs:
+TASK: Analyze this ${isBatch ? 'group tuition' : 'coaching'} session transcript and generate TWO outputs:
 1. COACH_ANALYSIS: Detailed analysis for internal use
 2. PARENT_SUMMARY: A warm, encouraging 2-3 sentence summary for parents
-
+${batchSection}
 ${childContext ? `CHILD CONTEXT:
 - Name: ${childContext.name}
 - Age: ${childContext.age}
@@ -226,7 +261,7 @@ ${transcript.substring(0, 15000)}
 
 Generate a JSON response with this structure:
 {
-  "session_type": "coaching",
+  "session_type": "${isBatch ? 'tuition' : 'coaching'}",
   "child_name": "${childName}",
   "focus_area": "${focusAreaEnum}",
   "skills_worked_on": ["skill codes"],
@@ -248,7 +283,7 @@ Generate a JSON response with this structure:
   "safety_reason": null,
   "sentiment_score": 0.7,
   "summary": "2-3 sentence technical summary for coach records",
-  "parent_summary": "2-3 sentence warm, encouraging summary for parents"
+  "parent_summary": "2-3 sentence warm, encouraging summary for parents"${perChildSchema}
 }
 
 SAFETY: Set "safety_flag": true only for genuine signs of distress, anxiety, fear, or concerning mentions about home/school.

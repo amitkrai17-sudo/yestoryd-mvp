@@ -50,7 +50,7 @@ export default function ProgressPanel({
   if (isTuition) {
     const rateDisplay =
       sessionRate != null
-        ? `\u20B9${Math.round(sessionRate / 100)}/session`
+        ? `\u20B9${Math.round(sessionRate / 100)}/s`
         : '--';
 
     return (
@@ -80,8 +80,8 @@ export default function ProgressPanel({
           <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
             <IndianRupee className="w-5 h-5 text-blue-700" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{rateDisplay}</p>
-          <p className="text-sm text-gray-500 mt-1">Rate</p>
+          <p className="text-2xl font-bold text-gray-900 truncate">{rateDisplay}</p>
+          <p className="text-sm text-gray-500 mt-1">Per Session</p>
         </div>
 
         {/* Next Session */}

@@ -486,7 +486,7 @@ export default function ParentTasksPage() {
       {showPhotoSheet && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center" onClick={() => { setShowPhotoSheet(null); setPhotoPreview(null); setFeedbackStep(false); setDifficultyRating(null); setPracticeDuration(null); }}>
           <div
-            className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-8 space-y-4 animate-in slide-in-from-bottom"
+            className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-24 space-y-4 animate-in slide-in-from-bottom"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -581,25 +581,25 @@ export default function ParentTasksPage() {
                 )}
               </div>
             ) : (
-              /* Step 1: Photo or skip */
+              /* Step 1: Complete (primary) or attach photo (optional) */
               <div className="space-y-3">
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center gap-3 p-4 bg-pink-50 border border-pink-200 rounded-xl text-left hover:bg-pink-100 transition-colors min-h-[56px]"
+                  onClick={() => setFeedbackStep(true)}
+                  className="w-full flex items-center justify-center gap-2 p-3.5 bg-[#FF0099] text-white rounded-xl text-sm font-semibold hover:bg-[#FF0099]/90 transition-colors min-h-[48px]"
                 >
-                  <Camera className="w-5 h-5 text-[#FF0099]" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Attach photo</p>
-                    <p className="text-xs text-gray-500">Take a photo of the completed work</p>
-                  </div>
+                  <CheckCircle className="w-4 h-4" />
+                  Mark as Done
                 </button>
 
                 <button
-                  onClick={() => setFeedbackStep(true)}
-                  className="w-full flex items-center justify-center gap-2 p-3 bg-gray-100 rounded-xl text-sm text-gray-600 hover:bg-gray-200 transition-colors min-h-[44px]"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl text-left hover:bg-gray-100 transition-colors min-h-[44px]"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  Done without photo
+                  <Camera className="w-4 h-4 text-gray-500" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-700">Attach photo (optional)</p>
+                    <p className="text-[11px] text-gray-400">Photo of completed work</p>
+                  </div>
                 </button>
               </div>
             )}

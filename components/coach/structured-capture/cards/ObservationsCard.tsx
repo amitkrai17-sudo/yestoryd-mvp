@@ -6,14 +6,16 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
-import { Mic, MicOff, X } from 'lucide-react';
+import { Mic, MicOff, X, Trash2 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+import { AudioRecorder } from '@/components/coach/AudioRecorder';
 import type { CardProps, ObservationItem } from '../types';
 
 interface ObservationsCardProps extends CardProps {
   observations: Record<string, ObservationItem[]>;
   loading: boolean;
+  sessionId: string;
 }
 
 // Flatten all observations into strength/struggle groups
@@ -114,7 +116,7 @@ function WordTagInput({
 
 type SpeechField = 'customStrengthNote' | 'customStruggleNote';
 
-export function ObservationsCard({ state, onUpdate, observations, loading }: ObservationsCardProps) {
+export function ObservationsCard({ state, onUpdate, observations, loading, sessionId }: ObservationsCardProps) {
   const [listeningField, setListeningField] = useState<SpeechField | null>(null);
   const recognitionRef = useRef<ReturnType<typeof Object.create> | null>(null);
 
@@ -365,6 +367,41 @@ export function ObservationsCard({ state, onUpdate, observations, loading }: Obs
             chipClassName="bg-green-500/20 text-green-400 border-green-500/30"
           />
         </div>
+      </div>
+
+      {/* Coach Voice Note */}
+      <div className="pt-2 border-t border-border">
+        <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-1">
+          Quick Voice Note
+        </h4>
+        <p className="text-text-tertiary text-[11px] mb-3">
+          Optional — helps capture nuance from in-person sessions
+        </p>
+
+        {state.coachVoiceNoteUrl ? (
+          <div className="flex items-center gap-3 bg-surface-2 border border-border rounded-xl p-3">
+            <audio
+              src={state.coachVoiceNoteUrl}
+              controls
+              className="flex-1 h-10 [&::-webkit-media-controls-panel]:bg-gray-700"
+            />
+            <button
+              type="button"
+              onClick={() => onUpdate({ coachVoiceNoteUrl: '' })}
+              className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <AudioRecorder
+            sessionId={sessionId === 'new' ? 'capture-' + Date.now() : sessionId}
+            audioType="voice_note"
+            onUploadComplete={(storagePath) => onUpdate({ coachVoiceNoteUrl: storagePath })}
+            maxDurationSeconds={120}
+            promptText="Record a quick verbal debrief"
+          />
+        )}
       </div>
     </div>
   );

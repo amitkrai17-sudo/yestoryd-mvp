@@ -396,7 +396,7 @@ export default function ParentDashboardPage() {
         .select('*')
         .eq('child_id', enrolledChild.id)
         .gte('scheduled_date', today)
-        .in('status', ['scheduled', 'rescheduled'])
+        .in('status', ['scheduled', 'rescheduled', 'confirmed', 'pending_scheduling', 'pending'])
         .order('scheduled_date', { ascending: true })
         .order('scheduled_time', { ascending: true })
         .limit(5);

@@ -41,6 +41,7 @@ interface Onboarding {
   enrollment_id: string | null;
   enrollment_status: string | null;
   enrollment_sessions_remaining: number | null;
+  batch_id: string | null;
 }
 
 interface LedgerEntry {
@@ -85,7 +86,11 @@ export default function AdminTuitionPage() {
     defaultSessionMode: 'offline' as const,
     parentPhone: '', coachId: '', adminNotes: '',
     categorySlug: '',
+    batchId: '', // empty = new batch, UUID = join existing batch
   });
+
+  // Existing batches for dropdown
+  const [batches, setBatches] = useState<{ batch_id: string; label: string }[]>([]);
 
   // Adjust modal
   const [adjusting, setAdjusting] = useState<string | null>(null);
@@ -117,10 +122,11 @@ export default function AdminTuitionPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, listRes, coachRes] = await Promise.all([
+      const [statsRes, listRes, coachRes, batchRes] = await Promise.all([
         fetch('/api/admin/tuition/stats'),
         fetch('/api/admin/tuition'),
         fetch('/api/admin/crm/coaches'),
+        fetch('/api/admin/tuition/batches'),
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (listRes.ok) {
@@ -130,6 +136,10 @@ export default function AdminTuitionPage() {
       if (coachRes.ok) {
         const data = await coachRes.json();
         setCoaches((data.coaches || data.data || []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
+      }
+      if (batchRes.ok) {
+        const data = await batchRes.json();
+        setBatches(data.batches || []);
       }
     } catch { /* */ }
     setLoading(false);
@@ -168,6 +178,7 @@ export default function AdminTuitionPage() {
           coachId: newForm.coachId,
           adminNotes: newForm.adminNotes,
           categorySlug: newForm.categorySlug || undefined,
+          batchId: newForm.batchId || undefined,
         }),
       });
       if (res.ok) {
@@ -177,7 +188,7 @@ export default function AdminTuitionPage() {
           sessionsPurchased: 0, sessionDurationMinutes: 0, sessionsPerWeek: 0,
           scheduleDays: [], scheduleTimeSlot: '', schedulePreferredTime: '',
           defaultSessionMode: 'offline', parentPhone: '',
-          coachId: '', adminNotes: '', categorySlug: '',
+          coachId: '', adminNotes: '', categorySlug: '', batchId: '',
         });
         fetchData();
       }
@@ -395,6 +406,23 @@ export default function AdminTuitionPage() {
                   context="parent"
                   placeholder="Select subject..."
                 />
+              </div>
+              {/* Batch Assignment */}
+              <div>
+                <label className="text-xs text-text-tertiary block mb-1.5">Batch</label>
+                <select
+                  value={newForm.batchId}
+                  onChange={e => setNewForm(p => ({ ...p, batchId: e.target.value }))}
+                  className="bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-white w-full"
+                >
+                  <option value="">New batch (solo)</option>
+                  {batches
+                    .filter(b => !newForm.coachId || b.label.toLowerCase().includes(coaches.find(c => c.id === newForm.coachId)?.name?.toLowerCase() || ''))
+                    .map(b => (
+                      <option key={b.batch_id} value={b.batch_id}>{b.label}</option>
+                    ))
+                  }
+                </select>
               </div>
               {/* Schedule: Days */}
               <div className="sm:col-span-2 lg:col-span-3">
@@ -621,6 +649,59 @@ export default function AdminTuitionPage() {
             </div>
           )}
         </div>
+
+        {/* Manage Batches */}
+        {activeStudents.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <ArrowLeftRight className="w-4 h-4 text-purple-400" />
+              Manage Batches
+            </h2>
+            <p className="text-text-tertiary text-xs mb-3">
+              Group students who learn together. Students in the same batch share a Calendar event and Meet link.
+            </p>
+            <div className="bg-surface-1 rounded-2xl border border-border overflow-hidden divide-y divide-border">
+              {activeStudents.map(o => {
+                const currentBatch = batches.find(b => b.batch_id === o.batch_id);
+                // Filter batches for same coach
+                const coachBatches = batches.filter(b =>
+                  b.label.toLowerCase().includes((o.coach_name || '').toLowerCase())
+                );
+
+                return (
+                  <div key={o.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{o.child_name}</p>
+                      <p className="text-[11px] text-text-tertiary">{o.coach_name}</p>
+                    </div>
+                    <select
+                      value={o.batch_id || ''}
+                      onChange={async (e) => {
+                        const newBatchId = e.target.value;
+                        if (!newBatchId || newBatchId === o.batch_id) return;
+                        try {
+                          const res = await fetch('/api/admin/tuition/reassign-batch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ onboardingId: o.id, newBatchId }),
+                          });
+                          if (res.ok) fetchData();
+                        } catch { /* ignore */ }
+                      }}
+                      className="bg-surface-2 border border-border rounded-xl px-2 py-1.5 text-xs text-white max-w-[220px] truncate"
+                    >
+                      {coachBatches.map(b => (
+                        <option key={b.batch_id} value={b.batch_id}>
+                          {b.batch_id === o.batch_id ? `Current: ${b.label}` : b.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Paused Students */}
         {pausedStudents.length > 0 && (
