@@ -108,18 +108,18 @@ export function PerformanceCard({ state, onUpdate, modules }: PerformanceCardPro
           return (
             <div key={skill.id} className="bg-surface-2 border border-border rounded-xl p-3">
               <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="text-white text-sm font-medium truncate">{skill.name}</span>
                   {hasRubric && (
                     <button
                       type="button"
                       onClick={() => toggleRubric(skill.id)}
                       className={cn(
-                        'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors',
-                        rubricExpanded ? 'bg-[#00ABFF]/20 text-[#00ABFF]' : 'text-text-tertiary hover:text-white',
+                        'flex-shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl transition-colors',
+                        rubricExpanded ? 'bg-[#00ABFF]/20 text-[#00ABFF]' : 'text-blue-400 hover:text-[#00ABFF] hover:bg-white/5',
                       )}
                     >
-                      <HelpCircle className="w-4 h-4" />
+                      <HelpCircle className="w-5 h-5" />
                     </button>
                   )}
                 </div>
