@@ -2,17 +2,23 @@
 // One-time backfill: create Supabase auth accounts for all parents without user_id
 // Admin-only endpoint
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ensureParentAuthAccount } from '@/lib/auth/create-parent-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
-  const auth = await requireAdminOrCoach();
-  if (!auth.authorized || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 });
+export async function POST(request: NextRequest) {
+  // Allow admin session OR CRON_SECRET for one-time backfill
+  const authHeader = request.headers.get('authorization');
+  const cronSecretValid = process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!cronSecretValid) {
+    const auth = await requireAdminOrCoach();
+    if (!auth.authorized || auth.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin only' }, { status: 403 });
+    }
   }
 
   const supabase = createAdminClient();
@@ -60,7 +66,7 @@ export async function POST() {
   // Log to activity_log
   await supabase.from('activity_log').insert({
     action: 'backfill_parent_auth',
-    user_email: auth.email || 'admin',
+    user_email: 'admin@yestoryd.com',
     user_type: 'admin',
     metadata: {
       total: results.length,
