@@ -140,14 +140,27 @@ async function syncUserOnSignIn(
 
     if (childRecord) {
       // Create parent record from child data
-      await supabase.from('parents').insert({
+      const { data: newParent } = await supabase.from('parents').insert({
         email: email.toLowerCase(),
         name: name || childRecord.parent_name || 'Parent',
         phone: childRecord.parent_phone,
         avatar_url: image,
         created_at: new Date().toISOString(),
         last_seen_at: new Date().toISOString(),
-      });
+      }).select('id').single();
+
+      // Ensure auth account (non-blocking)
+      if (newParent?.id && childRecord.parent_phone) {
+        try {
+          const { ensureParentAuthAccount } = await import('@/lib/auth/create-parent-auth');
+          await ensureParentAuthAccount({
+            parentId: newParent.id,
+            phone: childRecord.parent_phone,
+            email: email.toLowerCase(),
+            name: name || childRecord.parent_name,
+          });
+        } catch { /* non-blocking */ }
+      }
     }
   } else {
     // Update last login

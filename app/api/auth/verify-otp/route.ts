@@ -325,7 +325,21 @@ export async function POST(request: NextRequest) {
 
       if (!createAuthError) {
         supabaseUser = newAuthUser.user;
-        console.log(`[${requestId}] Created Supabase auth user`);
+        console.log(`[${requestId}] Created Supabase auth user: ${supabaseUser?.id}`);
+      }
+    }
+
+    // Link auth user to parent/coach record
+    if (supabaseUser?.id && actualUserType === 'parent' && user?.id) {
+      try {
+        await supabase
+          .from('parents')
+          .update({ user_id: supabaseUser.id, updated_at: new Date().toISOString() })
+          .eq('id', user.id)
+          .is('user_id', null);
+        console.log(`[${requestId}] Linked parent ${user.id} → auth user ${supabaseUser.id}`);
+      } catch (linkErr) {
+        console.error(`[${requestId}] Failed to link parent user_id:`, linkErr);
       }
     }
 

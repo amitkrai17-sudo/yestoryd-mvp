@@ -290,6 +290,19 @@ export async function getOrCreateParent(
     parentId: parent.id
   }));
 
+  // Ensure auth account exists (non-blocking)
+  try {
+    const { ensureParentAuthAccount } = await import('@/lib/auth/create-parent-auth');
+    await ensureParentAuthAccount({
+      parentId: parent.id,
+      phone: phone || '',
+      email,
+      name,
+    });
+  } catch (authErr) {
+    console.error(JSON.stringify({ requestId, event: 'parent_auth_creation_failed', error: authErr instanceof Error ? authErr.message : String(authErr) }));
+  }
+
   return { id: parent.id, isNew };
 }
 
