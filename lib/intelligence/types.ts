@@ -143,6 +143,10 @@ export interface StructuredCapturePayload {
   coachConfirmed?: boolean;
   /** Voice input audio URL (for voice_to_structured) */
   voiceInputUrl?: string;
+  /** Words the child struggled with */
+  wordsStruggled?: string[];
+  /** Words the child mastered */
+  wordsMastered?: string[];
   /** Whether homework was assigned this session */
   homeworkAssigned?: boolean;
   /** Coach's homework description */

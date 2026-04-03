@@ -137,8 +137,21 @@ export function SessionCard({
 
   // Determine primary action
   const getPrimaryAction = () => {
-    // Offline session needing report — show Submit Report CTA
+    // Offline session needing report
     if (needsReport) {
+      // Tuition sessions → open structured capture (unified flow)
+      if (session.enrollment_type === 'tuition') {
+        return (
+          <button
+            onClick={onComplete}
+            className="flex items-center gap-1.5 lg:gap-2 bg-red-500 text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-red-600 transition-colors animate-pulse"
+          >
+            <Send className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span className="hidden sm:inline">Report</span>
+          </button>
+        );
+      }
+      // Coaching sessions → legacy report form (has activity tracking)
       return (
         <Link
           href={`/coach/sessions/${session.id}/report`}
@@ -220,7 +233,9 @@ export function SessionCard({
     dropdownActions.push({
       label: 'Submit Report',
       icon: <Send className="w-4 h-4" />,
-      onClick: () => { window.location.href = `/coach/sessions/${session.id}/report`; },
+      onClick: session.enrollment_type === 'tuition'
+        ? onComplete  // Tuition → structured capture
+        : () => { window.location.href = `/coach/sessions/${session.id}/report`; },
     });
   }
 

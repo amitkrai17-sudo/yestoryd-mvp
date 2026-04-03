@@ -236,6 +236,8 @@ export function useCapture(props: CaptureFormProps) {
         customStrengthNote: state.customStrengthNote || undefined,
         customStruggleNote: state.customStruggleNote || undefined,
         contextTags: state.contextTags.length > 0 ? state.contextTags : undefined,
+        wordsStruggled: state.wordsStruggled.length > 0 ? state.wordsStruggled : undefined,
+        wordsMastered: state.wordsMastered.length > 0 ? state.wordsMastered : undefined,
         aiPrefilled: false,
         coachConfirmed: true,
         homeworkAssigned: state.homeworkAssigned || undefined,

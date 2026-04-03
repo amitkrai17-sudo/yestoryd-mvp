@@ -124,6 +124,8 @@ function validatePayload(body: unknown): { valid: true; data: StructuredCaptureP
       aiPrefilled: typeof b.aiPrefilled === 'boolean' ? b.aiPrefilled : undefined,
       coachConfirmed: typeof b.coachConfirmed === 'boolean' ? b.coachConfirmed : undefined,
       voiceInputUrl: typeof b.voiceInputUrl === 'string' ? b.voiceInputUrl : undefined,
+      wordsStruggled: Array.isArray(b.wordsStruggled) ? b.wordsStruggled.filter((w): w is string => typeof w === 'string') : undefined,
+      wordsMastered: Array.isArray(b.wordsMastered) ? b.wordsMastered.filter((w): w is string => typeof w === 'string') : undefined,
       homeworkAssigned: typeof b.homeworkAssigned === 'boolean' ? b.homeworkAssigned : undefined,
       homeworkDescription: typeof b.homeworkDescription === 'string' ? b.homeworkDescription : undefined,
       childArtifact,
@@ -233,9 +235,11 @@ export async function POST(request: NextRequest) {
         child_artifact_text: payload.childArtifact?.text || null,
         child_artifact_duration_seconds: payload.childArtifact?.durationSeconds || null,
         child_artifact_analysis: (payload.childArtifact?.analysis as any) || null,
+        words_struggled: payload.wordsStruggled || [],
+        words_mastered: payload.wordsMastered || [],
         intelligence_score: score,
         submitted_at: new Date().toISOString(),
-      })
+      } as any)
       .select('id')
       .single();
 
@@ -259,6 +263,8 @@ export async function POST(request: NextRequest) {
     if (payload.customStrengthNote) embeddingParts.push(`strengths: ${payload.customStrengthNote}`);
     if (payload.customStruggleNote) embeddingParts.push(`struggles: ${payload.customStruggleNote}`);
     if (payload.childArtifact?.text) embeddingParts.push(`artifact: ${payload.childArtifact.text}`);
+    if (payload.wordsStruggled?.length) embeddingParts.push(`words struggled: ${payload.wordsStruggled.join(', ')}`);
+    if (payload.wordsMastered?.length) embeddingParts.push(`words mastered: ${payload.wordsMastered.join(', ')}`);
     const contentForEmbedding = embeddingParts.join(' ').trim();
 
     // 4 + 5. Create learning_event (embedding generated internally by insertLearningEvent)

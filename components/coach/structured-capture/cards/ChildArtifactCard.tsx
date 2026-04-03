@@ -1,18 +1,20 @@
 // ============================================================
 // Card 3: Child Artifact — Audio / Text / Photo / None
+// With contextual hints based on selected skills
 // ============================================================
 
 'use client';
 
-import { useState, useRef } from 'react';
-import { Mic, FileText, Camera, XCircle, ImageIcon, Video } from 'lucide-react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { Mic, FileText, Camera, XCircle, ImageIcon, Video, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AudioRecorder } from '@/components/coach/AudioRecorder';
-import type { CardProps, ArtifactType } from '../types';
+import type { CardProps, ArtifactType, ModuleGroup } from '../types';
 
 interface ChildArtifactCardProps extends CardProps {
   sessionId: string;
   isOnline?: boolean;
+  modules?: ModuleGroup[];
 }
 
 const ARTIFACT_OPTIONS: { type: ArtifactType; label: string; icon: typeof Mic }[] = [
@@ -22,14 +24,112 @@ const ARTIFACT_OPTIONS: { type: ArtifactType; label: string; icon: typeof Mic }[
   { type: 'none', label: 'None', icon: XCircle },
 ];
 
-export function ChildArtifactCard({ state, onUpdate, sessionId, isOnline }: ChildArtifactCardProps) {
+// Skill slug → recommended artifact type
+// Uses skill_categories slugs from DB, not hardcoded names
+type ArtifactRecommendation = 'audio' | 'photo' | 'either' | 'none';
+
+const SLUG_TO_ARTIFACT: Record<string, ArtifactRecommendation> = {
+  phonics_letter_sounds: 'audio',
+  reading_fluency: 'audio',
+  pronunciation: 'audio',
+  grammar_syntax: 'photo',
+  creative_writing: 'photo',
+  vocabulary_building: 'either',
+  reading_comprehension: 'none',
+  story_analysis: 'none',
+};
+
+const SLUG_TO_HINT: Record<string, string> = {
+  phonics_letter_sounds: 'Record a 30-second reading clip to track phonics progress',
+  reading_fluency: 'Record a short reading clip — helps measure WPM over time',
+  pronunciation: 'Record speech to track pronunciation improvement',
+  grammar_syntax: 'Photograph written work to track sentence formation',
+  creative_writing: 'Photograph writing to track improvement',
+  vocabulary_building: 'Record word usage or photograph vocabulary exercises',
+  reading_comprehension: 'Coach observations are sufficient for comprehension',
+  story_analysis: 'Coach observations are sufficient for analysis',
+};
+
+function getArtifactRecommendation(
+  selectedSkillIds: string[],
+  modules: ModuleGroup[]
+): { type: ArtifactRecommendation; hint: string } {
+  // Find which category slugs are represented by selected skills
+  const selectedSlugs = new Set<string>();
+  for (const skillId of selectedSkillIds) {
+    for (const { module, skills } of modules) {
+      if (skills.some(s => s.id === skillId) && module.slug) {
+        selectedSlugs.add(module.slug);
+      }
+    }
+  }
+
+  if (selectedSlugs.size === 0) return { type: 'none', hint: '' };
+
+  // Collect recommendations and hints
+  const recs: ArtifactRecommendation[] = [];
+  const hints: string[] = [];
+
+  for (const slug of Array.from(selectedSlugs)) {
+    const rec = SLUG_TO_ARTIFACT[slug];
+    if (rec) recs.push(rec);
+    const hint = SLUG_TO_HINT[slug];
+    if (hint) hints.push(hint);
+  }
+
+  // Determine primary recommendation
+  const hasAudio = recs.includes('audio');
+  const hasPhoto = recs.includes('photo');
+  const hasEither = recs.includes('either');
+
+  let type: ArtifactRecommendation;
+  let hint: string;
+
+  if (hasAudio && hasPhoto) {
+    type = 'either';
+    hint = 'Consider a reading clip or a photo of written work';
+  } else if (hasAudio) {
+    type = 'audio';
+    hint = hints.find(h => h.includes('Record')) || hints[0] || '';
+  } else if (hasPhoto) {
+    type = 'photo';
+    hint = hints.find(h => h.includes('Photograph')) || hints[0] || '';
+  } else if (hasEither) {
+    type = 'either';
+    hint = hints[0] || '';
+  } else {
+    type = 'none';
+    hint = hints[0] || 'No artifact needed — coach observations are sufficient';
+  }
+
+  return { type, hint };
+}
+
+export function ChildArtifactCard({ state, onUpdate, sessionId, isOnline, modules }: ChildArtifactCardProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
+
+  const recommendation = useMemo(
+    () => getArtifactRecommendation(state.selectedSkillIds, modules || []),
+    [state.selectedSkillIds, modules]
+  );
+
+  // Pre-select artifact type based on skills (once, on mount)
+  useEffect(() => {
+    if (hasAutoSelected || state.artifactType !== 'none') return;
+    if (recommendation.type === 'audio' && !isOnline) {
+      onUpdate({ artifactType: 'audio' });
+      setHasAutoSelected(true);
+    } else if (recommendation.type === 'photo') {
+      onUpdate({ artifactType: 'photo' });
+      setHasAutoSelected(true);
+    }
+  }, [recommendation.type, isOnline, hasAutoSelected, state.artifactType, onUpdate]);
 
   const selectType = (type: ArtifactType) => {
     onUpdate({
       artifactType: type,
-      // Clear other artifact data when switching
       ...(type !== 'audio' && { artifactUrl: state.artifactType === 'audio' ? '' : state.artifactUrl }),
       ...(type !== 'text' && { artifactText: '' }),
     });
@@ -41,12 +141,8 @@ export function ChildArtifactCard({ state, onUpdate, sessionId, isOnline }: Chil
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Preview
     const url = URL.createObjectURL(file);
     setPhotoPreview(url);
-
-    // Store as a reference — actual upload deferred
     onUpdate({ artifactUrl: `pending:${file.name}` });
   };
 
@@ -62,6 +158,31 @@ export function ChildArtifactCard({ state, onUpdate, sessionId, isOnline }: Chil
           Optionally capture a reading sample or work artifact
         </p>
       </div>
+
+      {/* Contextual hint based on selected skills */}
+      {recommendation.hint && (
+        <div className={cn(
+          'flex items-start gap-2.5 rounded-xl p-3 border',
+          recommendation.type === 'audio' ? 'bg-pink-500/5 border-pink-500/20' :
+          recommendation.type === 'photo' ? 'bg-blue-500/5 border-blue-500/20' :
+          recommendation.type === 'either' ? 'bg-purple-500/5 border-purple-500/20' :
+          'bg-surface-2 border-border'
+        )}>
+          <Lightbulb className={cn(
+            'w-4 h-4 flex-shrink-0 mt-0.5',
+            recommendation.type === 'audio' ? 'text-pink-400' :
+            recommendation.type === 'photo' ? 'text-blue-400' :
+            recommendation.type === 'either' ? 'text-purple-400' :
+            'text-text-tertiary'
+          )} />
+          <p className={cn(
+            'text-xs',
+            recommendation.type === 'none' ? 'text-text-tertiary' : 'text-text-secondary'
+          )}>
+            {recommendation.hint}
+          </p>
+        </div>
+      )}
 
       {/* Type selector */}
       <div className="grid grid-cols-4 gap-2">

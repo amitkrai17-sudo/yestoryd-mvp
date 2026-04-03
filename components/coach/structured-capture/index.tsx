@@ -185,6 +185,7 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
                 onUpdate={updateState}
                 sessionId={sessionId}
                 isOnline={!modality || modality.startsWith('online')}
+                modules={modules}
               />
             )}
             {currentCard === 3 && (

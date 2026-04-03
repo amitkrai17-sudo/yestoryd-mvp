@@ -5,8 +5,8 @@
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
+import { Mic, MicOff, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import type { CardProps, ObservationItem } from '../types';
@@ -37,6 +37,79 @@ function groupObservations(observations: Record<string, ObservationItem[]>) {
   });
 
   return { strengths: dedup(strengths), struggles: dedup(struggles) };
+}
+
+// ============================================================
+// WordTagInput — inline tag input for word lists
+// ============================================================
+
+function WordTagInput({
+  label,
+  words,
+  onChange,
+  placeholder,
+  chipClassName,
+}: {
+  label: string;
+  words: string[];
+  onChange: (words: string[]) => void;
+  placeholder: string;
+  chipClassName: string;
+}) {
+  const [inputValue, setInputValue] = useState('');
+
+  const addWord = () => {
+    const word = inputValue.trim().toLowerCase();
+    if (word && !words.includes(word)) {
+      onChange([...words, word]);
+    }
+    setInputValue('');
+  };
+
+  const removeWord = (word: string) => {
+    onChange(words.filter(w => w !== word));
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addWord();
+    }
+  };
+
+  return (
+    <div>
+      <label className="text-text-secondary text-xs font-medium mb-1.5 block">{label}</label>
+      <input
+        type="text"
+        value={inputValue}
+        onChange={e => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={addWord}
+        placeholder={placeholder}
+        className="w-full h-10 bg-surface-2 border border-border rounded-lg px-3 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#00ABFF]"
+      />
+      {words.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {words.map(word => (
+            <span
+              key={word}
+              className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border', chipClassName)}
+            >
+              {word}
+              <button
+                type="button"
+                onClick={() => removeWord(word)}
+                className="ml-0.5 hover:opacity-70"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 type SpeechField = 'customStrengthNote' | 'customStruggleNote';
@@ -265,6 +338,33 @@ export function ObservationsCard({ state, onUpdate, observations, loading }: Obs
           rows={2}
           className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#00ABFF] resize-none"
         />
+      </div>
+
+      {/* Words Watched */}
+      <div className="pt-2 border-t border-border">
+        <h4 className="text-white text-xs font-semibold uppercase tracking-wider mb-3">
+          Words Watched (optional)
+        </h4>
+
+        {/* Words Struggled */}
+        <WordTagInput
+          label="Words Struggled"
+          words={state.wordsStruggled}
+          onChange={words => onUpdate({ wordsStruggled: words })}
+          placeholder="Type a word and press Enter"
+          chipClassName="bg-red-500/20 text-red-400 border-red-500/30"
+        />
+
+        {/* Words Mastered */}
+        <div className="mt-3">
+          <WordTagInput
+            label="Words Mastered"
+            words={state.wordsMastered}
+            onChange={words => onUpdate({ wordsMastered: words })}
+            placeholder="Type a word and press Enter"
+            chipClassName="bg-green-500/20 text-green-400 border-green-500/30"
+          />
+        </div>
       </div>
     </div>
   );
