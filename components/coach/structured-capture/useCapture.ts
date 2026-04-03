@@ -64,9 +64,12 @@ export function useCapture(props: CaptureFormProps) {
   const { sessionId, childId, childAge, coachId, modality, groupSessionId } = props;
 
   // Form state — initialize from draft or fresh
+  // Spread defaults first so new fields added after a draft was saved get their initial values
   const [state, setState] = useState<CaptureFormState>(() => {
     if (typeof window === 'undefined') return createInitialCaptureState();
-    return loadDraft(sessionId, childId) || createInitialCaptureState();
+    const draft = loadDraft(sessionId, childId);
+    if (!draft) return createInitialCaptureState();
+    return { ...createInitialCaptureState(), ...draft };
   });
 
   // Data state
@@ -236,8 +239,8 @@ export function useCapture(props: CaptureFormProps) {
         customStrengthNote: state.customStrengthNote || undefined,
         customStruggleNote: state.customStruggleNote || undefined,
         contextTags: state.contextTags.length > 0 ? state.contextTags : undefined,
-        wordsStruggled: state.wordsStruggled.length > 0 ? state.wordsStruggled : undefined,
-        wordsMastered: state.wordsMastered.length > 0 ? state.wordsMastered : undefined,
+        wordsStruggled: state.wordsStruggled?.length > 0 ? state.wordsStruggled : undefined,
+        wordsMastered: state.wordsMastered?.length > 0 ? state.wordsMastered : undefined,
         aiPrefilled: false,
         coachConfirmed: true,
         homeworkAssigned: state.homeworkAssigned || undefined,

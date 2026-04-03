@@ -349,7 +349,7 @@ export function ObservationsCard({ state, onUpdate, observations, loading }: Obs
         {/* Words Struggled */}
         <WordTagInput
           label="Words Struggled"
-          words={state.wordsStruggled}
+          words={state.wordsStruggled || []}
           onChange={words => onUpdate({ wordsStruggled: words })}
           placeholder="Type a word and press Enter"
           chipClassName="bg-red-500/20 text-red-400 border-red-500/30"
@@ -359,7 +359,7 @@ export function ObservationsCard({ state, onUpdate, observations, loading }: Obs
         <div className="mt-3">
           <WordTagInput
             label="Words Mastered"
-            words={state.wordsMastered}
+            words={state.wordsMastered || []}
             onChange={words => onUpdate({ wordsMastered: words })}
             placeholder="Type a word and press Enter"
             chipClassName="bg-green-500/20 text-green-400 border-green-500/30"
