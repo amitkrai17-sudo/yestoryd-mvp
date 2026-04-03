@@ -59,6 +59,19 @@ interface InsertLearningEventParams {
 }
 
 /**
+ * Normalize session modality variants to DB CHECK constraint values.
+ * Callers may pass 'in_person_1on1', 'offline', 'online_1on1' etc.
+ * DB allows: online, online_1on1, in_person, tuition, hybrid, group_class, practice, assessment, elearning, online_group
+ */
+function normalizeModality(modality: SessionModality | undefined): string | null {
+  if (!modality) return null;
+  const m = modality as string;
+  if (m === 'online' || m === 'online_1on1') return 'online';
+  if (m === 'in_person' || m === 'in_person_1on1' || m === 'offline') return 'in_person';
+  return m;
+}
+
+/**
  * Insert a learning event with GUARANTEED embedding generation.
  * This is the ONLY function that should insert into learning_events.
  *
@@ -70,6 +83,9 @@ export async function insertLearningEvent(
   const supabase = createAdminClient();
 
   try {
+    // 0. Normalize session_modality to match DB CHECK constraint
+    const normalizedModality = normalizeModality(params.sessionModality);
+
     // 1. ALWAYS generate embedding — this is the whole point of this function
     const embedding = await generateEmbedding(params.contentForEmbedding);
 
@@ -86,7 +102,7 @@ export async function insertLearningEvent(
         coach_id: params.coachId || null,
         signal_source: params.signalSource,
         signal_confidence: params.signalConfidence,
-        session_modality: params.sessionModality || null,
+        session_modality: normalizedModality,
         event_date: params.eventDate || new Date().toISOString(),
         // Optional columns
         ...(params.aiSummary != null ? { ai_summary: params.aiSummary } : {}),
@@ -113,7 +129,7 @@ export async function insertLearningEvent(
             coach_id: params.coachId || null,
             signal_source: params.signalSource,
             signal_confidence: params.signalConfidence,
-            session_modality: params.sessionModality || null,
+            session_modality: normalizedModality,
             event_date: params.eventDate || new Date().toISOString(),
             ...(params.eventSubtype != null ? { event_subtype: params.eventSubtype } : {}),
             ...(params.intelligenceScore != null ? { intelligence_score: params.intelligenceScore } : {}),
