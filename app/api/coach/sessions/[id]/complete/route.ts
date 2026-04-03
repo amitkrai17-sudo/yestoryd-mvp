@@ -293,6 +293,48 @@ export async function POST(
       console.error('[SESSION_COMPLETE] Daily task generation failed:', taskError);
     }
 
+    // Notify parent of new practice tasks (template + coach-assigned combined)
+    try {
+      const { count: taskCount } = await supabase
+        .from('parent_daily_tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', sessionId)
+        .eq('is_completed', false);
+
+      if (taskCount && taskCount > 0) {
+        const { data: childInfo } = await supabase
+          .from('children')
+          .select('child_name, parent_phone, parent_email, parent_name, parent_id')
+          .eq('id', session.child_id!)
+          .single();
+
+        if (childInfo?.parent_phone || childInfo?.parent_email) {
+          const { sendCommunication } = await import('@/lib/communication');
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+
+          await sendCommunication({
+            templateCode: 'P22_practice_tasks_assigned',
+            recipientType: 'parent',
+            recipientId: childInfo.parent_id || undefined,
+            recipientPhone: childInfo.parent_phone || undefined,
+            recipientEmail: childInfo.parent_email || undefined,
+            recipientName: childInfo.parent_name || undefined,
+            variables: {
+              parent_first_name: (childInfo.parent_name || 'Parent').split(' ')[0],
+              child_name: childInfo.child_name || 'your child',
+              task_count: String(taskCount),
+              dashboard_link: `${baseUrl}/parent/dashboard`,
+            },
+            relatedEntityType: 'session',
+            relatedEntityId: sessionId,
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.error('[SESSION_COMPLETE] Practice task notification failed:', notifyErr);
+      // Non-blocking
+    }
+
     // Progress Pulse check — queue report after every N sessions
     try {
       // Count total completed coaching sessions for this child

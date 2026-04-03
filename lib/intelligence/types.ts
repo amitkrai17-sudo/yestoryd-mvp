@@ -143,6 +143,10 @@ export interface StructuredCapturePayload {
   coachConfirmed?: boolean;
   /** Voice input audio URL (for voice_to_structured) */
   voiceInputUrl?: string;
+  /** Whether homework was assigned this session */
+  homeworkAssigned?: boolean;
+  /** Coach's homework description */
+  homeworkDescription?: string;
   /** Child artifact (reading sample, etc.) */
   childArtifact?: {
     type: 'audio' | 'text' | 'image';

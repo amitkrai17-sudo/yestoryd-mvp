@@ -238,6 +238,8 @@ export function useCapture(props: CaptureFormProps) {
         contextTags: state.contextTags.length > 0 ? state.contextTags : undefined,
         aiPrefilled: false,
         coachConfirmed: true,
+        homeworkAssigned: state.homeworkAssigned || undefined,
+        homeworkDescription: state.homeworkAssigned && state.homeworkDescription ? state.homeworkDescription : undefined,
       };
 
       // Add artifact if present

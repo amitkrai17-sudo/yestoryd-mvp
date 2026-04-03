@@ -124,6 +124,8 @@ function validatePayload(body: unknown): { valid: true; data: StructuredCaptureP
       aiPrefilled: typeof b.aiPrefilled === 'boolean' ? b.aiPrefilled : undefined,
       coachConfirmed: typeof b.coachConfirmed === 'boolean' ? b.coachConfirmed : undefined,
       voiceInputUrl: typeof b.voiceInputUrl === 'string' ? b.voiceInputUrl : undefined,
+      homeworkAssigned: typeof b.homeworkAssigned === 'boolean' ? b.homeworkAssigned : undefined,
+      homeworkDescription: typeof b.homeworkDescription === 'string' ? b.homeworkDescription : undefined,
       childArtifact,
     },
   };
@@ -294,11 +296,67 @@ export async function POST(request: NextRequest) {
       // Non-fatal — capture was saved. Log but don't fail.
     }
 
+    // 6. Create parent_daily_task if homework was assigned
+    let homeworkTaskId: string | null = null;
+    if (payload.homeworkAssigned && payload.homeworkDescription) {
+      try {
+        // Look up enrollment_id from session
+        let enrollmentId: string | null = null;
+        if (payload.sessionId) {
+          const { data: sess } = await supabase
+            .from('scheduled_sessions')
+            .select('enrollment_id')
+            .eq('id', payload.sessionId)
+            .single();
+          enrollmentId = sess?.enrollment_id || null;
+        }
+
+        // Derive linked_skill from the primary skill performance (first rated skill)
+        const primarySkill = payload.skillPerformances[0];
+        let linkedSkill: string | null = null;
+        if (primarySkill?.skillId) {
+          const { data: skillRow } = await supabase
+            .from('el_skills')
+            .select('skill_tag')
+            .eq('id', primarySkill.skillId)
+            .single();
+          linkedSkill = skillRow?.skill_tag || null;
+        }
+
+        const { data: task } = await supabase
+          .from('parent_daily_tasks')
+          .insert({
+            child_id: payload.childId,
+            enrollment_id: enrollmentId,
+            session_id: payload.sessionId,
+            task_date: payload.sessionDate,
+            title: 'Coach Assigned Practice',
+            description: payload.homeworkDescription,
+            source: 'coach_assigned',
+            linked_skill: linkedSkill,
+            is_completed: false,
+            duration_minutes: 15,
+          })
+          .select('id')
+          .single();
+
+        homeworkTaskId = task?.id || null;
+      } catch (taskErr) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'homework_task_creation_error',
+          error: taskErr instanceof Error ? taskErr.message : String(taskErr),
+        }));
+        // Non-fatal
+      }
+    }
+
     console.log(JSON.stringify({
       requestId,
       event: 'capture_complete',
       captureId: capture.id,
       learningEventId: learningEvent?.id,
+      homeworkTaskId,
       score,
       confidence,
     }));
