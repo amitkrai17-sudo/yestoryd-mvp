@@ -102,6 +102,17 @@ export async function hybridSearch(
   }
 
   try {
+    // Lower threshold when child_id is set — the filter already guarantees relevance
+    const effectiveThreshold = childId ? Math.min(threshold, 0.2) : threshold;
+
+    console.log(JSON.stringify({
+      event: 'hybrid_search_rpc_call',
+      filter_child_id: childId || null,
+      effectiveThreshold,
+      match_count: limit,
+      searchMode,
+    }));
+
     const { data: events, error } = await supabase.rpc('hybrid_match_learning_events', {
       query_embedding: JSON.stringify(queryEmbedding),
       filter_child_id: childId || undefined,
@@ -110,7 +121,7 @@ export async function hybridSearch(
       filter_date_to: filters.dateRange?.to?.toISOString() || undefined,
       filter_event_type: filters.eventType || undefined,
       filter_keywords: filters.keywords.length > 0 ? filters.keywords : undefined,
-      match_threshold: threshold,
+      match_threshold: effectiveThreshold,
       match_count: limit,
       // Dynamic search weighting — new params with backward-compatible defaults in RPC
       keyword_weight_multiplier: multiplier,
@@ -125,7 +136,22 @@ export async function hybridSearch(
     debug.eventsFound = events?.length || 0;
 
     // Re-rank by recency + confidence so fresh high-confidence signals surface first
-    const rankedEvents = applyIntelligenceBoost((events || []) as LearningEvent[]);
+    let rankedEvents = applyIntelligenceBoost((events || []) as LearningEvent[]);
+
+    // Fallback: if vector search returns 0 results but child has data, fetch recent events directly
+    if (rankedEvents.length === 0 && childId) {
+      const { data: fallbackEvents } = await supabase
+        .from('learning_events')
+        .select('*')
+        .eq('child_id', childId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (fallbackEvents?.length) {
+        rankedEvents = applyIntelligenceBoost(fallbackEvents as LearningEvent[]);
+        debug.filtersApplied.push('fallback: zero-result direct fetch');
+      }
+    }
 
     return {
       events: rankedEvents,
@@ -377,9 +403,14 @@ export function formatEventsForContext(events: LearningEvent[]): string {
       case 'milestone':
         details = `${data.title || data.milestone || 'Achievement'}: ${data.description || ''}`;
         break;
-        
+
+      case 'structured_capture':
+        // Use content_for_embedding as primary (always populated with rich text)
+        details = event.content_for_embedding || event.ai_summary || 'Structured session capture';
+        break;
+
       default:
-        details = event.ai_summary || 'No details';
+        details = event.ai_summary || event.content_for_embedding || 'No details';
     }
 
     return `[${index + 1}] ${event.event_type.toUpperCase()} (${date}): ${details}${event.ai_summary ? `\n    Summary: ${event.ai_summary}` : ''}`;

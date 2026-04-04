@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase/client';
 import {
@@ -35,6 +35,7 @@ interface Message {
 
 export default function AIAssistantPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [coach, setCoach] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -48,10 +49,16 @@ export default function AIAssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hasSentAutoPrompt, setHasSentAutoPrompt] = useState(false);
   const autoPromptRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const loadData = async () => {
     try {
@@ -145,8 +152,16 @@ export default function AIAssistantPage() {
   }, [loading, students, searchParams, hasSentAutoPrompt]);
 
   const handleStudentSelect = (student: Student | null) => {
+    if (student?.id === selectedStudent?.id) return;
     setSelectedStudent(student);
+    setMessages([]);
     setSidebarOpen(false);
+    if (student) {
+      router.replace(`/coach/ai-assistant?studentId=${student.id}`, { scroll: false });
+      // Reset auto-prompt gate so the useEffect can re-fire for the new student
+      autoPromptRef.current = false;
+      setHasSentAutoPrompt(false);
+    }
   };
 
   /** Send a message with explicit content and optional student override (for auto-prompt) */
@@ -554,8 +569,13 @@ export default function AIAssistantPage() {
                 {quickPrompts.map((prompt) => (
                   <button
                     key={prompt}
-                    onClick={() => setInput(prompt)}
-                    className="text-xs sm:text-sm bg-surface-2/50 text-text-secondary px-3 sm:px-4 py-2 rounded-full hover:bg-surface-2 border border-border hover:border-[#00ABFF]/50 transition-colors"
+                    onClick={() => {
+                      const userMsg: Message = { id: Date.now().toString(), role: 'user', content: prompt, timestamp: new Date() };
+                      setMessages([userMsg]);
+                      sendMessageWithContent(prompt);
+                    }}
+                    disabled={sending}
+                    className="text-xs sm:text-sm bg-surface-2/50 text-text-secondary px-3 sm:px-4 py-2 rounded-full hover:bg-surface-2 border border-border hover:border-[#00ABFF]/50 transition-colors disabled:opacity-50"
                   >
                     {prompt}
                   </button>
@@ -637,6 +657,7 @@ export default function AIAssistantPage() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}

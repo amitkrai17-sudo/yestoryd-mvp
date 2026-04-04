@@ -94,13 +94,15 @@ function formatIntelligenceContext(profile: IntelligenceProfileMeta, childName: 
     : null;
 
   if (profile.freshnessStatus === 'fresh') {
-    lines.push(`Intelligence freshness: FRESH. Data is current. Answer confidently.`);
+    lines.push(`Intelligence freshness: FRESH. Data is current. Answer confidently using the learning data below.`);
   } else if (profile.freshnessStatus === 'aging') {
-    lines.push(`Intelligence freshness: AGING (last signal ${daysSince ?? '?'} days ago). Caveat older observations.`);
+    lines.push(`Intelligence freshness: AGING (last signal ${daysSince ?? '?'} days ago). Still use the learning data below but note it may not reflect the very latest sessions.`);
   } else if (profile.freshnessStatus === 'stale') {
-    lines.push(`Intelligence freshness: STALE (${daysSince ?? '?'} days since last session). Recommend a new session for updated assessment.`);
+    lines.push(`Intelligence freshness: STALE (${daysSince ?? '?'} days since last session). Still analyze whatever learning data is available below — just caveat with "Based on data from ${daysSince ?? 'a while'} ago..." and suggest booking a new session.`);
+  } else if ((profile.totalEventCount ?? 0) > 0) {
+    lines.push(`Intelligence freshness: Limited data available. Analyze the learning data below with appropriate caveats about data depth.`);
   } else {
-    lines.push(`Intelligence freshness: No data yet. Recommend starting with an assessment or first session.`);
+    lines.push(`Intelligence freshness: No learning data yet. If the LEARNING DATA section below is empty, recommend starting with an assessment or first session. If data IS present, use it.`);
   }
 
   if (profile.totalEventCount != null) {

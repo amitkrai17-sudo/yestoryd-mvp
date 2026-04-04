@@ -289,8 +289,8 @@ export async function POST(request: NextRequest) {
         const { intent, tier0Match, complexity, search_mode } = await classifyIntent(message, userRole);
         console.log(JSON.stringify({ requestId, event: 'intent_classified', intent, tier0Match, complexity, search_mode }));
 
-        // 2. ADMIN INSIGHT CHECK (fast path)
-        if (userRole === 'admin') {
+        // 2. ADMIN INSIGHT CHECK (fast path — skip when a specific child is selected)
+        if (userRole === 'admin' && !childId) {
           const insightResponse = await handleAdminInsightQuery(message);
           if (insightResponse) {
             send({ type: 'response', content: insightResponse, intent: 'ADMIN_INSIGHT', source: 'cached_insight' });
@@ -441,6 +441,16 @@ async function handleLearningStreaming(
         .single();
       child = childData as ChildWithCache;
     }
+  } else if (userRole === 'admin') {
+    // Admin can access any child by ID
+    if (childId) {
+      const { data: childData } = await supabase
+        .from('children')
+        .select('id, name, child_name, age, parent_email, coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
+        .eq('id', childId)
+        .single();
+      child = childData as ChildWithCache;
+    }
   }
 
   const childName = child?.child_name || child?.name || 'your child';
@@ -490,6 +500,14 @@ async function handleLearningStreaming(
 
   // --- HYBRID SEARCH ---
   send({ type: 'status', message: 'Searching learning history...' });
+
+  console.log(JSON.stringify({
+    event: 'chat_hybrid_search_start',
+    childId: child?.id || null,
+    childName: child?.child_name || child?.name || null,
+    userRole,
+    searchMode,
+  }));
 
   const searchResult = await hybridSearch({
     query: message,

@@ -371,6 +371,7 @@ export default function CoachSessionsPage() {
         alert(data.error || 'Failed to switch to online');
         return;
       }
+      alert(data.message || 'Switched to online');
       loadSessions();
     } catch {
       alert('Network error. Please try again.');

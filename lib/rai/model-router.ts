@@ -30,9 +30,9 @@ export function selectModel(
  */
 export function selectTokenCap(role: UserRole, complexity: Complexity): number {
   const caps: Record<string, Record<string, number>> = {
-    parent: { low: 300, medium: 500, high: 500 },
+    parent: { low: 300, medium: 500, high: 800 },
     coach:  { low: 400, medium: 600, high: 800 },
-    admin:  { low: 300, medium: 500, high: 600 },
+    admin:  { low: 300, medium: 500, high: 1000 },
   };
   return caps[role]?.[complexity] || 400;
 }
