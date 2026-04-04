@@ -351,6 +351,8 @@ export async function POST(request: NextRequest) {
         struggleObservations: payload.struggleObservations,
         captureMethod: payload.captureMethod,
         hasArtifact: !!payload.childArtifact,
+        homework_assigned: !!payload.homeworkAssigned,
+        homework_description: payload.homeworkAssigned ? (payload.homeworkDescription || null) : null,
       },
       contentForEmbedding,
       createdBy: auth.userId || undefined,
@@ -410,6 +412,53 @@ export async function POST(request: NextRequest) {
           .single();
 
         homeworkTaskId = task?.id || null;
+
+        // Notify parent of homework assignment (same pattern as complete/route.ts)
+        if (homeworkTaskId) {
+          try {
+            const { data: childInfo } = await supabase
+              .from('children')
+              .select('child_name, parent_phone, parent_email, parent_name, parent_id')
+              .eq('id', payload.childId)
+              .single();
+
+            if (childInfo?.parent_phone || childInfo?.parent_email) {
+              const { sendCommunication } = await import('@/lib/communication');
+              const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+
+              const commResult = await sendCommunication({
+                templateCode: 'P22_practice_tasks_assigned',
+                recipientType: 'parent',
+                recipientId: childInfo.parent_id || undefined,
+                recipientPhone: childInfo.parent_phone || undefined,
+                recipientEmail: childInfo.parent_email || undefined,
+                recipientName: childInfo.parent_name || undefined,
+                variables: {
+                  parent_first_name: (childInfo.parent_name || 'Parent').split(' ')[0],
+                  child_name: childInfo.child_name || 'your child',
+                  task_count: '1',
+                  dashboard_link: `${baseUrl}/parent/dashboard`,
+                },
+                relatedEntityType: 'session',
+                relatedEntityId: payload.sessionId || undefined,
+              });
+
+              console.log(JSON.stringify({
+                requestId,
+                event: 'homework_notify_result',
+                success: commResult.success,
+                results: commResult.results,
+              }));
+            }
+          } catch (notifyErr) {
+            console.error(JSON.stringify({
+              requestId,
+              event: 'homework_notify_error',
+              error: notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
+            }));
+            // Non-blocking — task was already created
+          }
+        }
       } catch (taskErr) {
         console.error(JSON.stringify({
           requestId,

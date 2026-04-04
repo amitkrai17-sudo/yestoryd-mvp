@@ -215,7 +215,7 @@ export async function deductTuitionBalance(
         try {
           const result = await sendWhatsAppMessage({
             to: formattedPhone,
-            templateName: 'tuition_low_balance_v2', // was: tuition_low_balance
+            templateName: 'tuition_low_balance_v3',
             variables: [
               parentName.split(' ')[0],
               childName,
@@ -231,14 +231,14 @@ export async function deductTuitionBalance(
               enrollmentId, phone: formattedPhone, error: result.error,
             }));
           }
-          await logTuitionWaSend('tuition_low_balance_v2', formattedPhone, result.success, result.error);
+          await logTuitionWaSend('tuition_low_balance_v3', formattedPhone, result.success, result.error);
         } catch (waErr) {
           const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
           console.error(JSON.stringify({
             requestId, event: 'tuition_low_balance_wa_exception',
             enrollmentId, phone: formattedPhone, error: errMsg,
           }));
-          await logTuitionWaSend('tuition_low_balance_v2', formattedPhone, false, errMsg);
+          await logTuitionWaSend('tuition_low_balance_v3', formattedPhone, false, errMsg);
         }
       }
 
