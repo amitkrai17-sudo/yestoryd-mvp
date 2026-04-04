@@ -30,9 +30,9 @@ export function selectModel(
  */
 export function selectTokenCap(role: UserRole, complexity: Complexity): number {
   const caps: Record<string, Record<string, number>> = {
-    parent: { low: 300, medium: 500, high: 800 },
-    coach:  { low: 400, medium: 600, high: 800 },
-    admin:  { low: 300, medium: 500, high: 1000 },
+    parent: { low: 300, medium: 700, high: 800 },
+    coach:  { low: 400, medium: 800, high: 800 },
+    admin:  { low: 300, medium: 800, high: 1000 },
   };
   return caps[role]?.[complexity] || 400;
 }
@@ -94,7 +94,7 @@ export async function* generateWithFallback(
     try {
       const fallback = getGenAI().getGenerativeModel({
         model: fallbackModel,
-        generationConfig: { maxOutputTokens: Math.min(maxTokens, 400), temperature: 0.3 },
+        generationConfig: { maxOutputTokens: Math.min(maxTokens, 600), temperature: 0.3 },
       });
       const result = await fallback.generateContentStream({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],

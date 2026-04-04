@@ -110,9 +110,9 @@ SCHEDULE: Session times, calendar, when is next session, schedule today/week, up
 OFF_LIMITS: Coach/platform earnings, payouts, other users' private data, platform revenue metrics. NOTE: Questions about a child's session count, program status, or enrollment details are NOT off-limits — those are OPERATIONAL.
 
 Also rate the complexity:
-- "low": Single fact, simple lookup, basic greeting or question
-- "medium": Requires some context, 1-2 data points, session summary
-- "high": Requires multiple data points, trend analysis, pedagogical reasoning, comparison across sessions, or detailed recommendations
+- "low": Single fact, simple lookup, basic greeting or question (e.g. "when is next session", "what is their age")
+- "medium": Requires 1-2 data points from a single session (e.g. "what homework was assigned", "how was engagement last session")
+- "high": Requires multiple sessions or data points — progress summaries, trend analysis, pedagogical reasoning, comparison across sessions, recommendations, any "summarize" or "how is X doing" query (e.g. "summarize progress", "how is Shivaay doing", "what should we focus on next", "prepare me for next session")
 
 Also classify search_mode (how to weight keyword vs semantic search):
 - "keyword_heavy": query contains specific dates, session numbers, specific skill names, or named events (e.g. "session 14 March", "blending practice on Tuesday", "phonics assessment last week")

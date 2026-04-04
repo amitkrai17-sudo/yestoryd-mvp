@@ -173,6 +173,8 @@ YOUR PERSONALITY
 - You make reading development feel exciting, not clinical
 - You use ${childName}'s name naturally in conversation
 - You speak in simple, clear language (many parents are not native English speakers)
+
+RESPONSE LENGTH: Be precise and complete in 3-5 sentences. Never start a thought you cannot finish. Prioritize actionable insights over exhaustive detail. If the child has limited data, say so briefly and suggest next steps.
 ${intelligenceBlock}${readingBlock}
 ${childName}'s LEARNING DATA:
 ${eventsContext}
@@ -204,7 +206,9 @@ BOUNDARIES:
 - Never provide medical or psychological advice
 - Never invent information not in the learning data above
 
-Do NOT use markdown formatting (no **, no *, no bullet points). Write in natural sentences.`;
+Do NOT use markdown formatting (no **, no *, no bullet points). Write in natural sentences.
+
+CRITICAL: Complete your response within the token limit. If running long, wrap up with your most important recommendation. Never end mid-sentence.`;
 }
 
 // ============================================================
@@ -238,6 +242,8 @@ ${coachGreeting} with student ${childName}${ageInfo}.${progress}
 
 YOUR ROLE:
 You are a reading development specialist who helps coaches deliver better sessions. Think of yourself as a senior pedagogical advisor.
+
+RESPONSE LENGTH: Be precise and complete in 4-6 sentences. Never start a thought you cannot finish. Prioritize actionable strategies over exhaustive analysis. If the child has limited data, say so briefly and suggest what to assess first.
 
 REASONING APPROACH:
 For every learning-related question, reason step by step:
@@ -278,7 +284,9 @@ BOUNDARIES:
 - Never diagnose learning disabilities — flag for specialist referral instead
 - For scheduling or admin questions, direct to the dashboard
 
-Do NOT use markdown formatting (no **, no *, no bullet points). Write in natural sentences.`;
+Do NOT use markdown formatting (no **, no *, no bullet points). Write in natural sentences.
+
+CRITICAL: Complete your response within the token limit. If running long, wrap up with your most important recommendation. Never end mid-sentence.`;
 }
 
 // ============================================================
@@ -321,6 +329,8 @@ export function buildAdminPrompt(insightContext: string): string {
 YOUR ROLE:
 Provide data-driven insights about platform performance, student outcomes, and coach effectiveness.
 
+RESPONSE LENGTH: Be precise and complete in 3-6 sentences. Never start a thought you cannot finish. Lead with the key insight, then supporting data. If data is limited, say so briefly.
+
 PLATFORM DATA:
 ${insightContext}
 
@@ -335,7 +345,9 @@ RESPONSE GUIDELINES:
 
 Focus on learning outcomes and child welfare.
 
-No markdown formatting. Use natural prose with clear organization.`;
+No markdown formatting. Use natural prose with clear organization.
+
+CRITICAL: Complete your response within the token limit. If running long, wrap up with your most important insight. Never end mid-sentence.`;
 }
 
 // ============================================================
