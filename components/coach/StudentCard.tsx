@@ -43,6 +43,7 @@ export interface StudentData {
   last_session_focus: string | null;
   next_session_date: string | null;
   next_session_time: string | null;
+  freshness_status?: string | null;
 }
 
 interface StudentCardProps {
@@ -133,6 +134,15 @@ export default function StudentCard({ student, onSchedule, onRecordPayment }: St
               {student.child_name}
             </span>
             <span className="text-[10px] text-gray-500">{student.age}y</span>
+
+            {/* Freshness indicator */}
+            {student.freshness_status && (
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                student.freshness_status === 'fresh' ? 'bg-green-500' :
+                student.freshness_status === 'aging' ? 'bg-amber-500' :
+                student.freshness_status === 'stale' ? 'bg-red-500' : 'bg-gray-500'
+              }`} title={`Profile: ${student.freshness_status}`} />
+            )}
 
             {/* Type badge */}
             {isTuition ? (

@@ -68,6 +68,9 @@ export interface LearningEvent {
   event_data?: Record<string, unknown>;
   ai_summary?: string | null;
   content_for_embedding?: string | null;
+  created_at: string;
+  signal_confidence?: string | null;
+  session_modality?: string | null;
   similarity?: number;
   keyword_boost?: number;
   final_score?: number;

@@ -451,7 +451,7 @@ async function handleLearningStreaming(
     try {
       const { data: profile } = await supabase
         .from('child_intelligence_profiles')
-        .select('skill_ratings, narrative_profile, overall_reading_level, overall_confidence, freshness_status, engagement_pattern')
+        .select('skill_ratings, narrative_profile, overall_reading_level, overall_confidence, freshness_status, engagement_pattern, last_any_signal_at, total_event_count, high_confidence_event_count')
         .eq('child_id', child.id)
         .maybeSingle();
 
@@ -466,6 +466,9 @@ async function handleLearningStreaming(
           freshnessStatus: profile.freshness_status || 'unknown',
           overallReadingLevel: profile.overall_reading_level || null,
           overallConfidence: profile.overall_confidence || 'insufficient',
+          lastSignalAt: profile.last_any_signal_at || null,
+          totalEventCount: profile.total_event_count || 0,
+          highConfidenceCount: profile.high_confidence_event_count || 0,
         };
       }
     } catch (err) {

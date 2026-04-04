@@ -190,6 +190,12 @@ export interface CaptureFormProps {
   sessionNumber?: number;
   modality?: SessionModality;
   groupSessionId?: string | null;
+  /** If set, form updates an existing capture instead of creating new (AI review mode) */
+  captureId?: string;
+  /** Pre-fill form with AI-generated or existing capture data */
+  initialData?: Partial<CaptureFormState>;
+  /** Show AI pre-fill banner when true */
+  isAiPrefilled?: boolean;
   onClose: () => void;
   onComplete: (result: { captureId: string; intelligenceScore: number }) => void;
 }

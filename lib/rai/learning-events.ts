@@ -5,7 +5,11 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
+import { normalizeModality } from '@/lib/intelligence/modality';
 import type { Json } from '@/lib/database.types';
+
+// Re-export canonical SessionModality for backward compatibility
+export type { SessionModality } from '@/lib/intelligence/modality';
 
 // Must match the CHECK constraint on learning_events.event_type
 export type LearningEventType =
@@ -32,11 +36,6 @@ export type SignalSource =
   | 'elearning_system' | 'elearning' | 'whatsapp_webhook' | 'nps_survey' | 'discovery_call'
   | 'group_class' | 'unknown';
 
-export type SessionModality =
-  | 'online' | 'online_1on1' | 'in_person' | 'tuition'
-  | 'hybrid' | 'group_class' | 'practice' | 'assessment' | 'elearning'
-  | 'online_group' | null;
-
 export type SignalConfidence = 'high' | 'medium' | 'low';
 
 interface InsertLearningEventParams {
@@ -48,7 +47,7 @@ interface InsertLearningEventParams {
   coachId?: string | null;
   signalSource: SignalSource;
   signalConfidence: SignalConfidence;
-  sessionModality?: SessionModality;
+  sessionModality?: string | null;
   eventDate?: string; // ISO string, defaults to now
   // Optional columns used by some callers
   aiSummary?: string;
@@ -56,19 +55,6 @@ interface InsertLearningEventParams {
   createdBy?: string;
   voiceNoteTranscript?: string;
   intelligenceScore?: number;
-}
-
-/**
- * Normalize session modality variants to DB CHECK constraint values.
- * Callers may pass 'in_person_1on1', 'offline', 'online_1on1' etc.
- * DB allows: online, online_1on1, in_person, tuition, hybrid, group_class, practice, assessment, elearning, online_group
- */
-function normalizeModality(modality: SessionModality | undefined): string | null {
-  if (!modality) return null;
-  const m = modality as string;
-  if (m === 'online' || m === 'online_1on1') return 'online';
-  if (m === 'in_person' || m === 'in_person_1on1' || m === 'offline') return 'in_person';
-  return m;
 }
 
 /**
@@ -212,4 +198,36 @@ export async function insertLearningEventsBatch(
     if (result) successCount++;
   }
   return successCount;
+}
+
+/**
+ * Finds learning_events with content_for_embedding but no embedding,
+ * regenerates the embedding. Used for recovery from Gemini API failures.
+ */
+export async function backfillMissingEmbeddings(limit = 10): Promise<number> {
+  const supabase = createAdminClient();
+  const { data: events } = await supabase
+    .from('learning_events')
+    .select('id, content_for_embedding')
+    .is('embedding', null)
+    .not('content_for_embedding', 'is', null)
+    .limit(limit);
+
+  let fixed = 0;
+  for (const event of events || []) {
+    try {
+      const embedding = await generateEmbedding(event.content_for_embedding!);
+      if (embedding) {
+        await supabase
+          .from('learning_events')
+          .update({ embedding: JSON.stringify(embedding) })
+          .eq('id', event.id);
+        fixed++;
+        console.log(`[backfillEmbedding] Fixed event ${event.id}`);
+      }
+    } catch (e) {
+      console.error(`[backfillEmbedding] Failed for event ${event.id}:`, e);
+    }
+  }
+  return fixed;
 }

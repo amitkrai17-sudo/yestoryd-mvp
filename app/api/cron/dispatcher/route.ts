@@ -157,6 +157,13 @@ const JOBS: Job[] = [
     description: 'Compute platform-wide insights',
   },
   {
+    name: 'intelligence-freshness',
+    path: '/api/cron/intelligence-freshness',
+    schedule: { type: 'daily', istHour: 6, istMinute: 0 },
+    method: 'GET',
+    description: 'Decay intelligence profile freshness (fresh->aging->stale)',
+  },
+  {
     name: 'micro-assessment-trigger',
     path: '/api/cron/micro-assessment-trigger',
     schedule: { type: 'daily', istHour: 4, istMinute: 0 },

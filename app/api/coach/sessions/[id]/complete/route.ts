@@ -12,8 +12,8 @@ import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
 import { queueProgressPulse } from '@/lib/qstash';
 import { getCategoryBySlug } from '@/lib/config/skill-categories';
 import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
-import { buildSessionSearchableContent } from '@/lib/rai/embeddings';
-import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -108,128 +108,48 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
     }
 
-    // 4. Build event_data for learning_events (SINGLE SOURCE OF TRUTH)
-    //    Skip when structured capture already created the learning event
-    if (isStructuredCapture) {
-      // Structured capture path — learning event already exists.
-      // Still run post-completion hooks below.
-    } else {
+    // 4. Structured capture is now MANDATORY for all session completions.
+    //    If captureId is present, the learning_event was already created by capture/route.ts.
+    //    If not, check for a pending capture or require one.
+    if (!isStructuredCapture) {
+      // Check if a pending capture exists for this session
+      const { data: pendingCapture } = await supabase
+        .from('structured_capture_responses')
+        .select('id, coach_confirmed')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    const eventData = {
-      // Identifiers
-      session_id: sessionId,
-      session_number: session.session_number || payload.sessionNumber || 1,
-      session_type: 'coaching',
+      if (pendingCapture && !pendingCapture.coach_confirmed) {
+        return NextResponse.json(
+          { error: 'pending_capture', captureId: pendingCapture.id,
+            message: 'Please review and confirm the session capture before completing.' },
+          { status: 400 }
+        );
+      }
 
-      // Step 1: Quick Pulse
-      overall_rating: overallRating,
-      focus_area: primaryFocus,
+      if (!pendingCapture) {
+        return NextResponse.json(
+          { error: 'capture_required',
+            message: 'Session completion requires a structured capture. Please fill the capture form.' },
+          { status: 400 }
+        );
+      }
 
-      // Step 2: Deep Dive
-      skills_worked_on: skillsPracticed,
-      progress_rating: focusProgress,
-      engagement_level: engagementLevel,
-      highlights: highlights,
-      challenges: challenges,
-
-      // Step 3: Planning
-      next_session_focus: nextSessionFocus,
-      next_session_activities: payload.nextSessionActivities || [],
-      homework_assigned: payload.homeworkAssigned || false,
-      homework_items: payload.homeworkItems || [],
-      parent_update_needed: payload.parentUpdateNeeded || false,
-      parent_update_type: payload.parentUpdateType || null,
-
-      // Meta
-      coach_notes: payload.additionalNotes || payload.coachNotes || '',
-      breakthrough_moment: payload.breakthroughMoment || '',
-      completed_at: new Date().toISOString(),
-      form_version: '2.0',
-    };
-
-    // 5. Build content for embedding (RAG search)
-    const childName = (session as any).children?.child_name || 'Student';
-    const contentForEmbedding = buildSessionSearchableContent(childName, {
-      focus_area: eventData.focus_area,
-      skills_worked_on: eventData.skills_worked_on,
-      progress_rating: eventData.progress_rating,
-      engagement_level: eventData.engagement_level,
-      breakthrough_moment: eventData.breakthrough_moment || undefined,
-      homework_assigned: eventData.homework_assigned,
-      homework_description: eventData.homework_items?.length > 0
-        ? eventData.homework_items.join(', ')
-        : undefined,
-      next_session_focus: eventData.next_session_focus || undefined,
-      key_observations: eventData.highlights?.length > 0 ? eventData.highlights : undefined,
-      concerns_noted: eventData.challenges?.length > 0 ? eventData.challenges.join(', ') : undefined,
-      summary: eventData.coach_notes || undefined,
-    });
-
-    // Derive modality from actual delivery mode (not enrollment type)
-    // 'tuition' is an enrollment type, not a modality — don't use it here
-    const sessionModality: 'online' | 'in_person' | null =
-      (session as any).session_mode === 'online' || (session as any).google_meet_link
-        ? 'online'
-        : (session as any).session_mode === 'offline'
-          ? 'in_person'
-          : null;
-
-    // 6. Insert learning_event
-    const eventResult = await insertLearningEvent({
-      childId: session.child_id!,
-      coachId: session.coach_id ?? undefined,
-      sessionId,
-      eventType: 'session',
-      eventDate: new Date().toISOString(),
-      eventData,
-      contentForEmbedding,
-      signalSource: 'coach_form',
-      signalConfidence: 'medium',
-      ...(sessionModality ? { sessionModality } : {}),
-    });
-
-    if (!eventResult) {
-      console.error('Learning event insert error (see activity_log for details)');
-      // Log but don't fail - session is marked complete
+      // pendingCapture exists and IS confirmed — treat as structured capture
+      // (coach confirmed capture outside of the normal flow, e.g. via capture page directly)
     }
 
-    // 7. Update children cache (for quick parent queries)
-    const childSummary = {
-      date: new Date().toISOString(),
-      focus: primaryFocus,
-      progress: focusProgress,
-      highlights: highlights,
-      next_focus: nextSessionFocus,
-      homework: payload.homeworkItems || [],
-    };
-
-    const { error: childError } = await supabase
+    // 5. Update children last_session_date
+    const { error: childDateError } = await supabase
       .from('children')
       .update({
-        last_session_summary: JSON.stringify(childSummary),
         last_session_date: new Date().toISOString(),
-        last_session_focus: primaryFocus,
       })
       .eq('id', session.child_id!);
-
-    if (childError) {
-      console.error('Children cache update error:', childError);
-      // Log but don't fail
-    }
-
-    } // end of legacy (non-structured-capture) learning event path
-
-    // Update children last_session_date for both paths
-    if (isStructuredCapture) {
-      const { error: childDateError } = await supabase
-        .from('children')
-        .update({
-          last_session_date: new Date().toISOString(),
-        })
-        .eq('id', session.child_id!);
-      if (childDateError) {
-        console.error('Children date update error:', childDateError);
-      }
+    if (childDateError) {
+      console.error('Children date update error:', childDateError);
     }
 
     // Ensure child_intelligence_profiles row exists (created lazily)

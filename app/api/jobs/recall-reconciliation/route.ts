@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { getGenAI } from '@/lib/gemini/client';
-import { buildSessionSearchableContent } from '@/lib/rai/embeddings';
+import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -315,21 +315,23 @@ async function saveReconciliationData(
     .eq('id', sessionId);
 
   // 3. Create learning event with embedding
-  const contentForEmbedding = buildSessionSearchableContent(childName, {
-    session_type: analysis.session_type,
-    focus_area: analysis.focus_area,
-    skills_worked_on: analysis.skills_worked_on,
-    progress_rating: analysis.progress_rating,
-    engagement_level: analysis.engagement_level,
-    breakthrough_moment: analysis.breakthrough_moment || undefined,
-    concerns_noted: analysis.concerns_noted || undefined,
-    homework_assigned: analysis.homework_assigned,
-    homework_description: analysis.homework_description || undefined,
-    next_session_focus: analysis.next_session_focus || undefined,
-    key_observations: analysis.key_observations,
-    coach_talk_ratio: analysis.coach_talk_ratio,
-    child_reading_samples: analysis.child_reading_samples,
-    summary: analysis.summary,
+  const contentForEmbedding = buildUnifiedEmbeddingContent({
+    childName,
+    eventDate: new Date().toISOString(),
+    eventType: 'session',
+    sessionModality: 'online',
+    focusArea: analysis.focus_area,
+    skillsWorkedOn: analysis.skills_worked_on,
+    engagementLevel: analysis.engagement_level,
+    keyObservations: analysis.key_observations,
+    concernsNoted: analysis.concerns_noted || undefined,
+    breakthroughMoment: analysis.breakthrough_moment || undefined,
+    coachTalkRatio: analysis.coach_talk_ratio,
+    childReadingSamples: analysis.child_reading_samples,
+    homeworkAssigned: analysis.homework_assigned && analysis.homework_description
+      ? [analysis.homework_description] : undefined,
+    nextSessionFocus: analysis.next_session_focus || undefined,
+    aiSummary: analysis.summary,
   });
 
   await insertLearningEvent({

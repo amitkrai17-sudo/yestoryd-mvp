@@ -148,7 +148,15 @@ ${microLines.length > 0 ? microLines.join('\n') : '- No micro-assessments availa
 
 ${antiHallucination}
 
-TASK: Synthesize ALL signals above into a unified intelligence profile for ${childName}. Weight signals by confidence: HIGH=primary evidence, MEDIUM=supporting evidence, LOW=supplementary context only.
+RECENCY WEIGHTING:
+- Signals from last 7 days (fresh): full strength (100%)
+- Signals from 7-21 days ago (aging): 85% weight
+- Signals older than 21 days (stale): 70% weight
+- When a recent high-confidence signal contradicts an older low-confidence one, prefer the recent signal
+- Flag skills where data is thin (fewer than 3 high-confidence events)
+- Note when the last high-confidence signal for a skill is older than 14 days
+
+TASK: Synthesize ALL signals above into a unified intelligence profile for ${childName}. Weight signals by BOTH confidence AND recency: HIGH+FRESH=primary evidence, MEDIUM or AGING=supporting evidence, LOW or STALE=supplementary context only.
 
 Respond with ONLY valid JSON matching this exact schema:
 {

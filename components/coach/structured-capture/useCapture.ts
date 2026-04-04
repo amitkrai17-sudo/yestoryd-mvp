@@ -61,12 +61,13 @@ function clearDraft(sessionId: string, childId: string): void {
 }
 
 export function useCapture(props: CaptureFormProps) {
-  const { sessionId, childId, childAge, coachId, modality, groupSessionId } = props;
+  const { sessionId, childId, childAge, coachId, modality, groupSessionId, captureId, initialData } = props;
 
-  // Form state — initialize from draft or fresh
-  // Spread defaults first so new fields added after a draft was saved get their initial values
+  // Form state — initialize from initialData (AI review), draft, or fresh
   const [state, setState] = useState<CaptureFormState>(() => {
     if (typeof window === 'undefined') return createInitialCaptureState();
+    // AI-prefilled data takes priority over localStorage draft
+    if (initialData) return { ...createInitialCaptureState(), ...initialData };
     const draft = loadDraft(sessionId, childId);
     if (!draft) return createInitialCaptureState();
     return { ...createInitialCaptureState(), ...draft };
@@ -266,7 +267,8 @@ export function useCapture(props: CaptureFormProps) {
       const res = await fetch('/api/intelligence/capture', {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload),
+        // Include captureId if updating an existing capture (AI review mode)
+        body: JSON.stringify(captureId ? { ...payload, captureId } : payload),
       });
 
       if (!res.ok) {
@@ -288,7 +290,7 @@ export function useCapture(props: CaptureFormProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [state, sessionId, childId, coachId, modality, groupSessionId]);
+  }, [state, sessionId, childId, coachId, modality, groupSessionId, captureId]);
 
   return {
     state,

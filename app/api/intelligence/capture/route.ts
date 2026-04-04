@@ -197,7 +197,167 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getServiceSupabase();
 
-    // 1. Load weights and compute score
+    // 0. Check for captureId — coach is confirming an AI-prefilled capture
+    if ((rawBody as any).captureId) {
+      const captureId = (rawBody as any).captureId as string;
+      const { data: existing } = await supabase
+        .from('structured_capture_responses')
+        .select('id, child_id, coach_id, session_id, session_modality, capture_method, ai_prefilled')
+        .eq('id', captureId)
+        .single();
+
+      if (!existing) {
+        return NextResponse.json({ error: 'Capture not found' }, { status: 404 });
+      }
+
+      // Update with coach's confirmed data
+      const weights = await loadWeights();
+      const score = computeIntelligenceScore({
+        hasSkillsCovered: payload.skillsCovered.length > 0,
+        hasPerformanceRatings: payload.skillPerformances.length > 0 && payload.skillPerformances.every(sp => !!sp.rating),
+        hasChildArtifact: !!payload.childArtifact,
+        hasObservations: payload.strengthObservations.length > 0 || payload.struggleObservations.length > 0,
+        hasEngagement: true,
+      }, weights);
+      const confidence = getSignalConfidence(payload.captureMethod);
+
+      await supabase
+        .from('structured_capture_responses')
+        .update({
+          skills_covered: payload.skillsCovered,
+          skill_performances: payload.skillPerformances as any,
+          engagement_level: payload.engagementLevel,
+          strength_observations: payload.strengthObservations,
+          struggle_observations: payload.struggleObservations,
+          custom_strength_note: payload.customStrengthNote || null,
+          custom_struggle_note: payload.customStruggleNote || null,
+          context_tags: payload.contextTags || [],
+          words_mastered: payload.wordsMastered || [],
+          words_struggled: payload.wordsStruggled || [],
+          intelligence_score: score,
+          coach_confirmed: true,
+          submitted_at: new Date().toISOString(),
+        })
+        .eq('id', captureId);
+
+      // Now create the learning_event (the gate opens)
+      // Signal confidence: AI-prefilled + coach confirmed = high
+      const signalConfidence = existing.ai_prefilled ? 'high' : confidence;
+
+      // Fetch skill names for embedding
+      const allSkillIds = payload.skillsCovered.length > 0
+        ? payload.skillsCovered
+        : payload.skillPerformances.map(sp => sp.skillId);
+
+      const [skillResult, childResult] = await Promise.all([
+        allSkillIds.length > 0
+          ? supabase.from('el_skills').select('id, name, category_id').in('id', allSkillIds)
+          : Promise.resolve({ data: [] as { id: string; name: string; category_id: string | null }[] }),
+        supabase.from('children').select('child_name, name').eq('id', existing.child_id).single(),
+      ]);
+
+      const skillNameMap = new Map<string, string>();
+      const skillCatIdMap = new Map<string, string>();
+      for (const s of skillResult.data || []) {
+        skillNameMap.set(s.id, s.name);
+        if (s.category_id) skillCatIdMap.set(s.id, s.category_id);
+      }
+
+      const uniqueCatIds = Array.from(new Set(Array.from(skillCatIdMap.values())));
+      const catLabelMap = new Map<string, string>();
+      if (uniqueCatIds.length > 0) {
+        const { data: cats } = await supabase.from('skill_categories').select('id, parent_label, label').in('id', uniqueCatIds);
+        for (const c of cats || []) catLabelMap.set(c.id, c.parent_label || c.label);
+      }
+
+      const childName = childResult.data?.child_name || childResult.data?.name || 'Student';
+      const ratingLabel: Record<string, string> = {
+        struggling: 'Emerging', developing: 'Developing', proficient: 'Proficient', advanced: 'Mastered',
+      };
+
+      const coveredCategories = new Set<string>();
+      for (const skillId of allSkillIds) {
+        const catId = skillCatIdMap.get(skillId);
+        if (catId) { const label = catLabelMap.get(catId); if (label) coveredCategories.add(label); }
+      }
+
+      const skillPerfs = payload.skillPerformances.map(sp => ({
+        skillName: skillNameMap.get(sp.skillId) || 'Unknown Skill',
+        accuracy: ratingLabel[sp.rating] || sp.rating,
+        observations: sp.observationIds || [],
+        note: sp.note || undefined,
+      }));
+
+      const strengthLabels = (payload.strengthObservations || []).map((o: any) => typeof o === 'string' ? o : o.label || o.id);
+      const struggleLabels = (payload.struggleObservations || []).map((o: any) => typeof o === 'string' ? o : o.label || o.id);
+
+      const { buildUnifiedEmbeddingContent: buildContent } = await import('@/lib/intelligence/embedding-builder');
+      const contentForEmbedding = buildContent({
+        childName,
+        eventDate: payload.sessionDate,
+        eventType: 'structured_capture',
+        sessionModality: existing.session_modality,
+        skillsCovered: coveredCategories.size > 0 ? Array.from(coveredCategories) : undefined,
+        skillPerformances: skillPerfs.length > 0 ? skillPerfs : undefined,
+        strengthObservations: strengthLabels.length > 0 ? strengthLabels : undefined,
+        struggleObservations: struggleLabels.length > 0 ? struggleLabels : undefined,
+        customStrengthNote: payload.customStrengthNote || undefined,
+        customStruggleNote: payload.customStruggleNote || undefined,
+        engagementLevel: payload.engagementLevel,
+        wordsMastered: payload.wordsMastered?.length ? payload.wordsMastered : undefined,
+        wordsStruggled: payload.wordsStruggled?.length ? payload.wordsStruggled : undefined,
+        artifactText: payload.childArtifact?.text || undefined,
+        homeworkAssigned: payload.homeworkAssigned && payload.homeworkDescription
+          ? [payload.homeworkDescription] : undefined,
+      });
+
+      const { insertLearningEvent } = await import('@/lib/rai/learning-events');
+      await insertLearningEvent({
+        childId: existing.child_id,
+        coachId: existing.coach_id,
+        sessionId: existing.session_id ?? undefined,
+        eventType: 'structured_capture',
+        eventSubtype: payload.captureMethod,
+        eventDate: payload.sessionDate,
+        signalConfidence: signalConfidence as 'high' | 'medium' | 'low',
+        signalSource: 'structured_capture',
+        intelligenceScore: score,
+        sessionModality: existing.session_modality,
+        eventData: {
+          captureId,
+          skillsCovered: payload.skillsCovered,
+          skillPerformances: payload.skillPerformances as any,
+          engagementLevel: payload.engagementLevel,
+          strengthObservations: payload.strengthObservations,
+          struggleObservations: payload.struggleObservations,
+          captureMethod: payload.captureMethod,
+          hasArtifact: !!payload.childArtifact,
+          homework_assigned: !!payload.homeworkAssigned,
+          homework_description: payload.homeworkAssigned ? (payload.homeworkDescription || null) : null,
+          ai_prefilled: existing.ai_prefilled,
+          coach_confirmed: true,
+        },
+        contentForEmbedding,
+        createdBy: auth.userId || undefined,
+      });
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'ai_capture_confirmed',
+        captureId,
+        childId: existing.child_id,
+        sessionId: existing.session_id,
+        score,
+        signalConfidence,
+      }));
+
+      return NextResponse.json({
+        success: true,
+        capture: { id: captureId, intelligenceScore: score, signalConfidence },
+      });
+    }
+
+    // 1. Load weights and compute score (new capture path)
     const weights = await loadWeights();
     const score = computeIntelligenceScore({
       hasSkillsCovered: payload.skillsCovered.length > 0,
@@ -291,14 +451,8 @@ export async function POST(request: NextRequest) {
     const ratingLabel: Record<string, string> = {
       struggling: 'Emerging', developing: 'Developing', proficient: 'Proficient', advanced: 'Mastered',
     };
-    const mod = payload.sessionModality as string;
-    const isInPerson = mod === 'in_person_1on1' || mod === 'in_person' || mod === 'offline';
 
-    const embeddingParts: string[] = [
-      `${childName} ${isInPerson ? 'in-person' : 'online'} session on ${payload.sessionDate}.`,
-    ];
-
-    // Category-level skill names
+    // Category-level skill names for embedding
     const coveredCategories = new Set<string>();
     for (const skillId of allSkillIds) {
       const catId = skillCatIdMap.get(skillId);
@@ -307,28 +461,38 @@ export async function POST(request: NextRequest) {
         if (label) coveredCategories.add(label);
       }
     }
-    if (coveredCategories.size > 0) {
-      embeddingParts.push(`Skills covered: ${Array.from(coveredCategories).join(', ')}.`);
-    }
 
-    // Performance ratings with human-readable skill names
-    if (payload.skillPerformances.length > 0) {
-      const perfParts = payload.skillPerformances.map(sp => {
-        const name = skillNameMap.get(sp.skillId) || 'Unknown Skill';
-        const level = ratingLabel[sp.rating] || sp.rating;
-        return `${name}: ${level}`;
-      });
-      embeddingParts.push(`Performance: ${perfParts.join(', ')}.`);
-    }
+    // Build per-skill performance for unified builder
+    const skillPerfs = payload.skillPerformances.map(sp => ({
+      skillName: skillNameMap.get(sp.skillId) || 'Unknown Skill',
+      accuracy: ratingLabel[sp.rating] || sp.rating,
+      observations: sp.observationIds || [],
+      note: sp.note || undefined,
+    }));
 
-    embeddingParts.push(`Engagement: ${payload.engagementLevel}.`);
-    if (payload.customStrengthNote) embeddingParts.push(`Strengths: ${payload.customStrengthNote}`);
-    if (payload.customStruggleNote) embeddingParts.push(`Struggles: ${payload.customStruggleNote}`);
-    if (payload.childArtifact?.text) embeddingParts.push(`Artifact: ${payload.childArtifact.text}`);
-    if (payload.wordsStruggled?.length) embeddingParts.push(`Words struggled: ${payload.wordsStruggled.join(', ')}.`);
-    if (payload.wordsMastered?.length) embeddingParts.push(`Words mastered: ${payload.wordsMastered.join(', ')}.`);
-    if (payload.homeworkAssigned && payload.homeworkDescription) embeddingParts.push(`Homework: ${payload.homeworkDescription}`);
-    const contentForEmbedding = embeddingParts.join(' ').trim();
+    // Resolve strength/struggle observation labels
+    const strengthLabels = (payload.strengthObservations || []).map((o: any) => typeof o === 'string' ? o : o.label || o.id);
+    const struggleLabels = (payload.struggleObservations || []).map((o: any) => typeof o === 'string' ? o : o.label || o.id);
+
+    const { buildUnifiedEmbeddingContent } = await import('@/lib/intelligence/embedding-builder');
+    const contentForEmbedding = buildUnifiedEmbeddingContent({
+      childName,
+      eventDate: payload.sessionDate,
+      eventType: 'structured_capture',
+      sessionModality: payload.sessionModality as string,
+      skillsCovered: coveredCategories.size > 0 ? Array.from(coveredCategories) : undefined,
+      skillPerformances: skillPerfs.length > 0 ? skillPerfs : undefined,
+      strengthObservations: strengthLabels.length > 0 ? strengthLabels : undefined,
+      struggleObservations: struggleLabels.length > 0 ? struggleLabels : undefined,
+      customStrengthNote: payload.customStrengthNote || undefined,
+      customStruggleNote: payload.customStruggleNote || undefined,
+      engagementLevel: payload.engagementLevel,
+      wordsMastered: payload.wordsMastered?.length ? payload.wordsMastered : undefined,
+      wordsStruggled: payload.wordsStruggled?.length ? payload.wordsStruggled : undefined,
+      artifactText: payload.childArtifact?.text || undefined,
+      homeworkAssigned: payload.homeworkAssigned && payload.homeworkDescription
+        ? [payload.homeworkDescription] : undefined,
+    });
 
     // 4 + 5. Create learning_event (embedding generated internally by insertLearningEvent)
     const learningEvent = await insertLearningEvent({

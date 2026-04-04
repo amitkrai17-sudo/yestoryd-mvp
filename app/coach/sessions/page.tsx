@@ -95,6 +95,9 @@ interface Session {
   report_deadline?: string | null;
   enrollment_id?: string | null;
   enrollment_type?: string | null;
+  capture_id?: string | null;
+  /** Pending AI capture exists for this session (needs coach review) */
+  pending_capture?: { id: string; ai_prefilled: boolean } | null;
 }
 
 type FilterValue = typeof FILTER_OPTIONS[number]['value'];
@@ -242,7 +245,31 @@ export default function CoachSessionsPage() {
         return;
       }
       setCoach(data.coach);
-      setSessions(data.sessions || []);
+
+      // Enrich sessions with pending capture info
+      const sessionsWithCaptures = data.sessions || [];
+      if (data.coach?.id) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const { supabase: clientSb } = await import('@/lib/supabase/client');
+          const { data: pendingCaptures } = await clientSb
+            .from('structured_capture_responses')
+            .select('id, session_id, ai_prefilled')
+            .eq('coach_id', data.coach.id)
+            .eq('coach_confirmed', false)
+            .not('session_id', 'is', null);
+
+          if (pendingCaptures?.length) {
+            const captureMap = new Map(pendingCaptures.map(c => [c.session_id, c]));
+            for (const s of sessionsWithCaptures) {
+              const pc = captureMap.get(s.id);
+              if (pc) s.pending_capture = { id: pc.id, ai_prefilled: !!pc.ai_prefilled };
+            }
+          }
+        } catch { /* Non-fatal — sessions still load without capture enrichment */ }
+      }
+
+      setSessions(sessionsWithCaptures);
     } catch (err) {
       console.error('Error loading sessions:', err);
       setError(err instanceof Error ? err.message : 'Failed to load sessions');
@@ -738,6 +765,8 @@ export default function CoachSessionsPage() {
           coachId={coach.id}
           sessionNumber={selectedSession.session_number || 1}
           modality={selectedSession.session_mode === 'offline' ? 'in_person_1on1' : 'online_1on1'}
+          captureId={selectedSession.pending_capture?.id}
+          isAiPrefilled={selectedSession.pending_capture?.ai_prefilled}
           onClose={() => {
             setShowCompleteModal(false);
             setSelectedSession(null);

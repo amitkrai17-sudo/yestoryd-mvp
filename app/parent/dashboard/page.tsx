@@ -150,6 +150,7 @@ export default function ParentDashboardPage() {
   const [latestPulse, setLatestPulse] = useState<any>(null);
   const [learningProfile, setLearningProfile] = useState<LearningProfile | null>(null);
   const [taskStats, setTaskStats] = useState<{ current_streak: number; longest_streak: number; completed_this_week: number; total_this_week: number } | null>(null);
+  const [freshnessStatus, setFreshnessStatus] = useState<string | null>(null);
   const [todayTask, setTodayTask] = useState<any>(null);
   const [previousPulse, setPreviousPulse] = useState<any>(null);
   const [croSettings, setCroSettings] = useState<Record<string, string>>({});
@@ -250,6 +251,14 @@ export default function ParentDashboardPage() {
       setChildName(enrolledChild.name || enrolledChild.child_name || 'Your Child');
       setLatestScore(enrolledChild.latest_assessment_score);
       setLearningProfile(enrolledChild.learning_profile as LearningProfile | null);
+
+      // Fetch intelligence freshness for nudge
+      supabase
+        .from('child_intelligence_profiles')
+        .select('freshness_status')
+        .eq('child_id', enrolledChild.id)
+        .maybeSingle()
+        .then(({ data }) => { if (data) setFreshnessStatus(data.freshness_status); });
 
       // Fetch enrollment with coach details
       const { data: enrollmentData, error: enrollmentError } = await supabase
@@ -573,6 +582,7 @@ export default function ParentDashboardPage() {
           todayTask={todayTask}
           previousPulse={previousPulse}
           croSettings={croSettings}
+          freshnessStatus={freshnessStatus}
         />
       </main>
 
@@ -698,6 +708,7 @@ function OverviewTab({
   todayTask,
   previousPulse,
   croSettings,
+  freshnessStatus,
 }: {
   childId: string;
   childName: string;
@@ -720,6 +731,7 @@ function OverviewTab({
   todayTask: any;
   previousPulse: any;
   croSettings: Record<string, string>;
+  freshnessStatus: string | null;
 }) {
   function formatDate(dateStr: string): string {
     try {
@@ -813,6 +825,22 @@ function OverviewTab({
         childName={childName}
         enrollmentType={enrollment?.enrollment_type}
       />
+
+      {/* Intelligence freshness nudge */}
+      {freshnessStatus === 'stale' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <p className="text-amber-800 text-sm">
+            It&apos;s been a while since {childName}&apos;s last session. Book one to keep their progress on track!
+          </p>
+        </div>
+      )}
+      {freshnessStatus === 'none' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+          <p className="text-blue-800 text-sm">
+            We&apos;re building {childName}&apos;s reading profile. After the first session, you&apos;ll see detailed progress here!
+          </p>
+        </div>
+      )}
 
       {/* RE-ENROLLMENT / RENEWAL BANNER */}
       {enrollment && childId && (() => {

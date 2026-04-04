@@ -14,6 +14,9 @@ export interface IntelligenceProfileMeta {
   freshnessStatus: string;
   overallReadingLevel: string | null;
   overallConfidence: string;
+  lastSignalAt?: string | null;
+  totalEventCount?: number | null;
+  highConfidenceCount?: number | null;
 }
 
 export interface ReadingActivityMeta {
@@ -85,8 +88,23 @@ function formatIntelligenceContext(profile: IntelligenceProfileMeta, childName: 
     lines.push(`Recommended Focus: ${profile.recommendedFocus}`);
   }
 
-  if (profile.freshnessStatus === 'aging' || profile.freshnessStatus === 'stale') {
-    lines.push(`Note: This profile is ${profile.freshnessStatus} — some data may not reflect recent sessions.`);
+  // Freshness context — helps model calibrate confidence
+  const daysSince = profile.lastSignalAt
+    ? Math.round((Date.now() - new Date(profile.lastSignalAt).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  if (profile.freshnessStatus === 'fresh') {
+    lines.push(`Intelligence freshness: FRESH. Data is current. Answer confidently.`);
+  } else if (profile.freshnessStatus === 'aging') {
+    lines.push(`Intelligence freshness: AGING (last signal ${daysSince ?? '?'} days ago). Caveat older observations.`);
+  } else if (profile.freshnessStatus === 'stale') {
+    lines.push(`Intelligence freshness: STALE (${daysSince ?? '?'} days since last session). Recommend a new session for updated assessment.`);
+  } else {
+    lines.push(`Intelligence freshness: No data yet. Recommend starting with an assessment or first session.`);
+  }
+
+  if (profile.totalEventCount != null) {
+    lines.push(`Signal depth: ${profile.totalEventCount} total signals (${profile.highConfidenceCount ?? 0} high-confidence)`);
   }
 
   return lines.join('\n');

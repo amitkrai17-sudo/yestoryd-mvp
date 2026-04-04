@@ -13,8 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { buildSessionSearchableContent } from '@/lib/rai/embeddings';
-import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -253,27 +252,10 @@ async function saveSessionData(
     }));
   }
 
-  // 3. Create or merge learning event with embedding
-  // Data Stream Merge: If companion panel already logged (event_type='session_companion_log'),
-  // merge transcript analysis into that existing event. Otherwise create new 'session' event.
+  // 3. Create PENDING structured capture instead of learning_event directly.
+  // Coach must review and confirm before intelligence enters learning_events.
+  // The full Gemini analysis is stored in the capture for coach reference.
   if (childId && coachId) {
-    const contentForEmbedding = buildSessionSearchableContent(childName, {
-      session_type: analysis.session_type,
-      focus_area: analysis.focus_area,
-      skills_worked_on: analysis.skills_worked_on,
-      progress_rating: analysis.progress_rating,
-      engagement_level: analysis.engagement_level,
-      breakthrough_moment: analysis.breakthrough_moment || undefined,
-      concerns_noted: analysis.concerns_noted || undefined,
-      homework_assigned: analysis.homework_assigned,
-      homework_description: analysis.homework_description || undefined,
-      next_session_focus: analysis.next_session_focus || undefined,
-      key_observations: analysis.key_observations,
-      coach_talk_ratio: analysis.coach_talk_ratio,
-      child_reading_samples: analysis.child_reading_samples,
-      summary: analysis.summary,
-    });
-
     const transcriptAnalysisData = {
       session_id: sessionId,
       focus_area: analysis.focus_area,
@@ -293,191 +275,213 @@ async function saveSessionData(
       attendance,
     };
 
+    // Normalize engagement to low/moderate/high/exceptional for capture schema
+    const engagementMap: Record<string, string> = {
+      'high': 'high', 'very high': 'exceptional', 'excellent': 'exceptional',
+      'low': 'low', 'very low': 'low', 'poor': 'low', 'minimal': 'low',
+    };
+    const normalizedEngagement = engagementMap[(analysis.engagement_level || '').toLowerCase()] || 'moderate';
+
+    // Get session date for capture record
+    let captureSessionDate = new Date().toISOString().split('T')[0];
+    if (sessionId) {
+      const { data: sessDateRow } = await supabase
+        .from('scheduled_sessions')
+        .select('scheduled_date')
+        .eq('id', sessionId)
+        .single();
+      if (sessDateRow?.scheduled_date) captureSessionDate = sessDateRow.scheduled_date;
+    }
+
     try {
-      // Check if companion panel already created a 'session_companion_log' for this session
-      const { data: existingCompanionEvent } = sessionId ? await supabase
-        .from('learning_events')
-        .select('id, event_data')
+      // Check if a pending capture already exists (re-processing scenario)
+      const { data: existingCapture } = sessionId ? await supabase
+        .from('structured_capture_responses')
+        .select('id, coach_confirmed')
+        .eq('session_id', sessionId)
         .eq('child_id', childId)
-        .eq('event_type', 'session_companion_log')
-        .filter('event_data->>session_id', 'eq', sessionId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle() : { data: null };
 
-      if (existingCompanionEvent) {
-        // Scenario A: Companion Panel data arrived first — merge transcript into existing event
-        const mergedData = {
-          ...(existingCompanionEvent.event_data as Record<string, any>),
-          ...transcriptAnalysisData,
-          transcript_merged_at: new Date().toISOString(),
-          recording_url: payload.recordingUrl || null,
-        };
-
+      if (existingCapture?.coach_confirmed) {
+        // Coach already confirmed — don't overwrite
+        console.log(JSON.stringify({ requestId, event: 'capture_already_confirmed', sessionId }));
+      } else if (existingCapture) {
+        // Pending capture exists — update with AI data
         await supabase
-          .from('learning_events')
+          .from('structured_capture_responses')
           .update({
-            event_type: 'session', // Upgrade from companion_log to unified session event
-            event_data: mergedData,
-            ai_summary: analysis.summary,
-            content_for_embedding: contentForEmbedding,
+            capture_method: 'auto_filled',
+            ai_prefilled: true,
+            engagement_level: normalizedEngagement,
+            custom_strength_note: (analysis.key_observations || []).join('. ') || null,
+            custom_struggle_note: analysis.concerns_noted || null,
+            skill_performances: JSON.stringify({
+              gemini_analysis: transcriptAnalysisData,
+              ai_summary: analysis.summary,
+              parent_summary: analysis.parent_summary,
+            }),
           })
-          .eq('id', existingCompanionEvent.id);
-
-        console.log(JSON.stringify({
-          requestId,
-          event: 'transcript_merged_into_companion',
-          existingEventId: existingCompanionEvent.id,
-        }));
+          .eq('id', existingCapture.id);
+        console.log(JSON.stringify({ requestId, event: 'pending_capture_updated', captureId: existingCapture.id }));
       } else {
-        // No companion event — create 'session' event as usual
-        // Include per-child observations for primary child if batch analysis provided them
-        const primaryChildObs = analysis.per_child_observations?.[childName];
-        const primaryEventData: Record<string, unknown> = { ...transcriptAnalysisData };
-        if (primaryChildObs) primaryEventData.child_observations = primaryChildObs;
-        if (analysis.per_child_observations?.['group_level']) primaryEventData.group_observations = analysis.per_child_observations['group_level'];
+        // Create new pending capture for primary child
+        const { data: capture, error: captureErr } = await supabase
+          .from('structured_capture_responses')
+          .insert({
+            session_id: sessionId,
+            child_id: childId,
+            coach_id: coachId,
+            session_modality: 'online',
+            capture_method: 'auto_filled',
+            ai_prefilled: true,
+            coach_confirmed: false,
+            session_date: captureSessionDate,
+            engagement_level: normalizedEngagement,
+            skills_covered: analysis.skills_worked_on || [],
+            skill_performances: JSON.stringify({
+              gemini_analysis: transcriptAnalysisData,
+              ai_summary: analysis.summary,
+              parent_summary: analysis.parent_summary,
+            }),
+            custom_strength_note: (analysis.key_observations || []).join('. ') || null,
+            custom_struggle_note: analysis.concerns_noted || null,
+            words_mastered: [],
+            words_struggled: [],
+          })
+          .select('id')
+          .single();
 
-        await insertLearningEvent({
-          childId,
-          coachId,
-          sessionId: sessionId ?? undefined,
-          eventType: 'session',
-          eventSubtype: analysis.session_type,
-          eventData: primaryEventData,
-          aiSummary: analysis.summary,
-          contentForEmbedding,
-          signalSource: 'transcript_analysis',
-          signalConfidence: 'high',
-        });
-
-        console.log(JSON.stringify({
-          requestId,
-          event: 'learning_event_created',
-        }));
-      }
-    } catch (mergeError) {
-      // Fallback: create new event if merge check fails
-      console.error(JSON.stringify({
-        requestId,
-        event: 'merge_check_error',
-        error: (mergeError as Error).message,
-      }));
-
-      await insertLearningEvent({
-        childId,
-        coachId,
-        sessionId: sessionId ?? undefined,
-        eventType: 'session',
-        eventSubtype: analysis.session_type,
-        eventData: transcriptAnalysisData,
-        aiSummary: analysis.summary,
-        contentForEmbedding,
-        signalSource: 'transcript_analysis',
-        signalConfidence: 'high',
-      });
-    }
-
-    // 3b. Batch fan-out: if this session is part of a batch, create learning events
-  // for sibling children sharing the same batch + datetime (same transcript)
-  if (sessionId) {
-    try {
-      const { data: thisSession } = await supabase
-        .from('scheduled_sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single();
-
-      const batchId = (thisSession as any)?.batch_id as string | null;
-      if (batchId && thisSession) {
-        // Find sibling sessions in the same batch at the same datetime
-        const { data: siblings } = await supabase
-          .from('scheduled_sessions')
-          .select('id, child_id, coach_id')
-          .eq('batch_id' as any, batchId)
-          .eq('scheduled_date', thisSession.scheduled_date!)
-          .eq('scheduled_time', thisSession.scheduled_time!)
-          .neq('id', sessionId)
-          .neq('child_id', childId || '');
-
-        if (siblings && siblings.length > 0) {
-          console.log(JSON.stringify({
-            requestId,
-            event: 'batch_fanout_start',
-            batchId,
-            primaryChild: childId,
-            siblingCount: siblings.length,
-          }));
-
-          for (const sibling of siblings) {
-            if (!sibling.child_id) continue;
-
-            // Get sibling child name for embedding
-            const siblingContext = await getChildContext(sibling.child_id);
-            const siblingName = siblingContext?.name || 'Child';
-
-            // Use per-child observations from Gemini if available
-            const childObs = analysis.per_child_observations?.[siblingName];
-            const groupObs = analysis.per_child_observations?.['group_level'];
-
-            // Build personalized embedding using child-specific observations
-            const embeddingData: Record<string, unknown> = {
-              session_type: analysis.session_type,
-              focus_area: analysis.focus_area,
-              skills_worked_on: analysis.skills_worked_on,
-              progress_rating: analysis.progress_rating,
-              engagement_level: analysis.engagement_level,
-              summary: analysis.summary,
-            };
-            // Enrich with child-specific observations for better rAI retrieval
-            if (childObs) {
-              if (childObs.strengths?.length) embeddingData.key_observations = childObs.strengths;
-              if (childObs.struggles?.length) embeddingData.concerns_noted = childObs.struggles.join(', ');
-            }
-
-            const siblingEmbedding = buildSessionSearchableContent(siblingName, embeddingData);
-
-            // Merge per-child observations into event_data
-            const siblingEventData: Record<string, unknown> = {
-              ...transcriptAnalysisData,
-              session_id: sibling.id,
-              batch_id: batchId,
-              batch_size: siblings.length + 1,
-              batch_source_session_id: sessionId,
-            };
-            if (childObs) siblingEventData.child_observations = childObs;
-            if (groupObs) siblingEventData.group_observations = groupObs;
-
-            await insertLearningEvent({
-              childId: sibling.child_id,
-              coachId: sibling.coach_id ?? undefined,
-              sessionId: sibling.id,
-              eventType: 'session',
-              eventSubtype: analysis.session_type,
-              eventData: siblingEventData,
-              aiSummary: analysis.summary,
-              contentForEmbedding: siblingEmbedding,
-              signalSource: 'transcript_analysis',
-              signalConfidence: childObs ? 'medium' : 'low', // Higher if per-child attribution available
-            });
+        if (captureErr) {
+          console.error(JSON.stringify({ requestId, event: 'pending_capture_create_error', error: captureErr.message }));
+        } else {
+          // Store capture_id on session for coach UI linkage
+          if (sessionId && capture?.id) {
+            await supabase
+              .from('scheduled_sessions')
+              .update({ capture_id: capture.id })
+              .eq('id', sessionId);
           }
-
-          console.log(JSON.stringify({
-            requestId,
-            event: 'batch_fanout_complete',
-            batchId,
-            siblingsProcessed: siblings.length,
-          }));
+          console.log(JSON.stringify({ requestId, event: 'pending_capture_created', captureId: capture?.id }));
         }
       }
-    } catch (batchErr) {
+    } catch (captureError) {
       console.error(JSON.stringify({
         requestId,
-        event: 'batch_fanout_error',
-        error: (batchErr as Error).message,
+        event: 'pending_capture_error',
+        error: (captureError as Error).message,
       }));
-      // Non-fatal — primary child event was already created
+      // Non-fatal — transcript is still saved on scheduled_sessions
     }
-  }
+
+    // 3b. Batch fan-out: create PENDING captures for sibling children too
+    if (sessionId) {
+      try {
+        const { data: thisSession } = await supabase
+          .from('scheduled_sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .single();
+
+        const batchId = (thisSession as any)?.batch_id as string | null;
+        if (batchId && thisSession) {
+          const { data: siblings } = await supabase
+            .from('scheduled_sessions')
+            .select('id, child_id, coach_id')
+            .eq('batch_id' as any, batchId)
+            .eq('scheduled_date', thisSession.scheduled_date!)
+            .eq('scheduled_time', thisSession.scheduled_time!)
+            .neq('id', sessionId)
+            .neq('child_id', childId || '');
+
+          if (siblings && siblings.length > 0) {
+            console.log(JSON.stringify({
+              requestId, event: 'batch_capture_fanout_start',
+              batchId, siblingCount: siblings.length,
+            }));
+
+            for (const sibling of siblings) {
+              if (!sibling.child_id) continue;
+
+              const siblingContext = await getChildContext(sibling.child_id);
+              const siblingName = siblingContext?.name || 'Child';
+              const childObs = analysis.per_child_observations?.[siblingName];
+
+              // Check for existing capture
+              const { data: sibCapture } = await supabase
+                .from('structured_capture_responses')
+                .select('id, coach_confirmed')
+                .eq('session_id', sibling.id)
+                .eq('child_id', sibling.child_id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (sibCapture?.coach_confirmed) continue; // Already confirmed
+
+              if (sibCapture) {
+                // Update existing pending capture with AI data
+                await supabase
+                  .from('structured_capture_responses')
+                  .update({
+                    capture_method: 'auto_filled',
+                    ai_prefilled: true,
+                    engagement_level: normalizedEngagement,
+                    custom_strength_note: childObs?.strengths?.join('. ') || (analysis.key_observations || []).join('. ') || null,
+                    custom_struggle_note: childObs?.struggles?.join('. ') || analysis.concerns_noted || null,
+                  })
+                  .eq('id', sibCapture.id);
+              } else {
+                // Create pending capture for sibling
+                const { data: newSibCapture } = await supabase
+                  .from('structured_capture_responses')
+                  .insert({
+                    session_id: sibling.id,
+                    child_id: sibling.child_id,
+                    coach_id: sibling.coach_id || coachId,
+                    session_modality: 'online',
+                    capture_method: 'auto_filled',
+                    ai_prefilled: true,
+                    coach_confirmed: false,
+                    session_date: captureSessionDate,
+                    engagement_level: normalizedEngagement,
+                    skills_covered: analysis.skills_worked_on || [],
+                    skill_performances: JSON.stringify({
+                      gemini_analysis: transcriptAnalysisData,
+                      child_observations: childObs || null,
+                      ai_summary: analysis.summary,
+                    }),
+                    custom_strength_note: childObs?.strengths?.join('. ') || null,
+                    custom_struggle_note: childObs?.struggles?.join('. ') || null,
+                    words_mastered: [],
+                    words_struggled: [],
+                  })
+                  .select('id')
+                  .single();
+
+                if (newSibCapture?.id) {
+                  await supabase
+                    .from('scheduled_sessions')
+                    .update({ capture_id: newSibCapture.id })
+                    .eq('id', sibling.id);
+                }
+              }
+            }
+
+            console.log(JSON.stringify({
+              requestId, event: 'batch_capture_fanout_complete',
+              batchId, siblingsProcessed: siblings.length,
+            }));
+          }
+        }
+      } catch (batchErr) {
+        console.error(JSON.stringify({
+          requestId, event: 'batch_capture_fanout_error',
+          error: (batchErr as Error).message,
+        }));
+      }
+    }
   } // end if (childId && coachId)
 
   // 4. Increment sessions completed + reset consecutive no-shows

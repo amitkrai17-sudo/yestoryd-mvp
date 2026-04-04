@@ -29,7 +29,7 @@ import {
   type SynthesisMicroAssessment,
 } from '@/lib/intelligence/synthesis';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic';
 
 // ============================================================
 // MAIN HANDLER
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     const { data: profiles, error: profileError } = await supabase
       .from('child_intelligence_profiles')
       .select('id, child_id, last_synthesized_at, last_any_signal_at')
-      .in('freshness_status', ['fresh', 'aging'])
+      .in('freshness_status', ['fresh', 'aging', 'stale', 'none'])
       .or('last_synthesized_at.is.null,last_any_signal_at.gt.last_synthesized_at')
       .limit(50);
 

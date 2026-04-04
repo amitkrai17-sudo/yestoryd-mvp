@@ -25,7 +25,7 @@ const CARD_TITLES = ['Skills', 'Performance', 'Artifact', 'Observations', 'Submi
 const SWIPE_THRESHOLD = 50;
 
 export default function StructuredCaptureForm(props: CaptureFormProps) {
-  const { onClose, onComplete, childName, childAge, sessionId, sessionNumber, modality } = props;
+  const { onClose, onComplete, childName, childAge, sessionId, sessionNumber, modality, isAiPrefilled } = props;
 
   const {
     state,
@@ -101,6 +101,14 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col">
+      {/* AI pre-fill banner */}
+      {isAiPrefilled && (
+        <div className="flex-shrink-0 bg-amber-500/90 px-4 py-2 text-center">
+          <p className="text-white text-xs font-medium">
+            Pre-filled by AI from session transcript. Review and confirm.
+          </p>
+        </div>
+      )}
       {/* Header with gradient */}
       <div className="flex-shrink-0 bg-gradient-to-r from-[#00ABFF] to-[#7C3AED] px-4 py-3 safe-area-top">
         <div className="flex items-center justify-between mb-3">

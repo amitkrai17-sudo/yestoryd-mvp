@@ -38,6 +38,26 @@ interface HybridSearchResult {
   };
 }
 
+/**
+ * Re-ranks RAG results by recency and signal confidence.
+ * Recent + high-confidence signals float to top. Stale + low-confidence sink.
+ * Applied AFTER vector similarity, BEFORE context building.
+ */
+function applyIntelligenceBoost(events: LearningEvent[]): LearningEvent[] {
+  const now = Date.now();
+  return events
+    .map(event => {
+      const ageInDays = (now - new Date(event.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      const recency = ageInDays <= 7 ? 1.0 : ageInDays <= 21 ? 0.85 : 0.7;
+      const confidence =
+        (event as any).signal_confidence === 'high' ? 1.0 :
+        (event as any).signal_confidence === 'medium' ? 0.85 : 0.7;
+      const base = (event as any).similarity ?? (event as any).final_score ?? 0.5;
+      return { ...event, _relevanceScore: base * recency * confidence };
+    })
+    .sort((a: any, b: any) => (b._relevanceScore ?? 0) - (a._relevanceScore ?? 0));
+}
+
 export async function hybridSearch(
   options: HybridSearchOptions
 ): Promise<HybridSearchResult> {
@@ -104,8 +124,11 @@ export async function hybridSearch(
 
     debug.eventsFound = events?.length || 0;
 
+    // Re-rank by recency + confidence so fresh high-confidence signals surface first
+    const rankedEvents = applyIntelligenceBoost((events || []) as LearningEvent[]);
+
     return {
-      events: (events || []) as LearningEvent[],
+      events: rankedEvents,
       filters,
       debug,
     };
