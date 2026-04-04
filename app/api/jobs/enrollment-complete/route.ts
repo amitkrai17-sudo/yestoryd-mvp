@@ -557,7 +557,7 @@ async function scheduleCalendarForExistingSessions(
             if (cat?.label) subjectLabel = cat.label;
           }
 
-          // Gather ALL parent emails in this batch for attendees
+          // Gather parent emails from PAID enrollments in this batch only
           const { data: batchSiblings } = await adminSupabase
             .from('tuition_onboarding')
             .select('enrollment_id, child_name')
@@ -568,10 +568,10 @@ async function scheduleCalendarForExistingSessions(
             if (!sib.enrollment_id) continue;
             const { data: enr } = await adminSupabase
               .from('enrollments')
-              .select('parent_id')
+              .select('parent_id, status')
               .eq('id', sib.enrollment_id)
               .single();
-            if (enr?.parent_id) {
+            if (enr?.parent_id && enr.status === 'active') {
               const { data: parent } = await adminSupabase
                 .from('parents')
                 .select('email, name')
