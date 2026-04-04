@@ -18,7 +18,7 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
   // 1. Fetch session
   const { data: session, error: sessionError } = await supabase
     .from('scheduled_sessions')
-    .select('id, child_id, coach_id, enrollment_id, session_mode, status, session_type, session_number, scheduled_date, scheduled_time, duration_minutes, google_event_id')
+    .select('id, child_id, coach_id, enrollment_id, batch_id, session_mode, status, session_type, session_number, scheduled_date, scheduled_time, duration_minutes, google_event_id')
     .eq('id', sessionId)
     .single();
 
@@ -39,7 +39,27 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
     return NextResponse.json({ error: 'Session is already online' }, { status: 400 });
   }
 
-  // 3. Get child + coach details for calendar event
+  // 3. Check for existing batch Meet link (avoid duplicate calendar events)
+  let batchMeetLink: string | null = null;
+  let batchCalendarEventId: string | null = null;
+
+  if (session.batch_id) {
+    const { data: batchOnboarding } = await supabase
+      .from('tuition_onboarding')
+      .select('meet_link, calendar_event_id')
+      .eq('batch_id', session.batch_id)
+      .not('meet_link', 'is', null)
+      .limit(1)
+      .single();
+
+    if (batchOnboarding?.meet_link) {
+      batchMeetLink = batchOnboarding.meet_link;
+      batchCalendarEventId = batchOnboarding.calendar_event_id || null;
+      console.log(JSON.stringify({ requestId, event: 'using_batch_meet_link', batchId: session.batch_id, meetLink: batchMeetLink }));
+    }
+  }
+
+  // 4. Get child + coach details for calendar event
   const [{ data: child }, { data: coach }] = await Promise.all([
     supabase.from('children').select('child_name, parent_email').eq('id', session.child_id!).single(),
     supabase.from('coaches').select('name, email').eq('id', coachId).single(),
@@ -54,32 +74,34 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
   const endTime = new Date(startTime);
   endTime.setMinutes(endTime.getMinutes() + duration);
 
-  const attendees: string[] = [];
-  if (parentEmail) attendees.push(parentEmail);
-  if (coachEmail) attendees.push(coachEmail);
+  // 5. Create Google Calendar event with Meet link (skip if batch already has one)
+  let meetLink: string | null = batchMeetLink;
+  let calendarEventId: string | null = batchCalendarEventId;
 
-  // 4. Create Google Calendar event with Meet link
-  let meetLink: string | null = null;
-  let calendarEventId: string | null = null;
+  if (!batchMeetLink) {
+    const attendees: string[] = [];
+    if (parentEmail) attendees.push(parentEmail);
+    if (coachEmail) attendees.push(coachEmail);
 
-  try {
-    const calResult = await scheduleCalendarEvent({
-      title: `Yestoryd ${session.session_type || 'coaching'} - ${childName} (Session ${session.session_number || ''})`,
-      description: `Reading session for ${childName} — switched to online`,
-      startTime,
-      endTime,
-      attendees,
-      sessionType: 'coaching',
-    }, coachEmail || undefined);
+    try {
+      const calResult = await scheduleCalendarEvent({
+        title: `Yestoryd ${session.session_type || 'coaching'} - ${childName} (Session ${session.session_number || ''})`,
+        description: `Reading session for ${childName} — switched to online`,
+        startTime,
+        endTime,
+        attendees,
+        sessionType: 'coaching',
+      }, coachEmail || undefined);
 
-    calendarEventId = calResult.eventId;
-    meetLink = calResult.meetLink;
-  } catch (calError: any) {
-    console.error(JSON.stringify({ requestId, event: 'calendar_create_failed', error: calError.message }));
-    // Continue without calendar — still switch mode
+      calendarEventId = calResult.eventId;
+      meetLink = calResult.meetLink;
+    } catch (calError: any) {
+      console.error(JSON.stringify({ requestId, event: 'calendar_create_failed', error: calError.message }));
+      // Continue without calendar — still switch mode
+    }
   }
 
-  // 5. Update session to online
+  // 6. Update session to online
   const updatePayload: Record<string, any> = {
     session_mode: 'online',
     offline_request_status: null,
@@ -106,8 +128,8 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
     return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
   }
 
-  // 6. Schedule Recall.ai bot (fire-and-forget)
-  if (meetLink) {
+  // 7. Schedule Recall.ai bot (skip if batch — batch bot already handles it)
+  if (meetLink && !batchMeetLink) {
     createRecallBot({
       sessionId,
       childId: session.child_id!,
