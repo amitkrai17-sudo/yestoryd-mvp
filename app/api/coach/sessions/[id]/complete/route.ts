@@ -222,6 +222,22 @@ export async function POST(
       console.error('[SESSION_COMPLETE] Daily task generation failed:', taskError);
     }
 
+    // Periodic reading test (every 4th session, non-blocking)
+    try {
+      const { createReadingTestTask } = await import('@/lib/homework/generate-reading-test');
+      const childName = (session as any).children?.child_name || 'Child';
+      await createReadingTestTask({
+        childId: session.child_id!,
+        childName,
+        enrollmentId: session.enrollment_id || undefined,
+        sessionId,
+        sessionNumber: session.session_number || undefined,
+        supabase,
+      });
+    } catch (rtErr) {
+      console.error('[SESSION_COMPLETE] Reading test task creation failed:', rtErr);
+    }
+
     // Notify parent of new practice tasks (template + coach-assigned combined)
     try {
       const { count: taskCount } = await supabase

@@ -413,9 +413,16 @@ export default function ParentTasksPage() {
                     task.is_today ? 'bg-[#FF0099]/5' : ''
                   }`}
                 >
-                  {/* Action: interactive quiz or checkbox */}
+                  {/* Action: reading test / quiz / checkbox */}
                   {task.is_completed ? (
                     <CheckCircle className="w-5 h-5 text-emerald-700 flex-shrink-0" />
+                  ) : task.title === 'Reading Progress Check' && task.source === 'system' ? (
+                    <button
+                      onClick={() => router.push(`/parent/reading-test/${task.id}`)}
+                      className="flex-shrink-0 px-2.5 py-1 bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white text-[10px] font-medium rounded-xl whitespace-nowrap"
+                    >
+                      Read
+                    </button>
                   ) : task.content_item_id ? (
                     <button
                       onClick={() => router.push(`/parent/practice/${task.id}`)}
