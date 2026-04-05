@@ -109,6 +109,14 @@ const JOBS: Job[] = [
     description: 'Check for unreconciled payments',
   },
 
+  {
+    name: 'recall-reconciliation',
+    path: '/api/jobs/recall-reconciliation',
+    schedule: { type: 'interval', minutes: 30 },
+    method: 'GET',
+    description: 'Recover missed Recall.ai session transcripts — safety net for webhook failures',
+  },
+
   // ── Interval: every 60 min ────────────────────────────────
   {
     name: 'coach-reminders-1h',

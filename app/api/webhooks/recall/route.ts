@@ -25,6 +25,65 @@ export const dynamic = 'force-dynamic';
 const RECALL_WEBHOOK_SECRET = process.env.RECALL_WEBHOOK_SECRET;
 const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
 
+// --- RECALL API HELPERS (fetch real data when webhook payload is sparse) ---
+
+const RECALL_API_URL = 'https://us-west-2.recall.ai/api/v1';
+
+interface RecallBotDetails {
+  id: string;
+  status: { code: string };
+  transcript?: { text: string }[];
+  recordings?: { media_shortcuts?: { audio?: { url: string }; video?: { url: string } } }[];
+  video_url?: string;
+  meeting_participants?: { id: number; name: string; is_host?: boolean }[];
+  recording?: { url: string; duration_seconds: number };
+}
+
+async function getRecallBotDetails(botId: string): Promise<RecallBotDetails | null> {
+  const apiKey = process.env.RECALL_API_KEY;
+  if (!apiKey) {
+    console.warn('[recall-webhook] RECALL_API_KEY not configured — cannot fetch bot details');
+    return null;
+  }
+
+  try {
+    const resp = await fetch(`${RECALL_API_URL}/bot/${botId}`, {
+      headers: { 'Authorization': `Token ${apiKey}` },
+    });
+    if (!resp.ok) {
+      console.error(`[recall-webhook] Failed to fetch bot ${botId}: ${resp.status}`);
+      return null;
+    }
+    return await resp.json();
+  } catch (err: any) {
+    console.error(`[recall-webhook] Error fetching bot ${botId}:`, err.message);
+    return null;
+  }
+}
+
+async function getRecallTranscript(botId: string): Promise<string | null> {
+  const apiKey = process.env.RECALL_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const resp = await fetch(`${RECALL_API_URL}/bot/${botId}/transcript`, {
+      headers: { 'Authorization': `Token ${apiKey}` },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+
+    if (Array.isArray(data) && data.length > 0) {
+      return data
+        .map((seg: any) => `${seg.speaker || 'Unknown'}: ${seg.words?.map((w: any) => w.text).join(' ') || seg.text || ''}`)
+        .filter((line: string) => line.trim().length > 2)
+        .join('\n');
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // --- 1. VALIDATION SCHEMAS ---
 
 const StatusChangeSchema = z.object({
@@ -47,7 +106,12 @@ const WordSchema = z.object({
 });
 
 const RecallWebhookSchema = z.object({
-  event: z.enum(['bot.status_change', 'bot.transcription', 'bot.recording_ready', 'bot.done']),
+  event: z.enum([
+    'bot.status_change', 'bot.transcription', 'bot.recording_ready', 'bot.done',
+    'bot.call_ended', 'bot.fatal',
+    'bot.participant_join', 'bot.participant_leave',
+    'recording.status_change', 'transcript.status_change',
+  ]),
   data: z.object({
     bot_id: z.string(),
     status: z.string().optional(),
@@ -431,7 +495,7 @@ async function handleStatusChange(
           status: 'pending',
         });
 
-        try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'warning', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, decision_made: 'no_show_detected', metadata: { outcome: 'no_show', reason: latestChange.message, code: latestChange.code } as Json }); } catch {}
+        try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'warning', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, decision_made: 'no_show_detected', metadata: { outcome: 'no_show', reason: latestChange.message, code: latestChange.code } as Json }); } catch (logErr: any) { console.error('[recall-webhook] logOpsEvent failed:', logErr.message); }
       }
     }
   }
@@ -482,6 +546,8 @@ async function handleBotDone(
     event: 'bot_done_received',
     botId: bot_id,
     hasTranscript: !!transcript?.words?.length,
+    hasParticipants: !!meeting_participants?.length,
+    hasRecording: !!recording,
     hasMeetingData: !!meeting_metadata,
   }));
 
@@ -496,14 +562,72 @@ async function handleBotDone(
   const childId = botSession?.child_id;
   const coachId = botSession?.coach_id;
 
-  // 2. Quick attendance analysis
+  // 2. bot.done payload often doesn't include session data inline — fetch from Recall API
+  let participants = meeting_participants || [];
+  let recordingData = recording;
+  let apiFetchedTranscript: string | null = null;
+
+  if (participants.length === 0 || !recordingData) {
+    console.log(JSON.stringify({
+      requestId,
+      event: 'bot_done_payload_sparse',
+      botId: bot_id,
+      missingParticipants: participants.length === 0,
+      missingRecording: !recordingData,
+      action: 'fetching_from_recall_api',
+    }));
+
+    try {
+      const botDetails = await getRecallBotDetails(bot_id);
+      if (botDetails) {
+        if (participants.length === 0 && botDetails.meeting_participants?.length) {
+          participants = botDetails.meeting_participants;
+        }
+        if (!recordingData && botDetails.recordings?.length) {
+          const rec = botDetails.recordings[0];
+          const audioUrl = rec?.media_shortcuts?.audio?.url;
+          if (audioUrl) {
+            recordingData = { url: audioUrl, duration_seconds: 0 };
+          }
+        }
+        // Also try dedicated recording field from API
+        if (!recordingData && botDetails.recording) {
+          recordingData = botDetails.recording;
+        }
+      }
+
+      // Fetch transcript from API if not in webhook payload
+      if (!transcript?.words?.length) {
+        apiFetchedTranscript = await getRecallTranscript(bot_id);
+      }
+    } catch (fetchError: any) {
+      console.error(JSON.stringify({
+        requestId,
+        event: 'recall_api_fetch_error',
+        botId: bot_id,
+        error: fetchError.message,
+      }));
+      // Continue with whatever data we have — don't early return
+    }
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'bot_done_after_api_fetch',
+      botId: bot_id,
+      participantCount: participants.length,
+      hasRecording: !!recordingData,
+      hasApiTranscript: !!apiFetchedTranscript,
+    }));
+  }
+
+  // 3. Attendance analysis with real data (API-enriched)
   const attendance = analyzeAttendance(
-    meeting_participants || [],
-    recording?.duration_seconds || 0
+    participants.map(p => ({ id: p.id ?? 0, name: p.name ?? 'Unknown', is_host: p.is_host })),
+    recordingData?.duration_seconds || 0
   );
 
-  // 3. Determine outcome
-  const outcome = determineSessionOutcome(attendance, recording?.duration_seconds);
+  // 4. Determine outcome
+  const outcome = determineSessionOutcome(attendance, recordingData?.duration_seconds);
 
   console.log(JSON.stringify({
     requestId,
@@ -514,12 +638,12 @@ async function handleBotDone(
     duration: attendance.durationMinutes,
   }));
 
-  // 4. Handle non-completed sessions immediately
+  // 5. Handle non-completed sessions immediately
   if (outcome.status !== 'completed') {
     if (sessionId) {
       await updateSessionStatus(sessionId, outcome.status, requestId, {
         no_show_reason: outcome.reason,
-        duration_seconds: recording?.duration_seconds,
+        duration_seconds: recordingData?.duration_seconds,
         attendance_count: attendance.totalParticipants,
       });
 
@@ -535,7 +659,7 @@ async function handleBotDone(
         });
       }
 
-      try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'warning', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, decision_made: 'no_show_detected', metadata: { outcome: outcome.status, participants: attendance.totalParticipants, reason: outcome.reason } as Json }); } catch {}
+      try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'warning', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, decision_made: 'no_show_detected', metadata: { outcome: outcome.status, participants: attendance.totalParticipants, reason: outcome.reason } as Json }); } catch (logErr: any) { console.error('[recall-webhook] logOpsEvent failed:', logErr.message); }
     }
 
     return {
@@ -546,18 +670,25 @@ async function handleBotDone(
     };
   }
 
-  // 5. Build transcript (quick string operation)
-  const transcriptText = buildTranscriptWithSpeakers(
-    transcript?.words || [],
-    meeting_participants || []
-  );
+  // 6. Build transcript — prefer webhook payload words, fall back to API-fetched text
+  let transcriptText: string;
+  if (transcript?.words?.length) {
+    transcriptText = buildTranscriptWithSpeakers(
+      transcript.words.map(w => ({ text: w.text ?? '', speaker_id: w.speaker_id })),
+      participants.map(p => ({ id: p.id ?? 0, name: p.name ?? 'Unknown' })),
+    );
+  } else if (apiFetchedTranscript) {
+    transcriptText = apiFetchedTranscript;
+  } else {
+    transcriptText = '';
+  }
 
   // Check if transcript is too short
   if (transcriptText.length < 100) {
     if (sessionId) {
       await updateSessionStatus(sessionId, 'partial', requestId, {
         partial_reason: 'Transcript too short',
-        duration_seconds: recording?.duration_seconds,
+        duration_seconds: recordingData?.duration_seconds,
       });
     }
     return { status: 'partial', reason: 'transcript_too_short' };
@@ -576,13 +707,13 @@ async function handleBotDone(
       .eq('id', sessionId);
   }
 
-  // 7. Update bot session with recording info (quick update)
+  // 8. Update bot session with recording info (quick update)
   await supabase
     .from('recall_bot_sessions')
     .update({
       status: 'processing',
-      recording_url: recording?.url,
-      duration_seconds: recording?.duration_seconds,
+      recording_url: recordingData?.url,
+      duration_seconds: recordingData?.duration_seconds,
       updated_at: new Date().toISOString(),
     })
     .eq('bot_id', bot_id);
@@ -600,13 +731,13 @@ async function handleBotDone(
     childId: childId ?? null,
     coachId: coachId ?? null,
     transcriptText,
-    recordingUrl: recording?.url,
-    durationSeconds: recording?.duration_seconds,
+    recordingUrl: recordingData?.url,
+    durationSeconds: recordingData?.duration_seconds,
     attendance,
     requestId,
   });
 
-  try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'info', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, metadata: { event: 'bot_done', outcome: outcome?.status, participants: attendance.totalParticipants, duration_minutes: attendance.durationMinutes, queued: queueResult.success } as Json }); } catch {}
+  try { await logOpsEvent({ event_type: 'session_event', source: 'webhook:recall', severity: 'info', correlation_id: correlationId, entity_type: 'session', entity_id: sessionId || undefined, metadata: { event: 'bot_done', outcome: outcome?.status, participants: attendance.totalParticipants, duration_minutes: attendance.durationMinutes, queued: queueResult.success } as Json }); } catch (logErr: any) { console.error('[recall-webhook] logOpsEvent failed:', logErr.message); }
 
   // 9. Return immediately (< 2 seconds total)
   return {
@@ -657,7 +788,7 @@ export async function POST(request: NextRequest) {
         event: 'validation_failed',
         errors: validation.error.format(),
       }));
-      return NextResponse.json({ status: 'validation_failed' });
+      return NextResponse.json({ status: 'validation_failed', errors: validation.error.format() }, { status: 422 });
     }
 
     const payload = validation.data;
@@ -696,6 +827,15 @@ export async function POST(request: NextRequest) {
         break;
       case 'bot.done':
         result = await handleBotDone(payload, requestId, correlationId);
+        break;
+      case 'bot.call_ended':
+      case 'bot.fatal':
+      case 'bot.participant_join':
+      case 'bot.participant_leave':
+      case 'recording.status_change':
+      case 'transcript.status_change':
+        console.log(JSON.stringify({ requestId, event: 'acknowledged', eventType: payload.event, botId: bot_id }));
+        result = { status: 'acknowledged', event: payload.event };
         break;
       default:
         result = { status: 'ignored' };
