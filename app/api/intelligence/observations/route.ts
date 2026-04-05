@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     const query = supabase
       .from('el_skill_observations')
-      .select('id, skill_id, observation_text, observation_type, age_bands, sort_order')
+      .select('id, skill_id, observation_text, observation_type, age_bands, sort_order, conflict_pair_id, visible_at_ratings')
       .in('skill_id', skillIds)
       .eq('is_active', true)
       .order('sort_order', { ascending: true, nullsFirst: false });
@@ -87,6 +87,8 @@ export async function GET(request: NextRequest) {
         text: string;
         type: string;
         sortOrder: number | null;
+        conflictPairId: string | null;
+        visibleAtRatings: string[] | null;
       }>;
     }> = {};
 
@@ -103,6 +105,8 @@ export async function GET(request: NextRequest) {
         text: obs.observation_text,
         type: obs.observation_type,
         sortOrder: obs.sort_order,
+        conflictPairId: obs.conflict_pair_id || null,
+        visibleAtRatings: obs.visible_at_ratings || null,
       });
     }
 

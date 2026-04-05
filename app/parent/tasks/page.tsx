@@ -42,6 +42,7 @@ interface Task {
   session_date: string | null;
   session_number: number | null;
   source: string;
+  content_item_id: string | null;
   photo_url: string | null;
   photo_urls: { url: string; uploaded_at: string; analysis?: any }[] | null;
 }
@@ -68,7 +69,7 @@ export default function ParentTasksPage() {
   const [childName, setChildName] = useState('');
   const [todayTask, setTodayTask] = useState<Task | null>(null);
   const [weekTasks, setWeekTasks] = useState<Task[]>([]);
-  const [stats, setStats] = useState({ completed_this_week: 0, total_this_week: 0, current_streak: 0, longest_streak: 0 });
+  const [stats, setStats] = useState({ completed_this_week: 0, total_this_week: 0, current_streak: 0, longest_streak: 0, active_count: 0, visible_count: 0, hidden_count: 0 });
   const [completing, setCompleting] = useState<string | null>(null);
   const [showPhotoSheet, setShowPhotoSheet] = useState<string | null>(null); // taskId
   const [uploading, setUploading] = useState(false);
@@ -412,9 +413,16 @@ export default function ParentTasksPage() {
                     task.is_today ? 'bg-[#FF0099]/5' : ''
                   }`}
                 >
-                  {/* Checkbox */}
+                  {/* Action: interactive quiz or checkbox */}
                   {task.is_completed ? (
                     <CheckCircle className="w-5 h-5 text-emerald-700 flex-shrink-0" />
+                  ) : task.content_item_id ? (
+                    <button
+                      onClick={() => router.push(`/parent/practice/${task.id}`)}
+                      className="flex-shrink-0 px-2.5 py-1 bg-[#FF0099] text-white text-[10px] font-medium rounded-xl hover:bg-[#FF0099]/90 transition-colors whitespace-nowrap"
+                    >
+                      Start
+                    </button>
                   ) : task.is_past ? (
                     <Circle className="w-5 h-5 text-gray-300 flex-shrink-0" />
                   ) : (
@@ -471,6 +479,13 @@ export default function ParentTasksPage() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Hidden tasks hint */}
+        {stats.hidden_count > 0 && (
+          <p className="text-center text-xs text-gray-400 py-1">
+            Complete these to see more practice activities
+          </p>
         )}
 
         {/* Motivational footer */}

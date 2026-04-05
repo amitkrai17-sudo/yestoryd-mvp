@@ -583,6 +583,15 @@ export async function generateAndInsertDailyTasks(
   try {
     const supabase = getSupabase();
 
+    // Check pending task count — skip if child already has enough
+    const { getPendingTaskCount, canCreateMoreTasks, MAX_PENDING_TASKS } = await import('./pending-count');
+    const pendingCount = await getPendingTaskCount(supabase, childId);
+    if (!canCreateMoreTasks(pendingCount)) {
+      console.log(`[DAILY_TASKS] Skipping template tasks for child ${childId} — ${pendingCount} pending (max ${MAX_PENDING_TASKS})`);
+      return { inserted: 0 };
+    }
+    const maxToCreate = MAX_PENDING_TASKS - pendingCount;
+
     // Get session details
     const { data: session } = await supabase
       .from('scheduled_sessions')
@@ -716,11 +725,14 @@ export async function generateAndInsertDailyTasks(
       }
     }
 
-    if (tasksToInsert.length > 0) {
+    // Limit to maxToCreate to respect pending cap
+    const cappedTasks = tasksToInsert.slice(0, maxToCreate);
+
+    if (cappedTasks.length > 0) {
       // Use upsert to handle re-generation (same child + date + title = unique constraint)
       const { error: insertError } = await supabase
         .from('parent_daily_tasks')
-        .upsert(tasksToInsert, {
+        .upsert(cappedTasks, {
           onConflict: 'child_id,task_date,title',
           ignoreDuplicates: true,
         });
@@ -731,7 +743,7 @@ export async function generateAndInsertDailyTasks(
       }
     }
 
-    return { inserted: tasksToInsert.length };
+    return { inserted: cappedTasks.length };
   } catch (error: any) {
     console.error('Generate daily tasks error:', error.message);
     return { inserted: 0, error: error.message };

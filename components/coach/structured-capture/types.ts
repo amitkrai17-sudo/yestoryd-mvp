@@ -43,6 +43,8 @@ export interface ObservationItem {
   text: string;
   type: 'strength' | 'struggle' | 'neutral';
   sortOrder: number;
+  conflictPairId?: string | null;
+  visibleAtRatings?: string[] | null;
 }
 
 export interface SkillObservations {

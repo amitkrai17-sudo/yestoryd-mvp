@@ -32,6 +32,7 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
     updateState,
     modules,
     observations,
+    continuations,
     loadingSkills,
     loadingObservations,
     scorePreview,
@@ -201,6 +202,7 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
                 state={state}
                 onUpdate={updateState}
                 observations={observations}
+                continuations={continuations}
                 loading={loadingObservations}
                 sessionId={sessionId}
               />

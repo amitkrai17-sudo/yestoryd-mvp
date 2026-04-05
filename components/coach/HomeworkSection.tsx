@@ -27,6 +27,8 @@ interface HomeworkTask {
   difficulty_rating: string | null;
   practice_duration: string | null;
   photo_signed_urls: string[];
+  content_item_id: string | null;
+  quiz_result: { score: number; correct: number; total: number } | null;
   created_at: string;
 }
 
@@ -308,7 +310,17 @@ export default function HomeworkSection({ childId, childName }: HomeworkSectionP
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-gray-300 text-sm">{task.description}</p>
+                        <p className="text-gray-300 text-sm">{task.coach_notes || task.description}</p>
+                        {task.quiz_result && (
+                          <div className="flex items-center gap-2 mt-1 text-[11px]">
+                            <span className={`font-medium ${task.quiz_result.score >= 70 ? 'text-green-400' : 'text-amber-400'}`}>
+                              Score: {task.quiz_result.correct}/{task.quiz_result.total} ({task.quiz_result.score}%)
+                            </span>
+                            {task.content_item_id && (
+                              <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded text-[10px]">SmartPractice</span>
+                            )}
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 flex-wrap">
                           {task.completed_at && (
                             <span>{new Date(task.completed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>

@@ -76,6 +76,13 @@ export function useCapture(props: CaptureFormProps) {
   // Data state
   const [modules, setModules] = useState<ModuleGroup[]>([]);
   const [observations, setObservations] = useState<Record<string, ObservationItem[]>>({});
+  const [continuations, setContinuations] = useState<Array<{
+    id: string;
+    observation_id: string;
+    observation_text: string;
+    observation_type: string;
+    skill_id: string;
+  }>>([]);
   const [loadingSkills, setLoadingSkills] = useState(true);
   const [loadingObservations, setLoadingObservations] = useState(false);
 
@@ -160,6 +167,33 @@ export function useCapture(props: CaptureFormProps) {
     fetchObservations();
     return () => { cancelled = true; };
   }, [state.selectedSkillIds, childAge]);
+
+  // Fetch active continuations for this child (struggle follow-ups from previous sessions)
+  useEffect(() => {
+    if (!childId) return;
+    let cancelled = false;
+    async function fetchContinuations() {
+      try {
+        const { supabase: clientSb } = await import('@/lib/supabase/client');
+        const { data } = await clientSb
+          .from('observation_continuations')
+          .select('id, observation_id, el_skill_observations(observation_text, observation_type, skill_id)')
+          .eq('child_id', childId)
+          .eq('continuation_status', 'active');
+        if (!cancelled && data) {
+          setContinuations(data.map((c: any) => ({
+            id: c.id,
+            observation_id: c.observation_id,
+            observation_text: c.el_skill_observations?.observation_text || '',
+            observation_type: c.el_skill_observations?.observation_type || 'struggle',
+            skill_id: c.el_skill_observations?.skill_id || '',
+          })));
+        }
+      } catch { /* Non-fatal */ }
+    }
+    fetchContinuations();
+    return () => { cancelled = true; };
+  }, [childId]);
 
   // Save draft on state changes (debounced)
   useEffect(() => {
@@ -297,6 +331,7 @@ export function useCapture(props: CaptureFormProps) {
     updateState,
     modules,
     observations,
+    continuations,
     loadingSkills,
     loadingObservations,
     scorePreview,

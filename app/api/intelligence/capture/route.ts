@@ -414,6 +414,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save capture response' }, { status: 500 });
     }
 
+    // 2b. Calculate capture delay and confidence decay
+    try {
+      const sessionEnd = new Date(payload.sessionDate + 'T00:00:00');
+      sessionEnd.setMinutes(sessionEnd.getMinutes() + 45); // Estimated session duration
+      const submittedAt = new Date();
+      const delayHours = Math.max(0, (submittedAt.getTime() - sessionEnd.getTime()) / (1000 * 60 * 60));
+
+      let delayMultiplier = 1.0;
+      if (delayHours > 48) delayMultiplier = 0.5;
+      else if (delayHours > 24) delayMultiplier = 0.7;
+      else if (delayHours > 6) delayMultiplier = 0.85;
+      else if (delayHours > 1) delayMultiplier = 0.95;
+
+      await supabase
+        .from('structured_capture_responses')
+        .update({
+          capture_delay_hours: Math.round(delayHours * 10) / 10,
+          delay_confidence_multiplier: delayMultiplier,
+        } as any)
+        .eq('id', capture.id);
+
+      // Apply delay to intelligence score
+      if (delayMultiplier < 1.0) {
+        const adjustedScore = Math.round(score * delayMultiplier);
+        await supabase
+          .from('structured_capture_responses')
+          .update({ intelligence_score: adjustedScore } as any)
+          .eq('id', capture.id);
+      }
+    } catch (delayErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'capture_delay_calc_error', error: delayErr.message }));
+    }
+
     // 3. Build content_for_embedding with human-readable names
     const allSkillIds = payload.skillsCovered.length > 0
       ? payload.skillsCovered
@@ -577,7 +610,7 @@ export async function POST(request: NextRequest) {
         const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
         const { data: childForHW } = await supabase
           .from('children')
-          .select('child_name, age')
+          .select('child_name, age, smart_practice_enabled')
           .eq('id', payload.childId)
           .single();
         const { simplified, original } = await simplifyHomework(
@@ -652,6 +685,21 @@ export async function POST(request: NextRequest) {
             // Non-blocking — task was already created
           }
         }
+
+        // SmartPractice: generate interactive quiz if enabled (non-blocking)
+        if (homeworkTaskId && childForHW?.smart_practice_enabled) {
+          import('@/lib/homework/generate-smart-practice').then(({ generateSmartPractice }) => {
+            generateSmartPractice({
+              coachNotes: original,
+              childName: childForHW.child_name || 'Child',
+              childAge: childForHW.age || 7,
+              skillSlug: linkedSkill || 'reading_comprehension',
+              childId: payload.childId,
+              taskId: homeworkTaskId!,
+              supabase,
+            }).catch(err => console.error('[SmartPractice] bg generation failed:', err));
+          });
+        }
       } catch (taskErr) {
         console.error(JSON.stringify({
           requestId,
@@ -659,6 +707,27 @@ export async function POST(request: NextRequest) {
           error: taskErr instanceof Error ? taskErr.message : String(taskErr),
         }));
         // Non-fatal
+      }
+    }
+
+    // 8. Create continuation records for struggle observations (non-blocking)
+    if (payload.struggleObservations.length > 0 && payload.childId) {
+      try {
+        const continuations = payload.struggleObservations.map((obsId: string) => ({
+          child_id: payload.childId,
+          observation_id: obsId,
+          source_capture_id: capture.id,
+          continuation_status: 'active',
+        }));
+
+        await supabase
+          .from('observation_continuations')
+          .upsert(continuations, {
+            onConflict: 'child_id,observation_id',
+            ignoreDuplicates: false, // Update existing to re-activate
+          });
+      } catch (contErr: any) {
+        console.error(JSON.stringify({ requestId, event: 'continuation_create_error', error: contErr.message }));
       }
     }
 

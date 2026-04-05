@@ -63,7 +63,7 @@ const GENERIC_READING_TASK = {
   description: 'Read together for 15 minutes. Pick a book your child enjoys — the most important thing is making reading fun!',
   task_type: 'practice_reading',
   duration_minutes: 15,
-};
+};
 
 // ============================================================
 // MAIN HANDLER
@@ -136,6 +136,15 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (!child) { skipped++; continue; }
+
+        // Check pending task count — skip if child already has enough
+        const { getPendingTaskCount, canCreateMoreTasks, MAX_PENDING_TASKS } = await import('@/lib/tasks/pending-count');
+        const pendingCount = await getPendingTaskCount(supabase, child.id);
+        if (!canCreateMoreTasks(pendingCount)) {
+          console.log(`[PRACTICE_RECS] Skipping child ${child.id} — ${pendingCount} pending (max ${MAX_PENDING_TASKS})`);
+          skipped++;
+          continue;
+        }
 
         const childName = child.child_name || child.name || 'your child';
 
@@ -322,6 +331,15 @@ export async function GET(request: NextRequest) {
           .eq('task_date', today);
 
         if (existingCount && existingCount > 0) { skipped++; continue; }
+
+        // Check pending task count — skip if child already has enough
+        const { getPendingTaskCount: getPending2, canCreateMoreTasks: canCreate2, MAX_PENDING_TASKS: MAX2 } = await import('@/lib/tasks/pending-count');
+        const pendingCount2 = await getPending2(supabase, child.id);
+        if (!canCreate2(pendingCount2)) {
+          console.log(`[PRACTICE_RECS] Skipping child ${child.id} (no profile) — ${pendingCount2} pending (max ${MAX2})`);
+          skipped++;
+          continue;
+        }
 
         const childName = child.child_name || child.name || 'your child';
         const { data: enrollment } = await supabase

@@ -63,24 +63,65 @@ export async function GET(
     sunday.setDate(monday.getDate() + 6);
     const sundayStr = sunday.toISOString().split('T')[0];
 
-    const { data: weekTasks } = await supabase
-      .from('parent_daily_tasks')
-      .select(`
-        *,
-        enrollment:enrollments(id, billing_model, enrollment_type),
-        session:scheduled_sessions(id, scheduled_date, session_number)
-      `)
-      .eq('child_id', childId)
-      .gte('task_date', mondayStr)
-      .lte('task_date', sundayStr)
-      .order('task_date', { ascending: true });
+    // Fetch ALL pending tasks (not just this week) for priority ordering
+    const [pendingResult, completedResult] = await Promise.all([
+      supabase
+        .from('parent_daily_tasks')
+        .select(`
+          *,
+          enrollment:enrollments(id, billing_model, enrollment_type),
+          session:scheduled_sessions(id, scheduled_date, session_number)
+        `)
+        .eq('child_id', childId)
+        .eq('is_completed', false)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('parent_daily_tasks')
+        .select(`
+          *,
+          enrollment:enrollments(id, billing_model, enrollment_type),
+          session:scheduled_sessions(id, scheduled_date, session_number)
+        `)
+        .eq('child_id', childId)
+        .eq('is_completed', true)
+        .gte('completed_at', mondayStr)
+        .order('completed_at', { ascending: false })
+        .limit(10),
+    ]);
 
-    // Find today's task
-    const todayTask = (weekTasks || []).find(t => t.task_date === todayStr) || null;
+    const allPending = pendingResult.data || [];
+    const completedThisWeek = completedResult.data || [];
 
-    // Completion stats
-    const completedThisWeek = (weekTasks || []).filter(t => t.is_completed).length;
-    const totalThisWeek = (weekTasks || []).length;
+    // Priority sort: coach_assigned > ai_recommended > template_generated > system
+    const SOURCE_PRIORITY: Record<string, number> = {
+      coach_assigned: 1,
+      ai_recommended: 2,
+      template_generated: 3,
+      system: 4,
+      parent_summary: 4,
+    };
+
+    const sorted = allPending.sort((a, b) => {
+      const pA = SOURCE_PRIORITY[a.source ?? ''] || 5;
+      const pB = SOURCE_PRIORITY[b.source ?? ''] || 5;
+      if (pA !== pB) return pA - pB;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    const MAX_VISIBLE = 3;
+    const visibleActive = sorted.slice(0, MAX_VISIBLE);
+    const hiddenCount = Math.max(0, sorted.length - MAX_VISIBLE);
+
+    // Merge for week_tasks (backward compat) — visible active + completed this week
+    const weekTasks = [...visibleActive, ...completedThisWeek];
+
+    // Find today's task from visible active only
+    const todayTask = visibleActive.find(t => t.task_date === todayStr) || null;
+
+    // Stats
+    const completedThisWeekCount = completedThisWeek.length;
+    const totalThisWeek = visibleActive.length + completedThisWeekCount;
 
     // Streak info
     const currentStreak = child.current_streak || 0;
@@ -168,10 +209,13 @@ export async function GET(
         : null,
       week_tasks: enrichedTasks,
       stats: {
-        completed_this_week: completedThisWeek,
+        completed_this_week: completedThisWeekCount,
         total_this_week: totalThisWeek,
         current_streak: currentStreak,
         longest_streak: longestStreak,
+        active_count: sorted.length,
+        visible_count: visibleActive.length,
+        hidden_count: hiddenCount,
       },
     });
   } catch (error: any) {

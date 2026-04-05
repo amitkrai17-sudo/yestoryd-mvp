@@ -12,21 +12,43 @@ import { cn } from '@/lib/utils';
 import { AudioRecorder } from '@/components/coach/AudioRecorder';
 import type { CardProps, ObservationItem } from '../types';
 
+interface ContinuationItem {
+  id: string;
+  observation_id: string;
+  observation_text: string;
+  observation_type: string;
+  skill_id: string;
+}
+
 interface ObservationsCardProps extends CardProps {
   observations: Record<string, ObservationItem[]>;
+  continuations?: ContinuationItem[];
   loading: boolean;
   sessionId: string;
 }
 
-// Flatten all observations into strength/struggle groups
-function groupObservations(observations: Record<string, ObservationItem[]>) {
+// Flatten, performance-gate, and deduplicate observations
+function groupObservations(
+  observations: Record<string, ObservationItem[]>,
+  skillRatings: Record<string, { rating: string | null; note: string }>,
+) {
   const strengths: ObservationItem[] = [];
   const struggles: ObservationItem[] = [];
 
-  for (const items of Object.values(observations)) {
+  for (const [skillId, items] of Object.entries(observations)) {
+    const rating = skillRatings[skillId]?.rating || null;
+
     for (const obs of items) {
+      // Performance gate: filter by visible_at_ratings
+      if (rating && obs.visibleAtRatings && obs.visibleAtRatings.length > 0) {
+        if (!obs.visibleAtRatings.some(r => r.toLowerCase() === rating.toLowerCase())) {
+          continue; // Skip — not visible at this rating
+        }
+      }
+
       if (obs.type === 'strength') strengths.push(obs);
       else if (obs.type === 'struggle') struggles.push(obs);
+      // neutrals: skip (not displayed as chips)
     }
   }
 
@@ -39,6 +61,31 @@ function groupObservations(observations: Record<string, ObservationItem[]>) {
   });
 
   return { strengths: dedup(strengths), struggles: dedup(struggles) };
+}
+
+// Check which observations are disabled due to conflict pair exclusion
+function getConflictDisabledIds(
+  allObs: ObservationItem[],
+  selectedIds: string[],
+): Set<string> {
+  const disabled = new Set<string>();
+  // Get conflict_pair_ids of selected observations
+  const selectedPairIds = new Set(
+    allObs
+      .filter(o => selectedIds.includes(o.id) && o.conflictPairId)
+      .map(o => o.conflictPairId!),
+  );
+
+  for (const obs of allObs) {
+    if (
+      obs.conflictPairId &&
+      selectedPairIds.has(obs.conflictPairId) &&
+      !selectedIds.includes(obs.id)
+    ) {
+      disabled.add(obs.id);
+    }
+  }
+  return disabled;
 }
 
 // ============================================================
@@ -116,9 +163,24 @@ function WordTagInput({
 
 type SpeechField = 'customStrengthNote' | 'customStruggleNote';
 
-export function ObservationsCard({ state, onUpdate, observations, loading, sessionId }: ObservationsCardProps) {
+export function ObservationsCard({ state, onUpdate, observations, continuations = [], loading, sessionId }: ObservationsCardProps) {
   const [listeningField, setListeningField] = useState<SpeechField | null>(null);
   const recognitionRef = useRef<ReturnType<typeof Object.create> | null>(null);
+  const [continuationResponses, setContinuationResponses] = useState<Record<string, string>>({});
+
+  const handleContinuation = async (contId: string, status: 'active' | 'improved' | 'resolved') => {
+    setContinuationResponses(prev => ({ ...prev, [contId]: status }));
+    try {
+      const { supabase: clientSb } = await import('@/lib/supabase/client');
+      await clientSb
+        .from('observation_continuations')
+        .update({
+          continuation_status: status === 'active' ? 'active' : status,
+          ...(status !== 'active' ? { resolved_at: new Date().toISOString() } : {}),
+        })
+        .eq('id', contId);
+    } catch { /* Non-fatal */ }
+  };
 
   // Cleanup speech recognition on unmount
   useEffect(() => {
@@ -129,9 +191,15 @@ export function ObservationsCard({ state, onUpdate, observations, loading, sessi
     };
   }, []);
 
-  const { strengths, struggles } = groupObservations(observations);
+  const { strengths, struggles } = groupObservations(observations, state.skillPerformances);
+
+  // Conflict exclusion: disable observations that conflict with selected ones
+  const allSelectedIds = [...state.strengthObservationIds, ...state.struggleObservationIds];
+  const allObs = [...strengths, ...struggles];
+  const conflictDisabled = getConflictDisabledIds(allObs, allSelectedIds);
 
   const toggleObservation = (id: string, type: 'strength' | 'struggle') => {
+    if (conflictDisabled.has(id)) return; // Don't allow toggling disabled items
     if (type === 'strength') {
       const current = state.strengthObservationIds;
       const updated = current.includes(id)
@@ -211,6 +279,37 @@ export function ObservationsCard({ state, onUpdate, observations, loading, sessi
         </p>
       </div>
 
+      {/* Continuation prompts from previous sessions */}
+      {continuations.length > 0 && (
+        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
+          <p className="text-xs font-medium text-amber-400">From last session:</p>
+          {continuations.filter(c => !continuationResponses[c.id]).map(cont => (
+            <div key={cont.id} className="flex items-center justify-between gap-2 py-1">
+              <span className="text-xs text-amber-300 flex-1 min-w-0 truncate">
+                &ldquo;{cont.observation_text}&rdquo;
+              </span>
+              <div className="flex gap-1 flex-shrink-0">
+                <button onClick={() => handleContinuation(cont.id, 'active')}
+                  className="text-[10px] px-2 py-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30">
+                  Still an issue
+                </button>
+                <button onClick={() => handleContinuation(cont.id, 'improved')}
+                  className="text-[10px] px-2 py-1 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30">
+                  Improved
+                </button>
+                <button onClick={() => handleContinuation(cont.id, 'resolved')}
+                  className="text-[10px] px-2 py-1 rounded-lg bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30">
+                  Resolved
+                </button>
+              </div>
+            </div>
+          ))}
+          {continuations.every(c => !!continuationResponses[c.id]) && (
+            <p className="text-[10px] text-amber-400/60 text-center">All follow-ups reviewed</p>
+          )}
+        </div>
+      )}
+
       {noObservations && state.selectedSkillIds.length > 0 && (
         <div className="bg-surface-2 border border-border rounded-xl p-4 text-center">
           <p className="text-text-tertiary text-sm">No predefined observations for selected skills.</p>
@@ -227,18 +326,23 @@ export function ObservationsCard({ state, onUpdate, observations, loading, sessi
           <div className="flex flex-wrap gap-2">
             {strengths.map(obs => {
               const selected = state.strengthObservationIds.includes(obs.id);
+              const disabled = conflictDisabled.has(obs.id);
               return (
                 <button
                   key={obs.id}
                   type="button"
                   onClick={() => toggleObservation(obs.id, 'strength')}
+                  disabled={disabled}
                   className={cn(
                     'px-3 py-1.5 rounded-full text-xs font-medium border transition-all min-h-[36px]',
                     'active:scale-95',
-                    selected
+                    disabled
+                      ? 'bg-surface-3 text-text-tertiary border-border opacity-40 cursor-not-allowed line-through'
+                      : selected
                       ? 'bg-green-500/20 text-green-400 border-green-500/30'
                       : 'bg-surface-3 text-text-secondary border-border hover:border-text-tertiary',
                   )}
+                  title={disabled ? 'Conflicts with a selected observation' : undefined}
                 >
                   {obs.text}
                 </button>
@@ -257,18 +361,23 @@ export function ObservationsCard({ state, onUpdate, observations, loading, sessi
           <div className="flex flex-wrap gap-2">
             {struggles.map(obs => {
               const selected = state.struggleObservationIds.includes(obs.id);
+              const disabled = conflictDisabled.has(obs.id);
               return (
                 <button
                   key={obs.id}
                   type="button"
                   onClick={() => toggleObservation(obs.id, 'struggle')}
+                  disabled={disabled}
                   className={cn(
                     'px-3 py-1.5 rounded-full text-xs font-medium border transition-all min-h-[36px]',
                     'active:scale-95',
-                    selected
+                    disabled
+                      ? 'bg-surface-3 text-text-tertiary border-border opacity-40 cursor-not-allowed line-through'
+                      : selected
                       ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
                       : 'bg-surface-3 text-text-secondary border-border hover:border-text-tertiary',
                   )}
+                  title={disabled ? 'Conflicts with a selected observation' : undefined}
                 >
                   {obs.text}
                 </button>

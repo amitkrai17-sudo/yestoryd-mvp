@@ -103,10 +103,38 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch homework' }, { status: 500 });
     }
 
-    // Sign photo URLs
+    // Enrich with signed photo URLs + quiz results
+    const contentItemIds = (tasks || [])
+      .filter(t => t.content_item_id && t.is_completed)
+      .map(t => t.content_item_id as string);
+
+    // Fetch quiz attempt results for SmartPractice tasks
+    let quizResults: Record<string, { score: number; correct: number; total: number }> = {};
+    if (contentItemIds.length > 0) {
+      const { data: attempts } = await supabase
+        .from('quiz_attempts')
+        .select('quiz_id, score, total')
+        .in('quiz_id', contentItemIds)
+        .eq('child_id', childId)
+        .order('created_at', { ascending: false });
+
+      if (attempts) {
+        for (const a of attempts) {
+          if (a.quiz_id && !quizResults[a.quiz_id]) {
+            quizResults[a.quiz_id] = {
+              score: a.score || 0,
+              correct: Math.round(((a.score || 0) / 100) * (a.total || 0)),
+              total: a.total || 0,
+            };
+          }
+        }
+      }
+    }
+
     const tasksWithPhotos = await Promise.all((tasks || []).map(async (t) => {
       const signedUrls = await signPhotoUrls(supabase, t.photo_urls as any[] | null, t.photo_url);
-      return { ...t, photo_signed_urls: signedUrls };
+      const quizResult = t.content_item_id ? quizResults[t.content_item_id] || null : null;
+      return { ...t, photo_signed_urls: signedUrls, quiz_result: quizResult };
     }));
 
     // Separate active vs past
@@ -174,7 +202,7 @@ export async function POST(
     const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
     const { data: childForHW } = await supabase
       .from('children')
-      .select('child_name, age')
+      .select('child_name, age, smart_practice_enabled')
       .eq('id', childId)
       .single();
     const { simplified, original } = await simplifyHomework(
@@ -232,6 +260,21 @@ export async function POST(
       }
     } catch (notifyErr: any) {
       console.error(JSON.stringify({ requestId, event: 'homework_p22_error', error: notifyErr.message }));
+    }
+
+    // SmartPractice: generate interactive quiz if enabled (non-blocking)
+    if (task?.id && childForHW?.smart_practice_enabled) {
+      import('@/lib/homework/generate-smart-practice').then(({ generateSmartPractice }) => {
+        generateSmartPractice({
+          coachNotes: original,
+          childName: childForHW.child_name || 'Child',
+          childAge: childForHW.age || 7,
+          skillSlug: body.linked_skill || 'reading_comprehension',
+          childId,
+          taskId: task.id,
+          supabase,
+        }).catch(err => console.error('[SmartPractice] bg generation failed:', err));
+      });
     }
 
     return NextResponse.json({ success: true, task });

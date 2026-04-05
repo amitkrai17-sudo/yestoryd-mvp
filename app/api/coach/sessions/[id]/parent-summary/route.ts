@@ -52,7 +52,7 @@ export async function POST(
         coach_notes, session_timer_seconds, session_template_id,
         homework_assigned, homework_topic, homework_description,
         enrollment_id, focus_area, coach_id,
-        children (id, child_name, age, parent_name, parent_phone, parent_email, parent_id)
+        children (id, child_name, age, parent_name, parent_phone, parent_email, parent_id, smart_practice_enabled)
       `)
       .eq('id', sessionId)
       .single();
@@ -355,6 +355,12 @@ export async function POST(
           .limit(1);
 
         if (!existingTasks || existingTasks.length === 0) {
+          // Check pending task count — skip if child already has enough
+          const { getPendingTaskCount, canCreateMoreTasks, MAX_PENDING_TASKS } = await import('@/lib/tasks/pending-count');
+          const pendingCount = await getPendingTaskCount(supabase, session.child_id as string);
+          if (!canCreateMoreTasks(pendingCount)) {
+            console.log(JSON.stringify({ requestId, event: 'homework_task_skipped', reason: 'pending_cap', childId: session.child_id, pendingCount, max: MAX_PENDING_TASKS }));
+          } else {
           // Simplify AI-extracted homework for parent
           const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
           const { simplified, original } = await simplifyHomework(
@@ -363,7 +369,7 @@ export async function POST(
             child?.age || 7,
           );
 
-          const { error: taskError } = await supabase
+          const { data: newTask, error: taskError } = await supabase
             .from('parent_daily_tasks')
             .insert({
               child_id: session.child_id,
@@ -377,9 +383,11 @@ export async function POST(
               source: 'ai_recommended',
               duration_minutes: 15,
               is_completed: false,
-            });
+            })
+            .select('id')
+            .single();
 
-          if (!taskError) {
+          if (!taskError && newTask) {
             homeworkTaskCreated = true;
 
             // Send P22 WhatsApp notification (same pattern as /api/intelligence/capture)
@@ -406,9 +414,25 @@ export async function POST(
             } catch (notifyErr: any) {
               console.error(JSON.stringify({ requestId, event: 'homework_p22_notify_error', error: notifyErr.message }));
             }
+
+            // SmartPractice: generate interactive quiz if enabled (non-blocking)
+            if (child?.smart_practice_enabled && newTask?.id) {
+              import('@/lib/homework/generate-smart-practice').then(({ generateSmartPractice }) => {
+                generateSmartPractice({
+                  coachNotes: original,
+                  childName: child.child_name || 'Child',
+                  childAge: child.age || 7,
+                  skillSlug: sess.focus_area || 'reading_comprehension',
+                  childId: session.child_id as string,
+                  taskId: newTask.id,
+                  supabase,
+                }).catch(err => console.error('[SmartPractice] bg generation failed:', err));
+              });
+            }
           } else {
-            console.error(JSON.stringify({ requestId, event: 'homework_task_insert_error', error: taskError.message }));
+            console.error(JSON.stringify({ requestId, event: 'homework_task_insert_error', error: taskError?.message }));
           }
+          } // close canCreateMoreTasks else
         } else {
           console.log(JSON.stringify({ requestId, event: 'homework_task_skipped', reason: 'coach_assigned_exists', sessionId }));
         }

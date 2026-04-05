@@ -5844,6 +5844,7 @@ export type Database = {
       el_skill_observations: {
         Row: {
           age_bands: string[] | null
+          conflict_pair_id: string | null
           created_at: string | null
           id: string
           is_active: boolean | null
@@ -5852,9 +5853,11 @@ export type Database = {
           skill_id: string
           sort_order: number | null
           updated_at: string | null
+          visible_at_ratings: string[] | null
         }
         Insert: {
           age_bands?: string[] | null
+          conflict_pair_id?: string | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -5863,9 +5866,11 @@ export type Database = {
           skill_id: string
           sort_order?: number | null
           updated_at?: string | null
+          visible_at_ratings?: string[] | null
         }
         Update: {
           age_bands?: string[] | null
+          conflict_pair_id?: string | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -5874,6 +5879,7 @@ export type Database = {
           skill_id?: string
           sort_order?: number | null
           updated_at?: string | null
+          visible_at_ratings?: string[] | null
         }
         Relationships: [
           {
@@ -8953,6 +8959,78 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      observation_continuations: {
+        Row: {
+          child_id: string
+          continuation_status: string | null
+          created_at: string | null
+          id: string
+          observation_id: string
+          resolved_at: string | null
+          resolved_capture_id: string | null
+          source_capture_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          child_id: string
+          continuation_status?: string | null
+          created_at?: string | null
+          id?: string
+          observation_id: string
+          resolved_at?: string | null
+          resolved_capture_id?: string | null
+          source_capture_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          child_id?: string
+          continuation_status?: string | null
+          created_at?: string | null
+          id?: string
+          observation_id?: string
+          resolved_at?: string | null
+          resolved_capture_id?: string | null
+          source_capture_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observation_continuations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "el_skill_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_resolved_capture_id_fkey"
+            columns: ["resolved_capture_id"]
+            isOneToOne: false
+            referencedRelation: "structured_capture_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_source_capture_id_fkey"
+            columns: ["source_capture_id"]
+            isOneToOne: false
+            referencedRelation: "structured_capture_responses"
             referencedColumns: ["id"]
           },
         ]
@@ -12501,6 +12579,7 @@ export type Database = {
           slug: string
           sort_order: number
           updated_at: string
+          voice_prompts: Json | null
         }
         Insert: {
           color?: string
@@ -12516,6 +12595,7 @@ export type Database = {
           slug: string
           sort_order?: number
           updated_at?: string
+          voice_prompts?: Json | null
         }
         Update: {
           color?: string
@@ -12531,6 +12611,7 @@ export type Database = {
           slug?: string
           sort_order?: number
           updated_at?: string
+          voice_prompts?: Json | null
         }
         Relationships: []
       }
@@ -12570,6 +12651,7 @@ export type Database = {
       structured_capture_responses: {
         Row: {
           ai_prefilled: boolean | null
+          capture_delay_hours: number | null
           capture_method: string
           child_artifact_analysis: Json | null
           child_artifact_duration_seconds: number | null
@@ -12584,6 +12666,7 @@ export type Database = {
           created_at: string | null
           custom_strength_note: string | null
           custom_struggle_note: string | null
+          delay_confidence_multiplier: number | null
           engagement_level: string
           group_session_id: string | null
           id: string
@@ -12602,6 +12685,7 @@ export type Database = {
         }
         Insert: {
           ai_prefilled?: boolean | null
+          capture_delay_hours?: number | null
           capture_method: string
           child_artifact_analysis?: Json | null
           child_artifact_duration_seconds?: number | null
@@ -12616,6 +12700,7 @@ export type Database = {
           created_at?: string | null
           custom_strength_note?: string | null
           custom_struggle_note?: string | null
+          delay_confidence_multiplier?: number | null
           engagement_level: string
           group_session_id?: string | null
           id?: string
@@ -12634,6 +12719,7 @@ export type Database = {
         }
         Update: {
           ai_prefilled?: boolean | null
+          capture_delay_hours?: number | null
           capture_method?: string
           child_artifact_analysis?: Json | null
           child_artifact_duration_seconds?: number | null
@@ -12648,6 +12734,7 @@ export type Database = {
           created_at?: string | null
           custom_strength_note?: string | null
           custom_struggle_note?: string | null
+          delay_confidence_multiplier?: number | null
           engagement_level?: string
           group_session_id?: string | null
           id?: string
