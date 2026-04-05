@@ -418,12 +418,38 @@ export async function GET(request: NextRequest) {
     // 1. Find orphaned sessions: past sessions with recall_bot_id but no transcript
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
+    // DIAGNOSTIC: Check what recall_status the Apr 4+ sessions actually have
+    const { data: diagnosticSessions } = await supabase
+      .from('scheduled_sessions')
+      .select('id, child_id, recall_bot_id, scheduled_date, scheduled_time, status, recall_status, transcript')
+      .not('recall_bot_id', 'is', null)
+      .gte('scheduled_date', '2026-04-04')
+      .order('scheduled_date', { ascending: false })
+      .limit(10);
+
+    if (diagnosticSessions?.length) {
+      console.log(JSON.stringify({
+        requestId,
+        event: 'reconciliation_diagnostic',
+        message: 'Recent sessions with Recall bots (showing actual recall_status)',
+        sessions: diagnosticSessions.map(s => ({
+          id: s.id?.substring(0, 8),
+          botId: s.recall_bot_id?.substring(0, 8),
+          date: s.scheduled_date,
+          time: s.scheduled_time,
+          status: s.status,
+          recallStatus: s.recall_status,
+          hasTranscript: !!s.transcript,
+        })),
+      }));
+    }
+
     const { data: orphanedSessions, error: queryError } = await supabase
       .from('scheduled_sessions')
-      .select('id, child_id, coach_id, recall_bot_id, scheduled_date, scheduled_time, duration_minutes, session_type')
+      .select('id, child_id, coach_id, recall_bot_id, scheduled_date, scheduled_time, duration_minutes, session_type, recall_status, status')
       .not('recall_bot_id', 'is', null)
       .is('transcript', null)
-      .in('recall_status', ['pending', 'scheduled', 'in_meeting', 'recording'])
+      .in('recall_status', ['pending', 'scheduled', 'in_meeting', 'recording', 'no_show', 'processing', 'completed'])
       .neq('status', 'cancelled')
       .lt('scheduled_date', twoHoursAgo.split('T')[0])
       .order('scheduled_date', { ascending: true })
@@ -434,6 +460,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Query failed' }, { status: 500 });
     }
 
+    console.log(JSON.stringify({
+      requestId,
+      event: 'orphaned_query_result',
+      count: orphanedSessions?.length ?? 0,
+      recallStatuses: orphanedSessions?.map(s => s.recall_bot_id?.substring(0, 8) + ':' + (s as any).recall_status),
+    }));
+
     if (!orphanedSessions || orphanedSessions.length === 0) {
       console.log(JSON.stringify({ requestId, event: 'no_orphaned_sessions' }));
       return NextResponse.json({ success: true, recovered: 0, skipped: 0, errors: 0 });
@@ -443,10 +476,10 @@ export async function GET(request: NextRequest) {
     // (for today's sessions that are >2hrs old)
     const { data: todayOrphans } = await supabase
       .from('scheduled_sessions')
-      .select('id, child_id, coach_id, recall_bot_id, scheduled_date, scheduled_time, duration_minutes, session_type')
+      .select('id, child_id, coach_id, recall_bot_id, scheduled_date, scheduled_time, duration_minutes, session_type, recall_status, status')
       .not('recall_bot_id', 'is', null)
       .is('transcript', null)
-      .in('recall_status', ['pending', 'scheduled', 'in_meeting', 'recording'])
+      .in('recall_status', ['pending', 'scheduled', 'in_meeting', 'recording', 'no_show', 'processing', 'completed'])
       .neq('status', 'cancelled')
       .eq('scheduled_date', twoHoursAgo.split('T')[0])
       .order('scheduled_date', { ascending: true })
@@ -477,8 +510,10 @@ export async function GET(request: NextRequest) {
     // 2. Process each orphaned session
     for (const session of sessionsToProcess) {
       const botId = session.recall_bot_id;
+      const sessionLabel = `session=${session.id?.substring(0, 8)} bot=${botId?.substring(0, 8)} date=${session.scheduled_date} time=${session.scheduled_time} status=${(session as any).status} recall_status=${(session as any).recall_status}`;
 
       if (!botId) {
+        console.log(JSON.stringify({ requestId, event: 'reconciliation_skip', sessionId: session.id, reason: 'no_bot_id', sessionLabel }));
         skipped++;
         continue;
       }
@@ -488,6 +523,7 @@ export async function GET(request: NextRequest) {
         const botDetails = await getRecallBotDetails(botId);
 
         if (!botDetails) {
+          console.log(JSON.stringify({ requestId, event: 'reconciliation_skip', sessionId: session.id, botId, reason: 'bot_not_found_in_recall_api', sessionLabel }));
           await logReconciliation(supabase, session.id, botId, 'bot_not_found');
           // Mark as failed so we don't retry forever
           await supabase
@@ -502,12 +538,14 @@ export async function GET(request: NextRequest) {
 
         // Only process if bot has finished (done status)
         if (!['done', 'fatal'].includes(botStatus)) {
+          console.log(JSON.stringify({ requestId, event: 'reconciliation_skip', sessionId: session.id, botId, reason: 'bot_not_finished', botStatus, sessionLabel }));
           // Bot still in progress or waiting — skip for now
           skipped++;
           continue;
         }
 
         if (botStatus === 'fatal') {
+          console.log(JSON.stringify({ requestId, event: 'reconciliation_skip', sessionId: session.id, botId, reason: 'bot_fatal', sessionLabel }));
           await logReconciliation(supabase, session.id, botId, 'error', `Bot status: fatal`);
           await supabase
             .from('scheduled_sessions')
@@ -521,6 +559,7 @@ export async function GET(request: NextRequest) {
         const transcript = await getRecallTranscript(botId);
 
         if (!transcript || transcript.trim().length < 20) {
+          console.log(JSON.stringify({ requestId, event: 'reconciliation_skip', sessionId: session.id, botId, reason: 'transcript_empty_or_short', transcriptLength: transcript?.trim().length ?? 0, sessionLabel }));
           await logReconciliation(supabase, session.id, botId, 'no_transcript', 'Transcript empty or too short');
           await supabase
             .from('scheduled_sessions')
@@ -539,7 +578,11 @@ export async function GET(request: NextRequest) {
         }));
 
         // 2c. Get child context for AI analysis
-        if (!session.child_id) { skipped++; continue; }
+        if (!session.child_id) {
+          console.log(JSON.stringify({ requestId, event: 'reconciliation_skip', sessionId: session.id, botId, reason: 'no_child_id', sessionLabel }));
+          skipped++;
+          continue;
+        }
         const childContext = await getChildContext(supabase, session.child_id);
         const childName = childContext?.name || 'Child';
 
