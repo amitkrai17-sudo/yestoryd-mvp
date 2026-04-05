@@ -53,6 +53,7 @@ interface SessionData {
   report_submitted_at: string | null;
   report_deadline: string | null;
   enrollment_id: string | null;
+  capture_id: string | null;
   children: ChildData | null;
   enrollments: { enrollment_type: string | null } | null;
 }
@@ -95,6 +96,7 @@ interface FormattedSession {
   report_deadline: string | null;
   enrollment_id: string | null;
   enrollment_type: string | null;
+  capture_id: string | null;
 }
 
 // ============================================================
@@ -172,6 +174,7 @@ async function getSessionsWithChildren(
       report_submitted_at,
       report_deadline,
       enrollment_id,
+      capture_id,
       enrollments (
         enrollment_type
       ),
@@ -292,6 +295,7 @@ function formatSession(
     report_deadline: session.report_deadline,
     enrollment_id: session.enrollment_id,
     enrollment_type: session.enrollments?.enrollment_type || null,
+    capture_id: session.capture_id || null,
   };
 }
 

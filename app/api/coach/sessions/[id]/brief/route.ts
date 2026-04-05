@@ -283,19 +283,41 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
           .filter(t => !t.is_completed)
           .map(t => ({ id: t.id, title: t.title, task_date: t.task_date, linked_skill: t.linked_skill }));
 
-        // Generate signed URLs for tasks with photos
+        // Generate signed URLs for tasks with photos (supports multi-photo)
         const itemsWithUrls = await Promise.all(hwTasks.map(async (t) => {
-          if (t.photo_url && !t.photo_url.startsWith('http')) {
+          const photos = ((t as any).photo_urls as any[] | null) || [];
+          let photoSignedUrls: string[] = [];
+
+          if (photos.length > 0) {
+            // Sign each photo URL in the array
+            const signed = await Promise.all(photos.map(async (p: any) => {
+              const url = p?.url;
+              if (!url || url.startsWith('http')) return url || null;
+              try {
+                const { data } = await supabase.storage
+                  .from('child-artifacts')
+                  .createSignedUrl(url, 3600);
+                return data?.signedUrl || null;
+              } catch { return null; }
+            }));
+            photoSignedUrls = signed.filter(Boolean) as string[];
+          } else if (t.photo_url && !t.photo_url.startsWith('http')) {
+            // Legacy fallback: single photo_url
             try {
               const { data: signed } = await supabase.storage
                 .from('child-artifacts')
                 .createSignedUrl(t.photo_url, 3600);
-              return { ...t, photo_signed_url: signed?.signedUrl || null };
-            } catch {
-              return { ...t, photo_signed_url: null };
-            }
+              if (signed?.signedUrl) photoSignedUrls = [signed.signedUrl];
+            } catch { /* noop */ }
+          } else if (t.photo_url) {
+            photoSignedUrls = [t.photo_url];
           }
-          return { ...t, photo_signed_url: t.photo_url || null };
+
+          return {
+            ...t,
+            photo_signed_url: photoSignedUrls[0] || null, // legacy compat
+            photo_signed_urls: photoSignedUrls,
+          };
         }));
 
         homeworkStatus = {
@@ -378,8 +400,26 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
       nextSessionId = nextSession?.id || null;
     }
 
+    // 9. Check for pending AI-generated capture awaiting coach review
+    let pendingCapture: { id: string; created_at: string | null; engagement_level: string | null; skills_covered: string[] | null } | null = null;
+    try {
+      const { data: capture } = await supabase
+        .from('structured_capture_responses')
+        .select('id, created_at, engagement_level, skills_covered')
+        .eq('session_id', id)
+        .eq('coach_confirmed', false)
+        .eq('ai_prefilled', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      pendingCapture = capture || null;
+    } catch {
+      // Non-fatal
+    }
+
     return NextResponse.json({
       success: true,
+      pending_capture: pendingCapture,
       session: {
         id: session.id,
         child_id: session.child_id,

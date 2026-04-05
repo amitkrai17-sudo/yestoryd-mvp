@@ -364,6 +364,28 @@ async function saveSessionData(
               .eq('id', sessionId);
           }
           console.log(JSON.stringify({ requestId, event: 'pending_capture_created', captureId: capture?.id }));
+
+          // Notify coach: pending capture ready for review
+          if (coachId) {
+            try {
+              await supabase.from('in_app_notifications').insert({
+                user_id: coachId,
+                user_type: 'coach',
+                title: 'Review Session Intelligence',
+                body: `Session with ${childName} is ready for review. Confirm skills, observations, and homework.`,
+                notification_type: 'info',
+                action_url: `/coach/sessions/${sessionId}`,
+                metadata: {
+                  session_id: sessionId,
+                  child_name: childName,
+                  capture_id: capture?.id,
+                  type: 'pending_capture_review',
+                },
+              });
+            } catch (notifErr: any) {
+              console.error(JSON.stringify({ requestId, event: 'capture_notification_error', error: notifErr.message }));
+            }
+          }
         }
       }
     } catch (captureError) {

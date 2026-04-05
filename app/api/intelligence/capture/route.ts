@@ -532,6 +532,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Create parent_daily_task if homework was assigned
+    // First: replace any INCOMPLETE ai_recommended tasks for this session (coach supersedes AI)
+    // Guard: never delete tasks the parent already completed — that's real intelligence data
+    if (payload.sessionId) {
+      try {
+        await supabase
+          .from('parent_daily_tasks')
+          .delete()
+          .eq('session_id', payload.sessionId)
+          .eq('source', 'ai_recommended')
+          .eq('is_completed', false);
+      } catch (overrideErr: any) {
+        console.error(JSON.stringify({ requestId, event: 'homework_override_error', error: overrideErr.message }));
+      }
+    }
+
     let homeworkTaskId: string | null = null;
     if (payload.homeworkAssigned && payload.homeworkDescription) {
       try {

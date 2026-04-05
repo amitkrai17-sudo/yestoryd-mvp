@@ -34,6 +34,9 @@ interface Session {
   report_submitted_at?: string | null;
   // Enrollment type
   enrollment_type?: string | null;
+  // Capture state
+  capture_id?: string | null;
+  pending_capture?: { id: string; ai_prefilled: boolean } | null;
 }
 
 interface SessionCardProps {
@@ -131,19 +134,38 @@ export function SessionCard({
   const needsParentUpdate = isCompleted && !session.parent_update_sent_at;
   const inPersonStatus = getInPersonStatusInfo(session, isPast);
 
-  // Offline: needs report (approved, past, not completed)
-  const isApprovedOffline = isOffline &&
-    (session.offline_request_status === 'approved' || session.offline_request_status === 'auto_approved');
-  const needsReport = isApprovedOffline && isPast && !session.report_submitted_at && session.status !== 'completed';
+  // Capture-aware state (universal — applies to ALL session types)
+  const hasConfirmedCapture = !!session.capture_id;
+  const hasPendingAiCapture = !!session.pending_capture?.ai_prefilled;
+  const hasPendingCapture = !!session.pending_capture;
+
+  // Any past, unresolved session without a confirmed capture needs a report
+  const needsReport = isPast && !isCompleted && !isCancelled && !hasConfirmedCapture;
+
+  // Legacy: completed without capture (before mandatory capture was enforced)
+  const legacyNeedsCapture = isCompleted && !hasConfirmedCapture && !hasPendingCapture;
 
   // Determine primary action
   const getPrimaryAction = () => {
-    // Offline session needing report — all session types use StructuredCaptureForm
+    // Past session with pending AI capture → amber "Review" button
+    if (needsReport && hasPendingAiCapture) {
+      return (
+        <button
+          onClick={onComplete}
+          className="flex items-center gap-1.5 lg:gap-2 bg-amber-500 text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-amber-600 transition-colors"
+        >
+          <ClipboardCheck className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span className="hidden sm:inline">Review</span>
+        </button>
+      );
+    }
+
+    // Past session with no capture at all → red "Report" button
     if (needsReport) {
       return (
         <button
           onClick={onComplete}
-          className="flex items-center gap-1.5 lg:gap-2 bg-red-500 text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-red-600 transition-colors animate-pulse"
+          className="flex items-center gap-1.5 lg:gap-2 bg-red-500 text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-red-600 transition-colors animate-pulse"
         >
           <Send className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span className="hidden sm:inline">Report</span>
@@ -157,7 +179,7 @@ export function SessionCard({
           href={session.google_meet_link!}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 lg:gap-2 bg-[#00ABFF] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
+          className="flex items-center gap-1.5 lg:gap-2 bg-[#00ABFF] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
         >
           <Video className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span className="hidden sm:inline">Join</span>
@@ -185,7 +207,7 @@ export function SessionCard({
       return (
         <button
           onClick={onPrep}
-          className="flex items-center gap-1.5 lg:gap-2 border border-gray-600 text-gray-300 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors"
+          className="flex items-center gap-1.5 lg:gap-2 border border-gray-600 text-gray-300 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors"
         >
           <FileText className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           Prep
@@ -195,8 +217,16 @@ export function SessionCard({
 
     if (isCompleted) {
       return (
-        <div className="flex items-center gap-2 text-green-400">
-          <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5" />
+        <div className="flex items-center gap-1.5">
+          <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-green-400" />
+          {legacyNeedsCapture && (
+            <button
+              onClick={onComplete}
+              className="text-[10px] text-text-tertiary hover:text-[#00ABFF] transition-colors"
+            >
+              Add Report
+            </button>
+          )}
         </div>
       );
     }
@@ -216,8 +246,14 @@ export function SessionCard({
     });
   }
 
-  // Submit Report — all session types use StructuredCaptureForm
-  if (needsReport) {
+  // Submit Report / Review Capture — universal for all session types needing capture
+  if (needsReport && hasPendingAiCapture) {
+    dropdownActions.push({
+      label: 'Review AI Capture',
+      icon: <ClipboardCheck className="w-4 h-4" />,
+      onClick: onComplete,
+    });
+  } else if (needsReport) {
     dropdownActions.push({
       label: 'Submit Report',
       icon: <Send className="w-4 h-4" />,
@@ -225,8 +261,8 @@ export function SessionCard({
     });
   }
 
-  // Mark as Complete - show for ALL pending/scheduled sessions regardless of mode
-  if (canTakeAction) {
+  // Mark as Complete — opens capture form (gate enforced there)
+  if (canTakeAction && !needsReport) {
     dropdownActions.push({
       label: 'Mark as Complete',
       icon: ActionIcons.complete,
@@ -235,6 +271,15 @@ export function SessionCard({
       disabledReason: canComplete.blockedBy
         ? `Complete Session #${canComplete.blockedBy} first`
         : undefined,
+    });
+  }
+
+  // Legacy completed sessions: add report retroactively
+  if (legacyNeedsCapture) {
+    dropdownActions.push({
+      label: 'Add Report',
+      icon: <ClipboardCheck className="w-4 h-4" />,
+      onClick: onComplete,
     });
   }
 

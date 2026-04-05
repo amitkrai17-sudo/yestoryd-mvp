@@ -43,6 +43,7 @@ interface Task {
   session_number: number | null;
   source: string;
   photo_url: string | null;
+  photo_urls: { url: string; uploaded_at: string; analysis?: any }[] | null;
 }
 
 function formatDay(dateStr: string): string {
@@ -209,6 +210,11 @@ export default function ParentTasksPage() {
     setShowPhotoSheet(taskId);
   };
 
+  // Get photo count for the currently open task
+  const currentSheetTask = showPhotoSheet ? weekTasks.find((t: Task) => t.id === showPhotoSheet) : null;
+  const currentPhotos = (currentSheetTask?.photo_urls || []) as { url: string; uploaded_at: string }[];
+  const canAddPhoto = currentPhotos.length < 3;
+
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !childId || !showPhotoSheet) return;
@@ -236,11 +242,18 @@ export default function ParentTasksPage() {
       const data = await res.json();
       if (!data.success) {
         console.error('Photo upload failed:', data.error);
+        if (data.error?.includes('Maximum')) alert(data.error);
+      } else {
+        // Refresh task list to get updated photo_urls
+        if (childId) fetchTasks(childId);
       }
     } catch (err) {
       console.error('Photo upload error:', err);
     } finally {
       setUploading(false);
+      setPhotoPreview(null);
+      // Reset file input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
       // Show feedback step after photo upload
       setFeedbackStep(true);
     }
@@ -566,23 +579,26 @@ export default function ParentTasksPage() {
                   </button>
                 </div>
               </div>
-            ) : photoPreview ? (
-              /* Uploading photo preview */
+            ) : (
+              /* Step 1: Complete (primary) + attach photos (optional, up to 3) */
               <div className="space-y-3">
-                <div className="relative rounded-xl overflow-hidden bg-gray-100 aspect-[4/3]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photoPreview} alt="Homework photo" className="w-full h-full object-cover" />
-                </div>
-                {uploading && (
-                  <div className="flex items-center gap-2 text-sm text-[#FF0099]">
-                    <Spinner size="sm" />
-                    <span>Uploading photo...</span>
+                {/* Existing photo thumbnails */}
+                {currentPhotos.length > 0 && (
+                  <div className="flex gap-2">
+                    {currentPhotos.map((p, i) => (
+                      <div key={i} className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                    {uploading && (
+                      <div className="w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                        <Spinner size="sm" />
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            ) : (
-              /* Step 1: Complete (primary) or attach photo (optional) */
-              <div className="space-y-3">
+
                 <button
                   onClick={() => setFeedbackStep(true)}
                   className="w-full flex items-center justify-center gap-2 p-3.5 bg-[#FF0099] text-white rounded-xl text-sm font-semibold hover:bg-[#FF0099]/90 transition-colors min-h-[48px]"
@@ -591,16 +607,23 @@ export default function ParentTasksPage() {
                   Mark as Done
                 </button>
 
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl text-left hover:bg-gray-100 transition-colors min-h-[44px]"
-                >
-                  <Camera className="w-4 h-4 text-gray-500" />
-                  <div>
-                    <p className="text-xs font-medium text-gray-700">Attach photo (optional)</p>
-                    <p className="text-[11px] text-gray-400">Photo of completed work</p>
-                  </div>
-                </button>
+                {canAddPhoto ? (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl text-left hover:bg-gray-100 transition-colors min-h-[44px] disabled:opacity-50"
+                  >
+                    <Camera className="w-4 h-4 text-gray-500" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">
+                        {currentPhotos.length > 0 ? `Add another photo (${currentPhotos.length}/3)` : 'Attach photo (optional)'}
+                      </p>
+                      <p className="text-[11px] text-gray-400">Photo of completed work</p>
+                    </div>
+                  </button>
+                ) : (
+                  <p className="text-center text-xs text-gray-400">3/3 photos added</p>
+                )}
               </div>
             )}
           </div>

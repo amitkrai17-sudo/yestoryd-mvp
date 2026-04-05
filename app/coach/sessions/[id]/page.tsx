@@ -84,7 +84,7 @@ export default function SessionBriefPage() {
     );
   }
 
-  const { session, child, template, recent_sessions, diagnostic_completed, activity_logs, companion_log_notes, next_session_id, group_class_activity, homework_status } = data;
+  const { session, child, template, recent_sessions, diagnostic_completed, activity_logs, companion_log_notes, next_session_id, group_class_activity, homework_status, pending_capture } = data;
 
   const isCompleted = session.status === 'completed' && session.companion_panel_completed;
   const isInProgress = session.status === 'in_progress';
@@ -169,6 +169,28 @@ export default function SessionBriefPage() {
                 className="text-xs text-red-400 hover:text-red-300 font-medium whitespace-nowrap"
               >
                 {diagnostic_completed ? 'View' : 'Fill Form'} →
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Pending AI Capture Review Banner */}
+        {pending_capture && (
+          <div className="bg-[#00ABFF]/10 border border-[#00ABFF]/30 rounded-2xl p-4">
+            <div className="flex items-start gap-3">
+              <ClipboardCheck className="w-5 h-5 text-[#00ABFF] flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-white text-sm font-medium">Review Session Intelligence</p>
+                <p className="text-text-tertiary text-xs mt-1">
+                  AI has analyzed this session. Review skills, observations, and assign homework.
+                </p>
+              </div>
+              <a
+                href={`/coach/capture/${sessionId}`}
+                className="flex items-center gap-1 bg-[#00ABFF] text-white px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap"
+              >
+                Review
+                <ArrowRight className="w-3 h-3" />
               </a>
             </div>
           </div>

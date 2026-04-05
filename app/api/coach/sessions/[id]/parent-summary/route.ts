@@ -50,7 +50,9 @@ export async function POST(
       .select(`
         id, child_id, session_number, session_type, session_mode,
         coach_notes, session_timer_seconds, session_template_id,
-        children (id, child_name, age, parent_name, parent_phone, parent_email)
+        homework_assigned, homework_topic, homework_description,
+        enrollment_id, focus_area, coach_id,
+        children (id, child_name, age, parent_name, parent_phone, parent_email, parent_id)
       `)
       .eq('id', sessionId)
       .single();
@@ -338,10 +340,79 @@ export async function POST(
       console.error(JSON.stringify({ requestId, event: 'learning_profile_error', error: profileError.message }));
     }
 
+    // 8. Homework auto-assign — create parent_daily_task from Gemini-extracted homework
+    // Non-blocking: wrapped in try/catch, never fails the parent summary delivery
+    let homeworkTaskCreated = false;
+    try {
+      const sess = session as any;
+      if (sess.homework_assigned && sess.homework_description) {
+        // Race condition guard: check if coach already submitted capture with homework
+        const { data: existingTasks } = await supabase
+          .from('parent_daily_tasks')
+          .select('id')
+          .eq('session_id', sessionId)
+          .in('source', ['coach_assigned'])
+          .limit(1);
+
+        if (!existingTasks || existingTasks.length === 0) {
+          const { error: taskError } = await supabase
+            .from('parent_daily_tasks')
+            .insert({
+              child_id: session.child_id,
+              enrollment_id: sess.enrollment_id || null,
+              session_id: sessionId,
+              task_date: new Date().toISOString().split('T')[0],
+              title: sess.homework_topic || 'Practice Assignment',
+              description: sess.homework_description,
+              linked_skill: sess.focus_area || null,
+              source: 'ai_recommended',
+              duration_minutes: 15,
+              is_completed: false,
+            });
+
+          if (!taskError) {
+            homeworkTaskCreated = true;
+
+            // Send P22 WhatsApp notification (same pattern as /api/intelligence/capture)
+            try {
+              if (child?.parent_phone || child?.parent_email) {
+                const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+                await sendCommunication({
+                  templateCode: 'P22_practice_tasks_assigned',
+                  recipientType: 'parent',
+                  recipientId: child.parent_id || undefined,
+                  recipientPhone: child.parent_phone || undefined,
+                  recipientEmail: child.parent_email || undefined,
+                  recipientName: child.parent_name || undefined,
+                  variables: {
+                    parent_first_name: (child.parent_name || 'Parent').split(' ')[0],
+                    child_name: child.child_name || 'your child',
+                    task_count: '1',
+                    dashboard_link: `${baseUrl}/parent/dashboard`,
+                  },
+                  relatedEntityType: 'session',
+                  relatedEntityId: sessionId,
+                });
+              }
+            } catch (notifyErr: any) {
+              console.error(JSON.stringify({ requestId, event: 'homework_p22_notify_error', error: notifyErr.message }));
+            }
+          } else {
+            console.error(JSON.stringify({ requestId, event: 'homework_task_insert_error', error: taskError.message }));
+          }
+        } else {
+          console.log(JSON.stringify({ requestId, event: 'homework_task_skipped', reason: 'coach_assigned_exists', sessionId }));
+        }
+      }
+    } catch (homeworkError: any) {
+      console.error(JSON.stringify({ requestId, event: 'homework_auto_assign_error', error: homeworkError.message }));
+    }
+
     return NextResponse.json({
       success: true,
       summary,
       practice_items_assigned: practiceItems.length,
+      homework_task_created: homeworkTaskCreated,
       whatsapp_sent: waResult.success,
       whatsapp_message_id: ('messageId' in waResult ? waResult.messageId : null) || null,
     });

@@ -87,17 +87,32 @@ export async function POST(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // Fetch photo_urls (column added via migration, not yet in generated types)
+    const { data: taskPhotos } = await supabase
+      .from('parent_daily_tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+    const currentPhotos = ((taskPhotos as any)?.photo_urls as any[] | null) || [];
+    if (currentPhotos.length >= 3) {
+      return NextResponse.json(
+        { error: 'Maximum 3 photos per task' },
+        { status: 400 }
+      );
+    }
+
     // Upload to Supabase Storage using admin client
     const adminSupabase = createAdminClient();
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const ext = file.type === 'image/heic' ? 'heic' : file.type.split('/')[1];
-    const storagePath = `homework/${childId}/${taskId}.${ext}`;
+    const photoIndex = currentPhotos.length; // 0, 1, or 2
+    const storagePath = `homework/${childId}/${taskId}_${photoIndex}.${ext}`;
 
     const { error: uploadError } = await adminSupabase.storage
       .from(STORAGE_BUCKET)
       .upload(storagePath, fileBuffer, {
         contentType: file.type,
-        upsert: true, // Allow re-upload if parent wants to replace photo
+        upsert: true,
       });
 
     if (uploadError) {
@@ -112,15 +127,22 @@ export async function POST(
 
     const photoUrl = signedData?.signedUrl || storagePath;
 
-    // Update task with photo path (store the storage path, not signed URL)
+    // Append to photo_urls array + update legacy photo_url with latest
+    const newPhoto = {
+      url: storagePath,
+      uploaded_at: new Date().toISOString(),
+    };
+
     const { error: updateError } = await supabase
       .from('parent_daily_tasks')
-      .update({ photo_url: storagePath })
+      .update({
+        photo_urls: [...currentPhotos, newPhoto] as any, // column added via migration
+        photo_url: storagePath, // legacy compat — always latest
+      } as any)
       .eq('id', taskId);
 
     if (updateError) {
-      console.error('Task photo_url update error:', updateError.message);
-      // Upload succeeded but DB update failed — not ideal but photo is saved
+      console.error('Task photo_urls update error:', updateError.message);
     }
 
     // Fire-and-forget: analyze photo with Gemini Vision
@@ -132,9 +154,14 @@ export async function POST(
         linkedSkill: task.linked_skill,
       }).then(async (analysis) => {
         if (analysis) {
+          // Update analysis on the specific photo in the array
+          const updatedPhotos = [...currentPhotos, { ...newPhoto, analysis }];
           await supabase
             .from('parent_daily_tasks')
-            .update({ photo_analysis: JSON.parse(JSON.stringify(analysis)) })
+            .update({
+              photo_urls: updatedPhotos as any, // column added via migration
+              photo_analysis: JSON.parse(JSON.stringify(analysis)), // legacy compat
+            } as any)
             .eq('id', taskId);
         }
       }).catch(err => console.error('Photo analysis background error:', err.message));
@@ -144,6 +171,8 @@ export async function POST(
       success: true,
       photo_url: photoUrl,
       storage_path: storagePath,
+      photo_count: currentPhotos.length + 1,
+      max_photos: 3,
     });
   } catch (error: any) {
     console.error('Homework photo upload error:', error.message);

@@ -213,6 +213,16 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
 
       if (result.success) {
         botsCreated++;
+
+        // Propagate recall_bot_id to ALL sibling sessions in this batch+date
+        // (createRecallBot only updates the primary session — siblings need it too)
+        if (batchId && result.botId) {
+          await supabase
+            .from('scheduled_sessions')
+            .update({ recall_bot_id: result.botId, recall_status: 'scheduled' })
+            .eq('batch_id', batchId)
+            .eq('scheduled_date', session.scheduled_date);
+        }
       } else {
         errors.push(`Session ${session.id}: ${result.error}`);
       }

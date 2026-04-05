@@ -204,9 +204,20 @@ export async function POST(
       }
     }
 
-    // Generate daily parent tasks (non-blocking for response)
+    // Generate daily parent tasks — skip if homework already assigned (AI or coach)
     try {
-      await generateAndInsertDailyTasks(session.child_id!, sessionId);
+      const { data: existingHomework } = await supabase
+        .from('parent_daily_tasks')
+        .select('id')
+        .eq('session_id', sessionId)
+        .in('source', ['coach_assigned', 'ai_recommended'])
+        .limit(1);
+
+      if (!existingHomework || existingHomework.length === 0) {
+        await generateAndInsertDailyTasks(session.child_id!, sessionId);
+      } else {
+        console.log(`[SESSION_COMPLETE] Skipping template tasks for ${sessionId} — homework tasks exist`);
+      }
     } catch (taskError) {
       console.error('[SESSION_COMPLETE] Daily task generation failed:', taskError);
     }
