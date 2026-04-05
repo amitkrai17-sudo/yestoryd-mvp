@@ -10,6 +10,7 @@ import { Mic, MicOff, X, Trash2 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { AudioRecorder } from '@/components/coach/AudioRecorder';
+import { VoiceCapture, type VoiceCaptureResult } from '../VoiceCapture';
 import type { CardProps, ObservationItem } from '../types';
 
 interface ContinuationItem {
@@ -25,6 +26,8 @@ interface ObservationsCardProps extends CardProps {
   continuations?: ContinuationItem[];
   loading: boolean;
   sessionId: string;
+  childName?: string;
+  voicePrompts?: { q1: string; q2: string; q3: string; q4: string } | null;
 }
 
 // Flatten, performance-gate, and deduplicate observations
@@ -163,10 +166,72 @@ function WordTagInput({
 
 type SpeechField = 'customStrengthNote' | 'customStruggleNote';
 
-export function ObservationsCard({ state, onUpdate, observations, continuations = [], loading, sessionId }: ObservationsCardProps) {
+export function ObservationsCard({ state, onUpdate, observations, continuations = [], loading, sessionId, childName, voicePrompts }: ObservationsCardProps) {
   const [listeningField, setListeningField] = useState<SpeechField | null>(null);
   const recognitionRef = useRef<ReturnType<typeof Object.create> | null>(null);
   const [continuationResponses, setContinuationResponses] = useState<Record<string, string>>({});
+  const [showVoiceCapture, setShowVoiceCapture] = useState(false);
+
+  const handleVoiceComplete = useCallback((result: VoiceCaptureResult) => {
+    setShowVoiceCapture(false);
+
+    // Pre-fill free text fields from voice segments
+    const updates: Record<string, any> = {};
+    if (result.segments.strengths) updates.customStrengthNote = result.segments.strengths;
+    if (result.segments.struggles) updates.customStruggleNote = result.segments.struggles;
+
+    // If Gemini extracted structured fields, use those too
+    if (result.extracted) {
+      if (result.extracted.wordsMastered?.length) {
+        updates.wordsMastered = Array.from(new Set([...(state.wordsMastered || []), ...result.extracted.wordsMastered]));
+      }
+      if (result.extracted.wordsStruggled?.length) {
+        updates.wordsStruggled = Array.from(new Set([...(state.wordsStruggled || []), ...result.extracted.wordsStruggled]));
+      }
+      if (result.extracted.homeworkSuggestion) {
+        updates.homeworkDescription = result.extracted.homeworkSuggestion;
+        updates.homeworkAssigned = true;
+      }
+    }
+
+    if (Object.keys(updates).length > 0) onUpdate(updates);
+  }, [state.wordsMastered, state.wordsStruggled, onUpdate]);
+
+  // Gemini text suggestions (debounced)
+  const [strengthSuggestions, setStrengthSuggestions] = useState<string[]>([]);
+  const [struggleSuggestions, setStruggleSuggestions] = useState<string[]>([]);
+  const strengthTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const struggleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchSuggestions = useCallback(async (text: string, fieldType: 'strength' | 'struggle') => {
+    if (text.length < 15) {
+      if (fieldType === 'strength') setStrengthSuggestions([]);
+      else setStruggleSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch('/api/intelligence/suggest-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childName, fieldType, partialText: text }),
+      });
+      const data = await res.json();
+      if (fieldType === 'strength') setStrengthSuggestions(data.suggestions || []);
+      else setStruggleSuggestions(data.suggestions || []);
+    } catch { /* silent */ }
+  }, [childName]);
+
+  const handleStrengthNoteChange = useCallback((value: string) => {
+    onUpdate({ customStrengthNote: value });
+    if (strengthTimerRef.current) clearTimeout(strengthTimerRef.current);
+    strengthTimerRef.current = setTimeout(() => fetchSuggestions(value, 'strength'), 800);
+  }, [onUpdate, fetchSuggestions]);
+
+  const handleStruggleNoteChange = useCallback((value: string) => {
+    onUpdate({ customStruggleNote: value });
+    if (struggleTimerRef.current) clearTimeout(struggleTimerRef.current);
+    struggleTimerRef.current = setTimeout(() => fetchSuggestions(value, 'struggle'), 800);
+  }, [onUpdate, fetchSuggestions]);
 
   const handleContinuation = async (contId: string, status: 'active' | 'improved' | 'resolved') => {
     setContinuationResponses(prev => ({ ...prev, [contId]: status }));
@@ -272,12 +337,38 @@ export function ObservationsCard({ state, onUpdate, observations, continuations 
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-white font-semibold text-base mb-1">Observations</h3>
-        <p className="text-text-tertiary text-xs">
-          Select observed strengths and areas for growth (optional)
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-white font-semibold text-base mb-1">Observations</h3>
+          <p className="text-text-tertiary text-xs">
+            Select observed strengths and areas for growth (optional)
+          </p>
+        </div>
+        {childName && (
+          <button
+            onClick={() => setShowVoiceCapture(true)}
+            className="flex items-center gap-1.5 text-xs text-[#00ABFF] px-3 py-1.5 rounded-xl border border-[#00ABFF]/30 hover:bg-[#00ABFF]/10 transition-colors flex-shrink-0"
+          >
+            <Mic className="w-3.5 h-3.5" />
+            Voice
+          </button>
+        )}
       </div>
+
+      {/* Voice Capture Overlay */}
+      {showVoiceCapture && childName && (
+        <VoiceCapture
+          childName={childName}
+          prompts={voicePrompts || {
+            q1: 'What did you work on with {childName} today?',
+            q2: 'What went well?',
+            q3: 'What did they find difficult?',
+            q4: 'What should they practice at home?',
+          }}
+          onComplete={handleVoiceComplete}
+          onCancel={() => setShowVoiceCapture(false)}
+        />
+      )}
 
       {/* Continuation prompts from previous sessions */}
       {continuations.length > 0 && (
@@ -412,11 +503,25 @@ export function ObservationsCard({ state, onUpdate, observations, continuations 
         </div>
         <textarea
           value={state.customStrengthNote}
-          onChange={e => onUpdate({ customStrengthNote: e.target.value })}
+          onChange={e => handleStrengthNoteChange(e.target.value)}
           placeholder="What went well..."
           rows={2}
           className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#00ABFF] resize-none"
         />
+        {strengthSuggestions.length > 0 && (
+          <div className="mt-1 space-y-1">
+            {strengthSuggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { onUpdate({ customStrengthNote: state.customStrengthNote + ' ' + s }); setStrengthSuggestions([]); }}
+                className="block w-full text-left text-[11px] text-[#00ABFF] bg-[#00ABFF]/10 px-3 py-1.5 rounded-lg hover:bg-[#00ABFF]/20 truncate"
+              >
+                ...{s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Custom struggle note */}
@@ -444,11 +549,25 @@ export function ObservationsCard({ state, onUpdate, observations, continuations 
         </div>
         <textarea
           value={state.customStruggleNote}
-          onChange={e => onUpdate({ customStruggleNote: e.target.value })}
+          onChange={e => handleStruggleNoteChange(e.target.value)}
           placeholder="What needs work..."
           rows={2}
           className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#00ABFF] resize-none"
         />
+        {struggleSuggestions.length > 0 && (
+          <div className="mt-1 space-y-1">
+            {struggleSuggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { onUpdate({ customStruggleNote: state.customStruggleNote + ' ' + s }); setStruggleSuggestions([]); }}
+                className="block w-full text-left text-[11px] text-orange-400 bg-orange-500/10 px-3 py-1.5 rounded-lg hover:bg-orange-500/20 truncate"
+              >
+                ...{s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Words Watched */}

@@ -205,6 +205,8 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
                 continuations={continuations}
                 loading={loadingObservations}
                 sessionId={sessionId}
+                childName={childName}
+                voicePrompts={modules[0]?.module?.voicePrompts || null}
               />
             )}
             {currentCard === 4 && (

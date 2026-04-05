@@ -43,6 +43,7 @@ export async function GET() {
     icon: string | null;
     sortOrder: number;
     rubric: Record<string, string> | null;
+    voicePrompts: { q1: string; q2: string; q3: string; q4: string } | null;
   }>();
   for (const cat of coachCategories) {
     categoryMap.set(cat.id, {
@@ -52,6 +53,7 @@ export async function GET() {
       icon: cat.icon,
       sortOrder: cat.sortOrder,
       rubric: cat.rubric as Record<string, string> | null,
+      voicePrompts: cat.voicePrompts || null,
     });
   }
 
@@ -68,7 +70,7 @@ export async function GET() {
   // 5. Build grouped response in category sort order
   //    Response shape matches existing ModuleGroup type (module → category)
   const grouped: Array<{
-    module: { id: string; name: string; slug: string; icon: string | null; orderIndex: number; rubric: Record<string, string> | null };
+    module: { id: string; name: string; slug: string; icon: string | null; orderIndex: number; rubric: Record<string, string> | null; voicePrompts?: { q1: string; q2: string; q3: string; q4: string } | null };
     skills: Array<{ id: string; name: string; skillTag: string; description: string | null; difficulty: number | null; orderIndex: number }>;
   }> = [];
 
@@ -84,6 +86,7 @@ export async function GET() {
           icon: info.icon,
           orderIndex: info.sortOrder,
           rubric: info.rubric,
+          voicePrompts: info.voicePrompts || null,
         },
         skills: catSkills.map(s => ({
           id: s.id,

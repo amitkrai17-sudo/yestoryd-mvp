@@ -30,6 +30,7 @@ export interface ModuleGroup {
     icon: string | null;
     orderIndex: number;
     rubric?: Record<string, string> | null;
+    voicePrompts?: { q1: string; q2: string; q3: string; q4: string } | null;
   };
   skills: SkillItem[];
 }

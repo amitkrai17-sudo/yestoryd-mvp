@@ -38,6 +38,7 @@ export interface SkillCategory {
   scope: 'coach' | 'parent' | 'both';
   isActive: boolean;
   rubric: RubricDefinitions | null;
+  voicePrompts?: { q1: string; q2: string; q3: string; q4: string } | null;
 }
 
 export interface SkillCategoryWithModules extends SkillCategory {
@@ -125,6 +126,7 @@ async function loadFromDB(): Promise<CacheEntry> {
       scope: row.scope as SkillCategory['scope'],
       isActive: row.is_active,
       rubric: (row as any).rubric as RubricDefinitions | null,
+      voicePrompts: (row as any).voice_prompts as { q1: string; q2: string; q3: string; q4: string } | null,
     }));
 
     const modules: SkillModule[] = (modResult.data || []).map(row => ({
