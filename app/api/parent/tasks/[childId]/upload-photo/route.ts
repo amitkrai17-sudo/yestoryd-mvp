@@ -78,7 +78,7 @@ export async function POST(
     // Verify task belongs to this child
     const { data: task } = await supabase
       .from('parent_daily_tasks')
-      .select('id, child_id, title, linked_skill')
+      .select('id, child_id, title, linked_skill, photo_urls')
       .eq('id', taskId)
       .eq('child_id', childId)
       .single();
@@ -87,13 +87,7 @@ export async function POST(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    // Fetch photo_urls (column added via migration, not yet in generated types)
-    const { data: taskPhotos } = await supabase
-      .from('parent_daily_tasks')
-      .select('*')
-      .eq('id', taskId)
-      .single();
-    const currentPhotos = ((taskPhotos as any)?.photo_urls as any[] | null) || [];
+    const currentPhotos = (task.photo_urls as any[] | null) || [];
     if (currentPhotos.length >= 3) {
       return NextResponse.json(
         { error: 'Maximum 3 photos per task' },
@@ -136,9 +130,9 @@ export async function POST(
     const { error: updateError } = await supabase
       .from('parent_daily_tasks')
       .update({
-        photo_urls: [...currentPhotos, newPhoto] as any, // column added via migration
+        photo_urls: JSON.parse(JSON.stringify([...currentPhotos, newPhoto])),
         photo_url: storagePath, // legacy compat — always latest
-      } as any)
+      })
       .eq('id', taskId);
 
     if (updateError) {
@@ -159,9 +153,9 @@ export async function POST(
           await supabase
             .from('parent_daily_tasks')
             .update({
-              photo_urls: updatedPhotos as any, // column added via migration
+              photo_urls: JSON.parse(JSON.stringify(updatedPhotos)),
               photo_analysis: JSON.parse(JSON.stringify(analysis)), // legacy compat
-            } as any)
+            })
             .eq('id', taskId);
         }
       }).catch(err => console.error('Photo analysis background error:', err.message));

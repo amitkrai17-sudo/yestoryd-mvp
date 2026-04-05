@@ -9254,6 +9254,7 @@ export type Database = {
           linked_template_code: string | null
           photo_analysis: Json | null
           photo_url: string | null
+          photo_urls: Json | null
           practice_duration: string | null
           session_id: string | null
           source: string | null
@@ -9275,6 +9276,7 @@ export type Database = {
           linked_template_code?: string | null
           photo_analysis?: Json | null
           photo_url?: string | null
+          photo_urls?: Json | null
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null
@@ -9296,6 +9298,7 @@ export type Database = {
           linked_template_code?: string | null
           photo_analysis?: Json | null
           photo_url?: string | null
+          photo_urls?: Json | null
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null

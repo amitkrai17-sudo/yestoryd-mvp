@@ -263,7 +263,7 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
 
       let hwQuery = supabase
         .from('parent_daily_tasks')
-        .select('id, title, task_date, linked_skill, is_completed, photo_url, created_at')
+        .select('id, title, task_date, linked_skill, is_completed, photo_url, photo_urls, created_at')
         .eq('child_id', session.child_id)
         .order('task_date', { ascending: false });
 
@@ -285,7 +285,7 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
 
         // Generate signed URLs for tasks with photos (supports multi-photo)
         const itemsWithUrls = await Promise.all(hwTasks.map(async (t) => {
-          const photos = ((t as any).photo_urls as any[] | null) || [];
+          const photos = (t.photo_urls as any[] | null) || [];
           let photoSignedUrls: string[] = [];
 
           if (photos.length > 0) {
