@@ -1788,6 +1788,7 @@ export type Database = {
           renewal_likelihood: string | null
           school_name: string | null
           sessions_completed: number | null
+          smart_practice_enabled: boolean | null
           status: string | null
           struggling_phonemes: string[] | null
           subscription_status: string | null
@@ -1885,6 +1886,7 @@ export type Database = {
           renewal_likelihood?: string | null
           school_name?: string | null
           sessions_completed?: number | null
+          smart_practice_enabled?: boolean | null
           status?: string | null
           struggling_phonemes?: string[] | null
           subscription_status?: string | null
@@ -1982,6 +1984,7 @@ export type Database = {
           renewal_likelihood?: string | null
           school_name?: string | null
           sessions_completed?: number | null
+          smart_practice_enabled?: boolean | null
           status?: string | null
           struggling_phonemes?: string[] | null
           subscription_status?: string | null
@@ -9241,6 +9244,7 @@ export type Database = {
       parent_daily_tasks: {
         Row: {
           child_id: string
+          coach_notes: string | null
           completed_at: string | null
           content_item_id: string | null
           created_at: string
@@ -9263,6 +9267,7 @@ export type Database = {
         }
         Insert: {
           child_id: string
+          coach_notes?: string | null
           completed_at?: string | null
           content_item_id?: string | null
           created_at?: string
@@ -9285,6 +9290,7 @@ export type Database = {
         }
         Update: {
           child_id?: string
+          coach_notes?: string | null
           completed_at?: string | null
           content_item_id?: string | null
           created_at?: string

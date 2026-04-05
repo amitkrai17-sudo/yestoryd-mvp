@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import SkillBoosterSection from '@/components/coach/SkillBoosterSection';
 import ParentCallSection from '@/components/coach/ParentCallSection';
 import StudentIntelligenceCard from '@/components/coach/StudentIntelligenceCard';
+import HomeworkSection from '@/components/coach/HomeworkSection';
 import { supabase } from '@/lib/supabase/client';
 import {
   Calendar,
@@ -664,6 +665,14 @@ export default function StudentDetailPage() {
                 )}
               </div>
             </section>
+
+            {/* Homework Management */}
+            {student && (
+              <HomeworkSection
+                childId={studentId}
+                childName={student.child_name}
+              />
+            )}
 
             {/* Skill Booster - COMPACT */}
             {enrollment && (

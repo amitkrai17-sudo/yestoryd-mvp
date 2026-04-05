@@ -573,6 +573,19 @@ export async function POST(request: NextRequest) {
           linkedSkill = skillRow?.skill_tag || null;
         }
 
+        // Simplify coach homework text for parent
+        const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
+        const { data: childForHW } = await supabase
+          .from('children')
+          .select('child_name, age')
+          .eq('id', payload.childId)
+          .single();
+        const { simplified, original } = await simplifyHomework(
+          payload.homeworkDescription,
+          childForHW?.child_name || 'your child',
+          childForHW?.age || 7,
+        );
+
         const { data: task } = await supabase
           .from('parent_daily_tasks')
           .insert({
@@ -580,8 +593,9 @@ export async function POST(request: NextRequest) {
             enrollment_id: enrollmentId,
             session_id: payload.sessionId,
             task_date: payload.sessionDate,
-            title: 'Coach Assigned Practice',
-            description: payload.homeworkDescription,
+            title: 'Practice Activity',
+            description: simplified,
+            coach_notes: original,
             source: 'coach_assigned',
             linked_skill: linkedSkill,
             is_completed: false,

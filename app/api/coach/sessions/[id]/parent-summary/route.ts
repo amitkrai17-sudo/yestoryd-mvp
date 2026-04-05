@@ -355,6 +355,14 @@ export async function POST(
           .limit(1);
 
         if (!existingTasks || existingTasks.length === 0) {
+          // Simplify AI-extracted homework for parent
+          const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
+          const { simplified, original } = await simplifyHomework(
+            sess.homework_description,
+            child?.child_name || 'your child',
+            child?.age || 7,
+          );
+
           const { error: taskError } = await supabase
             .from('parent_daily_tasks')
             .insert({
@@ -362,8 +370,9 @@ export async function POST(
               enrollment_id: sess.enrollment_id || null,
               session_id: sessionId,
               task_date: new Date().toISOString().split('T')[0],
-              title: sess.homework_topic || 'Practice Assignment',
-              description: sess.homework_description,
+              title: sess.homework_topic || 'Practice Activity',
+              description: simplified,
+              coach_notes: original,
               linked_skill: sess.focus_area || null,
               source: 'ai_recommended',
               duration_minutes: 15,
