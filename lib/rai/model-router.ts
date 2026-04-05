@@ -26,15 +26,20 @@ export function selectModel(
 }
 
 /**
- * Select max output tokens based on role and complexity.
+ * Select max output tokens based on role.
+ *
+ * The token limit is a SAFETY CEILING, not the length controller.
+ * Actual response length is controlled by structured prompt instructions.
+ * A generous ceiling (1500) ensures Gemini never hits the hard cutoff
+ * mid-word/mid-sentence. Complexity affects model selection, not token limits.
  */
-export function selectTokenCap(role: UserRole, complexity: Complexity): number {
-  const caps: Record<string, Record<string, number>> = {
-    parent: { low: 300, medium: 700, high: 800 },
-    coach:  { low: 400, medium: 800, high: 800 },
-    admin:  { low: 300, medium: 800, high: 1000 },
+export function selectTokenCap(role: UserRole, _complexity: Complexity): number {
+  const caps: Record<string, number> = {
+    parent: 1500,
+    coach:  1500,
+    admin:  1500,
   };
-  return caps[role]?.[complexity] || 400;
+  return caps[role] || 1500;
 }
 
 /**
@@ -94,7 +99,7 @@ export async function* generateWithFallback(
     try {
       const fallback = getGenAI().getGenerativeModel({
         model: fallbackModel,
-        generationConfig: { maxOutputTokens: Math.min(maxTokens, 600), temperature: 0.3 },
+        generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
       });
       const result = await fallback.generateContentStream({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],

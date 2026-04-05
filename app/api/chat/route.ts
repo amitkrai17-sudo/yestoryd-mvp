@@ -57,6 +57,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30; // Gemini streaming can take 8-15s; default 10s causes truncation
 
 // --- CONFIGURATION (Lazy initialization) ---
 const getSupabase = createAdminClient;
