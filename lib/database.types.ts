@@ -8804,6 +8804,115 @@ export type Database = {
           },
         ]
       }
+      micro_observations: {
+        Row: {
+          captured_at: string | null
+          child_id: string
+          coach_id: string
+          created_at: string | null
+          id: string
+          minutes_into_session: number | null
+          note_text: string | null
+          observation_id: string | null
+          observation_type: string
+          session_id: string
+          word_status: string | null
+          word_text: string | null
+        }
+        Insert: {
+          captured_at?: string | null
+          child_id: string
+          coach_id: string
+          created_at?: string | null
+          id?: string
+          minutes_into_session?: number | null
+          note_text?: string | null
+          observation_id?: string | null
+          observation_type: string
+          session_id: string
+          word_status?: string | null
+          word_text?: string | null
+        }
+        Update: {
+          captured_at?: string | null
+          child_id?: string
+          coach_id?: string
+          created_at?: string | null
+          id?: string
+          minutes_into_session?: number | null
+          note_text?: string | null
+          observation_id?: string | null
+          observation_type?: string
+          session_id?: string
+          word_status?: string | null
+          word_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "micro_observations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_activity_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_workload"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches_with_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "el_skill_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_recording_status"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
       nps_responses: {
         Row: {
           category: string | null

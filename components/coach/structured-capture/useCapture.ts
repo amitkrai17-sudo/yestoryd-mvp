@@ -195,6 +195,51 @@ export function useCapture(props: CaptureFormProps) {
     return () => { cancelled = true; };
   }, [childId]);
 
+  // Pre-fill from micro-observations (during-session quick taps)
+  const [microObsCount, setMicroObsCount] = useState(0);
+  useEffect(() => {
+    if (!sessionId || sessionId === 'new') return;
+    let cancelled = false;
+    async function fetchMicroObs() {
+      try {
+        const res = await fetch(`/api/intelligence/micro-observation?sessionId=${sessionId}`);
+        const result = await res.json();
+        const microObs = result.data as any[] | undefined;
+        if (cancelled || !microObs?.length) return;
+
+        setMicroObsCount(microObs.length);
+
+        const preStrengths = microObs
+          .filter((m: any) => m.observation_type === 'strength' && m.observation_id)
+          .map((m: any) => m.observation_id);
+        const preStruggles = microObs
+          .filter((m: any) => m.observation_type === 'struggle' && m.observation_id)
+          .map((m: any) => m.observation_id);
+        const mastered = microObs
+          .filter((m: any) => m.observation_type === 'word' && m.word_status === 'mastered' && m.word_text)
+          .map((m: any) => m.word_text);
+        const struggled = microObs
+          .filter((m: any) => m.observation_type === 'word' && m.word_status === 'struggled' && m.word_text)
+          .map((m: any) => m.word_text);
+        const notes = microObs
+          .filter((m: any) => m.observation_type === 'note' && m.note_text)
+          .map((m: any) => `[${m.minutes_into_session || '?'}min] ${m.note_text}`)
+          .join('. ');
+
+        setState(prev => ({
+          ...prev,
+          strengthObservationIds: Array.from(new Set([...prev.strengthObservationIds, ...preStrengths])),
+          struggleObservationIds: Array.from(new Set([...prev.struggleObservationIds, ...preStruggles])),
+          wordsMastered: Array.from(new Set([...(prev.wordsMastered || []), ...mastered])),
+          wordsStruggled: Array.from(new Set([...(prev.wordsStruggled || []), ...struggled])),
+          customStrengthNote: prev.customStrengthNote || (notes ? notes : ''),
+        }));
+      } catch { /* Non-fatal */ }
+    }
+    fetchMicroObs();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
   // Save draft on state changes (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -332,6 +377,7 @@ export function useCapture(props: CaptureFormProps) {
     modules,
     observations,
     continuations,
+    microObsCount,
     loadingSkills,
     loadingObservations,
     scorePreview,

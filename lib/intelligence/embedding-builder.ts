@@ -69,6 +69,15 @@ export function buildUnifiedEmbeddingContent(params: {
   childReadingSamples?: string[];
   keyObservations?: string[];
   concernsNoted?: string;
+
+  // During-session micro-observations
+  microObservations?: Array<{
+    observation_type: string;
+    word_text?: string;
+    word_status?: string;
+    note_text?: string;
+    minutes_into_session?: number;
+  }>;
 }): string {
   const date = params.eventDate instanceof Date
     ? params.eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -186,6 +195,18 @@ export function buildUnifiedEmbeddingContent(params: {
   }
   if (params.fluencyRating) {
     sections.push(`Fluency: ${params.fluencyRating}`);
+  }
+
+  // Micro-observations (during-session quick taps)
+  if (params.microObservations?.length) {
+    const microParts = params.microObservations.map(m => {
+      if (m.note_text) return `note at ${m.minutes_into_session || '?'}min: ${m.note_text}`;
+      if (m.word_text) return `word ${m.word_status}: "${m.word_text}"`;
+      return null;
+    }).filter(Boolean);
+    if (microParts.length) {
+      sections.push(`In-session observations (${microParts.length}): ${microParts.join('; ')}`);
+    }
   }
 
   return sections.filter(Boolean).join('. ');

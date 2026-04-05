@@ -77,6 +77,14 @@ const JOBS: Job[] = [
   },
 
   {
+    name: 'capture-reminders',
+    path: '/api/cron/capture-reminders',
+    schedule: { type: 'interval', minutes: 15 },
+    method: 'GET',
+    description: 'Escalating WhatsApp nudges for unreported sessions (15min, 2hr, 6hr, 24hr)',
+  },
+
+  {
     name: 'group-class-reminders',
     path: '/api/cron/group-class-reminders',
     schedule: { type: 'interval', minutes: 15 },

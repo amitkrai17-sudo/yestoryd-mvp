@@ -3,13 +3,14 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PreSessionBrief, SessionCard } from '@/components/coach';
-// ParentUpdateButton replaced by CommunicationTrigger inside SessionCard
 // Structured capture form (v3.0) with intelligence scoring
 import StructuredCaptureForm from '@/components/coach/structured-capture';
 import { RescheduleModal } from '@/components/shared';
 import type { RescheduleSession } from '@/components/shared';
 import { RequestOfflineModal } from '@/components/coach/RequestOfflineModal';
+import { MicroNotePanel } from '@/components/coach/MicroNotePanel';
 import {
   Calendar,
   Filter,
@@ -195,6 +196,8 @@ function sessionToRescheduleSession(session: Session): RescheduleSession {
 // MAIN COMPONENT
 // ============================================================
 export default function CoachSessionsPage() {
+  const searchParams = useSearchParams();
+
   // Data state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -281,6 +284,29 @@ export default function CoachSessionsPage() {
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
+
+  // Deep link: ?openCapture=sessionId → auto-open capture form
+  useEffect(() => {
+    const openCaptureId = searchParams.get('openCapture');
+    if (openCaptureId && sessions.length > 0 && !showCompleteModal) {
+      const target = sessions.find(s => s.id === openCaptureId);
+      if (target) {
+        setSelectedSession(target);
+        setShowCompleteModal(true);
+      }
+    }
+  }, [searchParams, sessions, showCompleteModal]);
+
+  // Detect currently active session (for MicroNotePanel)
+  const activeSession = useMemo(() => {
+    const now = Date.now();
+    return sessions.find(s => {
+      if (s.status === 'cancelled' || s.status === 'completed') return false;
+      const start = new Date(`${s.scheduled_date}T${s.scheduled_time}`).getTime();
+      const end = start + 60 * 60 * 1000; // +1hr
+      return now >= start && now <= end;
+    }) || null;
+  }, [sessions]);
 
   // ============================================================
   // COMPUTED VALUES
@@ -757,6 +783,19 @@ export default function CoachSessionsPage() {
       )}
 
       {/* Modals */}
+      {/* MicroNotePanel — floating during active session */}
+      {activeSession && coach && (
+        <MicroNotePanel
+          sessionId={activeSession.id}
+          childId={activeSession.child_id}
+          childName={activeSession.child_name}
+          coachId={coach.id}
+          sessionStartTime={new Date(`${activeSession.scheduled_date}T${activeSession.scheduled_time}`)}
+          quickStrengths={[]}
+          quickStruggles={[]}
+        />
+      )}
+
       {showCompleteModal && selectedSession && coach && (
         <StructuredCaptureForm
           sessionId={selectedSession.id}
