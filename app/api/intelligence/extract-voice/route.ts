@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach } from '@/lib/api-auth';
 import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { safeParseGeminiJSON } from '@/lib/gemini/safe-parse';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,8 @@ RULES:
 - If a section was not answered, leave its field as empty string or empty array.
 - wordsMastered and wordsStruggled: only include specific words explicitly mentioned.
 - engagementLevel: infer from tone. Enthusiastic = high, neutral = medium, concerned = low.
-- Respond ONLY with valid JSON. No markdown, no explanation.`;
+
+Respond ONLY with valid JSON. No markdown, no backticks, no explanation.`;
 
     const genAI = getGenAI();
     const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
@@ -66,8 +68,12 @@ RULES:
     });
 
     const text = result.response.text();
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const extracted = JSON.parse(cleaned);
+    const extracted = safeParseGeminiJSON(text);
+
+    if (!extracted) {
+      console.error('[extract-voice] JSON parse failed. Raw:', text.substring(0, 200));
+      return NextResponse.json({ data: null, error: 'Parse failed' });
+    }
 
     return NextResponse.json({ data: extracted });
   } catch (error: any) {

@@ -1,31 +1,40 @@
 // ============================================================
-// StructuredCaptureForm — Main 5-card swipe capture UI
-// Fixed overlay modal with gradient header, AnimatePresence
-// slide transitions, swipe detection, bottom-anchored nav
+// StructuredCaptureForm — Chat-first capture:
+// Phase 1: Conversational debrief with rAI (CaptureChat)
+// Phase 2: Form review (3 cards: Skills+Obs → Artifact → Review+Submit)
+// Coach can skip chat and go straight to form.
 // ============================================================
 
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCapture } from './useCapture';
-import type { CaptureFormProps } from './types';
+import { CaptureChat, type ExtractedCaptureData } from './CaptureChat';
+import type { CaptureFormProps, CaptureFormState } from './types';
 
-// Card components
-import { SkillsCoveredCard } from './cards/SkillsCoveredCard';
-import { PerformanceCard } from './cards/PerformanceCard';
+// Card components (form phase)
+import { SkillsObservationsCard } from './cards/SkillsObservationsCard';
 import { ChildArtifactCard } from './cards/ChildArtifactCard';
-import { ObservationsCard } from './cards/ObservationsCard';
-import { EngagementSubmitCard } from './cards/EngagementSubmitCard';
+import { ReviewSubmitCard } from './cards/ReviewSubmitCard';
 
-const TOTAL_CARDS = 5;
-const CARD_TITLES = ['Skills', 'Performance', 'Artifact', 'Observations', 'Submit'];
+const FORM_CARDS = 3;
+const FORM_CARD_TITLES = ['Skills', 'Artifact', 'Review'];
 const SWIPE_THRESHOLD = 50;
 
 export default function StructuredCaptureForm(props: CaptureFormProps) {
-  const { onClose, onComplete, childName, childAge, sessionId, sessionNumber, modality, isAiPrefilled } = props;
+  const { onClose, onComplete, childName, childAge, sessionId, sessionNumber, modality, isAiPrefilled, coachId, childId, initialData } = props;
+
+  // Determine starting phase: skip chat if AI pre-filled (Recall transcript) or initialData provided
+  const skipChat = isAiPrefilled || !!initialData;
+  const [phase, setPhase] = useState<'chat' | 'form'>(skipChat ? 'form' : 'chat');
+  const [chatPrefill, setChatPrefill] = useState<Partial<CaptureFormState> | null>(null);
+
+  // Form hook — initialized with either chat prefill, initialData, or empty
+  const mergedInitialData = chatPrefill || initialData;
+  const captureProps = chatPrefill ? { ...props, initialData: { ...initialData, ...chatPrefill } } : props;
 
   const {
     state,
@@ -33,31 +42,50 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
     modules,
     observations,
     continuations,
+    microObsCount,
     loadingSkills,
     loadingObservations,
     scorePreview,
     submitting,
     submitError,
     submit,
-  } = useCapture(props);
+  } = useCapture(captureProps);
 
   const [currentCard, setCurrentCard] = useState(0);
   const [direction, setDirection] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
+  // Chat context for CaptureChat
+  const [childProfile, setChildProfile] = useState<any>(null);
+
+  // Load child profile for chat context
+  useEffect(() => {
+    if (phase !== 'chat' || !childId) return;
+    async function loadContext() {
+      try {
+        const { supabase } = await import('@/lib/supabase/client');
+        const { data } = await supabase
+          .from('child_intelligence_profiles')
+          .select('narrative_profile, skill_ratings')
+          .eq('child_id', childId)
+          .maybeSingle();
+        setChildProfile(data);
+      } catch {}
+    }
+    loadContext();
+  }, [phase, childId]);
+
   // Navigation guards
   const canProceed = useCallback((fromCard: number): boolean => {
     switch (fromCard) {
-      case 0: return state.selectedSkillIds.length > 0;
-      case 1: return state.selectedSkillIds.some(id => state.skillPerformances[id]?.rating != null);
-      case 2: return true; // artifact optional
-      case 3: return true; // observations optional
+      case 0: return state.selectedSkillIds.length > 0 && state.selectedSkillIds.some(id => state.skillPerformances[id]?.rating != null);
+      case 1: return true; // artifact optional
       default: return true;
     }
   }, [state]);
 
   const goTo = useCallback((card: number) => {
-    if (card < 0 || card >= TOTAL_CARDS) return;
+    if (card < 0 || card >= FORM_CARDS) return;
     if (card > currentCard && !canProceed(currentCard)) return;
     setDirection(card > currentCard ? 1 : -1);
     setCurrentCard(card);
@@ -66,7 +94,6 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
   const handleNext = useCallback(() => goTo(currentCard + 1), [currentCard, goTo]);
   const handlePrev = useCallback(() => goTo(currentCard - 1), [currentCard, goTo]);
 
-  // Touch swipe detection
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, []);
@@ -76,41 +103,77 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
     const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
     const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
     touchStartRef.current = null;
-
-    // Only handle horizontal swipes (not vertical scroll)
     if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dy) > Math.abs(dx)) return;
-
-    if (dx < 0) handleNext(); // swipe left = next
-    else handlePrev(); // swipe right = prev
+    if (dx < 0) handleNext();
+    else handlePrev();
   }, [handleNext, handlePrev]);
 
   const handleSubmit = useCallback(async () => {
     try {
       const result = await submit();
       onComplete(result);
-    } catch {
-      // Error is displayed in the card via submitError
-    }
+    } catch {}
   }, [submit, onComplete]);
 
-  // Animation variants
+  const handleChatComplete = useCallback((data: ExtractedCaptureData) => {
+    // Apply chat extraction to form state
+    const { _fromChat, ...formData } = data;
+    setChatPrefill(formData);
+
+    // Also directly update the live form state
+    updateState(formData);
+
+    setPhase('form');
+  }, [updateState]);
+
+  // --- CHAT PHASE ---
+  if (phase === 'chat') {
+    return (
+      <CaptureChat
+        sessionId={sessionId}
+        childId={childId}
+        childName={childName}
+        childAge={childAge}
+        coachId={coachId}
+        sessionModality={modality || 'online_1on1'}
+        childProfile={childProfile}
+        activeContinuations={(continuations || []).map(c => ({ id: c.id, observation_text: c.observation_text }))}
+        skillCategories={modules.map(m => ({ id: m.module.id, label: m.module.name, skills: m.skills }))}
+        onComplete={handleChatComplete}
+        onCancel={() => setPhase('form')}
+      />
+    );
+  }
+
+  // --- FORM PHASE (3 cards: Skills → Artifact → Review) ---
   const variants = {
     enter: (d: number) => ({ x: d > 0 ? '100%' : '-100%', opacity: 0 }),
     center: { x: 0, opacity: 1 },
     exit: (d: number) => ({ x: d > 0 ? '-100%' : '100%', opacity: 0 }),
   };
 
+  const isFromChat = !!chatPrefill;
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col">
-      {/* AI pre-fill banner */}
+      {/* Banners */}
       {isAiPrefilled && (
         <div className="flex-shrink-0 bg-amber-500/90 px-4 py-2 text-center">
-          <p className="text-white text-xs font-medium">
-            Pre-filled by AI from session transcript. Review and confirm.
-          </p>
+          <p className="text-white text-xs font-medium">Pre-filled by AI from session transcript. Review and confirm.</p>
         </div>
       )}
-      {/* Header with gradient */}
+      {isFromChat && !isAiPrefilled && (
+        <div className="flex-shrink-0 bg-[#00ABFF]/90 px-4 py-2 text-center">
+          <p className="text-white text-xs font-medium">Pre-filled from your voice debrief. Review, add photos, and submit.</p>
+        </div>
+      )}
+      {microObsCount > 0 && !isFromChat && !isAiPrefilled && (
+        <div className="flex-shrink-0 bg-[#00ABFF]/90 px-4 py-1.5 text-center">
+          <p className="text-white text-[11px] font-medium">Pre-filled from {microObsCount} in-session notes</p>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex-shrink-0 bg-gradient-to-r from-[#00ABFF] to-[#7C3AED] px-4 py-3 safe-area-top">
         <div className="flex items-center justify-between mb-3">
           <div className="min-w-0">
@@ -119,161 +182,70 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
               {childName} ({childAge}y){sessionNumber ? ` | Session #${sessionNumber}` : ''}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="p-2 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0"
-          >
+          <button onClick={onClose} disabled={submitting} className="p-2 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
             <X className="w-5 h-5 text-white" />
           </button>
         </div>
 
-        {/* 5-segment progress bar */}
         <div className="flex gap-1">
-          {Array.from({ length: TOTAL_CARDS }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              className="flex-1 h-1.5 rounded-full transition-all"
-              style={{
-                backgroundColor: i <= currentCard ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
-              }}
-            />
+          {Array.from({ length: FORM_CARDS }).map((_, i) => (
+            <button key={i} onClick={() => goTo(i)} className="flex-1 h-1.5 rounded-full transition-all"
+              style={{ backgroundColor: i <= currentCard ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)' }} />
           ))}
         </div>
         <div className="flex justify-between mt-1">
-          {CARD_TITLES.map((title, i) => (
-            <span
-              key={title}
-              className={cn(
-                'text-[9px] font-medium transition-colors',
-                i === currentCard ? 'text-white' : 'text-white/40',
-              )}
-            >
-              {title}
-            </span>
+          {FORM_CARD_TITLES.map((title, i) => (
+            <span key={title} className={cn('text-[9px] font-medium', i === currentCard ? 'text-white' : 'text-white/40')}>{title}</span>
           ))}
         </div>
       </div>
 
-      {/* Card content area */}
-      <div
-        className="flex-1 overflow-hidden relative"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      {/* Cards */}
+      <div className="flex-1 overflow-hidden relative" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <AnimatePresence initial={false} custom={direction} mode="wait">
-          <motion.div
-            key={currentCard}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
+          <motion.div key={currentCard} custom={direction} variants={variants}
+            initial="enter" animate="center" exit="exit"
             transition={{ type: 'tween', duration: 0.25, ease: 'easeInOut' }}
-            className="absolute inset-0 overflow-y-auto px-4 py-4"
-          >
+            className="absolute inset-0 overflow-y-auto px-4 py-4">
+
             {currentCard === 0 && (
-              <SkillsCoveredCard
-                state={state}
-                onUpdate={updateState}
-                modules={modules}
-                loading={loadingSkills}
-              />
+              <SkillsObservationsCard state={state} onUpdate={updateState}
+                modules={modules} observations={observations} continuations={continuations}
+                loadingSkills={loadingSkills} loadingObservations={loadingObservations}
+                isFromChat={isFromChat} />
             )}
             {currentCard === 1 && (
-              <PerformanceCard
-                state={state}
-                onUpdate={updateState}
-                modules={modules}
-              />
+              <ChildArtifactCard state={state} onUpdate={updateState}
+                sessionId={sessionId} isOnline={!modality || modality.startsWith('online')} modules={modules} />
             )}
             {currentCard === 2 && (
-              <ChildArtifactCard
-                state={state}
-                onUpdate={updateState}
-                sessionId={sessionId}
-                isOnline={!modality || modality.startsWith('online')}
-                modules={modules}
-              />
-            )}
-            {currentCard === 3 && (
-              <ObservationsCard
-                state={state}
-                onUpdate={updateState}
-                observations={observations}
-                continuations={continuations}
-                loading={loadingObservations}
-                sessionId={sessionId}
-                childName={childName}
-                voicePrompts={modules[0]?.module?.voicePrompts || null}
-              />
-            )}
-            {currentCard === 4 && (
-              <EngagementSubmitCard
-                state={state}
-                onUpdate={updateState}
-                scorePreview={scorePreview}
-                submitting={submitting}
-                submitError={submitError}
-                onSubmit={handleSubmit}
-                selectedSkillSlugs={
-                  modules.flatMap(m => m.skills)
-                    .filter(s => state.selectedSkillIds.includes(s.id))
-                    .map(s => s.skillTag)
-                }
-              />
+              <ReviewSubmitCard state={state} onUpdate={updateState}
+                childName={childName} childAge={childAge} modules={modules}
+                voiceSegments={null} scorePreview={scorePreview}
+                submitting={submitting} submitError={submitError} onSubmit={handleSubmit}
+                selectedSkillSlugs={modules.flatMap(m => m.skills).filter(s => state.selectedSkillIds.includes(s.id)).map(s => s.skillTag)} />
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Bottom navigation */}
+      {/* Bottom nav */}
       <div className="flex-shrink-0 bg-surface-1 border-t border-border px-4 py-3 safe-area-bottom">
         <div className="flex items-center justify-between gap-3">
-          {/* Previous button */}
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={currentCard === 0}
-            className={cn(
-              'flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px]',
-              currentCard === 0
-                ? 'text-text-tertiary cursor-not-allowed'
-                : 'bg-surface-2 text-white hover:bg-surface-3 active:scale-[0.98]',
-            )}
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back
+          <button type="button" onClick={handlePrev} disabled={currentCard === 0}
+            className={cn('flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px]',
+              currentCard === 0 ? 'text-text-tertiary cursor-not-allowed' : 'bg-surface-2 text-white hover:bg-surface-3 active:scale-[0.98]')}>
+            <ChevronLeft className="w-4 h-4" /> Back
           </button>
-
-          {/* Card indicator */}
-          <span className="text-text-tertiary text-xs">
-            {currentCard + 1} / {TOTAL_CARDS}
-          </span>
-
-          {/* Next button (not shown on last card) */}
-          {currentCard < TOTAL_CARDS - 1 && (
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={!canProceed(currentCard)}
-              className={cn(
-                'flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px]',
-                canProceed(currentCard)
-                  ? 'bg-[#00ABFF] text-white hover:bg-[#00ABFF]/90 active:scale-[0.98]'
-                  : 'bg-surface-3 text-text-tertiary cursor-not-allowed',
-              )}
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
+          <span className="text-text-tertiary text-xs">{currentCard + 1} / {FORM_CARDS}</span>
+          {currentCard < FORM_CARDS - 1 && (
+            <button type="button" onClick={handleNext} disabled={!canProceed(currentCard)}
+              className={cn('flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px]',
+                canProceed(currentCard) ? 'bg-[#00ABFF] text-white hover:bg-[#00ABFF]/90 active:scale-[0.98]' : 'bg-surface-3 text-text-tertiary cursor-not-allowed')}>
+              Next <ChevronRight className="w-4 h-4" />
             </button>
           )}
-
-          {/* Spacer on last card to keep layout balanced */}
-          {currentCard === TOTAL_CARDS - 1 && (
-            <div className="w-[88px]" />
-          )}
+          {currentCard === FORM_CARDS - 1 && <div className="w-[88px]" />}
         </div>
       </div>
     </div>

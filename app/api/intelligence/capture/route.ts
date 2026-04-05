@@ -414,18 +414,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save capture response' }, { status: 500 });
     }
 
-    // 2b. Calculate capture delay and confidence decay
+    // 2b. Calculate capture delay using ACTUAL session time (not midnight)
     try {
-      const sessionEnd = new Date(payload.sessionDate + 'T00:00:00');
-      sessionEnd.setMinutes(sessionEnd.getMinutes() + 45); // Estimated session duration
-      const submittedAt = new Date();
-      const delayHours = Math.max(0, (submittedAt.getTime() - sessionEnd.getTime()) / (1000 * 60 * 60));
+      let sessionEndTime: Date;
 
+      if (payload.sessionId) {
+        // Get real session time from scheduled_sessions
+        const { data: sessionRow } = await supabase
+          .from('scheduled_sessions')
+          .select('scheduled_date, scheduled_time, duration_minutes')
+          .eq('id', payload.sessionId)
+          .single();
+
+        if (sessionRow?.scheduled_time) {
+          // Build end time: scheduled_date + scheduled_time + duration
+          const duration = sessionRow.duration_minutes || 45;
+          sessionEndTime = new Date(`${sessionRow.scheduled_date}T${sessionRow.scheduled_time}`);
+          sessionEndTime.setMinutes(sessionEndTime.getMinutes() + duration);
+        } else {
+          // Fallback: session date + 45min (shouldn't happen but defensive)
+          sessionEndTime = new Date(payload.sessionDate + 'T00:00:00');
+          sessionEndTime.setMinutes(sessionEndTime.getMinutes() + 45);
+        }
+      } else {
+        // Ad-hoc capture (no session) — use session date as baseline
+        sessionEndTime = new Date(payload.sessionDate + 'T00:00:00');
+        sessionEndTime.setMinutes(sessionEndTime.getMinutes() + 45);
+      }
+
+      const submittedAt = new Date();
+      const delayHours = Math.max(0, (submittedAt.getTime() - sessionEndTime.getTime()) / (1000 * 60 * 60));
+
+      // Confidence multiplier based on delay
       let delayMultiplier = 1.0;
       if (delayHours > 48) delayMultiplier = 0.5;
       else if (delayHours > 24) delayMultiplier = 0.7;
       else if (delayHours > 6) delayMultiplier = 0.85;
       else if (delayHours > 1) delayMultiplier = 0.95;
+      // delay <= 1hr (including during/right after session) → 1.0 (no penalty)
 
       await supabase
         .from('structured_capture_responses')
@@ -435,7 +461,7 @@ export async function POST(request: NextRequest) {
         } as any)
         .eq('id', capture.id);
 
-      // Apply delay to intelligence score
+      // Apply delay to intelligence score only if there's actual decay
       if (delayMultiplier < 1.0) {
         const adjustedScore = Math.round(score * delayMultiplier);
         await supabase
@@ -711,21 +737,26 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. Create continuation records for struggle observations (non-blocking)
+    // Unique constraint is (child_id, observation_id, continuation_status) — must match
     if (payload.struggleObservations.length > 0 && payload.childId) {
       try {
-        const continuations = payload.struggleObservations.map((obsId: string) => ({
-          child_id: payload.childId,
-          observation_id: obsId,
-          source_capture_id: capture.id,
-          continuation_status: 'active',
-        }));
+        for (const obsId of payload.struggleObservations) {
+          // Try insert; on conflict with existing active record, update source_capture_id
+          const { error: contErr } = await supabase
+            .from('observation_continuations')
+            .upsert({
+              child_id: payload.childId,
+              observation_id: obsId,
+              source_capture_id: capture.id,
+              continuation_status: 'active',
+            }, {
+              onConflict: 'child_id,observation_id,continuation_status',
+            });
 
-        await supabase
-          .from('observation_continuations')
-          .upsert(continuations, {
-            onConflict: 'child_id,observation_id',
-            ignoreDuplicates: false, // Update existing to re-activate
-          });
+          if (contErr) {
+            console.error(JSON.stringify({ requestId, event: 'continuation_upsert_error', obsId, error: contErr.message }));
+          }
+        }
       } catch (contErr: any) {
         console.error(JSON.stringify({ requestId, event: 'continuation_create_error', error: contErr.message }));
       }
