@@ -202,10 +202,21 @@ export async function middleware(request: NextRequest) {
     // 9. Get User (getUser validates JWT server-side, more secure than getSession)
     const { data: { user }, error } = await supabase.auth.getUser();
 
-    // 10. No session → redirect to login
+    // 10. No valid session → clear stale cookies and redirect to login
+    //     This prevents redirect loops: without clearing cookies, the login page
+    //     sees stale tokens via getSession() and redirects back to dashboard.
     if (error || !user) {
       const loginUrl = getLoginUrl(pathname, request.nextUrl);
-      return NextResponse.redirect(loginUrl);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+
+      // Clear all Supabase auth cookies to prevent stale-session redirect loops
+      request.cookies.getAll().forEach(cookie => {
+        if (cookie.name.startsWith('sb-')) {
+          redirectResponse.cookies.delete(cookie.name);
+        }
+      });
+
+      return redirectResponse;
     }
 
     const userEmail = user.email?.toLowerCase() || '';

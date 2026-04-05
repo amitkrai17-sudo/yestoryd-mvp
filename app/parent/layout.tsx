@@ -231,28 +231,25 @@ export default function ParentAppLayout({
 
   const checkAuth = useCallback(async () => {
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Use getUser() (server-validated) instead of getSession() (local JWT decode)
+      // to prevent redirect loops when cookies contain expired/invalid tokens.
+      // Middleware already handles redirecting unauthenticated users to login,
+      // so this is a defense-in-depth check.
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      if (sessionError) {
-        setError('Authentication failed. Please login again.');
+      if (userError || !user) {
         setLoading(false);
-        router.push('/parent/login');
+        // Don't redirect here — middleware handles it. If we got here,
+        // middleware already allowed us through (e.g. during fail-open).
         return;
       }
 
-      if (!session) {
-        router.push('/parent/login');
-        setLoading(false);
-        return;
-      }
-
-      await validateParent(session.user);
+      await validateParent(user);
     } catch (err: any) {
       setError('Authentication failed. Please try again.');
       setLoading(false);
-      router.push('/parent/login');
     }
-  }, [router, validateParent]);
+  }, [validateParent]);
 
   useEffect(() => {
     if (isPublicRoute(pathname)) {

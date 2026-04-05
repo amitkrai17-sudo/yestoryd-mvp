@@ -86,18 +86,30 @@ export default function CoachAppLayout({
 
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       if (isPublicRoute(pathname)) return;
 
       if (session?.user) {
         validateCoach(session.user);
-      } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setCoach(null);
         setIsAuthorized(false);
         setLoading(false);
-        router.push('/coach/login');
+      } else if (event === 'INITIAL_SESSION') {
+        // No session on initial load — use getUser() to confirm before giving up.
+        // Middleware handles redirecting unauthenticated users to login.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted) return;
+        if (user) {
+          validateCoach(user);
+        } else {
+          setUser(null);
+          setCoach(null);
+          setIsAuthorized(false);
+          setLoading(false);
+        }
       }
     });
 

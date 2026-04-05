@@ -35,25 +35,37 @@ export default function ParentLoginPage() {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Handle existing sessions + break redirect loops on ?error=unauthorized
+  // IMPORTANT: Uses getUser() (server-validated) instead of getSession() (local JWT decode)
+  // to prevent redirect loops when cookies contain expired/invalid tokens.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session && !unauthorizedError) {
-        setTimeout(() => { window.location.href = '/parent/dashboard'; }, 500);
+        // Verify the session is actually valid server-side before redirecting
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          window.location.href = '/parent/dashboard';
+        } else {
+          // Token looked valid locally but server rejected it — clear it
+          await supabase.auth.signOut();
+          setCheckingSession(false);
+        }
       }
-      if (event === 'INITIAL_SESSION') {
+      if (event === 'SIGNED_OUT') {
         setCheckingSession(false);
       }
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session && unauthorizedError) {
+    // Check existing session on mount using getUser() (server-validated)
+    supabase.auth.getUser().then(async ({ data: { user }, error: userError }) => {
+      if (user && unauthorizedError) {
         // Middleware rejected this user — sign out to break redirect loop
         await supabase.auth.signOut();
         setError('Your account is not registered as a parent. Please take a free assessment first or contact support.');
         setCheckingSession(false);
-      } else if (session) {
-        setTimeout(() => { window.location.href = '/parent/dashboard'; }, 500);
+      } else if (user && !userError) {
+        window.location.href = '/parent/dashboard';
       } else {
+        // No valid session — show login form
         setCheckingSession(false);
       }
     });

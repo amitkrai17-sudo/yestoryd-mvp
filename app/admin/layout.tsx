@@ -86,17 +86,18 @@ export default function AdminAppLayout({
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        if (pathname !== '/admin/login') router.push('/admin/login');
+      // Use getUser() (server-validated) instead of getSession() (local JWT decode)
+      // to prevent redirect loops when cookies contain expired/invalid tokens.
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (!user || userError) {
         setLoading(false);
+        // Don't redirect here — middleware handles redirecting to login
         return;
       }
-      validateAdmin(session.user);
+      validateAdmin(user);
     } catch (error) {
       console.error('Auth error:', error);
       setLoading(false);
-      if (pathname !== '/admin/login') router.push('/admin/login');
     }
   };
 

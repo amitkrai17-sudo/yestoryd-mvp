@@ -62,28 +62,40 @@ export default function CoachLoginPage() {
   }, []);
 
   // Handle OAuth/magic link callback and existing sessions.
-  // With createBrowserClient, tokens are stored in cookies so server
-  // components can read them — no more client/server mismatch.
+  // IMPORTANT: Uses getUser() (server-validated) instead of getSession() (local JWT decode)
+  // to prevent redirect loops when cookies contain expired/invalid tokens.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session && !unauthorizedError) {
-        setTimeout(() => { window.location.href = '/coach/dashboard'; }, 500);
+        // Verify the session is actually valid server-side before redirecting
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          window.location.href = '/coach/dashboard';
+        } else {
+          // Token looked valid locally but server rejected it — clear it
+          await supabase.auth.signOut();
+          setCheckingSession(false);
+        }
       }
       if (event === 'INITIAL_SESSION') {
+        // Don't set checkingSession false here — let the getUser() check below handle it
+      }
+      if (event === 'SIGNED_OUT') {
         setCheckingSession(false);
       }
     });
 
-    // Check existing session on mount (handles already-logged-in users)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session && unauthorizedError) {
+    // Check existing session on mount using getUser() (server-validated)
+    supabase.auth.getUser().then(async ({ data: { user }, error: userError }) => {
+      if (user && unauthorizedError) {
         // Middleware rejected this user — sign out to break redirect loop
         await supabase.auth.signOut();
         setError('Your account is not registered as an active coach. Contact support if this is unexpected.');
         setCheckingSession(false);
-      } else if (session) {
-        setTimeout(() => { window.location.href = '/coach/dashboard'; }, 500);
+      } else if (user && !userError) {
+        window.location.href = '/coach/dashboard';
       } else {
+        // No valid session — show login form
         setCheckingSession(false);
       }
     });
