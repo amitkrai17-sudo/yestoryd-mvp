@@ -21,7 +21,9 @@ export default function CoachLoginPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const unauthorizedError = searchParams.get('error') === 'unauthorized';
+  const errorParam = searchParams.get('error');
+  const unauthorizedError = errorParam === 'unauthorized';
+  const linkExpiredError = errorParam === 'link_expired';
 
   // WhatsApp OTP states
   const [phone, setPhone] = useState('');
@@ -87,7 +89,10 @@ export default function CoachLoginPage() {
 
     // Check existing session on mount using getUser() (server-validated)
     supabase.auth.getUser().then(async ({ data: { user }, error: userError }) => {
-      if (user && unauthorizedError) {
+      if (linkExpiredError) {
+        setError('This login link has expired. Please request a new one.');
+        setCheckingSession(false);
+      } else if (user && unauthorizedError) {
         // Middleware rejected this user — sign out to break redirect loop
         await supabase.auth.signOut();
         setError('Your account is not registered as an active coach. Contact support if this is unexpected.');
@@ -283,10 +288,10 @@ export default function CoachLoginPage() {
         return;
       }
 
-      if (data.accessToken) {
-        window.location.href = data.accessToken;
+      if (data.actionLink) {
+        window.location.href = data.actionLink;
       } else {
-        router.push('/coach/dashboard');
+        setError(data.error || 'Login failed. Please try again.');
       }
 
     } catch (err) {

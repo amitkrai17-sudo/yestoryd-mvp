@@ -19,6 +19,7 @@ import { isValidPhone, normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import * as Sentry from '@sentry/nextjs';
 
 const supabase = createAdminClient();
 
@@ -262,9 +263,10 @@ export async function POST(request: NextRequest) {
       }
       
       if (!userEmail) {
+        Sentry.captureMessage(`Parent phone not found: ${normalizedPhone.slice(-4)}`, { level: 'warning', extra: { requestId, userType } });
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: 'This phone number is not registered. Please complete an assessment first.',
             code: 'PHONE_NOT_FOUND'
           },
@@ -328,12 +330,13 @@ export async function POST(request: NextRequest) {
     }
     
     if (!sent) {
+      Sentry.captureMessage(`OTP send failed for ${normalizedPhone.slice(-4)} (both WhatsApp and email)`, { level: 'error', extra: { requestId, sendMethod } });
       await supabase
         .from('verification_tokens')
         .delete()
         .eq('identifier', normalizedPhone)
         .eq('token_hash', otpHash);
-      
+
       return NextResponse.json(
         { success: false, error: 'Failed to send OTP. Please try again.' },
         { status: 500 }

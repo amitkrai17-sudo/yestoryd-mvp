@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import * as Sentry from '@sentry/nextjs';
+import { normalizePhone } from '@/lib/utils/phone';
 
 // ==================== CONFIGURATION ====================
 
@@ -187,6 +189,10 @@ export async function middleware(request: NextRequest) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) {
         console.error('[Middleware] Code exchange failed:', exchangeError.message);
+        Sentry.captureMessage(`Code exchange failed: ${exchangeError.message}`, { level: 'warning', extra: { pathname } });
+        // Redirect to login with clear error instead of silent fail
+        const loginPath = pathname.startsWith('/coach') ? '/coach/login' : '/parent/login';
+        return NextResponse.redirect(new URL(`${loginPath}?error=link_expired`, request.url));
       } else {
         // Strip the code param and redirect to clean URL.
         const cleanUrl = request.nextUrl.clone();
@@ -274,9 +280,23 @@ export async function middleware(request: NextRequest) {
     }
 
     // 13. Parent route → verify parent exists in database
-    //     Try user_id first; fall back to email (handles parents who haven't
-    //     had their auth user linked yet, e.g. user_id is NULL).
+    //     Tier 1: user_id match (fast path for returning users)
+    //     Tier 2: email match (first login, user_id not yet linked)
+    //     Tier 2.5: phone match via auth metadata (Google email mismatch)
+    //     Tier 3: children table match (assessment-only, no parent record yet)
     if (isParentRoute(pathname)) {
+      // Helper: get service client for writes (bypasses RLS)
+      const getServiceClient = () => {
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!serviceKey) return null;
+        return createServerClient(
+          supabaseUrl,
+          serviceKey,
+          { cookies: { getAll() { return []; }, setAll() {} } }
+        );
+      };
+
+      // Tier 1: match by user_id (fast path)
       const { data: parentById } = await supabase
         .from('parents')
         .select('id')
@@ -284,42 +304,85 @@ export async function middleware(request: NextRequest) {
         .single();
 
       if (!parentById) {
-        // Fallback: match by email (covers user_id = NULL case)
+        // Tier 2: match by email
         const { data: parentByEmail } = await supabase
           .from('parents')
           .select('id')
           .eq('email', userEmail)
           .single();
 
-        if (!parentByEmail) {
-          // Last resort: check children table for parent_email
-          const { data: childByEmail } = await supabase
-            .from('children')
-            .select('id')
-            .eq('parent_email', userEmail)
-            .limit(1)
-            .single();
-
-          if (!childByEmail) {
-            console.log(`[Middleware] Unauthorized parent access attempt: ${userEmail} (DB check)`);
-            return NextResponse.redirect(new URL('/parent/login?error=unauthorized', request.url));
-          }
-        }
-
-        // Auto-link: set user_id on the parent record so future checks are fast.
         if (parentByEmail) {
-          const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          if (serviceKey) {
-            const serviceClient = createServerClient(
-              supabaseUrl,
-              serviceKey,
-              { cookies: { getAll() { return []; }, setAll() {} } }
-            );
-            await serviceClient
-              .from('parents')
-              .update({ user_id: user.id })
-              .eq('id', parentByEmail.id);
+          // Auto-link user_id for future fast path
+          const sc = getServiceClient();
+          if (sc) {
+            await sc.from('parents').update({ user_id: user.id }).eq('id', parentByEmail.id);
             console.log(`[Middleware] Auto-linked parent ${userEmail} → user_id ${user.id}`);
+          }
+        } else {
+          // Tier 2.5: match by phone from auth metadata (handles Google email mismatch)
+          const authPhone = user.user_metadata?.phone || user.phone;
+          let parentByPhone = null;
+          if (authPhone) {
+            const e164 = normalizePhone(authPhone);
+            const { data } = await supabase
+              .from('parents')
+              .select('id')
+              .or(`phone.eq.${e164},phone.eq.${e164.slice(1)},phone.eq.${e164.slice(3)}`)
+              .single();
+            parentByPhone = data;
+          }
+
+          if (parentByPhone) {
+            // Link user_id + update email to match auth
+            const sc = getServiceClient();
+            if (sc) {
+              await sc.from('parents')
+                .update({ user_id: user.id, email: userEmail, updated_at: new Date().toISOString() })
+                .eq('id', parentByPhone.id);
+              console.log(`[Middleware] Phone-matched parent → linked user_id ${user.id}, updated email to ${userEmail}`);
+            }
+          } else {
+            // Tier 3: check children table for parent_email or parent_phone
+            const { data: childRecord } = await supabase
+              .from('children')
+              .select('id, parent_email, parent_phone, parent_name')
+              .eq('parent_email', userEmail)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (!childRecord) {
+              Sentry.captureMessage(`Parent login denied: no parent/child record for ${userEmail}`, { level: 'warning', extra: { authUserId: user.id } });
+              console.log(`[Middleware] Unauthorized parent access attempt: ${userEmail} (DB check)`);
+              return NextResponse.redirect(new URL('/parent/login?error=unauthorized', request.url));
+            }
+
+            // Auto-create parent record from children data
+            const sc = getServiceClient();
+            if (sc) {
+              const { error: createErr } = await sc.from('parents').insert({
+                email: userEmail,
+                name: childRecord.parent_name || 'Parent',
+                phone: childRecord.parent_phone ? normalizePhone(childRecord.parent_phone) : null,
+                user_id: user.id,
+                created_at: new Date().toISOString(),
+              });
+
+              if (createErr) {
+                // Duplicate email = parent was created between Tier 2 check and now (race condition)
+                // Try linking instead
+                if (createErr.code === '23505') {
+                  await sc.from('parents').update({ user_id: user.id }).eq('email', userEmail);
+                  console.log(`[Middleware] Race condition: linked existing parent ${userEmail} → user_id ${user.id}`);
+                } else {
+                  Sentry.captureMessage(`Middleware parent auto-create failed: ${createErr.message}`, { level: 'error', extra: { email: userEmail, code: createErr.code } });
+                  console.error(`[Middleware] Failed to auto-create parent for ${userEmail}:`, createErr.message);
+                  // Don't block — layout will show Access Denied
+                }
+              } else {
+                console.log(`[Middleware] Auto-created parent for ${userEmail} from children data`);
+              }
+            }
           }
         }
       }
@@ -332,6 +395,7 @@ export async function middleware(request: NextRequest) {
     // Fail-open on ALL errors. Client layouts validate auth as fallback.
     // Better to let a request through than to crash middleware or
     // redirect-loop during Supabase outages / cold starts / ECONNRESET.
+    Sentry.captureException(error, { extra: { context: 'middleware-auth-check', pathname: request.nextUrl.pathname } });
     console.error('[Middleware] Auth check error, failing open:', error?.code || error?.message || error);
     return response;
   }

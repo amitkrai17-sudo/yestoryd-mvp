@@ -15,9 +15,10 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizePhone } from '@/lib/utils/phone'; // ✅ USE CENTRALIZED FUNCTION
+import { normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import * as Sentry from '@sentry/nextjs';
 
 const supabase = createAdminClient();
 
@@ -36,7 +37,7 @@ interface VerifyOTPRequest {
 
 interface VerifyOTPResponse {
   success: boolean;
-  accessToken?: string;
+  actionLink?: string;
   user?: {
     id: string;
     email: string;
@@ -174,6 +175,7 @@ export async function POST(request: NextRequest) {
         .eq('id', token.id);
 
       const attemptsLeft = (token.max_attempts ?? 5) - (token.attempts ?? 0) - 1;
+      Sentry.addBreadcrumb({ category: 'auth', message: `Invalid OTP, ${attemptsLeft} attempts left`, level: 'warning', data: { requestId } });
       console.log(`[${requestId}] Invalid OTP, ${attemptsLeft} attempts left`);
 
       return NextResponse.json(
@@ -304,46 +306,31 @@ export async function POST(request: NextRequest) {
     }
 
     // ───────────────────────────────────────────────────────
-    // STEP 8: Create Supabase Auth session
+    // STEP 8: Ensure Supabase Auth user exists
     // ───────────────────────────────────────────────────────
-    const { data: authUser, error: authError } = await supabase.auth.admin.listUsers();
-    let supabaseUser = authUser?.users?.find(u => u.email === user!.email);
-
-    if (!supabaseUser) {
-      // Create auth user if doesn't exist
-      const { data: newAuthUser, error: createAuthError } = await supabase.auth.admin.createUser({
-        email: user.email,
-        email_confirm: true,
+    // Try to create — silently handled if user already exists
+    const { data: newAuthUser, error: createAuthError } = await supabase.auth.admin.createUser({
+      email: user.email,
+      email_confirm: true,
+      phone: normalizedPhone,
+      phone_confirm: true,
+      user_metadata: {
+        name: user.name,
         phone: normalizedPhone,
-        phone_confirm: true,
-        user_metadata: {
-          name: user.name,
-          phone: normalizedPhone,
-          userType: actualUserType,
-        },
-      });
+        userType: actualUserType,
+      },
+    });
 
-      if (!createAuthError) {
-        supabaseUser = newAuthUser.user;
-        console.log(`[${requestId}] Created Supabase auth user: ${supabaseUser?.id}`);
-      }
+    if (!createAuthError && newAuthUser?.user) {
+      console.log(`[${requestId}] Created Supabase auth user: ${newAuthUser.user.id}`);
+    } else if (createAuthError && !createAuthError.message?.includes('already been registered')) {
+      Sentry.captureMessage(`createUser failed: ${createAuthError.message}`, { level: 'error', extra: { requestId, email: user.email } });
+      console.error(`[${requestId}] Failed to create auth user:`, createAuthError.message);
     }
 
-    // Link auth user to parent/coach record
-    if (supabaseUser?.id && actualUserType === 'parent' && user?.id) {
-      try {
-        await supabase
-          .from('parents')
-          .update({ user_id: supabaseUser.id, updated_at: new Date().toISOString() })
-          .eq('id', user.id)
-          .is('user_id', null);
-        console.log(`[${requestId}] Linked parent ${user.id} → auth user ${supabaseUser.id}`);
-      } catch (linkErr) {
-        console.error(`[${requestId}] Failed to link parent user_id:`, linkErr);
-      }
-    }
-
-    // Generate magic link
+    // ───────────────────────────────────────────────────────
+    // STEP 9: Generate magic link for session
+    // ───────────────────────────────────────────────────────
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email,
@@ -352,40 +339,48 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (linkError) {
-      console.error(`[${requestId}] Failed to generate session:`, linkError);
+    if (linkError || !linkData?.properties?.action_link) {
+      Sentry.captureMessage(`generateLink failed for ${user.email}: ${linkError?.message || 'no action_link'}`, { level: 'error', extra: { requestId } });
+      console.error(`[${requestId}] generateLink failed for ${user.email}:`, linkError?.message || 'no action_link returned');
+      return NextResponse.json(
+        { success: false, error: 'OTP verified but session creation failed. Please try logging in again.' },
+        { status: 500 }
+      );
+    }
 
-      // Fallback: Return user info and let frontend handle redirect
-      return NextResponse.json({
-        success: true,
-        user,
-        redirectTo,
-        userType: actualUserType,
-        message: 'Verified successfully. Redirecting...',
-      });
+    console.log(`[${requestId}] generateLink succeeded for ${user.email}`);
+
+    // Link auth user to parent/coach record (using user from generateLink)
+    const authUserId = linkData.user?.id;
+    if (authUserId && actualUserType === 'parent' && user?.id) {
+      try {
+        await supabase
+          .from('parents')
+          .update({ user_id: authUserId, updated_at: new Date().toISOString() })
+          .eq('id', user.id)
+          .is('user_id', null);
+        console.log(`[${requestId}] Linked parent ${user.id} → auth user ${authUserId}`);
+      } catch (linkErr: any) {
+        Sentry.captureMessage(`user_id linking failed: ${linkErr?.message}`, { level: 'error', extra: { requestId, parentId: user.id, authUserId } });
+        console.error(`[${requestId}] Failed to link parent user_id:`, linkErr);
+      }
     }
 
     // ───────────────────────────────────────────────────────
-    // STEP 9: Cleanup - delete used token
+    // STEP 10: Cleanup + return session
     // ───────────────────────────────────────────────────────
     await supabase
       .from('verification_tokens')
       .delete()
       .eq('id', token.id);
 
-    // ───────────────────────────────────────────────────────
-    // STEP 10: Return session
-    // ───────────────────────────────────────────────────────
     const response: VerifyOTPResponse = {
       success: true,
+      actionLink: linkData.properties.action_link,
       user,
       redirectTo,
       userType: actualUserType,
     };
-
-    if (linkData?.properties?.action_link) {
-      response.accessToken = linkData.properties.action_link;
-    }
 
     console.log(`[${requestId}] Login successful for ${user.email} (${actualUserType})`);
 
