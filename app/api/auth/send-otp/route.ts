@@ -238,7 +238,7 @@ export async function POST(request: NextRequest) {
       const { data: parent } = await supabase
         .from('parents')
         .select('id, email, phone')
-        .eq('phone', normalizedPhone)
+        .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone},phone.eq.${normalizedPhone.slice(2)}`)
         .single();
       
       if (parent) {
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         const { data: child } = await supabase
           .from('children')
           .select('parent_email, parent_phone, parent_name')
-          .eq('parent_phone', normalizedPhone)
+          .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.+${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(2)}`)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
