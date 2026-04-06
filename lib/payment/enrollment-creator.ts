@@ -5,6 +5,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSiteSettings } from '@/lib/config/site-settings-loader';
+import { normalizePhone } from '@/lib/utils/phone';
 
 const supabase = createAdminClient();
 
@@ -266,7 +267,7 @@ export async function getOrCreateParent(
       {
         email,
         name,
-        phone: phone || null,
+        phone: phone ? normalizePhone(phone) : null,
         updated_at: new Date().toISOString()
       },
       {

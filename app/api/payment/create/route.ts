@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { z } from 'zod';
-import { phoneSchemaOptional } from '@/lib/utils/phone';
+import { phoneSchemaOptional, normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
 import { loadPaymentConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -67,7 +67,7 @@ async function getOrCreateParent(
   const { data: parent, error } = await supabase
     .from('parents')
     .upsert(
-      { email, name, phone: phone || null, updated_at: new Date().toISOString() },
+      { email, name, phone: phone ? normalizePhone(phone) : null, updated_at: new Date().toISOString() },
       { onConflict: 'email' }
     )
     .select('id')

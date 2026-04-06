@@ -13,6 +13,7 @@
 // ============================================================
 
 import { NextAuthOptions, Session } from 'next-auth';
+import { normalizePhone } from '@/lib/utils/phone';
 import GoogleProvider from 'next-auth/providers/google';
 import { JWT } from 'next-auth/jwt';
 
@@ -143,7 +144,7 @@ async function syncUserOnSignIn(
       const { data: newParent } = await supabase.from('parents').insert({
         email: email.toLowerCase(),
         name: name || childRecord.parent_name || 'Parent',
-        phone: childRecord.parent_phone,
+        phone: childRecord.parent_phone ? normalizePhone(childRecord.parent_phone) : null,
         avatar_url: image,
         created_at: new Date().toISOString(),
         last_seen_at: new Date().toISOString(),
@@ -155,7 +156,7 @@ async function syncUserOnSignIn(
           const { ensureParentAuthAccount } = await import('@/lib/auth/create-parent-auth');
           await ensureParentAuthAccount({
             parentId: newParent.id,
-            phone: childRecord.parent_phone,
+            phone: normalizePhone(childRecord.parent_phone),
             email: email.toLowerCase(),
             name: name || childRecord.parent_name,
           });

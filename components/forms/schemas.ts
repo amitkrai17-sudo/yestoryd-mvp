@@ -5,11 +5,12 @@
 // ============================================================
 
 import { z } from 'zod';
+import { normalizePhone } from '@/lib/utils/phone';
 
 export const parentDetailsSchema = z.object({
   parentName: z.string().min(1, 'Name is required').max(100),
   parentEmail: z.string().email('Invalid email').transform(v => v.toLowerCase().trim()),
-  parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid phone number'),
+  parentPhone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid phone number').transform(v => normalizePhone(v)),
 });
 
 export type ParentDetailsValues = z.input<typeof parentDetailsSchema>;

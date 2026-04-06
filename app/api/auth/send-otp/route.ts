@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
       const { data: coach } = await supabase
         .from('coaches')
         .select('id, email, phone, name')
-        .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone},phone.eq.${normalizedPhone.slice(2)}`)
+        .or(`phone.eq.${normalizedPhone},phone.eq.${normalizedPhone.slice(1)},phone.eq.${normalizedPhone.slice(3)}`)
         .eq('is_active', true)
         .single();
       
@@ -238,7 +238,7 @@ export async function POST(request: NextRequest) {
       const { data: parent } = await supabase
         .from('parents')
         .select('id, email, phone')
-        .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone},phone.eq.${normalizedPhone.slice(2)}`)
+        .or(`phone.eq.${normalizedPhone},phone.eq.${normalizedPhone.slice(1)},phone.eq.${normalizedPhone.slice(3)}`)
         .single();
       
       if (parent) {
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         const { data: child } = await supabase
           .from('children')
           .select('parent_email, parent_phone, parent_name')
-          .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.+${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(2)}`)
+          .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(1)},parent_phone.eq.${normalizedPhone.slice(3)}`)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
