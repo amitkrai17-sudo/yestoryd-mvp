@@ -60,13 +60,13 @@ export async function getFaqItems(): Promise<unknown | null> {
 }
 
 export async function findParentByPhone(phone: string) {
-  // Normalize: keep only last 10 digits
-  const normalizedPhone = phone.replace(/[^0-9]/g, '').slice(-10);
+  // Extract last 10 digits for format-agnostic matching
+  const digits10 = phone.replace(/\D/g, '').slice(-10);
 
   const { data, error } = await supabaseAdmin
     .from('parents')
     .select('id, name, email, phone')
-    .or(`phone.ilike.%${normalizedPhone}`)
+    .ilike('phone', `%${digits10}`)
     .limit(1)
     .maybeSingle();
 

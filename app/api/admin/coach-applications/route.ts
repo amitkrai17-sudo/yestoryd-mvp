@@ -63,7 +63,9 @@ export async function GET(request: NextRequest) {
     // Apply search filter (sanitize to prevent injection)
     if (search) {
       const sanitizedSearch = search.replace(/[%_]/g, '\\$&');
-      query = query.or(`name.ilike.%${sanitizedSearch}%,email.ilike.%${sanitizedSearch}%,phone.ilike.%${sanitizedSearch}%`);
+      const phoneDigits = search.replace(/\D/g, '').slice(-10);
+      const phoneFilter = phoneDigits.length >= 4 ? `phone.ilike.%${phoneDigits}%` : `phone.ilike.%${sanitizedSearch}%`;
+      query = query.or(`name.ilike.%${sanitizedSearch}%,email.ilike.%${sanitizedSearch}%,${phoneFilter}`);
     }
 
     const { data: applications, error } = await query;

@@ -87,7 +87,9 @@ export async function GET(request: NextRequest) {
 
     if (search && search.trim()) {
       const searchTerm = search.trim().replace(/[%_]/g, '');
-      query = query.or(`name.ilike.%${searchTerm}%,parent_email.ilike.%${searchTerm}%,parent_phone.ilike.%${searchTerm}%,parent_name.ilike.%${searchTerm}%`);
+      const phoneDigits = searchTerm.replace(/\D/g, '').slice(-10);
+      const phoneFilter = phoneDigits.length >= 4 ? `parent_phone.ilike.%${phoneDigits}%` : `parent_phone.ilike.%${searchTerm}%`;
+      query = query.or(`name.ilike.%${searchTerm}%,parent_email.ilike.%${searchTerm}%,${phoneFilter},parent_name.ilike.%${searchTerm}%`);
     }
 
     const { data: leads, error } = await query as { data: any[] | null; error: any };

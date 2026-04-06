@@ -6,6 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
 import { sendText } from '@/lib/whatsapp/cloud-api';
+import { normalizePhone } from '@/lib/utils/phone';
 import { invalidateSlotCache } from '@/lib/whatsapp/agent/slots';
 import { handleSlotSelection } from './slot-selection';
 import { cancelDiscoveryCall } from '@/lib/googleCalendar';
@@ -27,10 +28,14 @@ export async function handleReschedule(
   supabase: TypedClient
 ): Promise<RescheduleResult> {
   // 1. Find active discovery call for this lead
+  const e164 = normalizePhone(phone);
+  const noPlus = e164.replace(/^\+/, '');
+  const digits10 = e164.slice(-10);
+
   const { data: waLead } = await supabase
     .from('wa_leads')
     .select('id, discovery_call_id')
-    .eq('phone_number', phone)
+    .or(`phone_number.eq.${noPlus},phone_number.eq.${e164},phone_number.eq.${digits10}`)
     .single();
 
   let discoveryCallId = waLead?.discovery_call_id || null;
@@ -40,7 +45,7 @@ export async function handleReschedule(
     const { data: dcByPhone } = await supabase
       .from('discovery_calls')
       .select('id')
-      .eq('parent_phone', phone)
+      .or(`parent_phone.eq.${e164},parent_phone.eq.${noPlus},parent_phone.eq.${digits10}`)
       .in('status', ['scheduled', 'pending', 'assigned'])
       .order('created_at', { ascending: false })
       .limit(1)

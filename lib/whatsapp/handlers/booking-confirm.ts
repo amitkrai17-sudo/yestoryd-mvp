@@ -73,10 +73,14 @@ export async function handleBookingConfirm(
   let childId: string | null = null;
 
   // Check if wa_lead has a linked child
+  const e164 = normalizePhone(phone);
+  const noPlus = e164.replace(/^\+/, '');
+  const digits10 = e164.slice(-10);
+
   const { data: waLead } = await supabase
     .from('wa_leads')
     .select('child_id')
-    .eq('phone_number', phone)
+    .or(`phone_number.eq.${noPlus},phone_number.eq.${e164},phone_number.eq.${digits10}`)
     .single();
 
   if (waLead?.child_id) {
