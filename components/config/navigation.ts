@@ -23,6 +23,7 @@ import {
   Ticket,
   UserSearch,
   UserPlus,
+  Sparkles,
 } from 'lucide-react';
 
 export type PortalType = 'parent' | 'coach' | 'admin';
@@ -55,15 +56,19 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
       { id: 'progress', label: 'Progress', href: '/parent/progress', icon: BarChart3 },
       { id: 'sessions', label: 'Sessions', href: '/parent/sessions', icon: Calendar },
       { id: 'tasks', label: 'Tasks', href: '/parent/tasks', icon: CheckSquare },
-      { id: 'support', label: 'Support', href: '/parent/support', icon: HelpCircle },
+      { id: 'rai', label: 'rAI', href: '/parent/rai', icon: Sparkles },
     ],
     sidebar: [
-      { id: 'dashboard', label: 'Dashboard', href: '/parent/dashboard', icon: Home, group: 'Overview' },
-      { id: 'journey', label: 'Journey', href: '/parent/journey', icon: MapPin, group: 'Overview' },
-      { id: 'sessions', label: 'Sessions', href: '/parent/sessions', icon: Calendar, group: 'Learning' },
-      { id: 'progress', label: 'Progress', href: '/parent/progress', icon: BarChart3, group: 'Learning' },
-      { id: 'tasks', label: 'Daily Tasks', href: '/parent/tasks', icon: CheckSquare, group: 'Learning' },
+      // Core — matches bottom nav order
+      { id: 'home', label: 'Home', href: '/parent/dashboard', icon: Home, group: 'Core' },
+      { id: 'progress', label: 'Progress', href: '/parent/progress', icon: BarChart3, group: 'Core' },
+      { id: 'sessions', label: 'Sessions', href: '/parent/sessions', icon: Calendar, group: 'Core' },
+      { id: 'tasks', label: 'Tasks', href: '/parent/tasks', icon: CheckSquare, group: 'Core' },
+      { id: 'rai', label: 'rAI', href: '/parent/rai', icon: Sparkles, group: 'Core' },
+      // Learning
+      { id: 'journey', label: 'Journey', href: '/parent/journey', icon: MapPin, group: 'Learning' },
       { id: 'elearning', label: 'E-Learning', href: '/parent/elearning', icon: BookOpen, group: 'Learning' },
+      // Account
       { id: 'support', label: 'Support', href: '/parent/support', icon: HelpCircle, group: 'Account' },
     ],
   },

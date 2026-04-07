@@ -1,7 +1,6 @@
 // =============================================================================
 // FILE: app/parent/elearning/page.tsx
 // PURPOSE: E-Learning page with rAI recommendations
-// VERSION: Final - proper refresh handling
 // =============================================================================
 
 'use client';
@@ -9,9 +8,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Sparkles, Flame, Zap, Trophy, Star,
-  Play, CheckCircle
+  Sparkles, Flame, Zap, Trophy, Star,
+  Play, CheckCircle, BookOpen,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { useParentContext } from '@/app/parent/context';
 
 // Components
 import RAICarousel from '@/components/elearning/RAICarousel';
@@ -20,10 +21,10 @@ import AskRAIModal from '@/components/elearning/AskRAIModal';
 
 export default function ELearningPage() {
   const router = useRouter();
+  const { selectedChildId, selectedChild } = useParentContext();
+  const childName = selectedChild?.child_name || selectedChild?.name || 'Learner';
 
   // State
-  const [childId, setChildId] = useState<string | null>(null);
-  const [childName, setChildName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gamification, setGamification] = useState<any>(null);
@@ -32,20 +33,14 @@ export default function ELearningPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [forceRefresh, setForceRefresh] = useState(false);
 
-  // Fetch enrolled child on mount
-  useEffect(() => {
-    fetchEnrolledChild();
-  }, []);
-
   // Fetch gamification when child is set or refreshTrigger changes
   useEffect(() => {
-    if (childId) {
+    if (selectedChildId) {
+      setLoading(false);
       const loadGamification = async () => {
         try {
-          // Add timestamp to URL to bypass all caching
-          const res = await fetch(`/api/elearning/gamification?childId=${childId}&_t=${Date.now()}`);
+          const res = await fetch(`/api/elearning/gamification?childId=${selectedChildId}&_t=${Date.now()}`);
           const data = await res.json();
-
           if (data.success) {
             setGamification(data);
           }
@@ -53,54 +48,31 @@ export default function ELearningPage() {
           console.error('Failed to fetch gamification:', err);
         }
       };
-
       loadGamification();
-    }
-  }, [childId, refreshTrigger]);
-
-  async function fetchEnrolledChild() {
-    try {
-      const res = await fetch('/api/parent/enrolled-child');
-      const data = await res.json();
-
-      if (data.child) {
-        setChildId(data.child.id);
-        setChildName(data.child.child_name || 'Learner');
-      } else {
-        setError('No enrolled child found. E-learning is available after enrollment.');
-      }
-    } catch (err) {
-      console.error('Error fetching enrolled child:', err);
-      // Fallback for development
-      setChildId('d53752ea-ce16-4876-ac23-128834eb8c9f');
-      setChildName('Test Child');
-    } finally {
+    } else {
       setLoading(false);
+      setError('No enrolled child found. E-learning is available after enrollment.');
     }
-  }
+  }, [selectedChildId, refreshTrigger]);
 
   const fetchGamification = useCallback(async () => {
-    if (!childId) return;
-
+    if (!selectedChildId) return;
     try {
-      // Add timestamp to URL to bypass all caching
-      const res = await fetch(`/api/elearning/gamification?childId=${childId}&_t=${Date.now()}`);
+      const res = await fetch(`/api/elearning/gamification?childId=${selectedChildId}&_t=${Date.now()}`);
       const data = await res.json();
-
       if (data.success) {
         setGamification(data);
       }
     } catch (err) {
       console.error('Failed to fetch gamification:', err);
     }
-  }, [childId]);
+  }, [selectedChildId]);
 
   // Handle video selection
   function handleSelectItem(item: any) {
     if (item.type === 'video') {
       setActiveVideo(item);
     } else if (item.type === 'practice') {
-      // TODO: Implement practice modal
       alert('Practice feature coming soon!');
     }
   }
@@ -112,11 +84,7 @@ export default function ELearningPage() {
     xpEarned: number;
     newBadges: string[];
   }) {
-
-    // Close modal first
     setActiveVideo(null);
-
-    // Wait a moment for DB to settle, then refresh
     setTimeout(() => {
       fetchGamification();
       setRefreshTrigger(prev => prev + 1);
@@ -126,23 +94,19 @@ export default function ELearningPage() {
   // Handle Ask rAI request
   async function handleAskRAI(requestType: string, customRequest?: string) {
     setShowAskRAI(false);
-
     try {
       const res = await fetch('/api/elearning/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          childId,
+          childId: selectedChildId,
           requestType,
           customRequest,
         }),
       });
-
       if (res.ok) {
-        // Set forceRefresh to get new recommendations
         setForceRefresh(true);
         setRefreshTrigger(prev => prev + 1);
-        // Reset forceRefresh after a short delay
         setTimeout(() => setForceRefresh(false), 1000);
       }
     } catch (err) {
@@ -154,99 +118,81 @@ export default function ELearningPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Sparkles className="w-12 h-12 text-[#FF0099] mx-auto mb-4 animate-pulse" />
-          <p className="text-gray-600">Loading e-learning...</p>
-        </div>
+        <Spinner size="lg" />
       </div>
     );
   }
 
   // Error state
-  if (error) {
+  if (error || !selectedChildId) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-        <div className="text-center max-w-md">
-          <p className="text-red-700 mb-4">{error}</p>
-          <button
-            onClick={() => router.push('/parent')}
-            className="px-4 py-2 bg-[#FF0099] text-white rounded-lg"
-          >
-            Back to Dashboard
-          </button>
+      <div className="p-4 lg:p-8">
+        <div className="max-w-2xl mx-auto space-y-5">
+          <div>
+            <h1 className="text-xl font-medium text-gray-900">E-Learning</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Powered by rAI</p>
+          </div>
+          <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 mb-4">{error || 'No enrolled child found.'}</p>
+            <button
+              onClick={() => router.push('/parent/dashboard')}
+              className="px-4 py-2.5 bg-[#FF0099] text-white rounded-xl text-sm font-medium hover:bg-[#E6008A] transition-colors min-h-[44px]"
+            >
+              Back to Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-3 md:px-4 py-2 md:py-3">
-          <div className="flex items-center justify-between">
-            {/* Back & Title */}
-            <div className="flex items-center gap-2 md:gap-4">
-              <button
-                onClick={() => router.push('/parent')}
-                className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
-              </button>
-              <div>
-                <h1 className="font-bold text-gray-900 flex items-center gap-1.5 md:gap-2 text-sm md:text-base">
-                  <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-[#FF0099]" />
-                  E-Learning
-                </h1>
-                <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Powered by rAI</p>
+    <div className="p-4 lg:p-8">
+      <div className="max-w-2xl mx-auto space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-medium text-gray-900">E-Learning</h1>
+            <p className="text-gray-500 text-sm mt-0.5">{childName}&apos;s learning content</p>
+          </div>
+
+          {/* Gamification Stats */}
+          {gamification && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 px-2 py-1 bg-orange-50 rounded-xl">
+                <Flame className={`w-4 h-4 ${gamification.streak?.current > 0 ? 'text-orange-400' : 'text-gray-400'}`} />
+                <span className="font-medium text-gray-900 text-xs">{gamification.streak?.current || 0}</span>
+              </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-[#FFF5F9] rounded-xl">
+                <Zap className="w-4 h-4 text-[#FF0099]" />
+                <span className="font-medium text-gray-900 text-xs">{gamification.xp?.current || 0}</span>
+              </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-amber-50 rounded-xl">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                <span className="font-medium text-gray-900 text-xs">{gamification.badges?.earned?.length || 0}</span>
               </div>
             </div>
-
-            {/* Gamification Stats */}
-            {gamification && (
-              <div className="flex items-center gap-2 md:gap-4">
-                {/* Streak */}
-                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-orange-50 rounded-lg">
-                  <Flame className={`w-4 h-4 md:w-5 md:h-5 ${gamification.streak?.current > 0 ? 'text-orange-400' : 'text-gray-400'}`} />
-                  <span className="font-semibold text-gray-900 text-xs md:text-sm">{gamification.streak?.current || 0}</span>
-                </div>
-
-                {/* XP */}
-                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-purple-50 rounded-lg">
-                  <Zap className="w-4 h-4 md:w-5 md:h-5 text-[#FF0099]" />
-                  <span className="font-semibold text-gray-900 text-xs md:text-sm">{gamification.xp?.current || 0}</span>
-                </div>
-
-                {/* Badges */}
-                <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-yellow-50 rounded-lg">
-                  <Trophy className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
-                  <span className="font-semibold text-gray-900 text-xs md:text-sm">{gamification.badges?.earned?.length || 0}</span>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-6">
         {/* XP Progress Bar */}
         {gamification && (
-          <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm mb-4 md:mb-6">
-            <div className="flex items-center justify-between mb-1.5 md:mb-2">
-              <div className="flex items-center gap-1.5 md:gap-2">
-                <Star className="w-4 h-4 md:w-5 md:h-5 text-[#FF0099]" />
-                <span className="font-medium text-gray-900 text-xs md:text-sm">
+          <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <Star className="w-4 h-4 text-[#FF0099]" />
+                <span className="font-medium text-gray-900 text-sm">
                   Level {gamification.xp?.level || 1}: {gamification.xp?.levelName || 'Beginner'}
                 </span>
               </div>
-              <span className="text-xs md:text-sm text-gray-500">
+              <span className="text-xs text-gray-500">
                 {gamification.xp?.xpInCurrentLevel || 0} / {gamification.xp?.xpRequiredForLevel || 100} XP
               </span>
             </div>
-            <div className="h-2 md:h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-[#ff0099] to-[#7b008b] rounded-full transition-all duration-500"
+                className="h-full bg-[#FF0099] rounded-full transition-all duration-500"
                 style={{ width: `${gamification.xp?.progressPercent || 0}%` }}
               />
             </div>
@@ -254,9 +200,9 @@ export default function ELearningPage() {
         )}
 
         {/* rAI Carousel */}
-        {childId && (
+        {selectedChildId && (
           <RAICarousel
-            childId={childId}
+            childId={selectedChildId}
             childName={childName}
             onSelectItem={handleSelectItem}
             onAskRAI={() => setShowAskRAI(true)}
@@ -267,18 +213,18 @@ export default function ELearningPage() {
 
         {/* Recent Achievements */}
         {gamification && gamification.badges?.earned?.length > 0 && (
-          <div className="mt-4 md:mt-6 bg-white rounded-lg md:rounded-xl p-4 md:p-5 border border-gray-100 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base">
-              <Trophy className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
+          <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
               Recent Achievements
-            </h3>
-            <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+            </p>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
               {gamification.badges.earned.slice(0, 5).map((badge: any) => (
-                <div key={badge.id} className="flex-shrink-0 w-16 md:w-24 text-center snap-start">
-                  <div className="w-12 h-12 md:w-16 md:h-16 mx-auto bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg md:rounded-xl flex items-center justify-center mb-1.5 md:mb-2 border border-amber-200">
-                    <Trophy className="w-6 h-6 md:w-8 md:h-8 text-amber-400" />
+                <div key={badge.id} className="flex-shrink-0 w-20 text-center snap-start">
+                  <div className="w-14 h-14 mx-auto bg-amber-50 rounded-2xl flex items-center justify-center mb-1.5 border border-amber-200">
+                    <Trophy className="w-7 h-7 text-amber-400" />
                   </div>
-                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">{badge.name}</p>
+                  <p className="text-xs font-medium text-gray-900">{badge.name}</p>
                 </div>
               ))}
             </div>
@@ -287,33 +233,33 @@ export default function ELearningPage() {
 
         {/* Stats Cards */}
         {gamification && (
-          <div className="mt-4 md:mt-6 grid grid-cols-3 gap-2 md:gap-4">
-            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm text-center">
-              <Play className="w-6 h-6 md:w-8 md:h-8 text-blue-400 mx-auto mb-1 md:mb-2" />
-              <p className="text-lg md:text-2xl font-bold text-gray-900">{gamification.stats?.totalVideosCompleted || 0}</p>
-              <p className="text-xs md:text-sm text-gray-500">Videos</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-2xl p-3 border border-gray-100 text-center">
+              <Play className="w-6 h-6 text-blue-500 mx-auto mb-1" />
+              <p className="text-lg font-bold text-gray-900">{gamification.stats?.totalVideosCompleted || 0}</p>
+              <p className="text-xs text-gray-500">Videos</p>
             </div>
-            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm text-center">
-              <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-700 mx-auto mb-1 md:mb-2" />
-              <p className="text-lg md:text-2xl font-bold text-gray-900">{gamification.stats?.totalQuizzesPassed || 0}</p>
-              <p className="text-xs md:text-sm text-gray-500">Quizzes</p>
+            <div className="bg-white rounded-2xl p-3 border border-gray-100 text-center">
+              <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto mb-1" />
+              <p className="text-lg font-bold text-gray-900">{gamification.stats?.totalQuizzesPassed || 0}</p>
+              <p className="text-xs text-gray-500">Quizzes</p>
             </div>
-            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm text-center">
-              <Star className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 mx-auto mb-1 md:mb-2" />
-              <p className="text-lg md:text-2xl font-bold text-gray-900">{gamification.stats?.perfectScores || 0}</p>
-              <p className="text-xs md:text-sm text-gray-500">Perfect!</p>
+            <div className="bg-white rounded-2xl p-3 border border-gray-100 text-center">
+              <Star className="w-6 h-6 text-amber-400 mx-auto mb-1" />
+              <p className="text-lg font-bold text-gray-900">{gamification.stats?.perfectScores || 0}</p>
+              <p className="text-xs text-gray-500">Perfect</p>
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Video Quiz Modal */}
-      {activeVideo && childId && (
+      {activeVideo && selectedChildId && (
         <VideoQuizModal
           isOpen={!!activeVideo}
           onClose={() => setActiveVideo(null)}
           video={activeVideo}
-          childId={childId}
+          childId={selectedChildId}
           onComplete={handleVideoComplete}
         />
       )}
@@ -323,4 +269,3 @@ export default function ELearningPage() {
     </div>
   );
 }
-

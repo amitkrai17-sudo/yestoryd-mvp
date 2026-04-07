@@ -49,6 +49,17 @@ export interface PortalTheme {
     bg: string;
     text: string;
   };
+
+  /** Semantic tokens for parent portal design system */
+  semantic?: {
+    accentLight: string;     // Highlighted backgrounds (e.g. task banners)
+    accentBorder: string;    // Highlighted card borders
+    accentText: string;      // Text on accent light backgrounds
+    success: string;         // Checkmarks, completed states
+    successLight: string;    // Completed task backgrounds
+    error: string;           // Missed tasks, errors
+    errorLight: string;      // Missed task backgrounds
+  };
 }
 
 export const portalThemes: Record<PortalType, PortalTheme> = {
@@ -99,6 +110,16 @@ export const portalThemes: Record<PortalType, PortalTheme> = {
     badge: {
       bg: 'bg-[#FF0099]/10',
       text: 'text-[#FF0099]',
+    },
+
+    semantic: {
+      accentLight: 'bg-[#FFF5F9]',
+      accentBorder: 'border-[#FFD6E8]',
+      accentText: 'text-[#993556]',
+      success: 'text-[#1D9E75]',
+      successLight: 'bg-[#E8FCF1]',
+      error: 'text-[#A32D2D]',
+      errorLight: 'bg-[#FCEBEB]',
     },
   },
 

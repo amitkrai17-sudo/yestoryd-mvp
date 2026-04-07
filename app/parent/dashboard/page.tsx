@@ -1,7 +1,6 @@
 // =============================================================================
 // FILE: app/parent/dashboard/page.tsx
-// VERSION: 3.3 - Light Theme UI + Dynamic WhatsApp
-// PURPOSE: Parent Dashboard with Skill Booster Session Support
+// VERSION: 4.0 - Redesigned Home Dashboard (feed-style, mobile-first)
 // =============================================================================
 
 'use client';
@@ -10,33 +9,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Calendar, TrendingUp, HelpCircle,
-  ChevronRight, Video,
-  Clock, CheckCircle, Target, User,
-  BookOpen, Zap, AlertCircle, RefreshCw,
-  Sparkles, Star, Rocket, Trophy
+  Calendar, ChevronRight, AlertCircle, RefreshCw,
+  Sparkles, BookOpen, Users, HelpCircle, MessageCircle,
+  Brain,
 } from 'lucide-react';
-import PauseEnrollmentCard from '@/components/parent/PauseEnrollmentCard';
-import ParentCallCard from '@/components/parent/ParentCallCard';
-import ProgressPulseCard from '@/components/parent/ProgressPulseCard';
-import AIInsightCard from '@/components/parent/AIInsightCard';
-import SkillProgressCard from '@/components/parent/SkillProgressCard';
-import IntelligenceWidget from '@/components/parent/IntelligenceWidget';
-import ChatWidget from '@/components/chat/ChatWidget';
-import ProgressCelebration from '@/components/parent/ProgressCelebration';
 import ReEnrollmentBanner from '@/components/parent/ReEnrollmentBanner';
-import GroupClassesSection from '@/components/parent/GroupClassesSection';
-import ReadingSection from '@/components/parent/ReadingSection';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
-import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
-import WelcomeSection from './_components/WelcomeSection';
-import SessionList from './_components/SessionList';
-import ProgressPanel from './_components/ProgressPanel';
-import CROSection from './_components/CROSection';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
-// Default WhatsApp number (fetched from site_settings, falls back to Lead Bot)
 const DEFAULT_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
 
 interface Session {
@@ -56,12 +37,11 @@ interface Enrollment {
   program_start: string;
   program_end: string;
   coach_id: string;
-  // New fields for multi-product support
   enrollment_type: 'starter' | 'continuation' | 'full' | 'tuition' | null;
   product_id: string | null;
   sessions_purchased: number | null;
   sessions_remaining: number | null;
-  session_rate: number | null; // paise
+  session_rate: number | null;
   billing_model: string | null;
   starter_completed_at: string | null;
   continuation_deadline: string | null;
@@ -74,58 +54,16 @@ interface Enrollment {
   } | null;
 }
 
-interface PendingSkillBoosterSession {
-  id: string;
-  focus_area: string;
-  coach_notes?: string;
-  created_at: string;
-  coach_name: string;
-}
-
-
-// Focus area labels
-const FOCUS_AREA_LABELS: Record<string, string> = {
-  phonics_sounds: 'Phonics & Letter Sounds',
-  reading_fluency: 'Reading Fluency',
-  comprehension: 'Reading Comprehension',
-  vocabulary: 'Vocabulary Building',
-  grammar: 'Grammar & Sentence Structure',
-  confidence: 'Speaking Confidence',
-  specific_sounds: 'Specific Sound Practice',
-  other: 'Special Focus',
-};
-
 // Safe localStorage access
 function safeGetItem(key: string): string | null {
   try {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(key);
     }
-  } catch (e) {
-    console.warn('localStorage not available');
+  } catch {
+    // localStorage not available
   }
   return null;
-}
-
-/** Build contextual quick prompts for ChatWidget based on child's learning profile */
-function buildContextualPrompts(childName: string, profile: LearningProfile): string[] {
-  const prompts: string[] = [];
-  prompts.push(`How is ${childName} doing?`);
-
-  if (profile.struggle_areas && profile.struggle_areas.length > 0) {
-    const area = profile.struggle_areas[0].skill?.replace(/_/g, ' ');
-    prompts.push(`How can we help with ${area}?`);
-  } else {
-    prompts.push(`What should ${childName} practice?`);
-  }
-
-  if (profile.sessions_remaining && profile.sessions_remaining <= 3) {
-    prompts.push('What to focus on in remaining sessions?');
-  } else {
-    prompts.push(`Explain ${childName}'s reading level`);
-  }
-
-  return prompts;
 }
 
 export default function ParentDashboardPage() {
@@ -143,17 +81,14 @@ export default function ParentDashboardPage() {
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [completedSessions, setCompletedSessions] = useState<number>(0);
   const [totalSessions, setTotalSessions] = useState<number>(0);
-  const [latestScore, setLatestScore] = useState<number | null>(null);
-  const [pendingSkillBooster, setPendingSkillBooster] = useState<PendingSkillBoosterSession | null>(null);
-  const [parentCalls, setParentCalls] = useState<any[]>([]);
-  const [parentCallQuota, setParentCallQuota] = useState({ used: 0, max: 1, remaining: 1 });
-  const [latestPulse, setLatestPulse] = useState<any>(null);
   const [learningProfile, setLearningProfile] = useState<LearningProfile | null>(null);
   const [taskStats, setTaskStats] = useState<{ current_streak: number; longest_streak: number; completed_this_week: number; total_this_week: number } | null>(null);
-  const [freshnessStatus, setFreshnessStatus] = useState<string | null>(null);
   const [todayTask, setTodayTask] = useState<any>(null);
-  const [previousPulse, setPreviousPulse] = useState<any>(null);
   const [croSettings, setCroSettings] = useState<Record<string, string>>({});
+  const [lastCompletedDate, setLastCompletedDate] = useState<string | null>(null);
+  const [readingStats, setReadingStats] = useState<{ booksThisMonth: number; monthlyGoal: number }>({ booksThisMonth: 0, monthlyGoal: 4 });
+  const [recommendedBook, setRecommendedBook] = useState<{ title: string; reason: string } | null>(null);
+  const [referralLabel, setReferralLabel] = useState('10% off');
 
   const fetchData = useCallback(async () => {
     try {
@@ -179,16 +114,14 @@ export default function ParentDashboardPage() {
         .eq('email', user.email!)
         .maybeSingle();
 
-      if (parentError) {
-        console.error('Parent fetch error:', parentError);
-      }
+      if (parentError) console.error('Parent fetch error:', parentError);
 
       if (parentData?.name) {
         setParentName(parentData.name);
         setParentId(parentData.id);
       }
 
-      let enrolledChild = null;
+      let enrolledChild: any = null;
 
       // Check localStorage for selected child
       const storedChildId = parentData?.id
@@ -197,49 +130,40 @@ export default function ParentDashboardPage() {
 
       // Find enrolled child by parent_id
       if (parentData?.id) {
+        const childQuery = supabase
+          .from('children')
+          .select('id, name, child_name, latest_assessment_score, learning_profile')
+          .eq('parent_id', parentData.id)
+          .eq('lead_status', 'enrolled')
+          .order('enrolled_at', { ascending: false });
+
         if (storedChildId) {
-          const { data: selectedChild } = await supabase
+          const { data: storedChild } = await supabase
             .from('children')
-            .select('*')
+            .select('id, name, child_name, latest_assessment_score, learning_profile')
             .eq('id', storedChildId)
             .eq('parent_id', parentData.id)
-            .maybeSingle();
-
-          if (selectedChild) {
-            enrolledChild = selectedChild;
-          }
+            .eq('lead_status', 'enrolled')
+            .single();
+          enrolledChild = storedChild;
         }
 
         if (!enrolledChild) {
-          const { data: childByParentId } = await supabase
-            .from('children')
-            .select('*')
-            .eq('parent_id', parentData.id)
-            .eq('lead_status', 'enrolled')
-            .order('enrolled_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (childByParentId) {
-            enrolledChild = childByParentId;
-          }
+          const { data: children } = await childQuery.limit(1);
+          enrolledChild = children?.[0] || null;
         }
       }
 
-      // Fallback: try by parent_email
-      if (!enrolledChild && user.email) {
-        const { data: childByEmail } = await supabase
+      // Fallback: by parent_email
+      if (!enrolledChild) {
+        const { data: children } = await supabase
           .from('children')
-          .select('*')
-          .eq('parent_email', user.email)
+          .select('id, name, child_name, latest_assessment_score, learning_profile')
+          .eq('parent_email', user.email!)
           .eq('lead_status', 'enrolled')
           .order('enrolled_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (childByEmail) {
-          enrolledChild = childByEmail;
-        }
+          .limit(1);
+        enrolledChild = children?.[0] || null;
       }
 
       if (!enrolledChild) {
@@ -247,160 +171,84 @@ export default function ParentDashboardPage() {
         return;
       }
 
+      const displayName = enrolledChild.child_name || enrolledChild.name || 'Your Child';
       setChildId(enrolledChild.id);
-      setChildName(enrolledChild.name || enrolledChild.child_name || 'Your Child');
-      setLatestScore(enrolledChild.latest_assessment_score);
-      setLearningProfile(enrolledChild.learning_profile as LearningProfile | null);
+      setChildName(displayName);
 
-      // Fetch intelligence freshness for nudge
-      supabase
-        .from('child_intelligence_profiles')
-        .select('freshness_status')
-        .eq('child_id', enrolledChild.id)
-        .maybeSingle()
-        .then(({ data }) => { if (data) setFreshnessStatus(data.freshness_status); });
+      if (enrolledChild.learning_profile) {
+        try {
+          const profile = typeof enrolledChild.learning_profile === 'string'
+            ? JSON.parse(enrolledChild.learning_profile)
+            : enrolledChild.learning_profile;
+          setLearningProfile(profile);
+        } catch { /* ignore parse errors */ }
+      }
 
-      // Fetch enrollment with coach details
-      const { data: enrollmentData, error: enrollmentError } = await supabase
+      // Active enrollment
+      const { data: enrollmentData } = await supabase
         .from('enrollments')
-        .select(`
-          *,
-          enrollment_type,
-          product_id,
-          sessions_purchased,
-          starter_completed_at,
-          continuation_deadline,
-          coaches!coach_id (
-            id,
-            name,
-            email,
-            bio,
-            phone
-          )
-        `)
+        .select('*, coaches!coach_id (id, name, email, bio, phone)')
         .eq('child_id', enrolledChild.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle();
-
-      if (enrollmentError) {
-        console.error('Enrollment fetch error:', enrollmentError);
-      }
+        .single();
 
       if (enrollmentData) {
         setEnrollment(enrollmentData as any);
       }
 
-      // Fetch pending Skill Booster sessions (DB still uses 'remedial' type)
-      try {
-        const { data: skillBoosterData, error: skillBoosterError } = await supabase
-          .from('scheduled_sessions')
-          .select(`
-            id,
-            focus_area,
-            coach_notes,
-            created_at,
-            coaches:coach_id (name)
-          `)
-          .eq('child_id', enrolledChild.id)
-          .eq('session_type', 'remedial')
-          .eq('status', 'pending_booking')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (skillBoosterError) {
-          console.error('Skill Booster fetch error:', skillBoosterError);
-        }
-
-        if (skillBoosterData) {
-          setPendingSkillBooster({
-            id: skillBoosterData.id,
-            focus_area: skillBoosterData.focus_area || 'general',
-            coach_notes: skillBoosterData.coach_notes ?? undefined,
-            created_at: skillBoosterData.created_at ?? new Date().toISOString(),
-            coach_name: (skillBoosterData.coaches as any)?.name || 'Your Coach'
-          });
-        } else {
-          setPendingSkillBooster(null);
-        }
-      } catch (skillBoosterErr) {
-        console.error('Skill Booster fetch exception:', skillBoosterErr);
-        setPendingSkillBooster(null);
-      }
-
-      // Fetch parent calls for this enrollment
-      if (enrollmentData) {
-        try {
-          const pcRes = await fetch(`/api/parent-call/${enrollmentData.id}`);
-          const pcData = await pcRes.json();
-          if (pcData.success) {
-            setParentCalls(pcData.calls || []);
-            setParentCallQuota(pcData.quota || { used: 0, max: 1, remaining: 1 });
+      // Fire-and-forget: task stats
+      fetch(`/api/parent/tasks/${enrolledChild.id}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            setTaskStats(d.stats || null);
+            setTodayTask(d.today_task || null);
           }
-        } catch (pcErr) {
-          console.error('Parent call fetch exception:', pcErr);
-        }
-      }
+        })
+        .catch(() => {});
 
-      // Fetch latest Progress Pulse (2 for CRO comparison)
-      if (enrolledChild?.id) {
-        try {
-          const { data: pulseHistory } = await supabase
-            .from('learning_events')
-            .select('id, event_date, event_data')
-            .eq('child_id', enrolledChild.id)
-            .eq('event_type', 'progress_pulse')
-            .order('event_date', { ascending: false })
-            .limit(2);
+      // Fire-and-forget: CRO settings
+      fetch('/api/parent/cro-settings')
+        .then(r => r.json())
+        .then(d => { if (d.settings) setCroSettings(d.settings); })
+        .catch(() => {});
 
-          if (pulseHistory && pulseHistory.length > 0) {
-            const latest = pulseHistory[0];
-            setLatestPulse({
-              id: latest.id,
-              event_date: latest.event_date,
-              data: latest.event_data,
-            });
-            if (pulseHistory.length > 1) {
-              const prev = pulseHistory[1];
-              setPreviousPulse({
-                id: prev.id,
-                event_date: prev.event_date,
-                data: prev.event_data,
-              });
+      // Fire-and-forget: referral percent from site_settings
+      supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'parent_referral_credit_percent')
+        .maybeSingle()
+        .then(({ data }) => {
+          const pct = parseInt(String(data?.value).replace(/"/g, '')) || 10;
+          setReferralLabel(`${pct}% off`);
+        })
+        .catch(() => {});
+
+      // Fire-and-forget: reading stats + recommendation
+      const authSession = await supabase.auth.getSession();
+      const token = authSession.data.session?.access_token;
+      if (token) {
+        fetch(`/api/parent/reading?childId=${enrolledChild.id}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(d => { if (d.success && d.stats) setReadingStats(d.stats); })
+          .catch(() => {});
+        fetch(`/api/books/recommendations?childId=${enrolledChild.id}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(d => {
+            if (d.success && d.recommendations?.length) {
+              const book = d.recommendations[0];
+              setRecommendedBook({ title: book.title, reason: book.recommendation_reason || '' });
             }
-          } else {
-            setLatestPulse(null);
-          }
-        } catch (pulseErr) {
-          console.error('Progress Pulse fetch exception:', pulseErr);
-          setLatestPulse(null);
-        }
+          })
+          .catch(() => {});
       }
 
-      // Fetch task stats for CRO
-      try {
-        const taskRes = await fetch(`/api/parent/tasks/${enrolledChild.id}`);
-        const taskData = await taskRes.json();
-        if (taskData.success) {
-          setTaskStats(taskData.stats || null);
-          setTodayTask(taskData.today_task || null);
-        }
-      } catch (taskErr) {
-        console.error('Task stats fetch error:', taskErr);
-      }
-
-      // Fetch CRO site settings
-      try {
-        const croRes = await fetch('/api/parent/cro-settings');
-        const croData = await croRes.json();
-        if (croData.settings) setCroSettings(croData.settings);
-      } catch {}
-
-      // Fetch upcoming sessions
+      // Upcoming sessions
       const today = new Date().toISOString().split('T')[0];
-      const { data: sessions, error: sessionsError } = await supabase
+      const { data: sessions } = await supabase
         .from('scheduled_sessions')
         .select('*')
         .eq('child_id', enrolledChild.id)
@@ -410,34 +258,36 @@ export default function ParentDashboardPage() {
         .order('scheduled_time', { ascending: true })
         .limit(5);
 
-      if (sessionsError) {
-        console.error('Sessions fetch error:', sessionsError);
-      }
+      setUpcomingSessions((sessions || []) as Session[]);
 
-      setUpcomingSessions((sessions || []) as any);
-
-      // Count completed sessions
-      const { count: completed, error: completedError } = await supabase
+      // Completed sessions count
+      const { count: completed } = await supabase
         .from('scheduled_sessions')
         .select('*', { count: 'exact', head: true })
         .eq('child_id', enrolledChild.id)
         .eq('status', 'completed');
 
-      if (completedError) {
-        console.error('Completed count error:', completedError);
-      }
-
       setCompletedSessions(completed || 0);
 
-      // Count total sessions
-      const { count: total, error: totalError } = await supabase
+      // Last completed session date (for coach card)
+      const { data: lastSession } = await supabase
+        .from('scheduled_sessions')
+        .select('scheduled_date')
+        .eq('child_id', enrolledChild.id)
+        .eq('status', 'completed')
+        .order('scheduled_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastSession?.scheduled_date) {
+        setLastCompletedDate(lastSession.scheduled_date);
+      }
+
+      // Total sessions
+      const { count: total } = await supabase
         .from('scheduled_sessions')
         .select('*', { count: 'exact', head: true })
         .eq('child_id', enrolledChild.id);
-
-      if (totalError) {
-        console.error('Total count error:', totalError);
-      }
 
       setTotalSessions(total || enrollmentData?.total_sessions || enrollmentData?.sessions_purchased || 24);
       setLoading(false);
@@ -451,13 +301,12 @@ export default function ParentDashboardPage() {
   useEffect(() => {
     fetchData();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         router.push('/parent/login');
       }
     });
 
-    // Listen for child change events from layout
     const handleChildChange = () => {
       setLoading(true);
       fetchData();
@@ -470,282 +319,17 @@ export default function ParentDashboardPage() {
     };
   }, [fetchData, router]);
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      router.push('/parent/login');
-    } catch (err) {
-      console.error('Logout error:', err);
-      router.push('/parent/login');
-    }
-  };
+  // --- Helpers ---
 
-  function getProgressPercentage(): number {
-    if (totalSessions === 0) return 0;
-    return Math.round((completedSessions / totalSessions) * 100);
+  function getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
-  function getDaysRemaining(): number {
-    const endDate = enrollment?.program_end;
-    if (!endDate) return 90;
-    try {
-      const end = new Date(endDate);
-      const today = new Date();
-      const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return Math.max(0, diff);
-    } catch {
-      return 90;
-    }
-  }
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#7b008b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-        <div className="text-center max-w-md bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
-          <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
-          <p className="text-gray-500 mb-6 text-sm">{error}</p>
-          <button
-            onClick={() => {
-              setLoading(true);
-              setError(null);
-              fetchData();
-            }}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7b008b] text-white rounded-xl font-semibold hover:bg-[#6a0078] transition-all min-h-[48px]"
-          >
-            <RefreshCw className="w-5 h-5" />
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // No enrollment state
-  if (!childId) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-        <div className="text-center max-w-md bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
-          <BookOpen className="w-16 h-16 text-[#7b008b]/30 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Active Enrollment</h2>
-          <p className="text-gray-500 mb-2 text-sm">Logged in as: <span className="text-[#7b008b]">{parentEmail}</span></p>
-          <p className="text-gray-500 mb-6 text-sm">You don&apos;t have an active enrollment yet.</p>
-          <a
-            href="/assessment"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff0099] to-[#7b008b] text-white rounded-xl font-semibold hover:shadow-lg transition-all min-h-[48px]"
-          >
-            Reading Test - Free
-            <ChevronRight className="w-5 h-5" />
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {/* Main Content - No separate header, uses layout's navigation */}
-      <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        {/* Overview Content - Navigation handled by BottomNav and Sidebar */}
-        <OverviewTab
-          childId={childId}
-          childName={childName}
-          enrollment={enrollment}
-          upcomingSessions={upcomingSessions}
-          completedSessions={completedSessions}
-          totalSessions={totalSessions}
-          latestScore={latestScore}
-          getDaysRemaining={getDaysRemaining}
-          getProgressPercentage={getProgressPercentage}
-          onRefresh={fetchData}
-          parentEmail={parentEmail}
-          parentName={parentName}
-          pendingSkillBooster={pendingSkillBooster}
-          parentCalls={parentCalls}
-          parentCallQuota={parentCallQuota}
-          latestPulse={latestPulse}
-          learningProfile={learningProfile}
-          taskStats={taskStats}
-          todayTask={todayTask}
-          previousPulse={previousPulse}
-          croSettings={croSettings}
-          freshnessStatus={freshnessStatus}
-        />
-      </main>
-
-      {/* Floating rAI Chat Widget */}
-      <ChatWidget
-        userRole="parent"
-        userEmail={parentEmail}
-        childId={childId || undefined}
-        childName={childName || undefined}
-        contextualPrompts={learningProfile ? buildContextualPrompts(childName, learningProfile) : undefined}
-      />
-    </div>
-  );
-}
-
-// ============================================================
-// PENDING SKILL BOOSTER CARD - Mobile Optimized with proper width
-// ============================================================
-function PendingSkillBoosterCard({
-  session,
-  childName
-}: {
-  session: PendingSkillBoosterSession;
-  childName: string;
-}) {
-  const focusAreaLabel = FOCUS_AREA_LABELS[session.focus_area] || session.focus_area;
-
-  const daysSince = Math.floor(
-    (Date.now() - new Date(session.created_at).getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  return (
-    <div
-      className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50
-                 border-2 border-yellow-400/40 rounded-2xl p-5
-                 shadow-sm w-full"
-      role="alert"
-      aria-label="Skill Booster session recommended"
-    >
-      <div className="flex flex-col gap-4">
-        {/* Header Row */}
-        <div className="flex items-start gap-4">
-          {/* Icon */}
-          <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500
-                          rounded-xl flex items-center justify-center flex-shrink-0
-                          shadow-lg shadow-orange-500/30">
-            <Zap className="w-7 h-7 text-white" />
-          </div>
-
-          {/* Title & Description */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-gray-900 leading-tight">
-              Skill Booster Session
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Coach <span className="font-semibold text-[#7B008B]">{session.coach_name}</span> recommends
-              extra practice for <span className="font-semibold text-gray-900">{childName}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Focus Area Highlight */}
-        <div className="bg-white/70 rounded-xl p-4 border border-yellow-500/30">
-          <p className="text-sm text-gray-500 uppercase tracking-wide font-medium mb-1">Focus Area</p>
-          <p className="text-lg font-bold text-[#FF0099]">{focusAreaLabel}</p>
-        </div>
-
-        {/* Info Badges */}
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700
-                         rounded-full text-sm font-semibold border border-emerald-200">
-            <CheckCircle className="w-4 h-4" />
-            FREE - Included
-          </span>
-          {daysSince > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
-              <Clock className="w-4 h-4" />
-              {daysSince}d ago
-            </span>
-          )}
-        </div>
-
-        {/* CTA Button - Full Width */}
-        <Link
-          href={`/parent/book-skill-booster/${session.id}`}
-          className="flex items-center justify-center gap-2 w-full px-5 py-3
-                   bg-gradient-to-r from-[#FF0099] to-[#7B008B]
-                   text-white font-semibold rounded-xl hover:opacity-90
-                   transition-all shadow-lg shadow-[#FF0099]/30
-                   text-base min-h-[48px] active:scale-[0.98]"
-        >
-          <Calendar className="w-5 h-5" />
-          <span>Book Time Slot</span>
-          <ChevronRight className="w-5 h-5" />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// OVERVIEW TAB
-// ============================================================
-function OverviewTab({
-  childId,
-  childName,
-  enrollment,
-  upcomingSessions,
-  completedSessions,
-  totalSessions,
-  latestScore,
-  getDaysRemaining,
-  getProgressPercentage,
-  onRefresh,
-  parentEmail,
-  parentName,
-  pendingSkillBooster,
-  parentCalls,
-  parentCallQuota,
-  latestPulse,
-  learningProfile,
-  taskStats,
-  todayTask,
-  previousPulse,
-  croSettings,
-  freshnessStatus,
-}: {
-  childId: string;
-  childName: string;
-  enrollment: Enrollment | null;
-  upcomingSessions: Session[];
-  completedSessions: number;
-  totalSessions: number;
-  latestScore: number | null;
-  getDaysRemaining: () => number;
-  getProgressPercentage: () => number;
-  onRefresh: () => void;
-  parentEmail: string;
-  parentName: string;
-  pendingSkillBooster: PendingSkillBoosterSession | null;
-  parentCalls: any[];
-  parentCallQuota: { used: number; max: number; remaining: number };
-  latestPulse: any;
-  learningProfile: LearningProfile | null;
-  taskStats: { current_streak: number; longest_streak: number; completed_this_week: number; total_this_week: number } | null;
-  todayTask: any;
-  previousPulse: any;
-  croSettings: Record<string, string>;
-  freshnessStatus: string | null;
-}) {
-  function formatDate(dateStr: string): string {
-    try {
-      const date = new Date(dateStr);
-      const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-
-      if (date.toDateString() === today.toDateString()) return 'Today';
-      if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-      return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-    } catch {
-      return dateStr;
-    }
+  function getFirstName(name: string): string {
+    return name.split(' ')[0] || name;
   }
 
   function formatTime(time: string): string {
@@ -760,350 +344,387 @@ function OverviewTab({
     }
   }
 
-  function getCoachPhone(): string {
-    return enrollment?.coaches?.phone || DEFAULT_WHATSAPP;
-  }
-
   function getCoachName(): string {
-    return enrollment?.coaches?.name || 'Rucha';
+    return enrollment?.coaches?.name || 'Your coach';
   }
 
-  // Get enrollment type display info - uses Lucide icons
-  const getEnrollmentTypeInfo = () => {
-    const type = enrollment?.enrollment_type;
-    switch (type) {
-      case 'starter':
-        return {
-          label: 'Starter Pack',
-          color: 'bg-blue-50 text-blue-700 border-blue-200',
-          Icon: Rocket,
-        };
-      case 'continuation':
-        return {
-          label: 'Continuation',
-          color: 'bg-purple-50 text-purple-700 border-purple-200',
-          Icon: TrendingUp,
-        };
-      case 'full':
-        return {
-          label: 'Full Program',
-          color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-          Icon: Star,
-        };
-      case 'tuition':
-        return {
-          label: 'Tuition Sessions',
-          color: 'bg-amber-50 text-amber-700 border-amber-200',
-          Icon: BookOpen,
-        };
-      default:
-        return {
-          label: 'Program',
-          color: 'bg-gray-50 text-gray-600 border-gray-200',
-          Icon: BookOpen,
-        };
+  function getCoachInitial(): string {
+    return getCoachName().charAt(0).toUpperCase();
+  }
+
+  function getChildInitials(): string {
+    const parts = childName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
-  };
+    return (parts[0]?.[0] || '').toUpperCase();
+  }
 
-  // Check if starter is completed and can continue
-  const isStarterCompleted = enrollment?.enrollment_type === 'starter' &&
-    (enrollment?.starter_completed_at || completedSessions >= totalSessions);
+  function getProgramTypePill(): string {
+    switch (enrollment?.enrollment_type) {
+      case 'tuition': return 'Tuition';
+      case 'starter': return 'Starter';
+      case 'continuation': return 'Continuation';
+      case 'full': return 'Full Program';
+      default: return 'Program';
+    }
+  }
 
-  // Check if continuation deadline is approaching (within 3 days)
-  const continuationDeadline = enrollment?.continuation_deadline
-    ? new Date(enrollment.continuation_deadline)
-    : null;
-  const daysUntilDeadline = continuationDeadline
-    ? Math.ceil((continuationDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : null;
+  function getSeasonLabel(): string {
+    const level = learningProfile?.reading_level?.current;
+    if (level) return `${level} level`;
+    return 'Building season';
+  }
+
+  function getSeasonSummary(): string {
+    if (learningProfile?.recommended_focus_next_session) {
+      return learningProfile.recommended_focus_next_session;
+    }
+    if (learningProfile?.active_skills?.length) {
+      return `Working on ${learningProfile.active_skills.slice(0, 2).join(' & ').replace(/_/g, ' ')}`;
+    }
+    return 'Building reading confidence';
+  }
+
+  function getSessionDuration(): number {
+    // Default durations by program type — real values come from age_band_config
+    return 45;
+  }
+
+  function getDaysSinceLastSession(): string {
+    if (!lastCompletedDate) return 'No sessions yet';
+    const diff = Math.floor((Date.now() - new Date(lastCompletedDate).getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return 'Last session today';
+    if (diff === 1) return 'Last session yesterday';
+    return `Last session ${diff} days ago`;
+  }
+
+  // --- Loading ---
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="text-center">
+          <div className="w-10 h-10 border-3 border-[#FF0099] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Error ---
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="text-center max-w-sm rounded-2xl bg-white border border-gray-100 p-6">
+          <AlertCircle className="w-12 h-12 text-red-300 mx-auto mb-3" />
+          <h2 className="text-lg font-medium text-gray-900 mb-1">Something went wrong</h2>
+          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <button
+            onClick={() => { setLoading(true); setError(null); fetchData(); }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF0099] text-white rounded-xl text-sm font-medium hover:bg-[#cc007a] transition-colors min-h-[44px]"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- No enrollment ---
+  if (!childId) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="text-center max-w-sm rounded-2xl bg-white border border-gray-100 p-6">
+          <BookOpen className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+          <h2 className="text-lg font-medium text-gray-900 mb-1">No Active Enrollment</h2>
+          <p className="text-sm text-gray-500 mb-4">Take a free assessment to get started.</p>
+          <a
+            href="/assessment"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF0099] text-white rounded-xl text-sm font-medium hover:bg-[#cc007a] transition-colors min-h-[44px]"
+          >
+            Reading Test - Free
+            <ChevronRight className="w-4 h-4" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const sessionsRemaining = enrollment?.enrollment_type === 'tuition'
+    ? (enrollment?.sessions_remaining ?? 0)
+    : Math.max(0, (enrollment?.sessions_purchased || totalSessions) - completedSessions);
+  const nextSession = upcomingSessions[0] || null;
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Personalized Welcome */}
-      <WelcomeSection
-        parentName={parentName}
-        childName={childName}
-        enrollmentType={enrollment?.enrollment_type}
-      />
+    <div className="px-4 md:px-6 py-4 md:py-6 max-w-2xl mx-auto">
+      <div className="space-y-2">
 
-      {/* Intelligence freshness nudge */}
-      {freshnessStatus === 'stale' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <p className="text-amber-800 text-sm">
-            It&apos;s been a while since {childName}&apos;s last session. Book one to keep their progress on track!
-          </p>
+        {/* ── SECTION 1: GREETING ── */}
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm text-gray-500">{getGreeting()}, {getFirstName(parentName)}</p>
+            <h1 className="text-xl font-medium text-gray-900">{childName}&apos;s dashboard</h1>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FFF5F9] text-[#993556]">
+                {getProgramTypePill()}
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">
+                {getSeasonLabel()}
+              </span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-[#FBEAF0] flex items-center justify-center flex-shrink-0 mt-1">
+            <span className="text-sm font-medium text-[#993556]">{getChildInitials()}</span>
+          </div>
         </div>
-      )}
-      {freshnessStatus === 'none' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-          <p className="text-blue-800 text-sm">
-            We&apos;re building {childName}&apos;s reading profile. After the first session, you&apos;ll see detailed progress here!
-          </p>
-        </div>
-      )}
 
-      {/* RE-ENROLLMENT / RENEWAL BANNER */}
-      {enrollment && childId && (() => {
-        const isTuition = enrollment.enrollment_type === 'tuition';
-        if (isTuition) {
-          // For tuition: use sessions_remaining from DB (accurate after renewals)
-          const remaining = enrollment.sessions_remaining ?? 0;
-          if (remaining <= 2) {
+        {/* ── RE-ENROLLMENT BANNER ── */}
+        {enrollment && childId && (() => {
+          const isTuition = enrollment.enrollment_type === 'tuition';
+          if (isTuition && (enrollment.sessions_remaining ?? 0) <= 2) {
             return (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+              <div className="rounded-2xl bg-white border border-gray-100 p-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-amber-800 font-semibold text-sm">
-                    {remaining <= 0
-                      ? `${childName}'s sessions have run out`
-                      : `Only ${remaining} session${remaining === 1 ? '' : 's'} left`
+                  <p className="text-sm font-medium text-gray-900">
+                    {(enrollment.sessions_remaining ?? 0) <= 0
+                      ? `Sessions have run out`
+                      : `Only ${enrollment.sessions_remaining} session${(enrollment.sessions_remaining ?? 0) === 1 ? '' : 's'} left`
                     }
                   </p>
-                  <p className="text-amber-600 text-xs mt-0.5">Add more sessions to continue learning</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Add more to continue learning</p>
                 </div>
                 <a
                   href={`/tuition/pay/${enrollment.id}?renewal=true`}
-                  className="flex-shrink-0 bg-[#FF0099] text-white font-semibold px-4 py-2 rounded-xl text-sm hover:bg-[#FF0099]/90 transition-colors h-10 flex items-center"
+                  className="flex-shrink-0 bg-[#FF0099] text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-[#cc007a] transition-colors min-h-[44px] flex items-center"
                 >
-                  Renew Sessions
+                  Renew
                 </a>
               </div>
             );
           }
-          return null;
-        }
-        // Coaching: existing re-enrollment logic
-        const sessionsRemaining = (enrollment.sessions_purchased || totalSessions) - completedSessions;
-        return sessionsRemaining <= 2 && sessionsRemaining >= 0 ? (
-          <ReEnrollmentBanner
-            childId={childId}
-            childName={childName}
-            sessionsRemaining={sessionsRemaining}
-            croSettings={croSettings}
-          />
-        ) : null;
-      })()}
-
-      {/* TODAY'S PRIORITY CARD */}
-      {todayTask && !todayTask.is_completed && (
-        <div className="bg-white border-l-4 border-[#FF0099] rounded-2xl shadow-sm p-4">
-          <p className="text-xs font-semibold text-[#FF0099] uppercase tracking-wider">Today&apos;s Practice</p>
-          <p className="text-base font-medium text-gray-900 mt-1">{todayTask.title}</p>
-          {taskStats && (taskStats.total_this_week - taskStats.completed_this_week) > 0 && (
-            <p className="text-sm text-gray-500 mt-0.5">
-              {taskStats.total_this_week - taskStats.completed_this_week} {taskStats.total_this_week - taskStats.completed_this_week === 1 ? 'activity' : 'activities'} remaining this week
-            </p>
-          )}
-          <Link
-            href="/parent/tasks"
-            className="mt-3 inline-flex items-center gap-2 bg-[#FF0099] text-white rounded-xl h-10 px-6 text-sm font-medium hover:bg-[#CC007A] transition-all duration-200"
-          >
-            Start Practice
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-      )}
-      {todayTask && todayTask.is_completed && taskStats && taskStats.total_this_week > 0 && (
-        <div className="bg-white border-l-4 border-emerald-400 rounded-2xl shadow-sm p-4 flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-          <p className="text-sm font-medium text-gray-700">All caught up! Great work.</p>
-        </div>
-      )}
-
-      {/* NEXT SESSION COUNTDOWN — within 48 hours */}
-      {(() => {
-        const nextSession = upcomingSessions[0];
-        if (!nextSession) return null;
-        try {
-          const sessionDateTime = new Date(`${nextSession.scheduled_date}T${nextSession.scheduled_time}`);
-          const diffMs = sessionDateTime.getTime() - Date.now();
-          if (diffMs < 0 || diffMs > 48 * 60 * 60 * 1000) return null;
-          const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
-          let countdownText = '';
-          if (diffHours < 1) {
-            countdownText = `in ${Math.max(1, Math.floor(diffMs / 60000))} minutes`;
-          } else if (diffHours < 24) {
-            countdownText = `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
-          } else {
-            countdownText = `tomorrow at ${formatTime(nextSession.scheduled_time)}`;
+          if (!isTuition && sessionsRemaining <= 2 && sessionsRemaining >= 0) {
+            return (
+              <ReEnrollmentBanner
+                childId={childId}
+                childName={childName}
+                sessionsRemaining={sessionsRemaining}
+                croSettings={croSettings}
+              />
+            );
           }
-          return (
-            <p className="text-sm text-gray-600 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              Session with {getCoachName()} {countdownText}
-            </p>
-          );
-        } catch { return null; }
-      })()}
+          return null;
+        })()}
 
-      {/* PROGRESS CELEBRATION — streak, improvement, milestone */}
-      <ProgressCelebration
-        currentProgress={latestPulse?.data?.overall_progress}
-        previousProgress={previousPulse?.data?.overall_progress}
-        currentStreak={taskStats?.current_streak || 0}
-        milestoneReached={latestPulse?.data?.milestone_reached}
-        childName={childName}
-      />
-
-      {/* AI INSIGHT CARD — surfaces learning_profile intelligence */}
-      {learningProfile && (
-        <AIInsightCard learningProfile={learningProfile} childName={childName} />
-      )}
-
-      {/* SKILL PROGRESS CARD — visual skill breakdown */}
-      {learningProfile && (
-        <SkillProgressCard
-          masteredSkills={learningProfile.mastered_skills || []}
-          activeSkills={learningProfile.active_skills || []}
-          struggleAreas={learningProfile.struggle_areas || []}
-          childName={childName}
-        />
-      )}
-
-      {/* INTELLIGENCE WIDGET — UIP-powered reading intelligence */}
-      <IntelligenceWidget childId={childId} childName={childName} />
-
-      {/* STARTER COMPLETION CTA - Show when starter is completed */}
-      {isStarterCompleted && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-5">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-7 h-7 text-white" />
+        {/* ── SECTION 2: HERO PROGRESS + INLINE TASK ── */}
+        <div className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5">
+          {/* Top: season icon + label */}
+          <div className="flex items-center gap-3">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #FF0099, #cc007a)' }}
+            >
+              <Brain className="w-5 h-5 text-white" />
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2 text-lg">
-                <Trophy className="w-5 h-5 text-amber-400" />
-                Starter Pack Completed!
-              </h3>
-              <p className="text-gray-600 text-base mb-4">
-                {childName} has made great progress! Continue the journey with 9 more sessions.
-              </p>
-              {daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
-                <p className="text-amber-400 text-sm mb-3 flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  Special continuation pricing expires in {daysUntilDeadline} day{daysUntilDeadline !== 1 ? 's' : ''}
-                </p>
-              )}
+            <div className="min-w-0">
+              <p className="text-base font-medium text-gray-900">{getSeasonLabel()}</p>
+              <p className="text-xs text-gray-500 truncate">{getSeasonSummary()}</p>
+            </div>
+          </div>
+
+          {/* Middle: 3-column stat grid */}
+          <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
+            <div className="text-center">
+              <p className="text-xl font-medium text-gray-900">{completedSessions}</p>
+              <p className="text-xs text-gray-500">Sessions done</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-medium text-gray-900">{sessionsRemaining}</p>
+              <p className="text-xs text-gray-500">Remaining</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-medium text-[#FF0099]">{taskStats?.current_streak || 0}</p>
+              <p className="text-xs text-gray-500">Day streak</p>
+            </div>
+          </div>
+
+          {/* Bottom: inline task banner (conditional) */}
+          {todayTask && !todayTask.is_completed && (
+            <div className="mt-4 bg-[#FFF5F9] border border-[#FFD6E8] rounded-lg p-3 flex items-center gap-3">
+              <div className="relative flex-shrink-0">
+                <div className="w-2 h-2 rounded-full bg-[#FF0099] animate-pulse" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[#993556] truncate">{todayTask.title}</p>
+                <p className="text-xs text-[#993556]/70">15 min practice</p>
+              </div>
               <Link
-                href={`/enroll?product=continuation&childId=${enrollment?.id ? enrollment.id.split('-')[0] : ''}`}
-                className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white rounded-xl font-semibold hover:shadow-lg transition-all text-base min-h-[48px]"
+                href="/parent/tasks"
+                className="text-sm font-medium text-[#FF0099] flex-shrink-0 min-h-[44px] flex items-center"
               >
-                <Zap className="w-5 h-5" />
-                Continue Your Journey
-                <ChevronRight className="w-5 h-5" />
+                Start
               </Link>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* PENDING SKILL BOOSTER CARD */}
-      {pendingSkillBooster && (
-        <PendingSkillBoosterCard session={pendingSkillBooster} childName={childName} />
-      )}
-
-      {/* PARENT CALL CARD — hidden for tuition (parents already have direct coach access) */}
-      {enrollment && enrollment.status === 'active' && enrollment.enrollment_type !== 'tuition' && (
-        <ParentCallCard
-          enrollmentId={enrollment.id}
-          coachName={enrollment.coaches?.name || 'Your Coach'}
-          calls={parentCalls}
-          quota={parentCallQuota}
-          onRefresh={onRefresh}
-        />
-      )}
-
-      {/* PROGRESS PULSE CARD */}
-      {latestPulse && (
-        <ProgressPulseCard pulse={latestPulse} childName={childName} />
-      )}
-
-      {/* Pause/Resume Card — not shown for tuition (pay-per-session model) */}
-      {enrollment && enrollment.enrollment_type !== 'tuition' && (
-        <PauseEnrollmentCard
-          enrollmentId={enrollment.id}
-          childName={childName}
-          onStatusChange={onRefresh}
-        />
-      )}
-
-      {/* Stats Grid */}
-      <ProgressPanel
-        completedSessions={completedSessions}
-        totalSessions={totalSessions}
-        sessionsPurchased={enrollment?.sessions_purchased ?? null}
-        latestScore={latestScore}
-        getDaysRemaining={getDaysRemaining}
-        getProgressPercentage={getProgressPercentage}
-        isTuition={enrollment?.enrollment_type === 'tuition'}
-        sessionsRemaining={enrollment?.sessions_remaining ?? null}
-        sessionRate={enrollment?.session_rate ?? null}
-        upcomingSessionDate={upcomingSessions[0]?.scheduled_date ?? null}
-      />
-
-      {/* Group Classes Section */}
-      <GroupClassesSection childId={childId} />
-
-      {/* Reading Section */}
-      <ReadingSection childId={childId} />
-
-      {/* Sessions & Coach - Stack on mobile */}
-      <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
-        {/* Upcoming Sessions */}
-        <div className="lg:col-span-2">
-          <SessionList
-            upcomingSessions={upcomingSessions}
-            completedSessions={completedSessions}
-            totalSessions={totalSessions}
-            sessionsPurchased={enrollment?.sessions_purchased ?? null}
-            getProgressPercentage={getProgressPercentage}
-            isTuition={enrollment?.enrollment_type === 'tuition'}
-          />
+          )}
         </div>
 
-        {/* Coach Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-base">
-              <User className="w-5 h-5 text-[#FF0099]" />
-              Your Coach
-            </h2>
-          </div>
-          <div className="p-5">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-[#FF0099] to-[#7B008B] rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
-                <span className="text-2xl text-white font-bold">
-                  {getCoachName().charAt(0)}
-                </span>
+        {/* ── SECTION 3: NEXT SESSION ── */}
+        <div className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5">
+          <p className="text-xs text-gray-500 tracking-wide uppercase mb-3">Next session</p>
+          {nextSession ? (
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 bg-gray-50 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                <p className="text-[10px] text-gray-500 uppercase leading-none">
+                  {(() => {
+                    try {
+                      return new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', { weekday: 'short' });
+                    } catch { return ''; }
+                  })()}
+                </p>
+                <p className="text-lg font-medium text-gray-900 leading-none mt-0.5">
+                  {(() => {
+                    try {
+                      return new Date(nextSession.scheduled_date).getDate();
+                    } catch { return ''; }
+                  })()}
+                </p>
+                <p className="text-[10px] text-gray-500 uppercase leading-none">
+                  {(() => {
+                    try {
+                      return new Date(nextSession.scheduled_date).toLocaleDateString('en-IN', { month: 'short' });
+                    } catch { return ''; }
+                  })()}
+                </p>
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-gray-900 text-base truncate">{getCoachName()}</p>
-                <p className="text-sm text-[#FF0099]">Reading Coach</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {nextSession.title || `Session #${nextSession.session_number}`}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {formatTime(nextSession.scheduled_time)} · {getSessionDuration()} min · with {getCoachName()}
+                </p>
               </div>
             </div>
-            {enrollment?.coaches?.bio && (
-              <p className="text-sm text-gray-500 mb-4 line-clamp-2">{enrollment.coaches.bio}</p>
-            )}
-            <WhatsAppButton
-              phone={getCoachPhone()}
-              message={`Hi ${getCoachName()}, I'm ${childName}'s parent.`}
-              label="Message on WhatsApp"
-              size="lg"
-              className="w-full"
-            />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 bg-gray-50 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                <p className="text-lg font-medium text-gray-300 leading-none">--</p>
+              </div>
+              <p className="text-sm text-gray-400">No sessions scheduled</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── SECTION 4: READING LOG ── */}
+        <div className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-500 tracking-wide uppercase">Reading log</p>
+            <Link href="/library" className="text-xs font-medium text-[#FF0099]">Browse library</Link>
+          </div>
+
+          {/* Progress bar */}
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-gray-700 whitespace-nowrap">
+              {readingStats.booksThisMonth} of {readingStats.monthlyGoal} books
+            </p>
+            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#FF0099] rounded-full transition-all"
+                style={{ width: `${Math.min(100, (readingStats.booksThisMonth / readingStats.monthlyGoal) * 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Recommended book */}
+          {recommendedBook && (
+            <>
+              <div className="my-3 h-px bg-gray-100" />
+              <p className="text-xs text-gray-500 mb-2">Recommended for {getFirstName(childName)}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{recommendedBook.title}</p>
+                  {recommendedBook.reason && (
+                    <p className="text-xs text-gray-500 truncate">{recommendedBook.reason}</p>
+                  )}
+                </div>
+                <Link href="/parent/tasks" className="text-xs font-medium text-[#FF0099] flex-shrink-0 min-h-[44px] flex items-center">
+                  Log
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── E-LEARNING ACCESS ── */}
+        <Link
+          href="/parent/elearning"
+          className="rounded-2xl bg-[#E8FCF1] border border-[#1D9E75]/20 p-4 md:p-5 flex items-center gap-3 group"
+        >
+          <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+            <BookOpen className="w-4 h-4 text-[#1D9E75]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-[#085041]">E-Learning</p>
+            <p className="text-xs text-[#0F6E56]">Videos, quizzes, and practice content</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[#1D9E75] group-hover:text-[#085041] flex-shrink-0" />
+        </Link>
+
+        {/* ── SECTION 5: COACH ── */}
+        <div className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#FBEAF0] flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-medium text-[#993556]">{getCoachInitial()}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900">{getCoachName()}</p>
+              <p className="text-xs text-gray-500">{getDaysSinceLastSession()}</p>
+            </div>
+            <a
+              href={`https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}?text=${encodeURIComponent(`Hi, I'm ${childName}'s parent.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-[#E8FCF1] text-[#1D9E75] rounded-xl px-3 min-h-[44px] text-sm font-medium flex-shrink-0"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Chat
+            </a>
           </div>
         </div>
-      </div>
 
-      {/* CRO Section — timeline, support, referral, trust, rAI tip */}
-      <CROSection
-        childId={childId}
-        childName={childName}
-        parentEmail={parentEmail}
-        parentName={parentName}
-        learningProfile={learningProfile}
-        croSettings={croSettings}
-      />
+        {/* ── SECTION 6: REFERRAL ── */}
+        <Link
+          href="/parent/journey"
+          className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5 flex items-center gap-3 group"
+        >
+          <div className="w-9 h-9 rounded-lg bg-[#FFF5F9] flex items-center justify-center flex-shrink-0">
+            <Users className="w-4 h-4 text-[#FF0099]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900">Refer a friend, get {referralLabel}</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+        </Link>
+
+        {/* ── SECTION 7: NEED HELP ── */}
+        <Link
+          href="/parent/rai"
+          className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5 flex items-center gap-3 group"
+        >
+          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <HelpCircle className="w-4 h-4 text-gray-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900">Need help?</p>
+            <p className="text-xs text-gray-500">Ask rAI or submit a request</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+        </Link>
+
+      </div>
     </div>
   );
 }
-

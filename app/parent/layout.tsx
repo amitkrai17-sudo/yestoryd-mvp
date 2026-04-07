@@ -17,7 +17,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import ParentLayout from '@/components/layouts/ParentLayout';
-import ChatWidget from '@/components/chat/ChatWidget';
 import { supabase } from '@/lib/supabase/client';
 import { ParentContext, ParentContextType, ParentData, ChildData } from './context';
 
@@ -402,14 +401,6 @@ export default function ParentAppLayout({
             children_={children_}
             selectedChildId={selectedChildId}
             setSelectedChildId={setSelectedChildId}
-          />
-        }
-        chatWidget={
-          <ChatWidget
-            userRole="parent"
-            userEmail={user?.email || ''}
-            childId={selectedChildId || undefined}
-            childName={selectedChild?.child_name || selectedChild?.name || undefined}
           />
         }
       >

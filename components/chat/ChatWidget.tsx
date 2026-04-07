@@ -21,6 +21,7 @@ interface ChatWidgetProps {
   initialPrompt?: string;
   autoSend?: boolean;
   onMessageSent?: (message: string) => void;
+  onClose?: () => void;
   contextualPrompts?: string[];
   sessionContext?: {
     sessionId: string;
@@ -86,6 +87,7 @@ export function ChatWidget({
   initialPrompt,
   autoSend = false,
   onMessageSent,
+  onClose: onCloseProp,
   contextualPrompts,
   sessionContext
 }: ChatWidgetProps) {
@@ -338,8 +340,16 @@ export function ChatWidget({
     }
   };
 
+  // Notify parent when widget is closed (lets parent unmount the widget)
+  useEffect(() => {
+    if (!isOpen && onCloseProp) {
+      onCloseProp();
+    }
+  }, [isOpen, onCloseProp]);
+
   // Closed state - floating button
   if (!isOpen) {
+    if (onCloseProp) return null;
     return (
       <button
         onClick={() => setIsOpen(true)}

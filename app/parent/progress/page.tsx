@@ -1,499 +1,476 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
-import { EmptyState } from '@/components/shared/EmptyState';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
-  TrendingUp,
-  Star,
-  BookOpen,
-  Target,
-  Award,
-  Calendar,
-  CheckCircle,
-  Lock,
-  GraduationCap,
-  Trophy,
-  Check,
-  Flame,
+  BookOpen, Check, Lock, Flame, Trophy,
+  Star, GraduationCap, TrendingUp, Target,
+  ChevronRight, MapPin,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { useParentContext } from '@/app/parent/context';
 
-interface Enrollment {
-  id: string;
-  status: string;
-  program_start: string;
-  program_end: string;
-  enrollment_type?: string;
+// ============================================================
+// Types
+// ============================================================
+
+interface SkillRating {
+  skill_name: string;
+  rating: string; // Emerging | Growing | Strong | Mastered
+  rating_raw: string;
+  trend: string;
+}
+
+interface IntelligenceProfile {
+  overall_reading_level: string;
+  skill_ratings: SkillRating[];
+  narrative_summary: string;
+  key_strengths: string[];
+  growth_areas: string[];
+  last_assessed: string;
 }
 
 interface LearningEvent {
   id: string;
   event_type: string;
-  event_data: any;
+  event_data: Record<string, any>;
   created_at: string;
 }
 
+// ============================================================
+// Helpers
+// ============================================================
+
+function pluralize(n: number, word: string): string {
+  return `${n} ${word}${n !== 1 ? 's' : ''}`;
+}
+
+function formatEventDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+// Map skill rating to progress bar width
+function ratingToWidth(rating: string): string {
+  switch (rating) {
+    case 'Mastered': return 'w-full';
+    case 'Strong': return 'w-3/4';
+    case 'Growing': return 'w-1/2';
+    case 'Emerging': return 'w-1/4';
+    default: return 'w-0';
+  }
+}
+
+function ratingToOpacity(rating: string): string {
+  switch (rating) {
+    case 'Mastered': return 'opacity-100';
+    case 'Strong': return 'opacity-100';
+    case 'Growing': return 'opacity-70';
+    case 'Emerging': return 'opacity-50';
+    default: return 'opacity-0';
+  }
+}
+
+// Map rating_raw to parent-friendly display label
+function ratingLabel(rating: string): string {
+  switch (rating) {
+    case 'Mastered': return 'Mastered';
+    case 'Strong': return 'Developing';
+    case 'Growing': return 'Emerging';
+    case 'Emerging': return 'Emerging';
+    default: return 'Not yet assessed';
+  }
+}
+
+// Generate meaningful milestone text from learning events
+function getMilestoneText(event: LearningEvent): string {
+  const data = event.event_data || {};
+  switch (event.event_type) {
+    case 'session_completed':
+      if (data.session_number) return `Completed session #${data.session_number}`;
+      return 'Completed a coaching session';
+    case 'assessment':
+      if (data.score) return `Reading assessment: scored ${data.score}/10`;
+      if (data.wpm) return `Reading speed: ${data.wpm} words per minute`;
+      return 'Completed a reading assessment';
+    case 'skill_mastered':
+      return `${data.skill || 'A skill'} mastered`;
+    case 'achievement':
+      if (data.description) return data.description;
+      if (data.achievement) return data.achievement;
+      return 'Achievement unlocked';
+    case 'practice_completed':
+      return `Completed daily practice${data.skill_label ? `: ${data.skill_label}` : ''}`;
+    default:
+      return data.description || 'Learning milestone reached';
+  }
+}
+
+// ============================================================
+// Page Component
+// ============================================================
+
 export default function ParentProgressPage() {
-  const [childId, setChildId] = useState<string | null>(null);
-  const [childName, setChildName] = useState('');
-  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
-  const [enrollmentType, setEnrollmentType] = useState<string | null>(null);
+  const { selectedChildId, selectedChild } = useParentContext();
+  const childName = selectedChild?.child_name || selectedChild?.name || 'Your Child';
+
+  const [loading, setLoading] = useState(true);
+
+  // Enrollment/session data
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
-  const [latestScore, setLatestScore] = useState<number | null>(null);
-  const [learningEvents, setLearningEvents] = useState<LearningEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [enrollmentType, setEnrollmentType] = useState<string | null>(null);
+  const [seasonName, setSeasonName] = useState('');
 
-  useEffect(() => {
-    fetchData();
+  // Intelligence profile
+  const [hasProfile, setHasProfile] = useState(false);
+  const [profile, setProfile] = useState<IntelligenceProfile | null>(null);
+
+  // Learning events for milestones
+  const [milestones, setMilestones] = useState<LearningEvent[]>([]);
+
+  const fetchData = useCallback(async (childId: string) => {
+    try {
+      // Fetch dashboard (session counts) + intelligence profile in parallel
+      const [dashboardRes, intelligenceRes] = await Promise.all([
+        fetch('/api/parent/dashboard'),
+        fetch(`/api/parent/intelligence/${childId}`),
+      ]);
+
+      const dashboardData = await dashboardRes.json();
+      const intelligenceData = await intelligenceRes.json();
+
+      // Dashboard data — session counts + recent sessions for milestones
+      if (dashboardData.success && dashboardData.child) {
+        setSessionsCompleted(dashboardData.child.sessionsCompleted || 0);
+        setTotalSessions(dashboardData.child.totalSessions || 0);
+
+        // Build milestones from recent session notes + upcoming sessions
+        const sessionMilestones = (dashboardData.recentNotes || []).map((note: any) => ({
+          id: note.id,
+          event_type: 'session_completed',
+          event_data: {
+            session_number: note.scheduled_sessions?.session_number,
+            focus_area: note.focus_area || note.scheduled_sessions?.session_type,
+          },
+          created_at: note.created_at,
+        }));
+
+        setMilestones(sessionMilestones.slice(0, 5));
+      }
+
+      // Intelligence data — skill ratings + reading level
+      if (intelligenceData.success) {
+        setHasProfile(intelligenceData.has_profile);
+        if (intelligenceData.profile) {
+          setProfile(intelligenceData.profile);
+          setSeasonName(intelligenceData.profile.overall_reading_level || 'Building Reader');
+        }
+      }
+
+      if (!intelligenceData.profile) {
+        setSeasonName('Building Reader');
+      }
+
+    } catch (err) {
+      console.error('Progress fetch error:', err);
+    }
   }, []);
 
-  async function fetchData() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/parent/login');
-        return;
-      }
-
-      // Find parent record
-      const { data: parentData } = await supabase
-        .from('parents')
-        .select('id')
-        .eq('email', user.email!)
-        .maybeSingle();
-
-      let enrolledChild = null;
-
-      // Find enrolled child by parent_id first
-      if (parentData?.id) {
-        const { data: childByParentId } = await supabase
-          .from('children')
-          .select('*')
-          .eq('parent_id', parentData.id)
-          .eq('lead_status', 'enrolled')
-          .order('enrolled_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (childByParentId) {
-          enrolledChild = childByParentId;
-        }
-      }
-
-      // Fallback: try by parent_email
-      if (!enrolledChild) {
-        const { data: childByEmail } = await supabase
-          .from('children')
-          .select('*')
-          .eq('parent_email', user.email ?? '')
-          .eq('lead_status', 'enrolled')
-          .order('enrolled_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (childByEmail) {
-          enrolledChild = childByEmail;
-        }
-      }
-
-      if (!enrolledChild) {
-        setLoading(false);
-        return;
-      }
-
-      setChildId(enrolledChild.id);
-      setChildName(enrolledChild.name || enrolledChild.child_name || 'Your Child');
-      setLatestScore(enrolledChild.latest_assessment_score);
-
-      // Fetch enrollment
-      const { data: enrollmentData } = await supabase
-        .from('enrollments')
-        .select('*, enrollment_type')
-        .eq('child_id', enrolledChild.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (enrollmentData) {
-        setEnrollment(enrollmentData as any);
-        setEnrollmentType(enrollmentData.enrollment_type || null);
-      }
-
-      // Count completed sessions
-      const { count: completed } = await supabase
-        .from('scheduled_sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('child_id', enrolledChild.id)
-        .eq('status', 'completed');
-
-      setSessionsCompleted(completed || 0);
-
-      // Count total sessions
-      const { count: total } = await supabase
-        .from('scheduled_sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('child_id', enrolledChild.id);
-
-      setTotalSessions(total || enrollmentData?.total_sessions || enrollmentData?.sessions_purchased || 24);
-
-      // Fetch learning events (assessments, achievements, etc.)
-      const { data: events } = await supabase
-        .from('learning_events')
-        .select('*')
-        .eq('child_id', enrolledChild.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      setLearningEvents((events || []) as any);
-
+  useEffect(() => {
+    if (!selectedChildId) {
       setLoading(false);
-    } catch (error) {
-      console.error('Error fetching progress:', error);
-      setLoading(false);
+      return;
     }
-  }
+    setLoading(true);
+    fetchData(selectedChildId).finally(() => setLoading(false));
 
-  function getProgressPercentage(): number {
-    if (totalSessions === 0) return 0;
-    return Math.round((sessionsCompleted / totalSessions) * 100);
-  }
+    const handleChildChange = () => {
+      setLoading(true);
+      fetchData(selectedChildId).finally(() => setLoading(false));
+    };
+    window.addEventListener('childChanged', handleChildChange);
+    return () => window.removeEventListener('childChanged', handleChildChange);
+  }, [selectedChildId, fetchData]);
 
-  function getScoreColor(score: number): string {
-    if (score >= 8) return 'text-emerald-700';
-    if (score >= 5) return 'text-[#FF0099]';
-    return 'text-orange-600';
-  }
+  // Computed values
+  const remaining = Math.max(0, totalSessions - sessionsCompleted);
+  const progressPercent = totalSessions > 0 ? Math.round((sessionsCompleted / totalSessions) * 100) : 0;
 
-  function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
+  // Motivational message
+  function getMotivationalMessage(): string {
+    if (remaining === 0 && totalSessions > 0) return `All ${totalSessions} sessions completed. Amazing progress!`;
+    if (remaining === 1) return 'Almost there! 1 session remaining';
+    if (remaining <= 3) return `Just ${remaining} sessions to go! Keep it up`;
+    if (sessionsCompleted === 0) return 'The reading journey begins with the first session';
+    return `${sessionsCompleted} sessions completed. Great momentum!`;
   }
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-[#FF0099] border-t-transparent rounded-full animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Spinner size="lg" />
+      </div>
     );
   }
 
-  if (!childId) {
+  if (!selectedChildId) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-8">
-        <EmptyState
-          icon={BookOpen}
-          title="No Active Enrollment"
-          description="Enroll your child to start tracking progress."
-          action={{ label: 'Reading Test - Free', href: '/assessment' }}
-        />
+      <div className="p-4 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl border border-gray-100 py-8">
+            <EmptyState
+              icon={BookOpen}
+              title="No Active Enrollment"
+              description="Enroll your child to start tracking progress."
+              action={{ label: 'Reading Test - Free', href: '/assessment' }}
+            />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Progress Report</h1>
-          <p className="text-gray-500">{childName}'s reading journey</p>
+    <div className="p-4 lg:p-8">
+      <div className="max-w-2xl mx-auto space-y-5">
+        {/* ============ HEADER ============ */}
+        <div>
+          <h1 className="text-xl font-medium text-gray-900">{childName}&apos;s progress</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Reading journey overview</p>
         </div>
 
-        {/* Session Progress Track */}
-        {enrollmentType === 'tuition' ? (
-          <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-[#FF0099]" />
-              Sessions Completed
-            </h2>
-            <p className="text-center text-4xl font-bold text-[#FF0099] mb-2">{sessionsCompleted}</p>
-            <p className="text-center text-sm text-gray-500">sessions completed with your coach</p>
+        {/* ============ SECTION 1: HERO — READING LEVEL ============ */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="flex items-center gap-3 mb-4">
+            {/* Gradient icon */}
+            <div className="w-[52px] h-[52px] rounded-xl bg-gradient-to-br from-[#FF0099] to-[#7B008B] flex items-center justify-center flex-shrink-0">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-lg font-medium text-gray-900">
+                {seasonName || 'Building reader'}
+              </p>
+              <p className="text-sm text-gray-500">
+                {enrollmentType === 'tuition' ? 'Tuition program' : 'Reading program'}
+                {totalSessions > 0 && ` · ${pluralize(totalSessions, 'session')} total`}
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-            <h2 className="font-semibold text-gray-900 mb-5 flex items-center gap-2">
-              <Target className="w-5 h-5 text-[#FF0099]" />
-              Session Progress
-            </h2>
 
-            {/* Visual Progress Track */}
-            <div className="relative mb-6">
-              {/* Track Line */}
-              <div className="h-2 bg-gray-100 rounded-full">
+          {/* Season progress bar */}
+          {totalSessions > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-gray-500">Season progress</span>
+                <span className="text-xs text-gray-500">
+                  {sessionsCompleted} of {pluralize(totalSessions, 'session')}
+                </span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-2 bg-gradient-to-r from-[#FF0099] to-[#7B008B] rounded-full transition-all duration-500"
-                  style={{ width: `${(sessionsCompleted / totalSessions) * 100}%` }}
+                  className="h-full bg-[#FF0099] rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
-
-              {/* Milestone Dots */}
-              <div className="flex justify-between mt-3">
-                {Array.from({ length: totalSessions }, (_, i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                      i < sessionsCompleted
-                        ? 'bg-[#FF0099] text-white shadow-sm'
-                        : i === sessionsCompleted
-                          ? 'bg-pink-50 text-[#FF0099] border-2 border-[#FF0099]'
-                          : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      {i < sessionsCompleted ? <Check className="w-3.5 h-3.5" /> : i + 1}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <p className="text-center text-base text-gray-600">
-              <span className="font-bold text-[#FF0099]">{sessionsCompleted}</span> of <span className="font-bold text-gray-900">{totalSessions}</span> sessions completed
-            </p>
-          </div>
-        )}
-
-        {/* Stats Cards Row */}
-        {enrollmentType === 'tuition' ? (
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 bg-emerald-50 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-emerald-700" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{sessionsCompleted}</p>
-              <p className="text-sm text-gray-500">Sessions Done</p>
-            </div>
-            {latestScore !== null && (
-              <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
-                <div className="w-10 h-10 mx-auto mb-2 bg-pink-50 rounded-lg flex items-center justify-center">
-                  <Star className="w-5 h-5 text-[#FF0099]" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{latestScore}/10</p>
-                <p className="text-sm text-gray-500">Latest Score</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            {/* Progress % */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 bg-pink-50 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-[#FF0099]" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</p>
-              <p className="text-sm text-gray-500">Progress</p>
-            </div>
-
-            {/* Sessions */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 bg-emerald-50 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-emerald-700" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{sessionsCompleted}/{totalSessions}</p>
-              <p className="text-sm text-gray-500">Sessions</p>
-            </div>
-
-            {/* Latest Score */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 bg-blue-50 rounded-lg flex items-center justify-center">
-                <Star className="w-5 h-5 text-blue-700" />
-              </div>
-              <p className={`text-2xl font-bold ${latestScore ? getScoreColor(latestScore) : 'text-gray-400'}`}>
-                {latestScore ?? '--'}/10
+              <p className="text-xs text-[#FF0099] mt-1.5 font-medium">
+                {getMotivationalMessage()}
               </p>
-              <p className="text-sm text-gray-500">Score</p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Timeline */}
-        {learningEvents.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-            <div className="p-5 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-[#FF0099]" />
-                Learning Timeline
-              </h2>
+        {/* ── JOURNEY ACCESS ── */}
+        <Link
+          href="/parent/journey"
+          className="bg-[#EEEDFE] rounded-2xl border border-[#534AB7]/20 p-4 flex items-center gap-3 group"
+        >
+          <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-4 h-4 text-[#534AB7]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-[#3C3489]">Journey</p>
+            <p className="text-xs text-[#534AB7]">View {childName}&apos;s learning roadmap</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[#534AB7] group-hover:text-[#3C3489] flex-shrink-0" />
+        </Link>
+
+        {/* ============ SECTION 2: SKILL AREAS ============ */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Skill areas</p>
+            <Link
+              href={`/parent/rai`}
+              className="text-xs text-[#FF0099] font-medium flex items-center gap-0.5 hover:underline"
+            >
+              View full profile
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {hasProfile && profile?.skill_ratings && profile.skill_ratings.length > 0 ? (
+            <div className="space-y-3">
+              {profile.skill_ratings.map((skill, i) => (
+                <div key={i}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-900">{skill.skill_name}</span>
+                    <span className="text-xs text-gray-500">{ratingLabel(skill.rating)}</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full bg-[#FF0099] rounded-full ${ratingToWidth(skill.rating)} ${ratingToOpacity(skill.rating)}`}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="divide-y divide-gray-200">
-              {learningEvents.map((event) => (
-                <div key={event.id} className="p-5 flex items-start gap-4">
-                  <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center flex-shrink-0">
-                    {event.event_type === 'assessment' ? (
-                      <Award className="w-5 h-5 text-[#FF0099]" />
-                    ) : event.event_type === 'session_completed' ? (
-                      <CheckCircle className="w-5 h-5 text-emerald-700" />
-                    ) : (
-                      <Star className="w-5 h-5 text-yellow-400" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">
-                      {event.event_type === 'assessment' ? 'Reading Assessment' :
-                       event.event_type === 'session_completed' ? 'Session Completed' :
-                       'Achievement Unlocked'}
-                    </p>
-                    <p className="text-sm text-gray-500">{formatDate(event.created_at)}</p>
-                    {event.event_data?.score && (
-                      <p className={`text-lg font-bold mt-1 ${getScoreColor(event.event_data.score)}`}>
-                        Score: {event.event_data.score}/10
-                      </p>
-                    )}
-                    {event.event_data?.feedback && (
-                      <p className="text-sm text-gray-600 mt-1">{event.event_data.feedback}</p>
-                    )}
-                  </div>
+          ) : (
+            <div className="text-center py-6">
+              <Target className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">
+                Skill assessments will appear after a few sessions
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ============ SECTION 3: ACHIEVEMENTS ============ */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Achievements</p>
+
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+            {/* First Step */}
+            <AchievementBadge
+              icon={Trophy}
+              name="First Step"
+              unlocked={sessionsCompleted >= 1}
+              detail={sessionsCompleted >= 1 ? 'Unlocked' : '1 session'}
+            />
+
+            {/* On Fire — 3 sessions */}
+            <AchievementBadge
+              icon={Flame}
+              name="On Fire"
+              unlocked={sessionsCompleted >= 3}
+              detail={sessionsCompleted >= 3 ? '3 sessions' : `${sessionsCompleted}/3 sessions`}
+            />
+
+            {/* Consistent — 10 sessions */}
+            <AchievementBadge
+              icon={Star}
+              name="Consistent"
+              unlocked={sessionsCompleted >= 10}
+              detail={sessionsCompleted >= 10 ? '10 sessions' : `${sessionsCompleted}/10 sessions`}
+            />
+
+            {/* Graduate */}
+            <AchievementBadge
+              icon={GraduationCap}
+              name="Graduate"
+              unlocked={totalSessions > 0 && sessionsCompleted >= totalSessions}
+              detail={totalSessions > 0 && sessionsCompleted >= totalSessions ? 'Complete' : `${sessionsCompleted}/${totalSessions}`}
+            />
+          </div>
+        </div>
+
+        {/* ============ SECTION 4: RECENT MILESTONES ============ */}
+        {milestones.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Recent milestones</p>
+
+            <div className="border-l-2 border-[#FFD6E8] ml-2 space-y-4">
+              {milestones.map((event, i) => (
+                <div key={event.id} className="relative pl-5">
+                  {/* Dot */}
+                  <div
+                    className={`absolute -left-[5px] top-1 w-2 h-2 rounded-full ${
+                      i === 0 ? 'bg-[#FF0099]' : 'bg-[#FFD6E8]'
+                    }`}
+                  />
+                  <p className="text-sm text-gray-900">{getMilestoneText(event)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {formatEventDate(event.created_at)}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Empty state for timeline */}
-        {learningEvents.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-            <div className="p-5 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-[#FF0099]" />
-                Learning Timeline
-              </h2>
+        {/* Empty milestone state */}
+        {milestones.length === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Recent milestones</p>
+            <div className="text-center py-6">
+              <TrendingUp className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">
+                Milestones will appear as {childName} progresses
+              </p>
             </div>
-            <EmptyState
-              icon={Calendar}
-              title="No learning events yet"
-              description="Events will appear here as your child progresses"
-            />
           </div>
         )}
 
-        {/* Achievement Badges - Horizontal Scroll */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Award className="w-5 h-5 text-[#FF0099]" />
-            Achievements
-          </h3>
-
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
-            {/* First Session Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-              sessionsCompleted >= 1 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
-            }`}>
-              <div className="flex justify-center mb-2">
-                {sessionsCompleted >= 1 ? <Trophy className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-              </div>
-              <p className="text-xs font-semibold">First Step</p>
-              {sessionsCompleted >= 1 && <p className="text-[10px] mt-0.5 opacity-70">Unlocked!</p>}
+        {/* ============ SECTION 5: MOTIVATIONAL BANNER ============ */}
+        {sessionsCompleted > 0 && (
+          <div className="bg-[#FFF5F9] rounded-2xl border border-[#FFD6E8] p-4 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#E8FCF1] flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Check className="w-4 h-4 text-emerald-600" />
             </div>
-
-            {/* 3 in a Row Badge */}
-            <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-              sessionsCompleted >= 3 ? 'bg-orange-50 text-orange-700' : 'bg-gray-50 text-gray-400'
-            }`}>
-              <div className="flex justify-center mb-2">
-                {sessionsCompleted >= 3 ? <Flame className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-              </div>
-              <p className="text-xs font-semibold">On Fire!</p>
-              {sessionsCompleted >= 3 && <p className="text-[10px] mt-0.5 opacity-70">3 sessions</p>}
-            </div>
-
-            {enrollmentType === 'tuition' ? (
-              <>
-                {/* Consistent Badge (tuition: 10+ sessions) */}
-                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-                  sessionsCompleted >= 10 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
-                }`}>
-                  <div className="flex justify-center mb-2">
-                    {sessionsCompleted >= 10 ? <Star className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-                  </div>
-                  <p className="text-xs font-semibold">Consistent!</p>
-                  {sessionsCompleted >= 10 && <p className="text-[10px] mt-0.5 opacity-70">10 sessions</p>}
-                </div>
-
-                {/* Champion Badge (tuition: 20+ sessions) */}
-                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-                  sessionsCompleted >= 20 ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-400'
-                }`}>
-                  <div className="flex justify-center mb-2">
-                    {sessionsCompleted >= 20 ? <GraduationCap className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-                  </div>
-                  <p className="text-xs font-semibold">Champion!</p>
-                  {sessionsCompleted >= 20 && <p className="text-[10px] mt-0.5 opacity-70">20 sessions</p>}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Halfway Badge */}
-                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-                  sessionsCompleted >= 5 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'
-                }`}>
-                  <div className="flex justify-center mb-2">
-                    {sessionsCompleted >= 5 ? <Star className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-                  </div>
-                  <p className="text-xs font-semibold">Halfway!</p>
-                  {sessionsCompleted >= 5 && <p className="text-[10px] mt-0.5 opacity-70">5 sessions</p>}
-                </div>
-
-                {/* Graduate Badge */}
-                <div className={`flex-shrink-0 w-24 p-3 rounded-xl text-center snap-start ${
-                  sessionsCompleted >= totalSessions ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-400'
-                }`}>
-                  <div className="flex justify-center mb-2">
-                    {sessionsCompleted >= totalSessions ? <GraduationCap className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
-                  </div>
-                  <p className="text-xs font-semibold">Graduate</p>
-                  {sessionsCompleted >= totalSessions && <p className="text-[10px] mt-0.5 opacity-70">Complete!</p>}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Motivational Banner */}
-        {enrollmentType === 'tuition' ? (
-          <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Great progress!</h3>
-                <p className="text-white/80 text-sm">
-                  {sessionsCompleted} sessions completed. Keep up the great work!
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-r from-[#7B008B] to-[#FF0099] rounded-2xl p-5 text-white mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                {sessionsCompleted < totalSessions ? (
-                  <Target className="w-6 h-6" />
-                ) : (
-                  <Trophy className="w-6 h-6" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">
-                  {sessionsCompleted < totalSessions
-                    ? `${totalSessions - sessionsCompleted} sessions to go!`
-                    : 'Congratulations! Program Complete!'
-                  }
-                </h3>
-                <p className="text-white/80 text-sm">
-                  {sessionsCompleted < totalSessions
-                    ? 'Keep up the great work. Consistency is key!'
-                    : 'You\'ve completed all sessions. Amazing progress!'
-                  }
-                </p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Great progress!</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {remaining === 0
+                  ? `${pluralize(sessionsCompleted, 'session')} completed. ${childName} finished the season!`
+                  : `${pluralize(sessionsCompleted, 'session')} completed. ${pluralize(remaining, 'more')} to finish this season.`
+                }
+              </p>
             </div>
           </div>
         )}
       </div>
-    </>
+    </div>
+  );
+}
+
+// ============================================================
+// Achievement Badge Component
+// ============================================================
+
+function AchievementBadge({
+  icon: Icon,
+  name,
+  unlocked,
+  detail,
+}: {
+  icon: typeof Trophy;
+  name: string;
+  unlocked: boolean;
+  detail: string;
+}) {
+  return (
+    <div
+      className={`flex-shrink-0 w-[90px] p-3 rounded-2xl text-center snap-start ${
+        unlocked
+          ? 'bg-[#FFF5F9]'
+          : 'bg-gray-100 opacity-50'
+      }`}
+    >
+      <div className="flex justify-center mb-1.5">
+        {unlocked ? (
+          <Icon className="w-6 h-6 text-[#993556]" />
+        ) : (
+          <Lock className="w-6 h-6 text-gray-400" />
+        )}
+      </div>
+      <p className={`text-xs font-semibold ${unlocked ? 'text-[#993556]' : 'text-gray-400'}`}>
+        {name}
+      </p>
+      <p className={`text-[10px] mt-0.5 ${unlocked ? 'text-[#993556]/70' : 'text-gray-400'}`}>
+        {detail}
+      </p>
+    </div>
   );
 }
