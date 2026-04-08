@@ -406,16 +406,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ───────────────────────────────────────────────────────
-    // STEP 10: Cleanup (fire-and-forget) + return session
+    // STEP 10: Cleanup + return session
     // ───────────────────────────────────────────────────────
-    // Token is already marked verified — delete is non-critical, don't block response
-    supabase
+    await supabase
       .from('verification_tokens')
       .delete()
-      .eq('id', token.id)
-      .then(({ error: delErr }) => {
-        if (delErr) console.warn(`[${requestId}] Token cleanup failed:`, delErr.message);
-      });
+      .eq('id', token.id);
 
     const response: VerifyOTPResponse = {
       success: true,

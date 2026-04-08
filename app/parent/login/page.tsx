@@ -249,7 +249,7 @@ export default function ParentLoginPage() {
         return;
       }
 
-      // Fallback: server returned actionLink (server-side token exchange failed)
+      // actionLink fallback — server-side token exchange failed
       if (data.actionLink) {
         window.location.href = data.actionLink;
       } else {
