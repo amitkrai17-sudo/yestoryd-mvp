@@ -213,12 +213,14 @@ export async function POST(request: NextRequest) {
     
     if (userType === 'coach') {
       // ───── COACH LOOKUP ─────
-      const { data: coach } = await supabase
+      // Use .limit(1) instead of .single() to avoid PGRST116 on duplicate phones
+      const coach = await supabase
         .from('coaches')
         .select('id, email, phone, name')
         .or(`phone.eq.${normalizedPhone},phone.eq.${normalizedPhone.slice(1)},phone.eq.${normalizedPhone.slice(3)}`)
         .eq('is_active', true)
-        .single();
+        .limit(1)
+        .then(res => res.data?.[0] ?? null);
       
       if (coach) {
         userEmail = coach.email;
@@ -235,25 +237,27 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // ───── PARENT LOOKUP ─────
-      // Check parents table first
-      const { data: parent } = await supabase
+      // Use .limit(1) instead of .single() to avoid PGRST116 on duplicate phones
+      const parent = await supabase
         .from('parents')
-        .select('id, email, phone')
+        .select('id, email, phone, user_id')
         .or(`phone.eq.${normalizedPhone},phone.eq.${normalizedPhone.slice(1)},phone.eq.${normalizedPhone.slice(3)}`)
-        .single();
+        .order('user_id', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .then(res => res.data?.[0] ?? null);
       
       if (parent) {
         userEmail = parent.email;
         console.log(`[${requestId}] Found parent: ${userEmail}`);
       } else {
         // Check children table (parent_phone)
-        const { data: child } = await supabase
+        const child = await supabase
           .from('children')
           .select('parent_email, parent_phone, parent_name')
           .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(1)},parent_phone.eq.${normalizedPhone.slice(3)}`)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .then(res => res.data?.[0] ?? null);
         
         if (child) {
           userEmail = child.parent_email;

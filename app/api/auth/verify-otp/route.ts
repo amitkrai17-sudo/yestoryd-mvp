@@ -208,12 +208,14 @@ export async function POST(request: NextRequest) {
 
     if (userType === 'coach') {
       // ───── FIND COACH ─────
-      const { data: coach } = await supabase
+      // Use .limit(1) instead of .single() to avoid PGRST116 on duplicate phones
+      const coach = await supabase
         .from('coaches')
         .select('id, email, name, phone')
         .or(`phone.eq.${normalizedPhone},phone.eq.${normalizedPhone.slice(1)},phone.eq.${normalizedPhone.slice(3)}`)
         .eq('is_active', true)
-        .single();
+        .limit(1)
+        .then(res => res.data?.[0] ?? null);
 
       if (coach) {
         user = {
@@ -240,22 +242,26 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // ───── FIND OR CREATE PARENT ─────
+      // Use .limit(1) instead of .single() — .single() throws PGRST116
+      // when duplicate phone records exist, causing login to fail entirely.
+      // Prefer records that already have a user_id linked (most complete).
       let parent = await supabase
         .from('parents')
-        .select('id, email, name, phone')
+        .select('id, email, name, phone, user_id')
         .or(`phone.eq.${normalizedPhone},phone.eq.${normalizedPhone.slice(1)},phone.eq.${normalizedPhone.slice(3)}`)
-        .single()
-        .then(res => res.data);
+        .order('user_id', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .then(res => res.data?.[0] ?? null);
 
       if (!parent) {
         // Find from children table
-        const { data: child } = await supabase
+        const child = await supabase
           .from('children')
           .select('parent_email, parent_phone, parent_name')
           .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(1)},parent_phone.eq.${normalizedPhone.slice(3)}`)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .then(res => res.data?.[0] ?? null);
 
         if (child && child.parent_email) {
           // Create parent record (only if we have an email)
