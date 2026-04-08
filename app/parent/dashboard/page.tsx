@@ -216,11 +216,13 @@ export default function ParentDashboardPage() {
         .catch(() => {});
 
       // Fire-and-forget: referral percent from site_settings
-      supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'parent_referral_credit_percent')
-        .maybeSingle()
+      Promise.resolve(
+        supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'parent_referral_credit_percent')
+          .maybeSingle()
+      )
         .then(({ data }) => {
           const pct = parseInt(String(data?.value).replace(/"/g, '')) || 10;
           setReferralLabel(`${pct}% off`);

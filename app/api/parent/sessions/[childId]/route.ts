@@ -114,7 +114,10 @@ export async function GET(
       if (notes) {
         for (const note of notes) {
           if (note.session_id) {
-            notesMap[note.session_id] = note;
+            notesMap[note.session_id] = {
+              highlights: note.highlights ?? undefined,
+              areas_to_improve: note.areas_to_improve ?? undefined,
+            };
           }
         }
       }
