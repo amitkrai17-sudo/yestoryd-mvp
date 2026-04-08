@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
@@ -20,7 +20,6 @@ export default function ParentLoginPage() {
   const [message, setMessage] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
   const unauthorizedError = errorParam === 'unauthorized';

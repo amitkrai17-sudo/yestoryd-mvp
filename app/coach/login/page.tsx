@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, Users, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
@@ -20,7 +20,6 @@ export default function CoachLoginPage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState<string>(COMPANY_CONFIG.leadBotWhatsApp);
   const [checkingSession, setCheckingSession] = useState(true);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
   const unauthorizedError = errorParam === 'unauthorized';

@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhone } from '@/lib/utils/phone';
+import { hashOTP, secureCompare } from '@/lib/utils/otp';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -59,20 +60,6 @@ interface VerifyOTPResponse {
   error?: string;
 }
 
-// ============================================================
-// HELPER FUNCTIONS
-// ============================================================
-
-// ❌ REMOVED: Local normalizePhone - now using centralized version from @/lib/utils/phone
-
-function hashOTP(otp: string): string {
-  return crypto.createHash('sha256').update(otp).digest('hex');
-}
-
-function secureCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-}
 
 // ============================================================
 // MAIN HANDLER
@@ -106,8 +93,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[${requestId}] Verify OTP for ${normalizedPhone.slice(-4)} (${userType})`);
-    console.log(`[${requestId}] Looking for identifier: ${normalizedPhone}`); // Debug log
+    console.log(`[${requestId}] Verify OTP for ***${normalizedPhone.slice(-4)} (${userType})`);
 
     // ───────────────────────────────────────────────────────
     // STEP 2: Find token
@@ -122,20 +108,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (tokenError || !token) {
-      console.log(`[${requestId}] Token not found for identifier: ${normalizedPhone}`);
-      
-      // Debug: Check what tokens exist for this phone (last 4 digits match)
-      const { data: debugTokens } = await supabase
-        .from('verification_tokens')
-        .select('identifier, created_at, expires_at')
-        .like('identifier', `%${normalizedPhone.slice(-4)}`)
-        .order('created_at', { ascending: false })
-        .limit(3);
-      
-      if (debugTokens && debugTokens.length > 0) {
-        console.log(`[${requestId}] Found tokens with similar phones:`, debugTokens.map(t => t.identifier));
-      }
-      
+      console.log(`[${requestId}] Token not found for ***${normalizedPhone.slice(-4)}`);
       return NextResponse.json(
         { success: false, error: 'OTP expired or not found. Please request a new one.' },
         { status: 400 }

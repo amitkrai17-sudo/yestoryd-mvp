@@ -16,16 +16,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidPhone, normalizePhone } from '@/lib/utils/phone';
+import { generateOTP, hashOTP } from '@/lib/utils/otp';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import * as Sentry from '@sentry/nextjs';
 
 const supabase = createAdminClient();
 
 export const dynamic = 'force-dynamic';
 
-// Service Supabase client (bypasses RLS)
 // ============================================================
 // TYPES
 // ============================================================
@@ -43,25 +44,6 @@ interface SendOTPResponse {
   expiresIn: number;
   isNewUser?: boolean;
   userType: 'parent' | 'coach';
-}
-
-// ============================================================
-// HELPER FUNCTIONS
-// ============================================================
-
-// Using central phone utility - normalizePhone imported from lib/utils/phone
-
-// Using central phone utility
-
-function generateOTP(): string {
-  const buffer = crypto.randomBytes(4);
-  const num = buffer.readUInt32BE(0);
-  const otp = (num % 900000) + 100000;
-  return otp.toString();
-}
-
-function hashOTP(otp: string): string {
-  return crypto.createHash('sha256').update(otp).digest('hex');
 }
 
 async function sendWhatsAppOTP(phone: string, otp: string): Promise<boolean> {
@@ -116,8 +98,6 @@ async function sendWhatsAppOTP(phone: string, otp: string): Promise<boolean> {
 }
 
 async function sendEmailOTP(email: string, otp: string): Promise<boolean> {
-  const { sendEmail, isEmailConfigured } = require('@/lib/email/resend-client');
-
   if (!isEmailConfigured()) {
     console.error('[OTP] RESEND_API_KEY not configured');
     return false;
