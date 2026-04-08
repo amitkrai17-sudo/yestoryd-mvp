@@ -17,14 +17,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhone } from '@/lib/utils/phone';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import * as Sentry from '@sentry/nextjs';
 
 const supabase = createAdminClient();
 
+// Anon client for verifyOtp — service role key doesn't create user sessions
+const supabaseAnon = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 export const dynamic = 'force-dynamic';
 
-// Service Supabase client (bypasses RLS)
 // ============================================================
 // TYPES
 // ============================================================
@@ -358,31 +364,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Link auth user to parent/coach record
+    // Link user_id and exchange token for session in parallel (independent operations)
     const authUserId = linkData.user?.id;
-    if (authUserId && actualUserType === 'parent' && user?.id) {
-      try {
-        await supabase
-          .from('parents')
-          .update({ user_id: authUserId, updated_at: new Date().toISOString() })
-          .eq('id', user.id)
-          .is('user_id', null);
-        console.log(`[${requestId}] Linked parent ${user.id} → auth user ${authUserId}`);
-      } catch (linkErr: any) {
-        Sentry.captureMessage(`user_id linking failed: ${linkErr?.message}`, { level: 'error', extra: { requestId, parentId: user.id, authUserId } });
-        console.error(`[${requestId}] Failed to link parent user_id:`, linkErr);
-      }
-    }
+    const { hashed_token } = linkData.properties;
 
-    // Exchange the hashed_token for a real session server-side (no client redirect needed)
-    const { hashed_token, verification_type } = linkData.properties;
-    let sessionTokens: { access_token: string; refresh_token: string } | null = null;
+    const linkParentPromise = (authUserId && actualUserType === 'parent' && user?.id)
+      ? Promise.resolve(
+          supabase
+            .from('parents')
+            .update({ user_id: authUserId, updated_at: new Date().toISOString() })
+            .eq('id', user.id)
+            .is('user_id', null)
+        ).then(() => console.log(`[${requestId}] Linked parent ${user!.id} → auth user ${authUserId}`))
+         .catch((linkErr: any) => {
+            Sentry.captureMessage(`user_id linking failed: ${linkErr?.message}`, { level: 'error', extra: { requestId, parentId: user!.id, authUserId } });
+            console.error(`[${requestId}] Failed to link parent user_id:`, linkErr);
+          })
+      : Promise.resolve();
 
-    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+    const sessionPromise = supabaseAnon.auth.verifyOtp({
       token_hash: hashed_token,
-      type: verification_type as 'magiclink',
+      type: 'magiclink',
     });
 
+    const [, { data: verifyData, error: verifyError }] = await Promise.all([linkParentPromise, sessionPromise]);
+
+    let sessionTokens: { access_token: string; refresh_token: string } | null = null;
     if (!verifyError && verifyData?.session) {
       sessionTokens = {
         access_token: verifyData.session.access_token,
@@ -390,7 +397,6 @@ export async function POST(request: NextRequest) {
       };
       console.log(`[${requestId}] Server-side session created for ${user.email}`);
     } else {
-      // Log but don't fail — fall back to actionLink
       Sentry.captureMessage(
         `verifyOtp server-side failed for ${user.email}: ${verifyError?.message || 'no session returned'}`,
         { level: 'warning', extra: { requestId, hashedTokenPresent: !!hashed_token } }

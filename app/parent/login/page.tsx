@@ -232,7 +232,6 @@ export default function ParentLoginPage() {
       const data = await response.json();
       if (!response.ok) { setError(data.error || 'Invalid OTP'); return; }
 
-      // New flow: server returned session tokens directly — no redirects needed
       if (data.session) {
         const { error: sessionErr } = await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -242,7 +241,8 @@ export default function ParentLoginPage() {
           setError('Failed to establish session. Please try again.');
           return;
         }
-        router.push(data.redirectTo || '/parent/dashboard');
+        // Hard navigation so middleware re-evaluates the new session cookie
+        window.location.href = data.redirectTo || '/parent/dashboard';
         return;
       }
 

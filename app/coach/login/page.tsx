@@ -296,7 +296,6 @@ export default function CoachLoginPage() {
         return;
       }
 
-      // New flow: server returned session tokens directly — no redirects needed
       if (data.session) {
         const { error: sessionErr } = await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -306,7 +305,8 @@ export default function CoachLoginPage() {
           setError('Failed to establish session. Please try again.');
           return;
         }
-        router.push(data.redirectTo || '/coach/dashboard');
+        // Hard navigation so middleware re-evaluates the new session cookie
+        window.location.href = data.redirectTo || '/coach/dashboard';
         return;
       }
 
