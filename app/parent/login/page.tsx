@@ -34,8 +34,34 @@ export default function ParentLoginPage() {
   const [actualOtpMethod, setActualOtpMethod] = useState<'whatsapp' | 'email'>('whatsapp');
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // ─── Auth state management (PRESERVED) ───
+  // ─── Auth state management ───
   useEffect(() => {
+    // Detect #access_token hash fragment from Supabase implicit flow redirect.
+    // Flow: verify-otp → actionLink → Supabase auth → /parent/dashboard#access_token=...
+    // Middleware sees no session cookie → 302 to /parent/login (hash survives per RFC 7231).
+    // We must explicitly extract tokens and call setSession() to establish the session.
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      if (accessToken && refreshToken) {
+        // Clear hash immediately to prevent re-processing on re-render
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ error: sessionError }) => {
+            if (!sessionError) {
+              window.location.href = '/parent/dashboard';
+            } else {
+              console.error('[Login] Failed to set session from hash:', sessionError.message);
+              setError('Login failed. Please try again.');
+              setCheckingSession(false);
+            }
+          });
+        return; // Skip normal auth checks — setSession will handle redirect
+      }
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session && !unauthorizedError) {
         const { data: { user } } = await supabase.auth.getUser();

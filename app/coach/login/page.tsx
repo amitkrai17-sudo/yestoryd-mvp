@@ -67,6 +67,30 @@ export default function CoachLoginPage() {
   // IMPORTANT: Uses getUser() (server-validated) instead of getSession() (local JWT decode)
   // to prevent redirect loops when cookies contain expired/invalid tokens.
   useEffect(() => {
+    // Detect #access_token hash fragment from Supabase implicit flow redirect.
+    // Flow: verify-otp → actionLink → Supabase auth → /coach/dashboard#access_token=...
+    // Middleware sees no session cookie → 302 to /coach/login (hash survives per RFC 7231).
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      if (accessToken && refreshToken) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ error: sessionError }) => {
+            if (!sessionError) {
+              window.location.href = '/coach/dashboard';
+            } else {
+              console.error('[Login] Failed to set session from hash:', sessionError.message);
+              setError('Login failed. Please try again.');
+              setCheckingSession(false);
+            }
+          });
+        return;
+      }
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session && !unauthorizedError) {
         // Verify the session is actually valid server-side before redirecting
