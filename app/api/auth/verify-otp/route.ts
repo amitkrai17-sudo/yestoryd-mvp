@@ -80,6 +80,7 @@ function secureCompare(a: string, b: string): boolean {
 
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID().slice(0, 8);
+  const startTime = Date.now();
 
   try {
     const body: VerifyOTPRequest = await request.json();
@@ -405,12 +406,16 @@ export async function POST(request: NextRequest) {
     }
 
     // ───────────────────────────────────────────────────────
-    // STEP 10: Cleanup + return session
+    // STEP 10: Cleanup (fire-and-forget) + return session
     // ───────────────────────────────────────────────────────
-    await supabase
+    // Token is already marked verified — delete is non-critical, don't block response
+    supabase
       .from('verification_tokens')
       .delete()
-      .eq('id', token.id);
+      .eq('id', token.id)
+      .then(({ error: delErr }) => {
+        if (delErr) console.warn(`[${requestId}] Token cleanup failed:`, delErr.message);
+      });
 
     const response: VerifyOTPResponse = {
       success: true,
@@ -422,7 +427,7 @@ export async function POST(request: NextRequest) {
       userType: actualUserType,
     };
 
-    console.log(`[${requestId}] Login successful for ${user.email} (${actualUserType}) [${sessionTokens ? 'direct-session' : 'actionLink-fallback'}]`);
+    console.log(`[${requestId}] Login successful for ${user.email} (${actualUserType}) [${sessionTokens ? 'direct-session' : 'actionLink-fallback'}] ${Date.now() - startTime}ms`);
 
     return NextResponse.json(response);
 

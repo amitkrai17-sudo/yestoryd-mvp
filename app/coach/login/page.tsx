@@ -297,11 +297,14 @@ export default function CoachLoginPage() {
       }
 
       if (data.session) {
+        // Guard: prevent onAuthStateChange from racing with this redirect
+        isProcessingHash.current = true;
         const { error: sessionErr } = await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
         if (sessionErr) {
+          isProcessingHash.current = false;
           setError('Failed to establish session. Please try again.');
           return;
         }
