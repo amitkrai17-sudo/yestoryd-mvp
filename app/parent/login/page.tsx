@@ -60,7 +60,7 @@ export default function ParentLoginPage() {
 
     supabase.auth.getUser().then(async ({ data: { user }, error: userError }) => {
       if (linkExpiredError) {
-        setError('This login link has expired. Please request a new one.');
+        setError('This login link has expired or was opened in a different browser. Please request a new one from the browser you want to use.');
         setCheckingSession(false);
       } else if (user && unauthorizedError) {
         await supabase.auth.signOut();
@@ -145,7 +145,7 @@ export default function ParentLoginPage() {
         options: { emailRedirectTo: `${window.location.origin}/parent/dashboard` },
       });
       if (error) throw error;
-      setMessage('Magic link sent! Check your email to sign in.');
+      setMessage('Magic link sent! Open the link from this same browser to sign in.');
     } catch (err: any) {
       setError(err.message || 'Failed to send magic link');
     } finally {
