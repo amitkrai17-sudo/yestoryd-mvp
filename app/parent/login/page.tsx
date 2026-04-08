@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Mail, ArrowRight, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
 
 const SUPPORT_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
 
@@ -34,35 +35,16 @@ export default function ParentLoginPage() {
   const [actualOtpMethod, setActualOtpMethod] = useState<'whatsapp' | 'email'>('whatsapp');
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Handle Supabase implicit flow hash fragment (middleware redirect preserves #access_token)
+  const { isProcessingHash } = useHashSessionRedirect('/parent/dashboard', { setError, setCheckingSession });
+
   // ─── Auth state management ───
   useEffect(() => {
-    // Detect #access_token hash fragment from Supabase implicit flow redirect.
-    // Flow: verify-otp → actionLink → Supabase auth → /parent/dashboard#access_token=...
-    // Middleware sees no session cookie → 302 to /parent/login (hash survives per RFC 7231).
-    // We must explicitly extract tokens and call setSession() to establish the session.
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      const hashParams = new URLSearchParams(hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      if (accessToken && refreshToken) {
-        // Clear hash immediately to prevent re-processing on re-render
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-          .then(({ error: sessionError }) => {
-            if (!sessionError) {
-              window.location.href = '/parent/dashboard';
-            } else {
-              console.error('[Login] Failed to set session from hash:', sessionError.message);
-              setError('Login failed. Please try again.');
-              setCheckingSession(false);
-            }
-          });
-        return; // Skip normal auth checks — setSession will handle redirect
-      }
-    }
+    // If the hash session hook is handling redirect, skip normal auth setup
+    if (isProcessingHash.current) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (isProcessingHash.current) return;
       if (event === 'SIGNED_IN' && session && !unauthorizedError) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -249,6 +231,22 @@ export default function ParentLoginPage() {
       });
       const data = await response.json();
       if (!response.ok) { setError(data.error || 'Invalid OTP'); return; }
+
+      // New flow: server returned session tokens directly — no redirects needed
+      if (data.session) {
+        const { error: sessionErr } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        if (sessionErr) {
+          setError('Failed to establish session. Please try again.');
+          return;
+        }
+        router.push(data.redirectTo || '/parent/dashboard');
+        return;
+      }
+
+      // Fallback: server returned actionLink (server-side token exchange failed)
       if (data.actionLink) {
         window.location.href = data.actionLink;
       } else {

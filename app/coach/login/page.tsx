@@ -8,6 +8,7 @@ import { Mail, ArrowRight, Users, CheckCircle, Wand2, MessageCircle } from 'luci
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
 
 export default function CoachLoginPage() {
   const [email, setEmail] = useState('');
@@ -33,6 +34,9 @@ export default function CoachLoginPage() {
   const [countdown, setCountdown] = useState(0);
   const [actualOtpMethod, setActualOtpMethod] = useState<'whatsapp' | 'email'>('whatsapp');
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Handle Supabase implicit flow hash fragment (middleware redirect preserves #access_token)
+  const { isProcessingHash } = useHashSessionRedirect('/coach/dashboard', { setError, setCheckingSession });
 
   // Fetch video URL and WhatsApp number from site_settings
   useEffect(() => {
@@ -67,31 +71,11 @@ export default function CoachLoginPage() {
   // IMPORTANT: Uses getUser() (server-validated) instead of getSession() (local JWT decode)
   // to prevent redirect loops when cookies contain expired/invalid tokens.
   useEffect(() => {
-    // Detect #access_token hash fragment from Supabase implicit flow redirect.
-    // Flow: verify-otp → actionLink → Supabase auth → /coach/dashboard#access_token=...
-    // Middleware sees no session cookie → 302 to /coach/login (hash survives per RFC 7231).
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      const hashParams = new URLSearchParams(hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      if (accessToken && refreshToken) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-          .then(({ error: sessionError }) => {
-            if (!sessionError) {
-              window.location.href = '/coach/dashboard';
-            } else {
-              console.error('[Login] Failed to set session from hash:', sessionError.message);
-              setError('Login failed. Please try again.');
-              setCheckingSession(false);
-            }
-          });
-        return;
-      }
-    }
+    // If the hash session hook is handling redirect, skip normal auth setup
+    if (isProcessingHash.current) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (isProcessingHash.current) return;
       if (event === 'SIGNED_IN' && session && !unauthorizedError) {
         // Verify the session is actually valid server-side before redirecting
         const { data: { user } } = await supabase.auth.getUser();
@@ -312,6 +296,21 @@ export default function CoachLoginPage() {
         return;
       }
 
+      // New flow: server returned session tokens directly — no redirects needed
+      if (data.session) {
+        const { error: sessionErr } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        if (sessionErr) {
+          setError('Failed to establish session. Please try again.');
+          return;
+        }
+        router.push(data.redirectTo || '/coach/dashboard');
+        return;
+      }
+
+      // Fallback: server returned actionLink (server-side token exchange failed)
       if (data.actionLink) {
         window.location.href = data.actionLink;
       } else {

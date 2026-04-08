@@ -37,7 +37,11 @@ interface VerifyOTPRequest {
 
 interface VerifyOTPResponse {
   success: boolean;
-  actionLink?: string;
+  session?: {
+    access_token: string;
+    refresh_token: string;
+  };
+  actionLink?: string; // Fallback if server-side session creation fails
   user?: {
     id: string;
     email: string;
@@ -335,7 +339,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ───────────────────────────────────────────────────────
-    // STEP 9: Generate magic link for session
+    // STEP 9: Generate magic link + exchange for session server-side
     // ───────────────────────────────────────────────────────
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
@@ -345,18 +349,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (linkError || !linkData?.properties?.action_link) {
-      Sentry.captureMessage(`generateLink failed for ${user.email}: ${linkError?.message || 'no action_link'}`, { level: 'error', extra: { requestId } });
-      console.error(`[${requestId}] generateLink failed for ${user.email}:`, linkError?.message || 'no action_link returned');
+    if (linkError || !linkData?.properties?.hashed_token) {
+      Sentry.captureMessage(`generateLink failed for ${user.email}: ${linkError?.message || 'no hashed_token'}`, { level: 'error', extra: { requestId } });
+      console.error(`[${requestId}] generateLink failed for ${user.email}:`, linkError?.message || 'no hashed_token returned');
       return NextResponse.json(
         { success: false, error: 'OTP verified but session creation failed. Please try logging in again.' },
         { status: 500 }
       );
     }
 
-    console.log(`[${requestId}] generateLink succeeded for ${user.email}`);
-
-    // Link auth user to parent/coach record (using user from generateLink)
+    // Link auth user to parent/coach record
     const authUserId = linkData.user?.id;
     if (authUserId && actualUserType === 'parent' && user?.id) {
       try {
@@ -372,6 +374,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Exchange the hashed_token for a real session server-side (no client redirect needed)
+    const { hashed_token, verification_type } = linkData.properties;
+    let sessionTokens: { access_token: string; refresh_token: string } | null = null;
+
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: hashed_token,
+      type: verification_type as 'magiclink',
+    });
+
+    if (!verifyError && verifyData?.session) {
+      sessionTokens = {
+        access_token: verifyData.session.access_token,
+        refresh_token: verifyData.session.refresh_token,
+      };
+      console.log(`[${requestId}] Server-side session created for ${user.email}`);
+    } else {
+      // Log but don't fail — fall back to actionLink
+      Sentry.captureMessage(
+        `verifyOtp server-side failed for ${user.email}: ${verifyError?.message || 'no session returned'}`,
+        { level: 'warning', extra: { requestId, hashedTokenPresent: !!hashed_token } }
+      );
+      console.warn(`[${requestId}] Server-side verifyOtp failed, falling back to actionLink:`, verifyError?.message);
+    }
+
     // ───────────────────────────────────────────────────────
     // STEP 10: Cleanup + return session
     // ───────────────────────────────────────────────────────
@@ -382,13 +408,15 @@ export async function POST(request: NextRequest) {
 
     const response: VerifyOTPResponse = {
       success: true,
-      actionLink: linkData.properties.action_link,
+      ...(sessionTokens
+        ? { session: sessionTokens }
+        : { actionLink: linkData.properties.action_link }),
       user,
       redirectTo,
       userType: actualUserType,
     };
 
-    console.log(`[${requestId}] Login successful for ${user.email} (${actualUserType})`);
+    console.log(`[${requestId}] Login successful for ${user.email} (${actualUserType}) [${sessionTokens ? 'direct-session' : 'actionLink-fallback'}]`);
 
     return NextResponse.json(response);
 
