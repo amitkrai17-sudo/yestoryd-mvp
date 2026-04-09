@@ -38,7 +38,7 @@ export function isTuitionEnrollment(enrollment: EnrollmentForLabel): boolean {
  * Resolution order:
  *  1. enrollment.program_description (pre-populated in DB)
  *  2. For tuition: "{categoryParentLabel} Sessions" if a category was linked
- *  3. Fallback tuition: "Tuition Sessions"
+ *  3. Fallback tuition: "English Classes"
  *  4. Coaching: "English Coaching Program"
  *
  * @param enrollment  - must include billing_model + program_description
@@ -53,7 +53,7 @@ export function getProgramLabel(
   if (isTuitionEnrollment(enrollment)) {
     return categoryParentLabel
       ? `${categoryParentLabel} Sessions`
-      : 'Tuition Sessions';
+      : 'English Classes';
   }
 
   return 'English Coaching Program';

@@ -237,7 +237,7 @@ export async function POST(
     const categoryParentLabel = (onboarding.skill_categories as any)?.parent_label ?? null;
     const programDescription = categoryParentLabel
       ? `${categoryParentLabel} Sessions`
-      : null; // falls back to "Tuition Sessions" in getProgramLabel()
+      : null; // falls back to "English Classes" in getProgramLabel()
 
     const { data: enrollment, error: enrollErr } = await supabase
       .from('enrollments')

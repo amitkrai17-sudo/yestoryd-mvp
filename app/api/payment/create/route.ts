@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
         orderId: order.id,
         amount: tuitionAmountRupees,
         currency: order.currency,
-        product: { code: 'tuition', id: null, name: 'Tuition Sessions', sessionsIncluded: tuitionEnrollment.sessions_purchased, durationMonths: 0 },
+        product: { code: 'tuition', id: null, name: 'English Classes', sessionsIncluded: tuitionEnrollment.sessions_purchased, durationMonths: 0 },
         pricing: { basePrice: tuitionAmountRupees, couponDiscount: 0, referralCreditUsed: 0, finalAmount: tuitionAmountRupees },
         bookingId: booking?.id,
         childId,

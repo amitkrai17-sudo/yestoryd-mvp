@@ -38,7 +38,7 @@ async function buildPricingFallback(): Promise<string> {
     `Our personalized 1:1 coaching starts at ₹${perWeek}/week.\n\n` +
     `Starter: ₹${(starter?.discountedPrice ?? 3999).toLocaleString('en-IN')} (${fmtRange(starterRange)} sessions)\n` +
     `Continuation: ₹${(continuation?.discountedPrice ?? 7499).toLocaleString('en-IN')} (${fmtRange(contRange)} sessions)\n` +
-    `Full Program: ₹${(full?.discountedPrice ?? 9999).toLocaleString('en-IN')} (${fmtRange(fullRange)} sessions)\n\n` +
+    `Full Program: ₹${(full?.discountedPrice ?? 6999).toLocaleString('en-IN')} (${fmtRange(fullRange)} sessions)\n\n` +
     `Each session is ${fmtRange(durRange)} minutes with a certified reading coach on Google Meet.\n\n` +
     `Would you like to book a free discovery call to learn more?`
   );

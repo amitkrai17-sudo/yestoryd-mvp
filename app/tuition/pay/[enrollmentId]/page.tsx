@@ -118,7 +118,7 @@ export default function TuitionPayPage() {
       // 2. Open Razorpay checkout
       const description = data.isRenewal
         ? `Renew ${data.sessionsPurchased} Sessions`
-        : `${data.sessionsPurchased} Tuition Sessions`;
+        : `${data.sessionsPurchased} English Classes`;
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
