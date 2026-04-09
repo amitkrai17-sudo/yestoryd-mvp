@@ -8,7 +8,7 @@ import { Metadata } from 'next';
 import RegisterPageClient from './RegisterPageClient';
 
 export const metadata: Metadata = {
-  title: 'Register for Group Class | Yestoryd',
+  title: 'Register for Workshop | Yestoryd',
   description: 'Register your child for an interactive group reading class. Secure your spot now!',
 };
 

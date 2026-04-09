@@ -164,7 +164,7 @@ function SuccessContent() {
                   Want FREE Unlimited Classes?
                 </p>
                 <p className="text-sm text-gray-600 mb-3">
-                  Enroll in our 1:1 coaching program and get all group classes FREE forever!
+                  Enroll in our 1:1 coaching program and get all workshops FREE forever!
                 </p>
                 <Link
                   href="/assessment"
@@ -183,7 +183,7 @@ function SuccessContent() {
             Questions?{' '}
             <WhatsAppButton
               phone={COMPANY_CONFIG.aiSensyWhatsApp}
-              message="Hi! I just registered for a group class and have a question."
+              message="Hi! I just registered for a workshop and have a question."
               label="Chat with us on WhatsApp"
               variant="link"
             />

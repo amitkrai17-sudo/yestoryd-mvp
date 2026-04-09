@@ -237,10 +237,10 @@ function SessionCard({ session }: { session: Session }) {
         <div className="flex items-center gap-2">
           <BookOpen className="w-6 h-6 text-white" />
           <span className="text-white font-bold">
-            {session.classType?.name || 'Group Class'}
+            {session.classType?.name || 'Workshop'}
           </span>
         </div>
-        
+
         {/* Urgency Badge (LIFT: Urgency) */}
         {isFull ? (
           <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
@@ -395,7 +395,7 @@ function EmptyState({ selectedType, onClearFilter }: { selectedType: string | nu
       <p className="text-gray-600 mb-8 max-w-md mx-auto">
         {selectedType 
           ? "No sessions scheduled for this class type yet. Try another class or check back soon!"
-          : "New group classes are coming soon! Meanwhile, take our free assessment to start your child's reading journey."}
+          : "New workshops are coming soon! Meanwhile, take our free assessment to start your child's reading journey."}
       </p>
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <Link
@@ -514,7 +514,7 @@ export default function ClassesPageClient() {
           <nav className="mb-8 text-sm">
             <Link href="/" className="text-gray-500 hover:text-[#ff0099] transition-colors">Home</Link>
             <span className="mx-2 text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">Group Classes</span>
+            <span className="text-gray-900 font-medium">Workshops</span>
           </nav>
           
           {/* Hero Content */}
@@ -679,7 +679,7 @@ export default function ClassesPageClient() {
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              Why Parents Love Our Group Classes
+              Why Parents Love Our Workshops
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               More than just reading sessions – we build confident, engaged readers
@@ -752,7 +752,7 @@ export default function ClassesPageClient() {
               Frequently Asked Questions
             </h2>
             <p className="text-gray-600">
-              Everything you need to know about our group classes
+              Everything you need to know about our workshops
             </p>
           </div>
           
@@ -773,7 +773,7 @@ export default function ClassesPageClient() {
             <p className="text-gray-600 mb-4">Still have questions?</p>
             <WhatsAppButton
               phone={COMPANY_CONFIG.aiSensyWhatsApp}
-              message="Hi! I have a question about group classes"
+              message="Hi! I have a question about workshops"
               label="Chat on WhatsApp"
             />
           </div>

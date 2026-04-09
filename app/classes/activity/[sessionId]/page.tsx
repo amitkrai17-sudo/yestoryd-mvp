@@ -8,7 +8,7 @@ import ActivityClient from './ActivityClient';
 
 export const metadata: Metadata = {
   title: 'Class Activity | Yestoryd',
-  description: 'Submit your response for the group class activity',
+  description: 'Submit your response for the workshop activity',
 };
 
 export default function ActivityPage() {

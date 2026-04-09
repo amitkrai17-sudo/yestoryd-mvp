@@ -286,7 +286,7 @@ export default function RegisterPageClient({ sessionId: propSessionId }: { sessi
         amount: registerData.pricing.finalPrice * 100,
         currency: 'INR',
         name: 'Yestoryd',
-        description: `${session?.classType?.name || 'Group Class'}: ${session?.title}`,
+        description: `${session?.classType?.name || 'Workshop'}: ${session?.title}`,
         order_id: registerData.razorpayOrderId,
         handler: async function (response: any) {
           // Verify payment
@@ -601,7 +601,7 @@ export default function RegisterPageClient({ sessionId: propSessionId }: { sessi
                     {/* Enrolled family hint */}
                     <p className="mt-3 text-sm text-text-tertiary">
                       <Sparkles className="w-4 h-4 inline mr-1 text-[#ffde00]" />
-                      Enrolled families get <strong className="text-white">FREE unlimited</strong> group classes!
+                      Enrolled families get <strong className="text-white">FREE unlimited</strong> workshops!
                     </p>
                   </div>
 
@@ -666,7 +666,7 @@ export default function RegisterPageClient({ sessionId: propSessionId }: { sessi
                     </div>
                     <div>
                       <p className="text-white/80 text-sm font-medium">
-                        {session.classType?.name || 'Group Class'}
+                        {session.classType?.name || 'Workshop'}
                       </p>
                       <h2 className="text-white font-bold text-lg">{session.title}</h2>
                     </div>
