@@ -81,6 +81,8 @@ grep -rn "new GoogleGenerativeAI" app/ lib/ --include="*.ts" | grep -v "lib/gemi
 - Fluency enum: `"Poor" | "Fair" | "Good" | "Excellent"` — no alternatives
 - Overall scores computed SERVER-SIDE (weighted average), never asked from Gemini
 - ALL Gemini client instantiation via `getGenAI()` from `lib/gemini/client.ts` — NEVER `new GoogleGenerativeAI()` in route files
+- **Intelligence synthesis** — use `buildSynthesisPrompt()` from `lib/intelligence/synthesis.ts` (V2, writes to `child_intelligence_profiles`). `generateLearningProfileSynthesis()` in `lib/gemini/session-prompts.ts` is V1 LEGACY — DO NOT use for new code
+- **Coach hiring assessment scoring** — use `buildCoachAssessmentScorePrompt()` from `lib/gemini/assessment-prompts.ts` (discriminated union: `{type:'voice', durationSeconds}` or `{type:'chat', conversationText}`) — NEVER inline
 
 ## Contact Info — Two WhatsApp Numbers (DO NOT MIX)
 
