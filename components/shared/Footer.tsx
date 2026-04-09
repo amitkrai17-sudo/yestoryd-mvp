@@ -11,7 +11,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
   return (
     <footer className="bg-[#0D0D0D] border-t border-gray-800">
       <div className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-4 gap-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand */}
           <div className="col-span-1">
             <Link href="/" className="flex items-center mb-6">
@@ -61,6 +61,28 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
               <li>
                 <Link href="/pricing" className="text-gray-400 hover:text-white transition-colors">
                   Pricing
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Access */}
+          <div>
+            <h4 className="font-bold text-[#FBBF24] mb-5">Access</h4>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <Link href="/parent/login" className="text-gray-400 hover:text-white transition-colors">
+                  Parent Login
+                </Link>
+              </li>
+              <li>
+                <Link href="/coach/login" className="text-gray-400 hover:text-white transition-colors">
+                  Coach Login
+                </Link>
+              </li>
+              <li>
+                <Link href="/partner" className="text-gray-400 hover:text-white transition-colors">
+                  Become a Coach
                 </Link>
               </li>
             </ul>
