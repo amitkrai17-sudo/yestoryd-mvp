@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Menu, X, BookOpen } from 'lucide-react';
+import { Menu, X, BookOpen, Users, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 interface HeaderProps {
@@ -15,12 +15,11 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const mainNavLinks = [
-    { href: '/services/coaching', label: 'Coaching' },
-    { href: '/services/elearning', label: 'eLearning' },
-    { href: '/services/storytelling', label: 'Storytelling' },
-    { href: '/library', label: 'Library' },
-    { href: '/pricing', label: 'Pricing' },
-    { href: '/about', label: 'About' },
+    { href: '/classes', label: 'Workshops', Icon: Users },
+    { href: '/english-classes', label: 'English Classes', Icon: BookOpen },
+    { href: '/#pricing', label: '1:1 Coaching', Icon: Sparkles },
+    { href: '/library', label: 'Library', Icon: BookOpen },
+    { href: '/pricing', label: 'Pricing', Icon: null },
   ];
 
   const coachNavLinks = [
@@ -78,18 +77,11 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
                 </Button>
               </Link>
             ) : (
-              <>
-                <Link href="/assessment">
-                  <Button variant="outline" className="border-2 border-gray-700 text-white hover:bg-gray-800 rounded-xl px-6">
-                    Reading Test - Free
-                  </Button>
-                </Link>
-                <Link href="/partner">
-                  <Button className="bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-xl px-6">
-                    Become a Coach
-                  </Button>
-                </Link>
-              </>
+              <Link href="/assessment">
+                <Button className="bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl px-6">
+                  Reading Test - Free
+                </Button>
+              </Link>
             )}
           </div>
 
@@ -128,18 +120,11 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
                     </Button>
                   </Link>
                 ) : (
-                  <>
-                    <Link href="/assessment">
-                      <Button variant="outline" className="w-full border-2 border-gray-700 text-white rounded-xl">
-                        Reading Test - Free
-                      </Button>
-                    </Link>
-                    <Link href="/partner">
-                      <Button className="w-full bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-xl">
-                        Become a Coach
-                      </Button>
-                    </Link>
-                  </>
+                  <Link href="/assessment">
+                    <Button className="w-full bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl">
+                      Reading Test - Free
+                    </Button>
+                  </Link>
                 )}
               </div>
             </nav>

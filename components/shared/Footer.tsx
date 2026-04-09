@@ -25,7 +25,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
               </span>
             </Link>
             <p className="text-gray-500 text-sm leading-relaxed">
-              Unlock your child's reading potential with AI-powered assessments and personalized coaching.
+              Workshops, English Classes, and 1:1 Coaching — powered by AI to help every child read with confidence.
             </p>
           </div>
 
@@ -34,33 +34,23 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
             <h4 className="font-bold text-[#FBBF24] mb-5">Services</h4>
             <ul className="space-y-3 text-sm">
               <li>
-                <Link href="/services/coaching" className="text-gray-400 hover:text-white transition-colors">
-                  Personalized Coaching
+                <Link href="/classes" className="text-gray-400 hover:text-white transition-colors">
+                  Workshops
                 </Link>
               </li>
               <li>
-                <Link href="/services/elearning" className="text-gray-400 hover:text-white transition-colors">
-                  eLearning Library
+                <Link href="/english-classes" className="text-gray-400 hover:text-white transition-colors">
+                  English Classes
                 </Link>
               </li>
               <li>
-                <Link href="/services/storytelling" className="text-gray-400 hover:text-white transition-colors">
-                  Storytelling Sessions
+                <Link href="/#pricing" className="text-gray-400 hover:text-white transition-colors">
+                  1:1 Coaching
                 </Link>
               </li>
               <li>
                 <Link href="/library" className="text-gray-400 hover:text-white transition-colors">
                   Book Library
-                </Link>
-              </li>
-              <li>
-                <Link href="/services/podcasts" className="text-gray-400 hover:text-white transition-colors">
-                  Podcasts
-                </Link>
-              </li>
-              <li>
-                <Link href="/services/physical-classes" className="text-gray-400 hover:text-white transition-colors">
-                  Physical Classes
                 </Link>
               </li>
             </ul>
@@ -76,18 +66,8 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
                 </Link>
               </li>
               <li>
-                <Link href="/partner" className="text-gray-400 hover:text-white transition-colors">
-                  Become a Coach
-                </Link>
-              </li>
-              <li>
                 <Link href="/pricing" className="text-gray-400 hover:text-white transition-colors">
                   Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
-                  Contact
                 </Link>
               </li>
             </ul>
