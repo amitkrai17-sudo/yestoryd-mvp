@@ -38,9 +38,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Yestoryd - AI Reading Assessment & Coaching for Kids',
-  description: 'Free AI-powered reading assessment for children aged 4-12. Get instant results, personalized feedback, and expert coaching to improve your child\'s reading skills.',
-  keywords: 'reading assessment, kids reading, phonics, reading coach, AI assessment, children education, reading skills',
+  title: 'Yestoryd — English Coaching, Classes & Workshops for Kids (Ages 4-12)',
+  description: 'AI-powered English learning for children aged 4-12. Choose from fun workshops, structured English classes, or personalized 1:1 coaching with AI intelligence. Free AI reading assessment. Based in India.',
+  keywords: 'english coaching for kids, english classes for children, english workshops kids, reading assessment, phonics, reading coach, AI assessment, english tuition kids india, olympiad prep, creative writing kids',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -60,8 +60,8 @@ export const metadata: Metadata = {
     'mobile-web-app-capable': 'yes',
   },
   openGraph: {
-    title: 'Yestoryd - Free AI Reading Assessment for Kids',
-    description: 'Know your child\'s reading level in 5 minutes. Free AI-powered assessment with instant results.',
+    title: 'Yestoryd — Every Child\'s English Journey is Different',
+    description: 'AI-powered English learning for children aged 4-12. Workshops, English classes, and personalized 1:1 coaching. Free AI reading assessment.',
     url: 'https://yestoryd.com',
     siteName: 'Yestoryd',
     type: 'website',

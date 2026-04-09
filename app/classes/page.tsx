@@ -12,9 +12,9 @@ const supabase = createAdminClient();
 // Create server-side Supabase client
 // Default metadata
 const DEFAULT_META = {
-  title: 'Group Classes for Kids | Kahani Times, Read Aloud & More | Yestoryd',
-  description: 'Join fun, interactive group reading classes for children aged 4-12. Kahani Times storytelling, Read Aloud competitions, Phonics sessions, and Book Clubs.',
-  keywords: 'kids reading classes, children storytelling, phonics classes india, read aloud competition, book club for kids, kahani times, yestoryd group classes',
+  title: 'Workshops for Kids | Kahani Times, Read Aloud & More | Yestoryd',
+  description: 'Join fun, interactive workshops for children aged 4-12. Kahani Times storytelling, Read Aloud competitions, Phonics sessions, and Book Clubs.',
+  keywords: 'kids workshops, kids reading classes, children storytelling, english workshops kids india, phonics classes india, read aloud competition, book club for kids, kahani times, yestoryd group classes, yestoryd workshops',
 };
 
 // Fetch metadata from site_settings
