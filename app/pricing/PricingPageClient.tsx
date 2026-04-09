@@ -230,7 +230,7 @@ export default function PricingPageClient({
           </span>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-display max-w-3xl mx-auto mb-4">
             Every child&apos;s{' '}
-            <span className="text-[#FF0099]">English journey</span>{' '}
+            <span className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] bg-clip-text text-transparent">English journey</span>{' '}
             is different
           </h1>
           <p className="text-gray-400 text-lg max-w-lg mx-auto">

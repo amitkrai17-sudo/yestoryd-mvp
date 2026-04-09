@@ -57,7 +57,7 @@ function HeroCuriosity({
         {content.headline.includes('Avoids Reading') ? (
           <>
             There's a Reason Your Child{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">
+            <span className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] bg-clip-text text-transparent">
               Avoids Reading
             </span>
           </>
@@ -161,7 +161,7 @@ function HeroValidation({
         {content.headline.includes("Isn't Clicking") ? (
           <>
             You've Noticed Something{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff0099] to-[#7b008b]">
+            <span className="bg-gradient-to-r from-[#FF0099] to-[#7B008B] bg-clip-text text-transparent">
               Isn't Clicking
             </span>
             <br />
