@@ -145,7 +145,8 @@ export default function EnglishClassesClient() {
               Structured practice
             </span>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-display mb-4">
-              English classes your child will actually enjoy
+              <span className="text-[#FF0099]">English classes</span> your
+              child will actually enjoy
             </h1>
             <p className="text-gray-400 text-base sm:text-lg max-w-xl mx-auto mb-8">
               Regular sessions with a certified coach. Grammar, phonics, creative

@@ -181,7 +181,9 @@ export default function CoachingPageClient({
               Personalized 1:1
             </span>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-display mb-4">
-              Your child&apos;s English transformation starts here
+              Your child&apos;s{' '}
+              <span className="text-[#FF0099]">English transformation</span>{' '}
+              starts here
             </h1>
             <p className="text-gray-400 text-base sm:text-lg max-w-xl mx-auto mb-8">
               A dedicated coach + AI intelligence working together. Every
