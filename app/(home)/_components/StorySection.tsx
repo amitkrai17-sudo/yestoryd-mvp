@@ -78,7 +78,7 @@ export function StorySection({
   const credentialIcons = [GraduationCap, Award];
 
   return (
-    <section id="rucha-story" className="py-16 lg:py-24 bg-[#1a1a2e] text-white relative overflow-x-hidden">
+    <section id="rucha-story" className="py-16 lg:py-24 bg-[#1a1a2e] text-white relative">
       <div className="absolute top-0 left-0 w-64 h-64 bg-[#ff0099] blur-[100px] opacity-20"></div>
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-[#00abff] blur-[100px] opacity-20"></div>
 

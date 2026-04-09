@@ -402,7 +402,7 @@ export default function HomePageClient({
       />
 
       {/* Hero Section */}
-      <section className="pt-28 sm:pt-32 lg:pt-36 pb-12 sm:pb-14 lg:pb-20 bg-gradient-to-b from-surface-1 to-surface-0 relative overflow-x-hidden">
+      <section className="pt-28 sm:pt-32 lg:pt-36 pb-12 sm:pb-14 lg:pb-20 bg-gradient-to-b from-surface-1 to-surface-0 relative">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00abff]/10 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/4"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#ff0099]/10 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/4"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

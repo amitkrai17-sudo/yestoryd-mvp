@@ -73,7 +73,7 @@ export function ArcSection({
   ];
 
   return (
-    <section id="how-it-works" className="py-16 lg:py-24 bg-surface-1 overflow-x-hidden">
+    <section id="how-it-works" className="py-16 lg:py-24 bg-surface-1">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
