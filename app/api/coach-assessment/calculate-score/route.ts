@@ -8,6 +8,7 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/utils/rate-limiter';
 import { loadCoachConfig } from '@/lib/config/loader';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { buildCoachAssessmentScorePrompt } from '@/lib/gemini/assessment-prompts';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,51 +113,10 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          const voicePrompt = `You are evaluating a voice statement from someone applying to be a children's reading coach at Yestoryd.
-
-THE QUESTION THEY WERE ASKED:
-"Please record a 1-2 minute audio introducing yourself. Tell us why you want to become a reading coach for children, what experience you have with kids, and what makes you passionate about helping children read better."
-
-RECORDING DURATION: ${duration} seconds
-
-Listen to this audio and evaluate:
-
-1. CONTENT RELEVANCE (1-5): Did they actually answer the question?
-   - Did they explain WHY they want to be a reading coach?
-   - Did they mention experience with children?
-   - Did they express passion for helping children read?
-   5 = Addressed all 3 points thoroughly
-   3 = Addressed 1-2 points
-   1 = Didn't address the question at all
-
-2. CLARITY & ARTICULATION (1-5): Can you understand them clearly?
-   5 = Crystal clear, excellent pronunciation
-   3 = Understandable with some issues
-   1 = Hard to understand
-
-3. PASSION & ENTHUSIASM (1-5): Do they sound genuinely excited about teaching children?
-   5 = Clearly passionate, engaging, warm
-   3 = Neutral, professional but not excited
-   1 = Sounds bored or disinterested
-
-4. PROFESSIONALISM (1-5): Overall impression
-   5 = Would trust this person with my child immediately
-   3 = Acceptable, needs some improvement
-   1 = Concerning, wouldn't hire
-
-DURATION ASSESSMENT:
-- 60-120 seconds: Ideal (no penalty)
-- 45-60 seconds: Acceptable (no penalty)
-- 30-45 seconds: Slightly brief (-0.5 penalty)
-- 20-30 seconds: Too brief (-1 penalty)
-- >120 seconds: Long but okay if relevant (no penalty)
-
-IMPORTANT: Be strict. A short, vague recording should NOT score above 2.
-If they just said "hello" or gave a one-liner, score 1 for content.
-Do NOT hallucinate words the speaker did not say. Score based ONLY on what you actually hear.
-
-Respond with this exact JSON schema:
-{"contentRelevance": number, "clarity": number, "passion": number, "professionalism": number, "averageScore": number, "strengths": string[], "concerns": string[], "summary": string}`;
+          const voicePrompt = buildCoachAssessmentScorePrompt({
+            type: 'voice',
+            durationSeconds: duration,
+          });
 
           // Retry helper: attempt Gemini call, parse JSON, retry once on failure
           const callGeminiVoice = async () => {
@@ -315,49 +275,10 @@ Respond with this exact JSON schema:
             },
           });
 
-          const chatPrompt = `You are evaluating a coaching applicant's responses. They want to become a children's reading coach at Yestoryd.
-
-Here is the COMPLETE conversation between rAI (interviewer) and the Applicant:
-
-===== CONVERSATION START =====
-${conversationText}
-===== CONVERSATION END =====
-
-Based on the applicant's responses, rate them on these 4 behavioral scenarios (1-5 each):
-
-Q1 - EMPATHY (handling frustrated child):
-Look for: Understanding, encouragement, patience, child-centric approach
-Red flags: Criticism, blame, adult-centric, dismissive
-Score: 5=Excellent empathy, 3=Generic response, 1=Poor/concerning
-
-Q2 - COMMUNICATION (handling disappointed parent):
-Look for: Professional, accountable, solution-focused, collaborative
-Red flags: Defensive, blaming, dismissive of concerns
-Score: 5=Excellent communication, 3=Acceptable, 1=Poor
-
-Q3 - SENSITIVITY (handling withdrawn child):
-Look for: Observant, patient, creates safe space, respects child's pace
-Red flags: Pushy, ignores emotional state, forces participation
-Score: 5=Highly sensitive, 3=Average, 1=Insensitive
-
-Q4 - HONESTY (handling guarantee request):
-Look for: Realistic expectations, honest about outcomes, no over-promising
-Red flags: Over-promising, guarantees results, misleading
-Score: 5=Honest and realistic, 3=Vague, 1=Over-promises
-
-IMPORTANT SCORING RULES:
-- Be strict and fair
-- Very short responses (1-2 words) = Score 1-2
-- Generic/textbook responses = Score 2-3
-- Thoughtful, specific responses = Score 4-5
-- If a question wasn't answered, score 1
-
-Do NOT hallucinate or invent answers the applicant did not give. Score based ONLY on what they actually said.
-
-Respond with this exact JSON schema:
-{"q1_empathy": number, "q2_communication": number, "q3_sensitivity": number, "q4_honesty": number, "averageScore": number, "overallAssessment": string, "strengths": string[], "concerns": string[], "recommendation": string}
-
-recommendation must be one of: "STRONG_YES", "YES", "MAYBE", "NO", "STRONG_NO"`;
+          const chatPrompt = buildCoachAssessmentScorePrompt({
+            type: 'chat',
+            conversationText,
+          });
 
           const result = await chatModel.generateContent({
             contents: [{ role: 'user', parts: [{ text: chatPrompt }] }],

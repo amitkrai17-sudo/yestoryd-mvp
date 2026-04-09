@@ -59,13 +59,13 @@ export default function InstructorLayout({
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         router.push('/coach/login');
         setLoading(false);
         return;
       }
-      validateCoach(session.user);
+      validateCoach(user);
     } catch {
       setLoading(false);
       router.push('/coach/login');
