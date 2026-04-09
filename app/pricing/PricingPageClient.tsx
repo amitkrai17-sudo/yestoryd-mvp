@@ -132,7 +132,8 @@ const COMPARE_SECTIONS: CompareSection[] = [
       { label: 'Progress reports', workshops: '\u2014', classes: 'Periodic snapshots', coaching: 'Continuous + shareable cards' },
       { label: 'rAI Chat', workshops: '\u2014', classes: '\u2713', coaching: '\u2713' },
       { label: 'Parent check-ins', workshops: '\u2014', classes: '\u2713', coaching: '\u2713' },
-      { label: 'WhatsApp updates', workshops: 'Confirmation only', classes: 'Session + balance alerts', coaching: '82-touchpoint automation' },
+      // TODO: move to site_settings key 'whatsapp_touchpoint_count'
+      { label: 'WhatsApp updates', workshops: 'Confirmation only', classes: 'Session + balance alerts', coaching: '40+ touchpoint automation' },
     ],
   },
   {
