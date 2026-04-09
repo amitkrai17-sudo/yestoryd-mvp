@@ -262,14 +262,13 @@ export default function PricingPageClient({
         {/* ── Section 3: Product cards ── */}
         <section className="pb-16 px-4 sm:px-6">
           <div className="max-w-5xl mx-auto">
-            {/* Mobile: horizontal scroll. Desktop: 3-col grid */}
-            <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-4">
               {PRODUCTS.map((product) => {
                 const a = ACCENT[product.accent];
                 return (
                   <div
                     key={product.key}
-                    className={`relative min-w-[280px] flex-1 snap-start flex flex-col rounded-2xl border p-6 ${
+                    className={`relative flex flex-col rounded-2xl border p-6 ${
                       product.featured
                         ? 'border-[#FF0099]/30 bg-gray-900/80'
                         : 'border-gray-800 bg-gray-900/50'

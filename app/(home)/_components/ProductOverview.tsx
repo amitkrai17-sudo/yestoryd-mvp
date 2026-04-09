@@ -99,7 +99,7 @@ export function ProductOverview({
         </div>
 
         {/* Product cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-5xl mx-auto pt-4">
           {/* Static cards: Workshops + English Classes */}
           {STATIC_PRODUCTS.map((product) => (
             <div
