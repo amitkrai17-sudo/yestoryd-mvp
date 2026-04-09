@@ -8,11 +8,9 @@ import {
   ProblemSection,
   ArcSection,
   StorySection,
-  RaiSection,
   TestimonialsSection,
-  JourneySection,
-  ProductOverview,
   PricingSection,
+  ProductOverview,
   FaqSection,
   CtaSection,
   FooterSection,
@@ -455,6 +453,8 @@ export default function HomePageClient({
         goodNews={c.problem_good_news || 'Good news: Once identified, these gaps can be filled in weeks, not years.'}
       />
 
+      <ProductOverview />
+
       <ArcSection
         badge={c.arc_section_badge || 'THE YESTORYD ARC™'}
         title={c.arc_section_title || "Your Child's 90-Day Transformation"}
@@ -477,16 +477,6 @@ export default function HomePageClient({
         videoUrl={storyVideoUrl}
       />
 
-      <RaiSection
-        badge={c.rai_section_badge || 'Meet rAI'}
-        title={c.rai_section_title || 'Why rAI is Different (and Safer)'}
-        subtitle={c.rai_section_subtitle || 'our AI that never guesses'}
-        genericAi={{ label: c.rai_generic_ai_label || 'Generic AI', name: c.rai_generic_ai_name || 'ChatGPT, etc.', type: c.rai_generic_ai_type || 'General Purpose AI', description: c.rai_generic_ai_description || 'based on the internet. No reading expertise. No understanding of phonics rules. May give incorrect or generic advice.' }}
-        safeAi={{ label: c.rai_safe_ai_label || 'Safe, Expert-Verified AI', name: c.rai_safe_ai_name || 'rAI Knowledge Engine', type: c.rai_safe_ai_type || 'Expert-Verified AI', description: c.rai_safe_ai_description || "Built on 7+ years of Rucha's phonics expertise. Never guesses — always references proven methods." }}
-        processSteps={c.rai_process_steps || ['Child Error', 'Check Expert DB', 'Perfect Fix']}
-        explanation={{ intro: c.rai_explanation_intro || "Most AI makes things up. We couldn't risk that with your child's education.", analogy: c.rai_explanation_analogy || "Imagine rAI as a librarian with a manual written by Rucha.", detail: c.rai_explanation_detail || "When your child makes a mistake, rAI doesn't guess." }}
-      />
-
       <AICredibilitySection />
 
       <TestimonialsSection
@@ -498,18 +488,17 @@ export default function HomePageClient({
         stats={{ totalAssessments: stats.totalAssessments, foundIssueStat: c.testimonials_found_issue_stat || '87%', foundIssueLabel: c.testimonials_found_issue_label || 'Found the Real Issue', improvementStat: c.testimonials_improvement_stat || '2x', improvementLabel: c.testimonials_improvement_label || 'Avg. Improvement' }}
       />
 
-      <JourneySection
-        badge={c.journey_section_badge || 'The Complete Journey'}
-        title={c.journey_section_title || 'From Reading Mastery to English Confidence'}
-        subtitle={c.journey_section_subtitle || 'Reading is the foundation. Everything else builds on top.'}
-        steps={[]}
-        insightText={c.journey_insight_text || 'In 90 days, your child masters reading fluency.'}
-        insightDetail={c.journey_insight_detail || 'This becomes the foundation for grammar, comprehension, writing, and eventually — confident English communication.'}
-      />
-
       <AssessmentPreview />
 
-      <ProductOverview />
+      {/* Bridge to coaching pricing */}
+      <section className="py-8 text-center px-4">
+        <h2 className="text-2xl sm:text-3xl font-bold font-display text-white mb-2">
+          Explore 1:1 coaching plans
+        </h2>
+        <p className="text-text-secondary text-sm max-w-md mx-auto">
+          Our most comprehensive product. Choose a plan that fits your child&apos;s age and learning pace.
+        </p>
+      </section>
 
       <PricingSection
         badge={c.pricing_section_badge || 'Start Your ARC Journey'}
