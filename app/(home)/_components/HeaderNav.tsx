@@ -43,6 +43,7 @@ export function HeaderNav({
           <nav className="hidden lg:flex items-center gap-8">
             <Link href="/classes" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Workshops</Link>
             <Link href="/english-classes" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">English Classes</Link>
+            <Link href="/coaching" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">1:1 Coaching</Link>
             <Link href="/library" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Library</Link>
             <Link href="/pricing" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Pricing</Link>
           </nav>
@@ -77,6 +78,7 @@ export function HeaderNav({
           <div className="px-4 py-6 space-y-4">
             <Link href="/classes" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Workshops</Link>
             <Link href="/english-classes" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">English Classes</Link>
+            <Link href="/coaching" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">1:1 Coaching</Link>
             <Link href="/library" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Library</Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Pricing</Link>
             <Link href="/parent/login" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Parent Login</Link>

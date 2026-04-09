@@ -9,6 +9,7 @@ export type { HeroContentProps, TestimonialData } from './HeroSection';
 export { TransformationSection } from './TransformationSection';
 export { ProblemSection } from './ProblemSection';
 export { ArcSection } from './ArcSection';
+export { JourneySection } from './JourneySection';
 export { FaqSection } from './FaqSection';
 export { StorySection } from './StorySection';
 export { TestimonialsSection } from './TestimonialsSection';

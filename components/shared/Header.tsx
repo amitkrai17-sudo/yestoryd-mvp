@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Menu, X, BookOpen, Users, LogIn } from 'lucide-react';
+import { Menu, X, BookOpen, Users, Sparkles, LogIn } from 'lucide-react';
 import { useState } from 'react';
 
 interface HeaderProps {
@@ -18,6 +18,7 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
   const mainNavLinks = [
     { href: '/classes', label: 'Workshops', Icon: Users },
     { href: '/english-classes', label: 'English Classes', Icon: BookOpen },
+    { href: '/coaching', label: '1:1 Coaching', Icon: Sparkles },
     { href: '/library', label: 'Library', Icon: BookOpen },
     { href: '/pricing', label: 'Pricing', Icon: null },
   ];

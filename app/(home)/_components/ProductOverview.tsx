@@ -186,7 +186,7 @@ export function ProductOverview({
             </ul>
 
             <Link
-              href="/pricing"
+              href="/coaching"
               className="mt-auto flex items-center justify-center gap-2 h-12 rounded-xl font-semibold text-sm transition-colors bg-[#FF0099] hover:bg-[#FF0099]/90 text-white"
             >
               Explore coaching

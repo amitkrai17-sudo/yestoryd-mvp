@@ -92,7 +92,7 @@ const PRODUCTS = [
       'All workshops FREE forever',
     ],
     missing: [] as string[],
-    cta: { label: 'Start with free AI reading test', href: '/assessment', variant: 'primary' as const },
+    cta: { label: 'Explore coaching', href: '/coaching', variant: 'primary' as const },
     featured: true,
   },
 ] as const;
