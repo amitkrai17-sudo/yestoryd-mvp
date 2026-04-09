@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BookOpen } from 'lucide-react';
+import Image from 'next/image';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 interface FooterProps {
@@ -14,15 +14,8 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
         <div className="grid md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="col-span-1">
-            <Link href="/" className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#FF2D92] to-[#3B82F6] rounded-xl flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-bold text-2xl">
-                <span className="text-[#FF2D92]">Yest</span>
-                <span className="text-white">o</span>
-                <span className="text-[#FBBF24]">ryd</span>
-              </span>
+            <Link href="/" className="flex items-center mb-6">
+              <Image src="/images/logo.png" alt="Yestoryd" width={140} height={40} className="h-8 w-auto" />
             </Link>
             <p className="text-gray-500 text-sm leading-relaxed">
               Workshops, English Classes, and 1:1 Coaching — powered by AI to help every child read with confidence.
@@ -88,7 +81,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
                 </a>
               </li>
               <li className="pt-3">
-                <Link href="/assessment" className="text-[#FF2D92] hover:text-[#FF1A85] font-semibold inline-flex items-center gap-2">
+                <Link href="/assessment" className="text-[#FF0099] hover:text-[#FF0099]/80 font-semibold inline-flex items-center gap-2">
                   Reading Test - Free
                 </Link>
               </li>

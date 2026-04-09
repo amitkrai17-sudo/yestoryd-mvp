@@ -10,9 +10,9 @@ import {
   ProductOverview,
   FaqSection,
   CtaSection,
-  FooterSection,
   FloatingElements,
 } from './(home)/_components';
+import { Footer } from '@/components/shared/Footer';
 import SocialProofBar from '@/components/website/SocialProofBar';
 import AICredibilitySection from '@/components/website/AICredibilitySection';
 import AssessmentPreview from '@/components/website/AssessmentPreview';
@@ -470,11 +470,7 @@ export default function HomePageClient({
         onCTAClick={handleCTAClick}
       />
 
-      <FooterSection
-        description={c.footer_description || 'AI-powered reading assessment and expert coaching for children aged 4-12. The Yestoryd ARC™ — Assess, Remediate, Celebrate.'}
-        credential={c.footer_credential || 'Jolly Phonics & Grammar Certified'}
-        tagline={c.footer_tagline || 'Made with love for young readers in India'}
-      />
+      <Footer />
 
       <FloatingElements
         whatsappNumber={whatsappNumber}

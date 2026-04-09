@@ -16,6 +16,7 @@ import {
   Award, Heart, Zap, Flame
 } from 'lucide-react';
 import { Header } from '@/components/shared/Header';
+import { Footer } from '@/components/shared/Footer';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { Avatar } from '@/components/shared/Avatar';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
@@ -781,6 +782,8 @@ export default function ClassesPageClient() {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }
