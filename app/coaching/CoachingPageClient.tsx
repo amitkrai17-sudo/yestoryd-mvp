@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/shared/Header';
 import { Footer } from '@/components/shared/Footer';
-import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { getWhatsAppHref } from '@/components/shared/WhatsAppButton';
 import {
   TransformationSection,
   ArcSection,
@@ -151,9 +151,7 @@ const FAQS = [
   },
 ] as const;
 
-const WA_LINK = `https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}?text=${encodeURIComponent(
-  "Hi I'd like to learn more about 1:1 Coaching",
-)}`;
+const WA_LINK = getWhatsAppHref("Hi I'd like to learn more about 1:1 Coaching");
 
 // ---------------------------------------------------------------------------
 // Component

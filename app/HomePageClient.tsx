@@ -363,9 +363,13 @@ export default function HomePageClient({
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => setActiveTestimonial((prev) => (prev + 1) % 4), 5000);
+    if (displayTestimonials.length === 0) return;
+    const timer = setInterval(
+      () => setActiveTestimonial((prev) => (prev + 1) % displayTestimonials.length),
+      5000,
+    );
     return () => clearInterval(timer);
-  }, []);
+  }, [displayTestimonials.length]);
 
   const handleCTAClick = () => {
     if (abTestConfig.enabled) trackABEvent(abTestConfig.testName, abVariant, 'cta_click');

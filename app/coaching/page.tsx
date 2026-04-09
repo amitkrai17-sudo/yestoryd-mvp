@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import CoachingPageClient from './CoachingPageClient';
-import { getPricingConfig } from '@/lib/config/pricing-config';
+import { getCoachingFullTierPrices } from '@/lib/config/pricing-config';
 
 export const metadata: Metadata = {
   title: '1:1 English Coaching for Kids — AI-Powered, Personalized | Yestoryd',
@@ -19,25 +19,12 @@ export const metadata: Metadata = {
 };
 
 export default async function CoachingPage() {
-  // Fetch coaching pricing from DB (5-min cached) — pricing_plans 'full' tier
-  let coachingOriginalPrice = 11999;
-  let coachingDiscountedPrice = 6999;
-
-  try {
-    const config = await getPricingConfig();
-    const fullTier = config.tiers.find((t) => t.slug === 'full');
-    if (fullTier) {
-      coachingOriginalPrice = fullTier.originalPrice;
-      coachingDiscountedPrice = fullTier.discountedPrice;
-    }
-  } catch (err) {
-    console.error('[CoachingPage] Failed to fetch pricing config:', err);
-  }
+  const { originalPrice, discountedPrice } = await getCoachingFullTierPrices();
 
   return (
     <CoachingPageClient
-      coachingOriginalPrice={coachingOriginalPrice}
-      coachingDiscountedPrice={coachingDiscountedPrice}
+      coachingOriginalPrice={originalPrice}
+      coachingDiscountedPrice={discountedPrice}
     />
   );
 }

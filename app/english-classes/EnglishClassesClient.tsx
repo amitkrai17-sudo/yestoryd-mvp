@@ -19,15 +19,13 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/shared/Header';
 import { Footer } from '@/components/shared/Footer';
-import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { getWhatsAppHref } from '@/components/shared/WhatsAppButton';
 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
 
-const WA_LINK = `https://wa.me/${COMPANY_CONFIG.leadBotWhatsApp}?text=${encodeURIComponent(
-  "Hi I'm interested in English Classes for my child",
-)}`;
+const WA_LINK = getWhatsAppHref("Hi I'm interested in English Classes for my child");
 
 const SKILLS = [
   {

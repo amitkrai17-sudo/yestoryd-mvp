@@ -12,16 +12,16 @@ interface HeaderProps {
   coachSubdomain?: string;
 }
 
+const MAIN_NAV_LINKS = [
+  { href: '/classes', label: 'Workshops', Icon: Users },
+  { href: '/english-classes', label: 'English Classes', Icon: BookOpen },
+  { href: '/coaching', label: '1:1 Coaching', Icon: Sparkles },
+  { href: '/library', label: 'Library', Icon: BookOpen },
+  { href: '/pricing', label: 'Pricing', Icon: null },
+];
+
 export function Header({ variant = 'default', coachName, coachSubdomain }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const mainNavLinks = [
-    { href: '/classes', label: 'Workshops', Icon: Users },
-    { href: '/english-classes', label: 'English Classes', Icon: BookOpen },
-    { href: '/coaching', label: '1:1 Coaching', Icon: Sparkles },
-    { href: '/library', label: 'Library', Icon: BookOpen },
-    { href: '/pricing', label: 'Pricing', Icon: null },
-  ];
 
   const coachNavLinks = [
     { href: `/${coachSubdomain}`, label: 'Home' },
@@ -29,7 +29,7 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
     { href: `/${coachSubdomain}/book`, label: 'Book Session' },
   ];
 
-  const navLinks = variant === 'coach' ? coachNavLinks : mainNavLinks;
+  const navLinks = variant === 'coach' ? coachNavLinks : MAIN_NAV_LINKS;
 
   return (
     <header className="sticky top-0 z-50 bg-[#0D0D0D]/95 backdrop-blur-md border-b border-gray-800">

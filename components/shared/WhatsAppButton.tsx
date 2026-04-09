@@ -3,6 +3,15 @@
 import { MessageCircle } from 'lucide-react';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
+/**
+ * Build a WhatsApp deep link URL with optional pre-filled message.
+ * Use instead of hand-rolling `https://wa.me/${phone}?text=${encodeURIComponent(...)}`.
+ */
+export function getWhatsAppHref(message?: string, phone: string = COMPANY_CONFIG.leadBotWhatsApp): string {
+  const encoded = message ? encodeURIComponent(message) : '';
+  return `https://wa.me/${phone}${encoded ? `?text=${encoded}` : ''}`;
+}
+
 interface WhatsAppButtonProps {
   phone?: string;
   message?: string;
@@ -26,8 +35,7 @@ export function WhatsAppButton({
   size = 'md',
   className = '',
 }: WhatsAppButtonProps) {
-  const encodedMessage = message ? encodeURIComponent(message) : '';
-  const href = `https://wa.me/${phone}${encodedMessage ? `?text=${encodedMessage}` : ''}`;
+  const href = getWhatsAppHref(message, phone);
   const sizeClasses = SIZE_CLASSES[size];
 
   if (variant === 'icon-only') {

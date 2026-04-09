@@ -267,6 +267,35 @@ function buildFallback(): PricingConfig {
 // =============================================================================
 
 /**
+ * Fetch coaching 'full' tier prices (originalPrice + discountedPrice).
+ * Use in server components instead of duplicating the
+ * `getPricingConfig() → tiers.find('full')` pattern with hardcoded fallbacks.
+ * Falls back to FALLBACK_TIERS values if DB fetch fails.
+ */
+export async function getCoachingFullTierPrices(): Promise<{
+  originalPrice: number;
+  discountedPrice: number;
+}> {
+  try {
+    const config = await getPricingConfig();
+    const fullTier = config.tiers.find((t) => t.slug === 'full');
+    if (fullTier) {
+      return {
+        originalPrice: fullTier.originalPrice,
+        discountedPrice: fullTier.discountedPrice,
+      };
+    }
+  } catch (err) {
+    console.error('[pricing-config] getCoachingFullTierPrices failed:', err);
+  }
+  const fallback = FALLBACK_TIERS.find((t) => t.slug === 'full')!;
+  return {
+    originalPrice: fallback.originalPrice,
+    discountedPrice: fallback.discountedPrice,
+  };
+}
+
+/**
  * Get coaching session count for a specific age band + tier.
  * Uses weeklyPattern × durationWeeks (V3 computation).
  */
