@@ -75,13 +75,13 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
             )}
             {variant === 'coach' ? (
               <Link href={`/${coachSubdomain}/assessment`}>
-                <Button className="bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl px-6">
+                <Button className="bg-[#FF0099] hover:bg-[#FF0099]/90 text-white rounded-xl px-6">
                   Reading Test - Free
                 </Button>
               </Link>
             ) : (
               <Link href="/assessment">
-                <Button className="bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl px-6">
+                <Button className="bg-[#FF0099] hover:bg-[#FF0099]/90 text-white rounded-xl px-6">
                   Reading Test - Free
                 </Button>
               </Link>
@@ -127,13 +127,13 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
               <div className="pt-4 border-t border-gray-800 mt-2 space-y-3">
                 {variant === 'coach' ? (
                   <Link href={`/${coachSubdomain}/assessment`}>
-                    <Button className="w-full bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl">
+                    <Button className="w-full bg-[#FF0099] hover:bg-[#FF0099]/90 text-white rounded-xl">
                       Reading Test - Free
                     </Button>
                   </Link>
                 ) : (
                   <Link href="/assessment">
-                    <Button className="w-full bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl">
+                    <Button className="w-full bg-[#FF0099] hover:bg-[#FF0099]/90 text-white rounded-xl">
                       Reading Test - Free
                     </Button>
                   </Link>
