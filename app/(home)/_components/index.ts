@@ -14,6 +14,7 @@ export { StorySection } from './StorySection';
 export { RaiSection } from './RaiSection';
 export { TestimonialsSection } from './TestimonialsSection';
 export { JourneySection } from './JourneySection';
+export { ProductOverview } from './ProductOverview';
 export { PricingSection } from './PricingSection';
 export { CtaSection } from './CtaSection';
 export { FooterSection } from './FooterSection';

@@ -11,6 +11,7 @@ import {
   RaiSection,
   TestimonialsSection,
   JourneySection,
+  ProductOverview,
   PricingSection,
   FaqSection,
   CtaSection,
@@ -507,6 +508,8 @@ export default function HomePageClient({
       />
 
       <AssessmentPreview />
+
+      <ProductOverview />
 
       <PricingSection
         badge={c.pricing_section_badge || 'Start Your ARC Journey'}
