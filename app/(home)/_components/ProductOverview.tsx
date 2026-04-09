@@ -1,14 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Users, BookOpen, Sparkles, Check, ArrowRight } from 'lucide-react';
+import { Users, BookOpen, Sparkles, Check, Star, ArrowRight, Zap } from 'lucide-react';
+
+// ---------------------------------------------------------------------------
+// Product card data
+// ---------------------------------------------------------------------------
 
 const PRODUCTS = [
   {
     key: 'workshops',
     name: 'Workshops',
     Icon: Users,
-    accent: { text: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
     subtitle: 'Fun group events for curious readers',
     price: '199 \u2013 399',
     priceUnit: '/ session',
@@ -16,16 +19,23 @@ const PRODUCTS = [
       'Storytelling, phonics, creative writing',
       'Age-grouped (4-6, 7-9, 10-12)',
       'AI micro-insight after each session',
-      'No commitment — drop in anytime',
+      'No commitment \u2014 drop in anytime',
     ],
     cta: { label: 'Browse workshops', href: '/classes' },
+    classes: {
+      card: 'bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20',
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-400',
+      checkColor: 'text-amber-400',
+      cta: 'border border-amber-500/30 text-amber-400 hover:bg-amber-500/10',
+    },
     featured: false,
+    useStarIcon: false,
   },
   {
     key: 'classes',
     name: 'English Classes',
     Icon: BookOpen,
-    accent: { text: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20' },
     subtitle: 'Structured learning with an assigned coach',
     price: '199 \u2013 399',
     priceUnit: '/ session',
@@ -36,16 +46,23 @@ const PRODUCTS = [
       'Parent check-ins + rAI Chat',
     ],
     cta: { label: 'Enquire now', href: '/english-classes' },
+    classes: {
+      card: 'bg-sky-500/5 hover:bg-sky-500/10 border border-sky-500/20',
+      iconBg: 'bg-sky-500/15',
+      iconColor: 'text-sky-400',
+      checkColor: 'text-sky-400',
+      cta: 'border border-sky-500/30 text-sky-400 hover:bg-sky-500/10',
+    },
     featured: false,
+    useStarIcon: false,
   },
   {
     key: 'coaching',
     name: '1:1 Coaching',
     Icon: Sparkles,
-    accent: { text: 'text-[#FF0099]', bg: 'bg-[#FF0099]/10', border: 'border-[#FF0099]/20' },
     subtitle: 'Deep, AI-powered transformation',
     price: '6,999',
-    priceUnit: '/ season',
+    priceUnit: '/ season (90 days)',
     features: [
       'Dedicated personal coach',
       'AI-recorded sessions + SmartPractice',
@@ -53,24 +70,36 @@ const PRODUCTS = [
       'All workshops FREE forever',
     ],
     cta: { label: 'Start with free AI test', href: '/assessment' },
+    classes: {
+      card: 'bg-[#FF0099]/5 hover:bg-[#FF0099]/10 border-2 border-[#FF0099]/30',
+      iconBg: 'bg-[#FF0099]/15',
+      iconColor: 'text-[#FF0099]',
+      checkColor: 'text-[#FF0099]',
+      cta: 'bg-[#FF0099] hover:bg-[#FF0099]/90 text-white',
+    },
     featured: true,
+    useStarIcon: true,
   },
 ] as const;
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function ProductOverview() {
   return (
-    <section className="py-16 sm:py-20 relative">
+    <section className="py-16 sm:py-20 lg:py-24 bg-gray-900/30 border-t border-b border-gray-800 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-10">
-          <span className="inline-block text-sm font-semibold text-[#FF0099] uppercase tracking-wider mb-4">
+        <div className="text-center mb-12">
+          <span className="inline-block bg-[#FF0099]/10 text-[#FF0099] text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-full mb-4">
             Three ways to learn
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Pick what fits your child{' '}
             <span className="text-[#FF0099]">today</span>
           </h2>
-          <p className="text-lg text-text-secondary max-w-2xl mx-auto">
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
             Start with a workshop, move to classes, or dive into full coaching.
             Upgrade anytime.
           </p>
@@ -81,56 +110,51 @@ export function ProductOverview() {
           {PRODUCTS.map((product) => (
             <div
               key={product.key}
-              className={`relative flex flex-col rounded-2xl border p-6 ${
-                product.featured
-                  ? 'border-[#FF0099]/30 bg-surface-2'
-                  : 'border-border bg-surface-2'
-              }`}
+              className={`relative flex flex-col rounded-2xl p-6 transition-colors ${product.classes.card}`}
             >
               {/* Featured badge */}
               {product.featured && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FF0099] text-white text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FF0099] text-white text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
                   Most popular
                 </span>
               )}
 
               {/* Icon + name */}
               <div className="flex items-center gap-3 mb-2">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${product.accent.bg}`}>
-                  <product.Icon className={`w-5 h-5 ${product.accent.text}`} />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${product.classes.iconBg}`}>
+                  <product.Icon className={`w-6 h-6 ${product.classes.iconColor}`} />
                 </div>
-                <h3 className="text-lg font-bold text-white">{product.name}</h3>
+                <h3 className="text-xl font-bold text-white">{product.name}</h3>
               </div>
 
-              <p className="text-text-secondary text-sm mb-4">{product.subtitle}</p>
+              <p className="text-gray-400 text-sm mb-5">{product.subtitle}</p>
 
               {/* Price */}
-              <div className="mb-5">
-                <span className="text-2xl font-bold text-white">
-                  <span className="text-lg font-normal text-text-tertiary">&#8377;</span>
+              <div className="mb-6">
+                <span className="text-3xl font-bold text-white">
+                  <span className="text-xl font-normal text-gray-400">&#8377;</span>
                   {product.price}
                 </span>
-                <span className="text-text-tertiary text-sm ml-1">{product.priceUnit}</span>
+                <span className="text-gray-400 text-sm ml-1">{product.priceUnit}</span>
               </div>
 
               {/* Features */}
-              <ul className="space-y-2.5 mb-6 flex-1">
-                {product.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-text-secondary">
-                    <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
+              <ul className="space-y-3 mb-6 flex-1">
+                {product.features.map((f) => {
+                  const Icon = product.useStarIcon ? Star : Check;
+                  return (
+                    <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                      <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${product.classes.checkColor}`} />
+                      {f}
+                    </li>
+                  );
+                })}
               </ul>
 
               {/* CTA */}
               <Link
                 href={product.cta.href}
-                className={`mt-auto flex items-center justify-center gap-2 h-12 rounded-xl font-semibold text-sm transition-colors ${
-                  product.featured
-                    ? 'bg-[#FF0099] hover:bg-[#FF0099]/90 text-white'
-                    : 'border border-border text-text-secondary hover:bg-white/[0.05]'
-                }`}
+                className={`mt-auto flex items-center justify-center gap-2 h-12 rounded-xl font-semibold text-sm transition-colors ${product.classes.cta}`}
               >
                 {product.cta.label}
                 <ArrowRight className="w-4 h-4" />
@@ -143,11 +167,22 @@ export function ProductOverview() {
         <div className="text-center mt-8">
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-[#FF0099] hover:underline transition-colors"
           >
             See full comparison
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
+        </div>
+
+        {/* Upgrade strip */}
+        <div className="max-w-3xl mx-auto mt-6 bg-[#FF0099]/5 border border-[#FF0099]/20 rounded-2xl p-4 flex items-center justify-center gap-3 text-center text-sm text-gray-400">
+          <Zap className="w-4 h-4 text-[#FF0099] flex-shrink-0" />
+          <p>
+            <span className="text-[#FF0099] font-bold">
+              Coaching families get all workshops free.
+            </span>{' '}
+            That&apos;s &#8377;800-2,000/month included with your season.
+          </p>
         </div>
       </div>
     </section>

@@ -4,12 +4,9 @@ import { useState, useEffect } from 'react';
 import {
   HeaderNav,
   HeroSection,
-  TransformationSection,
   ProblemSection,
-  ArcSection,
   StorySection,
   TestimonialsSection,
-  PricingSection,
   ProductOverview,
   FaqSection,
   CtaSection,
@@ -338,24 +335,6 @@ export default function HomePageClient({
   const storyVideoUrl = videos?.homepageStoryVideoUrl || 'https://www.youtube.com/embed/Dz94bVuWH_A';
   const durations = sessionDurations || { coaching: 45, skillBuilding: 45, checkin: 45, discovery: 45 }; // V1 fallback – SiteSettingsContext is authoritative
 
-  // Compute session range label from pricing display data (e.g., "6–18 coaching sessions (1:1)")
-  const sessionRangeLabel = (() => {
-    const bands = pricingDisplayData?.ageBands;
-    if (!bands?.length) return '6 coaching sessions (1:1)';
-    // Get session count range across all age bands for the continuation tier (building arc)
-    const contTier = bands[0]?.tiers?.find((t: any) => t.slug === 'continuation');
-    if (!contTier) return '6 coaching sessions (1:1)';
-    const counts = bands.map((b: any) => {
-      const tier = b.tiers?.find((t: any) => t.slug === 'continuation');
-      return tier?.sessionsCoaching || 0;
-    }).filter((n: number) => n > 0);
-    if (counts.length === 0) return '6 coaching sessions (1:1)';
-    const min = Math.min(...counts);
-    const max = Math.max(...counts);
-    const range = min === max ? `${min}` : `${min}–${max}`;
-    return `${range} coaching sessions (1:1)`;
-  })();
-
   const faqItems = c.faq_items?.length > 0 ? c.faq_items : getDefaultFaqData(durations, pricingDisplayData);
   const displayTestimonials = testimonials.length > 0 ? testimonials : defaultTestimonials;
 
@@ -405,36 +384,26 @@ export default function HomePageClient({
       <section className="pt-28 sm:pt-32 lg:pt-36 pb-12 sm:pb-14 lg:pb-20 bg-gradient-to-b from-surface-1 to-surface-0 relative">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00abff]/10 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/4"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#ff0099]/10 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/4"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <HeroSection
-              variant={abVariant}
-              testimonial={displayTestimonials[0]}
-              content={{
-                badge: abVariant === 'curiosity' ? c.hero_badge_curiosity : c.hero_badge_validation,
-                headline: abVariant === 'curiosity' ? c.hero_headline_curiosity : c.hero_headline_validation,
-                reframeText: c.hero_reframe_text || "It's not laziness. It's not attitude.",
-                explanation: abVariant === 'curiosity' ? c.hero_explanation_curiosity : c.hero_explanation_validation,
-                ctaPrimary: c.hero_cta_primary || 'Reading Test - Free',
-                ctaSecondary: c.hero_cta_secondary || 'Watch Our Story',
-                trustBadge1: c.hero_trust_badge_1 || '100% Free',
-                trustBadge2: c.hero_trust_badge_2 || '5 Minutes',
-                trustBadge3: c.hero_trust_badge_3 || 'Instant Results',
-                statPercentage: c.hero_stat_percentage || '87%',
-                statText: c.hero_stat_text || 'of parents finally understood WHY their child struggled',
-                urgencyText: c.hero_urgency_text || 'Reading gaps widen every month. Early identification matters.',
-              }}
-              onCTAClick={handleCTAClick}
-            />
-            <div className="relative">
-              <TransformationSection
-                header={c.transformation_header || 'The 90-Day Transformation'}
-                beforeItems={c.transformation_before_items || ['"I hate reading"', 'Avoids books', 'Reads slowly', 'Losing confidence']}
-                afterItems={c.transformation_after_items || ['"Can I read more?"', 'Picks up books', 'Reads fluently', 'Speaks confidently']}
-                tagline={c.transformation_tagline || 'rAI finds the gaps • Coach fills them • You see progress'}
-              />
-            </div>
-          </div>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <HeroSection
+            variant={abVariant}
+            testimonial={displayTestimonials[0]}
+            content={{
+              badge: abVariant === 'curiosity' ? c.hero_badge_curiosity : c.hero_badge_validation,
+              headline: abVariant === 'curiosity' ? c.hero_headline_curiosity : c.hero_headline_validation,
+              reframeText: c.hero_reframe_text || "It's not laziness. It's not attitude.",
+              explanation: abVariant === 'curiosity' ? c.hero_explanation_curiosity : c.hero_explanation_validation,
+              ctaPrimary: c.hero_cta_primary || 'Reading Test - Free',
+              ctaSecondary: c.hero_cta_secondary || 'Watch Our Story',
+              trustBadge1: c.hero_trust_badge_1 || '100% Free',
+              trustBadge2: c.hero_trust_badge_2 || '5 Minutes',
+              trustBadge3: c.hero_trust_badge_3 || 'Instant Results',
+              statPercentage: c.hero_stat_percentage || '87%',
+              statText: c.hero_stat_text || 'of parents finally understood WHY their child struggled',
+              urgencyText: c.hero_urgency_text || 'Reading gaps widen every month. Early identification matters.',
+            }}
+            onCTAClick={handleCTAClick}
+          />
         </div>
       </section>
 
@@ -454,20 +423,6 @@ export default function HomePageClient({
       />
 
       <ProductOverview />
-
-      <ArcSection
-        badge={c.arc_section_badge || 'THE YESTORYD ARC™'}
-        title={c.arc_section_title || "Your Child's 90-Day Transformation"}
-        subtitle={c.arc_section_subtitle || 'A clear path from struggling reader to confident communicator'}
-        phases={{
-          assess: { letter: 'A', weeks: c.arc_assess_weeks || 'Week 1-4', title: c.arc_assess_title || 'Assess', subtitle: c.arc_assess_subtitle || 'Foundation Arc', description: c.arc_assess_description || 'AI listens to your child read and identifies exact gaps in 40+ sound patterns.', features: c.arc_assess_features || ['5-minute AI assessment', 'Detailed gap report', 'Personalized learning path'], icon: 'brain', color: '#00ABFF' },
-          remediate: { letter: 'R', weeks: c.arc_remediate_weeks || 'Week 5-8', title: c.arc_remediate_title || 'Remediate', subtitle: c.arc_remediate_subtitle || 'Building Arc', description: c.arc_remediate_description || 'Expert coaches fill gaps with personalized 1:1 sessions covering phonics, grammar, comprehension, and vocabulary — tailored for ages 4-12.', features: c.arc_remediate_features || [sessionRangeLabel, 'Practice activities at home', 'Weekly WhatsApp updates'], icon: 'heart', color: '#FF0099' },
-          celebrate: { letter: 'C', weeks: c.arc_celebrate_weeks || 'Week 9-12', title: c.arc_celebrate_title || 'Celebrate', subtitle: c.arc_celebrate_subtitle || 'Confidence Arc', description: c.arc_celebrate_description || 'Your child reads with confidence. Measurable improvement you can see.', features: c.arc_celebrate_features || ['Before/after comparison', 'Progress certificate', 'Continuation roadmap'], icon: 'award', color: '#c44dff' },
-        }}
-        promise={{ title: c.arc_promise_title || 'The 90-Day Promise', description: c.arc_promise_description || 'In 90 days, your child reads more fluently.', badges: [c.arc_promise_badge_1 || 'Measurable Growth', c.arc_promise_badge_2 || '100% Refund Guarantee', c.arc_promise_badge_3 || 'Full Transparency'] }}
-        trustStats={{ assessmentTime: c.arc_trust_assessment_time || '5 min', coachingType: c.arc_trust_coaching_type || '1:1', transformationDays: c.arc_trust_transformation_days || '90 days', happyParents: stats.happyParents }}
-        onCTAClick={handleCTAClick}
-      />
 
       <StorySection
         badge={c.story_section_badge || 'THE YESTORYD STORY'}
@@ -489,33 +444,6 @@ export default function HomePageClient({
       />
 
       <AssessmentPreview />
-
-      {/* Bridge to coaching pricing */}
-      <section className="py-8 text-center px-4">
-        <h2 className="text-2xl sm:text-3xl font-bold font-display text-white mb-2">
-          Explore 1:1 coaching plans
-        </h2>
-        <p className="text-text-secondary text-sm max-w-md mx-auto">
-          Our most comprehensive product. Choose a plan that fits your child&apos;s age and learning pace.
-        </p>
-      </section>
-
-      <PricingSection
-        badge={c.pricing_section_badge || 'Start Your ARC Journey'}
-        title={c.pricing_section_title || 'Simple, Transparent Pricing'}
-        subtitle={c.pricing_section_subtitle || "Start free. See your child's reading profile. Choose the program that fits your family."}
-        freeBadge={c.pricing_free_badge || 'Step 1 — Start Here'}
-        freeTitle={c.pricing_free_title || 'Free AI Assessment'}
-        freeDescription={c.pricing_free_description || "See rAI in action — understand your child's reading level"}
-        freePriceLabel={c.pricing_free_price_label || 'forever free'}
-        freeAssessmentWorth={pricing.freeAssessmentWorth || '999'}
-        step2Badge={c.pricing_step2_badge || 'Step 2 — Choose Your Program'}
-        guaranteeText={c.pricing_guarantee_text || '100% satisfaction guarantee on all programs. Flexible scheduling included.'}
-        products={products}
-        onCTAClick={handleCTAClick}
-        sessionDurations={durations}
-        pricingDisplayData={pricingDisplayData}
-      />
 
       <FaqSection
         badge={c.faq_section_badge || 'Common Questions'}
