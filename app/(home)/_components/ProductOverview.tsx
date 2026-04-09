@@ -115,6 +115,9 @@ export function ProductOverview({
 
               <p className="text-gray-400 text-sm mb-5">{product.subtitle}</p>
 
+              {/* TODO: move to site_settings when product pricing is formalized.
+                  No DB source exists yet — workshops and English Classes are
+                  per-batch / per-onboarding priced. */}
               <div className="mb-6">
                 <span className="text-3xl font-bold text-white">
                   <span className="text-xl font-normal text-gray-400">&#8377;</span>

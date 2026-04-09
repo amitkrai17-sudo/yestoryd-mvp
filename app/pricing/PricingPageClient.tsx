@@ -21,6 +21,9 @@ import { Footer } from '@/components/shared/Footer';
 // Product card data
 // ---------------------------------------------------------------------------
 
+// TODO: move workshops + classes prices to site_settings when product
+// pricing is formalized. No DB source exists yet — workshops and English
+// Classes are per-batch / per-onboarding priced.
 const PRODUCTS = [
   {
     key: 'workshops',

@@ -340,6 +340,9 @@ export default function EnglishClassesClient() {
               <h3 className="text-lg font-semibold text-white mb-2">
                 Flexible session pricing
               </h3>
+              {/* TODO: move to site_settings when product pricing is formalized.
+                  English Classes are per-onboarding priced (admin sets session_rate
+                  per tuition_onboarding row) — no global product price exists. */}
               <p className="text-3xl font-bold text-white mb-1">
                 <span className="text-xl font-normal text-gray-400">&#8377;</span>
                 199 &ndash; 399
