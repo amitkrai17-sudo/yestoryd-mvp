@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Menu, X, BookOpen, Users, LogIn } from 'lucide-react';
 import { useState } from 'react';
@@ -34,25 +35,21 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href={variant === 'coach' ? `/${coachSubdomain}` : '/'} className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#FF2D92] to-[#3B82F6] rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              {variant === 'coach' ? (
-                <>
-                  <span className="font-bold text-xl text-white">{coachName}</span>
-                  <span className="text-xs text-[#FF2D92] block -mt-1">Powered by Yestoryd</span>
-                </>
-              ) : (
-                <span className="font-bold text-2xl">
-                  <span className="text-[#FF2D92]">Yest</span>
-                  <span className="text-white">o</span>
-                  <span className="text-[#FBBF24]">ryd</span>
-                </span>
-              )}
-            </div>
-          </Link>
+          {variant === 'coach' ? (
+            <Link href={`/${coachSubdomain}`} className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#FF2D92] to-[#3B82F6] rounded-xl flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <span className="font-bold text-xl text-white">{coachName}</span>
+                <span className="text-xs text-[#FF2D92] block -mt-1">Powered by Yestoryd</span>
+              </div>
+            </Link>
+          ) : (
+            <Link href="/" className="flex items-center">
+              <Image src="/images/logo.png" alt="Yestoryd" width={160} height={45} priority />
+            </Link>
+          )}
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">

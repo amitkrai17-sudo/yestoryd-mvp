@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, GraduationCap, BookOpen, LogIn } from 'lucide-react';
+import Image from 'next/image';
+import { Menu, X, GraduationCap, LogIn } from 'lucide-react';
 
 interface HeaderNavProps {
   scrolled: boolean;
@@ -35,15 +36,8 @@ export function HeaderNav({
       {/* Main Nav */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-surface-1/80 backdrop-blur-sm">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#FF2D92] to-[#3B82F6] rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-bold text-2xl">
-              <span className="text-[#FF2D92]">Yest</span>
-              <span className="text-white">o</span>
-              <span className="text-[#FBBF24]">ryd</span>
-            </span>
+          <Link href="/" className="flex items-center">
+            <Image src="/images/logo.png" alt="Yestoryd" width={160} height={45} priority />
           </Link>
 
           <nav className="hidden lg:flex items-center gap-8">
