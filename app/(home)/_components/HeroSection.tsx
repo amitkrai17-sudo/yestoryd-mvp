@@ -81,7 +81,7 @@ function HeroCuriosity({
         <Link
           href="/assessment"
           onClick={onCTAClick}
-          className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#FF0099]/90 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#FF0099]/25 transition-all whitespace-nowrap"
+          className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#FF0099]/90 transition-colors whitespace-nowrap"
         >
           <Zap className="w-5 h-5" />
           {content.ctaPrimary}
@@ -187,7 +187,7 @@ function HeroValidation({
         <Link
           href="/assessment"
           onClick={onCTAClick}
-          className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#FF0099]/90 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#FF0099]/25 transition-all whitespace-nowrap"
+          className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#FF0099]/90 transition-colors whitespace-nowrap"
         >
           <Zap className="w-5 h-5" />
           {content.ctaPrimary}

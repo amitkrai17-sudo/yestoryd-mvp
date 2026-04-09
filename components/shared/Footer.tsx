@@ -44,7 +44,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
                 </Link>
               </li>
               <li>
-                <Link href="/#pricing" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/pricing" className="text-gray-400 hover:text-white transition-colors">
                   1:1 Coaching
                 </Link>
               </li>

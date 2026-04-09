@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { Menu, X, LogIn, GraduationCap } from 'lucide-react';
+import { Menu, X, GraduationCap, BookOpen } from 'lucide-react';
 
 interface HeaderNavProps {
   scrolled: boolean;
@@ -36,28 +35,34 @@ export function HeaderNav({
       {/* Main Nav */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-surface-1/80 backdrop-blur-sm">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link href="/" className="flex items-center">
-            <Image src="/images/logo.png" alt="Yestoryd" width={140} height={40} className="h-8 lg:h-10 w-auto" />
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#FF2D92] to-[#3B82F6] rounded-xl flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+            <span className="font-bold text-2xl">
+              <span className="text-[#FF2D92]">Yest</span>
+              <span className="text-white">o</span>
+              <span className="text-[#FBBF24]">ryd</span>
+            </span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-6">
-            <a href="#how-it-works" className="text-text-secondary hover:text-white font-medium text-sm transition-colors">The ARC Method</a>
-            <a href="#rucha-story" className="text-text-secondary hover:text-white font-medium text-sm transition-colors">Our Story</a>
-            <a href="#pricing" className="text-text-secondary hover:text-white font-medium text-sm transition-colors">Pricing</a>
+          <nav className="hidden lg:flex items-center gap-8">
+            <Link href="/classes" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Workshops</Link>
+            <Link href="/english-classes" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">English Classes</Link>
+            <Link href="/pricing" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">1:1 Coaching</Link>
+            <Link href="/library" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Library</Link>
+            <Link href="/pricing" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Pricing</Link>
+          </nav>
 
-            <div className="h-6 w-px bg-border mx-2"></div>
-
-            <Link href="/parent/login" className="flex items-center gap-2 text-white font-bold hover:text-[#00abff] text-sm transition-colors">
-              <LogIn className="w-4 h-4" /> Login
-            </Link>
+          <div className="hidden lg:flex items-center gap-4">
             <Link
               href="/assessment"
               onClick={onCTAClick}
-              className="min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#FF0099]/90 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#FF0099]/25 transition-all text-sm"
+              className="min-h-[44px] inline-flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#FF0099]/90 transition-colors text-sm"
             >
               Reading Test - Free
             </Link>
-          </nav>
+          </div>
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -73,14 +78,16 @@ export function HeaderNav({
       {mobileMenuOpen && (
         <div className="lg:hidden bg-surface-2 border-t border-border-subtle shadow-xl absolute w-full">
           <div className="px-4 py-6 space-y-4">
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block text-white font-semibold py-2">The ARC Method</a>
-            <a href="#rucha-story" onClick={() => setMobileMenuOpen(false)} className="block text-white font-semibold py-2">Our Story</a>
-            <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-white font-semibold py-2">Pricing</a>
-            <hr className="border-border-subtle" />
-            <Link href="/parent/login" onClick={() => setMobileMenuOpen(false)} className="block text-text-secondary py-2">Parent Login</Link>
-            <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); onCTAClick(); }} className="min-h-[44px] flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold w-full mt-4 hover:bg-[#FF0099]/90 transition-all">
-              Reading Test - Free
-            </Link>
+            <Link href="/classes" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Workshops</Link>
+            <Link href="/english-classes" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">English Classes</Link>
+            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">1:1 Coaching</Link>
+            <Link href="/library" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Library</Link>
+            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Pricing</Link>
+            <div className="pt-4 border-t border-gray-800 mt-2">
+              <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); onCTAClick(); }} className="min-h-[44px] flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold w-full hover:bg-[#FF0099]/90 transition-colors">
+                Reading Test - Free
+              </Link>
+            </div>
           </div>
         </div>
       )}

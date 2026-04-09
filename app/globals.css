@@ -47,8 +47,6 @@ html {
 body {
   background-color: var(--color-page);
   color: var(--color-text-primary);
-  min-height: 100vh;
-  min-height: 100dvh;
 }
 
 ::selection {

@@ -526,7 +526,7 @@ function BandPricingCards({
                   className={`w-full min-h-[44px] px-6 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
                     isFullProgram
                       ? 'bg-white text-[#ff0099] hover:bg-gray-100'
-                      : 'bg-[#FF0099] hover:bg-[#e6008a] text-white'
+                      : 'bg-[#FF0099] hover:bg-[#FF0099]/90 text-white'
                   }`}
                 >
                   <Bell className="w-4 h-4" />
@@ -689,7 +689,7 @@ function LegacyPricingCards({
                   className={`w-full min-h-[44px] px-6 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
                     isFullProgram
                       ? 'bg-white text-[#ff0099] hover:bg-gray-100'
-                      : 'bg-[#FF0099] hover:bg-[#e6008a] text-white'
+                      : 'bg-[#FF0099] hover:bg-[#FF0099]/90 text-white'
                   }`}
                 >
                   <Bell className="w-4 h-4" />

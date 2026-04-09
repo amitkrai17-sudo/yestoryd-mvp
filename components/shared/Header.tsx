@@ -17,7 +17,7 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
   const mainNavLinks = [
     { href: '/classes', label: 'Workshops', Icon: Users },
     { href: '/english-classes', label: 'English Classes', Icon: BookOpen },
-    { href: '/#pricing', label: '1:1 Coaching', Icon: Sparkles },
+    { href: '/pricing', label: '1:1 Coaching', Icon: Sparkles },
     { href: '/library', label: 'Library', Icon: BookOpen },
     { href: '/pricing', label: 'Pricing', Icon: null },
   ];

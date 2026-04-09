@@ -336,50 +336,21 @@ export default function EnglishClassesClient() {
             <h2 className="text-2xl sm:text-3xl font-bold font-display text-white text-center mb-8">
               Transparent pricing, no surprises
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Group */}
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 text-center">
-                <div className="w-10 h-10 rounded-xl bg-sky-400/10 flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-5 h-5 text-sky-400" />
-                </div>
-                <p className="text-white font-semibold mb-1">Group Sessions</p>
-                <p className="text-2xl font-bold text-white mb-1">
-                  <span className="text-lg font-normal text-gray-400">
-                    &#8377;
-                  </span>
-                  199
-                  <span className="text-gray-500 text-sm font-normal">
-                    {' '}
-                    / session
-                  </span>
-                </p>
-                <p className="text-gray-500 text-xs">
-                  3-6 kids per batch, 45-120 min
-                </p>
-              </div>
-
-              {/* Individual */}
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 text-center">
-                <div className="w-10 h-10 rounded-xl bg-sky-400/10 flex items-center justify-center mx-auto mb-4">
-                  <User className="w-5 h-5 text-sky-400" />
-                </div>
-                <p className="text-white font-semibold mb-1">
-                  Individual Sessions
-                </p>
-                <p className="text-2xl font-bold text-white mb-1">
-                  <span className="text-lg font-normal text-gray-400">
-                    &#8377;
-                  </span>
-                  399
-                  <span className="text-gray-500 text-sm font-normal">
-                    {' '}
-                    / session
-                  </span>
-                </p>
-                <p className="text-gray-500 text-xs">
-                  1:1 with coach, 45-120 min
-                </p>
-              </div>
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8 text-center max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Flexible session pricing
+              </h3>
+              <p className="text-3xl font-bold text-white mb-1">
+                <span className="text-xl font-normal text-gray-400">&#8377;</span>
+                199 &ndash; 399
+                <span className="text-base font-normal text-gray-400">
+                  {' '}/ session
+                </span>
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                Group or individual. 45-120 min. Price varies by format and
+                duration.
+              </p>
             </div>
 
             <p className="text-gray-500 text-sm text-center mt-6 mb-4">
