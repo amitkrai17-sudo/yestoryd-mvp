@@ -24,7 +24,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
 
           {/* Services */}
           <div>
-            <h4 className="font-bold text-[#FBBF24] mb-5">Services</h4>
+            <h4 className="text-white font-semibold mb-5">Services</h4>
             <ul className="space-y-3 text-sm">
               <li>
                 <Link href="/classes" className="text-gray-400 hover:text-white transition-colors">
@@ -51,7 +51,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
 
           {/* Company */}
           <div>
-            <h4 className="font-bold text-[#FBBF24] mb-5">Company</h4>
+            <h4 className="text-white font-semibold mb-5">Company</h4>
             <ul className="space-y-3 text-sm">
               <li>
                 <Link href="/about" className="text-gray-400 hover:text-white transition-colors">
@@ -68,7 +68,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
 
           {/* Access */}
           <div>
-            <h4 className="font-bold text-[#FBBF24] mb-5">Access</h4>
+            <h4 className="text-white font-semibold mb-5">Access</h4>
             <ul className="space-y-3 text-sm">
               <li>
                 <Link href="/parent/login" className="text-gray-400 hover:text-white transition-colors">
@@ -90,7 +90,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
 
           {/* Contact */}
           <div>
-            <h4 className="font-bold text-[#FBBF24] mb-5">Get in Touch</h4>
+            <h4 className="text-white font-semibold mb-5">Get in Touch</h4>
             <ul className="space-y-3 text-sm">
               <li>
                 <a href={`mailto:${COMPANY_CONFIG.supportEmail}`} className="text-gray-400 hover:text-white transition-colors">
