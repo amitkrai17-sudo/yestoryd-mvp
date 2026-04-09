@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Menu, X, BookOpen, Users, Sparkles } from 'lucide-react';
+import { Menu, X, BookOpen, Users, LogIn } from 'lucide-react';
 import { useState } from 'react';
 
 interface HeaderProps {
@@ -17,7 +17,6 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
   const mainNavLinks = [
     { href: '/classes', label: 'Workshops', Icon: Users },
     { href: '/english-classes', label: 'English Classes', Icon: BookOpen },
-    { href: '/pricing', label: '1:1 Coaching', Icon: Sparkles },
     { href: '/library', label: 'Library', Icon: BookOpen },
     { href: '/pricing', label: 'Pricing', Icon: null },
   ];
@@ -70,6 +69,12 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-4">
+            {variant !== 'coach' && (
+              <Link href="/parent/login" className="flex items-center gap-1.5 text-gray-300 hover:text-white text-sm transition-colors">
+                <LogIn className="w-4 h-4" />
+                Login
+              </Link>
+            )}
             {variant === 'coach' ? (
               <Link href={`/${coachSubdomain}/assessment`}>
                 <Button className="bg-[#FF2D92] hover:bg-[#FF1A85] text-white rounded-xl px-6">
@@ -112,6 +117,15 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
                   {link.label}
                 </Link>
               ))}
+              {variant !== 'coach' && (
+                <Link
+                  href="/parent/login"
+                  className="text-gray-400 hover:text-white font-medium py-2 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Login
+                </Link>
+              )}
               <div className="pt-4 border-t border-gray-800 mt-2 space-y-3">
                 {variant === 'coach' ? (
                   <Link href={`/${coachSubdomain}/assessment`}>

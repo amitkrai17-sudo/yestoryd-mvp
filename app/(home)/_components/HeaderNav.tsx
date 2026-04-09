@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, GraduationCap, BookOpen } from 'lucide-react';
+import { Menu, X, GraduationCap, BookOpen, LogIn } from 'lucide-react';
 
 interface HeaderNavProps {
   scrolled: boolean;
@@ -49,12 +49,15 @@ export function HeaderNav({
           <nav className="hidden lg:flex items-center gap-8">
             <Link href="/classes" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Workshops</Link>
             <Link href="/english-classes" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">English Classes</Link>
-            <Link href="/pricing" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">1:1 Coaching</Link>
             <Link href="/library" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Library</Link>
             <Link href="/pricing" className="text-gray-400 hover:text-white font-medium text-sm transition-colors">Pricing</Link>
           </nav>
 
           <div className="hidden lg:flex items-center gap-4">
+            <Link href="/parent/login" className="flex items-center gap-1.5 text-gray-300 hover:text-white text-sm transition-colors">
+              <LogIn className="w-4 h-4" />
+              Login
+            </Link>
             <Link
               href="/assessment"
               onClick={onCTAClick}
@@ -80,9 +83,9 @@ export function HeaderNav({
           <div className="px-4 py-6 space-y-4">
             <Link href="/classes" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Workshops</Link>
             <Link href="/english-classes" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">English Classes</Link>
-            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">1:1 Coaching</Link>
             <Link href="/library" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Library</Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Pricing</Link>
+            <Link href="/parent/login" onClick={() => setMobileMenuOpen(false)} className="block text-gray-400 hover:text-white font-medium py-2 transition-colors">Login</Link>
             <div className="pt-4 border-t border-gray-800 mt-2">
               <Link href="/assessment" onClick={() => { setMobileMenuOpen(false); onCTAClick(); }} className="min-h-[44px] flex items-center justify-center gap-2 bg-[#FF0099] text-white px-6 py-3 rounded-xl font-bold w-full hover:bg-[#FF0099]/90 transition-colors">
                 Reading Test - Free
