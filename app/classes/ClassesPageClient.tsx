@@ -15,6 +15,7 @@ import {
   ChevronDown, Clock, MapPin, CheckCircle, ArrowRight, Play,
   Award, Heart, Zap, Flame
 } from 'lucide-react';
+import { Header } from '@/components/shared/Header';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { Avatar } from '@/components/shared/Avatar';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
@@ -498,6 +499,7 @@ export default function ClassesPageClient() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Header />
       {/* ================================================================= */}
       {/* HERO SECTION (AIDA: Attention) */}
       {/* ================================================================= */}
