@@ -69,7 +69,7 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
             {variant !== 'coach' && (
               <Link href="/parent/login" className="flex items-center gap-1.5 text-gray-300 hover:text-white text-sm transition-colors">
                 <LogIn className="w-4 h-4" />
-                Login
+                Parent Login
               </Link>
             )}
             {variant === 'coach' ? (
@@ -120,7 +120,7 @@ export function Header({ variant = 'default', coachName, coachSubdomain }: Heade
                   className="text-gray-400 hover:text-white font-medium py-2 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Login
+                  Parent Login
                 </Link>
               )}
               <div className="pt-4 border-t border-gray-800 mt-2 space-y-3">

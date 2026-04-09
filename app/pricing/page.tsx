@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import PricingPageClient from './PricingPageClient';
+import { getPricingConfig } from '@/lib/config/pricing-config';
 
 export const metadata: Metadata = {
   title: 'Pricing — Workshops, English Classes & 1:1 Coaching | Yestoryd',
@@ -17,6 +18,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PricingPage() {
-  return <PricingPageClient />;
+export default async function PricingPage() {
+  // Fetch coaching pricing from DB (5-min cached)
+  let coachingOriginalPrice = 11999;
+  let coachingDiscountedPrice = 6999;
+
+  try {
+    const config = await getPricingConfig();
+    const fullTier = config.tiers.find((t) => t.slug === 'full');
+    if (fullTier) {
+      coachingOriginalPrice = fullTier.originalPrice;
+      coachingDiscountedPrice = fullTier.discountedPrice;
+    }
+  } catch (err) {
+    console.error('[PricingPage] Failed to fetch pricing config:', err);
+  }
+
+  return (
+    <PricingPageClient
+      coachingOriginalPrice={coachingOriginalPrice}
+      coachingDiscountedPrice={coachingDiscountedPrice}
+    />
+  );
 }

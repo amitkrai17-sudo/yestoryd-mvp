@@ -422,7 +422,10 @@ export default function HomePageClient({
         goodNews={c.problem_good_news || 'Good news: Once identified, these gaps can be filled in weeks, not years.'}
       />
 
-      <ProductOverview />
+      <ProductOverview
+        coachingOriginalPrice={pricing.originalPrice || 11999}
+        coachingDiscountedPrice={pricing.discountedPrice || 6999}
+      />
 
       <StorySection
         badge={c.story_section_badge || 'THE YESTORYD STORY'}

@@ -4,17 +4,26 @@ import Link from 'next/link';
 import { Users, BookOpen, Sparkles, Check, Star, ArrowRight, Zap } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
-// Product card data
+// Props
 // ---------------------------------------------------------------------------
 
-const PRODUCTS = [
+interface ProductOverviewProps {
+  /** Coaching original price (from pricing_plans 'full' tier) */
+  coachingOriginalPrice?: number;
+  /** Coaching discounted price (from pricing_plans 'full' tier) */
+  coachingDiscountedPrice?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Static product data (workshops + classes are display ranges, not DB-sourced)
+// ---------------------------------------------------------------------------
+
+const STATIC_PRODUCTS = [
   {
     key: 'workshops',
     name: 'Workshops',
     Icon: Users,
     subtitle: 'Fun group events for curious readers',
-    price: '199 \u2013 399',
-    priceUnit: '/ session',
     features: [
       'Storytelling, phonics, creative writing',
       'Age-grouped (4-6, 7-9, 10-12)',
@@ -29,16 +38,12 @@ const PRODUCTS = [
       checkColor: 'text-amber-400',
       cta: 'border border-amber-500/30 text-amber-400 hover:bg-amber-500/10',
     },
-    featured: false,
-    useStarIcon: false,
   },
   {
     key: 'classes',
     name: 'English Classes',
     Icon: BookOpen,
     subtitle: 'Structured learning with an assigned coach',
-    price: '199 \u2013 399',
-    priceUnit: '/ session',
     features: [
       'Grammar, olympiad, creative writing, phonics',
       'Assigned coach + weekly schedule',
@@ -53,40 +58,28 @@ const PRODUCTS = [
       checkColor: 'text-sky-400',
       cta: 'border border-sky-500/30 text-sky-400 hover:bg-sky-500/10',
     },
-    featured: false,
-    useStarIcon: false,
   },
-  {
-    key: 'coaching',
-    name: '1:1 Coaching',
-    Icon: Sparkles,
-    subtitle: 'Deep, AI-powered transformation',
-    price: '6,999',
-    priceUnit: '/ season (90 days)',
-    features: [
-      'Dedicated personal coach',
-      'AI-recorded sessions + SmartPractice',
-      'Full intelligence profile + e-learning',
-      'All workshops FREE forever',
-    ],
-    cta: { label: 'Start with free AI test', href: '/assessment' },
-    classes: {
-      card: 'bg-[#FF0099]/5 hover:bg-[#FF0099]/10 border-2 border-[#FF0099]/30',
-      iconBg: 'bg-[#FF0099]/15',
-      iconColor: 'text-[#FF0099]',
-      checkColor: 'text-[#FF0099]',
-      cta: 'bg-[#FF0099] hover:bg-[#FF0099]/90 text-white',
-    },
-    featured: true,
-    useStarIcon: true,
-  },
+] as const;
+
+const COACHING_FEATURES = [
+  'Dedicated personal coach',
+  'AI-recorded sessions + SmartPractice',
+  'Full intelligence profile + e-learning',
+  'All workshops FREE forever',
 ] as const;
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function ProductOverview() {
+export function ProductOverview({
+  coachingOriginalPrice = 11999,
+  coachingDiscountedPrice = 6999,
+}: ProductOverviewProps = {}) {
+  const discountPercent = Math.round(
+    (1 - coachingDiscountedPrice / coachingOriginalPrice) * 100,
+  );
+
   return (
     <section className="py-16 sm:py-20 lg:py-24 bg-gray-900/30 border-t border-b border-gray-800 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -107,19 +100,12 @@ export function ProductOverview() {
 
         {/* Product cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
-          {PRODUCTS.map((product) => (
+          {/* Static cards: Workshops + English Classes */}
+          {STATIC_PRODUCTS.map((product) => (
             <div
               key={product.key}
               className={`relative flex flex-col rounded-2xl p-6 transition-colors ${product.classes.card}`}
             >
-              {/* Featured badge */}
-              {product.featured && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FF0099] text-white text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
-                  Most popular
-                </span>
-              )}
-
-              {/* Icon + name */}
               <div className="flex items-center gap-3 mb-2">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${product.classes.iconBg}`}>
                   <product.Icon className={`w-6 h-6 ${product.classes.iconColor}`} />
@@ -129,29 +115,23 @@ export function ProductOverview() {
 
               <p className="text-gray-400 text-sm mb-5">{product.subtitle}</p>
 
-              {/* Price */}
               <div className="mb-6">
                 <span className="text-3xl font-bold text-white">
                   <span className="text-xl font-normal text-gray-400">&#8377;</span>
-                  {product.price}
+                  199 &ndash; 399
                 </span>
-                <span className="text-gray-400 text-sm ml-1">{product.priceUnit}</span>
+                <span className="text-gray-400 text-sm ml-1">/ session</span>
               </div>
 
-              {/* Features */}
               <ul className="space-y-3 mb-6 flex-1">
-                {product.features.map((f) => {
-                  const Icon = product.useStarIcon ? Star : Check;
-                  return (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                      <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${product.classes.checkColor}`} />
-                      {f}
-                    </li>
-                  );
-                })}
+                {product.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                    <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${product.classes.checkColor}`} />
+                    {f}
+                  </li>
+                ))}
               </ul>
 
-              {/* CTA */}
               <Link
                 href={product.cta.href}
                 className={`mt-auto flex items-center justify-center gap-2 h-12 rounded-xl font-semibold text-sm transition-colors ${product.classes.cta}`}
@@ -161,16 +141,65 @@ export function ProductOverview() {
               </Link>
             </div>
           ))}
+
+          {/* Coaching card (DB-driven price) */}
+          <div className="relative flex flex-col rounded-2xl p-6 transition-colors bg-[#FF0099]/5 hover:bg-[#FF0099]/10 border-2 border-[#FF0099]/30">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FF0099] text-white text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
+              Most popular
+            </span>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[#FF0099]/15">
+                <Sparkles className="w-6 h-6 text-[#FF0099]" />
+              </div>
+              <h3 className="text-xl font-bold text-white">1:1 Coaching</h3>
+            </div>
+
+            <p className="text-gray-400 text-sm mb-5">Deep, AI-powered transformation</p>
+
+            <div className="mb-6">
+              <div className="flex items-baseline flex-wrap gap-x-2">
+                <span className="text-gray-500 line-through text-lg">
+                  &#8377;{coachingOriginalPrice.toLocaleString('en-IN')}
+                </span>
+                <span className="text-white text-3xl font-bold">
+                  <span className="text-xl font-normal text-gray-400">&#8377;</span>
+                  {coachingDiscountedPrice.toLocaleString('en-IN')}
+                </span>
+                <span className="bg-emerald-500/15 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {discountPercent}% off
+                </span>
+              </div>
+              <p className="text-gray-400 text-sm mt-1">/ season (90 days)</p>
+            </div>
+
+            <ul className="space-y-3 mb-6 flex-1">
+              {COACHING_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                  <Star className="w-4 h-4 mt-0.5 flex-shrink-0 text-[#FF0099]" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <Link
+              href="/pricing"
+              className="mt-auto flex items-center justify-center gap-2 h-12 rounded-xl font-semibold text-sm transition-colors bg-[#FF0099] hover:bg-[#FF0099]/90 text-white"
+            >
+              Explore coaching
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
 
-        {/* Compare link */}
-        <div className="text-center mt-8">
+        {/* Compare CTA — prominent button */}
+        <div className="text-center mt-10">
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-1.5 text-sm text-[#FF0099] hover:underline transition-colors"
+            className="inline-flex items-center gap-2 bg-[#FF0099]/10 border border-[#FF0099]/20 text-[#FF0099] hover:bg-[#FF0099]/15 px-6 py-3 rounded-xl text-base font-semibold transition-colors"
           >
             See full comparison
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 

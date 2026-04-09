@@ -197,8 +197,19 @@ function CompareCell({ value }: { value: string }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function PricingPageClient() {
+interface PricingPageClientProps {
+  coachingOriginalPrice?: number;
+  coachingDiscountedPrice?: number;
+}
+
+export default function PricingPageClient({
+  coachingOriginalPrice = 11999,
+  coachingDiscountedPrice = 6999,
+}: PricingPageClientProps = {}) {
   const [openSections, setOpenSections] = useState<Record<number, boolean>>({ 0: true });
+  const coachingDiscountPercent = Math.round(
+    (1 - coachingDiscountedPrice / coachingOriginalPrice) * 100,
+  );
 
   function toggleSection(idx: number) {
     setOpenSections((prev) => ({ ...prev, [idx]: !prev[idx] }));
@@ -286,13 +297,31 @@ export default function PricingPageClient() {
                     </div>
 
                     {/* Price */}
-                    <div className="mb-1">
-                      <span className="text-2xl font-bold text-white">
-                        <span className="text-lg font-normal text-gray-400">&#8377;</span>
-                        {product.price}
-                      </span>
-                      <span className="text-gray-500 text-sm ml-1">{product.priceUnit}</span>
-                    </div>
+                    {product.key === 'coaching' ? (
+                      <div className="mb-1">
+                        <div className="flex items-baseline flex-wrap gap-x-2">
+                          <span className="text-gray-500 line-through text-base">
+                            &#8377;{coachingOriginalPrice.toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-2xl font-bold text-white">
+                            <span className="text-lg font-normal text-gray-400">&#8377;</span>
+                            {coachingDiscountedPrice.toLocaleString('en-IN')}
+                          </span>
+                          <span className="bg-emerald-500/15 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full">
+                            {coachingDiscountPercent}% off
+                          </span>
+                        </div>
+                        <p className="text-gray-500 text-xs mt-1">{product.priceUnit}</p>
+                      </div>
+                    ) : (
+                      <div className="mb-1">
+                        <span className="text-2xl font-bold text-white">
+                          <span className="text-lg font-normal text-gray-400">&#8377;</span>
+                          {product.price}
+                        </span>
+                        <span className="text-gray-500 text-sm ml-1">{product.priceUnit}</span>
+                      </div>
+                    )}
                     <p className="text-gray-500 text-xs mb-5">{product.note}</p>
 
                     {/* Features */}
@@ -483,7 +512,8 @@ export default function PricingPageClient() {
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-1">Same price. Same total hours.</p>
               <p className="text-[#FF0099] text-2xl font-bold">
-                <span className="text-lg font-normal text-gray-400">&#8377;</span>6,999
+                <span className="text-lg font-normal text-gray-400">&#8377;</span>
+                {coachingDiscountedPrice.toLocaleString('en-IN')}
                 <span className="text-gray-500 text-base font-normal"> / season</span>
               </p>
             </div>
