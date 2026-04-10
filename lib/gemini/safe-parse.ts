@@ -19,6 +19,25 @@ export function safeParseGeminiJSON<T = any>(raw: string): T | null {
     try { return JSON.parse(truncated) as T; } catch {}
   }
 
+  // Step 3b: Repair truncated JSON — close open strings and braces
+  // Handles: {"key": "value cut off here
+  if (cleaned.startsWith('{') || cleaned.startsWith('[')) {
+    let repaired = cleaned;
+    // Close any unterminated string (odd number of unescaped quotes)
+    const unescapedQuotes = repaired.match(/(?<!\\)"/g);
+    if (unescapedQuotes && unescapedQuotes.length % 2 !== 0) {
+      repaired += '"';
+    }
+    // Count open vs close braces/brackets and close them
+    const opens = (repaired.match(/\{/g) || []).length;
+    const closes = (repaired.match(/\}/g) || []).length;
+    const openBrackets = (repaired.match(/\[/g) || []).length;
+    const closeBrackets = (repaired.match(/\]/g) || []).length;
+    repaired += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+    repaired += '}'.repeat(Math.max(0, opens - closes));
+    try { return JSON.parse(repaired) as T; } catch {}
+  }
+
   // Step 4: Try extracting JSON object from mixed content
   const objMatch = cleaned.match(/\{[\s\S]*\}/);
   if (objMatch) {

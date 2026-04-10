@@ -64,7 +64,7 @@ Respond ONLY with valid JSON. No markdown, no backticks, no explanation.`;
     const model = genAI.getGenerativeModel({ model: getGeminiModel('formatting') });
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
     });
 
     const text = result.response.text();
