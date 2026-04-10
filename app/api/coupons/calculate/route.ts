@@ -17,7 +17,7 @@ import { getOptionalAuth, getServiceSupabase } from '@/lib/api-auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getPricingConfig } from '@/lib/config/pricing-config';
+import { getPricingConfig, getElearningPricing } from '@/lib/config/pricing-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,8 +131,8 @@ export async function POST(request: NextRequest) {
     // Fetch settings and pricing in PARALLEL to avoid waterfall
     // =================================================================
 
-    const [settingsResult, pricingResult] = await Promise.all([
-      // Settings for discount limits and e-learning prices
+    const [settingsResult, pricingResult, elearningPricing] = await Promise.all([
+      // Settings for discount + referral limits (e-learning prices now via getElearningPricing)
       supabase
         .from('site_settings')
         .select('key, value')
@@ -140,9 +140,6 @@ export async function POST(request: NextRequest) {
           'max_discount_percent',
           'referral_discount_percent',
           'referral_credit_percent',
-          'elearning_quarterly_price',
-          'elearning_annual_price',
-          'group_class_price',
         ]),
       // Coaching price (always fetch, may not use)
       supabase
@@ -152,6 +149,8 @@ export async function POST(request: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(1)
         .single(),
+      // E-learning + group-class prices from site_settings via shared loader
+      getElearningPricing(),
     ]);
 
     const settings = settingsResult.data;
@@ -173,11 +172,11 @@ export async function POST(request: NextRequest) {
         originalAmount = customAmount || pricingPlan.discounted_price;
       }
     } else if (productType === 'elearning_quarterly') {
-      originalAmount = customAmount || parseInt(settingsMap.elearning_quarterly_price || '999');
+      originalAmount = customAmount || elearningPricing.quarterly;
     } else if (productType === 'elearning_annual') {
-      originalAmount = customAmount || parseInt(settingsMap.elearning_annual_price || '2999');
+      originalAmount = customAmount || elearningPricing.annual;
     } else if (productType === 'group_class') {
-      originalAmount = customAmount || parseInt(settingsMap.group_class_price || '499');
+      originalAmount = customAmount || elearningPricing.groupClass;
     }
 
     const maxDiscountPercent = parseInt(settingsMap.max_discount_percent || '20');

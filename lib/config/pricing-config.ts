@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getSiteSettings } from './site-settings-loader';
 import { getSessionsForTier, getBoosterCreditsForTier } from '@/types/v2-schema';
 
 // Re-export for convenience
@@ -131,6 +132,15 @@ const FALLBACK_TIERS: PricingTier[] = [
     displayOrder: 3,
   },
 ];
+
+// E-learning + group-class fallbacks (used only if site_settings rows are missing).
+// Source of truth at runtime: site_settings keys
+//   elearning_quarterly_price, elearning_annual_price, group_class_price
+const ELEARNING_FALLBACKS = {
+  quarterly: 999,
+  annual: 2999,
+  groupClass: 499,
+} as const;
 
 // =============================================================================
 // CACHE
@@ -293,6 +303,47 @@ export async function getCoachingFullTierPrices(): Promise<{
     originalPrice: fallback.originalPrice,
     discountedPrice: fallback.discountedPrice,
   };
+}
+
+/**
+ * Fetch e-learning + group-class prices from site_settings (cached, batched).
+ * Use this anywhere outside this loader instead of inline `parseInt(... || 'NNNN')`.
+ * Falls back to ELEARNING_FALLBACKS if any key is missing or unparseable.
+ *
+ * site_settings keys read:
+ *   - elearning_quarterly_price
+ *   - elearning_annual_price
+ *   - group_class_price
+ */
+export async function getElearningPricing(): Promise<{
+  quarterly: number;
+  annual: number;
+  groupClass: number;
+}> {
+  // site_settings values may be stored as JSON-quoted strings (e.g. `"2999"`).
+  // Strip quotes before parsing to match the legacy on-disk format.
+  const parse = (val: string | undefined, fallback: number): number => {
+    if (!val) return fallback;
+    const cleaned = val.replace(/"/g, '').trim();
+    if (!cleaned) return fallback;
+    const n = parseInt(cleaned, 10);
+    return Number.isNaN(n) ? fallback : n;
+  };
+  try {
+    const settings = await getSiteSettings([
+      'elearning_quarterly_price',
+      'elearning_annual_price',
+      'group_class_price',
+    ]);
+    return {
+      quarterly: parse(settings.elearning_quarterly_price, ELEARNING_FALLBACKS.quarterly),
+      annual: parse(settings.elearning_annual_price, ELEARNING_FALLBACKS.annual),
+      groupClass: parse(settings.group_class_price, ELEARNING_FALLBACKS.groupClass),
+    };
+  } catch (err) {
+    console.error('[pricing-config] getElearningPricing failed:', err);
+    return { ...ELEARNING_FALLBACKS };
+  }
 }
 
 /**
