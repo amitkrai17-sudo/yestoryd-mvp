@@ -208,8 +208,8 @@ export default function CoachStudentsPage() {
         {[
           { icon: Users, value: stats.total, label: 'Total', color: 'text-white', bg: 'bg-surface-2' },
           { icon: UserCheck, value: stats.active, label: 'Active', color: 'text-green-400', bg: 'bg-green-500/20' },
-          { icon: GraduationCap, value: stats.coaching, label: 'Coaching', color: 'text-blue-400', bg: 'bg-blue-500/20' },
-          { icon: BookOpen, value: stats.tuition, label: 'Tuition', color: 'text-amber-400', bg: 'bg-amber-500/20' },
+          { icon: GraduationCap, value: stats.coaching, label: '1:1 Coaching', color: 'text-blue-400', bg: 'bg-blue-500/20' },
+          { icon: BookOpen, value: stats.tuition, label: 'English Classes', color: 'text-amber-400', bg: 'bg-amber-500/20' },
         ].map((stat) => (
           <div key={stat.label} className="bg-surface-1 rounded-lg p-2 lg:p-3 text-center border border-border">
             <div className={`w-6 h-6 lg:w-8 lg:h-8 ${stat.bg} rounded-md flex items-center justify-center mx-auto mb-1`}>
@@ -240,8 +240,8 @@ export default function CoachStudentsPage() {
         >
           <option value="all">All</option>
           <option value="active">Active</option>
-          <option value="coaching">Coaching</option>
-          <option value="tuition">Tuition</option>
+          <option value="coaching">1:1 Coaching</option>
+          <option value="tuition">English Classes</option>
         </select>
       </div>
 

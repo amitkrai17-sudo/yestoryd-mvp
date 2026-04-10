@@ -260,7 +260,7 @@ export default function MyChildPortalClient({ childId, authState, data, token }:
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-900">
-                      {item.class_name || 'Group Class'}
+                      {item.class_name || 'Workshop'}
                     </span>
                     {item.badges_earned.length > 0 && (
                       <span className="inline-flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-medium">

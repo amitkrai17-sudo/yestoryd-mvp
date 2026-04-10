@@ -97,7 +97,7 @@ WHAT WE COVER:
 - Oxford Reading Tree levels
 
 COACHING FORMAT:
-- Live 1:1 sessions on Google Meet (not group classes)
+- Live 1:1 sessions on Google Meet (not workshops)
 - Certified reading coaches (not tutors)
 - AI-powered progress tracking (rAI)
 - Parent progress updates after each session
@@ -123,7 +123,7 @@ COMMON OBJECTIONS:
 - "Too expensive" → Starts at ₹${perWeek}/week, cheaper than most tuition
 - "My child reads fine" → Assessment often reveals hidden gaps parents don't notice
 - "No time" → Just ${durationStr}/week, flexible scheduling
-- "Online won't work" → 1:1 attention is better than group classes
+- "Online won't work" → 1:1 attention is better than workshops
 - "How is this different from tuition" → Reading intelligence, not rote learning. AI tracks 50+ reading skills.
 - "Is my child too young/old?" → We work with ages 4-12 with age-appropriate methods
 

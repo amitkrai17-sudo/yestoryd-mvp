@@ -7,8 +7,8 @@ import { Metadata } from 'next';
 import BlueprintListClient from './BlueprintListClient';
 
 export const metadata: Metadata = {
-  title: 'Blueprints | Group Classes | Admin | Yestoryd',
-  description: 'Manage group class blueprints',
+  title: 'Blueprints | Workshops | Admin | Yestoryd',
+  description: 'Manage workshop blueprints',
 };
 
 export default function BlueprintsPage() {

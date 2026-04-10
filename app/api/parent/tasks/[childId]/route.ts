@@ -185,8 +185,8 @@ export async function GET(
       const enrollmentData = t.enrollment as { id: string; billing_model: string; enrollment_type: string } | null;
       const sessionData = t.session as { id: string; scheduled_date: string; session_number: number } | null;
       const programLabel = enrollmentData?.enrollment_type === 'tuition'
-        ? 'Tuition'
-        : enrollmentData ? 'Coaching' : null;
+        ? 'English Classes'
+        : enrollmentData ? '1:1 Coaching' : null;
 
       return {
         ...t,

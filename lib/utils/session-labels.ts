@@ -4,12 +4,13 @@
 // =============================================================================
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
-  coaching: 'Coaching',
+  coaching: '1:1 Coaching',
   parent_checkin: 'Check-in (Legacy)',
   parent_call: 'Parent Call',
   skill_booster: 'Skill Booster',
   diagnostic: 'Diagnostic',
   celebration: 'Celebration',
+  tuition: 'English Classes',
 };
 
 /**

@@ -376,7 +376,7 @@ export function SessionCard({
             {session.enrollment_type === 'tuition' && (
               <span className="px-1.5 py-0.5 text-[9px] rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium flex items-center gap-0.5">
                 <BookOpen className="w-2.5 h-2.5" />
-                Tuition
+                English Classes
               </span>
             )}
           </div>
@@ -384,7 +384,7 @@ export function SessionCard({
             <p className="text-gray-500 text-[11px] lg:text-xs truncate">
               {session.enrollment_type === 'tuition' ? (
                 <>
-                  Tuition Session
+                  English Classes Session
                   {session.duration_minutes && ` • ${session.duration_minutes}m`}
                 </>
               ) : (

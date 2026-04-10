@@ -78,7 +78,7 @@ export async function POST(
 
     // ── Auto-promote waitlist ──
     const classType = gs ? (Array.isArray(gs.group_class_types) ? gs.group_class_types[0] : gs.group_class_types) : null;
-    const className = classType?.name || gs?.title || 'Group Class';
+    const className = classType?.name || gs?.title || 'Workshop';
 
     let promotion = null;
     if (gs) {

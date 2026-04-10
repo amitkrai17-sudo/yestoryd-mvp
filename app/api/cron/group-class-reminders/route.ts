@@ -163,7 +163,7 @@ async function processReminders(requestId: string, source: string) {
     for (const { session, window } of sessionWindows) {
       const classTypeRaw = session.group_class_types;
       const classType = Array.isArray(classTypeRaw) ? classTypeRaw[0] : classTypeRaw;
-      const className = classType?.name || session.title || 'Group Class';
+      const className = classType?.name || session.title || 'Workshop';
       const dateTime = formatISTDateTime(session.scheduled_date, session.scheduled_time);
       const meetLink = session.google_meet_link || `${baseUrl}/group-classes`;
 

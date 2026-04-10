@@ -85,7 +85,7 @@ export default function SessionList({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-gray-900 text-base truncate">
-                    {session.title || (isTuition ? 'Tuition Session' : getSessionTypeLabel(session.session_type))}
+                    {session.title || (isTuition ? 'English Classes Session' : getSessionTypeLabel(session.session_type))}
                   </p>
                   <p className="text-sm text-gray-500">
                     {formatDate(session.scheduled_date)} &bull; {formatTime(session.scheduled_time)}

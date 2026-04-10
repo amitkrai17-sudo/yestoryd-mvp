@@ -160,7 +160,7 @@ export default function GroupClassesSection({
           <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-purple-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">Group Classes</h2>
+          <h2 className="text-lg font-bold text-gray-900">Workshops</h2>
         </div>
         <div className="flex items-center justify-center py-8">
           <Spinner className="text-[#7b008b]" />
@@ -176,17 +176,17 @@ export default function GroupClassesSection({
           <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-purple-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">Group Classes</h2>
+          <h2 className="text-lg font-bold text-gray-900">Workshops</h2>
         </div>
         <div className="text-center py-6">
           <Sparkles className="w-12 h-12 text-[#7b008b]/30 mx-auto mb-3" />
-          <p className="text-gray-600 text-sm mb-1">Join a fun learning class</p>
+          <p className="text-gray-600 text-sm mb-1">Join a fun learning workshop</p>
           <p className="text-gray-500 text-xs mb-4">Starting from ₹{groupClassMinPrice}</p>
           <Link
             href="/classes"
             className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#FF0099] to-[#7B008B] text-white rounded-xl font-semibold hover:opacity-90 transition-all text-sm min-h-[44px]"
           >
-            Browse Classes
+            Browse Workshops
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -202,7 +202,7 @@ export default function GroupClassesSection({
           <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-purple-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">Group Classes</h2>
+          <h2 className="text-lg font-bold text-gray-900">Workshops</h2>
         </div>
         <Link
           href="/classes"

@@ -203,7 +203,7 @@ export default function PreSessionBrief({ session, onClose }: PreSessionBriefPro
               <p className="text-white font-semibold text-lg">{session.child_name || 'Unknown'}</p>
               <p className="text-white/70 text-sm">
                 {session.child_age || '?'} years - {session.enrollment_type === 'tuition'
-                  ? 'Tuition Session'
+                  ? 'English Classes Session'
                   : `Session ${sessionNumber}/${session.total_sessions || '?'}`}
               </p>
             </div>

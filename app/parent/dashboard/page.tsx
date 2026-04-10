@@ -364,7 +364,7 @@ export default function ParentDashboardPage() {
 
   function getProgramTypePill(): string {
     switch (enrollment?.enrollment_type) {
-      case 'tuition': return 'Tuition';
+      case 'tuition': return 'English Classes';
       case 'starter': return 'Starter';
       case 'continuation': return 'Continuation';
       case 'full': return 'Full Program';

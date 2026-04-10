@@ -547,7 +547,7 @@ async function scheduleCalendarForExistingSessions(
           const isOffline = onboardingBatch.default_session_mode === 'offline';
 
           // Fetch subject label for title
-          let subjectLabel = 'Tuition';
+          let subjectLabel = 'English Classes';
           if (onboardingBatch.category_id) {
             const { data: cat } = await adminSupabase
               .from('skill_categories')
@@ -793,13 +793,13 @@ async function scheduleCalendarForExistingSessions(
       // Build event title and description
       const isOffline = session.session_mode === 'offline';
       const eventTitle = isTuitionSession
-        ? `Yestoryd: ${data.childName} - Tuition Session ${session.session_number}`
+        ? `Yestoryd: ${data.childName} - English Classes Session ${session.session_number}`
         : isCoaching
-          ? `Yestoryd: ${data.childName} - Coaching Session ${session.session_number}`
+          ? `Yestoryd: ${data.childName} - 1:1 Coaching Session ${session.session_number}`
           : `Yestoryd: ${data.childName} - Parent Check-in`;
 
       const baseDescription = isTuitionSession
-        ? `1:1 Tuition Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
+        ? `English Classes Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
         : isCoaching
           ? `1:1 Coaching Session with ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nSession ${session.session_number} of program\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`
           : `Parent Progress Check-in for ${data.childName}\n\nCoach: ${data.coachName}\nParent: ${data.parentName}\nDuration: ${duration} minutes\n\nQuestions? WhatsApp: ${COMPANY_CONFIG.leadBotWhatsAppDisplay}`;
@@ -985,7 +985,7 @@ async function sendConfirmationEmail(
         });
         const isCoaching = s.type === 'coaching';
         return `<tr>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${isCoaching ? 'Coaching' : 'Parent Check-in'} #${s.sessionNumber}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${isCoaching ? '1:1 Coaching' : 'Parent Check-in'} #${s.sessionNumber}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${dateStr}</td>
         </tr>`;
       })

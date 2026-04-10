@@ -28,7 +28,7 @@ const getReceiver = () => new Receiver({
 
 const payloadSchema = z.object({
   session_id: z.string().uuid(),
-});
+});
 
 // ─── CTA link based on attendance count ───
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const classTypeRaw = session.group_class_types;
     const classType = Array.isArray(classTypeRaw) ? classTypeRaw[0] : classTypeRaw;
-    const className = classType?.name || 'Group Class';
+    const className = classType?.name || 'Workshop';
 
     // Fetch all present participants with parent info
     const { data: participants } = await supabase

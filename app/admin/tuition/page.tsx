@@ -320,10 +320,10 @@ export default function AdminTuitionPage() {
           <div>
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white flex items-center gap-2">
               <GraduationCap className="w-6 h-6" />
-              Tuition Management
+              English Classes Management
             </h1>
             <p className="text-xs sm:text-sm text-text-tertiary mt-0.5">
-              Manage tuition students, balances, and onboarding
+              Manage English Classes students, balances, and onboarding
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -366,7 +366,7 @@ export default function AdminTuitionPage() {
         {/* New Student Form */}
         {showNewForm && (
           <div className="bg-surface-1 rounded-2xl p-5 border border-border">
-            <h2 className="text-sm font-semibold text-white mb-4">New Tuition Student</h2>
+            <h2 className="text-sm font-semibold text-white mb-4">New English Classes Student</h2>
             <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <input value={newForm.parentPhone} onChange={e => setNewForm(p => ({ ...p, parentPhone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
                 placeholder="Parent phone *" required inputMode="numeric"
@@ -522,7 +522,7 @@ export default function AdminTuitionPage() {
         <div>
           <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
             <Users className="w-4 h-4 text-green-400" />
-            Tuition Students ({activeStudents.length})
+            English Classes Students ({activeStudents.length})
           </h2>
 
           {activeStudents.length === 0 ? (
@@ -753,7 +753,7 @@ export default function AdminTuitionPage() {
             <div className="bg-gray-700/50 rounded-xl p-3 text-sm">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-text-tertiary">Current</span>
-                <span className="bg-amber-500/10 text-amber-400 text-xs px-2 py-0.5 rounded-lg font-medium">Tuition</span>
+                <span className="bg-amber-500/10 text-amber-400 text-xs px-2 py-0.5 rounded-lg font-medium">English Classes</span>
               </div>
               <div className="text-text-secondary text-xs space-y-0.5">
                 <p>Balance: {switchTarget.enrollment_sessions_remaining ?? 0} / {switchTarget.sessions_purchased} sessions</p>

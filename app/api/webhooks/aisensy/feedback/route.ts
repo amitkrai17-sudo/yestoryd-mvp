@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
 
     // ── Step 3: Analyze via Gemini Flash ──
     const resolvedChildName = childName || 'the child';
-    const resolvedClassName = className || 'Group Class';
+    const resolvedClassName = className || 'Workshop';
     const analysis = await analyzeFeedback(resolvedChildName, resolvedClassName, text);
 
     console.log(JSON.stringify({

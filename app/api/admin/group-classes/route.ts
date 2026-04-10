@@ -195,7 +195,7 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
     const calendar = getCalendarClient(calendarOrganizerEmail);
     if (calendar) {
       try {
-        const eventDescription = `📚 ${classType.name} - Group Class
+        const eventDescription = `📚 ${classType.name} - Workshop
 
 ${sessionData.description || classType.description || ''}
 

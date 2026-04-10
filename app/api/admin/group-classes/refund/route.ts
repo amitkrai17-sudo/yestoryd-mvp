@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       ? participant.group_sessions[0]
       : participant.group_sessions;
     const ct = gs ? (Array.isArray(gs.group_class_types) ? gs.group_class_types[0] : gs.group_class_types) : null;
-    const className = ct?.name || gs?.title || 'Group Class';
+    const className = ct?.name || gs?.title || 'Workshop';
     const childData = Array.isArray(participant.children) ? participant.children[0] : participant.children;
     const parentData = Array.isArray(participant.parents) ? participant.parents[0] : participant.parents;
     const childName = childData?.child_name || 'Child';

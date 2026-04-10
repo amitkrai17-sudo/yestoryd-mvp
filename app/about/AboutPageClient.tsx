@@ -42,7 +42,7 @@ const METHOD_CARDS = [
 const STATS = [
   { value: '12+', label: 'Active students' },
   { value: '100+', label: 'Sessions completed' },
-  { value: '3', label: 'Products', sub: 'Workshops, Classes, Coaching' },
+  { value: '3', label: 'Products', sub: 'Workshops, English Classes, 1:1 Coaching' },
   { value: '4-12', label: 'Ages served' },
 ] as const;
 

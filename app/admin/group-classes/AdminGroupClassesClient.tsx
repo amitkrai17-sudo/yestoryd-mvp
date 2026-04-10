@@ -269,7 +269,7 @@ function SessionCard({
           <div>
             <h3 className="font-bold text-white text-lg">{session.title}</h3>
             <p className="text-sm text-text-tertiary">
-              {session.class_type?.name || 'Group Class'}
+              {session.class_type?.name || 'Workshop'}
               {session.instructor && ` • ${session.instructor.name}`}
             </p>
           </div>
@@ -546,7 +546,7 @@ function SessionModal({
               {isEditMode ? 'Edit Session' : 'Create New Session'}
             </h2>
             <p className="text-sm text-text-tertiary mt-1">
-              {isEditMode ? 'Update session details' : 'Fill in the details for the new group class'}
+              {isEditMode ? 'Update session details' : 'Fill in the details for the new workshop'}
             </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-xl">
@@ -992,7 +992,7 @@ export default function AdminGroupClassesClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Group Classes</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Workshops</h1>
               <p className="text-text-tertiary mt-1">Create sessions with auto Meet links & recording</p>
             </div>
             <button
@@ -1067,7 +1067,7 @@ export default function AdminGroupClassesClient() {
             </div>
             <h3 className="text-lg font-semibold text-white mb-1">No sessions found</h3>
             <p className="text-text-tertiary mb-4">
-              {filter === 'upcoming' ? 'Create your first group class session!' : `No ${filter} sessions.`}
+              {filter === 'upcoming' ? 'Create your first workshop session!' : `No ${filter} sessions.`}
             </p>
             {filter === 'upcoming' && (
               <button

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         coachId: enrollment.coach_id!,
         sessionType: 'tuition',
         sessionNumber,
-        sessionTitle: `Tuition Session #${sessionNumber}`,
+        sessionTitle: `English Classes Session #${sessionNumber}`,
         durationMinutes: duration,
         scheduledDate: date,
         scheduledTime: time,

@@ -62,7 +62,7 @@ async function sendConfirmationEmail(
       <p style="font-size: 18px; color: #333;">Hi ${parentName},</p>
       
       <p style="font-size: 16px; color: #555; line-height: 1.6;">
-        Great news! <strong>${childName}</strong> is registered for the upcoming group class. We're excited to have them join us!
+        Great news! <strong>${childName}</strong> is registered for the upcoming workshop. We're excited to have them join us!
       </p>
       
       <!-- Session Details Card -->

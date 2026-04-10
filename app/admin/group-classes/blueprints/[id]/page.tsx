@@ -8,7 +8,7 @@ import BlueprintEditorClient from './BlueprintEditorClient';
 
 export const metadata: Metadata = {
   title: 'Edit Blueprint | Admin | Yestoryd',
-  description: 'Create or edit a group class blueprint',
+  description: 'Create or edit a workshop blueprint',
 };
 
 export default function BlueprintEditorPage() {

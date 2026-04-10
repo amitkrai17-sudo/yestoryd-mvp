@@ -47,11 +47,11 @@ function buildEventTitle(eventType: string, eventData: Record<string, unknown> |
     case 'assessment':
       return 'Reading Assessment';
     case 'group_class_observation':
-      return `${(eventData?.class_type_name as string) || 'Group Class'}`;
+      return `${(eventData?.class_type_name as string) || 'Workshop'}`;
     case 'group_class_micro_insight':
-      return `${(eventData?.class_type_name as string) || 'Group Class'} — Insight`;
+      return `${(eventData?.class_type_name as string) || 'Workshop'} — Insight`;
     case 'group_class_response':
-      return `${(eventData?.class_type_name as string) || 'Group Class'} — Response`;
+      return `${(eventData?.class_type_name as string) || 'Workshop'} — Response`;
     case 'progress_pulse':
       return 'Progress Report';
     case 'parent_session_summary':

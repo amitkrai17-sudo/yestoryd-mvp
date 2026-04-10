@@ -197,7 +197,7 @@ export default function BlueprintListClient() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white">Blueprints</h1>
-              <p className="text-text-tertiary mt-1">Reusable session templates for group classes</p>
+              <p className="text-text-tertiary mt-1">Reusable session templates for workshops</p>
             </div>
             <button
               onClick={() => router.push('/admin/group-classes/blueprints/new')}

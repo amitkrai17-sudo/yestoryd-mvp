@@ -183,7 +183,7 @@ export async function GET(
         : s.group_class_types;
       return {
         session_id: s.id,
-        title: ct?.name || s.title || 'Group Class',
+        title: ct?.name || s.title || 'Workshop',
         icon: ct?.icon_emoji || null,
         description: ct?.description || null,
         date: s.scheduled_date,

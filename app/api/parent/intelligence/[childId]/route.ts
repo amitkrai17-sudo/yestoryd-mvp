@@ -21,9 +21,9 @@ const RATING_LABELS: Record<string, string> = {
 // Modality display labels
 const MODALITY_LABELS: Record<string, string> = {
   online_1on1: '1:1 Online',
-  online_group: 'Group Class',
+  online_group: 'Workshop',
   in_person_1on1: '1:1 In-Person',
-  in_person_group: 'Group In-Person',
+  in_person_group: 'Workshop (In-Person)',
   hybrid: 'Hybrid',
   elearning: 'E-Learning',
   self_practice: 'Self Practice',

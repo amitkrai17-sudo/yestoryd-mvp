@@ -161,7 +161,7 @@ const QUICK_TEMPLATES: QuickTemplate[] = [
 ];
 
 const SESSION_TYPES = [
-  { id: 'coaching', label: 'Coaching', icon: GraduationCap, color: 'text-blue-400' },
+  { id: 'coaching', label: '1:1 Coaching', icon: GraduationCap, color: 'text-blue-400' },
   { id: 'parent_checkin', label: 'Check-ins', icon: Users, color: 'text-green-400' },
   { id: 'skill_booster', label: 'Skill Boost', icon: Sparkles, color: 'text-purple-400' },
   { id: 'discovery', label: 'Discovery', icon: Phone, color: 'text-orange-400' },

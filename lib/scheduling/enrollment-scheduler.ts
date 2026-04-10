@@ -987,7 +987,7 @@ export async function scheduleTuitionSessions(
             coach_id: enrollment.coach_id!,
             session_number: sessionNumber,
             session_type: 'tuition',
-            session_title: `Tuition Session #${sessionNumber}`,
+            session_title: `English Classes Session #${sessionNumber}`,
             week_number: weekNumber,
             scheduled_date: dateStr,
             scheduled_time: sessionTime,

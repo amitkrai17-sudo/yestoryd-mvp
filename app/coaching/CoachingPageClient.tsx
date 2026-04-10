@@ -126,8 +126,8 @@ const TESTIMONIALS = [
 
 const FAQS = [
   {
-    q: 'How is this different from tuition?',
-    a: 'Tuition teaches. Coaching transforms. Your child gets a dedicated coach, AI that tracks every session, SmartPractice homework that adapts daily, and a complete intelligence profile. It\u2019s the difference between practice and personalized development.',
+    q: 'How is 1:1 Coaching different from regular tuition?',
+    a: 'Regular tuition teaches. 1:1 Coaching transforms. Your child gets a dedicated coach, AI that tracks every session, SmartPractice homework that adapts daily, and a complete intelligence profile. It\u2019s the difference between practice and personalized development.',
   },
   {
     q: 'What if my child is shy or reluctant?',

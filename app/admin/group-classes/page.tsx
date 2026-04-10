@@ -7,8 +7,8 @@ import { Metadata } from 'next';
 import AdminGroupClassesClient from './AdminGroupClassesClient';
 
 export const metadata: Metadata = {
-  title: 'Group Classes | Admin | Yestoryd',
-  description: 'Manage group class sessions',
+  title: 'Workshops | Admin | Yestoryd',
+  description: 'Manage workshop sessions',
 };
 
 export default function AdminGroupClassesPage() {

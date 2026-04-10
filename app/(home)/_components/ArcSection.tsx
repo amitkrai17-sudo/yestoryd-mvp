@@ -271,7 +271,7 @@ export function ArcSection({
               <Users className="w-6 h-6 text-[#FF0099]" />
             </div>
             <p className="text-2xl font-bold text-white">{trustStats.coachingType}</p>
-            <p className="text-sm text-text-tertiary">Personal Coaching</p>
+            <p className="text-sm text-text-tertiary">1:1 Coaching</p>
           </div>
           <div className="text-center">
             <div className="w-12 h-12 bg-[#7B008B]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">

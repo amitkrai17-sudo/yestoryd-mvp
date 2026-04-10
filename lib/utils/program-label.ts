@@ -3,8 +3,13 @@
 // lib/utils/program-label.ts
 //
 // Centralises all enrollment-type-aware text for parent-facing communications.
-// Coaching enrollments use "English Coaching Program".
-// Tuition enrollments use skill_categories.parent_label + " Sessions".
+// This is the SINGLE SOURCE OF TRUTH for program display names — every UI
+// badge, email subject, and WhatsApp template variable should use this.
+//
+// Display name mapping:
+//   tuition (billing_model='prepaid_sessions') → "English Classes"
+//   coaching (default)                         → "1:1 Coaching"
+//   workshop/group_class                       → "Workshop"
 //
 // Usage:
 //   import { getProgramContext } from '@/lib/utils/program-label';
@@ -39,7 +44,7 @@ export function isTuitionEnrollment(enrollment: EnrollmentForLabel): boolean {
  *  1. enrollment.program_description (pre-populated in DB)
  *  2. For tuition: "{categoryParentLabel} Sessions" if a category was linked
  *  3. Fallback tuition: "English Classes"
- *  4. Coaching: "English Coaching Program"
+ *  4. Coaching: "1:1 Coaching"
  *
  * @param enrollment  - must include billing_model + program_description
  * @param categoryParentLabel - optional, from skill_categories.parent_label
@@ -56,7 +61,7 @@ export function getProgramLabel(
       : 'English Classes';
   }
 
-  return 'English Coaching Program';
+  return '1:1 Coaching';
 }
 
 /**
@@ -97,7 +102,7 @@ export function getScheduleDescription(enrollment: EnrollmentForLabel): string {
 // ---------------------------------------------------------------------------
 
 export interface ProgramContext {
-  /** e.g. "Grammar Sessions" or "English Coaching Program" */
+  /** e.g. "Grammar Sessions" or "1:1 Coaching" */
   label: string;
   isTuition: boolean;
   /** Whether to render the full session-schedule table */

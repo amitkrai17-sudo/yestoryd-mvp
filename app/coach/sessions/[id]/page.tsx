@@ -552,13 +552,13 @@ export default function SessionBriefPage() {
           </div>
         )}
 
-        {/* Group Class Activity */}
+        {/* Workshop Activity */}
         {group_class_activity?.length > 0 && (
           <div className="bg-surface-1 border border-border rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-purple-400" />
-                <span className="text-white text-sm font-medium">Group Class Activity</span>
+                <span className="text-white text-sm font-medium">Workshop Activity</span>
                 <span className="text-[10px] text-text-tertiary bg-surface-2 px-1.5 py-0.5 rounded">
                   {group_class_activity.length}
                 </span>

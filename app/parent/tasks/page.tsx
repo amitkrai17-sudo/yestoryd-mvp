@@ -38,7 +38,7 @@ interface Task {
   completed_at: string | null;
   is_today: boolean;
   is_past: boolean;
-  program_label: 'Coaching' | 'Tuition' | null;
+  program_label: '1:1 Coaching' | 'English Classes' | null;
   session_date: string | null;
   session_number: number | null;
   source: string;

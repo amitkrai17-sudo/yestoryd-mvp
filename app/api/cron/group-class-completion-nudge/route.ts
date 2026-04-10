@@ -113,7 +113,7 @@ async function processNudges(requestId: string, source: string) {
 
       const classTypeRaw = session.group_class_types;
       const classType = Array.isArray(classTypeRaw) ? classTypeRaw[0] : classTypeRaw;
-      const className = classType?.name || session.title || 'Group Class';
+      const className = classType?.name || session.title || 'Workshop';
 
       const instructorRaw = session.coaches;
       const instructor = Array.isArray(instructorRaw) ? instructorRaw[0] : instructorRaw;
@@ -199,10 +199,10 @@ async function processNudges(requestId: string, source: string) {
             const authConfig = COMPANY_CONFIG.adminEmail;
             await sendEmail({
               to: authConfig,
-              subject: `[Action Required] Group class not completed: ${className}`,
+              subject: `[Action Required] Workshop not completed: ${className}`,
               html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-                  <h2 style="color: #e74c3c;">Group Class Completion Overdue</h2>
+                  <h2 style="color: #e74c3c;">Workshop Completion Overdue</h2>
                   <p><strong>Instructor:</strong> ${instructorName}</p>
                   <p><strong>Class:</strong> ${className}</p>
                   <p><strong>Scheduled time:</strong> ${sessionTime} IST on ${session.scheduled_date}</p>

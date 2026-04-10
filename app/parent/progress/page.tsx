@@ -255,7 +255,7 @@ export default function ParentProgressPage() {
                 {seasonName || 'Building reader'}
               </p>
               <p className="text-sm text-gray-500">
-                {enrollmentType === 'tuition' ? 'Tuition program' : 'Reading program'}
+                {enrollmentType === 'tuition' ? 'English Classes program' : 'Reading program'}
                 {totalSessions > 0 && ` · ${pluralize(totalSessions, 'session')} total`}
               </p>
             </div>

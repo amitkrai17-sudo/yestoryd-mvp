@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     const classType = Array.isArray(session.group_class_types)
       ? session.group_class_types[0]
       : session.group_class_types;
-    const className = classType?.name || session.title || 'Group Class';
+    const className = classType?.name || session.title || 'Workshop';
 
     // Activity log
     try {

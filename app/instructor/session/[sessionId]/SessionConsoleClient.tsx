@@ -563,7 +563,7 @@ export default function SessionConsoleClient() {
             </div>
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-white">{session.title}</h1>
-              <p className="text-text-secondary mt-1">{session.class_type?.name || 'Group Class'}</p>
+              <p className="text-text-secondary mt-1">{session.class_type?.name || 'Workshop'}</p>
               <div className="flex items-center gap-4 mt-3 text-sm text-text-tertiary flex-wrap">
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-4 h-4" />
