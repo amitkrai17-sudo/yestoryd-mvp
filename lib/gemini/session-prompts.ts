@@ -1,6 +1,7 @@
 // ============================================================
 // FILE: lib/gemini/session-prompts.ts
 // PURPOSE: Shared Gemini prompt builders for session-related AI tasks
+//   - buildCaptureSummaryPrompt: SCF Review card summary generation
 //   - generateParentWhatsAppSummary: activity-based parent summary
 //   - generateLearningProfileSynthesis: child learning profile from history
 //   - analyzeSessionTranscript: transcript → structured session analysis
@@ -10,6 +11,61 @@
 import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { getCategorySlugs } from '@/lib/config/skill-categories';
+
+// ============================================================
+// SCF Capture Summary (Review Card)
+// ============================================================
+
+export interface CaptureSummaryInput {
+  childName: string;
+  childAge: number;
+  skills: { name: string; rating: string }[];
+  strengthObservations: string[];
+  struggleObservations: string[];
+  wordsMastered: string[];
+  wordsStruggled: string[];
+  voiceSegments: { skills?: string; strengths?: string; struggles?: string; homework?: string } | null;
+  engagementLevel: string | null;
+}
+
+export function buildCaptureSummaryPrompt(input: CaptureSummaryInput): string {
+  const child = input.childName || 'the child';
+  const age = input.childAge || 7;
+  const skillsList = (input.skills || []).map(s => `${s.name} (${s.rating})`).join(', ') || 'Not specified';
+  const strengths = (input.strengthObservations || []).join('; ') || 'None selected';
+  const struggles = (input.struggleObservations || []).join('; ') || 'None selected';
+  const mastered = (input.wordsMastered || []).join(', ') || 'None';
+  const struggled = (input.wordsStruggled || []).join(', ') || 'None';
+  const engagement = input.engagementLevel || 'Not rated';
+
+  let voiceNotes = '';
+  if (input.voiceSegments) {
+    const v = input.voiceSegments;
+    voiceNotes = `\nCoach voice notes:\n- Skills: ${v.skills || ''}\n- Strengths: ${v.strengths || ''}\n- Struggles: ${v.struggles || ''}\n- Practice: ${v.homework || ''}`;
+  }
+
+  return `You are a reading coach assistant for Yestoryd.
+
+CHILD: ${child}, age ${age}
+
+SESSION DATA:
+Skills worked on: ${skillsList}
+Strength observations: ${strengths}
+Struggle observations: ${struggles}
+Words mastered: ${mastered}
+Words struggled: ${struggled}${voiceNotes}
+Engagement: ${engagement}
+
+OUTPUT REQUIREMENTS:
+- strengthSummary: Exactly 2 sentences. What went well — reference specific observations and words.
+- growthSummary: Exactly 2 sentences. Areas for development — actionable, not generic.
+- homeworkSuggestion: Exactly 1 sentence. A specific 10-15 minute practice activity using the child's struggled words or weak skills. Parent-friendly language.
+- Use ${child}'s name naturally. Reference actual data, never fabricate.
+- If session data is sparse, use 1 sentence per field instead.
+
+Return ONLY valid JSON, no markdown, no preamble. Exact schema:
+{"strengthSummary":"...","growthSummary":"...","homeworkSuggestion":"..."}`;
+}
 
 // ============================================================
 // Parent WhatsApp Session Summary
