@@ -10,6 +10,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useParentContext } from '@/app/parent/context';
+import { FeatureGate } from '@/components/shared/FeatureGate';
 
 // ============================================================
 // Types
@@ -113,7 +114,16 @@ function getMilestoneText(event: LearningEvent): string {
 // Page Component
 // ============================================================
 
-export default function ParentProgressPage() {
+export default function ParentProgressPageGated() {
+  const { selectedChildId } = useParentContext();
+  return (
+    <FeatureGate featureKey="progress_cards" childId={selectedChildId}>
+      <ParentProgressPageInner />
+    </FeatureGate>
+  );
+}
+
+function ParentProgressPageInner() {
   const { selectedChildId, selectedChild } = useParentContext();
   const childName = selectedChild?.child_name || selectedChild?.name || 'Your Child';
 

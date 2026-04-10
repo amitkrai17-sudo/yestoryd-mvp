@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { requireFeature } from '@/lib/features/require-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,9 @@ export async function GET(
     if (!task || !task.content_item_id) {
       return NextResponse.json({ success: false, error: 'Practice not found' }, { status: 404 });
     }
+
+    const featureDenied = await requireFeature('smart_practice', task.child_id);
+    if (featureDenied) return featureDenied;
 
     // 2. Verify parent owns this child
     const { data: child } = await supabase

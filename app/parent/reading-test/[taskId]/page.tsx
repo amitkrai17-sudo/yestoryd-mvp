@@ -8,6 +8,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Mic, MicOff, ArrowLeft, Star, Share2, BookOpen } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { useParentContext } from '@/app/parent/context';
+import { FeatureGate } from '@/components/shared/FeatureGate';
 
 type Stage = 'loading' | 'ready' | 'recording' | 'processing' | 'results' | 'error';
 
@@ -29,7 +31,16 @@ interface TestResult {
   progress: { previous_score: number; previous_date: string; improvement: number } | null;
 }
 
-export default function ReadingTestPage() {
+export default function ReadingTestPageGated() {
+  const { selectedChildId } = useParentContext();
+  return (
+    <FeatureGate featureKey="reading_tests" childId={selectedChildId}>
+      <ReadingTestPageInner />
+    </FeatureGate>
+  );
+}
+
+function ReadingTestPageInner() {
   const params = useParams();
   const router = useRouter();
   const taskId = params.taskId as string;

@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import {
   getGeminiRecommendations,
@@ -32,6 +33,9 @@ export async function GET(request: NextRequest) {
     if (!childId) {
       return NextResponse.json({ error: 'childId is required' }, { status: 400 });
     }
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
 
     // STEP 1: Get child info
     const { data: child, error: childError } = await supabase
@@ -206,6 +210,9 @@ export async function POST(request: NextRequest) {
     if (!childId) {
       return NextResponse.json({ error: 'childId is required' }, { status: 400 });
     }
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
 
     const { data: child } = await supabase
       .from('children')

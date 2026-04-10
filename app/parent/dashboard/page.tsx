@@ -17,6 +17,7 @@ import ReEnrollmentBanner from '@/components/parent/ReEnrollmentBanner';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { FeatureGate } from '@/components/shared/FeatureGate';
 
 const DEFAULT_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
 
@@ -661,19 +662,21 @@ export default function ParentDashboardPage() {
         </div>
 
         {/* ── E-LEARNING ACCESS ── */}
-        <Link
-          href="/parent/elearning"
-          className="rounded-2xl bg-[#E8FCF1] border border-[#1D9E75]/20 p-4 md:p-5 flex items-center gap-3 group"
-        >
-          <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-            <BookOpen className="w-4 h-4 text-[#1D9E75]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[#085041]">E-Learning</p>
-            <p className="text-xs text-[#0F6E56]">Videos, quizzes, and practice content</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-[#1D9E75] group-hover:text-[#085041] flex-shrink-0" />
-        </Link>
+        <FeatureGate featureKey="elearning_access" childId={childId} hideCompletely>
+          <Link
+            href="/parent/elearning"
+            className="rounded-2xl bg-[#E8FCF1] border border-[#1D9E75]/20 p-4 md:p-5 flex items-center gap-3 group"
+          >
+            <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+              <BookOpen className="w-4 h-4 text-[#1D9E75]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-[#085041]">E-Learning</p>
+              <p className="text-xs text-[#0F6E56]">Videos, quizzes, and practice content</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#1D9E75] group-hover:text-[#085041] flex-shrink-0" />
+          </Link>
+        </FeatureGate>
 
         {/* ── SECTION 5: COACH ── */}
         <div className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5">

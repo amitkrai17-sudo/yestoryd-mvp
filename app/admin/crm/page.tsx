@@ -17,6 +17,7 @@ import { DateInput } from '@/components/ui/date-input';
 import SupportTicketsTab from '@/components/admin/SupportTicketsTab';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
+import { FeatureOverridePanel } from '@/components/admin/FeatureOverridePanel';
 
 // Types
 interface Coach {
@@ -303,6 +304,11 @@ function LeadModal({
               placeholder="Add notes about this lead..."
             />
           </div>
+
+          {/* Feature Overrides (enrolled children only) */}
+          {lead.lead_status === 'enrolled' && (
+            <FeatureOverridePanel childId={lead.id} />
+          )}
 
           <div className="flex gap-2">
             <a

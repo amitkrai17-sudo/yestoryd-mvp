@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { requireFeature } from '@/lib/features/require-feature';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,9 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (!task) return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
+
+  const featureDenied = await requireFeature('reading_tests', task.child_id);
+  if (featureDenied) return featureDenied;
 
   const { data: child } = await supabase
     .from('children')

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 
 const supabase = createAdminClient();
 
@@ -20,6 +21,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
 
     // Get or create unit progress
     let { data: progress }: any = await supabase

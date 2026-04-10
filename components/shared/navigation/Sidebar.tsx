@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogOut, Lock } from 'lucide-react';
 import { usePortalTheme } from '@/components/providers/ThemeProvider';
 import { NavItem } from '@/components/config/navigation';
 
@@ -17,6 +17,7 @@ interface SidebarProps {
   userName?: string;
   userEmail?: string;
   headerExtra?: React.ReactNode;  // For parent child selector
+  disabledFeatures?: Set<string>; // Feature keys that are disabled for current child
 }
 
 const STORAGE_KEY = 'yestoryd-sidebar-collapsed';
@@ -43,6 +44,7 @@ export default function Sidebar({
   userName,
   userEmail,
   headerExtra,
+  disabledFeatures,
 }: SidebarProps) {
   const pathname = usePathname();
   const { theme } = usePortalTheme();
@@ -144,6 +146,28 @@ export default function Sidebar({
               {group.items.map((item) => {
                 const active = isActive(item.href);
                 const Icon = item.icon;
+                const isLocked = !!(item.requiredFeature && disabledFeatures?.has(item.requiredFeature));
+
+                if (isLocked) {
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className={`relative flex items-center gap-3 h-11 rounded-lg transition-colors opacity-50 ${
+                        collapsed ? 'justify-center px-0' : 'px-3'
+                      } ${theme.nav.inactiveText} ${theme.nav.hoverBg}`}
+                      title={collapsed ? `${item.label} (upgrade to unlock)` : undefined}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <span className="text-sm truncate">{item.label}</span>
+                          <Lock className="w-3.5 h-3.5 ml-auto flex-shrink-0" />
+                        </>
+                      )}
+                    </Link>
+                  );
+                }
 
                 return (
                   <Link

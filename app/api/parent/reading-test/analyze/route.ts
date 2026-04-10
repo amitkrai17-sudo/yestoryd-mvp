@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { requireFeature } from '@/lib/features/require-feature';
 import { getGenAI } from '@/lib/gemini/client';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
@@ -39,6 +40,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!task) return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
+
+    const featureDenied = await requireFeature('reading_tests', task.child_id);
+    if (featureDenied) return featureDenied;
 
     const { data: child } = await supabase
       .from('children')

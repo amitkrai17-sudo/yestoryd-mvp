@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { requireFeature } from '@/lib/features/require-feature';
 import { buildELearningSession } from '@/lib/elearning/session-builder';
 import crypto from 'crypto';
 
@@ -37,6 +38,9 @@ export async function POST(request: NextRequest) {
     if (!child_id || !UUID_RE.test(child_id)) {
       return NextResponse.json({ error: 'Valid child_id (UUID) is required' }, { status: 400 });
     }
+
+    const denied = await requireFeature('elearning_access', child_id);
+    if (denied) return denied;
 
     console.log(JSON.stringify({ requestId, event: 'elearning_session_generate_start', childId: child_id }));
 

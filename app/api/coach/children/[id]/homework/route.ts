@@ -202,7 +202,7 @@ export async function POST(
     const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
     const { data: childForHW } = await supabase
       .from('children')
-      .select('child_name, age, smart_practice_enabled')
+      .select('child_name, age')
       .eq('id', childId)
       .single();
     const { simplified, original } = await simplifyHomework(
@@ -262,8 +262,10 @@ export async function POST(
       console.error(JSON.stringify({ requestId, event: 'homework_p22_error', error: notifyErr.message }));
     }
 
-    // SmartPractice: generate interactive quiz if enabled (non-blocking)
-    if (task?.id && childForHW?.smart_practice_enabled) {
+    // SmartPractice: generate interactive quiz if enabled via feature gate (non-blocking)
+    const { getChildFeatures } = await import('@/lib/features/get-child-features');
+    const { features: childFeatures } = await getChildFeatures(childId);
+    if (task?.id && childFeatures.smart_practice && childForHW) {
       import('@/lib/homework/generate-smart-practice').then(({ generateSmartPractice }) => {
         generateSmartPractice({
           coachNotes: original,

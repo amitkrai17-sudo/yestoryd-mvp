@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 
 const supabase = createAdminClient();
 // Force dynamic - disable Next.js caching
@@ -32,6 +33,9 @@ export async function GET(request: NextRequest) {
     if (!childId) {
       return NextResponse.json({ error: 'childId is required' }, { status: 400 });
     }
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
 
     const trimmedChildId = childId.trim();
 

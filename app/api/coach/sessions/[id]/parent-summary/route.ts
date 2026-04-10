@@ -52,7 +52,7 @@ export async function POST(
         coach_notes, session_timer_seconds, session_template_id,
         homework_assigned, homework_topic, homework_description,
         enrollment_id, focus_area, coach_id,
-        children (id, child_name, age, parent_name, parent_phone, parent_email, parent_id, smart_practice_enabled)
+        children (id, child_name, age, parent_name, parent_phone, parent_email, parent_id)
       `)
       .eq('id', sessionId)
       .single();
@@ -415,8 +415,10 @@ export async function POST(
               console.error(JSON.stringify({ requestId, event: 'homework_p22_notify_error', error: notifyErr.message }));
             }
 
-            // SmartPractice: generate interactive quiz if enabled (non-blocking)
-            if (child?.smart_practice_enabled && newTask?.id) {
+            // SmartPractice: generate interactive quiz if enabled via feature gate (non-blocking)
+            const { getChildFeatures } = await import('@/lib/features/get-child-features');
+            const { features: childFeatures } = await getChildFeatures(session.child_id as string);
+            if (childFeatures.smart_practice && newTask?.id) {
               import('@/lib/homework/generate-smart-practice').then(({ generateSmartPractice }) => {
                 generateSmartPractice({
                   coachNotes: original,

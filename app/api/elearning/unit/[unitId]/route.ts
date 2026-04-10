@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 
 const supabase = createAdminClient();
 export async function GET(
@@ -24,7 +25,12 @@ export async function GET(
         { status: 400 }
       );
     }
-    
+
+    if (childId) {
+      const denied = await requireFeature('elearning_access', childId);
+      if (denied) return denied;
+    }
+
     // Fetch unit with sub-skill info
     const { data: unit, error: unitError } = await supabase
       .from('el_learning_units')

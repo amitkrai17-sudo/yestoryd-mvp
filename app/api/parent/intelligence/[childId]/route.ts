@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { requireFeature } from '@/lib/features/require-feature';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,10 @@ export async function GET(
     }
 
     const { childId } = await params;
+
+    const featureDenied = await requireFeature('detailed_analysis', childId);
+    if (featureDenied) return featureDenied;
+
     const supabase = getServiceSupabase();
 
     // Verify parent owns this child

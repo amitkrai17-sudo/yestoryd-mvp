@@ -13,13 +13,23 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { useParentContext } from '@/app/parent/context';
+import { FeatureGate } from '@/components/shared/FeatureGate';
 
 // Components
 import RAICarousel from '@/components/elearning/RAICarousel';
 import VideoQuizModal from '@/components/elearning/VideoQuizModal';
 import AskRAIModal from '@/components/elearning/AskRAIModal';
 
-export default function ELearningPage() {
+export default function ELearningPageGated() {
+  const { selectedChildId } = useParentContext();
+  return (
+    <FeatureGate featureKey="elearning_access" childId={selectedChildId}>
+      <ELearningPageInner />
+    </FeatureGate>
+  );
+}
+
+function ELearningPageInner() {
   const router = useRouter();
   const { selectedChildId, selectedChild } = useParentContext();
   const childName = selectedChild?.child_name || selectedChild?.name || 'Learner';

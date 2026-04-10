@@ -9,6 +9,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, BookOpen, Check, X, ChevronRight, Lightbulb, Star } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { useParentContext } from '@/app/parent/context';
+import { FeatureGate } from '@/components/shared/FeatureGate';
 
 interface PracticeQuestion {
   id: string;
@@ -37,7 +39,16 @@ interface PracticeData {
 
 type Stage = 'loading' | 'passage' | 'quiz' | 'results' | 'error';
 
-export default function SmartPracticePage() {
+export default function SmartPracticePageGated() {
+  const { selectedChildId } = useParentContext();
+  return (
+    <FeatureGate featureKey="smart_practice" childId={selectedChildId}>
+      <SmartPracticePageInner />
+    </FeatureGate>
+  );
+}
+
+function SmartPracticePageInner() {
   const params = useParams();
   const router = useRouter();
   const taskId = params.taskId as string;

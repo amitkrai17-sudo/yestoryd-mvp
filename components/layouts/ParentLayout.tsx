@@ -10,6 +10,7 @@ interface ParentLayoutProps {
   userAvatar?: React.ReactNode;
   sidebarExtra?: React.ReactNode;
   chatWidget?: React.ReactNode;
+  disabledFeatures?: Set<string>;
 }
 
 export default function ParentLayout({
@@ -20,6 +21,7 @@ export default function ParentLayout({
   userAvatar,
   sidebarExtra,
   chatWidget,
+  disabledFeatures,
 }: ParentLayoutProps) {
   // If called without onSignOut, this is page-level usage (redundant wrapper)
   // since app/parent/layout.tsx already provides the full layout chrome.
@@ -36,6 +38,7 @@ export default function ParentLayout({
       userAvatar={userAvatar}
       sidebarExtra={sidebarExtra}
       chatWidget={chatWidget}
+      disabledFeatures={disabledFeatures}
     >
       {children}
     </PortalLayout>

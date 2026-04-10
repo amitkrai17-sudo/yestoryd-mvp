@@ -20,6 +20,7 @@ import ParentLayout from '@/components/layouts/ParentLayout';
 import { supabase } from '@/lib/supabase/client';
 import { ParentContext, ParentContextType, ParentData, ChildData } from './context';
 
+
 // Re-export for backwards compatibility
 export { useParentContext } from './context';
 
@@ -126,6 +127,8 @@ export default function ParentAppLayout({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [disabledFeatures, setDisabledFeatures] = useState<Set<string>>(new Set());
+  const [allChildFeatures, setAllChildFeatures] = useState<Record<string, Record<string, boolean>>>({});
 
   const selectedChild = children_.find(c => c.id === selectedChildId) || null;
 
@@ -200,7 +203,33 @@ export default function ParentAppLayout({
 
       if (childrenError) console.error('Error fetching children:', childrenError);
 
-      const allChildren = childrenData || [];
+      // Enrich children with active enrollment info
+      const childIds = (childrenData || []).map(c => c.id);
+      let enrollmentMap: Record<string, { enrollment_id: string; enrollment_type: string | null }> = {};
+      if (childIds.length > 0) {
+        const { data: enrollments } = await supabase
+          .from('enrollments')
+          .select('id, child_id, enrollment_type')
+          .in('child_id', childIds)
+          .in('status', ['active', 'payment_pending', 'pending_start'])
+          .order('created_at', { ascending: false });
+
+        if (enrollments) {
+          for (const e of enrollments) {
+            if (!e.child_id) continue;
+            // First match wins (most recent due to order)
+            if (!enrollmentMap[e.child_id]) {
+              enrollmentMap[e.child_id] = { enrollment_id: e.id, enrollment_type: e.enrollment_type };
+            }
+          }
+        }
+      }
+
+      const allChildren = (childrenData || []).map(c => ({
+        ...c,
+        enrollment_type: enrollmentMap[c.id]?.enrollment_type,
+        enrollment_id: enrollmentMap[c.id]?.enrollment_id,
+      }));
 
       setUser(authUser);
       setParent(parentData as any);
@@ -272,6 +301,36 @@ export default function ParentAppLayout({
 
     return () => subscription.unsubscribe();
   }, [pathname, checkAuth, validateParent]);
+
+  // Fetch feature gates once when authorized (returns all children)
+  useEffect(() => {
+    if (!isAuthorized) return;
+    let stale = false;
+    fetch('/api/parent/features')
+      .then(r => r.json())
+      .then(data => {
+        if (stale || !data.children) return;
+        const featuresByChild: Record<string, Record<string, boolean>> = {};
+        for (const child of data.children) {
+          featuresByChild[child.childId] = child.features;
+        }
+        setAllChildFeatures(featuresByChild);
+      })
+      .catch(() => {});
+    return () => { stale = true; };
+  }, [isAuthorized]);
+
+  // Derive disabledFeatures from cached allChildFeatures when child changes
+  useEffect(() => {
+    if (!selectedChildId) return;
+    const features = allChildFeatures[selectedChildId];
+    if (!features) { setDisabledFeatures(new Set()); return; }
+    const disabled = new Set<string>();
+    for (const [key, enabled] of Object.entries(features)) {
+      if (!enabled) disabled.add(key);
+    }
+    setDisabledFeatures(disabled);
+  }, [selectedChildId, allChildFeatures]);
 
   const setSelectedChildId = useCallback((childId: string) => {
     setSelectedChildIdState(childId);
@@ -396,6 +455,7 @@ export default function ParentAppLayout({
         onSignOut={handleSignOut}
         userName={parent?.name || 'Parent'}
         userEmail={user?.email}
+        disabledFeatures={disabledFeatures}
         sidebarExtra={
           <ChildSelector
             children_={children_}

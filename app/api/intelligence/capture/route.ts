@@ -636,7 +636,7 @@ export async function POST(request: NextRequest) {
         const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
         const { data: childForHW } = await supabase
           .from('children')
-          .select('child_name, age, smart_practice_enabled')
+          .select('child_name, age')
           .eq('id', payload.childId)
           .single();
         const { simplified, original } = await simplifyHomework(
@@ -712,8 +712,10 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // SmartPractice: generate interactive quiz if enabled (non-blocking)
-        if (homeworkTaskId && childForHW?.smart_practice_enabled) {
+        // SmartPractice: generate interactive quiz if enabled via feature gate (non-blocking)
+        const { getChildFeatures } = await import('@/lib/features/get-child-features');
+        const { features: childFeatures } = await getChildFeatures(payload.childId);
+        if (homeworkTaskId && childFeatures.smart_practice && childForHW) {
           import('@/lib/homework/generate-smart-practice').then(({ generateSmartPractice }) => {
             generateSmartPractice({
               coachNotes: original,

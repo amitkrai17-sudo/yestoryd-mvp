@@ -16,6 +16,8 @@ export interface ChildData {
   child_name?: string;
   age?: number;
   lead_status?: string;
+  enrollment_type?: string | null;
+  enrollment_id?: string;
 }
 
 export interface ParentContextType {

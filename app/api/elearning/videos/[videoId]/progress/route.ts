@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 
 const supabase = createAdminClient();
 
@@ -23,6 +24,9 @@ export async function POST(
     if (!childId) {
       return NextResponse.json({ error: 'childId is required' }, { status: 400 });
     }
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
 
     // Get video details
     const { data: video } = await supabase

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 
 const supabase = createAdminClient();
@@ -60,7 +61,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
+
     // Update unit progress to completed
     const { error: progressError } = await supabase
       .from('el_child_unit_progress')

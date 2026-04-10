@@ -1728,6 +1728,7 @@ export type Database = {
           enrolled_at: string | null
           enrollment_status: string | null
           favorite_topics: string[] | null
+          feature_overrides: Json | null
           goals_capture_method: string | null
           goals_captured_at: string | null
           goals_message_sent: boolean | null
@@ -1826,6 +1827,7 @@ export type Database = {
           enrolled_at?: string | null
           enrollment_status?: string | null
           favorite_topics?: string[] | null
+          feature_overrides?: Json | null
           goals_capture_method?: string | null
           goals_captured_at?: string | null
           goals_message_sent?: boolean | null
@@ -1924,6 +1926,7 @@ export type Database = {
           enrolled_at?: string | null
           enrollment_status?: string | null
           favorite_topics?: string[] | null
+          feature_overrides?: Json | null
           goals_capture_method?: string | null
           goals_captured_at?: string | null
           goals_message_sent?: boolean | null
@@ -10087,6 +10090,33 @@ export type Database = {
         }
         Relationships: []
       }
+      product_features: {
+        Row: {
+          created_at: string | null
+          enabled: boolean
+          feature_key: string
+          id: string
+          product_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          product_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          product_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth_key: string
@@ -15683,6 +15713,7 @@ export type Database = {
           worksheet_count: number
         }[]
       }
+      normalize_phone_to_e164: { Args: { raw: string }; Returns: string }
       process_payout_batch: {
         Args: {
           p_admin_email: string

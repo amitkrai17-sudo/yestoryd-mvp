@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Lock } from 'lucide-react';
 import { ThemeProvider, usePortalTheme } from '@/components/providers/ThemeProvider';
 import { PortalType, getNavConfig } from '@/components/config/navigation';
 import BottomNav from '@/components/shared/navigation/BottomNav';
@@ -17,6 +17,7 @@ interface PortalLayoutProps {
   userAvatar?: React.ReactNode;
   sidebarExtra?: React.ReactNode;  // For parent child selector
   chatWidget?: React.ReactNode;    // ChatWidget component instance
+  disabledFeatures?: Set<string>;  // Feature keys disabled for current child
 }
 
 function PortalLayoutInner({
@@ -28,6 +29,7 @@ function PortalLayoutInner({
   userAvatar,
   sidebarExtra,
   chatWidget,
+  disabledFeatures,
 }: PortalLayoutProps) {
   const pathname = usePathname();
   const { theme } = usePortalTheme();
@@ -60,6 +62,7 @@ function PortalLayoutInner({
         userEmail={userEmail}
         userAvatar={userAvatar}
         headerExtra={sidebarExtra}
+        disabledFeatures={disabledFeatures}
       />
 
       {/* Mobile sidebar (slide-over) */}
@@ -118,6 +121,7 @@ function PortalLayoutInner({
               return pathname.startsWith(href);
             })();
             const Icon = item.icon;
+            const isLocked = !!(item.requiredFeature && disabledFeatures?.has(item.requiredFeature));
 
             return (
               <a
@@ -125,13 +129,16 @@ function PortalLayoutInner({
                 href={item.href}
                 onClick={() => setMobileSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 h-11 rounded-lg transition-colors ${
-                  active
-                    ? `${theme.nav.activeBg} ${theme.nav.activeText}`
-                    : `${theme.nav.inactiveText} ${theme.nav.hoverBg}`
+                  isLocked
+                    ? `opacity-50 ${theme.nav.inactiveText} ${theme.nav.hoverBg}`
+                    : active
+                      ? `${theme.nav.activeBg} ${theme.nav.activeText}`
+                      : `${theme.nav.inactiveText} ${theme.nav.hoverBg}`
                 }`}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm truncate">{item.label}</span>
+                {isLocked && <Lock className="w-3.5 h-3.5 ml-auto flex-shrink-0" />}
               </a>
             );
           })}

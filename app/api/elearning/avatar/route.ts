@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 
 const supabase = createAdminClient();
 
@@ -40,6 +41,9 @@ export async function GET(request: NextRequest) {
     if (!childId) {
       return NextResponse.json({ error: 'childId is required' }, { status: 400 });
     }
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
 
     // Get current avatar if exists
     const { data: avatar } = await supabase

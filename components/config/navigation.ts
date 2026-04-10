@@ -25,6 +25,7 @@ import {
   UserPlus,
   Sparkles,
 } from 'lucide-react';
+import type { FeatureKey } from '@/lib/features/types';
 
 export type PortalType = 'parent' | 'coach' | 'admin';
 
@@ -35,6 +36,7 @@ export interface NavItem {
   icon: LucideIcon;
   group?: string;
   badge?: number;
+  requiredFeature?: FeatureKey;
 }
 
 export interface PortalNavConfig {
@@ -61,13 +63,13 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
     sidebar: [
       // Core — matches bottom nav order
       { id: 'home', label: 'Home', href: '/parent/dashboard', icon: Home, group: 'Core' },
-      { id: 'progress', label: 'Progress', href: '/parent/progress', icon: BarChart3, group: 'Core' },
+      { id: 'progress', label: 'Progress', href: '/parent/progress', icon: BarChart3, group: 'Core', requiredFeature: 'progress_cards' },
       { id: 'sessions', label: 'Sessions', href: '/parent/sessions', icon: Calendar, group: 'Core' },
       { id: 'tasks', label: 'Tasks', href: '/parent/tasks', icon: CheckSquare, group: 'Core' },
       { id: 'rai', label: 'rAI', href: '/parent/rai', icon: Sparkles, group: 'Core' },
       // Learning
       { id: 'journey', label: 'Journey', href: '/parent/journey', icon: MapPin, group: 'Learning' },
-      { id: 'elearning', label: 'E-Learning', href: '/parent/elearning', icon: BookOpen, group: 'Learning' },
+      { id: 'elearning', label: 'E-Learning', href: '/parent/elearning', icon: BookOpen, group: 'Learning', requiredFeature: 'elearning_access' },
       // Account
       { id: 'support', label: 'Support', href: '/parent/support', icon: HelpCircle, group: 'Account' },
     ],

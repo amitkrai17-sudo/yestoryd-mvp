@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeature } from '@/lib/features/require-feature';
 
 const supabase = createAdminClient();
 // Initialize Supabase
@@ -56,7 +57,10 @@ export async function GET(request: NextRequest) {
     if (!childId) {
       return NextResponse.json({ success: false, error: 'Child ID required' }, { status: 400 });
     }
-    
+
+    const denied = await requireFeature('elearning_access', childId);
+    if (denied) return denied;
+
     console.log('[Session API] Fetching for childId:', childId);
     
     // Fetch child info first (this table definitely exists)
