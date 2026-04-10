@@ -44,6 +44,7 @@ interface CoachTds {
 
 interface TdsData {
   financial_year: string;
+  tds_threshold_annual: number;
   quarterly_summary: QuarterlySummary[];
   coach_wise: CoachTds[];
   alerts: {
@@ -390,7 +391,6 @@ export default function TdsPage() {
         </div>
 
         {/* Info Card */}
-        {/* TODO: Move TDS threshold (₹30,000/year) to site_settings */}
         <div className="mt-8 p-6 bg-white/[0.08] rounded-2xl border border-white/[0.08]">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 bg-white/[0.08] rounded-xl flex items-center justify-center flex-shrink-0">
@@ -402,7 +402,7 @@ export default function TdsPage() {
                 <li>• TDS must be deposited by 7th of following month (30th April for Q4)</li>
                 <li>• Form 26Q must be filed quarterly on TRACES portal</li>
                 <li>• Issue Form 16A to coaches after filing 26Q</li>
-                <li>• Threshold of ₹30,000/year per coach applies</li>
+                <li>• Threshold of &#8377;{data?.tds_threshold_annual?.toLocaleString('en-IN') || 0}/year per coach applies</li>
               </ul>
             </div>
           </div>

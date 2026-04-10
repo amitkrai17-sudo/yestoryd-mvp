@@ -9,9 +9,9 @@ import { Users, BookOpen, Sparkles, Check, Star, ArrowRight, Zap } from 'lucide-
 
 interface ProductOverviewProps {
   /** Coaching original price (from pricing_plans 'full' tier) */
-  coachingOriginalPrice?: number;
+  coachingOriginalPrice: number;
   /** Coaching discounted price (from pricing_plans 'full' tier) */
-  coachingDiscountedPrice?: number;
+  coachingDiscountedPrice: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,9 +73,9 @@ const COACHING_FEATURES = [
 // ---------------------------------------------------------------------------
 
 export function ProductOverview({
-  coachingOriginalPrice = 11999,
-  coachingDiscountedPrice = 6999,
-}: ProductOverviewProps = {}) {
+  coachingOriginalPrice,
+  coachingDiscountedPrice,
+}: ProductOverviewProps) {
   const discountPercent = Math.round(
     (1 - coachingDiscountedPrice / coachingOriginalPrice) * 100,
   );

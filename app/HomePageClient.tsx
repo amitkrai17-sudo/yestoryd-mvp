@@ -427,8 +427,8 @@ export default function HomePageClient({
       />
 
       <ProductOverview
-        coachingOriginalPrice={pricing.originalPrice || 11999}
-        coachingDiscountedPrice={pricing.discountedPrice || 6999}
+        coachingOriginalPrice={pricing.originalPrice}
+        coachingDiscountedPrice={pricing.discountedPrice}
       />
 
       <StorySection

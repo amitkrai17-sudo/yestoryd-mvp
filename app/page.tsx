@@ -10,7 +10,7 @@
 import HomePageClient, { ContentSettings } from './HomePageClient';
 import { supabase } from '@/lib/supabase/client';
 import { fetchPricingDisplayData } from '@/lib/pricing-display';
-import { getPricingConfig, getGenericSessionRange, getDurationRange } from '@/lib/config/pricing-config';
+import { getPricingConfig, getGenericSessionRange, getDurationRange, getCoachingFullTierPrices } from '@/lib/config/pricing-config';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Disable caching - always fetch fresh data
@@ -54,11 +54,8 @@ const DEFAULTS = {
     avgImprovement: '2x',
   },
   pricing: {
-    // NOTE: These are last-resort fallbacks only used if pricing_plans DB fetch fails
-    // Actual pricing comes from pricing_plans table via getHomePageData()
-    originalPrice: 0,
-    discountedPrice: 0,
-    discountLabel: '',
+    // Coaching prices come from pricing-config.ts via getCoachingFullTierPrices().
+    // Only freeAssessmentWorth is still defaulted here (informational copy).
     freeAssessmentWorth: '999',
   },
   contact: {
@@ -171,17 +168,17 @@ async function getHomePageData() {
     // Build pricing object from pricing_plans table (full product)
     const fullProduct = products.find(p => p.slug === 'full') || products[products.length - 1];
     if (!fullProduct) {
-      console.warn('[Homepage] No pricing_plans found in database - pricing will show loading');
+      console.warn('[Homepage] No pricing_plans found in database - falling back to pricing-config loader');
     }
+    const fallbackPrices = fullProduct ? null : await getCoachingFullTierPrices();
     const pricing = fullProduct ? {
       originalPrice: fullProduct.originalPrice,
       discountedPrice: fullProduct.discountedPrice,
       discountLabel: fullProduct.discountLabel || '',
       freeAssessmentWorth: String(settings.free_assessment_worth || '999'),
     } : {
-      // Fallback: shows 0 which will trigger "Contact us for pricing" in UI
-      originalPrice: 0,
-      discountedPrice: 0,
+      originalPrice: fallbackPrices!.originalPrice,
+      discountedPrice: fallbackPrices!.discountedPrice,
       discountLabel: '',
       freeAssessmentWorth: String(settings.free_assessment_worth || '999'),
     };
@@ -374,15 +371,21 @@ async function getHomePageData() {
     };
   } catch (error) {
     console.error('Error fetching homepage data:', error);
-    // Try to get coaching duration from pricing config (has built-in fallbacks)
+    // Try to get coaching duration + prices from pricing config (has built-in fallbacks)
     let dur = 45;
     try {
       const fb = await getPricingConfig();
       dur = fb.ageBands.find(b => b.id === 'building')?.sessionDurationMinutes ?? 45;
     } catch { /* keep 45 */ }
+    const fbPrices = await getCoachingFullTierPrices();
     return {
       stats: DEFAULTS.stats,
-      pricing: DEFAULTS.pricing,
+      pricing: {
+        originalPrice: fbPrices.originalPrice,
+        discountedPrice: fbPrices.discountedPrice,
+        discountLabel: '',
+        freeAssessmentWorth: DEFAULTS.pricing.freeAssessmentWorth,
+      },
       products: [],
       contact: DEFAULTS.contact,
       videos: DEFAULTS.videos,

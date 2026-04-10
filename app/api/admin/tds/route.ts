@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
+import { loadPayoutConfig } from '@/lib/config/payout-config';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -161,6 +162,9 @@ export async function GET(request: NextRequest) {
       .is('pan_number', null)
       .gt('tds_cumulative_fy', 0);
 
+    // Load TDS threshold from site_settings (cached, has built-in fallback)
+    const payoutConfig = await loadPayoutConfig();
+
     const duration = Date.now() - startTime;
     console.log(JSON.stringify({ requestId, event: 'tds_get_success', financialYear, duration: `${duration}ms` }));
 
@@ -168,6 +172,7 @@ export async function GET(request: NextRequest) {
       success: true,
       requestId,
       financial_year: financialYear,
+      tds_threshold_annual: payoutConfig.tds_threshold_annual,
       quarterly_summary: quarterlySummary,
       coach_wise: coachWise,
       alerts: {

@@ -77,7 +77,9 @@ const PRODUCTS = [
     Icon: Sparkles,
     accent: 'pink',
     pills: ['Personalized 1:1', 'Season-based', 'AI-powered'],
-    price: '6,999',
+    // Coaching price comes from props (see JSX branch on product.key === 'coaching').
+    // This field is unused for coaching but kept to preserve PRODUCTS array shape.
+    price: '',
     priceUnit: '/ season (90 days)',
     note: '3 to 6 seasons to graduate. Every journey is unique.',
     features: [
@@ -202,14 +204,14 @@ function CompareCell({ value }: { value: string }) {
 // ---------------------------------------------------------------------------
 
 interface PricingPageClientProps {
-  coachingOriginalPrice?: number;
-  coachingDiscountedPrice?: number;
+  coachingOriginalPrice: number;
+  coachingDiscountedPrice: number;
 }
 
 export default function PricingPageClient({
-  coachingOriginalPrice = 11999,
-  coachingDiscountedPrice = 6999,
-}: PricingPageClientProps = {}) {
+  coachingOriginalPrice,
+  coachingDiscountedPrice,
+}: PricingPageClientProps) {
   const [openSections, setOpenSections] = useState<Record<number, boolean>>({ 0: true });
   const coachingDiscountPercent = Math.round(
     (1 - coachingDiscountedPrice / coachingOriginalPrice) * 100,
@@ -428,7 +430,7 @@ export default function PricingPageClient({
                           <div />
                           <div className="text-center text-xs font-semibold text-amber-400">Workshops</div>
                           <div className="text-center text-xs font-semibold text-sky-400">Classes</div>
-                          <div className="text-center text-xs font-semibold text-[#FF0099]">Coaching</div>
+                          <div className="text-center text-xs font-semibold text-[#FF0099]">1:1 Coaching</div>
                         </div>
 
                         {/* Rows */}
