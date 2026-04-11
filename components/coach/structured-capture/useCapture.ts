@@ -240,6 +240,67 @@ export function useCapture(props: CaptureFormProps) {
     return () => { cancelled = true; };
   }, [sessionId]);
 
+  // Pre-fill from companion panel activity logs (online sessions)
+  const [activityLogCount, setActivityLogCount] = useState(0);
+  useEffect(() => {
+    if (!sessionId || sessionId === 'new') return;
+    let cancelled = false;
+    async function fetchActivityLog() {
+      try {
+        const res = await fetch(`/api/intelligence/activity-log?sessionId=${sessionId}`);
+        const result = await res.json();
+        const prefill = result.data;
+        if (cancelled || !prefill) return;
+
+        setActivityLogCount(prefill.activityCount || 0);
+
+        setState(prev => ({
+          ...prev,
+          // Activity-log skills fill gaps (micro-obs take priority via earlier effect)
+          selectedSkillIds: Array.from(new Set([...prev.selectedSkillIds, ...(prefill.skillsCovered || [])])),
+          strengthObservationIds: Array.from(new Set([...prev.strengthObservationIds, ...(prefill.suggestedStrengths || [])])),
+          struggleObservationIds: Array.from(new Set([...prev.struggleObservationIds, ...(prefill.suggestedStruggles || [])])),
+          customStrengthNote: prev.customStrengthNote || prefill.customStrengthNote || '',
+          customStruggleNote: prev.customStruggleNote || prefill.customStruggleNote || '',
+          engagementLevel: prev.engagementLevel || prefill.engagementLevel || null,
+        }));
+      } catch { /* Non-fatal */ }
+    }
+    fetchActivityLog();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  // Pre-fill from Recall transcript analysis (online sessions with recording)
+  const [recallPrefillAvailable, setRecallPrefillAvailable] = useState(false);
+  useEffect(() => {
+    if (!sessionId || sessionId === 'new') return;
+    let cancelled = false;
+    async function fetchRecallPrefill() {
+      try {
+        const { supabase } = await import('@/lib/supabase/client');
+        const { data: session } = await supabase
+          .from('scheduled_sessions')
+          .select('recall_prefill_data')
+          .eq('id', sessionId)
+          .single();
+
+        const prefill = session?.recall_prefill_data as Record<string, any> | null;
+        if (cancelled || !prefill) return;
+
+        setRecallPrefillAvailable(true);
+
+        setState(prev => ({
+          ...prev,
+          customStrengthNote: prev.customStrengthNote || prefill.strength_summary || '',
+          customStruggleNote: prev.customStruggleNote || prefill.struggle_summary || '',
+          engagementLevel: prev.engagementLevel || prefill.suggested_engagement || null,
+        }));
+      } catch { /* Non-fatal */ }
+    }
+    fetchRecallPrefill();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
   // Save draft on state changes (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -378,6 +439,8 @@ export function useCapture(props: CaptureFormProps) {
     observations,
     continuations,
     microObsCount,
+    activityLogCount,
+    recallPrefillAvailable,
     loadingSkills,
     loadingObservations,
     scorePreview,

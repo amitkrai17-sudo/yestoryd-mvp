@@ -1,16 +1,15 @@
 // components/coach/SessionCard.tsx
-// Clean session card component with smart primary action
-// Supports offline session badges and status indicators
+// Redesigned session card: avatar + name + time row, meta line,
+// consistent CTA sizing, contextual dropdown, no duplicate labels
 
 'use client';
 
-// DEPRECATED: Link import removed — legacy report form routing retired
-// All session completion now uses StructuredCaptureForm via onComplete callback
-import { Video, ArrowRight, CheckCircle, FileText, MessageSquare, ClipboardCheck, MapPin, Clock, Send, ClipboardList, BookOpen } from 'lucide-react';
+import { Video, ArrowRight, CheckCircle, FileText, ClipboardCheck, MapPin, Send, ClipboardList, BookOpen } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
 import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';
 import { CommunicationTrigger } from '@/components/shared/CommunicationTrigger';
+import { formatTime12 } from '@/lib/utils/date-format';
 
 interface Session {
   id: string;
@@ -28,13 +27,10 @@ interface Session {
   parent_update_sent_at?: string | null;
   parent_phone?: string;
   parent_name?: string;
-  // Offline fields
   session_mode?: string;
   offline_request_status?: string | null;
   report_submitted_at?: string | null;
-  // Enrollment type
   enrollment_type?: string | null;
-  // Capture state
   capture_id?: string | null;
   pending_capture?: { id: string; ai_prefilled: boolean } | null;
 }
@@ -52,14 +48,9 @@ interface SessionCardProps {
   onRequestOffline?: () => void;
   onSwitchToOnline?: () => void;
   coachEmail?: string;
-}
-
-function formatTime(timeStr: string): string {
-  const [hours, minutes] = timeStr.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
+  isActiveSession?: boolean;
+  onOpenNotes?: () => void;
+  microNoteCount?: number;
 }
 
 function isWithinMinutes(dateStr: string, timeStr: string, minutes: number): boolean {
@@ -67,7 +58,7 @@ function isWithinMinutes(dateStr: string, timeStr: string, minutes: number): boo
   const now = new Date();
   const diffMs = sessionDateTime.getTime() - now.getTime();
   const diffMins = diffMs / (1000 * 60);
-  return diffMins <= minutes && diffMins >= -60; // Within time window or started within last hour
+  return diffMins <= minutes && diffMins >= -60;
 }
 
 function getSessionTypeLabel(type: string): string {
@@ -75,40 +66,21 @@ function getSessionTypeLabel(type: string): string {
   return _getLabel(type);
 }
 
-// In-person status badge helper
-function getInPersonStatusInfo(session: Session, isPast: boolean): { label: string; className: string; icon: 'mappin' | 'clipboard' | 'check' | 'clock' } | null {
-  if (session.session_mode !== 'offline') return null;
-
-  if (session.report_submitted_at) {
-    return { label: 'Report Submitted', className: 'bg-green-500/20 text-green-400 border-green-500/30', icon: 'check' };
-  }
-
-  if (session.offline_request_status === 'pending') {
-    return { label: 'In-Person Request Pending', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: 'clock' };
-  }
-
-  const isApproved = session.offline_request_status === 'approved' || session.offline_request_status === 'auto_approved';
-
-  if (isApproved && isPast && session.status !== 'completed') {
-    return { label: 'Report Due', className: 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse', icon: 'clipboard' };
-  }
-
-  if (isApproved) {
-    return { label: 'In-Person Session', className: 'bg-green-500/20 text-green-400 border-green-500/30', icon: 'mappin' };
-  }
-
-  return null;
-}
-
-// Status icon component
-function StatusIcon({ icon, className }: { icon: 'mappin' | 'clipboard' | 'check' | 'clock'; className?: string }) {
-  const cls = className || 'w-2.5 h-2.5';
-  switch (icon) {
-    case 'mappin': return <MapPin className={cls} />;
-    case 'clipboard': return <ClipboardList className={cls} />;
-    case 'check': return <CheckCircle className={cls} />;
-    case 'clock': return <Clock className={cls} />;
-  }
+// Avatar color based on child name hash
+function getAvatarColor(name: string): string {
+  const colors = [
+    'from-blue-500 to-blue-600',
+    'from-purple-500 to-purple-600',
+    'from-pink-500 to-pink-600',
+    'from-teal-500 to-teal-600',
+    'from-amber-500 to-amber-600',
+    'from-indigo-500 to-indigo-600',
+    'from-rose-500 to-rose-600',
+    'from-cyan-500 to-cyan-600',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
 }
 
 export function SessionCard({
@@ -123,71 +95,103 @@ export function SessionCard({
   onMissed,
   onRequestOffline,
   onSwitchToOnline,
+  isActiveSession,
+  onOpenNotes,
+  microNoteCount,
 }: SessionCardProps) {
   const isOffline = session.session_mode === 'offline';
   const isPending = session.status === 'scheduled' || session.status === 'pending' || session.status === 'confirmed';
   const isCompleted = session.status === 'completed';
   const isCancelled = session.status === 'cancelled';
-  const canTakeAction = !isCompleted && !isCancelled; // Can reschedule, cancel, complete
+  const isMissed = session.status === 'missed';
+  const canTakeAction = !isCompleted && !isCancelled && !isMissed;
+
   const showJoin = !isOffline && isToday && session.google_meet_link && isPending &&
     isWithinMinutes(session.scheduled_date, session.scheduled_time, 15);
   const needsParentUpdate = isCompleted && !session.parent_update_sent_at;
-  const inPersonStatus = getInPersonStatusInfo(session, isPast);
 
-  // Capture-aware state (universal — applies to ALL session types)
-  const hasConfirmedCapture = !!session.capture_id;
+  // Capture state
+  // A capture is confirmed when capture_id exists AND no pending (unconfirmed) capture remains
   const hasPendingAiCapture = !!session.pending_capture?.ai_prefilled;
   const hasPendingCapture = !!session.pending_capture;
-
-  // Any past, unresolved session without a confirmed capture needs a report
-  const needsReport = isPast && !isCompleted && !isCancelled && !hasConfirmedCapture;
-
-  // Legacy: completed without capture (before mandatory capture was enforced)
+  const hasConfirmedCapture = !!session.capture_id && !hasPendingCapture;
+  const needsReport = isPast && !isCompleted && !isCancelled && !isMissed && !hasConfirmedCapture;
   const legacyNeedsCapture = isCompleted && !hasConfirmedCapture && !hasPendingCapture;
 
-  // Determine primary action
-  const getPrimaryAction = () => {
-    // Past session with pending AI capture → amber "Review" button
+  // Report due: completed but capture not yet confirmed by coach
+  const reportDue = isCompleted && !hasConfirmedCapture;
+
+  // Program label
+  const programLabel = session.enrollment_type === 'tuition'
+    ? 'English Classes'
+    : getSessionTypeLabel(session.session_type);
+
+  // Session progress text
+  const progressText = session.enrollment_type === 'tuition'
+    ? (session.duration_minutes ? `${session.duration_minutes}m` : '')
+    : [
+        session.session_number ? `#${session.session_number}` : null,
+        session.session_number && session.total_sessions ? `of ${session.total_sessions}` : null,
+      ].filter(Boolean).join(' ');
+
+  // ---- CTA Button ----
+  const getCTA = () => {
+    // Active session: green Session Notes
+    if (isActiveSession && onOpenNotes) {
+      return (
+        <button
+          onClick={onOpenNotes}
+          className="h-9 px-4 rounded-xl text-sm font-medium bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center gap-1.5 flex-shrink-0"
+        >
+          <ClipboardList className="w-3.5 h-3.5" />
+          Session Notes{microNoteCount ? ` (${microNoteCount})` : ''}
+        </button>
+      );
+    }
+
+    // Past + needs report with AI capture: pink Review
     if (needsReport && hasPendingAiCapture) {
       return (
         <button
           onClick={onComplete}
-          className="flex items-center gap-1.5 lg:gap-2 bg-amber-500 text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-amber-600 transition-colors"
+          className="h-9 px-4 rounded-xl text-sm font-medium bg-[#FF0099] text-white hover:bg-[#FF0099]/90 transition-colors flex items-center gap-1.5 flex-shrink-0"
         >
-          <ClipboardCheck className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <ClipboardCheck className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Review</span>
         </button>
       );
     }
 
-    // Past session with no capture at all → red "Report" button
+    // Past + needs report: pink Fill Report
     if (needsReport) {
       return (
         <button
           onClick={onComplete}
-          className="flex items-center gap-1.5 lg:gap-2 bg-red-500 text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-red-600 transition-colors animate-pulse"
+          className="h-9 px-4 rounded-xl text-sm font-medium bg-[#FF0099] text-white hover:bg-[#FF0099]/90 transition-colors flex items-center gap-1.5 flex-shrink-0"
         >
-          <Send className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-          <span className="hidden sm:inline">Report</span>
+          <Send className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Fill Report</span>
+          <ArrowRight className="w-3.5 h-3.5 sm:hidden" />
         </button>
       );
     }
 
+    // Join meeting
     if (showJoin) {
       return (
         <a
           href={session.google_meet_link!}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 lg:gap-2 bg-[#00ABFF] text-white px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
+          className="h-9 px-4 rounded-xl text-sm font-medium bg-[#00ABFF] text-white hover:bg-[#00ABFF]/90 transition-colors flex items-center gap-1.5 flex-shrink-0"
         >
-          <Video className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-          <span className="hidden sm:inline">Join</span>
-          <ArrowRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 sm:hidden" />
+          <Video className="w-3.5 h-3.5" />
+          Join
         </a>
       );
     }
 
+    // Needs parent update
     if (needsParentUpdate) {
       return (
         <CommunicationTrigger
@@ -203,221 +207,238 @@ export function SessionCard({
       );
     }
 
+    // Completed with report due
+    if (reportDue || legacyNeedsCapture) {
+      return (
+        <button
+          onClick={onComplete}
+          className="h-9 px-4 rounded-xl text-sm font-medium border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0"
+        >
+          Update
+        </button>
+      );
+    }
+
+    // Upcoming scheduled: Prep
     if (isPending && !isPast) {
       return (
         <button
           onClick={onPrep}
-          className="flex items-center gap-1.5 lg:gap-2 border border-gray-600 text-gray-300 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors"
+          className="h-9 px-4 rounded-xl text-sm font-medium border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0"
         >
-          <FileText className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <FileText className="w-3.5 h-3.5" />
           Prep
         </button>
       );
     }
 
-    if (isCompleted) {
-      return (
-        <div className="flex items-center gap-1.5">
-          <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-green-400" />
-          {legacyNeedsCapture && (
-            <button
-              onClick={onComplete}
-              className="text-[10px] text-text-tertiary hover:text-[#00ABFF] transition-colors"
-            >
-              Add Report
-            </button>
-          )}
-        </div>
-      );
+    // Completed with confirmed capture: just a check
+    if (isCompleted && hasConfirmedCapture) {
+      return <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />;
     }
 
     return null;
   };
 
-  // Build dropdown actions
+  // ---- Contextual Dropdown ----
   const dropdownActions = [];
 
-  // Join meeting link (if available and not already showing as primary action)
-  if (canTakeAction && !showJoin && session.google_meet_link && !isOffline) {
+  if (isCompleted) {
+    // Completed state: limited actions
+    if (legacyNeedsCapture || reportDue) {
+      dropdownActions.push({
+        label: hasPendingAiCapture ? 'Review AI Capture' : 'Fill Report',
+        icon: <ClipboardCheck className="w-4 h-4" />,
+        onClick: onComplete,
+      });
+    }
+    if (session.is_diagnostic) {
+      dropdownActions.push({
+        label: 'View Diagnostic',
+        icon: <ClipboardCheck className="w-4 h-4" />,
+        onClick: () => { window.location.href = `/coach/sessions/${session.id}/diagnostic`; },
+      });
+    }
     dropdownActions.push({
-      label: 'Join Meeting',
+      label: 'View Student',
       icon: ActionIcons.view,
-      onClick: () => window.open(session.google_meet_link!, '_blank'),
+      onClick: () => { window.location.href = `/coach/students/${session.child_id}`; },
     });
-  }
-
-  // Submit Report / Review Capture — universal for all session types needing capture
-  if (needsReport && hasPendingAiCapture) {
-    dropdownActions.push({
-      label: 'Review AI Capture',
-      icon: <ClipboardCheck className="w-4 h-4" />,
-      onClick: onComplete,
-    });
-  } else if (needsReport) {
-    dropdownActions.push({
-      label: 'Submit Report',
-      icon: <Send className="w-4 h-4" />,
-      onClick: onComplete,
-    });
-  }
-
-  // Mark as Complete — opens capture form (gate enforced there)
-  if (canTakeAction && !needsReport) {
-    dropdownActions.push({
-      label: 'Mark as Complete',
-      icon: ActionIcons.complete,
-      onClick: onComplete,
-      disabled: !canComplete.allowed,
-      disabledReason: canComplete.blockedBy
-        ? `Complete Session #${canComplete.blockedBy} first`
-        : undefined,
-    });
-  }
-
-  // Legacy completed sessions: add report retroactively
-  if (legacyNeedsCapture) {
-    dropdownActions.push({
-      label: 'Add Report',
-      icon: <ClipboardCheck className="w-4 h-4" />,
-      onClick: onComplete,
-    });
-  }
-
-  // Request Offline — for online, upcoming, scheduled sessions
-  if (onRequestOffline && !isOffline && canTakeAction && !isPast && isPending) {
-    dropdownActions.push({
-      label: 'Switch to In-Person',
-      icon: <MapPin className="w-4 h-4" />,
-      onClick: onRequestOffline,
-    });
-  }
-
-  // Switch to Online — for offline, upcoming, scheduled sessions
-  if (onSwitchToOnline && isOffline && canTakeAction && !isPast && isPending) {
-    dropdownActions.push({
-      label: 'Switch to Online',
-      icon: <Video className="w-4 h-4" />,
-      onClick: onSwitchToOnline,
-    });
-  }
-
-  // Mark as Missed - only for past sessions
-  if (canTakeAction && isPast) {
-    dropdownActions.push({
-      label: 'Mark as Missed',
-      icon: ActionIcons.missed,
-      onClick: onMissed,
-      variant: 'warning' as const,
-    });
-  }
-
-  // Reschedule - available for non-completed/cancelled sessions
-  if (canTakeAction) {
+  } else if (isMissed) {
+    // Missed: reschedule + view
     dropdownActions.push({
       label: 'Reschedule',
       icon: ActionIcons.reschedule,
       onClick: onReschedule,
     });
-  }
+    dropdownActions.push({
+      label: 'View Student',
+      icon: ActionIcons.view,
+      onClick: () => { window.location.href = `/coach/students/${session.child_id}`; },
+    });
+  } else if (isCancelled) {
+    // Cancelled: view only
+    dropdownActions.push({
+      label: 'View Student',
+      icon: ActionIcons.view,
+      onClick: () => { window.location.href = `/coach/students/${session.child_id}`; },
+    });
+  } else {
+    // Active/scheduled state: full menu
+    if (!showJoin && session.google_meet_link && !isOffline) {
+      dropdownActions.push({
+        label: 'Join Meeting',
+        icon: ActionIcons.view,
+        onClick: () => window.open(session.google_meet_link!, '_blank'),
+      });
+    }
 
-  // Cancel - available for non-completed/cancelled sessions
-  if (canTakeAction) {
+    if (needsReport) {
+      dropdownActions.push({
+        label: hasPendingAiCapture ? 'Review AI Capture' : 'Fill Report',
+        icon: <Send className="w-4 h-4" />,
+        onClick: onComplete,
+      });
+    } else {
+      dropdownActions.push({
+        label: 'Mark as Complete',
+        icon: ActionIcons.complete,
+        onClick: onComplete,
+        disabled: !canComplete.allowed,
+        disabledReason: canComplete.blockedBy
+          ? `Complete Session #${canComplete.blockedBy} first`
+          : undefined,
+      });
+    }
+
+    // Offline/online switch
+    if (onRequestOffline && !isOffline && !isPast && isPending) {
+      dropdownActions.push({
+        label: 'Switch to In-Person',
+        icon: <MapPin className="w-4 h-4" />,
+        onClick: onRequestOffline,
+      });
+    }
+    if (onSwitchToOnline && isOffline && !isPast && isPending) {
+      dropdownActions.push({
+        label: 'Switch to Online',
+        icon: <Video className="w-4 h-4" />,
+        onClick: onSwitchToOnline,
+      });
+    }
+
+    if (isPast) {
+      dropdownActions.push({
+        label: 'Mark as Missed',
+        icon: ActionIcons.missed,
+        onClick: onMissed,
+        variant: 'warning' as const,
+      });
+    }
+
+    dropdownActions.push({
+      label: 'Reschedule',
+      icon: ActionIcons.reschedule,
+      onClick: onReschedule,
+    });
+
     dropdownActions.push({
       label: 'Cancel Session',
       icon: ActionIcons.cancel,
       onClick: onCancel,
       variant: 'danger' as const,
     });
-  }
 
-  // Diagnostic form - for diagnostic sessions
-  if (session.is_diagnostic) {
+    if (session.is_diagnostic) {
+      dropdownActions.push({
+        label: 'Diagnostic Form',
+        icon: <ClipboardCheck className="w-4 h-4" />,
+        onClick: () => { window.location.href = `/coach/sessions/${session.id}/diagnostic`; },
+      });
+    }
+
     dropdownActions.push({
-      label: isCompleted ? 'View Diagnostic' : 'Diagnostic Form',
-      icon: <ClipboardCheck className="w-4 h-4" />,
-      onClick: () => { window.location.href = `/coach/sessions/${session.id}/diagnostic`; },
+      label: 'View Student',
+      icon: ActionIcons.view,
+      onClick: () => { window.location.href = `/coach/students/${session.child_id}`; },
     });
   }
 
-  // View Student - always available
-  dropdownActions.push({
-    label: 'View Student',
-    icon: ActionIcons.view,
-    onClick: () => { window.location.href = `/coach/students/${session.child_id}`; },
-  });
-
   return (
-    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2.5 lg:p-3 hover:border-gray-700 transition-colors w-full">
-      <div className="flex items-center gap-2.5 w-full">
-        {/* Avatar - smaller on mobile */}
-        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0">
-          {session.child_name.charAt(0).toUpperCase()}
+    <div className={`group flex items-start gap-3 p-3 lg:p-4 rounded-2xl border transition-all duration-150 max-w-3xl ${
+      isActiveSession
+        ? 'bg-green-500/5 border-green-500/30 hover:border-green-500/50'
+        : 'bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50 hover:border-gray-600/50'
+    }`}>
+      {/* Avatar */}
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 bg-gradient-to-br ${
+        isActiveSession ? 'from-green-500 to-green-600' : getAvatarColor(session.child_name)
+      }`}>
+        {session.child_name.charAt(0).toUpperCase()}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {/* Row 1: Name + Time */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold text-[15px] text-white truncate">{session.child_name}</span>
+          <span className="text-sm text-gray-400 flex-shrink-0">{formatTime12(session.scheduled_time)}</span>
         </div>
 
-        {/* Content - compact single line on mobile */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <h3 className="font-medium text-sm text-white truncate max-w-[100px] sm:max-w-[140px] lg:max-w-none">
-              {session.child_name}
-            </h3>
-            <StatusBadge status={session.status} size="sm" />
-            {/* In-Person badge */}
-            {isOffline && (
-              <span className="px-1.5 py-0.5 text-[9px] rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-medium flex items-center gap-0.5">
-                <MapPin className="w-2.5 h-2.5" />
+        {/* Row 2: Meta line */}
+        <div className="flex items-center gap-1.5 mt-0.5 text-sm text-gray-400">
+          <span className="truncate">{programLabel}</span>
+          {session.duration_minutes && (
+            <>
+              <span className="text-gray-600">&middot;</span>
+              <span>{session.duration_minutes}m</span>
+            </>
+          )}
+          {isOffline && (
+            <>
+              <span className="text-gray-600">&middot;</span>
+              <span className="text-purple-400/80 flex items-center gap-0.5">
+                <MapPin className="w-3 h-3" />
                 In-Person
               </span>
+            </>
+          )}
+        </div>
+
+        {/* Row 3: Status + alerts + CTA */}
+        <div className="flex items-center justify-between gap-2 mt-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {isActiveSession ? (
+              <span className="px-2 py-0.5 text-[10px] rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                In Progress
+              </span>
+            ) : (
+              <StatusBadge status={session.status} size="sm" />
             )}
             {session.is_diagnostic && (
-              <span className="px-1.5 py-0.5 text-[9px] rounded bg-red-500/20 text-red-400 border border-red-500/30 font-medium">
+              <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-medium">
                 Diagnostic
               </span>
             )}
-            {session.enrollment_type === 'tuition' && (
-              <span className="px-1.5 py-0.5 text-[9px] rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium flex items-center gap-0.5">
-                <BookOpen className="w-2.5 h-2.5" />
-                English Classes
+            {(reportDue || (needsReport && !hasPendingAiCapture)) && (
+              <span className="px-2 py-0.5 text-[10px] rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
+                Report Due
+              </span>
+            )}
+            {progressText && (
+              <span className="text-[11px] text-gray-500">
+                Session {progressText}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <p className="text-gray-500 text-[11px] lg:text-xs truncate">
-              {session.enrollment_type === 'tuition' ? (
-                <>
-                  English Classes Session
-                  {session.duration_minutes && ` • ${session.duration_minutes}m`}
-                </>
-              ) : (
-                <>
-                  {getSessionTypeLabel(session.session_type)}
-                  {session.session_number && ` #${session.session_number}`}
-                  {session.session_number && session.total_sessions && ` of ${session.total_sessions}`}
-                  {session.duration_minutes && ` • ${session.duration_minutes}m`}
-                </>
-              )}
-              <span className="sm:hidden"> • {formatTime(session.scheduled_time)}</span>
-            </p>
-            {/* In-person status indicator */}
-            {inPersonStatus && (
-              <span className={`px-1.5 py-0.5 text-[9px] rounded border font-medium whitespace-nowrap flex items-center gap-0.5 ${inPersonStatus.className}`}>
-                <StatusIcon icon={inPersonStatus.icon} />
-                {inPersonStatus.label}
-              </span>
+
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {getCTA()}
+            {dropdownActions.length > 0 && (
+              <ActionDropdown actions={dropdownActions} />
             )}
           </div>
-        </div>
-
-        {/* Time - visible on larger screens */}
-        <div className="hidden sm:block text-right flex-shrink-0">
-          <p className="text-gray-400 text-xs lg:text-sm">{formatTime(session.scheduled_time)}</p>
-        </div>
-
-        {/* Primary Action */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {getPrimaryAction()}
-          {dropdownActions.length > 0 && (
-            <ActionDropdown actions={dropdownActions} />
-          )}
         </div>
       </div>
     </div>

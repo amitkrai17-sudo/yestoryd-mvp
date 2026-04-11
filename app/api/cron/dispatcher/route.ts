@@ -77,6 +77,14 @@ const JOBS: Job[] = [
   },
 
   {
+    name: 'session-start-notify',
+    path: '/api/cron/session-start-notify',
+    schedule: { type: 'interval', minutes: 15 },
+    method: 'GET',
+    description: 'In-app notification when session is about to start — prompts coach to open MicroNotes',
+  },
+
+  {
     name: 'capture-reminders',
     path: '/api/cron/capture-reminders',
     schedule: { type: 'interval', minutes: 15 },

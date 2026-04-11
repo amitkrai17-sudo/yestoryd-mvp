@@ -11394,6 +11394,7 @@ export type Database = {
           quiz_topic: string | null
           rating_overall: number | null
           recall_bot_id: string | null
+          recall_prefill_data: Json | null
           recall_status: string | null
           recording_processed_at: string | null
           recording_url: string | null
@@ -11410,6 +11411,7 @@ export type Database = {
           session_mode: string
           session_notes: string | null
           session_number: number | null
+          session_prep_data: Json | null
           session_started_at: string | null
           session_struggles: Json | null
           session_subtype: string | null
@@ -11529,6 +11531,7 @@ export type Database = {
           quiz_topic?: string | null
           rating_overall?: number | null
           recall_bot_id?: string | null
+          recall_prefill_data?: Json | null
           recall_status?: string | null
           recording_processed_at?: string | null
           recording_url?: string | null
@@ -11545,6 +11548,7 @@ export type Database = {
           session_mode?: string
           session_notes?: string | null
           session_number?: number | null
+          session_prep_data?: Json | null
           session_started_at?: string | null
           session_struggles?: Json | null
           session_subtype?: string | null
@@ -11664,6 +11668,7 @@ export type Database = {
           quiz_topic?: string | null
           rating_overall?: number | null
           recall_bot_id?: string | null
+          recall_prefill_data?: Json | null
           recall_status?: string | null
           recording_processed_at?: string | null
           recording_url?: string | null
@@ -11680,6 +11685,7 @@ export type Database = {
           session_mode?: string
           session_notes?: string | null
           session_number?: number | null
+          session_prep_data?: Json | null
           session_started_at?: string | null
           session_struggles?: Json | null
           session_subtype?: string | null
@@ -12075,6 +12081,7 @@ export type Database = {
           id: string
           planned_duration_minutes: number | null
           session_id: string
+          skill_id: string | null
           source: string | null
           started_at: string | null
           status: string
@@ -12090,6 +12097,7 @@ export type Database = {
           id?: string
           planned_duration_minutes?: number | null
           session_id: string
+          skill_id?: string | null
           source?: string | null
           started_at?: string | null
           status: string
@@ -12105,6 +12113,7 @@ export type Database = {
           id?: string
           planned_duration_minutes?: number | null
           session_id?: string
+          skill_id?: string | null
           source?: string | null
           started_at?: string | null
           status?: string
@@ -12123,6 +12132,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "session_recording_status"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "session_activity_log_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "el_skills"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -12810,6 +12826,7 @@ export type Database = {
           group_session_id: string | null
           id: string
           intelligence_score: number | null
+          recall_enrichment: Json | null
           session_date: string
           session_id: string | null
           session_modality: string
@@ -12844,6 +12861,7 @@ export type Database = {
           group_session_id?: string | null
           id?: string
           intelligence_score?: number | null
+          recall_enrichment?: Json | null
           session_date: string
           session_id?: string | null
           session_modality: string
@@ -12878,6 +12896,7 @@ export type Database = {
           group_session_id?: string | null
           id?: string
           intelligence_score?: number | null
+          recall_enrichment?: Json | null
           session_date?: string
           session_id?: string | null
           session_modality?: string

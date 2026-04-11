@@ -55,6 +55,7 @@ export interface TrackedActivity extends ActivityStep {
   completedAt: number | null;    // timestamp ms
   actualSeconds: number | null;
   coachNote: string | null;
+  skillId: string | null;        // el_skills.id — auto-populated from template or coach-selected
   resolved_content?: ResolvedContent[]; // populated by live route when content_refs exist
 }
 
@@ -139,6 +140,18 @@ export interface LiveSessionData {
 
 export type SessionPhase = 'pre' | 'live' | 'complete';
 export type LiveTab = 'flow' | 'info' | 'rai';
+
+// --- MicroNotePanel activity plan (unified sidebar + fullscreen) ---
+export interface SessionActivity {
+  index: number;
+  name: string;           // e.g. "Sound Safari"
+  purpose?: string;       // e.g. "Introduce s, a, t with Jolly Phonics actions"
+  skill_id?: string;      // linked to el_skills
+  skill_name?: string;    // e.g. "Phonics"
+  planned_minutes?: number;
+}
+
+export type MicroNoteLayout = 'sidebar' | 'fullscreen';
 
 export interface RecommendedContentItem {
   id: string;

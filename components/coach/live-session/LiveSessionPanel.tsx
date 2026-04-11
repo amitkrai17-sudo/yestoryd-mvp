@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ClipboardList, Info, Bot, Play, Video, StopCircle, X, Timer } from 'lucide-react';
 import SessionHeader from './SessionHeader';
 import ActivityTab from './ActivityTab';
@@ -8,9 +8,10 @@ import InfoTab from './InfoTab';
 import RaiTab from './RaiTab';
 import ActionButton from './ActionButton';
 import SessionComplete from './SessionComplete';
+import { MicroNotePanel } from '@/components/coach/MicroNotePanel';
 import type {
   LiveSessionData, SessionPhase, LiveTab,
-  TrackedActivity, ActivityStatus,
+  TrackedActivity, ActivityStatus, SessionActivity,
 } from './types';
 
 interface LiveSessionPanelProps {
@@ -124,6 +125,7 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
       completedAt: null,
       actualSeconds: null,
       coachNote: null,
+      skillId: null, // populated async from template skill_dimensions
       resolved_content: data.resolved_content?.[i] || undefined,
     }));
   });
@@ -133,6 +135,76 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
   const activityStartRef = useRef<number | null>(
     hasResumableState ? Date.now() : null
   );
+
+  // --- Available skills for tagging ---
+  const [availableSkills, setAvailableSkills] = useState<{ id: string; name: string }[]>([]);
+
+  // Auto-populate skillId from template skill_dimensions + load available skills
+  useEffect(() => {
+    import('@/lib/supabase/client').then(({ supabase }) => {
+      // Load commonly-used skills for the inline picker (top-level skills only)
+      supabase
+        .from('el_skills')
+        .select('id, name, skill_tag')
+        .eq('is_active', true)
+        .in('scope', ['observation', 'both'])
+        .order('order_index', { ascending: true })
+        .limit(20)
+        .then(({ data: skills }) => {
+          if (skills) setAvailableSkills(skills.map(s => ({ id: s.id, name: s.name })));
+
+          // Auto-assign from template skill_dimensions
+          const dims = template?.skill_dimensions;
+          if (!dims?.length || hasResumableState || !skills?.length) return;
+          const matched = skills.find(s => dims.includes(s.skill_tag));
+          if (matched) {
+            setActivities(prev => prev.map(a => a.skillId ? a : { ...a, skillId: matched.id }));
+          }
+        });
+    });
+  }, [template?.skill_dimensions, hasResumableState]);
+
+  const handleSkillChange = useCallback((activityIndex: number, skillId: string | null) => {
+    setActivities(prev => prev.map(a => a.index === activityIndex ? { ...a, skillId } : a));
+  }, []);
+
+  // --- Unified MicroNotes sidebar state ---
+  const useUnifiedMicronotes = true; // Feature gate — start with true for Rucha
+  const [microNoteCount, setMicroNoteCount] = useState(0);
+  const [quickStrengths, setQuickStrengths] = useState<{ id: string; text: string }[]>([]);
+  const [quickStruggles, setQuickStruggles] = useState<{ id: string; text: string }[]>([]);
+
+  // Convert template activity_flow to SessionActivity[] for MicroNotePanel
+  const sessionPlan: SessionActivity[] = useMemo(() => {
+    if (!template?.activity_flow?.length) return [];
+    return template.activity_flow.map((step, i) => {
+      // Try to resolve skill_id from available skills + template skill_dimensions
+      const dims = template.skill_dimensions;
+      const matchedSkill = dims?.length && availableSkills.length
+        ? availableSkills.find(s => dims.some(d => s.name.toLowerCase().includes(d.replace(/_/g, ' '))))
+        : null;
+      return {
+        index: i,
+        name: step.activity_name || step.activity,
+        purpose: step.purpose,
+        skill_id: matchedSkill?.id,
+        skill_name: matchedSkill?.name,
+        planned_minutes: step.planned_duration_minutes,
+      };
+    });
+  }, [template?.activity_flow, template?.skill_dimensions, availableSkills]);
+
+  // Fetch observation chips for MicroNotePanel sidebar
+  useEffect(() => {
+    if (!useUnifiedMicronotes || phase !== 'live') return;
+    fetch(`/api/intelligence/session-observations?sessionId=${session.id}`)
+      .then(r => r.json())
+      .then(data => {
+        setQuickStrengths(data.strengths || []);
+        setQuickStruggles(data.struggles || []);
+      })
+      .catch(() => {});
+  }, [session.id, phase, useUnifiedMicronotes]);
 
   // --- Auto-start countdown ---
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -499,62 +571,90 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div className="flex border-b border-white/10 bg-[#1a1f26]">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors min-h-[44px] ${
-              activeTab === tab.key
-                ? 'text-[#00ABFF] border-b-2 border-[#00ABFF]'
-                : 'text-white/40'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Main content row: tabs + MicroNotePanel sidebar on desktop */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Tab content area */}
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* Tab bar */}
+          <div className="flex border-b border-white/10 bg-[#1a1f26]">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors min-h-[44px] ${
+                  activeTab === tab.key
+                    ? 'text-[#00ABFF] border-b-2 border-[#00ABFF]'
+                    : 'text-white/40'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-y-auto">
-        {activeTab === 'flow' && (
-          <ActivityTab
-            activities={activities}
-            currentIndex={currentIndex}
-            materials={template?.materials_needed || null}
-          />
-        )}
-        {activeTab === 'info' && <InfoTab data={data} />}
-        {activeTab === 'rai' && (
-          <RaiTab childId={child.id} child={child} />
-        )}
-      </div>
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'flow' && (
+              <ActivityTab
+                activities={activities}
+                currentIndex={currentIndex}
+                materials={template?.materials_needed || null}
+                availableSkills={availableSkills}
+                onSkillChange={handleSkillChange}
+              />
+            )}
+            {activeTab === 'info' && <InfoTab data={data} />}
+            {activeTab === 'rai' && (
+              <RaiTab childId={child.id} child={child} />
+            )}
+          </div>
 
-      {/* Footer action button (flow tab only) */}
-      {activeTab === 'flow' && activities.length > 0 && (
-        <div>
-          <ActionButton
-            onAction={handleActivityAction}
-            isLastActivity={currentIndex >= activities.length - 1}
-            disabled={currentIndex >= activities.length}
-          />
+          {/* Footer action button (flow tab only) */}
+          {activeTab === 'flow' && activities.length > 0 && (
+            <div>
+              <ActionButton
+                onAction={handleActivityAction}
+                isLastActivity={currentIndex >= activities.length - 1}
+                disabled={currentIndex >= activities.length}
+              />
+            </div>
+          )}
+
+          {/* End session — always visible on flow tab */}
+          {activeTab === 'flow' && (
+            <div className="bg-[#1a1f26] px-4 pb-2">
+              <button
+                onClick={endSession}
+                className="w-full py-2 text-white/30 text-xs font-medium flex items-center justify-center gap-1 active:text-white/50"
+              >
+                <StopCircle className="w-3 h-3" />
+                End Session Early
+              </button>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* End session — always visible on flow tab */}
-      {activeTab === 'flow' && (
-        <div className="bg-[#1a1f26] px-4 pb-2">
-          <button
-            onClick={endSession}
-            className="w-full py-2 text-white/30 text-xs font-medium flex items-center justify-center gap-1 active:text-white/50"
-          >
-            <StopCircle className="w-3 h-3" />
-            End Session Early
-          </button>
-        </div>
-      )}
+        {/* Right: MicroNotePanel sidebar (desktop only, hidden on mobile) */}
+        {useUnifiedMicronotes && (
+          <div className="hidden lg:block flex-shrink-0">
+            <MicroNotePanel
+              layout="sidebar"
+              sessionId={session.id}
+              childId={child.id}
+              childName={child.child_name}
+              coachId={session.id} // Coach ID resolved server-side in API
+              sessionStartTime={new Date(`${session.scheduled_date}T${session.scheduled_time}`)}
+              sessionPlan={sessionPlan.length > 0 ? sessionPlan : undefined}
+              quickStrengths={quickStrengths}
+              quickStruggles={quickStruggles}
+              onClose={() => {}} // Sidebar doesn't close independently
+              onNoteAdded={() => setMicroNoteCount(prev => prev + 1)}
+              onEndSession={endSession}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

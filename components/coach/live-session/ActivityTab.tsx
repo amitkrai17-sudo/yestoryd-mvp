@@ -5,10 +5,17 @@ import { Check, AlertTriangle, SkipForward, CircleX, Clock, Film, Gamepad2, File
 import ProgressBar from './ProgressBar';
 import type { TrackedActivity, ActivityStatus, ResolvedContent } from './types';
 
+interface SkillOption {
+  id: string;
+  name: string;
+}
+
 interface ActivityTabProps {
   activities: TrackedActivity[];
   currentIndex: number;
   materials: string[] | null;
+  availableSkills?: SkillOption[];
+  onSkillChange?: (activityIndex: number, skillId: string | null) => void;
 }
 
 const STATUS_ICON: Record<ActivityStatus, React.ReactNode> = {
@@ -91,7 +98,8 @@ function ContentCard({ item }: { item: ResolvedContent }) {
   );
 }
 
-export default function ActivityTab({ activities, currentIndex, materials }: ActivityTabProps) {
+export default function ActivityTab({ activities, currentIndex, materials, availableSkills, onSkillChange }: ActivityTabProps) {
+  const [skillPickerIdx, setSkillPickerIdx] = useState<number | null>(null);
   const current = activities[currentIndex];
 
   return (
@@ -175,13 +183,56 @@ export default function ActivityTab({ activities, currentIndex, materials }: Act
                   )}
                 </div>
 
-                {/* Activity name */}
+                {/* Activity name + skill tag */}
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm truncate ${isCurrent ? 'text-white font-medium' : isDone ? 'text-white/70' : 'text-white/40'}`}>
                     {a.activity}
                   </p>
-                  {isDone && a.actualSeconds != null && (
-                    <p className="text-[10px] text-white/30">{formatSeconds(a.actualSeconds)}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {isDone && a.actualSeconds != null && (
+                      <span className="text-[10px] text-white/30">{formatSeconds(a.actualSeconds)}</span>
+                    )}
+                    {a.skillId && availableSkills ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSkillPickerIdx(skillPickerIdx === i ? null : i); }}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-[#00ABFF]/10 text-[#00ABFF]/70 border border-[#00ABFF]/20 truncate max-w-[120px]"
+                      >
+                        {availableSkills.find(s => s.id === a.skillId)?.name || 'Skill'}
+                      </button>
+                    ) : onSkillChange && availableSkills?.length ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSkillPickerIdx(skillPickerIdx === i ? null : i); }}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/30 border border-white/10"
+                      >
+                        + skill
+                      </button>
+                    ) : null}
+                  </div>
+                  {/* Inline skill picker */}
+                  {skillPickerIdx === i && availableSkills && onSkillChange && (
+                    <div className="mt-1 flex flex-wrap gap-1 max-h-[80px] overflow-y-auto">
+                      {a.skillId && (
+                        <button
+                          onClick={() => { onSkillChange(i, null); setSkillPickerIdx(null); }}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      {availableSkills.map(s => (
+                        <button
+                          key={s.id}
+                          onClick={() => { onSkillChange(i, s.id); setSkillPickerIdx(null); }}
+                          className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                            a.skillId === s.id
+                              ? 'bg-[#00ABFF]/20 text-[#00ABFF] border-[#00ABFF]/30'
+                              : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
 

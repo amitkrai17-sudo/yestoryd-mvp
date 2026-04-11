@@ -125,6 +125,54 @@ export async function queueEnrollmentComplete(data: EnrollmentJobData): Promise<
 }
 
 // ============================================================
+// POST-CAPTURE ORCHESTRATOR
+// ============================================================
+
+interface PostCaptureOrchestratorData {
+  captureId: string;
+  sessionId: string | null;
+  childId: string;
+  coachId: string;
+  sessionModality: string;
+  isAiPrefillConfirmation?: boolean;
+}
+
+/**
+ * Queue post-capture orchestrator via QStash.
+ * Handles all downstream automation after SCF submit:
+ * learning_event, parent summary, homework, WhatsApp, email,
+ * profile refresh, session prep.
+ *
+ * Coach gets immediate confirmation — orchestrator runs async.
+ */
+export async function queuePostCaptureOrchestrator(data: PostCaptureOrchestratorData): Promise<QueueResult> {
+  if (!qstash) {
+    console.warn('[QSTASH] QStash not configured, skipping post-capture-orchestrator');
+    return { success: false, messageId: null, error: 'QStash not configured' };
+  }
+
+  try {
+    const response = await qstash.publishJSON({
+      url: `${APP_URL}/api/jobs/post-capture-orchestrator`,
+      body: { ...data, timestamp: new Date().toISOString() },
+      retries: 3,
+      delay: 1,
+    });
+
+    console.log('[QUEUE] Queued post-capture-orchestrator:', {
+      messageId: response.messageId,
+      captureId: data.captureId,
+      childId: data.childId,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (error: any) {
+    console.error('[QSTASH] Failed to queue post-capture-orchestrator:', error.message);
+    return { success: false, messageId: null, error: error.message };
+  }
+}
+
+// ============================================================
 // SESSION PROCESSING JOBS (Recall.ai)
 // ============================================================
 

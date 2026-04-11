@@ -17,8 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { getGenAI } from '@/lib/gemini/client';
-import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
-import { insertLearningEvent } from '@/lib/rai/learning-events';
+// Learning events now created when coach confirms the pending capture via /api/intelligence/capture
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
@@ -314,53 +313,91 @@ async function saveReconciliationData(
     })
     .eq('id', sessionId);
 
-  // 3. Create learning event with embedding
-  const contentForEmbedding = buildUnifiedEmbeddingContent({
-    childName,
-    eventDate: new Date().toISOString(),
-    eventType: 'session',
-    sessionModality: 'online',
-    focusArea: analysis.focus_area,
-    skillsWorkedOn: analysis.skills_worked_on,
-    engagementLevel: analysis.engagement_level,
-    keyObservations: analysis.key_observations,
-    concernsNoted: analysis.concerns_noted || undefined,
-    breakthroughMoment: analysis.breakthrough_moment || undefined,
-    coachTalkRatio: analysis.coach_talk_ratio,
-    childReadingSamples: analysis.child_reading_samples,
-    homeworkAssigned: analysis.homework_assigned && analysis.homework_description
-      ? [analysis.homework_description] : undefined,
-    nextSessionFocus: analysis.next_session_focus || undefined,
-    aiSummary: analysis.summary,
-  });
+  // 3. Create PENDING structured capture for coach review (mirrors process-session pattern)
+  // Learning event is created only when coach confirms the capture via /api/intelligence/capture
+  const engagementMap: Record<string, string> = {
+    'high': 'high', 'very high': 'exceptional', 'excellent': 'exceptional',
+    'low': 'low', 'very low': 'low', 'poor': 'low', 'minimal': 'low',
+  };
+  const normalizedEngagement = engagementMap[(analysis.engagement_level || '').toLowerCase()] || 'moderate';
 
-  await insertLearningEvent({
-    childId,
-    coachId,
-    sessionId,
-    eventType: 'session',
-    eventSubtype: analysis.session_type,
-    eventData: {
-      focus_area: analysis.focus_area,
-      skills_worked_on: analysis.skills_worked_on,
-      progress_rating: analysis.progress_rating,
-      engagement_level: analysis.engagement_level,
-      confidence_level: analysis.confidence_level,
-      key_observations: analysis.key_observations,
-      coach_talk_ratio: analysis.coach_talk_ratio,
-      child_reading_samples: analysis.child_reading_samples,
-      breakthrough_moment: analysis.breakthrough_moment,
-      concerns_noted: analysis.concerns_noted,
-      homework_assigned: analysis.homework_assigned,
-      homework_description: analysis.homework_description,
-      next_session_focus: analysis.next_session_focus,
-      reconciled: true,
-    },
-    aiSummary: analysis.summary,
-    contentForEmbedding,
-    signalSource: 'transcript_analysis',
-    signalConfidence: 'high',
-  });
+  const captureSessionDate = new Date().toISOString().split('T')[0];
+
+  // Check if capture already exists (re-processing scenario)
+  const { data: existingCapture } = await supabase
+    .from('structured_capture_responses')
+    .select('id, coach_confirmed')
+    .eq('session_id', sessionId)
+    .eq('child_id', childId)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingCapture?.coach_confirmed) {
+    // Coach already confirmed — don't overwrite
+  } else if (existingCapture) {
+    // Update existing pending capture with fresh AI data
+    await supabase
+      .from('structured_capture_responses')
+      .update({
+        ai_prefilled: true,
+        engagement_level: normalizedEngagement,
+        skills_covered: analysis.skills_worked_on || [],
+        skill_performances: JSON.stringify({
+          gemini_analysis: {
+            focus_area: analysis.focus_area,
+            skills_worked_on: analysis.skills_worked_on,
+            progress_rating: analysis.progress_rating,
+            engagement_level: analysis.engagement_level,
+            key_observations: analysis.key_observations,
+            concerns_noted: analysis.concerns_noted,
+            homework_assigned: analysis.homework_assigned,
+            homework_description: analysis.homework_description,
+            reconciled: true,
+          },
+          ai_summary: analysis.summary,
+          parent_summary: analysis.parent_summary,
+        }),
+        custom_strength_note: (analysis.key_observations || []).join('. ') || null,
+        custom_struggle_note: analysis.concerns_noted || null,
+      })
+      .eq('id', existingCapture.id);
+  } else {
+    // Create new pending capture
+    await supabase
+      .from('structured_capture_responses')
+      .insert({
+        session_id: sessionId,
+        child_id: childId,
+        coach_id: coachId,
+        session_modality: 'online',
+        capture_method: 'auto_filled',
+        ai_prefilled: true,
+        coach_confirmed: false,
+        intelligence_score: 0,
+        session_date: captureSessionDate,
+        engagement_level: normalizedEngagement,
+        skills_covered: analysis.skills_worked_on || [],
+        skill_performances: JSON.stringify({
+          gemini_analysis: {
+            focus_area: analysis.focus_area,
+            skills_worked_on: analysis.skills_worked_on,
+            progress_rating: analysis.progress_rating,
+            engagement_level: analysis.engagement_level,
+            key_observations: analysis.key_observations,
+            concerns_noted: analysis.concerns_noted,
+            homework_assigned: analysis.homework_assigned,
+            homework_description: analysis.homework_description,
+            reconciled: true,
+          },
+          ai_summary: analysis.summary,
+          parent_summary: analysis.parent_summary,
+        }),
+        custom_strength_note: (analysis.key_observations || []).join('. ') || null,
+        custom_struggle_note: analysis.concerns_noted || null,
+        words_mastered: [],
+        words_struggled: [],
+      });
+  }
 
   // 4. Increment sessions completed
   await supabase.rpc('increment_sessions_completed', { child_id_param: childId });

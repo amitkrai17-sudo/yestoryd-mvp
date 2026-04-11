@@ -8,7 +8,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { computeIntelligenceScore, getSignalConfidence, DEFAULT_WEIGHTS } from '@/lib/intelligence/score';
-import { insertLearningEvent } from '@/lib/rai/learning-events';
 import type { StructuredCapturePayload, CaptureMethod, SessionModality, EngagementLevel } from '@/lib/intelligence/types';
 import type { IntelligenceWeights } from '@/lib/intelligence/score';
 import { getSiteSettings } from '@/lib/config/site-settings-loader';
@@ -311,34 +310,15 @@ export async function POST(request: NextRequest) {
           ? [payload.homeworkDescription] : undefined,
       });
 
-      const { insertLearningEvent } = await import('@/lib/rai/learning-events');
-      await insertLearningEvent({
+      // Dispatch downstream automation to orchestrator (async)
+      const { queuePostCaptureOrchestrator } = await import('@/lib/qstash');
+      await queuePostCaptureOrchestrator({
+        captureId,
+        sessionId: existing.session_id,
         childId: existing.child_id,
         coachId: existing.coach_id,
-        sessionId: existing.session_id ?? undefined,
-        eventType: 'structured_capture',
-        eventSubtype: payload.captureMethod,
-        eventDate: payload.sessionDate,
-        signalConfidence: signalConfidence as 'high' | 'medium' | 'low',
-        signalSource: 'structured_capture',
-        intelligenceScore: score,
         sessionModality: existing.session_modality,
-        eventData: {
-          captureId,
-          skillsCovered: payload.skillsCovered,
-          skillPerformances: payload.skillPerformances as any,
-          engagementLevel: payload.engagementLevel,
-          strengthObservations: payload.strengthObservations,
-          struggleObservations: payload.struggleObservations,
-          captureMethod: payload.captureMethod,
-          hasArtifact: !!payload.childArtifact,
-          homework_assigned: !!payload.homeworkAssigned,
-          homework_description: payload.homeworkAssigned ? (payload.homeworkDescription || null) : null,
-          ai_prefilled: existing.ai_prefilled,
-          coach_confirmed: true,
-        },
-        contentForEmbedding,
-        createdBy: auth.userId || undefined,
+        isAiPrefillConfirmation: true,
       });
 
       console.log(JSON.stringify({
@@ -553,223 +533,24 @@ export async function POST(request: NextRequest) {
         ? [payload.homeworkDescription] : undefined,
     });
 
-    // 4 + 5. Create learning_event (embedding generated internally by insertLearningEvent)
-    const learningEvent = await insertLearningEvent({
+    // 4. Dispatch downstream automation to orchestrator (async via QStash)
+    // Coach gets immediate response — orchestrator handles learning_event,
+    // homework, WhatsApp, SmartPractice, continuations, session prep
+    const { queuePostCaptureOrchestrator } = await import('@/lib/qstash');
+    const queueResult = await queuePostCaptureOrchestrator({
+      captureId: capture.id,
+      sessionId: payload.sessionId ?? null,
       childId: payload.childId,
       coachId: payload.coachId,
-      sessionId: payload.sessionId ?? undefined,
-      eventType: 'structured_capture',
-      eventSubtype: payload.captureMethod,
-      eventDate: payload.sessionDate,
-      signalConfidence: confidence,
-      signalSource: 'structured_capture',
-      intelligenceScore: score,
-      sessionModality: payload.sessionModality as import('@/lib/rai/learning-events').SessionModality,
-      eventData: {
-        captureId: capture.id,
-        skillsCovered: payload.skillsCovered,
-        skillPerformances: payload.skillPerformances as any,
-        engagementLevel: payload.engagementLevel,
-        strengthObservations: payload.strengthObservations,
-        struggleObservations: payload.struggleObservations,
-        captureMethod: payload.captureMethod,
-        hasArtifact: !!payload.childArtifact,
-        homework_assigned: !!payload.homeworkAssigned,
-        homework_description: payload.homeworkAssigned ? (payload.homeworkDescription || null) : null,
-      },
-      contentForEmbedding,
-      createdBy: auth.userId || undefined,
+      sessionModality: payload.sessionModality,
     });
-
-    if (!learningEvent) {
-      console.error(JSON.stringify({
-        requestId,
-        event: 'capture_learning_event_error',
-        error: 'insertLearningEvent returned null (see activity_log)',
-      }));
-      // Non-fatal — capture was saved. Log but don't fail.
-    }
-
-    // 6. Create parent_daily_task if homework was assigned
-    // First: replace any INCOMPLETE ai_recommended tasks for this session (coach supersedes AI)
-    // Guard: never delete tasks the parent already completed — that's real intelligence data
-    if (payload.sessionId) {
-      try {
-        await supabase
-          .from('parent_daily_tasks')
-          .delete()
-          .eq('session_id', payload.sessionId)
-          .eq('source', 'ai_recommended')
-          .eq('is_completed', false);
-      } catch (overrideErr: any) {
-        console.error(JSON.stringify({ requestId, event: 'homework_override_error', error: overrideErr.message }));
-      }
-    }
-
-    let homeworkTaskId: string | null = null;
-    if (payload.homeworkAssigned && payload.homeworkDescription) {
-      try {
-        // Look up enrollment_id from session
-        let enrollmentId: string | null = null;
-        if (payload.sessionId) {
-          const { data: sess } = await supabase
-            .from('scheduled_sessions')
-            .select('enrollment_id')
-            .eq('id', payload.sessionId)
-            .single();
-          enrollmentId = sess?.enrollment_id || null;
-        }
-
-        // Derive linked_skill from the primary skill performance (first rated skill)
-        const primarySkill = payload.skillPerformances[0];
-        let linkedSkill: string | null = null;
-        if (primarySkill?.skillId) {
-          const { data: skillRow } = await supabase
-            .from('el_skills')
-            .select('skill_tag')
-            .eq('id', primarySkill.skillId)
-            .single();
-          linkedSkill = skillRow?.skill_tag || null;
-        }
-
-        // Simplify coach homework text for parent
-        const { simplifyHomework } = await import('@/lib/homework/simplify-homework');
-        const { data: childForHW } = await supabase
-          .from('children')
-          .select('child_name, age')
-          .eq('id', payload.childId)
-          .single();
-        const { simplified, original } = await simplifyHomework(
-          payload.homeworkDescription,
-          childForHW?.child_name || 'your child',
-          childForHW?.age || 7,
-        );
-
-        const { data: task } = await supabase
-          .from('parent_daily_tasks')
-          .insert({
-            child_id: payload.childId,
-            enrollment_id: enrollmentId,
-            session_id: payload.sessionId,
-            task_date: payload.sessionDate,
-            title: 'Practice Activity',
-            description: simplified,
-            coach_notes: original,
-            source: 'coach_assigned',
-            linked_skill: linkedSkill,
-            is_completed: false,
-            duration_minutes: 15,
-          })
-          .select('id')
-          .single();
-
-        homeworkTaskId = task?.id || null;
-
-        // Notify parent of homework assignment (same pattern as complete/route.ts)
-        if (homeworkTaskId) {
-          try {
-            const { data: childInfo } = await supabase
-              .from('children')
-              .select('child_name, parent_phone, parent_email, parent_name, parent_id')
-              .eq('id', payload.childId)
-              .single();
-
-            if (childInfo?.parent_phone || childInfo?.parent_email) {
-              const { sendCommunication } = await import('@/lib/communication');
-              const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
-
-              const commResult = await sendCommunication({
-                templateCode: 'P22_practice_tasks_assigned',
-                recipientType: 'parent',
-                recipientId: childInfo.parent_id || undefined,
-                recipientPhone: childInfo.parent_phone || undefined,
-                recipientEmail: childInfo.parent_email || undefined,
-                recipientName: childInfo.parent_name || undefined,
-                variables: {
-                  parent_first_name: (childInfo.parent_name || 'Parent').split(' ')[0],
-                  child_name: childInfo.child_name || 'your child',
-                  task_count: '1',
-                  dashboard_link: `${baseUrl}/parent/dashboard`,
-                },
-                relatedEntityType: 'session',
-                relatedEntityId: payload.sessionId || undefined,
-              });
-
-              console.log(JSON.stringify({
-                requestId,
-                event: 'homework_notify_result',
-                success: commResult.success,
-                results: commResult.results,
-              }));
-            }
-          } catch (notifyErr) {
-            console.error(JSON.stringify({
-              requestId,
-              event: 'homework_notify_error',
-              error: notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
-            }));
-            // Non-blocking — task was already created
-          }
-        }
-
-        // SmartPractice: generate interactive quiz if enabled via feature gate (non-blocking)
-        const { getChildFeatures } = await import('@/lib/features/get-child-features');
-        const { features: childFeatures } = await getChildFeatures(payload.childId);
-        if (homeworkTaskId && childFeatures.smart_practice && childForHW) {
-          import('@/lib/homework/generate-smart-practice').then(({ generateSmartPractice }) => {
-            generateSmartPractice({
-              coachNotes: original,
-              childName: childForHW.child_name || 'Child',
-              childAge: childForHW.age || 7,
-              skillSlug: linkedSkill || 'reading_comprehension',
-              childId: payload.childId,
-              taskId: homeworkTaskId!,
-              supabase,
-            }).catch(err => console.error('[SmartPractice] bg generation failed:', err));
-          });
-        }
-      } catch (taskErr) {
-        console.error(JSON.stringify({
-          requestId,
-          event: 'homework_task_creation_error',
-          error: taskErr instanceof Error ? taskErr.message : String(taskErr),
-        }));
-        // Non-fatal
-      }
-    }
-
-    // 8. Create continuation records for struggle observations (non-blocking)
-    // Unique constraint is (child_id, observation_id, continuation_status) — must match
-    if (payload.struggleObservations.length > 0 && payload.childId) {
-      try {
-        for (const obsId of payload.struggleObservations) {
-          // Try insert; on conflict with existing active record, update source_capture_id
-          const { error: contErr } = await supabase
-            .from('observation_continuations')
-            .upsert({
-              child_id: payload.childId,
-              observation_id: obsId,
-              source_capture_id: capture.id,
-              continuation_status: 'active',
-            }, {
-              onConflict: 'child_id,observation_id,continuation_status',
-            });
-
-          if (contErr) {
-            console.error(JSON.stringify({ requestId, event: 'continuation_upsert_error', obsId, error: contErr.message }));
-          }
-        }
-      } catch (contErr: any) {
-        console.error(JSON.stringify({ requestId, event: 'continuation_create_error', error: contErr.message }));
-      }
-    }
 
     console.log(JSON.stringify({
       requestId,
       event: 'capture_complete',
       captureId: capture.id,
-      learningEventId: learningEvent?.id,
-      homeworkTaskId,
+      orchestratorQueued: queueResult.success,
+      orchestratorMessageId: queueResult.messageId,
       score,
       confidence,
     }));
@@ -780,7 +561,6 @@ export async function POST(request: NextRequest) {
         id: capture.id,
         intelligenceScore: score,
         signalConfidence: confidence,
-        learningEventId: learningEvent?.id || null,
       },
     }, { status: 201 });
   } catch (error) {

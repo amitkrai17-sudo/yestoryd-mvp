@@ -1,11 +1,10 @@
 // app/coach/sessions/page.tsx
-// Coach Sessions Page - Clean, Professional Design
+// Coach Sessions Page — Redesigned with sticky stats, filters, IST dates
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PreSessionBrief, SessionCard } from '@/components/coach';
-// Structured capture form (v3.0) with intelligence scoring
 import StructuredCaptureForm from '@/components/coach/structured-capture';
 import { RescheduleModal } from '@/components/shared';
 import type { RescheduleSession } from '@/components/shared';
@@ -13,18 +12,21 @@ import { RequestOfflineModal } from '@/components/coach/RequestOfflineModal';
 import { MicroNotePanel } from '@/components/coach/MicroNotePanel';
 import {
   Calendar,
-  Filter,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   AlertCircle,
   Users,
   CheckCircle,
   Clock,
   CalendarDays,
+  X,
+  Search,
 } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Spinner } from '@/components/ui/spinner';
 import { getStatusConfig } from '@/components/coach/StatusBadge';
+import { formatDateShort, formatDateRelative, formatTime12 } from '@/lib/utils/date-format';
 
 // ============================================================
 // CONSTANTS
@@ -40,12 +42,21 @@ const SESSION_STATUS = {
 
 const UNRESOLVED_STATUSES = [SESSION_STATUS.SCHEDULED, SESSION_STATUS.PENDING] as const;
 
-const FILTER_OPTIONS = [
-  { value: 'all', label: 'All Sessions' },
+const DATE_FILTER_OPTIONS = [
   { value: 'today', label: 'Today' },
-  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'week', label: 'This Week' },
+  { value: '7days', label: 'Last 7 Days' },
+  { value: 'month', label: 'This Month' },
+  { value: 'all', label: 'All' },
+] as const;
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'scheduled', label: 'Scheduled' },
   { value: 'completed', label: 'Completed' },
   { value: 'missed', label: 'Missed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'report_due', label: 'Report Due' },
 ] as const;
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -89,7 +100,6 @@ interface Session {
   duration_minutes: number | null;
   is_diagnostic: boolean;
   parent_update_sent_at?: string | null;
-  // Offline fields
   session_mode?: string;
   offline_request_status?: string | null;
   report_submitted_at?: string | null;
@@ -97,11 +107,11 @@ interface Session {
   enrollment_id?: string | null;
   enrollment_type?: string | null;
   capture_id?: string | null;
-  /** Pending AI capture exists for this session (needs coach review) */
   pending_capture?: { id: string; ai_prefilled: boolean } | null;
 }
 
-type FilterValue = typeof FILTER_OPTIONS[number]['value'];
+type DateFilterValue = typeof DATE_FILTER_OPTIONS[number]['value'];
+type StatusFilterValue = typeof STATUS_FILTER_OPTIONS[number]['value'];
 type ViewMode = 'list' | 'calendar';
 
 // ============================================================
@@ -115,9 +125,7 @@ function canCompleteSession(
   session: Session,
   allSessions: Session[]
 ): { allowed: boolean; blockedBy: number | null } {
-  if (!session.session_number) {
-    return { allowed: true, blockedBy: null };
-  }
+  if (!session.session_number) return { allowed: true, blockedBy: null };
   const childSessions = allSessions.filter((s) => s.child_id === session.child_id);
   const previousUnresolved = childSessions.find(
     (s) =>
@@ -125,9 +133,7 @@ function canCompleteSession(
       s.session_number < session.session_number! &&
       isUnresolvedStatus(s.status)
   );
-  if (previousUnresolved) {
-    return { allowed: false, blockedBy: previousUnresolved.session_number };
-  }
+  if (previousUnresolved) return { allowed: false, blockedBy: previousUnresolved.session_number };
   return { allowed: true, blockedBy: null };
 }
 
@@ -138,13 +144,24 @@ function isUpcoming(dateStr: string): boolean {
   return sessionDate >= today;
 }
 
-function isToday(dateStr: string): boolean {
+function isTodayDate(dateStr: string): boolean {
   const sessionDate = new Date(dateStr);
   const today = new Date();
   return (
     sessionDate.getDate() === today.getDate() &&
     sessionDate.getMonth() === today.getMonth() &&
     sessionDate.getFullYear() === today.getFullYear()
+  );
+}
+
+function isYesterday(dateStr: string): boolean {
+  const sessionDate = new Date(dateStr);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return (
+    sessionDate.getDate() === yesterday.getDate() &&
+    sessionDate.getMonth() === yesterday.getMonth() &&
+    sessionDate.getFullYear() === yesterday.getFullYear()
   );
 }
 
@@ -155,30 +172,24 @@ function isSessionPast(dateStr: string): boolean {
   return sessionDate < today;
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+function isWithinDays(dateStr: string, days: number): boolean {
+  const sessionDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
+  return sessionDate >= today && sessionDate <= end;
 }
 
-function formatTime(timeStr: string): string {
-  const [hours, minutes] = timeStr.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
+function isThisMonth(dateStr: string): boolean {
+  const sessionDate = new Date(dateStr);
+  const today = new Date();
+  return sessionDate.getMonth() === today.getMonth() && sessionDate.getFullYear() === today.getFullYear();
 }
 
 function getDaysInMonth(date: Date): number[] {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const days: number[] = [];
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(i);
-  }
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
   return days;
 }
 
@@ -206,8 +217,14 @@ export default function CoachSessionsPage() {
 
   // UI state
   const [view, setView] = useState<ViewMode>('list');
-  const [filterStatus, setFilterStatus] = useState<FilterValue>('upcoming');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Filter state
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>('week');
+  const [childFilter, setChildFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('all');
+  const [childSearch, setChildSearch] = useState('');
+  const [showChildDropdown, setShowChildDropdown] = useState(false);
 
   // Modal state
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -227,6 +244,12 @@ export default function CoachSessionsPage() {
 
   // Offline request state
   const [showOfflineModal, setShowOfflineModal] = useState(false);
+
+  // MicroNotes state
+  const [microNotesOpen, setMicroNotesOpen] = useState(false);
+  const [quickStrengths, setQuickStrengths] = useState<{ id: string; text: string }[]>([]);
+  const [quickStruggles, setQuickStruggles] = useState<{ id: string; text: string }[]>([]);
+  const [microNoteCount, setMicroNoteCount] = useState(0);
 
   // ============================================================
   // DATA LOADING
@@ -249,11 +272,9 @@ export default function CoachSessionsPage() {
       }
       setCoach(data.coach);
 
-      // Enrich sessions with pending capture info
       const sessionsWithCaptures = data.sessions || [];
       if (data.coach?.id) {
         try {
-          const { createClient } = await import('@supabase/supabase-js');
           const { supabase: clientSb } = await import('@/lib/supabase/client');
           const { data: pendingCaptures } = await clientSb
             .from('structured_capture_responses')
@@ -269,7 +290,7 @@ export default function CoachSessionsPage() {
               if (pc) s.pending_capture = { id: pc.id, ai_prefilled: !!pc.ai_prefilled };
             }
           }
-        } catch { /* Non-fatal — sessions still load without capture enrichment */ }
+        } catch { /* Non-fatal */ }
       }
 
       setSessions(sessionsWithCaptures);
@@ -281,11 +302,9 @@ export default function CoachSessionsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+  useEffect(() => { loadSessions(); }, [loadSessions]);
 
-  // Deep link: ?openCapture=sessionId → auto-open capture form
+  // Deep link: ?openCapture=sessionId
   useEffect(() => {
     const openCaptureId = searchParams.get('openCapture');
     if (openCaptureId && sessions.length > 0 && !showCompleteModal) {
@@ -297,53 +316,130 @@ export default function CoachSessionsPage() {
     }
   }, [searchParams, sessions, showCompleteModal]);
 
-  // Detect currently active session (for MicroNotePanel)
+  // Detect currently active session
   const activeSession = useMemo(() => {
     const now = Date.now();
     return sessions.find(s => {
       if (s.status === 'cancelled' || s.status === 'completed') return false;
       const start = new Date(`${s.scheduled_date}T${s.scheduled_time}`).getTime();
-      const end = start + 60 * 60 * 1000; // +1hr
+      const end = start + 60 * 60 * 1000;
       return now >= start && now <= end;
     }) || null;
   }, [sessions]);
 
+  // Deep link: ?openNotes=sessionId
+  useEffect(() => {
+    const openNotesId = searchParams.get('openNotes');
+    if (openNotesId && activeSession?.id === openNotesId) setMicroNotesOpen(true);
+  }, [searchParams, activeSession?.id]);
+
+  // Fetch observation chips for active session
+  useEffect(() => {
+    if (!activeSession) {
+      setQuickStrengths([]);
+      setQuickStruggles([]);
+      setMicroNoteCount(0);
+      return;
+    }
+    fetch(`/api/intelligence/session-observations?sessionId=${activeSession.id}`)
+      .then(r => r.json())
+      .then(data => {
+        setQuickStrengths(data.strengths || []);
+        setQuickStruggles(data.struggles || []);
+      })
+      .catch(() => {});
+    fetch(`/api/intelligence/micro-observation?sessionId=${activeSession.id}`)
+      .then(r => r.json())
+      .then(data => { setMicroNoteCount(Array.isArray(data.data) ? data.data.length : 0); })
+      .catch(() => {});
+  }, [activeSession?.id]);
+
   // ============================================================
   // COMPUTED VALUES
   // ============================================================
+
+  // Unique children for child filter dropdown
+  const uniqueChildren = useMemo(() => {
+    const childMap = new Map<string, string>();
+    for (const s of sessions) {
+      if (!childMap.has(s.child_id)) childMap.set(s.child_id, s.child_name);
+    }
+    return Array.from(childMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [sessions]);
+
+  const filteredChildren = useMemo(() => {
+    if (!childSearch) return uniqueChildren;
+    const q = childSearch.toLowerCase();
+    return uniqueChildren.filter(c => c.name.toLowerCase().includes(q));
+  }, [uniqueChildren, childSearch]);
+
+  const hasActiveFilter = dateFilter !== 'week' || childFilter !== 'all' || statusFilter !== 'all' || !!childSearch;
+
+  const clearFilters = () => {
+    setDateFilter('week');
+    setChildFilter('all');
+    setStatusFilter('all');
+    setChildSearch('');
+  };
+
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
-      if (filterStatus === 'all') return true;
-      if (filterStatus === 'upcoming') return isUpcoming(s.scheduled_date) && isUnresolvedStatus(s.status);
-      if (filterStatus === 'completed') return s.status === SESSION_STATUS.COMPLETED;
-      if (filterStatus === 'missed') return s.status === SESSION_STATUS.MISSED;
-      if (filterStatus === 'today') return isToday(s.scheduled_date);
-      return s.status === filterStatus;
+      // Date filter
+      if (dateFilter === 'today' && !isTodayDate(s.scheduled_date)) return false;
+      if (dateFilter === 'week' && !isWithinDays(s.scheduled_date, 7)) return false;
+      if (dateFilter === '7days') {
+        const d = new Date(s.scheduled_date);
+        const sevenAgo = new Date();
+        sevenAgo.setDate(sevenAgo.getDate() - 7);
+        sevenAgo.setHours(0, 0, 0, 0);
+        if (d < sevenAgo || d > new Date()) return false;
+      }
+      if (dateFilter === 'month' && !isThisMonth(s.scheduled_date)) return false;
+
+      // Child filter (dropdown selection OR text search)
+      if (childFilter !== 'all' && s.child_id !== childFilter) return false;
+      if (childFilter === 'all' && childSearch) {
+        if (!s.child_name.toLowerCase().includes(childSearch.toLowerCase())) return false;
+      }
+
+      // Status filter
+      if (statusFilter === 'scheduled') return isUnresolvedStatus(s.status);
+      if (statusFilter === 'completed') return s.status === SESSION_STATUS.COMPLETED;
+      if (statusFilter === 'missed') return s.status === SESSION_STATUS.MISSED;
+      if (statusFilter === 'cancelled') return s.status === SESSION_STATUS.CANCELLED;
+      if (statusFilter === 'report_due') {
+        // A capture is confirmed when capture_id is set AND no pending (unconfirmed) capture remains
+        const hasConfirmedCapture = !!s.capture_id && !s.pending_capture;
+        if (hasConfirmedCapture) return false; // Already has a confirmed report — never "due"
+        // Case 1: past session still scheduled/pending with no confirmed capture
+        const isPastUnresolved = isSessionPast(s.scheduled_date) && isUnresolvedStatus(s.status);
+        // Case 2: completed but capture not yet confirmed by coach
+        const completedNeedsCapture = s.status === SESSION_STATUS.COMPLETED;
+        return isPastUnresolved || completedNeedsCapture;
+      }
+
+      return true;
     });
-  }, [sessions, filterStatus]);
+  }, [sessions, dateFilter, childFilter, statusFilter, childSearch]);
 
   const groupedSessions = useMemo(() => {
     return filteredSessions.reduce((groups: Record<string, Session[]>, session) => {
       const date = session.scheduled_date;
-      if (!groups[date]) {
-        groups[date] = [];
-      }
+      if (!groups[date]) groups[date] = [];
       groups[date].push(session);
       return groups;
     }, {});
   }, [filteredSessions]);
 
+  // Stats — computed from filtered sessions
   const stats = useMemo(() => ({
-    today: sessions.filter((s) => isToday(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
-    thisWeek: sessions.filter((s) => {
-      const date = new Date(s.scheduled_date);
-      const today = new Date();
-      const weekEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-      return date >= today && date <= weekEnd && isUnresolvedStatus(s.status);
-    }).length,
-    completed: sessions.filter((s) => s.status === SESSION_STATUS.COMPLETED).length,
-    upcoming: sessions.filter((s) => isUpcoming(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
-  }), [sessions]);
+    today: filteredSessions.filter((s) => isTodayDate(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
+    thisWeek: filteredSessions.filter((s) => isWithinDays(s.scheduled_date, 7) && isUnresolvedStatus(s.status)).length,
+    completed: filteredSessions.filter((s) => s.status === SESSION_STATUS.COMPLETED).length,
+    upcoming: filteredSessions.filter((s) => isUpcoming(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
+  }), [filteredSessions]);
 
   // ============================================================
   // HANDLERS
@@ -393,15 +489,10 @@ export default function CoachSessionsPage() {
         headers: { 'Content-Type': 'application/json' },
       });
       const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Failed to switch to online');
-        return;
-      }
+      if (!res.ok) { alert(data.error || 'Failed to switch to online'); return; }
       alert(data.message || 'Switched to online');
       loadSessions();
-    } catch {
-      alert('Network error. Please try again.');
-    }
+    } catch { alert('Network error. Please try again.'); }
   }, [loadSessions]);
 
   const handleMarkMissed = useCallback(async () => {
@@ -475,13 +566,8 @@ export default function CoachSessionsPage() {
   // ============================================================
   // CALENDAR NAVIGATION
   // ============================================================
-  const prevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
   const getSessionsForDay = (day: number): Session[] => {
     const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -508,10 +594,7 @@ export default function CoachSessionsPage() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-white text-lg mb-4">{error}</p>
-          <button
-            onClick={loadSessions}
-            className="px-4 py-2 bg-[#00ABFF] text-white rounded-lg hover:bg-[#00ABFF]/90 transition-colors"
-          >
+          <button onClick={loadSessions} className="px-4 py-2 bg-[#00ABFF] text-white rounded-xl hover:bg-[#00ABFF]/90 transition-colors">
             Retry
           </button>
         </div>
@@ -520,197 +603,243 @@ export default function CoachSessionsPage() {
   }
 
   return (
-      <div className="space-y-4 lg:space-y-6 pb-24 lg:pb-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:gap-4">
+    <div className="pb-24 lg:pb-6">
+      {/* Page Header (scrolls away) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:gap-4 px-4 lg:px-0 pt-4 lg:pt-0 mb-4">
         <div>
           <h1 className="text-lg lg:text-2xl font-bold text-white flex items-center gap-2 lg:gap-3">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-purple-500/20 rounded-lg lg:rounded-xl flex items-center justify-center">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
               <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
             </div>
             Sessions
           </h1>
-          <p className="text-xs lg:text-sm text-text-tertiary mt-0.5 lg:mt-1">Manage your coaching sessions</p>
+          <p className="text-xs lg:text-sm text-text-tertiary mt-0.5">Manage your coaching sessions</p>
         </div>
 
-        <div className="flex items-center gap-2 lg:gap-3">
-          {/* View Toggle */}
-          <div className="flex items-center bg-surface-1 rounded-lg p-0.5 lg:p-1">
-            <button
-              onClick={() => setView('list')}
-              className={`px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-md text-xs lg:text-sm font-medium transition-colors ${
-                view === 'list' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary hover:text-white'
-              }`}
-            >
-              List
-            </button>
-            <button
-              onClick={() => setView('calendar')}
-              className={`px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-md text-xs lg:text-sm font-medium transition-colors ${
-                view === 'calendar' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary hover:text-white'
-              }`}
-            >
-              Calendar
-            </button>
-          </div>
-
-          {/* Filter */}
-          <div className="relative">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as FilterValue)}
-              className="appearance-none bg-surface-1 text-white border border-border rounded-lg px-2.5 lg:px-4 py-1.5 lg:py-2 pr-7 lg:pr-8 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-[#00ABFF] focus:border-transparent"
-            >
-              {FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <Filter className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-text-tertiary absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+        {/* View Toggle */}
+        <div className="flex items-center bg-surface-1 rounded-xl p-0.5">
+          <button
+            onClick={() => setView('list')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              view === 'list' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary hover:text-white'
+            }`}
+          >
+            List
+          </button>
+          <button
+            onClick={() => setView('calendar')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              view === 'calendar' ? 'bg-[#00ABFF] text-white' : 'text-text-tertiary hover:text-white'
+            }`}
+          >
+            Calendar
+          </button>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
-        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
-          <div className="flex items-center gap-2 lg:gap-3">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Clock className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
+      {/* Sticky: Stats Ribbon + Filter Bar */}
+      <div className="sticky top-0 z-30 bg-surface-0/95 backdrop-blur-sm border-b border-gray-800 -mx-4 lg:mx-0 px-4 lg:px-0">
+        {/* Stats Ribbon */}
+        <div className="grid grid-cols-4 gap-2 py-3">
+          {([
+            { icon: Clock, label: 'Today', value: stats.today, color: 'text-[#00ABFF]', bg: 'bg-[#00ABFF]/20' },
+            { icon: CalendarDays, label: 'Week', value: stats.thisWeek, color: 'text-[#00ABFF]', bg: 'bg-[#00ABFF]/20' },
+            { icon: CheckCircle, label: 'Done', value: stats.completed, color: 'text-green-400', bg: 'bg-green-500/20' },
+            { icon: Users, label: 'Upcoming', value: stats.upcoming, color: 'text-purple-400', bg: 'bg-purple-500/20' },
+          ] as const).map(({ icon: Icon, label, value, color, bg }) => (
+            <div key={label} className="flex items-center gap-2">
+              <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                <Icon className={`w-4 h-4 ${color}`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold text-white leading-tight">{value}</p>
+                <p className="text-text-tertiary text-[10px]">{label}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-lg lg:text-2xl font-bold text-white">{stats.today}</p>
-              <p className="text-text-tertiary text-[10px] lg:text-sm">Today</p>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
-          <div className="flex items-center gap-2 lg:gap-3">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CalendarDays className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg lg:text-2xl font-bold text-white">{stats.thisWeek}</p>
-              <p className="text-text-tertiary text-[10px] lg:text-sm">This Week</p>
-            </div>
+        {/* Filter Bar */}
+        <div className="flex items-center gap-2 pb-3 overflow-x-auto scrollbar-hide">
+          {/* Date filter chips */}
+          <div className="flex gap-1.5 flex-shrink-0">
+            {DATE_FILTER_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setDateFilter(opt.value)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
+                  dateFilter === opt.value
+                    ? 'bg-[#00ABFF] text-white'
+                    : 'bg-surface-1 text-text-tertiary hover:text-white border border-border'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-        </div>
 
-        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
-          <div className="flex items-center gap-2 lg:gap-3">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-green-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg lg:text-2xl font-bold text-white">{stats.completed}</p>
-              <p className="text-text-tertiary text-[10px] lg:text-sm">Completed</p>
-            </div>
-          </div>
-        </div>
+          <div className="w-px h-6 bg-gray-700 flex-shrink-0" />
 
-        <div className="bg-surface-1 border border-border rounded-xl p-2.5 lg:p-4">
-          <div className="flex items-center gap-2 lg:gap-3">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Users className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg lg:text-2xl font-bold text-white">{stats.upcoming}</p>
-              <p className="text-text-tertiary text-[10px] lg:text-sm">Upcoming</p>
-            </div>
+          {/* Child filter */}
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setShowChildDropdown(!showChildDropdown)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
+                childFilter !== 'all'
+                  ? 'bg-[#00ABFF] text-white'
+                  : 'bg-surface-1 text-text-tertiary hover:text-white border border-border'
+              }`}
+            >
+              {childFilter === 'all' ? 'All Kids' : uniqueChildren.find(c => c.id === childFilter)?.name || 'Child'}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {showChildDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowChildDropdown(false)} />
+                <div className="absolute top-full mt-1 left-0 z-50 bg-surface-1 border border-border rounded-xl shadow-xl min-w-[200px] max-h-[280px] overflow-hidden">
+                  {uniqueChildren.length > 5 && (
+                    <div className="p-2 border-b border-border">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-text-tertiary absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={childSearch}
+                          onChange={e => setChildSearch(e.target.value)}
+                          placeholder="Search..."
+                          className="w-full bg-surface-0 text-white text-xs pl-8 pr-3 py-2 rounded-lg border border-border outline-none focus:border-[#00ABFF]/50"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="overflow-y-auto max-h-[220px]">
+                    <button
+                      onClick={() => { setChildFilter('all'); setShowChildDropdown(false); setChildSearch(''); }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-surface-2 transition-colors ${childFilter === 'all' ? 'text-[#00ABFF] font-medium' : 'text-white'}`}
+                    >
+                      All Kids
+                    </button>
+                    {filteredChildren.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setChildFilter(c.id); setShowChildDropdown(false); setChildSearch(''); }}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-surface-2 transition-colors ${childFilter === c.id ? 'text-[#00ABFF] font-medium' : 'text-white'}`}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
+
+          {/* Status filter */}
+          <div className="relative flex-shrink-0">
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as StatusFilterValue)}
+              className={`appearance-none px-3 py-1.5 pr-7 rounded-xl text-xs font-medium cursor-pointer transition-colors outline-none ${
+                statusFilter !== 'all'
+                  ? 'bg-[#00ABFF] text-white'
+                  : 'bg-surface-1 text-text-tertiary border border-border'
+              }`}
+            >
+              {STATUS_FILTER_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-current absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Clear filters */}
+          {hasActiveFilter && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-2 py-1.5 text-xs text-text-tertiary hover:text-white transition-colors flex-shrink-0"
+            >
+              <X className="w-3 h-3" />
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {/* List View */}
       {view === 'list' && (
-        <div className="space-y-4 lg:space-y-6">
+        <div className="space-y-4 lg:space-y-6 mt-4 px-4 lg:px-0">
           {Object.keys(groupedSessions).length === 0 ? (
-            <div className="bg-surface-1 border border-border rounded-xl p-8 lg:p-12">
+            <div className="bg-surface-1 border border-border rounded-2xl p-8 lg:p-12 max-w-3xl mx-auto">
               <EmptyState
                 icon={Calendar}
                 title="No sessions found"
-                description={filterStatus === 'upcoming'
-                  ? 'No upcoming sessions scheduled'
-                  : 'Try adjusting your filters'}
+                description={hasActiveFilter ? 'Try adjusting your filters' : 'No sessions scheduled'}
                 action={{ label: 'View Students', href: '/coach/students' }}
               />
             </div>
           ) : (
-            Object.entries(groupedSessions)
-              .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-              .map(([date, daySessions]) => (
-                <div key={date}>
-                  {/* Date Header */}
-                  <div className="sticky top-0 z-10 bg-surface-0 py-2 mb-2 lg:mb-3">
-                    <div className="flex items-center gap-2 lg:gap-3">
-                      <h2 className="text-white text-sm lg:text-base font-semibold">{formatDate(date)}</h2>
-                      <span className="text-text-tertiary text-xs lg:text-sm">
-                        ({daySessions.length})
+            <div className="max-w-3xl mx-auto">
+              {Object.entries(groupedSessions)
+                .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+                .map(([date, daySessions]) => (
+                  <div key={date} className="mb-4">
+                    {/* Date Header */}
+                    <div className="flex items-center gap-3 py-2 mb-2">
+                      <span className="text-sm font-medium text-gray-300">
+                        {isTodayDate(date) ? 'Today' : isYesterday(date) ? 'Yesterday' : formatDateShort(date)}
                       </span>
-                      {isToday(date) && (
-                        <span className="bg-[#00ABFF]/20 text-[#00ABFF] text-[10px] lg:text-xs px-1.5 lg:px-2 py-0.5 rounded-full border border-[#00ABFF]/30">
-                          Today
-                        </span>
-                      )}
-                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-gray-500">({daySessions.length})</span>
+                      <div className="flex-1 h-px bg-gray-800" />
+                    </div>
+
+                    {/* Sessions */}
+                    <div className="space-y-2">
+                      {daySessions
+                        .sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
+                        .map((session) => (
+                          <SessionCard
+                            key={session.id}
+                            session={session}
+                            isPast={isSessionPast(session.scheduled_date)}
+                            isToday={isTodayDate(session.scheduled_date)}
+                            canComplete={canCompleteSession(session, sessions)}
+                            onPrep={() => openPrepModal(session)}
+                            onComplete={() => openCompleteModal(session)}
+                            onReschedule={() => openRescheduleModal(session)}
+                            onCancel={() => openCancelConfirm(session)}
+                            onMissed={() => openMissedConfirm(session)}
+                            onRequestOffline={() => openOfflineModal(session)}
+                            onSwitchToOnline={() => handleSwitchToOnline(session)}
+                            coachEmail={coach?.email}
+                            isActiveSession={activeSession?.id === session.id}
+                            onOpenNotes={activeSession?.id === session.id ? () => setMicroNotesOpen(true) : undefined}
+                            microNoteCount={activeSession?.id === session.id ? microNoteCount : undefined}
+                          />
+                        ))}
                     </div>
                   </div>
-
-                  {/* Sessions */}
-                  <div className="space-y-2 lg:space-y-3">
-                    {daySessions
-                      .sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
-                      .map((session) => (
-                        <SessionCard
-                          key={session.id}
-                          session={session}
-                          isPast={isSessionPast(session.scheduled_date)}
-                          isToday={isToday(session.scheduled_date)}
-                          canComplete={canCompleteSession(session, sessions)}
-                          onPrep={() => openPrepModal(session)}
-                          onComplete={() => openCompleteModal(session)}
-                          onReschedule={() => openRescheduleModal(session)}
-                          onCancel={() => openCancelConfirm(session)}
-                          onMissed={() => openMissedConfirm(session)}
-                          onRequestOffline={() => openOfflineModal(session)}
-                          onSwitchToOnline={() => handleSwitchToOnline(session)}
-                          coachEmail={coach?.email}
-                        />
-                      ))}
-                  </div>
-                </div>
-              ))
+                ))}
+            </div>
           )}
         </div>
       )}
 
       {/* Calendar View */}
       {view === 'calendar' && (
-        <div className="bg-surface-1 border border-border rounded-xl overflow-hidden">
-          {/* Calendar Header */}
+        <div className="bg-surface-1 border border-border rounded-2xl overflow-hidden mt-4 mx-4 lg:mx-0">
           <div className="flex items-center justify-between p-3 lg:p-4 border-b border-border">
-            <button
-              onClick={prevMonth}
-              className="p-1.5 lg:p-2 hover:bg-surface-2 rounded-lg transition-colors"
-            >
+            <button onClick={prevMonth} className="p-2 hover:bg-surface-2 rounded-xl transition-colors">
               <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5 text-text-tertiary" />
             </button>
             <h3 className="text-white text-sm lg:text-base font-semibold">
               {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h3>
-            <button
-              onClick={nextMonth}
-              className="p-1.5 lg:p-2 hover:bg-surface-2 rounded-lg transition-colors"
-            >
+            <button onClick={nextMonth} className="p-2 hover:bg-surface-2 rounded-xl transition-colors">
               <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5 text-text-tertiary" />
             </button>
           </div>
 
-          {/* Calendar Grid */}
           <div className="p-2 lg:p-4">
-            {/* Day Headers - Single letters on mobile, full on desktop */}
             <div className="grid grid-cols-7 gap-0.5 lg:gap-1 mb-1 lg:mb-2">
               {DAYS_OF_WEEK.map((day, index) => (
                 <div key={day} className="text-center text-text-tertiary text-[10px] lg:text-sm font-medium py-1 lg:py-2">
@@ -720,23 +849,20 @@ export default function CoachSessionsPage() {
               ))}
             </div>
 
-            {/* Days */}
             <div className="grid grid-cols-7 gap-0.5 lg:gap-1">
-              {/* Empty cells for days before the first of the month */}
               {Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() }).map((_, i) => (
                 <div key={`empty-${i}`} className="aspect-square" />
               ))}
 
-              {/* Days of the month */}
               {getDaysInMonth(currentMonth).map((day) => {
                 const daySessions = getSessionsForDay(day);
                 const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const isCurrentDay = isToday(dateStr);
+                const isCurrentDay = isTodayDate(dateStr);
 
                 return (
                   <div
                     key={day}
-                    className={`aspect-square p-0.5 lg:p-1 rounded-md lg:rounded-lg border transition-colors ${
+                    className={`aspect-square p-0.5 lg:p-1 rounded-lg border transition-colors ${
                       isCurrentDay
                         ? 'border-[#00ABFF] bg-[#00ABFF]/10'
                         : daySessions.length > 0
@@ -745,16 +871,10 @@ export default function CoachSessionsPage() {
                     }`}
                   >
                     <div className="text-[10px] lg:text-xs text-text-tertiary mb-0.5">{day}</div>
-                    {/* Mobile: just show dot indicators */}
                     <div className="lg:hidden flex flex-wrap gap-0.5 justify-center">
-                      {daySessions.length > 0 && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#00ABFF]" />
-                      )}
-                      {daySessions.length > 1 && (
-                        <span className="text-[8px] text-text-tertiary">+{daySessions.length - 1}</span>
-                      )}
+                      {daySessions.length > 0 && <div className="w-1.5 h-1.5 rounded-full bg-[#00ABFF]" />}
+                      {daySessions.length > 1 && <span className="text-[8px] text-text-tertiary">+{daySessions.length - 1}</span>}
                     </div>
-                    {/* Desktop: show session details */}
                     <div className="hidden lg:block space-y-0.5 overflow-y-auto max-h-16">
                       {daySessions.slice(0, 3).map((session) => {
                         const config = getStatusConfig(session.status);
@@ -764,14 +884,12 @@ export default function CoachSessionsPage() {
                             className={`text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${config.bg} ${config.text}`}
                             onClick={() => isUnresolvedStatus(session.status) && openCompleteModal(session)}
                           >
-                            {formatTime(session.scheduled_time)} {session.child_name}
+                            {formatTime12(session.scheduled_time)} {session.child_name}
                           </div>
                         );
                       })}
                       {daySessions.length > 3 && (
-                        <div className="text-xs text-text-tertiary text-center">
-                          +{daySessions.length - 3} more
-                        </div>
+                        <div className="text-xs text-text-tertiary text-center">+{daySessions.length - 3} more</div>
                       )}
                     </div>
                   </div>
@@ -782,18 +900,48 @@ export default function CoachSessionsPage() {
         </div>
       )}
 
-      {/* Modals */}
-      {/* MicroNotePanel — floating during active session */}
-      {activeSession && coach && (
+      {/* ============================================================ */}
+      {/* MODALS                                                       */}
+      {/* ============================================================ */}
+
+      {/* MicroNotePanel — full-screen during active session */}
+      {activeSession && coach && microNotesOpen && (
         <MicroNotePanel
+          layout="fullscreen"
           sessionId={activeSession.id}
           childId={activeSession.child_id}
           childName={activeSession.child_name}
           coachId={coach.id}
           sessionStartTime={new Date(`${activeSession.scheduled_date}T${activeSession.scheduled_time}`)}
-          quickStrengths={[]}
-          quickStruggles={[]}
+          quickStrengths={quickStrengths}
+          quickStruggles={quickStruggles}
+          onClose={() => setMicroNotesOpen(false)}
+          onNoteAdded={() => setMicroNoteCount(prev => prev + 1)}
+          onEndSession={() => {
+            setMicroNotesOpen(false);
+            setSelectedSession(activeSession);
+            setShowCompleteModal(true);
+          }}
         />
+      )}
+
+      {/* Persistent bottom bar during active session */}
+      {activeSession && !microNotesOpen && !showCompleteModal && (
+        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-30 bg-[#121217]/95 backdrop-blur-md border-t border-green-500/20 px-4 py-2.5 lg:ml-64">
+          <div className="flex items-center gap-3 max-w-3xl mx-auto">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-medium truncate">{activeSession.child_name} session</p>
+              <p className="text-white/40 text-[10px]">{microNoteCount > 0 ? `${microNoteCount} notes captured` : 'No notes yet'}</p>
+            </div>
+            <button
+              onClick={() => setMicroNotesOpen(true)}
+              className="bg-green-500 text-white px-4 py-2 rounded-xl text-xs font-medium min-h-[40px] active:bg-green-600"
+            >
+              Open
+            </button>
+          </div>
+        </div>
       )}
 
       {showCompleteModal && selectedSession && coach && (
@@ -807,13 +955,9 @@ export default function CoachSessionsPage() {
           modality={selectedSession.session_mode === 'offline' ? 'in_person_1on1' : 'online_1on1'}
           captureId={selectedSession.pending_capture?.id}
           isAiPrefilled={selectedSession.pending_capture?.ai_prefilled}
-          onClose={() => {
-            setShowCompleteModal(false);
-            setSelectedSession(null);
-          }}
+          onClose={() => { setShowCompleteModal(false); setSelectedSession(null); }}
           onComplete={async (result) => {
             try {
-              // Mark session as completed
               const res = await fetch(`/api/coach/sessions/${selectedSession.id}/complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -824,12 +968,8 @@ export default function CoachSessionsPage() {
                   intelligenceScore: result.intelligenceScore,
                 }),
               });
-              if (!res.ok) {
-                console.error('Failed to complete session:', await res.text());
-              }
-            } catch (err) {
-              console.error('Error completing session:', err);
-            }
+              if (!res.ok) console.error('Failed to complete session:', await res.text());
+            } catch (err) { console.error('Error completing session:', err); }
             handleCompleteSuccess();
           }}
         />
@@ -838,10 +978,7 @@ export default function CoachSessionsPage() {
       {showPrepModal && selectedSession && (
         <PreSessionBrief
           session={selectedSession}
-          onClose={() => {
-            setShowPrepModal(false);
-            setSelectedSession(null);
-          }}
+          onClose={() => { setShowPrepModal(false); setSelectedSession(null); }}
         />
       )}
 
@@ -850,10 +987,7 @@ export default function CoachSessionsPage() {
           isOpen={showRescheduleModal}
           session={sessionToRescheduleSession(selectedSession)}
           coachId={coach?.id}
-          onClose={() => {
-            setShowRescheduleModal(false);
-            setSelectedSession(null);
-          }}
+          onClose={() => { setShowRescheduleModal(false); setSelectedSession(null); }}
           onSuccess={handleRescheduleComplete}
         />
       )}
@@ -861,17 +995,17 @@ export default function CoachSessionsPage() {
       {/* Missed Confirmation Modal */}
       {showMissedConfirm && selectedSession && (
         <div className="fixed inset-0 bg-black/70 flex items-end lg:items-center justify-center z-50 p-0 lg:p-4">
-          <div className="bg-surface-1 rounded-t-2xl lg:rounded-xl max-w-md w-full p-4 lg:p-6 border border-border">
-            <h3 className="text-lg lg:text-xl font-bold text-white mb-3 lg:mb-4">Mark as Missed?</h3>
-            <p className="text-text-tertiary text-sm lg:text-base mb-3 lg:mb-4">
+          <div className="bg-surface-1 rounded-t-2xl lg:rounded-2xl max-w-md w-full p-4 lg:p-6 border border-border">
+            <h3 className="text-lg font-bold text-white mb-3">Mark as Missed?</h3>
+            <p className="text-text-tertiary text-sm mb-3">
               Mark {selectedSession.child_name}&apos;s Session #{selectedSession.session_number} as missed?
             </p>
             <div className="mb-4">
-              <label className="block text-text-tertiary text-xs lg:text-sm mb-2">Reason (optional)</label>
+              <label className="block text-text-tertiary text-xs mb-2">Reason (optional)</label>
               <select
                 value={missedReason}
                 onChange={(e) => setMissedReason(e.target.value)}
-                className="w-full bg-surface-0 text-white border border-border rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full bg-surface-0 text-white border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               >
                 <option value="">Select reason...</option>
                 <option value="Parent no-show">Parent no-show</option>
@@ -881,27 +1015,19 @@ export default function CoachSessionsPage() {
                 <option value="Other">Other</option>
               </select>
             </div>
-            <div className="flex gap-2 lg:gap-3">
+            <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowMissedConfirm(false);
-                  setSelectedSession(null);
-                  setMissedReason('');
-                }}
-                className="flex-1 px-3 lg:px-4 py-2.5 bg-surface-2 text-white text-sm rounded-lg hover:bg-surface-3 transition-colors"
+                onClick={() => { setShowMissedConfirm(false); setSelectedSession(null); setMissedReason(''); }}
+                className="flex-1 px-4 py-2.5 bg-surface-2 text-white text-sm rounded-xl hover:bg-surface-3 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleMarkMissed}
                 disabled={markingMissed === selectedSession.id}
-                className="flex-1 px-3 lg:px-4 py-2.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-orange-500 text-white text-sm rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {markingMissed === selectedSession.id ? (
-                  <Spinner size="sm" />
-                ) : (
-                  'Mark Missed'
-                )}
+                {markingMissed === selectedSession.id ? <Spinner size="sm" /> : 'Mark Missed'}
               </button>
             </div>
           </div>
@@ -920,32 +1046,25 @@ export default function CoachSessionsPage() {
             scheduled_time: selectedSession.scheduled_time,
             enrollment_id: selectedSession.enrollment_id ?? null,
           }}
-          onClose={() => {
-            setShowOfflineModal(false);
-            setSelectedSession(null);
-          }}
-          onSuccess={() => {
-            setShowOfflineModal(false);
-            setSelectedSession(null);
-            loadSessions();
-          }}
+          onClose={() => { setShowOfflineModal(false); setSelectedSession(null); }}
+          onSuccess={() => { setShowOfflineModal(false); setSelectedSession(null); loadSessions(); }}
         />
       )}
 
       {/* Cancel Confirmation Modal */}
       {showCancelConfirm && selectedSession && (
         <div className="fixed inset-0 bg-black/70 flex items-end lg:items-center justify-center z-50 p-0 lg:p-4">
-          <div className="bg-surface-1 rounded-t-2xl lg:rounded-xl max-w-md w-full p-4 lg:p-6 border border-border">
-            <h3 className="text-lg lg:text-xl font-bold text-white mb-3 lg:mb-4">Cancel Session?</h3>
-            <p className="text-text-tertiary text-sm lg:text-base mb-3 lg:mb-4">
+          <div className="bg-surface-1 rounded-t-2xl lg:rounded-2xl max-w-md w-full p-4 lg:p-6 border border-border">
+            <h3 className="text-lg font-bold text-white mb-3">Cancel Session?</h3>
+            <p className="text-text-tertiary text-sm mb-3">
               Cancel {selectedSession.child_name}&apos;s Session #{selectedSession.session_number}? This action cannot be undone.
             </p>
             <div className="mb-4">
-              <label className="block text-text-tertiary text-xs lg:text-sm mb-2">Reason (required)</label>
+              <label className="block text-text-tertiary text-xs mb-2">Reason (required)</label>
               <select
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full bg-surface-0 text-white border border-border rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full bg-surface-0 text-white border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">Select reason...</option>
                 <option value="Parent requested">Parent requested</option>
@@ -955,32 +1074,24 @@ export default function CoachSessionsPage() {
                 <option value="Other">Other</option>
               </select>
             </div>
-            <div className="flex gap-2 lg:gap-3">
+            <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowCancelConfirm(false);
-                  setSelectedSession(null);
-                  setCancelReason('');
-                }}
-                className="flex-1 px-3 lg:px-4 py-2.5 bg-surface-2 text-white text-sm rounded-lg hover:bg-surface-3 transition-colors"
+                onClick={() => { setShowCancelConfirm(false); setSelectedSession(null); setCancelReason(''); }}
+                className="flex-1 px-4 py-2.5 bg-surface-2 text-white text-sm rounded-xl hover:bg-surface-3 transition-colors"
               >
                 Go Back
               </button>
               <button
                 onClick={handleCancelSession}
                 disabled={cancelling === selectedSession.id || !cancelReason}
-                className="flex-1 px-3 lg:px-4 py-2.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white text-sm rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {cancelling === selectedSession.id ? (
-                  <Spinner size="sm" />
-                ) : (
-                  'Cancel'
-                )}
+                {cancelling === selectedSession.id ? <Spinner size="sm" /> : 'Cancel Session'}
               </button>
             </div>
           </div>
         </div>
       )}
-      </div>
+    </div>
   );
 }

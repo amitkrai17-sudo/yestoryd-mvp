@@ -252,149 +252,104 @@ async function saveSessionData(
     }));
   }
 
-  // 3. Create PENDING structured capture instead of learning_event directly.
-  // Coach must review and confirm before intelligence enters learning_events.
-  // The full Gemini analysis is stored in the capture for coach reference.
-  if (childId && coachId) {
-    const transcriptAnalysisData = {
-      session_id: sessionId,
-      focus_area: analysis.focus_area,
-      skills_worked_on: analysis.skills_worked_on,
-      progress_rating: analysis.progress_rating,
-      engagement_level: analysis.engagement_level,
-      confidence_level: analysis.confidence_level,
-      key_observations: analysis.key_observations,
-      duration_seconds: durationSeconds,
-      coach_talk_ratio: analysis.coach_talk_ratio,
-      child_reading_samples: analysis.child_reading_samples,
-      breakthrough_moment: analysis.breakthrough_moment,
-      concerns_noted: analysis.concerns_noted,
-      homework_assigned: analysis.homework_assigned,
-      homework_description: analysis.homework_description,
-      next_session_focus: analysis.next_session_focus,
-      attendance,
-    };
+  // Variables needed by batch sibling fan-out below
+  const transcriptAnalysisData = {
+    session_id: sessionId,
+    focus_area: analysis.focus_area,
+    skills_worked_on: analysis.skills_worked_on,
+    progress_rating: analysis.progress_rating,
+    engagement_level: analysis.engagement_level,
+    key_observations: analysis.key_observations,
+    duration_seconds: durationSeconds,
+    concerns_noted: analysis.concerns_noted,
+    homework_assigned: analysis.homework_assigned,
+    homework_description: analysis.homework_description,
+    attendance,
+  };
+  const engagementMap: Record<string, string> = {
+    'high': 'high', 'very high': 'exceptional', 'excellent': 'exceptional',
+    'low': 'low', 'very low': 'low', 'poor': 'low', 'minimal': 'low',
+  };
+  const normalizedEngagement = engagementMap[(analysis.engagement_level || '').toLowerCase()] || 'moderate';
+  let captureSessionDate = new Date().toISOString().split('T')[0];
+  if (sessionId) {
+    const { data: sessDateRow } = await supabase
+      .from('scheduled_sessions')
+      .select('scheduled_date')
+      .eq('id', sessionId)
+      .single();
+    if (sessDateRow?.scheduled_date) captureSessionDate = sessDateRow.scheduled_date;
+  }
 
-    // Normalize engagement to low/moderate/high/exceptional for capture schema
-    const engagementMap: Record<string, string> = {
-      'high': 'high', 'very high': 'exceptional', 'excellent': 'exceptional',
-      'low': 'low', 'very low': 'low', 'poor': 'low', 'minimal': 'low',
-    };
-    const normalizedEngagement = engagementMap[(analysis.engagement_level || '').toLowerCase()] || 'moderate';
-
-    // Get session date for capture record
-    let captureSessionDate = new Date().toISOString().split('T')[0];
-    if (sessionId) {
-      const { data: sessDateRow } = await supabase
-        .from('scheduled_sessions')
-        .select('scheduled_date')
-        .eq('id', sessionId)
-        .single();
-      if (sessDateRow?.scheduled_date) captureSessionDate = sessDateRow.scheduled_date;
-    }
-
+  // 3. Recall as enrichment/pre-fill (SCF-primary architecture)
+  // Check if coach already filed a confirmed capture → enrich it
+  // If not → store pre-fill data on scheduled_sessions for SCF to load
+  if (childId && coachId && sessionId) {
     try {
-      // Check if a pending capture already exists (re-processing scenario)
-      const { data: existingCapture } = sessionId ? await supabase
+      const { data: existingCapture } = await supabase
         .from('structured_capture_responses')
-        .select('id, coach_confirmed')
+        .select('id, coach_confirmed, skills_covered, engagement_level')
         .eq('session_id', sessionId)
         .eq('child_id', childId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle() : { data: null };
+        .maybeSingle();
 
       if (existingCapture?.coach_confirmed) {
-        // Coach already confirmed — don't overwrite
-        console.log(JSON.stringify({ requestId, event: 'capture_already_confirmed', sessionId }));
-      } else if (existingCapture) {
-        // Pending capture exists — update with AI data
-        await supabase
-          .from('structured_capture_responses')
-          .update({
-            capture_method: 'auto_filled',
-            ai_prefilled: true,
-            engagement_level: normalizedEngagement,
-            custom_strength_note: (analysis.key_observations || []).join('. ') || null,
-            custom_struggle_note: analysis.concerns_noted || null,
-            skill_performances: JSON.stringify({
-              gemini_analysis: transcriptAnalysisData,
-              ai_summary: analysis.summary,
-              parent_summary: analysis.parent_summary,
-            }),
-          })
-          .eq('id', existingCapture.id);
-        console.log(JSON.stringify({ requestId, event: 'pending_capture_updated', captureId: existingCapture.id }));
+        // ENRICHMENT PATH — coach already filed, enhance their capture
+        const { enrichExistingCapture, computeIntegrityScore } = await import('@/lib/intelligence/recall-enrichment');
+        const captureSkills = Array.isArray(existingCapture.skills_covered) ? existingCapture.skills_covered : [];
+        const integrityScore = computeIntegrityScore(
+          analysis.skills_worked_on || [],
+          captureSkills as string[],
+          analysis.engagement_level || '',
+          existingCapture.engagement_level || '',
+        );
+        const notableQuotes = (analysis.child_reading_samples || []).slice(0, 2);
+
+        await enrichExistingCapture(existingCapture.id, childId, coachId, sessionId, {
+          transcriptUrl: undefined, // stored on session already
+          audioUrl: audioStoragePath,
+          integrityScore,
+          notableQuotes,
+        });
+        console.log(JSON.stringify({ requestId, event: 'recall_enrichment_done', captureId: existingCapture.id, integrityScore }));
       } else {
-        // Create new pending capture for primary child
-        const { data: capture, error: captureErr } = await supabase
-          .from('structured_capture_responses')
-          .insert({
-            session_id: sessionId,
-            child_id: childId,
-            coach_id: coachId,
-            session_modality: 'online',
-            capture_method: 'auto_filled',
-            ai_prefilled: true,
-            coach_confirmed: false,
-            session_date: captureSessionDate,
-            engagement_level: normalizedEngagement,
-            skills_covered: analysis.skills_worked_on || [],
-            skill_performances: JSON.stringify({
-              gemini_analysis: transcriptAnalysisData,
-              ai_summary: analysis.summary,
-              parent_summary: analysis.parent_summary,
-            }),
-            custom_strength_note: (analysis.key_observations || []).join('. ') || null,
-            custom_struggle_note: analysis.concerns_noted || null,
-            words_mastered: [],
-            words_struggled: [],
-          })
-          .select('id')
-          .single();
+        // PRE-FILL PATH — coach hasn't filed yet, store pre-fill for SCF
+        const { createRecallPreFill } = await import('@/lib/intelligence/recall-enrichment');
+        await createRecallPreFill(sessionId, {
+          suggestedSkills: analysis.skills_worked_on || [],
+          suggestedEngagement: analysis.engagement_level || 'moderate',
+          strengthSummary: (analysis.key_observations || []).join('. '),
+          struggleSummary: analysis.concerns_noted || '',
+          audioUrl: audioStoragePath,
+          parentSummary: analysis.parent_summary,
+        });
+        console.log(JSON.stringify({ requestId, event: 'recall_prefill_created', sessionId }));
 
-        if (captureErr) {
-          console.error(JSON.stringify({ requestId, event: 'pending_capture_create_error', error: captureErr.message }));
-        } else {
-          // Store capture_id on session for coach UI linkage
-          if (sessionId && capture?.id) {
-            await supabase
-              .from('scheduled_sessions')
-              .update({ capture_id: capture.id })
-              .eq('id', sessionId);
-          }
-          console.log(JSON.stringify({ requestId, event: 'pending_capture_created', captureId: capture?.id }));
-
-          // Notify coach: pending capture ready for review
-          if (coachId) {
-            try {
-              await supabase.from('in_app_notifications').insert({
-                user_id: coachId,
-                user_type: 'coach',
-                title: 'Review Session Intelligence',
-                body: `Session with ${childName} is ready for review. Confirm skills, observations, and homework.`,
-                notification_type: 'info',
-                action_url: `/coach/sessions/${sessionId}`,
-                metadata: {
-                  session_id: sessionId,
-                  child_name: childName,
-                  capture_id: capture?.id,
-                  type: 'pending_capture_review',
-                },
-              });
-            } catch (notifErr: any) {
-              console.error(JSON.stringify({ requestId, event: 'capture_notification_error', error: notifErr.message }));
-            }
+        // Notify coach to file SCF (with Recall data available)
+        if (coachId) {
+          try {
+            await supabase.from('in_app_notifications').insert({
+              user_id: coachId,
+              user_type: 'coach',
+              title: 'Session Recording Ready',
+              body: `Session with ${childName} has been recorded. Open Session Notes to file your report with AI assist.`,
+              notification_type: 'info',
+              action_url: `/coach/sessions?openCapture=${sessionId}`,
+              metadata: { session_id: sessionId, child_name: childName, type: 'recall_prefill_ready' },
+            });
+          } catch (notifErr: any) {
+            console.error(JSON.stringify({ requestId, event: 'prefill_notification_error', error: notifErr.message }));
           }
         }
       }
-    } catch (captureError) {
+    } catch (recallError) {
       console.error(JSON.stringify({
         requestId,
-        event: 'pending_capture_error',
-        error: (captureError as Error).message,
+        event: 'recall_enrichment_error',
+        error: (recallError as Error).message,
       }));
-      // Non-fatal — transcript is still saved on scheduled_sessions
     }
 
     // 3b. Batch fan-out: create PENDING captures for sibling children too

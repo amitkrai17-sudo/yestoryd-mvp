@@ -9,7 +9,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Bot, ClipboardList, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCapture } from './useCapture';
 import { CaptureChat, type ExtractedCaptureData } from './CaptureChat';
@@ -27,9 +27,11 @@ const SWIPE_THRESHOLD = 50;
 export default function StructuredCaptureForm(props: CaptureFormProps) {
   const { onClose, onComplete, childName, childAge, sessionId, sessionNumber, modality, isAiPrefilled, coachId, childId, initialData } = props;
 
-  // Determine starting phase: skip chat if AI pre-filled (Recall transcript) or initialData provided
+  // Determine starting phase:
+  // - AI pre-filled or initialData → skip straight to form
+  // - Otherwise → show choice screen (Talk to rAI vs Skip to form)
   const skipChat = isAiPrefilled || !!initialData;
-  const [phase, setPhase] = useState<'chat' | 'form'>(skipChat ? 'form' : 'chat');
+  const [phase, setPhase] = useState<'choose' | 'chat' | 'form'>(skipChat ? 'form' : 'choose');
   const [chatPrefill, setChatPrefill] = useState<Partial<CaptureFormState> | null>(null);
 
   // Form hook — initialized with either chat prefill, initialData, or empty
@@ -43,6 +45,8 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
     observations,
     continuations,
     microObsCount,
+    activityLogCount,
+    recallPrefillAvailable,
     loadingSkills,
     loadingObservations,
     scorePreview,
@@ -60,7 +64,7 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
 
   // Load child profile for chat context
   useEffect(() => {
-    if (phase !== 'chat' || !childId) return;
+    if ((phase !== 'chat' && phase !== 'choose') || !childId) return;
     async function loadContext() {
       try {
         const { supabase } = await import('@/lib/supabase/client');
@@ -126,6 +130,77 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
     setPhase('form');
   }, [updateState]);
 
+  // --- CHOOSE PHASE (fork: Talk to rAI vs Skip to form) ---
+  if (phase === 'choose') {
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col">
+        <div className="flex-shrink-0 bg-gradient-to-r from-[#00ABFF] to-[#7C3AED] px-4 py-3 safe-area-top">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <h2 className="text-white font-bold text-base truncate">Session Capture</h2>
+              <p className="text-white/70 text-xs truncate">
+                {childName} ({childAge}y){sessionNumber ? ` | Session #${sessionNumber}` : ''}
+              </p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors flex-shrink-0">
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
+          {(microObsCount > 0 || activityLogCount > 0) && (
+            <p className="text-white/40 text-xs text-center">
+              {microObsCount > 0 ? `${microObsCount} notes` : ''}
+              {microObsCount > 0 && activityLogCount > 0 ? ' + ' : ''}
+              {activityLogCount > 0 ? `${activityLogCount} activities` : ''} captured during session
+            </p>
+          )}
+
+          <p className="text-white/60 text-sm text-center max-w-xs">
+            How would you like to complete your session capture?
+          </p>
+
+          <div className="w-full max-w-sm space-y-3">
+            {/* Talk to rAI */}
+            <button
+              onClick={() => setPhase('chat')}
+              className="w-full flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-4 text-left hover:bg-white/10 active:scale-[0.98] transition-all group"
+            >
+              <div className="w-11 h-11 rounded-xl bg-[#00ABFF]/10 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5 text-[#00ABFF]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium">Talk to rAI</p>
+                <p className="text-white/40 text-xs mt-0.5">Quick voice debrief, AI fills the form for you</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-white/40 flex-shrink-0" />
+            </button>
+
+            {/* Skip to form */}
+            <button
+              onClick={() => setPhase('form')}
+              className="w-full flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-4 text-left hover:bg-white/10 active:scale-[0.98] transition-all group"
+            >
+              <div className="w-11 h-11 rounded-xl bg-[#7C3AED]/10 flex items-center justify-center flex-shrink-0">
+                <ClipboardList className="w-5 h-5 text-[#7C3AED]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium">Skip to form</p>
+                <p className="text-white/40 text-xs mt-0.5">
+                  {microObsCount > 0
+                    ? 'Pre-filled from your notes, review and submit'
+                    : 'Fill skills, observations, and submit manually'}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-white/40 flex-shrink-0" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // --- CHAT PHASE ---
   if (phase === 'chat') {
     return (
@@ -167,9 +242,11 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
           <p className="text-white text-xs font-medium">Pre-filled from your voice debrief. Review, add photos, and submit.</p>
         </div>
       )}
-      {microObsCount > 0 && !isFromChat && !isAiPrefilled && (
+      {(microObsCount > 0 || activityLogCount > 0 || recallPrefillAvailable) && !isFromChat && !isAiPrefilled && (
         <div className="flex-shrink-0 bg-[#00ABFF]/90 px-4 py-1.5 text-center">
-          <p className="text-white text-[11px] font-medium">Pre-filled from {microObsCount} in-session notes</p>
+          <p className="text-white text-[11px] font-medium">
+            Pre-filled from{microObsCount > 0 ? ` ${microObsCount} notes` : ''}{microObsCount > 0 && (activityLogCount > 0 || recallPrefillAvailable) ? ' + ' : ''}{activityLogCount > 0 ? `${activityLogCount} activities` : ''}{activityLogCount > 0 && recallPrefillAvailable ? ' + ' : ''}{recallPrefillAvailable ? 'session recording' : ''}
+          </p>
         </div>
       )}
 

@@ -194,6 +194,15 @@ export async function scheduleBotsForEnrollment(enrollmentId: string): Promise<{
         batchBotsScheduled.add(batchKey);
       }
 
+      // Check if this session needs a Recall bot (SCF-primary: only record when needed)
+      const { shouldScheduleRecallBot } = await import('@/lib/intelligence/recall-scheduler');
+      const decision = await shouldScheduleRecallBot(session.id, session.coach_id, session.child_id);
+      if (!decision.schedule) {
+        console.log(`[SCHEDULE] Skipping Recall bot for session ${session.id}: ${decision.reason}`);
+        continue;
+      }
+      console.log(`[SCHEDULE] Scheduling Recall bot for session ${session.id}: ${decision.reason}`);
+
       // Fetch child name (select('*') doesn't include joins)
       let childName = 'Child';
       if (session.child_id) {
