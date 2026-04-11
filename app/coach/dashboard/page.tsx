@@ -80,10 +80,13 @@ export default async function CoachDashboardPage() {
     console.log('scheduled_sessions table may not exist');
   }
 
-  // TODO: Fetch earnings from single source of truth API
-  // This needs to be a direct DB query or a server-to-server fetch if the API is secure.
-  // For now, we'll pass 0 as a placeholder.
-  const totalEarnings = 0;
+  // Earnings from coach_payouts (single source of truth for actual payouts)
+  const { data: payoutRows } = await supabase
+    .from('coach_payouts')
+    .select('net_amount')
+    .eq('coach_id', coach.id)
+    .in('status', ['scheduled', 'paid']);
+  const totalEarnings = (payoutRows || []).reduce((sum, r) => sum + (r.net_amount || 0), 0);
 
   const initialStats = {
     total_students: studentsCount || 0,

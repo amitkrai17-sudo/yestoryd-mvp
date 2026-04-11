@@ -18,6 +18,8 @@ export interface CoachGroup {
   coach_cost_percent: number;
   platform_fee_percent: number;
   is_internal: boolean;
+  per_session_rate_override?: number | null;
+  skill_building_rate_override?: number | null;
 }
 
 export interface CoachWithGroup {

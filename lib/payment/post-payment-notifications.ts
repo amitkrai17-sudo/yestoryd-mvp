@@ -51,8 +51,8 @@ function toCoachGroupConfig(group: CoachGroup): CoachGroupConfig {
     lead_cost_percent: group.lead_cost_percent,
     platform_fee_percent: group.platform_fee_percent,
     is_internal: group.is_internal,
-    per_session_rate_override: null,
-    skill_building_rate_override: null,
+    per_session_rate_override: group.per_session_rate_override ?? null,
+    skill_building_rate_override: group.skill_building_rate_override ?? null,
   };
 }
 
@@ -309,11 +309,14 @@ export async function calculateRevenueSplit(
     const payoutDay = config.payout_day_of_month;
     const payoutRecords: CoachPayoutInsert[] = [];
 
-    // Coaching payouts (monthly from coach_cost_amount)
-    const monthlyCoachGross = Math.round(breakdown.coach_cost_amount / durationMonths);
-    const monthlyCoachTds = Math.round(breakdown.tds_amount / durationMonths);
+    // Coaching payouts (monthly from coach_cost_amount, last month gets remainder)
+    const monthlyCoachGross = Math.floor(breakdown.coach_cost_amount / durationMonths);
+    const monthlyCoachTds = Math.floor(breakdown.tds_amount / durationMonths);
 
     for (let i = 1; i <= durationMonths; i++) {
+      const isLast = i === durationMonths;
+      const gross = isLast ? breakdown.coach_cost_amount - monthlyCoachGross * (durationMonths - 1) : monthlyCoachGross;
+      const tds = isLast ? breakdown.tds_amount - monthlyCoachTds * (durationMonths - 1) : monthlyCoachTds;
       const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
       payoutRecords.push({
         enrollment_revenue_id: revenue.id,
@@ -322,19 +325,21 @@ export async function calculateRevenueSplit(
         child_name: childName,
         payout_month: i,
         payout_type: 'coach_cost',
-        gross_amount: monthlyCoachGross,
-        tds_amount: monthlyCoachTds,
-        net_amount: monthlyCoachGross - monthlyCoachTds,
+        gross_amount: gross,
+        tds_amount: tds,
+        net_amount: gross - tds,
         scheduled_date: payoutDate.toISOString().split('T')[0],
         status: 'scheduled',
       });
     }
 
-    // Skill building payouts (monthly from skill_building_cost, paid from platform fee)
+    // Skill building payouts (monthly from skill_building_cost, last month gets remainder)
     if (breakdown.skill_building_cost > 0) {
-      const monthlySBGross = Math.round(breakdown.skill_building_cost / durationMonths);
+      const monthlySBGross = Math.floor(breakdown.skill_building_cost / durationMonths);
 
       for (let i = 1; i <= durationMonths; i++) {
+        const isLast = i === durationMonths;
+        const gross = isLast ? breakdown.skill_building_cost - monthlySBGross * (durationMonths - 1) : monthlySBGross;
         const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
         payoutRecords.push({
           enrollment_revenue_id: revenue.id,
@@ -344,20 +349,22 @@ export async function calculateRevenueSplit(
           payout_month: i,
           payout_type: 'skill_building',
           session_type: 'skill_building',
-          gross_amount: monthlySBGross,
+          gross_amount: gross,
           tds_amount: 0,
-          net_amount: monthlySBGross,
+          net_amount: gross,
           scheduled_date: payoutDate.toISOString().split('T')[0],
           status: 'scheduled',
         });
       }
     }
 
-    // Lead bonus payouts if referrer is a coach
+    // Lead bonus payouts if referrer is a coach (last month gets remainder)
     if (breakdown.net_to_referrer > 0 && leadSourceCoachId) {
-      const monthlyLeadGross = Math.round(breakdown.net_to_referrer / durationMonths);
+      const monthlyLeadGross = Math.floor(breakdown.net_to_referrer / durationMonths);
 
       for (let i = 1; i <= durationMonths; i++) {
+        const isLast = i === durationMonths;
+        const gross = isLast ? breakdown.net_to_referrer - monthlyLeadGross * (durationMonths - 1) : monthlyLeadGross;
         const payoutDate = new Date(now.getFullYear(), now.getMonth() + i, payoutDay);
         payoutRecords.push({
           enrollment_revenue_id: revenue.id,
@@ -366,9 +373,9 @@ export async function calculateRevenueSplit(
           child_name: childName,
           payout_month: i,
           payout_type: 'lead_bonus',
-          gross_amount: monthlyLeadGross,
+          gross_amount: gross,
           tds_amount: 0,
-          net_amount: monthlyLeadGross,
+          net_amount: gross,
           scheduled_date: payoutDate.toISOString().split('T')[0],
           status: 'scheduled',
         });
