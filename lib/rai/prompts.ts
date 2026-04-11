@@ -207,7 +207,8 @@ BOUNDARIES:
 - Never share coach's internal notes or scores directly
 - Never compare ${childName} to other children
 - Never provide medical or psychological advice
-- Never invent information not in the learning data above`;
+- Never invent information not in the learning data above
+- Never mention internal content codes, IDs, or taxonomy identifiers`;
 }
 
 // ============================================================
@@ -268,6 +269,8 @@ RESPONSE GUIDELINES:
 2. Suggest specific activities with timing when relevant
 3. Flag concerns early: declining engagement, repeated struggle areas, parent disengagement
 4. Use professional coaching language, not parent-friendly simplifications
+5. NEVER mention content item codes, IDs, or internal identifiers (like VC-STORY-01, SN, CR, TR blend codes). Use plain language descriptions instead
+6. NEVER write paragraphs longer than 3 sentences. If detail is needed, use short bullet points
 
 BOUNDARIES:
 - Never share parent's personal details or payment info

@@ -25,6 +25,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
+import { getAvatarColor } from '@/lib/utils/avatar-colors';
 
 // ============================================================
 // CONSTANTS
@@ -98,22 +99,6 @@ interface DiscoveryCall {
 // ============================================================
 // HELPERS
 // ============================================================
-
-function getAvatarColor(name: string): string {
-  const colors = [
-    'from-blue-500 to-blue-600',
-    'from-purple-500 to-purple-600',
-    'from-pink-500 to-pink-600',
-    'from-teal-500 to-teal-600',
-    'from-amber-500 to-amber-600',
-    'from-indigo-500 to-indigo-600',
-    'from-rose-500 to-rose-600',
-    'from-cyan-500 to-cyan-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-}
 
 function isTodayDate(dateStr: string): boolean {
   const d = new Date(dateStr);
@@ -289,10 +274,10 @@ export default function CoachDiscoveryCallsPage() {
         {/* Stats Ribbon */}
         <div className="grid grid-cols-4 gap-2 py-3">
           {([
-            { icon: Users, label: 'Total', value: stats.total, color: 'text-[#00ABFF]', bg: 'bg-[#00ABFF]/20' },
-            { icon: Calendar, label: 'Scheduled', value: stats.scheduled, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-            { icon: CheckCircle, label: 'Completed', value: stats.completed, color: 'text-green-400', bg: 'bg-green-500/20' },
-            { icon: Target, label: 'Converted', value: stats.converted, color: 'text-purple-400', bg: 'bg-purple-500/20' },
+            { icon: Users, label: 'Total', value: stats.total, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+            { icon: Calendar, label: 'Scheduled', value: stats.scheduled, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+            { icon: CheckCircle, label: 'Completed', value: stats.completed, color: 'text-green-400', bg: 'bg-green-500/10' },
+            { icon: Target, label: 'Converted', value: stats.converted, color: 'text-purple-400', bg: 'bg-purple-500/10' },
           ] as const).map(({ icon: Icon, label, value, color, bg }) => (
             <div key={label} className="flex items-center gap-2">
               <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>

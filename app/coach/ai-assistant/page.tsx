@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { readChatSSE } from '@/lib/rai/sse-client';
+import { getAvatarColor } from '@/lib/utils/avatar-colors';
 
 interface Student {
   id: string;
@@ -384,9 +385,14 @@ export default function AIAssistantPage() {
     return prompts;
   })();
 
-  const filteredStudents = students.filter((s) =>
-    s.child_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const TEST_NAME_PATTERNS = ['test', 'debug', 'conflict', 'abc'];
+
+  const filteredStudents = students.filter((s) => {
+    const nameLower = s.child_name.toLowerCase();
+    if (TEST_NAME_PATTERNS.some(p => nameLower.includes(p))) return false;
+    if (searchTerm && !nameLower.includes(searchTerm.toLowerCase())) return false;
+    return true;
+  });
 
   if (loading) {
     return (
@@ -479,14 +485,12 @@ export default function AIAssistantPage() {
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-full flex items-center justify-center text-white font-bold">
+                <div className={`w-10 h-10 bg-gradient-to-br ${getAvatarColor(student.child_name)} rounded-full flex items-center justify-center text-white font-bold`}>
                   {student.child_name.charAt(0)}
                 </div>
                 <div>
                   <p className="font-medium text-white">{student.child_name}</p>
-                  <p className="text-gray-400 text-sm">
-                    Age {student.age} • Score: {student.latest_assessment_score ?? '-'}/10
-                  </p>
+                  <p className="text-gray-400 text-sm">{student.age}y</p>
                 </div>
               </div>
             </button>
@@ -511,7 +515,7 @@ export default function AIAssistantPage() {
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <div className="hidden lg:flex w-11 h-11 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-xl items-center justify-center overflow-hidden">
+            <div className="hidden lg:flex w-11 h-11 bg-purple-500/20 rounded-xl items-center justify-center overflow-hidden">
               <Image
                 src="/images/rai-mascot.png"
                 alt="rAI"
@@ -534,9 +538,12 @@ export default function AIAssistantPage() {
               <h1 className="font-semibold text-white">rAI Assistant</h1>
             </div>
 
-            <span className="ml-auto text-xs bg-[#00ABFF]/20 text-[#00ABFF] px-3 py-1.5 rounded-full hidden sm:block font-medium">
-              RAG Powered
-            </span>
+            {/* Status indicator */}
+            {selectedStudent && (
+              <span className="ml-auto text-xs text-gray-500 hidden sm:block">
+                {selectedStudent.child_name}
+              </span>
+            )}
           </div>
         </div>
 
@@ -589,29 +596,29 @@ export default function AIAssistantPage() {
                 className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
               >
                 {message.role === 'assistant' && (
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="w-7 h-7 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden mt-0.5">
                     <Image
                       src="/images/rai-mascot.png"
                       alt="rAI"
-                      width={24}
-                      height={24}
+                      width={20}
+                      height={20}
                       className="object-contain"
                     />
                   </div>
                 )}
                 <div className="flex flex-col gap-1">
                   <div
-                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
+                    className={`rounded-2xl px-3 sm:px-4 py-2.5 ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-r from-[#00ABFF] to-[#0066CC] text-white'
+                        ? 'max-w-[75%] bg-white/[0.06] text-white border border-white/[0.08] rounded-br-md'
                         : message.isError
-                          ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                          : 'bg-surface-2/50 text-text-secondary border border-border'
+                          ? 'max-w-[85%] bg-red-500/10 text-red-400 border border-red-500/30'
+                          : 'max-w-[85%] sm:max-w-[80%] bg-indigo-500/[0.08] text-gray-300 border border-indigo-500/[0.12] rounded-bl-md'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap text-sm sm:text-base">{message.content}</p>
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{message.content}</p>
                     {message.isStreaming && (
-                      <span className="inline-block w-1.5 h-4 ml-0.5 bg-[#00ABFF] animate-pulse rounded-sm" />
+                      <span className="inline-block w-1.5 h-4 ml-0.5 bg-purple-400 animate-pulse rounded-sm" />
                     )}
                   </div>
                   {message.isError && lastFailedMessage && (
@@ -625,8 +632,8 @@ export default function AIAssistantPage() {
                   )}
                 </div>
                 {message.role === 'user' && (
-                  <div className="w-8 h-8 bg-surface-2 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-white" />
+                  <div className="w-7 h-7 bg-white/[0.06] rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5 text-white/60" />
                   </div>
                 )}
               </div>
@@ -635,23 +642,23 @@ export default function AIAssistantPage() {
 
           {sending && !messages.some(m => m.isStreaming) && (
             <div className="flex gap-2 sm:gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#00ABFF] to-[#0066CC] rounded-xl flex items-center justify-center overflow-hidden">
+              <div className="w-7 h-7 bg-purple-500/20 rounded-lg flex items-center justify-center overflow-hidden">
                 <Image
                   src="/images/rai-mascot.png"
                   alt="rAI"
-                  width={24}
-                  height={24}
+                  width={20}
+                  height={20}
                   className="object-contain"
                 />
               </div>
-              <div className="bg-surface-2/50 rounded-2xl px-4 py-3 border border-border">
+              <div className="bg-indigo-500/[0.08] rounded-2xl rounded-bl-md px-4 py-3 border border-indigo-500/[0.12]">
                 {statusMessage ? (
-                  <p className="text-xs text-text-tertiary animate-pulse">{statusMessage}</p>
+                  <p className="text-xs text-gray-400 animate-pulse">{statusMessage}</p>
                 ) : (
                   <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-[#00ABFF] rounded-full animate-bounce [animation-delay:0ms]" />
-                    <span className="w-2 h-2 bg-[#00ABFF] rounded-full animate-bounce [animation-delay:150ms]" />
-                    <span className="w-2 h-2 bg-[#00ABFF] rounded-full animate-bounce [animation-delay:300ms]" />
+                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:300ms]" />
                   </div>
                 )}
               </div>
@@ -673,12 +680,12 @@ export default function AIAssistantPage() {
                   ? `Ask about ${selectedStudent.child_name}...`
                   : 'Ask me anything about coaching...'
               }
-              className="flex-1 bg-surface-2 border border-border rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-white text-sm sm:text-base placeholder:text-text-tertiary focus:outline-none focus:border-[#00ABFF] focus:ring-1 focus:ring-[#00ABFF]/50 transition-all"
+              className="flex-1 bg-surface-2 border border-border rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-white text-[13px] sm:text-sm placeholder:text-text-tertiary focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
             />
             <button
               onClick={sendMessage}
               disabled={sending || !input.trim()}
-              className="bg-gradient-to-r from-[#00ABFF] to-[#0066CC] hover:opacity-90 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {sending ? <Spinner color="white" /> : <Send className="w-5 h-5" />}
             </button>

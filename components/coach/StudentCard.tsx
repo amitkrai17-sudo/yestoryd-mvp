@@ -25,6 +25,7 @@ import {
 import { ActionDropdown } from './ActionDropdown';
 import { CommunicationTrigger } from '@/components/shared/CommunicationTrigger';
 import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
+import { getAvatarColor } from '@/lib/utils/avatar-colors';
 
 export interface StudentData {
   child_id: string;
@@ -63,23 +64,6 @@ interface StudentCardProps {
   onToggleExpand: () => void;
   onSchedule?: (student: StudentData) => void;
   onRecordPayment?: (student: StudentData) => void;
-}
-
-// Avatar color based on child name hash
-function getAvatarColor(name: string): string {
-  const colors = [
-    'from-blue-500 to-blue-600',
-    'from-purple-500 to-purple-600',
-    'from-pink-500 to-pink-600',
-    'from-teal-500 to-teal-600',
-    'from-amber-500 to-amber-600',
-    'from-indigo-500 to-indigo-600',
-    'from-rose-500 to-rose-600',
-    'from-cyan-500 to-cyan-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
 }
 
 function formatSchedulePref(raw: string): string {

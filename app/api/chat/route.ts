@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
               response = await handleOperational(message, userRole, userEmail);
               break;
             case 'SCHEDULE':
-              response = await handleSchedule(message, userRole, userEmail, coachId);
+              response = await handleSchedule(message, userRole, userEmail, coachId, childId);
               break;
             case 'OFF_LIMITS':
               response = handleOffLimits(userRole);
@@ -753,7 +753,8 @@ async function handleSchedule(
   message: string,
   userRole: UserRole,
   userEmail: string,
-  sessionCoachId?: string
+  sessionCoachId?: string,
+  childId?: string
 ): Promise<ChatResponse> {
   const supabase = getSupabase();
   const now = new Date();
@@ -804,13 +805,52 @@ async function handleSchedule(
       return { response: "I couldn't find your coach profile. Please contact support.", intent: 'OPERATIONAL', source: 'sql' };
     }
 
+    // Child-specific schedule query (when coach has a child selected in rAI)
+    if (childId) {
+      const { data: childSessions } = await supabase
+        .from('scheduled_sessions')
+        .select(`scheduled_date, scheduled_time, session_type, google_meet_link, child:children(child_name)`)
+        .eq('coach_id', coachId)
+        .eq('child_id', childId)
+        .gte('scheduled_date', today)
+        .in('status', ['scheduled', 'confirmed'])
+        .order('scheduled_date', { ascending: true })
+        .order('scheduled_time', { ascending: true })
+        .limit(5);
+
+      if (!childSessions || childSessions.length === 0) {
+        // Also check past sessions for context
+        const { data: pastSessions } = await supabase
+          .from('scheduled_sessions')
+          .select(`scheduled_date, status, child:children(child_name)`)
+          .eq('child_id', childId)
+          .eq('coach_id', coachId)
+          .order('scheduled_date', { ascending: false })
+          .limit(1);
+
+        const childData = pastSessions?.[0]?.child as { child_name: string } | { child_name: string }[] | null;
+        const name = Array.isArray(childData) ? childData[0]?.child_name : childData?.child_name;
+        return { response: `${name || 'This student'} doesn't have any upcoming sessions scheduled. You can schedule one from the Sessions page.`, intent: 'SCHEDULE', source: 'sql' };
+      }
+
+      const next = childSessions[0];
+      const childData = next.child as { child_name: string } | { child_name: string }[] | null;
+      const name = Array.isArray(childData) ? childData[0]?.child_name : childData?.child_name;
+      const sessionDate = new Date(next.scheduled_date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' });
+      let resp = `${name || 'This student'}'s next session is on ${sessionDate} at ${formatTime(next.scheduled_time)}.`;
+      if (next.google_meet_link) resp += ` Meeting link: ${next.google_meet_link}`;
+      if (childSessions.length > 1) resp += ` ${childSessions.length - 1} more session${childSessions.length > 2 ? 's' : ''} scheduled after that.`;
+      return { response: resp, intent: 'SCHEDULE', source: 'sql' };
+    }
+
+    // Coach's overall schedule (no specific child)
     if (/today/i.test(message)) {
       const { data: sessions } = await supabase
         .from('scheduled_sessions')
         .select(`scheduled_time, session_type, google_meet_link, child:children(child_name)`)
         .eq('coach_id', coachId)
         .eq('scheduled_date', today)
-        .eq('status', 'scheduled')
+        .in('status', ['scheduled', 'confirmed'])
         .order('scheduled_time', { ascending: true });
 
       if (!sessions || sessions.length === 0) {
@@ -831,7 +871,7 @@ async function handleSchedule(
       .select(`scheduled_date, scheduled_time, session_type, google_meet_link, child:children(child_name)`)
       .eq('coach_id', coachId)
       .gte('scheduled_date', today)
-      .eq('status', 'scheduled')
+      .in('status', ['scheduled', 'confirmed'])
       .order('scheduled_date', { ascending: true })
       .order('scheduled_time', { ascending: true })
       .limit(5);

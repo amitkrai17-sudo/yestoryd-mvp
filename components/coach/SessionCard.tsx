@@ -10,6 +10,7 @@ import { ActionDropdown, ActionIcons } from './ActionDropdown';
 import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';
 import { CommunicationTrigger } from '@/components/shared/CommunicationTrigger';
 import { formatTime12 } from '@/lib/utils/date-format';
+import { getAvatarColor } from '@/lib/utils/avatar-colors';
 
 interface Session {
   id: string;
@@ -64,23 +65,6 @@ function isWithinMinutes(dateStr: string, timeStr: string, minutes: number): boo
 function getSessionTypeLabel(type: string): string {
   if (type === 'remedial') return _getLabel('skill_booster');
   return _getLabel(type);
-}
-
-// Avatar color based on child name hash
-function getAvatarColor(name: string): string {
-  const colors = [
-    'from-blue-500 to-blue-600',
-    'from-purple-500 to-purple-600',
-    'from-pink-500 to-pink-600',
-    'from-teal-500 to-teal-600',
-    'from-amber-500 to-amber-600',
-    'from-indigo-500 to-indigo-600',
-    'from-rose-500 to-rose-600',
-    'from-cyan-500 to-cyan-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
 }
 
 export function SessionCard({

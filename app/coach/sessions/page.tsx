@@ -646,10 +646,10 @@ export default function CoachSessionsPage() {
         {/* Stats Ribbon */}
         <div className="grid grid-cols-4 gap-2 py-3">
           {([
-            { icon: Clock, label: 'Today', value: stats.today, color: 'text-[#00ABFF]', bg: 'bg-[#00ABFF]/20' },
-            { icon: CalendarDays, label: 'Week', value: stats.thisWeek, color: 'text-[#00ABFF]', bg: 'bg-[#00ABFF]/20' },
-            { icon: CheckCircle, label: 'Done', value: stats.completed, color: 'text-green-400', bg: 'bg-green-500/20' },
-            { icon: Users, label: 'Upcoming', value: stats.upcoming, color: 'text-purple-400', bg: 'bg-purple-500/20' },
+            { icon: Clock, label: 'Today', value: stats.today, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+            { icon: CalendarDays, label: 'Week', value: stats.thisWeek, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+            { icon: CheckCircle, label: 'Done', value: stats.completed, color: 'text-green-400', bg: 'bg-green-500/10' },
+            { icon: Users, label: 'Upcoming', value: stats.upcoming, color: 'text-amber-400', bg: 'bg-amber-500/10' },
           ] as const).map(({ icon: Icon, label, value, color, bg }) => (
             <div key={label} className="flex items-center gap-2">
               <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>

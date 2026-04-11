@@ -298,10 +298,10 @@ export default function CoachStudentsPage() {
         {/* Stats Ribbon */}
         <div className="grid grid-cols-4 gap-2 py-3">
           {([
-            { icon: Users, label: 'Total', value: stats.total, color: 'text-white', bg: 'bg-surface-2' },
-            { icon: UserCheck, label: 'Active', value: stats.active, color: 'text-green-400', bg: 'bg-green-500/20' },
-            { icon: GraduationCap, label: 'Coaching', value: stats.coaching, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-            { icon: BookOpen, label: 'Classes', value: stats.tuition, color: 'text-amber-400', bg: 'bg-amber-500/20' },
+            { icon: Users, label: 'Total', value: stats.total, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+            { icon: UserCheck, label: 'Active', value: stats.active, color: 'text-green-400', bg: 'bg-green-500/10' },
+            { icon: GraduationCap, label: 'Coaching', value: stats.coaching, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+            { icon: BookOpen, label: 'Classes', value: stats.tuition, color: 'text-pink-400', bg: 'bg-pink-500/10' },
           ] as const).map(({ icon: Icon, label, value, color, bg }) => (
             <div key={label} className="flex items-center gap-2">
               <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>

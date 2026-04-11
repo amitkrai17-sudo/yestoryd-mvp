@@ -342,7 +342,7 @@ export function formatContentUnitsForContext(units: ContentUnitMatch[]): string 
 
   const formatted = units.map((u, i) => {
     const parts = [
-      `[${i + 1}] ${u.name}${u.content_code ? ` (${u.content_code})` : ''}`,
+      `[${i + 1}] ${u.name}`,
     ];
     if (u.skill_name) parts.push(`   Skill: ${u.skill_name}`);
     if (u.description) parts.push(`   ${u.description}`);
