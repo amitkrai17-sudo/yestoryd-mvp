@@ -1,5 +1,5 @@
 // app/coach/students/page.tsx
-// Coach Students Page — Coaching + Tuition unified view
+// Coach Students Page — Compact cards, sticky stats, filters+sort, accordion expand
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
@@ -16,20 +16,50 @@ import {
   MapPin,
   Video,
   Check,
+  ChevronDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import StudentCard, { type StudentData } from '@/components/coach/StudentCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import RecordPaymentSheet from '@/components/coach/RecordPaymentSheet';
 
-type FilterType = 'all' | 'coaching' | 'tuition' | 'active';
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const PROGRAM_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'coaching', label: '1:1 Coaching' },
+  { value: 'tuition', label: 'English Classes' },
+] as const;
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'not_scheduled', label: 'Not Scheduled' },
+  { value: 'report_due', label: 'Report Due' },
+  { value: 'complete', label: 'Complete' },
+  { value: 'inactive', label: 'Inactive' },
+] as const;
+
+const SORT_OPTIONS = [
+  { value: 'next_session', label: 'Next Session' },
+  { value: 'name', label: 'Name A-Z' },
+  { value: 'remaining', label: 'Sessions Left' },
+  { value: 'last_active', label: 'Last Active' },
+] as const;
+
+type ProgramFilterValue = typeof PROGRAM_FILTER_OPTIONS[number]['value'];
+type StatusFilterValue = typeof STATUS_FILTER_OPTIONS[number]['value'];
+type SortValue = typeof SORT_OPTIONS[number]['value'];
 
 // 6:00 AM to 9:00 PM in 15-min intervals
 const TIME_SLOTS = (() => {
   const slots: { value: string; label: string }[] = [];
   for (let h = 6; h <= 21; h++) {
     for (let m = 0; m < 60; m += 15) {
-      if (h === 21 && m > 0) break; // stop at 9:00 PM
+      if (h === 21 && m > 0) break;
       const value = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
       const hour12 = h % 12 || 12;
       const ampm = h >= 12 ? 'PM' : 'AM';
@@ -40,18 +70,43 @@ const TIME_SLOTS = (() => {
   return slots;
 })();
 
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+function daysSinceLastSession(student: StudentData): number {
+  if (!student.last_session_date) return 999;
+  return Math.floor((Date.now() - new Date(student.last_session_date + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function hasSessionsRemaining(student: StudentData): boolean {
+  if (student.enrollment_type === 'tuition') return (student.sessions_remaining ?? 0) > 0;
+  return student.sessions_completed < student.total_sessions;
+}
+
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
+
 export default function CoachStudentsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentData[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<FilterType>('all');
   const [error, setError] = useState<string | null>(null);
 
-  // Record Payment bottom sheet state
+  // Filter + sort state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [programFilter, setProgramFilter] = useState<ProgramFilterValue>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('all');
+  const [sortBy, setSortBy] = useState<SortValue>('next_session');
+
+  // Accordion state
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Record Payment
   const [paymentTarget, setPaymentTarget] = useState<StudentData | null>(null);
 
-  // Schedule bottom sheet state
+  // Schedule bottom sheet
   const [scheduleTarget, setScheduleTarget] = useState<StudentData | null>(null);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
@@ -61,15 +116,16 @@ export default function CoachStudentsPage() {
   const [scheduleSuccess, setScheduleSuccess] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
+  // ============================================================
+  // DATA LOADING
+  // ============================================================
+
   const loadStudents = useCallback(async () => {
     try {
       setError(null);
       const res = await fetch('/api/coach/students');
       if (!res.ok) {
-        if (res.status === 401) {
-          router.push('/coach/login');
-          return;
-        }
+        if (res.status === 401) { router.push('/coach/login'); return; }
         throw new Error('Failed to load students');
       }
       const data = await res.json();
@@ -81,11 +137,13 @@ export default function CoachStudentsPage() {
     }
   }, [router]);
 
-  useEffect(() => {
-    loadStudents();
-  }, [loadStudents]);
+  useEffect(() => { loadStudents(); }, [loadStudents]);
 
-  // Stats
+  // ============================================================
+  // COMPUTED VALUES
+  // ============================================================
+
+  // Stats — always from unfiltered data
   const stats = useMemo(() => ({
     total: students.length,
     active: students.filter(s => s.status === 'active').length,
@@ -93,27 +151,68 @@ export default function CoachStudentsPage() {
     tuition: students.filter(s => s.enrollment_type === 'tuition').length,
   }), [students]);
 
-  // Filter
+  const hasActiveFilter = programFilter !== 'all' || statusFilter !== 'all' || !!searchTerm;
+
+  const clearFilters = () => {
+    setProgramFilter('all');
+    setStatusFilter('all');
+    setSearchTerm('');
+  };
+
   const filteredStudents = useMemo(() => {
-    return students.filter(s => {
-      const matchesSearch = !searchTerm ||
-        s.child_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    let result = students.filter(s => {
+      // Search
+      if (searchTerm && !s.child_name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
 
-      const matchesFilter =
-        filterType === 'all' ||
-        (filterType === 'active' && s.status === 'active') ||
-        (filterType === 'coaching' && s.enrollment_type !== 'tuition') ||
-        (filterType === 'tuition' && s.enrollment_type === 'tuition');
+      // Program filter
+      if (programFilter === 'coaching' && s.enrollment_type === 'tuition') return false;
+      if (programFilter === 'tuition' && s.enrollment_type !== 'tuition') return false;
 
-      return matchesSearch && matchesFilter;
+      // Status filter
+      if (statusFilter === 'active') return s.status === 'active';
+      if (statusFilter === 'not_scheduled') return hasSessionsRemaining(s) && !s.next_session_date;
+      if (statusFilter === 'complete') return !hasSessionsRemaining(s);
+      if (statusFilter === 'inactive') return daysSinceLastSession(s) > 14 && hasSessionsRemaining(s);
+      // report_due: placeholder — would need pending capture data from API
+      if (statusFilter === 'report_due') return false;
+
+      return true;
     });
-  }, [students, searchTerm, filterType]);
 
-  // Open schedule bottom sheet
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.child_name.localeCompare(b.child_name);
+        case 'next_session': {
+          // Not scheduled goes to top (needs attention)
+          if (!a.next_session_date && b.next_session_date) return -1;
+          if (a.next_session_date && !b.next_session_date) return 1;
+          if (!a.next_session_date && !b.next_session_date) return a.child_name.localeCompare(b.child_name);
+          return new Date(a.next_session_date!).getTime() - new Date(b.next_session_date!).getTime();
+        }
+        case 'remaining': {
+          const aRem = a.enrollment_type === 'tuition' ? (a.sessions_remaining ?? 0) : (a.total_sessions - a.sessions_completed);
+          const bRem = b.enrollment_type === 'tuition' ? (b.sessions_remaining ?? 0) : (b.total_sessions - b.sessions_completed);
+          return aRem - bRem;
+        }
+        case 'last_active':
+          return daysSinceLastSession(a) - daysSinceLastSession(b);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [students, searchTerm, programFilter, statusFilter, sortBy]);
+
+  // ============================================================
+  // HANDLERS
+  // ============================================================
+
   const openSchedule = useCallback((student: StudentData) => {
     setScheduleTarget(student);
     setScheduleDate('');
-    // Default to nearest future 15-min slot
     const now = new Date();
     const mins = now.getMinutes();
     const nextSlotMin = Math.ceil(mins / 15) * 15;
@@ -139,13 +238,10 @@ export default function CoachStudentsPage() {
     }
   }, [scheduling]);
 
-  // Submit schedule
   const handleSchedule = async () => {
     if (!scheduleTarget || !scheduleDate || !scheduleTime) return;
-
     setScheduling(true);
     setScheduleError(null);
-
     try {
       const res = await fetch('/api/tuition/schedule', {
         method: 'POST',
@@ -158,22 +254,11 @@ export default function CoachStudentsPage() {
           mode: scheduleMode,
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        setScheduleError(data.error || 'Failed to schedule session');
-        return;
-      }
-
+      if (!res.ok) { setScheduleError(data.error || 'Failed to schedule'); return; }
       setScheduleSuccess(true);
-      // Refresh student data
       loadStudents();
-      // Auto-close after 2s
-      setTimeout(() => {
-        setScheduleTarget(null);
-        setScheduleSuccess(false);
-      }, 2000);
+      setTimeout(() => { setScheduleTarget(null); setScheduleSuccess(false); }, 2000);
     } catch {
       setScheduleError('Network error. Please try again.');
     } finally {
@@ -181,8 +266,11 @@ export default function CoachStudentsPage() {
     }
   };
 
-  // Min date for date picker
   const today = new Date().toISOString().split('T')[0];
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   if (loading) {
     return (
@@ -193,82 +281,149 @@ export default function CoachStudentsPage() {
   }
 
   return (
-    <div className="px-3 py-4 lg:px-6 lg:py-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-4">
-        <h1 className="text-lg lg:text-xl font-bold text-white flex items-center gap-2">
-          <Users className="w-5 h-5 text-[#00ABFF]" />
+    <div className="pb-24 lg:pb-6">
+      {/* Page Header (scrolls away) */}
+      <div className="px-4 lg:px-0 pt-4 lg:pt-0 mb-4">
+        <h1 className="text-lg lg:text-2xl font-bold text-white flex items-center gap-2">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-xl flex items-center justify-center">
+            <Users className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
+          </div>
           My Students
         </h1>
-        <p className="text-xs lg:text-sm text-text-tertiary">Coaching and tuition students</p>
+        <p className="text-xs lg:text-sm text-text-tertiary mt-0.5">Coaching and tuition students</p>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        {[
-          { icon: Users, value: stats.total, label: 'Total', color: 'text-white', bg: 'bg-surface-2' },
-          { icon: UserCheck, value: stats.active, label: 'Active', color: 'text-green-400', bg: 'bg-green-500/20' },
-          { icon: GraduationCap, value: stats.coaching, label: '1:1 Coaching', color: 'text-blue-400', bg: 'bg-blue-500/20' },
-          { icon: BookOpen, value: stats.tuition, label: 'English Classes', color: 'text-amber-400', bg: 'bg-amber-500/20' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-surface-1 rounded-lg p-2 lg:p-3 text-center border border-border">
-            <div className={`w-6 h-6 lg:w-8 lg:h-8 ${stat.bg} rounded-md flex items-center justify-center mx-auto mb-1`}>
-              <stat.icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 ${stat.color}`} />
+      {/* Sticky: Stats + Filters */}
+      <div className="sticky top-0 z-30 bg-surface-0/95 backdrop-blur-sm border-b border-gray-800 -mx-4 lg:mx-0 px-4 lg:px-0">
+        {/* Stats Ribbon */}
+        <div className="grid grid-cols-4 gap-2 py-3">
+          {([
+            { icon: Users, label: 'Total', value: stats.total, color: 'text-white', bg: 'bg-surface-2' },
+            { icon: UserCheck, label: 'Active', value: stats.active, color: 'text-green-400', bg: 'bg-green-500/20' },
+            { icon: GraduationCap, label: 'Coaching', value: stats.coaching, color: 'text-blue-400', bg: 'bg-blue-500/20' },
+            { icon: BookOpen, label: 'Classes', value: stats.tuition, color: 'text-amber-400', bg: 'bg-amber-500/20' },
+          ] as const).map(({ icon: Icon, label, value, color, bg }) => (
+            <div key={label} className="flex items-center gap-2">
+              <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                <Icon className={`w-4 h-4 ${color}`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold text-white leading-tight">{value}</p>
+                <p className="text-text-tertiary text-[10px]">{label}</p>
+              </div>
             </div>
-            <div className={`text-base lg:text-lg font-bold ${stat.color}`}>{stat.value}</div>
-            <div className="text-[9px] lg:text-[10px] text-text-tertiary">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Search + Filter */}
-      <div className="flex gap-2 mb-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search..."
-            className="w-full h-10 pl-9 pr-3 bg-surface-1 border border-border rounded-xl text-sm text-white placeholder-text-tertiary focus:outline-none focus:border-[#00ABFF]"
-          />
+          ))}
         </div>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value as FilterType)}
-          className="h-10 px-3 bg-surface-1 border border-border rounded-xl text-sm text-white focus:outline-none focus:border-[#00ABFF] appearance-none cursor-pointer"
-        >
-          <option value="all">All</option>
-          <option value="active">Active</option>
-          <option value="coaching">1:1 Coaching</option>
-          <option value="tuition">English Classes</option>
-        </select>
+
+        {/* Search + Filters */}
+        <div className="flex items-center gap-2 pb-3 overflow-x-auto scrollbar-hide">
+          {/* Search */}
+          <div className="relative flex-shrink-0 w-40 lg:w-56">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search..."
+              className="w-full h-8 pl-8 pr-3 bg-surface-1 border border-border rounded-xl text-xs text-white placeholder-text-tertiary focus:outline-none focus:border-[#00ABFF]/50"
+            />
+          </div>
+
+          <div className="w-px h-6 bg-gray-700 flex-shrink-0" />
+
+          {/* Program filter */}
+          <div className="relative flex-shrink-0">
+            <select
+              value={programFilter}
+              onChange={e => setProgramFilter(e.target.value as ProgramFilterValue)}
+              className={`appearance-none px-3 py-1.5 pr-7 rounded-xl text-xs font-medium cursor-pointer transition-colors outline-none ${
+                programFilter !== 'all'
+                  ? 'bg-[#00ABFF] text-white'
+                  : 'bg-surface-1 text-text-tertiary border border-border'
+              }`}
+            >
+              {PROGRAM_FILTER_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-current absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Status filter */}
+          <div className="relative flex-shrink-0">
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as StatusFilterValue)}
+              className={`appearance-none px-3 py-1.5 pr-7 rounded-xl text-xs font-medium cursor-pointer transition-colors outline-none ${
+                statusFilter !== 'all'
+                  ? 'bg-[#00ABFF] text-white'
+                  : 'bg-surface-1 text-text-tertiary border border-border'
+              }`}
+            >
+              {STATUS_FILTER_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-current absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Sort */}
+          <div className="relative flex-shrink-0">
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as SortValue)}
+              className="appearance-none px-3 py-1.5 pr-7 rounded-xl text-xs font-medium cursor-pointer transition-colors outline-none bg-surface-1 text-text-tertiary border border-border"
+            >
+              {SORT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <ArrowUpDown className="w-3 h-3 text-text-tertiary absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Clear filters */}
+          {hasActiveFilter && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-2 py-1.5 text-xs text-text-tertiary hover:text-white transition-colors flex-shrink-0"
+            >
+              <X className="w-3 h-3" />
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+        <div className="mx-4 lg:mx-0 mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
           {error}
         </div>
       )}
 
       {/* Student Cards */}
-      <div className="space-y-3">
+      <div className="space-y-2 mt-4 px-4 lg:px-0">
         {filteredStudents.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No students found"
-            description="Try adjusting your search or filters"
-          />
-        ) : (
-          filteredStudents.map((student) => (
-            <StudentCard
-              key={student.enrollment_id}
-              student={student}
-              onSchedule={openSchedule}
-              onRecordPayment={setPaymentTarget}
+          <div className="bg-surface-1 border border-border rounded-2xl p-8 lg:p-12 max-w-3xl mx-auto">
+            <EmptyState
+              icon={Users}
+              title="No students found"
+              description={hasActiveFilter ? 'Try adjusting your filters' : 'No students assigned yet'}
             />
-          ))
+          </div>
+        ) : (
+          <div className="max-w-3xl mx-auto space-y-2">
+            {filteredStudents.map((student) => (
+              <StudentCard
+                key={student.enrollment_id}
+                student={student}
+                isExpanded={expandedId === student.enrollment_id}
+                onToggleExpand={() => setExpandedId(expandedId === student.enrollment_id ? null : student.enrollment_id)}
+                onSchedule={openSchedule}
+                onRecordPayment={setPaymentTarget}
+              />
+            ))}
+          </div>
         )}
       </div>
 
@@ -284,50 +439,36 @@ export default function CoachStudentsPage() {
           parent_name: paymentTarget.parent_name,
         } : null}
         onClose={() => setPaymentTarget(null)}
-        onSuccess={() => {
-          setPaymentTarget(null);
-          loadStudents();
-        }}
+        onSuccess={() => { setPaymentTarget(null); loadStudents(); }}
       />
 
       {/* ──────────────────────────────────────────── */}
       {/* Schedule Session Bottom Sheet               */}
       {/* ──────────────────────────────────────────── */}
 
-      {/* Backdrop */}
       {scheduleTarget && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40"
-          onClick={closeSchedule}
-        />
+        <div className="fixed inset-0 bg-black/40 z-40" onClick={closeSchedule} />
       )}
 
-      {/* Sheet */}
       {scheduleTarget && (
         <div
           className="fixed inset-x-0 bottom-0 z-50 bg-gray-900 border-t border-gray-700 rounded-t-2xl max-h-[85vh] overflow-y-auto animate-slide-up"
           onClick={e => e.stopPropagation()}
         >
-          {/* Handle */}
           <div className="flex justify-center pt-3 pb-1">
             <div className="w-10 h-1 rounded-full bg-gray-600" />
           </div>
 
-          {/* Header */}
           <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-800">
             <h3 className="text-sm font-semibold text-white">
               {scheduleSuccess ? 'Session Scheduled' : 'Schedule Session'}
             </h3>
-            <button
-              onClick={closeSchedule}
-              className="flex items-center justify-center w-8 h-8 rounded-xl hover:bg-gray-800 text-gray-400"
-            >
+            <button onClick={closeSchedule} className="flex items-center justify-center w-8 h-8 rounded-xl hover:bg-gray-800 text-gray-400">
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <div className="p-4 space-y-4">
-            {/* Success */}
             {scheduleSuccess && (
               <div className="flex flex-col items-center gap-3 py-6">
                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/20">
@@ -339,7 +480,6 @@ export default function CoachStudentsPage() {
 
             {!scheduleSuccess && (
               <>
-                {/* Child info */}
                 <div className="p-3 rounded-xl bg-gray-800/50 border border-gray-700">
                   <div className="flex items-center justify-between">
                     <div>
@@ -355,32 +495,28 @@ export default function CoachStudentsPage() {
                   </div>
                 </div>
 
-                {/* Error */}
                 {scheduleError && (
                   <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
                     {scheduleError}
                   </div>
                 )}
 
-                {/* Date */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    Date
+                    <Calendar className="w-3.5 h-3.5" /> Date
                   </label>
                   <input
                     type="date"
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
+                    min={today}
                     className="w-full h-11 px-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#00ABFF] [color-scheme:dark]"
                   />
                 </div>
 
-                {/* Time — 15-min interval grid */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    Time
+                    <Clock className="w-3.5 h-3.5" /> Time
                   </label>
                   <div className="grid grid-cols-4 gap-1.5 max-h-[180px] overflow-y-auto rounded-xl p-1">
                     {TIME_SLOTS.map(slot => (
@@ -399,7 +535,6 @@ export default function CoachStudentsPage() {
                   </div>
                 </div>
 
-                {/* Duration toggle */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">Duration</label>
                   <div className="flex gap-2">
@@ -419,7 +554,6 @@ export default function CoachStudentsPage() {
                   </div>
                 </div>
 
-                {/* Mode toggle */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">Mode</label>
                   <div className="flex gap-2">
@@ -431,8 +565,7 @@ export default function CoachStudentsPage() {
                           : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600'
                       }`}
                     >
-                      <MapPin className="w-4 h-4" />
-                      Offline
+                      <MapPin className="w-4 h-4" /> Offline
                     </button>
                     <button
                       onClick={() => setScheduleMode('online')}
@@ -442,37 +575,26 @@ export default function CoachStudentsPage() {
                           : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-600'
                       }`}
                     >
-                      <Video className="w-4 h-4" />
-                      Online
+                      <Video className="w-4 h-4" /> Online
                     </button>
                   </div>
                 </div>
 
-                {/* CTA */}
                 <button
                   onClick={handleSchedule}
                   disabled={scheduling || !scheduleDate || !scheduleTime}
                   className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-[#FF0099] hover:bg-[#FF0099]/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
                 >
-                  {scheduling ? (
-                    <Spinner />
-                  ) : (
-                    <>
-                      <Calendar className="w-4 h-4" />
-                      Schedule
-                    </>
-                  )}
+                  {scheduling ? <Spinner /> : <><Calendar className="w-4 h-4" /> Schedule</>}
                 </button>
               </>
             )}
           </div>
 
-          {/* Safe area */}
           <div className="h-6" />
         </div>
       )}
 
-      {/* Slide-up animation */}
       <style jsx>{`
         @keyframes slide-up {
           from { transform: translateY(100%); }
