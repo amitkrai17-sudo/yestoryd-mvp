@@ -238,7 +238,14 @@ export async function getOptionalAuth(): Promise<{
   // Check if admin
   const authConfig = await loadAuthConfig();
   if (email && authConfig.adminEmails.includes(email)) {
-    return { email, userId: user.id, role: 'admin' };
+    // Admin may also be a coach (e.g., Rucha) — resolve coachId if applicable
+    const supabaseAdmin = getServiceSupabase();
+    const { data: adminCoach } = await supabaseAdmin
+      .from('coaches')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    return { email, userId: user.id, coachId: adminCoach?.id, role: 'admin' };
   }
 
   // Check if coach

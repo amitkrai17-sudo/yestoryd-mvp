@@ -799,9 +799,13 @@ async function handleSchedule(
 
     return { response: responseText, intent: 'SCHEDULE', source: 'sql' };
 
-  } else if (userRole === 'coach') {
+  } else if (userRole === 'coach' || userRole === 'admin') {
+    // Admins who are also coaches (e.g., Rucha) can use the coach schedule path
     const coachId = sessionCoachId || await getCoachId(userEmail);
     if (!coachId) {
+      if (userRole === 'admin') {
+        return { response: "Schedule lookup requires a coach profile. Use the admin dashboard for schedule overview.", intent: 'SCHEDULE', source: 'sql' };
+      }
       return { response: "I couldn't find your coach profile. Please contact support.", intent: 'OPERATIONAL', source: 'sql' };
     }
 

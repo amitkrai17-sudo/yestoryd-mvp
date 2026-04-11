@@ -26,19 +26,34 @@ export function tier0Router(message: string): Intent | null {
     return 'OPERATIONAL'; // Will be handled by handleOperational with 'what_can_help' response
   }
   
-  // SCHEDULE patterns
+  // LEARNING patterns that mention "session" but are NOT schedule queries
+  // Must check BEFORE schedule patterns to avoid false SCHEDULE classification
+  const learningSessionPatterns = [
+    /prepar(e|ing) (me |us )?(for|ahead)/,
+    /get (me )?ready for/,
+    /what should (i|we) (cover|focus|work|do|prepare)/,
+    /session (prep|agenda|plan|goals?|focus)/,
+    /prep (for|me|the)/,
+  ];
+
+  if (learningSessionPatterns.some(p => p.test(lowerMessage))) {
+    return 'LEARNING';
+  }
+
+  // SCHEDULE patterns — timing/calendar queries only
   const schedulePatterns = [
     /when is (my|the|our) (next|upcoming) (session|class|meeting)/,
     /what('?s| is) (my|the|today'?s?) schedule/,
     /what time is/,
     /show me my (calendar|sessions)/,
     /do i have (any )?(sessions?|classes?) (today|tomorrow|this week)/,
-    /next (session|class|meeting)/,
     /upcoming (session|class|meeting)/,
     /schedule for (today|tomorrow|this week)/,
     /my sessions? (today|tomorrow|this week)/,
+    /when('?s| is) (the )?next (session|class)/,
+    /meeting link/,
   ];
-  
+
   if (schedulePatterns.some(p => p.test(lowerMessage))) {
     return 'SCHEDULE';
   }
@@ -101,11 +116,11 @@ const INTENT_CLASSIFICATION_PROMPT = `You are an intent classifier for Yestoryd,
 
 Classify the query into exactly ONE category:
 
-LEARNING: Questions about child progress, development, teaching strategies, session summaries, recommendations, what to work on next, how the child is doing, reading skills, phonics, fluency, comprehension.
+LEARNING: Questions about child progress, development, teaching strategies, session summaries, recommendations, what to work on next, how the child is doing, reading skills, phonics, fluency, comprehension. ALSO includes session PREPARATION queries: "prepare me for next session", "what should I cover", "session prep", "get me ready for", "session agenda", "what gaps to focus on". These need learning data, not schedule data.
 
 OPERATIONAL: Session counts, enrollment status, coach info, program details, payment status, what's included, pricing, Master Key benefits, reschedule info, contact info. Includes "how many sessions", "no of sessions for [child]", "sessions left", "sessions completed", "total classes". ANY question about a child's session count or enrollment details is OPERATIONAL.
 
-SCHEDULE: Session times, calendar, when is next session, schedule today/week, upcoming sessions.
+SCHEDULE: ONLY for timing/calendar questions: when is next session, what time, show me schedule, meeting link, do I have sessions today. NOT for "prepare me for next session" — that is LEARNING.
 
 OFF_LIMITS: Coach/platform earnings, payouts, other users' private data, platform revenue metrics. NOTE: Questions about a child's session count, program status, or enrollment details are NOT off-limits — those are OPERATIONAL.
 
