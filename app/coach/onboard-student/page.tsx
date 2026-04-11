@@ -35,6 +35,14 @@ interface SplitPreview {
   coach_percent: number;
   coach_amount_rupees: number;
   platform_amount_rupees: number;
+  lead_percent: number;
+  lead_amount_rupees: number;
+}
+
+interface CouponInfo {
+  code: string;
+  discountType: string | null;  // 'percent' | 'fixed' | null
+  discountValue: number | null;
 }
 
 // ============================================================
@@ -82,8 +90,9 @@ export default function CoachOnboardStudentPage() {
   // Split preview
   const [splitPreview, setSplitPreview] = useState<SplitPreview | null>(null);
 
-  // Referral code
+  // Referral code + coupon info
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [couponInfo, setCouponInfo] = useState<CouponInfo | null>(null);
 
   // ---- Load batches + referral code ----
   useEffect(() => {
@@ -149,14 +158,21 @@ export default function CoachOnboardStudentPage() {
 
       const { data: coupon } = await supabase
         .from('coupons')
-        .select('code')
+        .select('code, discount_type, discount_value')
         .eq('coupon_type', 'coach_referral')
         .eq('coach_id', coach.id)
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
 
-      if (coupon) setReferralCode(coupon.code);
+      if (coupon) {
+        setReferralCode(coupon.code);
+        setCouponInfo({
+          code: coupon.code,
+          discountType: coupon.discount_type || null,
+          discountValue: coupon.discount_value != null ? Number(coupon.discount_value) : null,
+        });
+      }
     } catch { /* ignore */ }
   };
 
@@ -183,11 +199,16 @@ export default function CoachOnboardStudentPage() {
 
           // Also compute split preview
           const coachPercent = 70; // Rising default — the API will return actual
-          const coachAmount = Math.round(Number(rateRupees) * coachPercent / 100);
+          const leadPercent = 10;  // tuition_lead_cost_percent from site_settings
+          const rate = Number(rateRupees);
+          const coachAmount = Math.round(rate * coachPercent / 100);
+          const leadAmount = Math.round(rate * leadPercent / 100);
           setSplitPreview({
             coach_percent: coachPercent,
             coach_amount_rupees: coachAmount,
-            platform_amount_rupees: Number(rateRupees) - coachAmount,
+            platform_amount_rupees: rate - coachAmount - leadAmount,
+            lead_percent: leadPercent,
+            lead_amount_rupees: leadAmount,
           });
         }
       } catch { /* ignore */ }
@@ -572,10 +593,10 @@ export default function CoachOnboardStudentPage() {
             )}
           </div>
 
-          {/* Referral code */}
+          {/* Referral code + lead economics */}
           {referralCode && (
-            <div className="bg-[#00ABFF]/5 rounded-xl border border-[#00ABFF]/20 p-3 text-sm">
-              <p className="text-text-tertiary mb-1">Your referral code (share with parent):</p>
+            <div className="bg-[#00ABFF]/5 rounded-xl border border-[#00ABFF]/20 p-3 text-sm space-y-2">
+              <p className="text-text-tertiary">Your referral code (share with parent):</p>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[#00ABFF] font-bold">{referralCode}</span>
                 <button
@@ -585,6 +606,28 @@ export default function CoachOnboardStudentPage() {
                   {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 </button>
               </div>
+
+              {/* Parent discount */}
+              <p className="text-text-tertiary text-[13px]">
+                {couponInfo?.discountValue && couponInfo.discountType === 'percent'
+                  ? `Parent gets: ${couponInfo.discountValue}% off`
+                  : couponInfo?.discountValue && couponInfo.discountType === 'fixed'
+                  ? `Parent gets: \u20B9${couponInfo.discountValue} off`
+                  : 'This code tracks you as the lead source (no parent discount currently)'}
+              </p>
+
+              {/* Lead bonus explanation */}
+              {splitPreview && rateRupees && (
+                <div className="border-t border-[#00ABFF]/10 pt-2 space-y-1">
+                  <p className="text-text-secondary font-medium">If this is your lead:</p>
+                  <p className="text-text-tertiary text-[13px]">
+                    {`You also earn the lead share (${splitPreview.lead_percent}% = \u20B9${splitPreview.lead_amount_rupees}/session \u00D7 ${sessionsPurchased} = \u20B9${(splitPreview.lead_amount_rupees * sessionsPurchased).toLocaleString('en-IN')})`}
+                  </p>
+                  <p className="text-green-400 text-[13px] font-medium">
+                    {`Total with lead bonus: \u20B9${splitPreview.coach_amount_rupees} + \u20B9${splitPreview.lead_amount_rupees} = \u20B9${splitPreview.coach_amount_rupees + splitPreview.lead_amount_rupees}/session (\u20B9${((splitPreview.coach_amount_rupees + splitPreview.lead_amount_rupees) * sessionsPurchased).toLocaleString('en-IN')} total)`}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
