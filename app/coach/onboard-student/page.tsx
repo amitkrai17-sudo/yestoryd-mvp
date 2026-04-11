@@ -60,7 +60,7 @@ export default function CoachOnboardStudentPage() {
   const [sessionType, setSessionType] = useState<'individual' | 'batch'>('individual');
   const [duration, setDuration] = useState(60);
   const [sessionsPerWeek, setSessionsPerWeek] = useState(2);
-  const [sessionsPurchased, setSessionsPurchased] = useState(8);
+  const [sessionsPurchased, setSessionsPurchased] = useState<number | ''>(8);
   const [sessionMode, setSessionMode] = useState<'online' | 'offline'>('online');
   const [rateRupees, setRateRupees] = useState<number | ''>('');
 
@@ -126,7 +126,7 @@ export default function CoachOnboardStudentPage() {
     setSubmitting(true); setError(null);
     try {
       const rp = joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.rate || 0 : Number(rateRupees) * 100;
-      const res = await fetch('/api/coach/onboard-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ childName: childName || undefined, childApproximateAge: childAge || undefined, parentPhone, sessionRate: rp, sessionDurationMinutes: joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.duration || 60 : duration, sessionsPurchased, sessionsPerWeek, defaultSessionMode: sessionMode, sessionType: joinBatch ? 'batch' : sessionType, batchId: joinBatch ? selectedBatchId : undefined }) });
+      const res = await fetch('/api/coach/onboard-student', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ childName: childName || undefined, childApproximateAge: childAge || undefined, parentPhone, sessionRate: rp, sessionDurationMinutes: joinBatch ? batches.find(b => b.batch_id === selectedBatchId)?.duration || 60 : duration, sessionsPurchased: Number(sessionsPurchased) || 1, sessionsPerWeek, defaultSessionMode: sessionMode, sessionType: joinBatch ? 'batch' : sessionType, batchId: joinBatch ? selectedBatchId : undefined }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to create onboarding'); return; }
       setSuccess({ magicLink: data.magicLink, childName: childName || parentPhone });
@@ -384,7 +384,20 @@ export default function CoachOnboardStudentPage() {
         {/* Total sessions */}
         <div>
           <label className="text-sm font-medium text-gray-400 mb-1.5 block">Total Sessions</label>
-          <input type="number" value={sessionsPurchased} onChange={e => setSessionsPurchased(parseInt(e.target.value) || 1)} min={1} max={50} className={`w-20 ${INPUT}`} />
+          <input
+            type="number"
+            value={sessionsPurchased}
+            onChange={e => {
+              const raw = e.target.value;
+              if (raw === '') { setSessionsPurchased('' as unknown as number); return; }
+              const n = Math.floor(Number(raw));
+              if (!isNaN(n)) setSessionsPurchased(Math.min(n, 100));
+            }}
+            onBlur={() => { if (!sessionsPurchased || sessionsPurchased < 1) setSessionsPurchased(1); }}
+            min={1}
+            max={100}
+            className={`w-20 ${INPUT}`}
+          />
         </div>
 
         {/* Mode */}
