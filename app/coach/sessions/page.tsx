@@ -341,17 +341,19 @@ export default function CoachSessionsPage() {
       setMicroNoteCount(0);
       return;
     }
-    fetch(`/api/intelligence/session-observations?sessionId=${activeSession.id}`)
+    const ac = new AbortController();
+    fetch(`/api/intelligence/session-observations?sessionId=${activeSession.id}`, { signal: ac.signal })
       .then(r => r.json())
       .then(data => {
         setQuickStrengths(data.strengths || []);
         setQuickStruggles(data.struggles || []);
       })
       .catch(() => {});
-    fetch(`/api/intelligence/micro-observation?sessionId=${activeSession.id}`)
+    fetch(`/api/intelligence/micro-observation?sessionId=${activeSession.id}`, { signal: ac.signal })
       .then(r => r.json())
       .then(data => { setMicroNoteCount(Array.isArray(data.data) ? data.data.length : 0); })
       .catch(() => {});
+    return () => ac.abort();
   }, [activeSession?.id]);
 
   // ============================================================
@@ -385,16 +387,18 @@ export default function CoachSessionsPage() {
   };
 
   const filteredSessions = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
     return sessions.filter((s) => {
       // Date filter
       if (dateFilter === 'today' && !isTodayDate(s.scheduled_date)) return false;
       if (dateFilter === 'week' && !isWithinDays(s.scheduled_date, 7)) return false;
       if (dateFilter === '7days') {
         const d = new Date(s.scheduled_date);
-        const sevenAgo = new Date();
-        sevenAgo.setDate(sevenAgo.getDate() - 7);
-        sevenAgo.setHours(0, 0, 0, 0);
-        if (d < sevenAgo || d > new Date()) return false;
+        if (d < sevenDaysAgo || d > now) return false;
       }
       if (dateFilter === 'month' && !isThisMonth(s.scheduled_date)) return false;
 
@@ -433,13 +437,13 @@ export default function CoachSessionsPage() {
     }, {});
   }, [filteredSessions]);
 
-  // Stats — computed from filtered sessions
+  // Stats — always computed from ALL sessions (unfiltered) so numbers stay stable
   const stats = useMemo(() => ({
-    today: filteredSessions.filter((s) => isTodayDate(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
-    thisWeek: filteredSessions.filter((s) => isWithinDays(s.scheduled_date, 7) && isUnresolvedStatus(s.status)).length,
-    completed: filteredSessions.filter((s) => s.status === SESSION_STATUS.COMPLETED).length,
-    upcoming: filteredSessions.filter((s) => isUpcoming(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
-  }), [filteredSessions]);
+    today: sessions.filter((s) => isTodayDate(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
+    thisWeek: sessions.filter((s) => isWithinDays(s.scheduled_date, 7) && isUnresolvedStatus(s.status)).length,
+    completed: sessions.filter((s) => s.status === SESSION_STATUS.COMPLETED).length,
+    upcoming: sessions.filter((s) => isUpcoming(s.scheduled_date) && isUnresolvedStatus(s.status)).length,
+  }), [sessions]);
 
   // ============================================================
   // HANDLERS

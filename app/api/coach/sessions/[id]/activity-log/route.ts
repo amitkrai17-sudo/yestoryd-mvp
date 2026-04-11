@@ -54,37 +54,8 @@ export async function POST(
       return NextResponse.json({ error: 'Session has no child assigned' }, { status: 400 });
     }
 
-    // PARTIAL writes: MicroNotePanel sends individual activity completions during session.
-    // Just insert the activity log row(s) — no session completion side effects.
-    if (partial) {
-      const partialRows = activities.map((a: any) => ({
-        session_id: sessionId,
-        activity_index: a.activity_index,
-        activity_name: a.activity_name,
-        activity_purpose: a.activity_purpose || null,
-        status: a.status,
-        planned_duration_minutes: a.planned_duration_minutes || null,
-        actual_duration_seconds: a.actual_duration_seconds || null,
-        coach_note: a.coach_note || null,
-        started_at: a.started_at ? new Date(a.started_at).toISOString() : null,
-        completed_at: a.completed_at ? new Date(a.completed_at).toISOString() : new Date().toISOString(),
-        skill_id: a.skill_id || null,
-      }));
-
-      const { error: partialInsertError } = await supabase
-        .from('session_activity_log')
-        .insert(partialRows);
-
-      if (partialInsertError) {
-        console.error(JSON.stringify({ requestId, event: 'partial_activity_log_insert_error', error: partialInsertError.message }));
-        return NextResponse.json({ error: 'Failed to save activity log' }, { status: 500 });
-      }
-
-      return NextResponse.json({ success: true, saved: activities.length, partial: true });
-    }
-
-    // 2. Bulk insert activity logs (full session completion)
-    const activityRows = activities.map((a: any) => ({
+    // Shared mapper for activity log rows
+    const toActivityRow = (a: any) => ({
       session_id: sessionId,
       activity_index: a.activity_index,
       activity_name: a.activity_name,
@@ -96,7 +67,25 @@ export async function POST(
       started_at: a.started_at ? new Date(a.started_at).toISOString() : null,
       completed_at: a.completed_at ? new Date(a.completed_at).toISOString() : new Date().toISOString(),
       skill_id: a.skill_id || null,
-    }));
+    });
+
+    // PARTIAL writes: MicroNotePanel sends individual activity completions during session.
+    // Just insert the activity log row(s) — no session completion side effects.
+    if (partial) {
+      const { error: partialInsertError } = await supabase
+        .from('session_activity_log')
+        .insert(activities.map(toActivityRow));
+
+      if (partialInsertError) {
+        console.error(JSON.stringify({ requestId, event: 'partial_activity_log_insert_error', error: partialInsertError.message }));
+        return NextResponse.json({ error: 'Failed to save activity log' }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, saved: activities.length, partial: true });
+    }
+
+    // 2. Bulk insert activity logs (full session completion)
+    const activityRows = activities.map(toActivityRow);
 
     const { error: insertError } = await supabase
       .from('session_activity_log')

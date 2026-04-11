@@ -4,7 +4,7 @@
 
 'use client';
 
-import { Video, ArrowRight, CheckCircle, FileText, ClipboardCheck, MapPin, Send, ClipboardList, BookOpen } from 'lucide-react';
+import { Video, ArrowRight, CheckCircle, FileText, ClipboardCheck, MapPin, Send, ClipboardList } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { ActionDropdown, ActionIcons } from './ActionDropdown';
 import { getSessionTypeLabel as _getLabel } from '@/lib/utils/session-labels';

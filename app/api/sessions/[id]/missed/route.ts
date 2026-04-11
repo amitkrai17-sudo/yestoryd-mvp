@@ -58,7 +58,11 @@ export async function POST(
       return NextResponse.json({ error: 'Not authorized to modify this session' }, { status: 403 });
     }
 
-    if (!VALID_PREVIOUS_STATUSES.includes(session.status)) {
+    if (!session.child_id) {
+      return NextResponse.json({ error: 'Session has no child assigned' }, { status: 400 });
+    }
+
+    if (!session.status || !VALID_PREVIOUS_STATUSES.includes(session.status)) {
       return NextResponse.json(
         { error: `Cannot mark session as missed. Current status: ${session.status}` },
         { status: 400 }

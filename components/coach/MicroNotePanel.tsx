@@ -56,7 +56,7 @@ export function MicroNotePanel({
   quickStrengths, quickStruggles,
   onClose, onNoteAdded, onEndSession,
   layout, sessionPlan,
-  childIds, childNames, isBatch,
+  childNames, isBatch,
 }: MicroNotePanelProps) {
   const isSidebar = layout === 'sidebar';
   const hasPlan = sessionPlan && sessionPlan.length > 0;
@@ -81,10 +81,6 @@ export function MicroNotePanel({
   const [activityElapsed, setActivityElapsed] = useState(0);
   const [completedActivities, setCompletedActivities] = useState<Set<number>>(new Set());
 
-  // -- Batch state --
-  const [batchSelections, setBatchSelections] = useState<Record<string, Record<string, string>>>({});
-  // batchSelections[questionKey][childId] = answerId
-
   // -- Skill selector (skill-driven mode) --
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [availableSkills, setAvailableSkills] = useState<{ id: string; name: string }[]>([]);
@@ -108,6 +104,21 @@ export function MicroNotePanel({
 
   // Current activity (activity-driven mode)
   const currentActivity = hasPlan ? sessionPlan![currentActivityIndex] : null;
+
+  // Activity context for micro-observation writes
+  const getActivityContext = () => {
+    if (currentActivity) {
+      return {
+        activityName: currentActivity.name,
+        activityIndex: currentActivity.index,
+        skillId: currentActivity.skill_id,
+      };
+    }
+    if (selectedSkillId) {
+      return { skillId: selectedSkillId };
+    }
+    return {};
+  };
 
   // -- Timers --
   useEffect(() => {
@@ -157,11 +168,7 @@ export function MicroNotePanel({
       observationType: type,
       observationId: obsId,
       captureMode: 'full_grid',
-      ...(currentActivity ? {
-        activityName: currentActivity.name,
-        activityIndex: currentActivity.index,
-        skillId: currentActivity.skill_id,
-      } : {}),
+      ...getActivityContext(),
     });
   };
 
@@ -174,11 +181,7 @@ export function MicroNotePanel({
       wordText: word,
       wordStatus: status,
       captureMode: 'word_capture',
-      ...(currentActivity ? {
-        activityName: currentActivity.name,
-        activityIndex: currentActivity.index,
-        skillId: currentActivity.skill_id,
-      } : {}),
+      ...getActivityContext(),
     });
     setWordInput('');
     wordInputRef.current?.focus();
@@ -192,11 +195,7 @@ export function MicroNotePanel({
       observationType: 'note',
       noteText: text,
       captureMode: 'free_note',
-      ...(currentActivity ? {
-        activityName: currentActivity.name,
-        activityIndex: currentActivity.index,
-        skillId: currentActivity.skill_id,
-      } : {}),
+      ...getActivityContext(),
     });
     setNoteInput('');
     setShowNoteInput(false);
@@ -223,10 +222,7 @@ export function MicroNotePanel({
         observationType: 'note',
         noteText: text,
         captureMode: 'voice_moment',
-        ...(currentActivity ? {
-          activityName: currentActivity.name,
-          activityIndex: currentActivity.index,
-        } : {}),
+        ...getActivityContext(),
       });
       setIsRecording(false);
     };
@@ -241,8 +237,8 @@ export function MicroNotePanel({
   const advanceToNext = useCallback(async () => {
     if (!hasPlan || !currentActivity) return;
 
-    // Save activity_complete micro-observation
-    saveMicroObs({
+    // Fire both writes concurrently — they're independent
+    const microObsPromise = saveMicroObs({
       observationType: 'note',
       captureMode: 'activity_complete',
       activityName: currentActivity.name,
@@ -252,30 +248,27 @@ export function MicroNotePanel({
       noteText: `Completed: ${currentActivity.name} (${formatElapsed(activityElapsed)})`,
     });
 
-    // Write to session_activity_log for backward compat
-    try {
-      await fetch(`/api/coach/sessions/${sessionId}/activity-log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activities: [{
-            activity_index: currentActivity.index,
-            activity_name: currentActivity.name,
-            activity_purpose: currentActivity.purpose,
-            status: 'completed',
-            planned_duration_minutes: currentActivity.planned_minutes,
-            actual_duration_seconds: activityElapsed,
-            skill_id: currentActivity.skill_id,
-            started_at: activityStartTime?.getTime(),
-            completed_at: Date.now(),
-          }],
-          source: 'micronote_panel',
-          partial: true, // Signal this is a single-activity write, not session-end
-        }),
-      });
-    } catch {
-      // Non-blocking — data saved via micro_observations as backup
-    }
+    const activityLogPromise = fetch(`/api/coach/sessions/${sessionId}/activity-log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activities: [{
+          activity_index: currentActivity.index,
+          activity_name: currentActivity.name,
+          activity_purpose: currentActivity.purpose,
+          status: 'completed',
+          planned_duration_minutes: currentActivity.planned_minutes,
+          actual_duration_seconds: activityElapsed,
+          skill_id: currentActivity.skill_id,
+          started_at: activityStartTime?.getTime(),
+          completed_at: Date.now(),
+        }],
+        source: 'micronote_panel',
+        partial: true,
+      }),
+    }).catch(() => {}); // Non-blocking
+
+    await Promise.all([microObsPromise, activityLogPromise]);
 
     setCompletedActivities(prev => new Set(prev).add(currentActivityIndex));
 
@@ -694,30 +687,8 @@ export function MicroNotePanel({
             </div>
           )}
 
-          {/* Word input for activity mode — inline below activity */}
-          {hasPlan && (
-            <div>
-              <div className="flex gap-1.5">
-                <input
-                  ref={wordInputRef}
-                  type="text"
-                  value={wordInput}
-                  onChange={e => setWordInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleWordSave('mastered'); }}
-                  placeholder="Word..."
-                  className="flex-1 bg-white/5 text-white text-xs px-2.5 py-2 rounded-xl border border-white/10 focus:border-blue-500/50 outline-none min-h-[40px]"
-                />
-                <button onClick={() => handleWordSave('mastered')} disabled={!wordInput.trim()}
-                  className="bg-green-600 px-2.5 rounded-xl text-white min-h-[40px] disabled:opacity-30">
-                  <Check className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => handleWordSave('struggled')} disabled={!wordInput.trim()}
-                  className="bg-red-600 px-2.5 rounded-xl text-white min-h-[40px] disabled:opacity-30">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Word capture (reuse shared renderer) */}
+          {hasPlan && renderWordCapture()}
 
           {/* Timeline — collapsed by default */}
           {renderTimeline()}
