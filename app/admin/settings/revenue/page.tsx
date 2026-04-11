@@ -1,489 +1,451 @@
-// file: app/admin/settings/revenue/page.tsx
-// Revenue Split Configuration Page with Live Preview
-// Access: /admin/settings/revenue
-
+// app/admin/settings/revenue/page.tsx
+// Admin revenue settings — split config + guardrails for all products
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
-
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-import { 
-  Settings, 
-  Percent, 
-  IndianRupee, 
-  Calendar, 
-  Save, 
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  TrendingUp,
-  Users,
-  Building2,
-  ArrowRight,
-  Info,
+import {
+  Settings, Save, RefreshCw, CheckCircle, AlertCircle, Shield,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { PageHeader } from '@/components/shared/PageHeader';
 
-interface RevenueConfig {
-  id?: string;
-  lead_cost_percent: number;
-  coach_cost_percent: number;
-  platform_fee_percent: number;
-  tds_rate_percent: number;
-  tds_threshold_annual: number;
-  payout_frequency: string;
-  payout_day_of_month: number;
-  is_active: boolean;
+// ============================================================
+// TYPES
+// ============================================================
+
+interface TierSplit { name: string; display?: string; coachPercent: number; leadPercent: number; platformPercent: number; isInternal?: boolean; id?: string }
+interface Guardrails { min: number; max: number; warnLow: number; warnHigh: number }
+interface RevenueData {
+  coaching: { tiers: TierSplit[] };
+  tuition: { tiers: TierSplit[]; leadPercent: number; guardrails: { batch: Guardrails; individual: Guardrails } };
+  workshop: { defaultCoachPercent: number; leadPercent: number };
+  payout: { dayOfMonth: number; tdsRate: number; tdsThreshold: number; reenrollmentBonus: number; reenrollmentBonusEnabled: boolean };
 }
 
+type TabId = 'tuition' | 'coaching' | 'workshop' | 'payout';
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
 export default function RevenueSettingsPage() {
-  const [config, setConfig] = useState<RevenueConfig>({
-    lead_cost_percent: 20,
-    coach_cost_percent: 50,
-    platform_fee_percent: 30,
-    tds_rate_percent: 10,
-    tds_threshold_annual: 30000,
-    payout_frequency: 'monthly',
-    payout_day_of_month: 7,
-    is_active: true,
-  });
-  
+  const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('tuition');
 
-  const [previewAmount, setPreviewAmount] = useState<number>(0);
+  // Editable state (mirrors data, mutated on input change)
+  const [tuitionTiers, setTuitionTiers] = useState<TierSplit[]>([]);
+  const [tuitionLead, setTuitionLead] = useState(10);
+  const [batchGuardrails, setBatchGuardrails] = useState<Guardrails>({ min: 150, max: 300, warnLow: 180, warnHigh: 280 });
+  const [individualGuardrails, setIndividualGuardrails] = useState<Guardrails>({ min: 300, max: 500, warnLow: 330, warnHigh: 450 });
+  const [coachingTiers, setCoachingTiers] = useState<TierSplit[]>([]);
+  const [workshopCoach, setWorkshopCoach] = useState(45);
+  const [payoutDay, setPayoutDay] = useState(7);
+  const [tdsRate, setTdsRate] = useState(10);
+  const [tdsThreshold, setTdsThreshold] = useState(30000);
+  const [reenrollBonus, setReenrollBonus] = useState(500);
 
-  // Calculate preview splits
-  const leadCostAmount = Math.round(previewAmount * config.lead_cost_percent / 100);
-  const coachCostAmount = Math.round(previewAmount * config.coach_cost_percent / 100);
-  const platformFeeAmount = previewAmount - leadCostAmount - coachCostAmount;
-  const tdsAmount = Math.round(coachCostAmount * config.tds_rate_percent / 100);
-  const netToCoach = coachCostAmount - tdsAmount;
+  // Test rate calculator
+  const [testRate, setTestRate] = useState(200);
+  const [testDuration, setTestDuration] = useState(60);
+  const [testType, setTestType] = useState<'batch' | 'individual'>('batch');
 
-  // Fetch current config
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const [configRes, priceRes] = await Promise.all([
-          fetch('/api/admin/revenue-config'),
-          supabase.from('pricing_plans').select('discounted_price').eq('slug', 'full').eq('is_active', true).single(),
-        ]);
-        const data = await configRes.json();
-        if (data.success && data.config) {
-          setConfig(data.config);
-        }
-        if (priceRes.data?.discounted_price) {
-          setPreviewAmount(priceRes.data.discounted_price);
-        }
-      } catch (error) {
-        console.error('Failed to fetch config:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchConfig();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  // Update platform fee when lead or coach changes
-  const handlePercentChange = (field: 'lead_cost_percent' | 'coach_cost_percent', value: number) => {
-    const newConfig = { ...config, [field]: value };
-    newConfig.platform_fee_percent = 100 - newConfig.lead_cost_percent - newConfig.coach_cost_percent;
-    if (newConfig.platform_fee_percent < 0) {
-      setMessage({ type: 'error', text: 'Lead + Coach cannot exceed 100%' });
-      return;
-    }
-    setMessage(null);
-    setConfig(newConfig);
+  const loadData = async () => {
+    try {
+      const res = await fetch('/api/admin/revenue-settings');
+      if (!res.ok) throw new Error('Failed to load');
+      const json = await res.json();
+      setData(json);
+      // Populate editable state
+      setTuitionTiers(json.tuition.tiers);
+      setTuitionLead(json.tuition.leadPercent);
+      setBatchGuardrails(json.tuition.guardrails.batch);
+      setIndividualGuardrails(json.tuition.guardrails.individual);
+      setCoachingTiers(json.coaching.tiers.filter((t: TierSplit) => !t.isInternal));
+      setWorkshopCoach(json.workshop.defaultCoachPercent);
+      setPayoutDay(json.payout.dayOfMonth);
+      setTdsRate(json.payout.tdsRate);
+      setTdsThreshold(json.payout.tdsThreshold);
+      setReenrollBonus(json.payout.reenrollmentBonus);
+    } catch { setMessage({ type: 'error', text: 'Failed to load settings' }); }
+    finally { setLoading(false); }
   };
 
-  // Save configuration
   const handleSave = async () => {
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch('/api/admin/revenue-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMessage({ type: 'success', text: 'Configuration saved successfully!' });
-        setConfig(data.config);
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to save' });
+      const body: Record<string, unknown> = {};
+
+      if (activeTab === 'tuition') {
+        const tierUpdates: Record<string, { coachPercent: number }> = {};
+        for (const t of tuitionTiers) {
+          tierUpdates[t.name] = { coachPercent: t.coachPercent };
+        }
+        body.tuition = {
+          ...tierUpdates,
+          leadPercent: tuitionLead,
+          guardrails: { batch: batchGuardrails, individual: individualGuardrails },
+        };
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' });
+      if (activeTab === 'coaching') {
+        const tierUpdates: Record<string, { coachPercent: number; leadPercent: number }> = {};
+        for (const t of coachingTiers) {
+          tierUpdates[t.name] = { coachPercent: t.coachPercent, leadPercent: t.leadPercent };
+        }
+        body.coaching = tierUpdates;
+      }
+      if (activeTab === 'workshop') {
+        body.workshop = { defaultCoachPercent: workshopCoach };
+      }
+      if (activeTab === 'payout') {
+        body.payout = { dayOfMonth: payoutDay, tdsRate, tdsThreshold, reenrollmentBonus: reenrollBonus };
+      }
+
+      const res = await fetch('/api/admin/revenue-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        setMessage({ type: 'error', text: json.details?.join(', ') || json.error || 'Save failed' });
+        return;
+      }
+
+      setMessage({ type: 'success', text: 'Settings saved. Changes take effect on next calculation.' });
+      loadData(); // Refresh
+    } catch {
+      setMessage({ type: 'error', text: 'Network error' });
     } finally {
       setSaving(false);
     }
   };
 
+  const updateTuitionTier = (name: string, coachPct: number) => {
+    setTuitionTiers(prev => prev.map(t =>
+      t.name === name ? { ...t, coachPercent: coachPct, platformPercent: 100 - coachPct - tuitionLead } : t
+    ));
+  };
+
+  const updateCoachingTier = (name: string, field: 'coachPercent' | 'leadPercent', value: number) => {
+    setCoachingTiers(prev => prev.map(t =>
+      t.name === name ? {
+        ...t,
+        [field]: value,
+        platformPercent: field === 'coachPercent' ? 100 - value - t.leadPercent : 100 - t.coachPercent - value,
+      } : t
+    ));
+  };
+
+  // Test rate result
+  const testHourly = testDuration > 0 ? Math.round((testRate / testDuration) * 60) : 0;
+  const testGuardrails = testType === 'batch' ? batchGuardrails : individualGuardrails;
+  const testFlag = testHourly < testGuardrails.min ? 'red_low'
+    : testHourly < testGuardrails.warnLow ? 'amber_low'
+    : testHourly > testGuardrails.max ? 'red_high'
+    : testHourly > testGuardrails.warnHigh ? 'amber_high'
+    : 'green';
+
   if (loading) {
-    return (
-      <div className="min-h-[400px] bg-surface-0 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    );
+    return <div className="min-h-[60vh] flex items-center justify-center"><Spinner size="lg" /></div>;
   }
 
+  const TABS: { id: TabId; label: string }[] = [
+    { id: 'tuition', label: 'English Classes' },
+    { id: 'coaching', label: 'Coaching' },
+    { id: 'workshop', label: 'Workshops' },
+    { id: 'payout', label: 'Payout' },
+  ];
+
   return (
-    <div className="bg-surface-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <PageHeader
-          title="Revenue Split Configuration"
-          subtitle="Configure how enrollment fees are distributed"
-          action={
-            <button
-              onClick={handleSave}
-              disabled={saving || config.platform_fee_percent < 0}
-              className="flex items-center gap-2 px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              Save Changes
-            </button>
-          }
-        />
+    <div className="space-y-6 max-w-4xl">
+      <PageHeader
+        title="Revenue Settings"
+        subtitle="Split percentages and guardrails for all products"
+        action={
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="h-9 px-4 rounded-xl text-sm font-medium bg-white text-[#0a0a0f] hover:bg-gray-200 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {saving ? <Spinner size="sm" /> : <Save className="w-3.5 h-3.5" />}
+            Save Changes
+          </button>
+        }
+      />
 
-        {/* Message */}
-        {message && (
-          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
-            message.type === 'success' 
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-            {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-            {message.text}
-          </div>
-        )}
+      {message && (
+        <div className={`flex items-center gap-2 text-sm px-4 py-2 rounded-xl ${
+          message.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+        }`}>
+          {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {message.text}
+        </div>
+      )}
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Configuration Panel */}
-          <div className="space-y-6">
-            {/* Component Percentages */}
-            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-border bg-surface-2">
-                <div className="flex items-center gap-3">
-                  <Percent className="w-5 h-5 text-gray-300" />
-                  <h2 className="text-lg font-semibold text-white">Component Percentages</h2>
-                </div>
-                <p className="text-sm text-text-tertiary mt-1">Must total 100%. Platform Fee adjusts automatically.</p>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                {/* Lead Cost */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-gray-400" />
-                      Lead Cost
-                    </label>
-                    <span className="text-2xl font-bold text-white">{config.lead_cost_percent}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="50"
-                    value={config.lead_cost_percent}
-                    onChange={(e) => handlePercentChange('lead_cost_percent', parseFloat(e.target.value))}
-                    className="w-full h-2 bg-surface-3 rounded-full appearance-none cursor-pointer accent-gray-400"
-                  />
-                  <p className="text-xs text-text-muted mt-2">Goes to whoever sourced the lead</p>
-                </div>
+      {/* Tab bar */}
+      <div className="flex border-b border-border">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === tab.id ? 'text-white border-b-2 border-white' : 'text-text-tertiary hover:text-text-secondary'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-                {/* Coach Cost */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-400" />
-                      Coach Cost
-                    </label>
-                    <span className="text-2xl font-bold text-white">{config.coach_cost_percent}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="30"
-                    max="70"
-                    value={config.coach_cost_percent}
-                    onChange={(e) => handlePercentChange('coach_cost_percent', parseFloat(e.target.value))}
-                    className="w-full h-2 bg-surface-3 rounded-full appearance-none cursor-pointer accent-gray-400"
-                  />
-                  <p className="text-xs text-text-muted mt-2">Goes to the coach delivering sessions</p>
-                </div>
-
-                {/* Platform Fee (Auto) */}
-                <div className="p-4 bg-surface-2 rounded-xl border border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium text-white">Platform Fee</span>
-                      <span className="text-xs px-2 py-0.5 bg-white/[0.08] text-gray-400 rounded-full">Auto</span>
-                    </div>
-                    <span className={`text-2xl font-bold ${config.platform_fee_percent < 0 ? 'text-red-600' : 'text-white'}`}>
-                      {config.platform_fee_percent}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-text-tertiary mt-2">Retained by Yestoryd LLP</p>
-                </div>
-              </div>
+      {/* ---- TUITION TAB ---- */}
+      {activeTab === 'tuition' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">Coach split by tier</h3>
+            <div className="mb-3 flex items-center gap-3">
+              <label className="text-sm text-text-tertiary">Lead cost (all tiers):</label>
+              <input
+                type="number"
+                value={tuitionLead}
+                onChange={e => {
+                  const v = Number(e.target.value);
+                  setTuitionLead(v);
+                  setTuitionTiers(prev => prev.map(t => ({ ...t, platformPercent: 100 - t.coachPercent - v })));
+                }}
+                className="w-16 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center"
+                min={0} max={30}
+              />
+              <span className="text-sm text-text-tertiary">%</span>
             </div>
-
-            {/* TDS Configuration */}
-            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-border bg-surface-2">
-                <div className="flex items-center gap-3">
-                  <IndianRupee className="w-5 h-5 text-amber-500" />
-                  <h2 className="text-lg font-semibold text-white">TDS Configuration</h2>
-                </div>
-                <p className="text-sm text-text-tertiary mt-1">Section 194J - Professional Fees</p>
-              </div>
-
-              <div className="p-6 grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">TDS Rate</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
-                      max="30"
-                      step="0.5"
-                      value={config.tds_rate_percent}
-                      onChange={(e) => setConfig({ ...config, tds_rate_percent: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-3 pr-10 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted">%</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Annual Threshold</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">₹</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      value={config.tds_threshold_annual}
-                      onChange={(e) => setConfig({ ...config, tds_threshold_annual: parseInt(e.target.value) || 0 })}
-                      className="w-full pl-8 pr-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="px-6 pb-6">
-                <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
-                  <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700">TDS deducted only when coach's cumulative earnings exceed threshold in a financial year.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Payout Schedule */}
-            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-border bg-surface-2">
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-emerald-500" />
-                  <h2 className="text-lg font-semibold text-white">Payout Schedule</h2>
-                </div>
-              </div>
-
-              <div className="p-6 grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Frequency</label>
-                  <select
-                    value={config.payout_frequency}
-                    onChange={(e) => setConfig({ ...config, payout_frequency: e.target.value })}
-                    className="w-full px-4 py-3 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
-                  >
-                    <option value="monthly">Monthly</option>
-                    <option value="per_session">Per Session</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Payout Day</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="28"
-                      value={config.payout_day_of_month}
-                      onChange={(e) => setConfig({ ...config, payout_day_of_month: parseInt(e.target.value) || 7 })}
-                      className="w-full px-4 py-3 pr-16 border border-border rounded-xl text-white font-medium focus:ring-2 focus:ring-white/[0.10] focus:border-transparent bg-surface-2"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted text-sm">of month</span>
-                  </div>
-                </div>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-text-tertiary border-b border-border">
+                    <th className="text-left py-2 font-medium">Tier</th>
+                    <th className="text-center py-2 font-medium">Lead %</th>
+                    <th className="text-center py-2 font-medium">Coach %</th>
+                    <th className="text-center py-2 font-medium">Platform %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tuitionTiers.map(tier => (
+                    <tr key={tier.name} className="border-b border-border/50">
+                      <td className="py-2 text-white capitalize">{tier.name}</td>
+                      <td className="py-2 text-center text-text-tertiary">{tuitionLead}%</td>
+                      <td className="py-2 text-center">
+                        <input
+                          type="number"
+                          value={tier.coachPercent}
+                          onChange={e => updateTuitionTier(tier.name, Number(e.target.value))}
+                          className="w-16 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center"
+                          min={1} max={90}
+                        />
+                      </td>
+                      <td className={`py-2 text-center ${tier.platformPercent < 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
+                        {tier.platformPercent}%
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="text-text-tertiary">
+                    <td className="py-2">Internal</td>
+                    <td className="py-2 text-center">0%</td>
+                    <td className="py-2 text-center">0%</td>
+                    <td className="py-2 text-center">100%</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Preview Panel */}
-          <div className="space-y-6">
-            {/* Live Preview Card */}
-            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden">
-              <div className="p-6 border-b border-slate-700">
-                <h2 className="text-lg font-semibold text-white">Live Preview @ ₹{previewAmount.toLocaleString()}</h2>
-                <p className="text-sm text-slate-400">See how the split works in real-time</p>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                {/* Visual Split Bar */}
-                <div className="h-8 rounded-full overflow-hidden flex shadow-inner">
-                  <div
-                    className="bg-gray-500 flex items-center justify-center text-xs font-bold text-white transition-all duration-300"
-                    style={{ width: `${config.lead_cost_percent}%` }}
-                  >
-                    {config.lead_cost_percent >= 15 && `${config.lead_cost_percent}%`}
-                  </div>
-                  <div
-                    className="bg-gray-400 flex items-center justify-center text-xs font-bold text-white transition-all duration-300"
-                    style={{ width: `${config.coach_cost_percent}%` }}
-                  >
-                    {config.coach_cost_percent >= 15 && `${config.coach_cost_percent}%`}
-                  </div>
-                  <div
-                    className="bg-gray-300 flex items-center justify-center text-xs font-bold text-slate-900 transition-all duration-300"
-                    style={{ width: `${config.platform_fee_percent}%` }}
-                  >
-                    {config.platform_fee_percent >= 15 && `${config.platform_fee_percent}%`}
-                  </div>
-                </div>
-
-                {/* Legend */}
-                <div className="flex justify-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-500" />
-                    <span className="text-xs text-slate-400">Lead Cost</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-400" />
-                    <span className="text-xs text-slate-400">Coach Cost</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-300" />
-                    <span className="text-xs text-slate-400">Platform</span>
-                  </div>
-                </div>
-
-                {/* Amount Breakdown */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                    <p className="text-xs text-gray-400 mb-1">Lead Cost</p>
-                    <p className="text-xl font-bold text-white">₹{leadCostAmount.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                    <p className="text-xs text-gray-400 mb-1">Coach Cost</p>
-                    <p className="text-xl font-bold text-white">₹{coachCostAmount.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                    <p className="text-xs text-gray-400 mb-1">Platform Fee</p>
-                    <p className="text-xl font-bold text-white">₹{platformFeeAmount.toLocaleString()}</p>
-                  </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">Price guardrails (/hour)</h3>
+            {[
+              { label: 'Batch', state: batchGuardrails, setter: setBatchGuardrails },
+              { label: 'Individual', state: individualGuardrails, setter: setIndividualGuardrails },
+            ].map(({ label, state, setter }) => (
+              <div key={label} className="mb-4">
+                <p className="text-xs text-text-tertiary mb-2">{label}</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['min', 'warnLow', 'warnHigh', 'max'] as const).map(field => (
+                    <div key={field}>
+                      <label className="text-[11px] text-text-tertiary block mb-1">
+                        {field === 'min' ? 'Min' : field === 'warnLow' ? 'Warn low' : field === 'warnHigh' ? 'Warn high' : 'Max'}
+                      </label>
+                      <input
+                        type="number"
+                        value={state[field]}
+                        onChange={e => setter({ ...state, [field]: Number(e.target.value) })}
+                        className="w-full h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
+            ))}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">Test a rate</h3>
+            <div className="flex items-center gap-3 flex-wrap">
+              <input type="number" value={testRate} onChange={e => setTestRate(Number(e.target.value))} className="w-20 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center" placeholder="Rate" />
+              <span className="text-xs text-text-tertiary">/session</span>
+              <input type="number" value={testDuration} onChange={e => setTestDuration(Number(e.target.value))} className="w-20 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center" placeholder="Duration" />
+              <span className="text-xs text-text-tertiary">min</span>
+              <select value={testType} onChange={e => setTestType(e.target.value as 'batch' | 'individual')} className="h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm">
+                <option value="batch">Batch</option>
+                <option value="individual">Individual</option>
+              </select>
             </div>
-
-            {/* Scenario Comparison */}
-            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-border">
-                <h2 className="text-lg font-semibold text-white">Scenario Comparison</h2>
-                <p className="text-sm text-text-tertiary">Net amounts after TDS (if applicable)</p>
-              </div>
-
-              <div className="divide-y divide-border">
-                {/* Yestoryd Lead */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-text-secondary">Yestoryd Lead + External Coach</span>
-                    <span className="px-3 py-1 bg-white/[0.08] text-gray-300 text-xs font-medium rounded-full">50-50 Split</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
-                      <p className="text-xs text-text-tertiary mb-1">Coach Gets</p>
-                      <p className="text-lg font-bold text-white">₹{netToCoach.toLocaleString()}</p>
-                      <p className="text-xs text-text-muted">After TDS</p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-text-muted" />
-                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
-                      <p className="text-xs text-gray-400 mb-1">Yestoryd Gets</p>
-                      <p className="text-lg font-bold text-white">₹{(leadCostAmount + platformFeeAmount + tdsAmount).toLocaleString()}</p>
-                      <p className="text-xs text-text-tertiary">Inc. TDS collected</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Coach Lead */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-text-secondary">Coach Lead + External Coach</span>
-                    <span className="px-3 py-1 bg-white/[0.08] text-gray-300 text-xs font-medium rounded-full">70-30 Split</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
-                      <p className="text-xs text-gray-400 mb-1">Coach Gets</p>
-                      <p className="text-lg font-bold text-white">₹{(netToCoach + leadCostAmount - Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
-                      <p className="text-xs text-text-tertiary">Coach + Lead Bonus</p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-text-muted" />
-                    <div className="flex-1 p-3 bg-surface-2 rounded-lg">
-                      <p className="text-xs text-gray-400 mb-1">Yestoryd Gets</p>
-                      <p className="text-lg font-bold text-white">₹{(platformFeeAmount + tdsAmount + Math.round(leadCostAmount * config.tds_rate_percent / 100)).toLocaleString()}</p>
-                      <p className="text-xs text-text-tertiary">Platform + TDS</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rucha Coaching */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-text-secondary">Yestoryd Lead + Rucha Coaching</span>
-                    <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full">100% Retained</span>
-                  </div>
-                  <div className="p-3 bg-emerald-50 rounded-lg">
-                    <p className="text-xs text-emerald-600 mb-1">Yestoryd Retains</p>
-                    <p className="text-2xl font-bold text-emerald-700">₹{previewAmount.toLocaleString()}</p>
-                    <p className="text-xs text-emerald-500">Full amount (Rucha's earnings handled separately)</p>
-                  </div>
-                </div>
-              </div>
+            <div className={`mt-2 text-sm px-3 py-2 rounded-lg ${
+              testFlag === 'green' ? 'bg-green-500/10 text-green-400' :
+              testFlag.startsWith('amber') ? 'bg-yellow-500/10 text-yellow-400' :
+              'bg-red-500/10 text-red-400'
+            }`}>
+              {testHourly}/hr — {testFlag === 'green' ? 'Normal range' : testFlag.includes('low') ? 'Below range' : 'Above range'}
+              {testRate > 0 && ` | Coach: ${Math.round(testRate * (tuitionTiers[0]?.coachPercent ?? 70) / 100)}`}
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Staggered Payout Preview */}
-            <div className="bg-surface-1 rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-border">
-                <h2 className="text-lg font-semibold text-white">3-Month Payout Schedule</h2>
-                <p className="text-sm text-text-tertiary">Coach payments split across 3 months</p>
+      {/* ---- COACHING TAB ---- */}
+      {activeTab === 'coaching' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">Coach split by tier</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-text-tertiary border-b border-border">
+                    <th className="text-left py-2 font-medium">Tier</th>
+                    <th className="text-center py-2 font-medium">Lead %</th>
+                    <th className="text-center py-2 font-medium">Coach %</th>
+                    <th className="text-center py-2 font-medium">Platform %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coachingTiers.map(tier => (
+                    <tr key={tier.name} className="border-b border-border/50">
+                      <td className="py-2 text-white">{tier.display || tier.name}</td>
+                      <td className="py-2 text-center">
+                        <input
+                          type="number"
+                          value={tier.leadPercent}
+                          onChange={e => updateCoachingTier(tier.name, 'leadPercent', Number(e.target.value))}
+                          className="w-16 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center"
+                          min={0} max={30}
+                        />
+                      </td>
+                      <td className="py-2 text-center">
+                        <input
+                          type="number"
+                          value={tier.coachPercent}
+                          onChange={e => updateCoachingTier(tier.name, 'coachPercent', Number(e.target.value))}
+                          className="w-16 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center"
+                          min={1} max={90}
+                        />
+                      </td>
+                      <td className={`py-2 text-center ${tier.platformPercent < 0 ? 'text-red-400' : 'text-text-tertiary'}`}>
+                        {tier.platformPercent}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">Lead cost decay</h3>
+            <div className="bg-white/[0.04] rounded-xl p-3 space-y-1 text-sm text-text-tertiary">
+              <div className="flex justify-between"><span>Starter enrollment</span><span>100% of lead cost</span></div>
+              <div className="flex justify-between"><span>Continuation</span><span>50% of lead cost</span></div>
+              <div className="flex justify-between"><span>Re-enrollment</span><span>0% of lead cost</span></div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">Extras</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-text-tertiary">Skill building rate</span>
+                <span className="text-text-secondary">50% of coaching rate</span>
               </div>
-
-              <div className="p-6">
-                <div className="flex items-center justify-between gap-4">
-                  {[1, 2, 3].map((month) => {
-                    const monthlyAmount = Math.round(netToCoach / 3);
-                    const isLast = month === 3;
-                    const amount = isLast ? netToCoach - (monthlyAmount * 2) : monthlyAmount;
-
-                    return (
-                      <div key={month} className="flex-1 text-center">
-                        <div className="w-12 h-12 mx-auto bg-[#121217] border border-white/[0.08] rounded-xl flex items-center justify-center text-white font-bold mb-2">
-                          M{month}
-                        </div>
-                        <p className="text-lg font-bold text-white">₹{amount.toLocaleString()}</p>
-                        <p className="text-xs text-text-muted">{config.payout_day_of_month}th of month</p>
-                      </div>
-                    );
-                  })}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text-tertiary">Re-enrollment bonus</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-text-tertiary">₹</span>
+                  <input
+                    type="number"
+                    value={reenrollBonus}
+                    onChange={e => setReenrollBonus(Number(e.target.value))}
+                    className="w-20 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center"
+                  />
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ---- WORKSHOP TAB ---- */}
+      {activeTab === 'workshop' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-text-secondary">Default coach share</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                value={workshopCoach}
+                onChange={e => setWorkshopCoach(Number(e.target.value))}
+                className="w-16 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center"
+                min={1} max={90}
+              />
+              <span className="text-text-tertiary">%</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-text-secondary">Lead cost</span>
+            <span className="text-text-tertiary">0% (workshops have no lead cost)</span>
+          </div>
+          <p className="text-xs text-text-tertiary">Per-session override available in group session settings.</p>
+        </div>
+      )}
+
+      {/* ---- PAYOUT TAB ---- */}
+      {activeTab === 'payout' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2"><Settings className="w-4 h-4 text-text-tertiary" /><span className="text-text-secondary">Payout day</span></div>
+            <div className="flex items-center gap-1">
+              <input type="number" value={payoutDay} onChange={e => setPayoutDay(Number(e.target.value))} className="w-16 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center" min={1} max={28} />
+              <span className="text-text-tertiary">of month</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-text-tertiary" /><span className="text-text-secondary">TDS rate (Section 194J)</span></div>
+            <div className="flex items-center gap-1">
+              <input type="number" value={tdsRate} onChange={e => setTdsRate(Number(e.target.value))} className="w-16 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center" min={0} max={30} />
+              <span className="text-text-tertiary">%</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-text-tertiary" /><span className="text-text-secondary">TDS annual threshold</span></div>
+            <div className="flex items-center gap-1">
+              <span className="text-text-tertiary">₹</span>
+              <input type="number" value={tdsThreshold} onChange={e => setTdsThreshold(Number(e.target.value))} className="w-24 h-8 px-2 rounded-lg bg-white/[0.08] border border-border text-white text-sm text-center" />
+            </div>
+          </div>
+          <p className="text-xs text-text-tertiary">Changes take effect on the next payout calculation.</p>
+        </div>
+      )}
     </div>
   );
 }

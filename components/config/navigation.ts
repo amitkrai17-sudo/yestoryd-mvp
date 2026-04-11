@@ -24,6 +24,7 @@ import {
   UserSearch,
   UserPlus,
   Sparkles,
+  Banknote,
 } from 'lucide-react';
 import type { FeatureKey } from '@/lib/features/types';
 
@@ -130,6 +131,7 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
       { id: 'payments', label: 'Payments', href: '/admin/payments', icon: IndianRupee, group: 'Finance' },
       { id: 'payouts', label: 'Payouts', href: '/admin/payouts', icon: Briefcase, group: 'Finance' },
       { id: 'coupons', label: 'Coupons', href: '/admin/coupons', icon: Ticket, group: 'Finance' },
+      { id: 'revenue', label: 'Revenue Config', href: '/admin/settings/revenue', icon: Banknote, group: 'Finance' },
       { id: 'settings', label: 'Settings', href: '/admin/settings', icon: Settings, group: 'System' },
     ],
   },
