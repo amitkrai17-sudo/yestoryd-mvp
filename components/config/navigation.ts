@@ -94,6 +94,8 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
       { id: 'sessions', label: 'Sessions', href: '/coach/sessions', icon: Calendar, group: 'Work' },
       { id: 'calls', label: 'Discovery Calls', href: '/coach/discovery-calls', icon: Phone, group: 'Work' },
       { id: 'templates', label: 'Templates', href: '/coach/templates', icon: FileText, group: 'Work' },
+      { id: 'batches', label: 'My Classes', href: '/coach/batches', icon: BookOpen, group: 'Tuition' },
+      { id: 'onboard', label: 'Onboard Student', href: '/coach/onboard-student', icon: UserPlus, group: 'Tuition' },
       { id: 'ai', label: 'rAI Assistant', href: '/coach/ai-assistant', icon: Brain, group: 'AI' },
       { id: 'profile', label: 'Profile', href: '/coach/profile', icon: User, group: 'Account' },
       { id: 'earnings', label: 'Earnings', href: '/coach/earnings', icon: Briefcase, group: 'Account' },
