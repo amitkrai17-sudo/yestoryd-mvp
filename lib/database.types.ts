@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ab_test_events: {
@@ -2712,11 +2687,13 @@ export type Database = {
           payout_period: string | null
           payout_type: string
           processed_at: string | null
+          product_type: string | null
           razorpay_payout_id: string | null
           razorpay_status: string | null
           reconciled_at: string | null
           reconciled_by: string | null
           scheduled_date: string
+          session_id: string | null
           session_type: string | null
           status: string | null
           tds_amount: number | null
@@ -2746,11 +2723,13 @@ export type Database = {
           payout_period?: string | null
           payout_type: string
           processed_at?: string | null
+          product_type?: string | null
           razorpay_payout_id?: string | null
           razorpay_status?: string | null
           reconciled_at?: string | null
           reconciled_by?: string | null
           scheduled_date: string
+          session_id?: string | null
           session_type?: string | null
           status?: string | null
           tds_amount?: number | null
@@ -2780,11 +2759,13 @@ export type Database = {
           payout_period?: string | null
           payout_type?: string
           processed_at?: string | null
+          product_type?: string | null
           razorpay_payout_id?: string | null
           razorpay_status?: string | null
           reconciled_at?: string | null
           reconciled_by?: string | null
           scheduled_date?: string
+          session_id?: string | null
           session_type?: string | null
           status?: string | null
           tds_amount?: number | null
@@ -8809,44 +8790,59 @@ export type Database = {
       }
       micro_observations: {
         Row: {
+          activity_index: number | null
+          activity_name: string | null
+          capture_mode: string | null
           captured_at: string | null
           child_id: string
           coach_id: string
           created_at: string | null
+          duration_seconds: number | null
           id: string
           minutes_into_session: number | null
           note_text: string | null
           observation_id: string | null
           observation_type: string
           session_id: string
+          skill_id: string | null
           word_status: string | null
           word_text: string | null
         }
         Insert: {
+          activity_index?: number | null
+          activity_name?: string | null
+          capture_mode?: string | null
           captured_at?: string | null
           child_id: string
           coach_id: string
           created_at?: string | null
+          duration_seconds?: number | null
           id?: string
           minutes_into_session?: number | null
           note_text?: string | null
           observation_id?: string | null
           observation_type: string
           session_id: string
+          skill_id?: string | null
           word_status?: string | null
           word_text?: string | null
         }
         Update: {
+          activity_index?: number | null
+          activity_name?: string | null
+          capture_mode?: string | null
           captured_at?: string | null
           child_id?: string
           coach_id?: string
           created_at?: string | null
+          duration_seconds?: number | null
           id?: string
           minutes_into_session?: number | null
           note_text?: string | null
           observation_id?: string | null
           observation_type?: string
           session_id?: string
+          skill_id?: string | null
           word_status?: string | null
           word_text?: string | null
         }
@@ -8913,6 +8909,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "session_recording_status"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "micro_observations_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "el_skills"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -13321,20 +13324,25 @@ export type Database = {
           child_id: string | null
           child_name: string
           coach_id: string
+          coach_split_snapshot: Json | null
           created_at: string | null
           default_session_mode: string | null
           enrollment_id: string | null
+          hourly_rate_calculated: number | null
           id: string
           meet_link: string | null
+          onboarded_by: string | null
           parent_form_completed_at: string | null
           parent_form_token: string
           parent_form_token_expires_at: string
           parent_id: string | null
           parent_name_hint: string | null
           parent_phone: string
+          rate_flag: string | null
           schedule_preference: string | null
           session_duration_minutes: number | null
           session_rate: number
+          session_type: string | null
           sessions_per_week: number | null
           sessions_purchased: number
           status: string
@@ -13351,20 +13359,25 @@ export type Database = {
           child_id?: string | null
           child_name: string
           coach_id: string
+          coach_split_snapshot?: Json | null
           created_at?: string | null
           default_session_mode?: string | null
           enrollment_id?: string | null
+          hourly_rate_calculated?: number | null
           id?: string
           meet_link?: string | null
+          onboarded_by?: string | null
           parent_form_completed_at?: string | null
           parent_form_token: string
           parent_form_token_expires_at: string
           parent_id?: string | null
           parent_name_hint?: string | null
           parent_phone: string
+          rate_flag?: string | null
           schedule_preference?: string | null
           session_duration_minutes?: number | null
           session_rate: number
+          session_type?: string | null
           sessions_per_week?: number | null
           sessions_purchased: number
           status?: string
@@ -13381,20 +13394,25 @@ export type Database = {
           child_id?: string | null
           child_name?: string
           coach_id?: string
+          coach_split_snapshot?: Json | null
           created_at?: string | null
           default_session_mode?: string | null
           enrollment_id?: string | null
+          hourly_rate_calculated?: number | null
           id?: string
           meet_link?: string | null
+          onboarded_by?: string | null
           parent_form_completed_at?: string | null
           parent_form_token?: string
           parent_form_token_expires_at?: string
           parent_id?: string | null
           parent_name_hint?: string | null
           parent_phone?: string
+          rate_flag?: string | null
           schedule_preference?: string | null
           session_duration_minutes?: number | null
           session_rate?: number
+          session_type?: string | null
           sessions_per_week?: number | null
           sessions_purchased?: number
           status?: string
@@ -15949,9 +15967,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

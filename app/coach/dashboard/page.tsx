@@ -83,10 +83,15 @@ export default async function CoachDashboardPage() {
   // Earnings from coach_payouts (single source of truth for actual payouts)
   const { data: payoutRows } = await supabase
     .from('coach_payouts')
-    .select('net_amount')
+    .select('net_amount, product_type')
     .eq('coach_id', coach.id)
     .in('status', ['scheduled', 'paid']);
   const totalEarnings = (payoutRows || []).reduce((sum, r) => sum + (r.net_amount || 0), 0);
+  const earningsByProduct = (payoutRows || []).reduce((acc, r) => {
+    const key = (r as any).product_type || 'coaching';
+    acc[key] = (acc[key] || 0) + (r.net_amount || 0);
+    return acc;
+  }, {} as Record<string, number>);
 
   const initialStats = {
     total_students: studentsCount || 0,

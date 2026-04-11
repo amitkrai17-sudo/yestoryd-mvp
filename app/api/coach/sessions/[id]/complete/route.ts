@@ -13,6 +13,7 @@ import { queueProgressPulse } from '@/lib/qstash';
 import { getCategoryBySlug } from '@/lib/config/skill-categories';
 import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
 import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
+import { loadPayoutConfig, loadCoachGroup, calculateEnrollmentBreakdown, getTuitionCoachPercent } from '@/lib/config/payout-config';
 
 
 export const dynamic = 'force-dynamic';
@@ -61,7 +62,7 @@ export async function POST(
       async () => {
         const result = await supabase
           .from('scheduled_sessions')
-          .select('id, child_id, coach_id, session_number, status, enrollment_id, session_mode, google_meet_link, children!scheduled_sessions_child_id_fkey (child_name)')
+          .select('id, child_id, coach_id, session_number, status, enrollment_id, session_mode, session_type, google_meet_link, children!scheduled_sessions_child_id_fkey (child_name)')
           .eq('id', sessionId)
           .single();
         return result;
@@ -398,6 +399,88 @@ export async function POST(
         }
       } catch (tuitionErr) {
         console.error('Tuition balance deduction error:', tuitionErr);
+      }
+    }
+
+    // --- TUITION EARNINGS PIPELINE ---
+    if ((session as any).session_type === 'tuition' && session.coach_id) {
+      try {
+        // 1. Get tuition onboarding data for this child
+        const { data: tuitionRows } = await supabase
+          .from('tuition_onboarding')
+          .select('session_rate, session_duration_minutes, child_name')
+          .eq('child_id', session.child_id!)
+          .eq('status', 'parent_completed')
+          .limit(1);
+
+        const tuitionData = tuitionRows?.[0];
+        if (!tuitionData || !tuitionData.session_rate) {
+          console.warn(`[tuition-earnings] No tuition_onboarding for child ${session.child_id}`);
+        } else {
+          // 2. Get coach tier
+          const coachGroup = await loadCoachGroup(session.coach_id);
+          const config = await loadPayoutConfig();
+
+          // 3. Calculate split via Calculator B (tuition branch)
+          const sessionRateRupees = tuitionData.session_rate / 100;
+          const breakdown = calculateEnrollmentBreakdown(
+            sessionRateRupees,           // rupees (per session, consistent with coaching pipeline)
+            1, 0,                        // 1 coaching, 0 skill building
+            'starter',                   // enrollment type (not used for tuition)
+            'organic',                   // referrer type
+            coachGroup,                  // coach tier
+            0,                           // TDS cumulative (below threshold)
+            config,
+            undefined,                   // influencer override
+            'tuition',                   // productType
+          );
+
+          // 4. Next payout date (7th of current or next month)
+          const now = new Date();
+          const payoutDay = config.payout_day_of_month || 7;
+          const payoutDate = now.getDate() <= payoutDay
+            ? new Date(now.getFullYear(), now.getMonth(), payoutDay)
+            : new Date(now.getFullYear(), now.getMonth() + 1, payoutDay);
+          const scheduledDate = payoutDate.toISOString().split('T')[0];
+
+          // 5. Idempotency check + insert
+          const { data: existingPayout } = await supabase
+            .from('coach_payouts')
+            .select('id')
+            .eq('session_id', sessionId)
+            .eq('product_type', 'tuition')
+            .limit(1);
+
+          if (!existingPayout?.length) {
+            const { error: payoutError } = await supabase
+              .from('coach_payouts')
+              .insert({
+                coach_id: session.coach_id,
+                child_id: session.child_id,
+                child_name: tuitionData.child_name,
+                session_type: 'tuition',
+                payout_type: 'tuition_session',
+                product_type: 'tuition',
+                session_id: sessionId,
+                payout_month: 0,
+                gross_amount: breakdown.coach_cost_amount,
+                tds_amount: breakdown.tds_amount,
+                net_amount: breakdown.net_to_coaching_coach,
+                scheduled_date: scheduledDate,
+                status: 'scheduled',
+                description: `Tuition: ${tuitionData.child_name} - ${now.toISOString().split('T')[0]}`,
+                payout_period: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+              });
+
+            if (payoutError) {
+              console.error('[tuition-earnings] coach_payout insert failed:', payoutError);
+            } else {
+              console.log(`[tuition-earnings] Scheduled ${breakdown.coach_cost_amount} paise for ${tuitionData.child_name} (session ${sessionId})`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[tuition-earnings] Pipeline error (non-blocking):', err);
       }
     }
 
