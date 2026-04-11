@@ -3,7 +3,7 @@
 // lib/config/payout-config.ts
 //
 // SINGLE SOURCE OF TRUTH for all payout + referral calculations.
-// Loads 35 keys from site_settings (categories: 'revenue' + 'referral').
+// Loads 51 keys from site_settings (categories: 'revenue' + 'referral').
 // Uses batch .in('key', keys) query with 5-min in-memory cache.
 //
 // Pattern follows lib/config/loader.ts (supabaseAdmin, TTL cache).
@@ -56,6 +56,25 @@ export interface PayoutConfig {
   influencer_reward_type: RewardType;
   referral_qr_enabled: boolean;
   referral_landing_page: string;
+  // Tuition
+  tuition_coach_cost_rising: number;
+  tuition_coach_cost_expert: number;
+  tuition_coach_cost_master: number;
+  tuition_coach_cost_founding: number;
+  tuition_lead_cost_percent: number;
+  tuition_payout_trigger: string;
+  // Workshop
+  workshop_default_coach_percent: number;
+  workshop_lead_cost_percent: number;
+  // Price guardrails (rupees per hour)
+  tuition_rate_min_batch_per_hour: number;
+  tuition_rate_max_batch_per_hour: number;
+  tuition_rate_warn_low_batch: number;
+  tuition_rate_warn_high_batch: number;
+  tuition_rate_min_individual_per_hour: number;
+  tuition_rate_max_individual_per_hour: number;
+  tuition_rate_warn_low_individual: number;
+  tuition_rate_warn_high_individual: number;
 }
 
 export interface CoachGroupConfig {
@@ -159,6 +178,25 @@ const FALLBACKS: Record<string, string | number | boolean> = {
   influencer_reward_type: 'upi_transfer',
   referral_qr_enabled: true,
   referral_landing_page: '/refer',
+  // Tuition
+  tuition_coach_cost_rising: 70,
+  tuition_coach_cost_expert: 75,
+  tuition_coach_cost_master: 80,
+  tuition_coach_cost_founding: 80,
+  tuition_lead_cost_percent: 10,
+  tuition_payout_trigger: 'session_complete',
+  // Workshop
+  workshop_default_coach_percent: 45,
+  workshop_lead_cost_percent: 0,
+  // Price guardrails
+  tuition_rate_min_batch_per_hour: 150,
+  tuition_rate_max_batch_per_hour: 300,
+  tuition_rate_warn_low_batch: 180,
+  tuition_rate_warn_high_batch: 280,
+  tuition_rate_min_individual_per_hour: 300,
+  tuition_rate_max_individual_per_hour: 500,
+  tuition_rate_warn_low_individual: 330,
+  tuition_rate_warn_high_individual: 450,
 };
 
 const ALL_KEYS = Object.keys(FALLBACKS);
@@ -210,7 +248,7 @@ export function invalidatePayoutConfigCache(): void {
 // =============================================================================
 
 /**
- * Batch-fetch all 35 payout/referral keys from site_settings.
+ * Batch-fetch all payout/referral/tuition/workshop keys from site_settings.
  * 5-min in-memory cache. DB values merged over fallbacks.
  */
 export async function loadPayoutConfig(forceRefresh = false): Promise<PayoutConfig> {
@@ -270,6 +308,25 @@ export async function loadPayoutConfig(forceRefresh = false): Promise<PayoutConf
     influencer_reward_type: asString(get('influencer_reward_type'), fb.influencer_reward_type as string) as RewardType,
     referral_qr_enabled: asBoolean(get('referral_qr_enabled'), fb.referral_qr_enabled as boolean),
     referral_landing_page: asString(get('referral_landing_page'), fb.referral_landing_page as string),
+    // Tuition
+    tuition_coach_cost_rising: asNumber(get('tuition_coach_cost_rising'), fb.tuition_coach_cost_rising as number),
+    tuition_coach_cost_expert: asNumber(get('tuition_coach_cost_expert'), fb.tuition_coach_cost_expert as number),
+    tuition_coach_cost_master: asNumber(get('tuition_coach_cost_master'), fb.tuition_coach_cost_master as number),
+    tuition_coach_cost_founding: asNumber(get('tuition_coach_cost_founding'), fb.tuition_coach_cost_founding as number),
+    tuition_lead_cost_percent: asNumber(get('tuition_lead_cost_percent'), fb.tuition_lead_cost_percent as number),
+    tuition_payout_trigger: asString(get('tuition_payout_trigger'), fb.tuition_payout_trigger as string),
+    // Workshop
+    workshop_default_coach_percent: asNumber(get('workshop_default_coach_percent'), fb.workshop_default_coach_percent as number),
+    workshop_lead_cost_percent: asNumber(get('workshop_lead_cost_percent'), fb.workshop_lead_cost_percent as number),
+    // Price guardrails
+    tuition_rate_min_batch_per_hour: asNumber(get('tuition_rate_min_batch_per_hour'), fb.tuition_rate_min_batch_per_hour as number),
+    tuition_rate_max_batch_per_hour: asNumber(get('tuition_rate_max_batch_per_hour'), fb.tuition_rate_max_batch_per_hour as number),
+    tuition_rate_warn_low_batch: asNumber(get('tuition_rate_warn_low_batch'), fb.tuition_rate_warn_low_batch as number),
+    tuition_rate_warn_high_batch: asNumber(get('tuition_rate_warn_high_batch'), fb.tuition_rate_warn_high_batch as number),
+    tuition_rate_min_individual_per_hour: asNumber(get('tuition_rate_min_individual_per_hour'), fb.tuition_rate_min_individual_per_hour as number),
+    tuition_rate_max_individual_per_hour: asNumber(get('tuition_rate_max_individual_per_hour'), fb.tuition_rate_max_individual_per_hour as number),
+    tuition_rate_warn_low_individual: asNumber(get('tuition_rate_warn_low_individual'), fb.tuition_rate_warn_low_individual as number),
+    tuition_rate_warn_high_individual: asNumber(get('tuition_rate_warn_high_individual'), fb.tuition_rate_warn_high_individual as number),
   };
 
   configCache = { data: config, loadedAt: Date.now() };
@@ -450,6 +507,77 @@ export function calculateReenrollmentBonus(
 }
 
 /**
+ * Get tuition coach cost percent by tier name.
+ * Internal coaches always return 0.
+ */
+export function getTuitionCoachPercent(
+  tierName: string,
+  config: PayoutConfig,
+): number {
+  const map: Record<string, number> = {
+    rising: config.tuition_coach_cost_rising,
+    expert: config.tuition_coach_cost_expert,
+    master: config.tuition_coach_cost_master,
+    founding: config.tuition_coach_cost_founding,
+    internal: 0,
+  };
+  return map[tierName.toLowerCase()] ?? config.tuition_coach_cost_rising;
+}
+
+/**
+ * Validate a tuition session rate against configurable guardrails.
+ * Returns flag (green/amber/red) with message for UI display.
+ */
+export interface RateValidationResult {
+  flag: 'green' | 'amber_low' | 'amber_high' | 'red_low' | 'red_high';
+  hourlyRate: number;
+  message: string;
+  suggestedRange: { min: number; max: number };
+}
+
+export function validateSessionRate(
+  sessionRateRupees: number,
+  durationMinutes: number,
+  sessionType: 'individual' | 'batch',
+  config: PayoutConfig,
+  isAdmin: boolean = false,
+): RateValidationResult {
+  const hourlyRate = Math.round((sessionRateRupees / durationMinutes) * 60);
+
+  const isIndividual = sessionType === 'individual';
+  const min = isIndividual ? config.tuition_rate_min_individual_per_hour : config.tuition_rate_min_batch_per_hour;
+  const max = isIndividual ? config.tuition_rate_max_individual_per_hour : config.tuition_rate_max_batch_per_hour;
+  const warnLow = isIndividual ? config.tuition_rate_warn_low_individual : config.tuition_rate_warn_low_batch;
+  const warnHigh = isIndividual ? config.tuition_rate_warn_high_individual : config.tuition_rate_warn_high_batch;
+
+  const range = { min, max };
+
+  if (hourlyRate < min) {
+    return {
+      flag: isAdmin ? 'amber_low' : 'red_low',
+      hourlyRate,
+      message: `Rate ${hourlyRate}/hr is below minimum ${min}/hr${isAdmin ? '' : '. Contact admin.'}`,
+      suggestedRange: range,
+    };
+  }
+  if (hourlyRate < warnLow) {
+    return { flag: 'amber_low', hourlyRate, message: `Rate ${hourlyRate}/hr is below typical range (${warnLow}-${warnHigh}/hr)`, suggestedRange: range };
+  }
+  if (hourlyRate > max) {
+    return {
+      flag: isAdmin ? 'amber_high' : 'red_high',
+      hourlyRate,
+      message: `Rate ${hourlyRate}/hr exceeds maximum ${max}/hr${isAdmin ? '' : '. Contact admin.'}`,
+      suggestedRange: range,
+    };
+  }
+  if (hourlyRate > warnHigh) {
+    return { flag: 'amber_high', hourlyRate, message: `Rate ${hourlyRate}/hr is above typical range (${warnLow}-${warnHigh}/hr)`, suggestedRange: range };
+  }
+  return { flag: 'green', hourlyRate, message: '', suggestedRange: range };
+}
+
+/**
  * Full enrollment breakdown combining all calculators.
  * Platform fee = REMAINDER (never hardcoded).
  */
@@ -463,55 +591,170 @@ export function calculateEnrollmentBreakdown(
   coachCumulativeThisYear: number,
   config: PayoutConfig,
   influencerOverride?: number,
+  productType?: 'coaching' | 'tuition' | 'workshop',
 ): EnrollmentBreakdown {
-  const totalSessions = coachingSessions + skillBuildingSessions;
+  const product = productType || 'coaching';
 
-  // Lead cost
-  const leadCost = calculateLeadCost(enrollmentAmount, enrollmentType, referrerType, config, influencerOverride);
+  // ===== COACHING (original logic, unchanged) =====
+  if (product === 'coaching') {
+    const totalSessions = coachingSessions + skillBuildingSessions;
 
-  // Coach cost
-  const coachPercent = coachGroup?.coach_cost_percent ?? 50;
-  const coachCostAmount = Math.round(enrollmentAmount * coachPercent / 100);
+    // Lead cost
+    const leadCost = calculateLeadCost(enrollmentAmount, enrollmentType, referrerType, config, influencerOverride);
 
-  // Per-session rates (coaching_rate from coach_cost ÷ coaching sessions; SB rate = coaching_rate × 0.5)
-  const perSessionRates = calculatePerSessionRate(enrollmentAmount, coachingSessions, skillBuildingSessions, coachGroup, config);
+    // Coach cost
+    const coachPercent = coachGroup?.coach_cost_percent ?? 50;
+    const coachCostAmount = Math.round(enrollmentAmount * coachPercent / 100);
 
-  // Skill building cost = SB sessions × skill_building_rate (paid from platform fee)
-  const skillBuildingCost = skillBuildingSessions * perSessionRates.skill_building_rate;
+    // Per-session rates (coaching_rate from coach_cost ÷ coaching sessions; SB rate = coaching_rate × 0.5)
+    const perSessionRates = calculatePerSessionRate(enrollmentAmount, coachingSessions, skillBuildingSessions, coachGroup, config);
 
-  // Platform fee = REMAINDER (gross), then deduct SB cost for actual
-  const platformFeeAmount = enrollmentAmount - leadCost.referrer_share_amount - leadCost.coaching_bonus_amount - coachCostAmount;
-  const platformFeePercent = enrollmentAmount > 0 ? Math.round(platformFeeAmount / enrollmentAmount * 10000) / 100 : 0;
-  const actualPlatformFee = platformFeeAmount - skillBuildingCost;
-  const actualPlatformFeePercent = enrollmentAmount > 0 ? Math.round(actualPlatformFee / enrollmentAmount * 10000) / 100 : 0;
+    // Skill building cost = SB sessions × skill_building_rate (paid from platform fee)
+    const skillBuildingCost = skillBuildingSessions * perSessionRates.skill_building_rate;
 
-  // TDS on coach cost (coaching pot only — SB cost is separate)
-  const tds = calculateTDS(coachCostAmount, coachCumulativeThisYear, config);
+    // Platform fee = REMAINDER (gross), then deduct SB cost for actual
+    const platformFeeAmount = enrollmentAmount - leadCost.referrer_share_amount - leadCost.coaching_bonus_amount - coachCostAmount;
+    const platformFeePercent = enrollmentAmount > 0 ? Math.round(platformFeeAmount / enrollmentAmount * 10000) / 100 : 0;
+    const actualPlatformFee = platformFeeAmount - skillBuildingCost;
+    const actualPlatformFeePercent = enrollmentAmount > 0 ? Math.round(actualPlatformFee / enrollmentAmount * 10000) / 100 : 0;
 
-  // Re-enrollment bonus
-  const reenrollmentBonus = calculateReenrollmentBonus(enrollmentType, config);
+    // TDS on coach cost (coaching pot only — SB cost is separate)
+    const tds = calculateTDS(coachCostAmount, coachCumulativeThisYear, config);
 
-  return {
-    enrollment_amount: enrollmentAmount,
-    lead_cost: leadCost,
-    coach_cost_percent: coachPercent,
-    coach_cost_amount: coachCostAmount,
-    per_session_rates: perSessionRates,
-    skill_building_cost: skillBuildingCost,
-    platform_fee_amount: platformFeeAmount,
-    platform_fee_percent: platformFeePercent,
-    actual_platform_fee: actualPlatformFee,
-    actual_platform_fee_percent: actualPlatformFeePercent,
-    tds_amount: tds.tds_amount,
-    tds_rate_applied: tds.tds_rate,
-    tds_applicable: tds.tds_applicable,
-    net_to_coaching_coach: coachCostAmount + skillBuildingCost - tds.tds_amount,
-    net_to_referrer: leadCost.referrer_share_amount,
-    net_to_platform: actualPlatformFee,
-    reenrollment_bonus: reenrollmentBonus,
-    total_sessions: totalSessions,
-    enrollment_type: enrollmentType,
-  };
+    // Re-enrollment bonus
+    const reenrollmentBonus = calculateReenrollmentBonus(enrollmentType, config);
+
+    return {
+      enrollment_amount: enrollmentAmount,
+      lead_cost: leadCost,
+      coach_cost_percent: coachPercent,
+      coach_cost_amount: coachCostAmount,
+      per_session_rates: perSessionRates,
+      skill_building_cost: skillBuildingCost,
+      platform_fee_amount: platformFeeAmount,
+      platform_fee_percent: platformFeePercent,
+      actual_platform_fee: actualPlatformFee,
+      actual_platform_fee_percent: actualPlatformFeePercent,
+      tds_amount: tds.tds_amount,
+      tds_rate_applied: tds.tds_rate,
+      tds_applicable: tds.tds_applicable,
+      net_to_coaching_coach: coachCostAmount + skillBuildingCost - tds.tds_amount,
+      net_to_referrer: leadCost.referrer_share_amount,
+      net_to_platform: actualPlatformFee,
+      reenrollment_bonus: reenrollmentBonus,
+      total_sessions: totalSessions,
+      enrollment_type: enrollmentType,
+    };
+  }
+
+  // ===== TUITION (per-session, tier-based coach %) =====
+  if (product === 'tuition') {
+    const coachPercent = getTuitionCoachPercent(coachGroup?.name ?? 'rising', config);
+    const leadPercent = config.tuition_lead_cost_percent;
+
+    const coachCostAmount = Math.round(enrollmentAmount * coachPercent / 100);
+    const leadCostAmount = Math.round(enrollmentAmount * leadPercent / 100);
+    // Platform = remainder (guarantees sum = total, zero drift)
+    const platformFeeAmount = enrollmentAmount - coachCostAmount - leadCostAmount;
+    const platformFeePercent = enrollmentAmount > 0 ? Math.round(platformFeeAmount / enrollmentAmount * 10000) / 100 : 0;
+
+    const tds = calculateTDS(coachCostAmount, coachCumulativeThisYear, config);
+
+    const noLead: LeadCostBreakdown = {
+      total_lead_cost_percent: leadPercent,
+      referrer_share_percent: 0,
+      referrer_share_amount: 0,
+      coaching_bonus_percent: 0,
+      coaching_bonus_amount: 0,
+      referrer_type: 'organic',
+      referrer_reward_type: null,
+      timing: 'on_enrollment' as PayoutTiming,
+      decay_applied: 1.0,
+    };
+
+    return {
+      enrollment_amount: enrollmentAmount,
+      lead_cost: noLead,
+      coach_cost_percent: coachPercent,
+      coach_cost_amount: coachCostAmount,
+      per_session_rates: {
+        coaching_rate: coachCostAmount,
+        skill_building_rate: 0,
+        coaching_sessions: 1,
+        skill_building_sessions: 0,
+        total_sessions: 1,
+        source: 'calculated',
+      },
+      skill_building_cost: 0,
+      platform_fee_amount: platformFeeAmount,
+      platform_fee_percent: platformFeePercent,
+      actual_platform_fee: platformFeeAmount,
+      actual_platform_fee_percent: platformFeePercent,
+      tds_amount: tds.tds_amount,
+      tds_rate_applied: tds.tds_rate,
+      tds_applicable: tds.tds_applicable,
+      net_to_coaching_coach: coachCostAmount - tds.tds_amount,
+      net_to_referrer: 0,
+      net_to_platform: platformFeeAmount + leadCostAmount,
+      reenrollment_bonus: 0,
+      total_sessions: 1,
+      enrollment_type: enrollmentType,
+    };
+  }
+
+  // ===== WORKSHOP (flat split from group or config default) =====
+  if (product === 'workshop') {
+    const coachPercent = coachGroup?.coach_cost_percent ?? config.workshop_default_coach_percent;
+    const coachCostAmount = Math.round(enrollmentAmount * coachPercent / 100);
+    const platformFeeAmount = enrollmentAmount - coachCostAmount;
+    const platformFeePercent = enrollmentAmount > 0 ? Math.round(platformFeeAmount / enrollmentAmount * 10000) / 100 : 0;
+
+    const tds = calculateTDS(coachCostAmount, coachCumulativeThisYear, config);
+
+    const noLead: LeadCostBreakdown = {
+      total_lead_cost_percent: 0,
+      referrer_share_percent: 0,
+      referrer_share_amount: 0,
+      coaching_bonus_percent: 0,
+      coaching_bonus_amount: 0,
+      referrer_type: 'organic',
+      referrer_reward_type: null,
+      timing: 'on_enrollment' as PayoutTiming,
+      decay_applied: 1.0,
+    };
+
+    return {
+      enrollment_amount: enrollmentAmount,
+      lead_cost: noLead,
+      coach_cost_percent: coachPercent,
+      coach_cost_amount: coachCostAmount,
+      per_session_rates: {
+        coaching_rate: coachCostAmount,
+        skill_building_rate: 0,
+        coaching_sessions: 1,
+        skill_building_sessions: 0,
+        total_sessions: 1,
+        source: 'calculated',
+      },
+      skill_building_cost: 0,
+      platform_fee_amount: platformFeeAmount,
+      platform_fee_percent: platformFeePercent,
+      actual_platform_fee: platformFeeAmount,
+      actual_platform_fee_percent: platformFeePercent,
+      tds_amount: tds.tds_amount,
+      tds_rate_applied: tds.tds_rate,
+      tds_applicable: tds.tds_applicable,
+      net_to_coaching_coach: coachCostAmount - tds.tds_amount,
+      net_to_referrer: 0,
+      net_to_platform: platformFeeAmount,
+      reenrollment_bonus: 0,
+      total_sessions: 1,
+      enrollment_type: enrollmentType,
+    };
+  }
+
+  // Fallback — should never reach here
+  throw new Error(`Unknown product type: ${product}`);
 }
 
 // =============================================================================
