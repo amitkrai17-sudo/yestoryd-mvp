@@ -90,6 +90,16 @@ export function SessionCard({
   const isMissed = session.status === 'missed';
   const canTakeAction = !isCompleted && !isCancelled && !isMissed;
 
+  // Time-aware past check: session end time has passed (even if same calendar date)
+  const sessionEndPassed = (() => {
+    try {
+      const start = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+      const endMs = start.getTime() + (session.duration_minutes || 45) * 60_000;
+      return Date.now() > endMs;
+    } catch { return false; }
+  })();
+  const effectivePast = isPast || (isToday && sessionEndPassed);
+
   const showJoin = !isOffline && isToday && session.google_meet_link && isPending &&
     isWithinMinutes(session.scheduled_date, session.scheduled_time, 15);
   const needsParentUpdate = isCompleted && !session.parent_update_sent_at;
@@ -99,7 +109,7 @@ export function SessionCard({
   const hasPendingAiCapture = !!session.pending_capture?.ai_prefilled;
   const hasPendingCapture = !!session.pending_capture;
   const hasConfirmedCapture = !!session.capture_id && !hasPendingCapture;
-  const needsReport = isPast && !isCompleted && !isCancelled && !isMissed && !hasConfirmedCapture;
+  const needsReport = effectivePast && !isCompleted && !isCancelled && !isMissed && !hasConfirmedCapture;
   const legacyNeedsCapture = isCompleted && !hasConfirmedCapture && !hasPendingCapture;
 
   // Report due: completed but capture not yet confirmed by coach
@@ -204,7 +214,7 @@ export function SessionCard({
     }
 
     // Upcoming scheduled: Prep
-    if (isPending && !isPast) {
+    if (isPending && !effectivePast) {
       return (
         <button
           onClick={onPrep}
@@ -296,14 +306,14 @@ export function SessionCard({
     }
 
     // Offline/online switch
-    if (onRequestOffline && !isOffline && !isPast && isPending) {
+    if (onRequestOffline && !isOffline && !effectivePast && isPending) {
       dropdownActions.push({
         label: 'Switch to In-Person',
         icon: <MapPin className="w-4 h-4" />,
         onClick: onRequestOffline,
       });
     }
-    if (onSwitchToOnline && isOffline && !isPast && isPending) {
+    if (onSwitchToOnline && isOffline && !effectivePast && isPending) {
       dropdownActions.push({
         label: 'Switch to Online',
         icon: <Video className="w-4 h-4" />,
@@ -311,7 +321,7 @@ export function SessionCard({
       });
     }
 
-    if (isPast) {
+    if (effectivePast) {
       dropdownActions.push({
         label: 'Mark as Missed',
         icon: ActionIcons.missed,

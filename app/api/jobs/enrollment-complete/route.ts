@@ -684,8 +684,8 @@ async function scheduleCalendarForExistingSessions(
         }
       }
 
-      // Apply batch meet_link to all sessions that need it
-      // Copy persistent classroom link to session (tuition_onboarding.meet_link → scheduled_sessions.google_meet_link)
+      // Apply batch meet_link to ALL sessions in this enrollment
+      // Batch sessions share one Calendar event + one Meet link — always sync to latest
       if (batchMeetLink || batchCalendarEventId) {
         const updateFields: Record<string, unknown> = {
           status: 'scheduled',
@@ -698,7 +698,7 @@ async function scheduleCalendarForExistingSessions(
           .from('scheduled_sessions')
           .update(updateFields)
           .eq('enrollment_id', enrollmentId)
-          .is('google_event_id', null);
+          .in('status', ['pending', 'scheduled']);
 
         console.log(JSON.stringify({
           requestId,

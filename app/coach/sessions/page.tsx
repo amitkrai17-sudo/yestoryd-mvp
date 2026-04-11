@@ -165,11 +165,21 @@ function isYesterday(dateStr: string): boolean {
   );
 }
 
-function isSessionPast(dateStr: string): boolean {
+function isSessionPast(dateStr: string, timeStr?: string, durationMinutes?: number | null): boolean {
   const sessionDate = new Date(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return sessionDate < today;
+  // If date is before today, definitely past
+  if (sessionDate < today) return true;
+  // If date is today and we have time info, check if session has ended
+  if (timeStr && sessionDate.getTime() === today.getTime()) {
+    try {
+      const start = new Date(`${dateStr}T${timeStr}`);
+      const endMs = start.getTime() + (durationMinutes || 45) * 60_000;
+      return Date.now() > endMs;
+    } catch { return false; }
+  }
+  return false;
 }
 
 function isWithinDays(dateStr: string, days: number): boolean {
@@ -418,7 +428,7 @@ export default function CoachSessionsPage() {
         const hasConfirmedCapture = !!s.capture_id && !s.pending_capture;
         if (hasConfirmedCapture) return false; // Already has a confirmed report — never "due"
         // Case 1: past session still scheduled/pending with no confirmed capture
-        const isPastUnresolved = isSessionPast(s.scheduled_date) && isUnresolvedStatus(s.status);
+        const isPastUnresolved = isSessionPast(s.scheduled_date, s.scheduled_time, s.duration_minutes) && isUnresolvedStatus(s.status);
         // Case 2: completed but capture not yet confirmed by coach
         const completedNeedsCapture = s.status === SESSION_STATUS.COMPLETED;
         return isPastUnresolved || completedNeedsCapture;
@@ -804,7 +814,7 @@ export default function CoachSessionsPage() {
                           <SessionCard
                             key={session.id}
                             session={session}
-                            isPast={isSessionPast(session.scheduled_date)}
+                            isPast={isSessionPast(session.scheduled_date, session.scheduled_time, session.duration_minutes)}
                             isToday={isTodayDate(session.scheduled_date)}
                             canComplete={canCompleteSession(session, sessions)}
                             onPrep={() => openPrepModal(session)}
