@@ -1,150 +1,128 @@
+// app/coach/earnings/page.tsx
+// Coach earnings detail — actual payouts from coach_payouts, month picker, per-session log
 'use client';
 
 import { useEffect, useState } from 'react';
-
-import { supabase } from '@/lib/supabase/client';
+import Link from 'next/link';
 import {
-  IndianRupee,
-  TrendingUp,
-  Calendar,
-  Users,
-  Filter,
+  IndianRupee, Calendar, ChevronLeft, ChevronRight, Clock,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
-import { StatCard } from '@/components/shared/StatCard';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ProductBadge } from '@/components/shared/RevenueCalculator';
 
-interface Earning {
+// ============================================================
+// TYPES
+// ============================================================
+
+interface SessionRow {
   id: string;
-  child_name: string;
-  parent_name: string;
-  enrollment_date: string;
-  program_fee: number;
-  coach_amount: number;
-  yestoryd_amount: number;
-  coach_percent: number;
-  split_type: string;
-  lead_source: string;
+  date: string;
+  childName: string;
+  productType: 'coaching' | 'tuition' | 'workshop';
+  payoutType: string;
+  grossAmount: number;
+  tdsAmount: number;
+  netAmount: number;
   status: string;
+  sessionType: string | null;
+  description: string | null;
 }
 
-interface EarningsSummary {
-  totalEarnings: number;
-  thisMonthEarnings: number;
-  lastMonthEarnings: number;
-  pendingEarnings: number;
-  totalStudents: number;
-  yestorydLeads: number;
-  coachLeads: number;
+interface PayoutRow {
+  date: string;
+  status: string;
+  total: number;
+  paidAt: string | null;
+  utr: string | null;
 }
 
-interface SplitsInfo {
-  coachCostPercent: number;
-  leadReferralPercent: number;
-  effectivePercent: number;
-  effectivePercentWithLead: number;
-  groupName: string;
+interface EarningsData {
+  month: string;
+  summary: {
+    totalGross: number;
+    totalTds: number;
+    totalNet: number;
+    sessionCount: number;
+    byProduct: Record<string, { gross: number; tds: number; net: number; sessions: number }>;
+  };
+  sessions: SessionRow[];
+  payouts: PayoutRow[];
+  availableMonths: string[];
 }
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function formatRupees(amount: number): string {
+  return `\u20B9${Math.round(amount).toLocaleString('en-IN')}`;
+}
+
+function formatMonthLabel(month: string): string {
+  const [y, m] = month.split('-');
+  const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+  return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+function formatDateShort(dateStr: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+function statusDot(status: string): string {
+  switch (status) {
+    case 'paid': return 'bg-green-400';
+    case 'scheduled': return 'bg-yellow-400';
+    case 'processing': return 'bg-blue-400';
+    case 'failed': return 'bg-red-400';
+    default: return 'bg-gray-400';
+  }
+}
+
+// ============================================================
+// COMPONENT
+// ============================================================
 
 export default function CoachEarningsPage() {
   const [loading, setLoading] = useState(true);
-  const [earnings, setEarnings] = useState<Earning[]>([]);
-  const [summary, setSummary] = useState<EarningsSummary>({
-    totalEarnings: 0,
-    thisMonthEarnings: 0,
-    lastMonthEarnings: 0,
-    pendingEarnings: 0,
-    totalStudents: 0,
-    yestorydLeads: 0,
-    coachLeads: 0,
-  });
-  const [splits, setSplits] = useState<SplitsInfo | null>(null);
-  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [data, setData] = useState<EarningsData | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
 
   useEffect(() => {
     loadEarnings();
-  }, []);
+  }, [selectedMonth]);
 
   const loadEarnings = async () => {
+    setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const params = new URLSearchParams();
+      if (selectedMonth) params.set('month', selectedMonth);
 
-      if (!user) {
-        window.location.href = '/coach/login';
-        return;
-      }
+      const res = await fetch(`/api/coach/earnings?${params}`);
+      if (!res.ok) throw new Error('Failed to load');
 
-      // Use the earnings-summary API (single source of truth for V2 splits)
-      const res = await fetch(`/api/coach/earnings-summary?email=${encodeURIComponent(user.email!)}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          window.location.href = '/coach/login';
-          return;
-        }
-        throw new Error('Failed to load earnings');
-      }
-
-      const data = await res.json();
-      setEarnings(data.earnings);
-      setSummary(data.summary);
-      setSplits(data.splits);
-    } catch (error) {
-      console.error('Error loading earnings:', error);
+      const json = await res.json();
+      setData(json);
+      if (!selectedMonth && json.month) setSelectedMonth(json.month);
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const navigateMonth = (direction: -1 | 1) => {
+    if (!data?.availableMonths?.length) return;
+    const idx = data.availableMonths.indexOf(selectedMonth);
+    const newIdx = idx + (direction === -1 ? 1 : -1); // months are DESC sorted
+    if (newIdx >= 0 && newIdx < data.availableMonths.length) {
+      setSelectedMonth(data.availableMonths[newIdx]);
+    }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  const getSplitBadge = (earning: Earning) => {
-    const pct = Math.round(earning.coach_percent);
-    if (earning.split_type === 'custom') {
-      return <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs">Custom {pct}%</span>;
-    }
-    if (earning.lead_source === 'coach') {
-      return <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs">{pct}%</span>;
-    }
-    return <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs">{pct}%</span>;
-  };
-
-  const getMonthChange = () => {
-    if (summary.lastMonthEarnings === 0) return null;
-    const change = ((summary.thisMonthEarnings - summary.lastMonthEarnings) / summary.lastMonthEarnings) * 100;
-    return change;
-  };
-
-  const monthChange = getMonthChange();
-
-  const filteredEarnings = earnings.filter((e) => {
-    if (filterPeriod === 'all') return true;
-    const date = new Date(e.enrollment_date);
-    const now = new Date();
-    if (filterPeriod === 'this_month') {
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    }
-    if (filterPeriod === 'last_month') {
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      return date.getMonth() === lastMonth.getMonth() && date.getFullYear() === lastMonth.getFullYear();
-    }
-    return true;
-  });
-
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Spinner size="lg" className="text-[#00ABFF]" />
@@ -152,153 +130,158 @@ export default function CoachEarningsPage() {
     );
   }
 
+  if (!data) {
+    return <div className="p-6 text-center text-text-tertiary">No earnings data found.</div>;
+  }
+
+  const { summary, sessions, payouts } = data;
+  const avgPerSession = summary.sessionCount > 0 ? Math.round(summary.totalNet / summary.sessionCount) : 0;
+
   return (
-      <div className="space-y-6">
-        {/* Header */}
-        <PageHeader
-          title="Earnings"
-          subtitle="Track your coaching income"
-          action={
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-text-tertiary">Your split:</span>
-              <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full font-medium">
-                {splits?.effectivePercent ?? 58}% (Yestoryd leads)
-              </span>
-              <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full font-medium">
-                {splits?.effectivePercentWithLead ?? 68}% (Your leads)
-              </span>
-            </div>
-          }
-        />
+    <div className="space-y-6 max-w-3xl">
+      <PageHeader title="Earnings" subtitle="Actual payouts from completed sessions" />
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            value={formatCurrency(summary.totalEarnings)}
-            label="Total Earned"
-            icon={IndianRupee}
-            color="yellow"
-          />
-          <StatCard
-            value={formatCurrency(summary.thisMonthEarnings)}
-            label="This Month"
-            icon={Calendar}
-            color="green"
-            trend={monthChange !== null ? { value: Math.round(Math.abs(monthChange)), positive: monthChange >= 0 } : undefined}
-          />
-          <StatCard
-            value={summary.totalStudents}
-            label="Total Students"
-            icon={Users}
-            color="blue"
-            subtitle={`${summary.yestorydLeads} platform \u2022 ${summary.coachLeads} yours`}
-          />
-          <StatCard
-            value={summary.totalStudents > 0 ? formatCurrency(summary.totalEarnings / summary.totalStudents) : '\u20B90'}
-            label="Avg per Student"
-            icon={TrendingUp}
-            color="orange"
-          />
+      {/* SECTION 1 — Month picker + metrics */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={() => navigateMonth(-1)}
+          disabled={!data.availableMonths?.length || data.availableMonths.indexOf(selectedMonth) >= data.availableMonths.length - 1}
+          className="h-8 w-8 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center justify-center disabled:opacity-30"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <h2 className="text-lg font-semibold text-white min-w-[160px] text-center">
+          {formatMonthLabel(selectedMonth || data.month)}
+        </h2>
+        <button
+          onClick={() => navigateMonth(1)}
+          disabled={!data.availableMonths?.length || data.availableMonths.indexOf(selectedMonth) <= 0}
+          className="h-8 w-8 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center justify-center disabled:opacity-30"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-surface-1/50 rounded-xl border border-border p-3 text-center">
+          <p className="text-[22px] font-bold text-green-400">{formatRupees(summary.totalNet)}</p>
+          <p className="text-[13px] text-text-tertiary">Total earned</p>
         </div>
-
-        {/* Earnings Table */}
-        <div className="bg-surface-1 rounded-xl border border-border overflow-hidden">
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold text-white">Earnings Breakdown</h2>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-text-tertiary" />
-                <select
-                  value={filterPeriod}
-                  onChange={(e) => setFilterPeriod(e.target.value)}
-                  className="bg-surface-2 border border-border rounded-lg py-1.5 px-3 text-white text-sm focus:outline-none focus:border-blue-500"
-                >
-                  <option value="all">All Time</option>
-                  <option value="this_month">This Month</option>
-                  <option value="last_month">Last Month</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-surface-2/50">
-                <tr>
-                  <th className="text-left text-text-tertiary text-sm font-medium px-4 py-3">Student</th>
-                  <th className="text-left text-text-tertiary text-sm font-medium px-4 py-3">Enrolled</th>
-                  <th className="text-left text-text-tertiary text-sm font-medium px-4 py-3">Split</th>
-                  <th className="text-right text-text-tertiary text-sm font-medium px-4 py-3">Program Fee</th>
-                  <th className="text-right text-text-tertiary text-sm font-medium px-4 py-3">Your Earnings</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredEarnings.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">
-                      No earnings found for this period
-                    </td>
-                  </tr>
-                ) : (
-                  filteredEarnings.map((earning) => (
-                    <tr key={earning.id} className="hover:bg-surface-2/50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="text-white font-medium">{earning.child_name}</p>
-                          <p className="text-text-tertiary text-sm">{earning.parent_name}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-text-tertiary">{formatDate(earning.enrollment_date)}</td>
-                      <td className="px-4 py-3">{getSplitBadge(earning)}</td>
-                      <td className="px-4 py-3 text-right text-text-tertiary">{formatCurrency(earning.program_fee)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-green-400 font-semibold">{formatCurrency(earning.coach_amount)}</span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-              {filteredEarnings.length > 0 && (
-                <tfoot className="bg-surface-2/30">
-                  <tr>
-                    <td colSpan={4} className="px-4 py-3 text-right text-text-tertiary font-medium">
-                      Total
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-green-400 font-bold text-lg">
-                        {formatCurrency(filteredEarnings.reduce((sum, e) => sum + e.coach_amount, 0))}
-                      </span>
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="md:hidden divide-y divide-border">
-            {filteredEarnings.length === 0 ? (
-              <div className="p-8 text-center text-text-tertiary">No earnings found</div>
-            ) : (
-              filteredEarnings.map((earning) => (
-                <div key={earning.id} className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="text-white font-medium">{earning.child_name}</p>
-                      <p className="text-text-tertiary text-sm">{earning.parent_name}</p>
-                    </div>
-                    <span className="text-green-400 font-bold">{formatCurrency(earning.coach_amount)}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-text-tertiary">{formatDate(earning.enrollment_date)}</span>
-                    {getSplitBadge(earning)}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="bg-surface-1/50 rounded-xl border border-border p-3 text-center">
+          <p className="text-[22px] font-bold text-white">{summary.sessionCount}</p>
+          <p className="text-[13px] text-text-tertiary">Sessions</p>
+        </div>
+        <div className="bg-surface-1/50 rounded-xl border border-border p-3 text-center">
+          <p className="text-[22px] font-bold text-white">{formatRupees(avgPerSession)}</p>
+          <p className="text-[13px] text-text-tertiary">Avg/session</p>
         </div>
       </div>
+
+      {/* SECTION 2 — Product breakdown */}
+      {summary.totalNet > 0 && (
+        <div className="bg-surface-1/50 rounded-xl border border-border p-4 space-y-2">
+          <div className="h-2 bg-surface-2 rounded-full overflow-hidden flex">
+            {(summary.byProduct.tuition?.net ?? 0) > 0 && (
+              <div className="bg-blue-500" style={{ width: `${(summary.byProduct.tuition.net / summary.totalNet) * 100}%` }} />
+            )}
+            {(summary.byProduct.coaching?.net ?? 0) > 0 && (
+              <div className="bg-purple-500" style={{ width: `${(summary.byProduct.coaching.net / summary.totalNet) * 100}%` }} />
+            )}
+            {(summary.byProduct.workshop?.net ?? 0) > 0 && (
+              <div className="bg-teal-500" style={{ width: `${(summary.byProduct.workshop.net / summary.totalNet) * 100}%` }} />
+            )}
+          </div>
+          {[
+            { key: 'tuition', label: 'English Classes', dot: 'bg-blue-500' },
+            { key: 'coaching', label: 'Coaching', dot: 'bg-purple-500' },
+            { key: 'workshop', label: 'Workshops', dot: 'bg-teal-500' },
+          ].map(row => {
+            const prod = summary.byProduct[row.key];
+            if (!prod) return null;
+            return (
+              <div key={row.key} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${row.dot}`} />
+                  <span className="text-text-secondary">{row.label}</span>
+                </div>
+                <span className="text-text-tertiary">{formatRupees(prod.net)} &middot; {prod.sessions} sessions</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* SECTION 3 — Session log */}
+      <div>
+        <h2 className="text-[13px] uppercase tracking-wide text-text-tertiary font-medium mb-3">
+          Session Details ({sessions.length})
+        </h2>
+        {sessions.length === 0 ? (
+          <div className="bg-surface-1/50 rounded-xl border border-border p-6 text-center text-sm text-text-tertiary">
+            No sessions this month
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {sessions.map(session => (
+              <div key={session.id} className="bg-surface-1/50 rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs text-text-tertiary w-14 flex-shrink-0">
+                      {formatDateShort(session.date)}
+                    </span>
+                    <span className="text-sm text-white font-medium truncate">{session.childName}</span>
+                    <ProductBadge product={session.productType} />
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-sm text-green-400 font-medium">{formatRupees(session.netAmount)}</span>
+                    <div className={`w-2 h-2 rounded-full ${statusDot(session.status)}`} title={session.status} />
+                  </div>
+                </div>
+                {session.tdsAmount > 0 && (
+                  <div className="text-xs text-text-tertiary mt-1 pl-16">
+                    Gross: {formatRupees(session.grossAmount)} &middot; TDS: {formatRupees(session.tdsAmount)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 4 — Payout history */}
+      {payouts.length > 0 && (
+        <div>
+          <h2 className="text-[13px] uppercase tracking-wide text-text-tertiary font-medium mb-3">
+            Payout Schedule
+          </h2>
+          <div className="space-y-1.5">
+            {payouts.map((p, i) => (
+              <div key={i} className="bg-surface-1/50 rounded-xl border border-border p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-text-tertiary" />
+                  <span className="text-sm text-white">{formatDateShort(p.date)}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-white">{formatRupees(p.total)}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                    p.status === 'paid' ? 'bg-green-500/10 text-green-400' :
+                    p.status === 'scheduled' ? 'bg-yellow-500/10 text-yellow-400' :
+                    p.status === 'failed' ? 'bg-red-500/10 text-red-400' :
+                    'bg-blue-500/10 text-blue-400'
+                  }`}>
+                    {p.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 5 — Footer */}
+      <p className="text-xs text-text-tertiary text-center">
+        Earnings are calculated per completed session and paid monthly on the 7th.
+      </p>
+    </div>
   );
 }
