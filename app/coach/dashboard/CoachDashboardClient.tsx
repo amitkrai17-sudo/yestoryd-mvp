@@ -1,387 +1,427 @@
-// file: app/coach/dashboard/CoachDashboardClient.tsx
-// Coach Dashboard with Pending Skill Boosters section
-
+// app/coach/dashboard/CoachDashboardClient.tsx
+// Unified coach dashboard — earnings, sessions, students, "How I earn"
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Database } from '@/types/supabase';
 import {
-  Zap,
-  AlertCircle,
-  Clock,
-  Lightbulb,
-  Users,
-  CheckCircle,
-  Calendar,
-  Wallet,
-  Gift,
-  HelpCircle,
-  TrendingUp,
-  TrendingDown,
-  MessageCircle,
-  Sparkles,
-  ChevronRight,
+  Calendar, Clock, Users, ChevronRight,
+  IndianRupee, Video, MapPin, AlertCircle, BookOpen,
+  GraduationCap, UserPlus, ClipboardCheck,
 } from 'lucide-react';
-import ChatWidget from '@/components/chat/ChatWidget';
-import CoachTierCard from '@/components/coach/CoachTierCard';
-import CoachAvailabilityCard from '@/components/coach/CoachAvailabilityCard';
-import PendingRescheduleRequests from '@/components/coach/PendingRescheduleRequests';
-import { useActivityTracker } from '@/hooks/useActivityTracker';
+import { Spinner } from '@/components/ui/spinner';
+import { ProductBadge } from '@/components/shared/RevenueCalculator';
+import { getAvatarColor } from '@/lib/utils/avatar-colors';
+import { formatTime12 } from '@/lib/utils/date-format';
 
-type Coach = Database['public']['Tables']['coaches']['Row'];
+// ============================================================
+// TYPES
+// ============================================================
 
-interface PendingSkillBooster {
+interface DashboardData {
+  coach: { name: string; tierName: string };
+  todaySessions: SessionItem[];
+  batchGroups: Record<string, string[]>;
+  stats: {
+    sessionsToday: number;
+    completedThisMonth: number;
+    upcoming: number;
+    tuitionStudents: number;
+    coachingStudents: number;
+  };
+  earnings: {
+    total: number;
+    byProduct: Record<string, { amount: number; sessions: number }>;
+    nextPayoutDate: string | null;
+  };
+  howIEarn: {
+    tuition: { coachPercent: number; leadPercent: number; platformPercent: number };
+    coaching: { coachPercent: number; leadPercent: number; platformPercent: number };
+    workshop: { coachPercent: number; leadPercent: number; platformPercent: number };
+    tierName: string;
+  };
+  activeRates: { rateRupees: number; duration: number; childName: string; coachShare: number }[];
+  students: StudentItem[];
+  pendingActions: { captures: number };
+}
+
+interface SessionItem {
   id: string;
-  child_id: string;
-  child_name: string;
-  focus_area: string;
-  created_at: string;
-  days_pending: number;
+  time: string;
+  sessionType: string;
+  status: string;
+  meetLink: string | null;
+  childId: string;
+  childName: string;
+  sessionNumber: number | null;
+  durationMinutes: number;
+  rateRupees: number | null;
+  batchId: string | null;
 }
 
-interface DashboardStats {
-  total_students: number;
-  active_students: number;
-  upcoming_sessions: number;
-  total_earnings: number;
+interface StudentItem {
+  childId: string;
+  childName: string;
+  product: 'tuition' | 'coaching';
+  rate: number | null;
+  duration: number | null;
+  purchased: number;
+  completed: number;
 }
 
-// Focus area labels
-const FOCUS_AREA_LABELS: Record<string, string> = {
-  phonics_sounds: 'Phonics & Letter Sounds',
-  reading_fluency: 'Reading Fluency',
-  comprehension: 'Reading Comprehension',
-  vocabulary: 'Vocabulary Building',
-  grammar: 'Grammar & Sentence Structure',
-  confidence: 'Speaking Confidence',
-  specific_sounds: 'Specific Sound Practice',
-  other: 'Special Focus',
-};
+// ============================================================
+// HELPERS
+// ============================================================
 
-interface TodaySession {
-  id: string;
-  child_id: string;
-  child_name: string;
-  session_number: number | null;
-  session_type: string;
-  scheduled_time: string;
-  focus_area: string | null;
-  trend: string | null;
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
-interface NeedsAttentionStudent {
-  child_id: string;
-  child_name: string;
-  reason: string;
+function formatRupees(amount: number): string {
+  return `\u20B9${Math.round(amount).toLocaleString('en-IN')}`;
 }
 
-interface CoachDashboardClientProps {
-  coach: Coach;
-  initialStats: DashboardStats;
-  initialPendingSkillBoosters: PendingSkillBooster[];
-  initialTodaySessions?: TodaySession[];
-  initialNeedsAttention?: NeedsAttentionStudent[];
-}
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-function formatTime(time: string): string {
-  if (!time) return '';
-  try {
-    const [hours, minutes] = time.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const hour12 = hours % 12 || 12;
-    return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
-  } catch {
-    return time;
+// ============================================================
+// COMPONENT
+// ============================================================
+
+export default function CoachDashboardClient({ coachName }: { coachName: string }) {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'tuition' | 'coaching' | 'workshop'>('tuition');
+
+  useEffect(() => {
+    fetch('/api/coach/dashboard')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Spinner size="lg" className="text-[#00ABFF]" />
+      </div>
+    );
   }
-}
 
-export default function CoachDashboardClient({
-  coach,
-  initialStats,
-  initialPendingSkillBoosters,
-  initialTodaySessions = [],
-  initialNeedsAttention = [],
-}: CoachDashboardClientProps) {
-  const [stats] = useState<DashboardStats | null>(initialStats);
-  const [pendingSkillBoosters] = useState<PendingSkillBooster[]>(initialPendingSkillBoosters);
-  const [todaySessions] = useState<TodaySession[]>(initialTodaySessions);
-  const [needsAttention] = useState<NeedsAttentionStudent[]>(initialNeedsAttention);
+  if (!data) {
+    return (
+      <div className="p-6 text-center text-text-tertiary">
+        <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+        Failed to load dashboard. Please refresh.
+      </div>
+    );
+  }
 
-  useActivityTracker({
-    userType: 'coach',
-    userEmail: coach?.email || null,
-    enabled: !!coach,
-  });
-
-  if (!coach) return null;
+  const { stats, earnings, howIEarn, todaySessions, students, activeRates, pendingActions } = data;
+  const currentMonth = MONTH_NAMES[new Date().getMonth()];
+  const totalStudents = stats.tuitionStudents + stats.coachingStudents;
 
   return (
-    <div className="space-y-4 lg:space-y-6">
-        {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-[#00ABFF] to-[#0066CC] rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white">
-          <h1 className="text-lg lg:text-2xl font-bold mb-1 lg:mb-2">
-            Welcome back, {coach.name.split(' ')[0]}!
-          </h1>
-          <p className="text-sm lg:text-base text-white/80">
-            Here&apos;s what&apos;s happening with your coaching today.
+    <div className="space-y-6 max-w-3xl">
+      {/* SECTION 1 — Header */}
+      <div>
+        <h1 className="text-xl lg:text-2xl font-bold text-white">
+          {getGreeting()}, {(coachName || 'Coach').split(' ')[0]}
+        </h1>
+        <p className="text-sm text-text-tertiary mt-0.5">
+          {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+          {totalStudents > 0 && ` \u00B7 ${stats.tuitionStudents} tuition \u00B7 ${stats.coachingStudents} coaching students`}
+        </p>
+      </div>
+
+      {/* SECTION 2 — Stat cards */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { value: stats.sessionsToday, label: 'Today', icon: Calendar, color: 'text-[#00ABFF]' },
+          { value: stats.completedThisMonth, label: 'Completed', icon: ClipboardCheck, color: 'text-green-400' },
+          { value: stats.upcoming, label: 'Upcoming', icon: Clock, color: 'text-purple-400' },
+        ].map(card => (
+          <div key={card.label} className="bg-surface-1/50 rounded-xl border border-border p-3 text-center">
+            <card.icon className={`w-4 h-4 mx-auto mb-1 ${card.color}`} />
+            <p className="text-[22px] font-bold text-white">{card.value}</p>
+            <p className="text-[13px] text-text-tertiary">{card.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* SECTION 3 — Today's sessions */}
+      <div>
+        <h2 className="text-[13px] uppercase tracking-wide text-text-tertiary font-medium mb-3">
+          Today&apos;s Sessions
+        </h2>
+        {todaySessions.length === 0 ? (
+          <div className="bg-surface-1/50 rounded-xl border border-border p-6 text-center">
+            <Calendar className="w-6 h-6 mx-auto mb-2 text-text-tertiary" />
+            <p className="text-sm text-text-tertiary">No sessions scheduled today</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {todaySessions.map(session => {
+              const batchChildren = session.batchId ? data.batchGroups[session.batchId] : null;
+              return (
+                <div key={session.id} className="bg-surface-1/50 rounded-xl border border-border p-3 flex items-center gap-3">
+                  {/* Time */}
+                  <div className="text-center w-14 flex-shrink-0">
+                    <p className="text-sm font-semibold text-white">{formatTime12(session.time)}</p>
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-medium text-white truncate">
+                        {batchChildren && batchChildren.length > 1
+                          ? batchChildren.join(', ')
+                          : session.childName
+                        }
+                      </span>
+                      <ProductBadge product={session.sessionType === 'tuition' ? 'tuition' : session.sessionType === 'remedial' ? 'coaching' : 'coaching'} />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
+                      <span>{session.durationMinutes}m</span>
+                      {session.rateRupees && (
+                        <>
+                          <span>&middot;</span>
+                          <span>{formatRupees(session.rateRupees)}/sess</span>
+                        </>
+                      )}
+                      {session.meetLink && (
+                        <>
+                          <span>&middot;</span>
+                          <Video className="w-3 h-3 inline" />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {/* CTA */}
+                  <Link
+                    href={`/coach/sessions`}
+                    className="h-8 px-3 rounded-xl text-xs font-medium border border-gray-600 text-gray-300 hover:bg-gray-700 flex items-center gap-1 flex-shrink-0"
+                  >
+                    View
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 4 — Earnings */}
+      <div className="bg-surface-1/50 rounded-xl border border-border p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[13px] uppercase tracking-wide text-text-tertiary font-medium">
+            {currentMonth} Earnings
+          </h2>
+          <Link href="/coach/earnings" className="text-xs text-[#00ABFF] hover:underline flex items-center gap-0.5">
+            View all<ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <div>
+          <p className="text-2xl font-bold text-white">{formatRupees(earnings.total)}</p>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            {Object.values(earnings.byProduct).reduce((s, p) => s + p.sessions, 0)} sessions
+            {earnings.nextPayoutDate && ` \u00B7 Next payout: ${new Date(earnings.nextPayoutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
           </p>
         </div>
 
-        {/* Pending Reschedule Requests */}
-        <PendingRescheduleRequests />
+        {/* Stacked bar */}
+        {earnings.total > 0 && (
+          <div className="h-2 bg-surface-2 rounded-full overflow-hidden flex">
+            {(earnings.byProduct.tuition?.amount ?? 0) > 0 && (
+              <div className="bg-blue-500" style={{ width: `${(earnings.byProduct.tuition.amount / earnings.total) * 100}%` }} />
+            )}
+            {(earnings.byProduct.coaching?.amount ?? 0) > 0 && (
+              <div className="bg-purple-500" style={{ width: `${(earnings.byProduct.coaching.amount / earnings.total) * 100}%` }} />
+            )}
+            {(earnings.byProduct.workshop?.amount ?? 0) > 0 && (
+              <div className="bg-teal-500" style={{ width: `${(earnings.byProduct.workshop.amount / earnings.total) * 100}%` }} />
+            )}
+          </div>
+        )}
 
-        {/* Pending Skill Boosters Alert */}
-        {pendingSkillBoosters.length > 0 && (
-          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-xl lg:rounded-2xl border-2 border-yellow-500/40 p-3 lg:p-5">
-            <div className="flex items-start gap-3 lg:gap-4">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-                <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+        {/* Breakdown rows */}
+        <div className="space-y-1.5">
+          {[
+            { key: 'tuition', label: 'English Classes', dot: 'bg-blue-500' },
+            { key: 'coaching', label: 'Coaching', dot: 'bg-purple-500' },
+            { key: 'workshop', label: 'Workshops', dot: 'bg-teal-500' },
+          ].map(row => {
+            const prod = earnings.byProduct[row.key];
+            return (
+              <div key={row.key} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${row.dot}`} />
+                  <span className="text-text-secondary">{row.label}</span>
+                </div>
+                <span className="text-text-tertiary">
+                  {formatRupees(prod?.amount ?? 0)} &middot; {prod?.sessions ?? 0} sess
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-white text-base lg:text-lg flex items-center gap-2">
-                  Pending Skill Boosters
-                  <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
-                    {pendingSkillBoosters.length}
-                  </span>
-                </h3>
-                <p className="text-text-tertiary text-xs lg:text-sm mt-1 mb-3 lg:mb-4">
-                  Waiting for parents to book a time slot.
-                </p>
+            );
+          })}
+        </div>
+      </div>
 
-                <div className="space-y-2 lg:space-y-3">
-                  {pendingSkillBoosters.map((session) => (
-                    <div
-                      key={session.id}
-                      className="bg-surface-1/60 rounded-lg lg:rounded-xl p-2.5 lg:p-4 flex items-center justify-between gap-2 lg:gap-4"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5 lg:mb-1">
-                          <span className="font-semibold text-white text-sm lg:text-base truncate">{session.child_name}</span>
-                          {session.days_pending >= 3 && (
-                            <span className="bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0">
-                              <AlertCircle className="w-3 h-3" />
-                              {session.days_pending}d
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs lg:text-sm text-text-tertiary truncate">
-                          {FOCUS_AREA_LABELS[session.focus_area] || session.focus_area}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="hidden sm:flex text-xs text-text-tertiary items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {session.days_pending === 0 ? 'Today' : `${session.days_pending}d ago`}
-                        </span>
-                        <Link
-                          href={`/coach/students/${session.child_id}`}
-                          className="px-3 py-1.5 bg-[#00ABFF] text-white text-xs lg:text-sm rounded-xl hover:bg-[#00ABFF]/90 transition-colors"
-                        >
-                          View
-                        </Link>
-                      </div>
+      {/* SECTION 5 — How I earn (tabbed) */}
+      <div className="bg-surface-1/50 rounded-xl border border-border overflow-hidden">
+        <div className="flex border-b border-border">
+          {(['tuition', 'coaching', 'workshop'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? 'text-[#00ABFF] border-b-2 border-[#00ABFF]'
+                  : 'text-text-tertiary hover:text-text-secondary'
+              }`}
+            >
+              {tab === 'tuition' ? 'English Classes' : tab === 'coaching' ? 'Coaching' : 'Workshops'}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4 space-y-3">
+          {activeTab === 'tuition' && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-text-secondary">Your share</span>
+                <span className="text-white font-medium">{howIEarn.tuition.coachPercent}% of session rate</span>
+              </div>
+              <p className="text-xs text-text-tertiary">Rate set per child based on session duration and type</p>
+
+              {activeRates.length > 0 && (
+                <div className="bg-surface-2/50 rounded-lg p-3 space-y-1.5">
+                  <p className="text-xs text-text-tertiary font-medium">Your current rates</p>
+                  {activeRates.map((r, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-text-secondary">{formatRupees(r.rateRupees)}/sess ({r.duration}m)</span>
+                      <span className="text-green-400 font-medium">{formatRupees(r.coachShare)}</span>
                     </div>
                   ))}
                 </div>
+              )}
 
-                <p className="text-xs text-text-tertiary mt-3 lg:mt-4 flex items-center gap-1.5">
-                  <Lightbulb className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
-                  <span className="hidden sm:inline">Tip: Follow up with parents via WhatsApp if booking is pending for 3+ days</span>
-                  <span className="sm:hidden">Follow up if pending 3+ days</span>
-                </p>
+              <div className="text-xs text-text-tertiary pt-1">
+                {howIEarn.tuition.leadPercent}% lead &middot; {howIEarn.tuition.coachPercent}% you &middot; {howIEarn.tuition.platformPercent}% platform
               </div>
-            </div>
-          </div>
-        )}
+            </>
+          )}
 
-        {/* Needs Attention — only show if students need attention */}
-        {needsAttention.length > 0 && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl lg:rounded-2xl p-3 lg:p-5">
-            <h3 className="font-bold text-amber-400 text-sm lg:text-base flex items-center gap-2 mb-3">
-              <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5" />
-              Needs Attention
-            </h3>
-            <div className="space-y-2">
-              {needsAttention.map((student) => (
-                <div
-                  key={student.child_id}
-                  className="bg-surface-1/60 rounded-lg lg:rounded-xl p-2.5 lg:p-3 flex items-center justify-between gap-2"
-                >
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-white text-sm">{student.child_name}</span>
-                    <p className="text-xs text-amber-400/80 mt-0.5">{student.reason}</p>
+          {activeTab === 'coaching' && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-text-secondary">Your tier</span>
+                <span className="text-white font-medium">{howIEarn.tierName} ({howIEarn.coaching.coachPercent}%)</span>
+              </div>
+              <p className="text-xs text-text-tertiary">Per enrollment split applied to each coaching program</p>
+              <div className="bg-surface-2/50 rounded-lg p-3 space-y-1.5">
+                <p className="text-xs text-text-tertiary font-medium">Tier ladder</p>
+                {[
+                  { name: 'Rising', pct: 50 },
+                  { name: 'Expert', pct: 55 },
+                  { name: 'Master', pct: 60 },
+                ].map(tier => (
+                  <div key={tier.name} className="flex justify-between text-sm">
+                    <span className={`text-text-secondary ${tier.name === howIEarn.tierName?.split(' ')[0] ? 'text-[#00ABFF] font-medium' : ''}`}>
+                      {tier.name}
+                    </span>
+                    <span className="text-text-tertiary">{tier.pct}%</span>
                   </div>
-                  <Link
-                    href={`/coach/students/${student.child_id}`}
-                    className="px-3 py-1.5 bg-amber-500/20 text-amber-400 text-xs rounded-xl hover:bg-amber-500/30 transition-colors flex items-center gap-1 flex-shrink-0"
-                  >
-                    View <ChevronRight className="w-3 h-3" />
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                ))}
+              </div>
+              <p className="text-xs text-text-tertiary">Self-referral: earn lead cost too (10%)</p>
+            </>
+          )}
 
-        {/* Today's Sessions with Intelligence */}
-        {todaySessions.length > 0 && (
-          <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl border border-border p-3 lg:p-5">
-            <h3 className="font-bold text-white text-sm lg:text-base flex items-center gap-2 mb-3">
-              <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
-              Today&apos;s Sessions
-            </h3>
-            <div className="space-y-2">
-              {todaySessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="bg-surface-0/50 rounded-lg lg:rounded-xl p-2.5 lg:p-3 flex items-center gap-3"
-                >
+          {activeTab === 'workshop' && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-text-secondary">Your share</span>
+                <span className="text-white font-medium">{howIEarn.workshop.coachPercent}% of workshop fee</span>
+              </div>
+              <p className="text-xs text-text-tertiary">Split varies by workshop type: blueprint 40-50%, own content 55-65%</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* SECTION 6 — My students */}
+      {students.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[13px] uppercase tracking-wide text-text-tertiary font-medium">
+              My Students ({students.length})
+            </h2>
+            <Link href="/coach/students" className="text-xs text-[#00ABFF] hover:underline flex items-center gap-0.5">
+              View all<ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="space-y-1.5">
+            {students.slice(0, 6).map(student => {
+              const pct = student.purchased > 0 ? Math.round((student.completed / student.purchased) * 100) : 0;
+              return (
+                <div key={`${student.childId}-${student.product}`} className="bg-surface-1/50 rounded-xl border border-border p-3 flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm bg-gradient-to-br ${getAvatarColor(student.childName)}`}>
+                    {student.childName.charAt(0).toUpperCase()}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-gray-400 font-medium">
-                        {formatTime(session.scheduled_time)}
-                      </span>
-                      <span className="font-medium text-white text-sm">{session.child_name}</span>
-                      {session.session_number && (
-                        <span className="text-[10px] text-gray-500">
-                          Session {session.session_number}
-                        </span>
-                      )}
-                      {session.trend === 'declining' && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400 font-medium">
-                          <TrendingDown className="w-3 h-3" />
-                          Attention
-                        </span>
-                      )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-white truncate">{student.childName}</span>
+                      <ProductBadge product={student.product} />
                     </div>
-                    {session.focus_area && (
-                      <p className="text-[10px] text-gray-500 mt-0.5 truncate">
-                        Focus: {session.focus_area}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="w-16 h-1 bg-surface-2 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#00ABFF] rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs text-text-tertiary">{student.completed}/{student.purchased}</span>
+                      {student.rate && <span className="text-xs text-text-tertiary">{formatRupees(student.rate)}/s</span>}
+                    </div>
                   </div>
-                  <Link
-                    href={`/coach/ai-assistant?studentId=${session.child_id}&prompt=${encodeURIComponent(`Prepare me for my session with ${session.child_name} today. What should I focus on?`)}`}
-                    className="px-2.5 py-1.5 bg-gradient-to-r from-[#00ABFF] to-[#0066CC] text-white text-[10px] lg:text-xs font-medium rounded-xl hover:opacity-90 transition-all flex items-center gap-1 flex-shrink-0"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    Prep
-                  </Link>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Coach Tier Card */}
-        <CoachTierCard coachId={coach.id} coachEmail={coach.email} />
-
-        {/* Availability Management */}
-        <CoachAvailabilityCard coachId={coach.id} coachEmail={coach.email} />
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
-          <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
-              <Users className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
-            </div>
-            <p className="text-xl lg:text-3xl font-bold text-[#00ABFF]">{stats?.total_students || 0}</p>
-            <p className="text-xs lg:text-sm text-text-tertiary mt-0.5 lg:mt-1">Total Students</p>
-          </div>
-
-          <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-emerald-500/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
-              <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-400" />
-            </div>
-            <p className="text-xl lg:text-3xl font-bold text-emerald-400">{stats?.active_students || 0}</p>
-            <p className="text-xs lg:text-sm text-text-tertiary mt-0.5 lg:mt-1">Active Students</p>
-          </div>
-
-          <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-purple-500/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
-              <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
-            </div>
-            <p className="text-xl lg:text-3xl font-bold text-purple-400">{stats?.upcoming_sessions || 0}</p>
-            <p className="text-xs lg:text-sm text-text-tertiary mt-0.5 lg:mt-1">Upcoming</p>
-          </div>
-
-          <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#00ABFF]/20 rounded-lg lg:rounded-xl flex items-center justify-center mb-2 lg:mb-3">
-              <Wallet className="w-4 h-4 lg:w-5 lg:h-5 text-[#00ABFF]" />
-            </div>
-            <p className="text-xl lg:text-3xl font-bold text-[#00ABFF]">
-              ₹{Math.round(stats?.total_earnings || 0).toLocaleString('en-IN')}
-            </p>
-            <p className="text-xs lg:text-sm text-text-tertiary mt-0.5 lg:mt-1">Earnings</p>
+              );
+            })}
           </div>
         </div>
+      )}
 
-        {/* Quick Actions */}
-        <div className="bg-surface-1/50 rounded-xl lg:rounded-2xl border border-border p-3 lg:p-6">
-          <h2 className="font-bold text-white text-base lg:text-lg mb-3 lg:mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
-            <Link
-              href="/coach/students"
-              className="p-3 lg:p-4 bg-surface-0 rounded-xl hover:bg-surface-2/50 transition-all group text-center border border-border/50"
-            >
-              <Users className="w-6 h-6 lg:w-7 lg:h-7 text-[#00ABFF] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-xs lg:text-sm text-text-secondary">Students</span>
-            </Link>
-            <Link
-              href="/coach/sessions"
-              className="p-3 lg:p-4 bg-surface-0 rounded-xl hover:bg-surface-2/50 transition-all group text-center border border-border/50"
-            >
-              <Calendar className="w-6 h-6 lg:w-7 lg:h-7 text-purple-400 mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-xs lg:text-sm text-text-secondary">Schedule</span>
-            </Link>
-            <Link
-              href="/coach/templates"
-              className="p-3 lg:p-4 bg-surface-0 rounded-xl hover:bg-surface-2/50 transition-all group text-center border border-border/50"
-            >
-              <Gift className="w-6 h-6 lg:w-7 lg:h-7 text-[#0066CC] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-xs lg:text-sm text-text-secondary">Referral</span>
-            </Link>
-            <Link
-              href="/coach/earnings"
-              className="p-3 lg:p-4 bg-surface-0 rounded-xl hover:bg-surface-2/50 transition-all group text-center border border-border/50"
-            >
-              <Wallet className="w-6 h-6 lg:w-7 lg:h-7 text-[#00ABFF] mx-auto mb-1.5 lg:mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-xs lg:text-sm text-text-secondary">Earnings</span>
-            </Link>
-          </div>
+      {/* SECTION 7 — Pending actions */}
+      {pendingActions.captures > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href="/coach/sessions"
+            className="h-8 px-3 rounded-xl text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center gap-1.5"
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            {pendingActions.captures} captures pending
+          </Link>
         </div>
+      )}
 
-        {/* Need Help Card */}
-        <div className="bg-gradient-to-r from-surface-1 to-surface-1/50 rounded-xl lg:rounded-2xl p-3 lg:p-6 border border-border">
-          <div className="flex items-start gap-3 lg:gap-4">
-            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-[#00ABFF]/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <HelpCircle className="w-5 h-5 lg:w-6 lg:h-6 text-[#00ABFF]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-white text-sm lg:text-base mb-0.5 lg:mb-1">Need Help?</h3>
-              <p className="text-text-tertiary text-xs lg:text-sm mb-3 lg:mb-4">
-                Have a question? We&apos;re here to help!
-              </p>
-              <div className="flex flex-wrap gap-2 lg:gap-3">
-                <Link
-                  href="/coach/ai-assistant"
-                  className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-[#00ABFF] text-white rounded-xl text-xs lg:text-sm font-medium hover:bg-[#00ABFF]/90 transition-colors"
-                >
-                  <TrendingUp className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  Ask rAI
-                </Link>
-                <button className="inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 bg-surface-2 text-text-secondary rounded-xl text-xs lg:text-sm font-medium hover:bg-surface-3 transition-colors">
-                  <MessageCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  Request
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Floating rAI Chat Widget */}
-        <ChatWidget userRole="coach" userEmail={coach.email} />
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href="/coach/onboard-student"
+          className="bg-surface-1/50 rounded-xl border border-border p-3 flex items-center gap-2 hover:bg-surface-1/80 transition-colors"
+        >
+          <UserPlus className="w-4 h-4 text-[#00ABFF]" />
+          <span className="text-sm text-white">Onboard Student</span>
+        </Link>
+        <Link
+          href="/coach/batches"
+          className="bg-surface-1/50 rounded-xl border border-border p-3 flex items-center gap-2 hover:bg-surface-1/80 transition-colors"
+        >
+          <BookOpen className="w-4 h-4 text-[#00ABFF]" />
+          <span className="text-sm text-white">My Classes</span>
+        </Link>
+      </div>
     </div>
   );
 }

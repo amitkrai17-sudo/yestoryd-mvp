@@ -1,18 +1,10 @@
+// app/coach/dashboard/page.tsx
+// Minimal server component — auth check + redirect, data fetched client-side via API
 
-
-// file: app/coach/dashboard/page.tsx
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import CoachDashboardClient from './CoachDashboardClient';
-import { Database } from '@/types/supabase';
-
-type ScheduledSessionRow = Database['public']['Tables']['scheduled_sessions']['Row'];
-type ChildRow = Database['public']['Tables']['children']['Row'];
-
-type ScheduledSessionWithChild = ScheduledSessionRow & {
-  children: Pick<ChildRow, 'child_name' | 'name'> | null;
-};
 
 export default async function CoachDashboardPage() {
   const cookieStore = cookies();
@@ -21,196 +13,25 @@ export default async function CoachDashboardPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
+        getAll() { return cookieStore.getAll(); },
         setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // setAll called from Server Component — can be ignored
-            // since middleware handles token refresh
-          }
+          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); }
+          catch { /* Server Component — middleware handles refresh */ }
         },
       },
-    }
+    },
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/coach/login');
-  }
+  if (!user) redirect('/coach/login');
 
   const { data: coach } = await supabase
     .from('coaches')
-    .select('*')
+    .select('id, name, email')
     .eq('email', user.email!)
     .single();
 
-  if (!coach) {
-    redirect('/coach/login');
-  }
+  if (!coach) redirect('/coach/login');
 
-  // Fetch stats
-  const { count: studentsCount } = await supabase
-    .from('enrollments')
-    .select('*', { count: 'exact', head: true })
-    .eq('coach_id', coach.id)
-    .in('status', ['active', 'pending_start', 'completed']);
-
-  const { count: activeCount } = await supabase
-    .from('enrollments')
-    .select('*', { count: 'exact', head: true })
-    .eq('coach_id', coach.id)
-    .in('status', ['active', 'pending_start']);
-
-  let sessionsCount = 0;
-  try {
-    const { count } = await supabase
-      .from('scheduled_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('coach_id', coach.id)
-      .gte('scheduled_date', new Date().toISOString().split('T')[0])
-      .eq('status', 'scheduled');
-    sessionsCount = count || 0;
-  } catch (e) {
-    console.log('scheduled_sessions table may not exist');
-  }
-
-  // Earnings from coach_payouts (single source of truth for actual payouts)
-  const { data: payoutRows } = await supabase
-    .from('coach_payouts')
-    .select('net_amount, product_type')
-    .eq('coach_id', coach.id)
-    .in('status', ['scheduled', 'paid']);
-  const totalEarnings = (payoutRows || []).reduce((sum, r) => sum + (r.net_amount || 0), 0);
-  const earningsByProduct = (payoutRows || []).reduce((acc, r) => {
-    const key = (r as any).product_type || 'coaching';
-    acc[key] = (acc[key] || 0) + (r.net_amount || 0);
-    return acc;
-  }, {} as Record<string, number>);
-
-  const initialStats = {
-    total_students: studentsCount || 0,
-    active_students: activeCount || 0,
-    upcoming_sessions: sessionsCount,
-    total_earnings: totalEarnings,
-  };
-
-  // Fetch pending skill boosters
-  const { data: pendingSessions, error } = await supabase
-    .from('scheduled_sessions')
-    .select(`
-      id,
-      child_id,
-      focus_area,
-      created_at,
-      children:child_id (
-        child_name,
-        name
-      )
-    `)
-    .eq('coach_id', coach.id)
-    .eq('session_type', 'remedial')
-    .eq('status', 'pending_booking')
-    .order('created_at', { ascending: false });
-
-  const initialPendingSkillBoosters = (pendingSessions || []).map((session: any) => {
-    const daysPending = Math.floor(
-      (Date.now() - new Date(session.created_at).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const children = Array.isArray(session.children) ? session.children[0] : session.children;
-    return {
-      id: session.id,
-      child_id: session.child_id,
-      child_name: children?.child_name || children?.name || 'Unknown',
-      focus_area: session.focus_area || 'general',
-      created_at: session.created_at,
-      days_pending: daysPending,
-    };
-  });
-
-
-  // Fetch today's sessions with child info + learning_profile
-  const today = new Date().toISOString().split('T')[0];
-  const { data: todaySessions } = await supabase
-    .from('scheduled_sessions')
-    .select(`
-      id,
-      child_id,
-      session_type,
-      session_number,
-      scheduled_time,
-      status,
-      children:child_id (
-        id,
-        child_name,
-        learning_profile
-      )
-    `)
-    .eq('coach_id', coach.id)
-    .eq('scheduled_date', today)
-    .in('status', ['scheduled', 'rescheduled'])
-    .order('scheduled_time', { ascending: true });
-
-  const initialTodaySessions = (todaySessions || []).map((s: any) => {
-    const child = Array.isArray(s.children) ? s.children[0] : s.children;
-    const profile = child?.learning_profile;
-    return {
-      id: s.id,
-      child_id: s.child_id,
-      child_name: child?.child_name || 'Student',
-      session_number: s.session_number,
-      session_type: s.session_type,
-      scheduled_time: s.scheduled_time,
-      focus_area: profile?.recommended_focus_next_session || null,
-      trend: profile?.reading_level?.trend || null,
-    };
-  });
-
-  // Identify students needing attention (declining trajectory)
-  const { data: activeEnrollments } = await supabase
-    .from('enrollments')
-    .select(`
-      child:children (
-        id,
-        child_name,
-        learning_profile
-      )
-    `)
-    .eq('coach_id', coach.id)
-    .in('status', ['active', 'pending_start']);
-
-  const needsAttention = (activeEnrollments || [])
-    .map((e: any) => {
-      const child = Array.isArray(e.child) ? e.child[0] : e.child;
-      if (!child?.learning_profile) return null;
-      const profile = child.learning_profile;
-      const trend = profile?.reading_level?.trend;
-      const engagement = profile?.parent_engagement?.level;
-      if (trend === 'declining' || engagement === 'low') {
-        return {
-          child_id: child.id,
-          child_name: child.child_name,
-          reason: trend === 'declining'
-            ? 'Declining trajectory over recent sessions'
-            : 'Low parent engagement',
-        };
-      }
-      return null;
-    })
-    .filter(Boolean) as { child_id: string; child_name: string; reason: string }[];
-
-  return (
-    <CoachDashboardClient
-      coach={coach}
-      initialStats={initialStats}
-      initialPendingSkillBoosters={initialPendingSkillBoosters}
-      initialTodaySessions={initialTodaySessions}
-      initialNeedsAttention={needsAttention}
-    />
-  );
+  return <CoachDashboardClient coachName={coach.name} />;
 }
