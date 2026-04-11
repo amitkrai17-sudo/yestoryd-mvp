@@ -559,12 +559,15 @@ export default function CoachOnboardStudentPage() {
               <div className="mt-3 bg-surface-1/50 rounded-xl border border-border p-3 space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-text-tertiary">Your share ({splitPreview.coach_percent}%)</span>
-                  <span className="text-green-400 font-medium">{splitPreview.coach_amount_rupees}</span>
+                  <span className="text-green-400 font-medium">
+                    {`\u20B9${splitPreview.coach_amount_rupees}/session \u00D7 ${sessionsPurchased} = \u20B9${(splitPreview.coach_amount_rupees * sessionsPurchased).toLocaleString('en-IN')}`}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-text-tertiary">Parent pays ({sessionsPurchased} sessions)</span>
-                  <span className="text-white font-medium">{Number(rateRupees) * sessionsPurchased}</span>
+                  <span className="text-white font-medium">{`\u20B9${(Number(rateRupees) * sessionsPurchased).toLocaleString('en-IN')}`}</span>
                 </div>
+                <p className="text-[13px] text-text-secondary pt-1">Paid per completed session &middot; Payout on 7th of each month</p>
               </div>
             )}
           </div>
@@ -654,12 +657,13 @@ export default function CoachOnboardStudentPage() {
               <div className="border-t border-border pt-3 space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-text-tertiary">Your earnings/session</span>
-                  <span className="text-green-400 font-semibold">{splitPreview.coach_amount_rupees}</span>
+                  <span className="text-green-400 font-semibold">{`\u20B9${splitPreview.coach_amount_rupees}`}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-text-tertiary">Total coach earnings</span>
-                  <span className="text-green-400 font-semibold">{splitPreview.coach_amount_rupees * sessionsPurchased}</span>
+                  <span className="text-green-400 font-semibold">{`\u20B9${splitPreview.coach_amount_rupees}/sess \u00D7 ${sessionsPurchased} = \u20B9${(splitPreview.coach_amount_rupees * sessionsPurchased).toLocaleString('en-IN')}`}</span>
                 </div>
+                <p className="text-[13px] text-text-secondary pt-1">Paid per completed session &middot; Payout on 7th of each month</p>
               </div>
             )}
           </div>
