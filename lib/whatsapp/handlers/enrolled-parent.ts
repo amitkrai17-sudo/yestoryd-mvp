@@ -7,7 +7,7 @@
 // Returns a string reply when the message is clearly about the child's
 // enrollment (session / practice / payment / cancel keywords). Returns
 // null for general questions ("how is english classes different from
-// coaching") so the caller can fall through to the normal FAQ path —
+// coaching") so the caller can fall through to the normal FAQ path ???
 // those don't need child context and benefit from a Gemini answer.
 // ============================================================
 
@@ -34,7 +34,19 @@ function displayName(child: EnrolledChild): string {
  */
 function detectKeywordBucket(message: string): KeywordBucket | null {
   const lower = (message || '').toLowerCase();
-  if (lower.includes('session') || lower.includes('class') || lower.includes('schedule')) return 'session';
+
+  // 'class' alone is too greedy ??? matches "english classes" which is a product
+  // question, not a session query. Use specific phrases that indicate a
+  // scheduled session ("next class", "my class", "today class") so product
+  // inquiries fall through to the FAQ handler.
+  if (
+    lower.includes('session') ||
+    lower.includes('next class') ||
+    lower.includes('my class') ||
+    lower.includes('today class') ||
+    lower.includes('schedule')
+  ) return 'session';
+
   if (lower.includes('practice') || lower.includes('homework') || lower.includes('task')) return 'practice';
   if (lower.includes('pay') || lower.includes('fee') || lower.includes('renew')) return 'payment';
   if (lower.includes('cancel') || lower.includes('stop') || lower.includes('pause')) return 'cancel';
@@ -92,7 +104,7 @@ export async function handleEnrolledParent(
 
   const bucket = detectKeywordBucket(message);
   if (!bucket) {
-    // General question — let the FAQ handler answer it.
+    // General question ??? let the FAQ handler answer it.
     return null;
   }
 
@@ -107,3 +119,4 @@ export async function handleEnrolledParent(
 
   return buildDisambiguationPrompt(children);
 }
+
