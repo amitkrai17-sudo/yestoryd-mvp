@@ -116,14 +116,3 @@ export async function sendWhatsAppMessage(params: AiSensyMessageParams): Promise
 export function isWhatsAppConfigured(): boolean {
   return !!process.env.AISENSY_API_KEY;
 }
-
-/**
- * Send OTP via WhatsApp
- */
-export async function sendWhatsAppOTP(phone: string, otp: string): Promise<AiSensyResponse> {
-  return sendWhatsAppMessage({
-    to: phone,
-    templateName: 'otp_verification', // Your AiSensy template name
-    variables: [otp],
-  });
-}
