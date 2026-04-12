@@ -20,17 +20,25 @@ export interface EnrolledChild {
 }
 
 /**
- * Look up an active-enrollment child by parent phone in any of the three
- * storage formats we've ever used:
- *   +91XXXXXXXXXX (E.164), 91XXXXXXXXXX (no +), XXXXXXXXXX (10-digit).
+ * Look up an active-enrollment child by parent phone. Mirrors the phone
+ * match pattern used in auth routes (send-otp, verify-otp, middleware)
+ * plus an explicit +91<10-digit> reconstruction to cover inputs that
+ * weren't cleanly normalized upstream.
+ *
+ * Formats matched:
+ *   +919687606177 (E.164, normalizedPhone)
+ *   919687606177  (no +, normalizedPhone.slice(1))
+ *   9687606177    (10-digit, normalizedPhone.slice(3))
+ *   +919687606177 reconstructed as `+91${digits10}` (defensive)
+ *
  * Returns null if no match OR no active enrollment.
  */
 export async function findEnrolledChildByPhone(phone: string): Promise<EnrolledChild | null> {
-  const e164 = normalizePhone(phone);
-  if (!e164) return null;
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return null;
 
-  const noPlus = e164.replace(/^\+/, '');
-  const digits10 = e164.slice(-10);
+  const digits10 = normalizedPhone.slice(3);
+  const plus91Reconstructed = `+91${digits10}`;
 
   const supabase = createAdminClient();
 
@@ -47,7 +55,7 @@ export async function findEnrolledChildByPhone(phone: string): Promise<EnrolledC
         coaches ( name )
       )
     `)
-    .or(`parent_phone.eq.${e164},parent_phone.eq.${noPlus},parent_phone.eq.${digits10}`)
+    .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(1)},parent_phone.eq.${normalizedPhone.slice(3)},parent_phone.eq.${plus91Reconstructed}`)
     .eq('enrollments.status', 'active')
     .limit(1)
     .maybeSingle();
