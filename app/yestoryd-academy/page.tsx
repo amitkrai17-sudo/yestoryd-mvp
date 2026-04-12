@@ -34,7 +34,11 @@ import {
   Scale,
   TrendingUp,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  ClipboardCheck,
+  Mic,
+  FileCheck,
+  Activity,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { useSessionDurations } from '@/contexts/SiteSettingsContext';
@@ -61,7 +65,23 @@ const STATIC_FAQ_JOINING_FEE = {
 };
 const STATIC_FAQ_TOOLS = {
   question: "What tools will I use?",
-  answer: "Google Meet for sessions, our coach dashboard for tracking, WhatsApp for parent communication, and rAI for session preparation. All simple, no complex software."
+  answer: "One dashboard, every tool built-in: Coach Portal (sessions, students, schedule), MicroNotes (real-time session observations in 3 taps), rAI (session prep briefs + parent chatbot), Session Intelligence (auto-filled post-session report), Smart Practice (homework between sessions), and an e-learning content library. Google Meet runs the call; everything else is Yestoryd.",
+};
+
+// New strategic FAQ entries — answer the "why not do this myself?" question.
+const STATIC_FAQ_DIFFERENTIATOR = {
+  question: "How is Yestoryd different from other coaching platforms?",
+  answer: "Other platforms hand you a student list and get out of the way. Yestoryd hands you an intelligence engine: AI reading assessment finds exact gaps, session briefs are generated before every session, MicroNotes capture observations in real time, reports auto-fill after, and Smart Practice keeps children moving between sessions. You couldn't build this yourself with Google Meet and Razorpay.",
+};
+
+const STATIC_FAQ_ADMIN_TIME = {
+  question: "How much time will I spend on admin work?",
+  answer: "Under 2 minutes per session. MicroNotes during the session, one-tap sign-off on the auto-filled Session Intelligence form after. No manual reports, no WhatsApp typing, no homework PDFs to email. Parent summaries go out automatically within minutes of session end.",
+};
+
+const STATIC_FAQ_MULTI_PRODUCT = {
+  question: "Can I do coaching AND teach English classes?",
+  answer: "Yes, and many coaches do both. Coaching, English Classes, and Workshops all run from the same dashboard with the same intelligence stack. Earnings combine into one monthly payout. Switch between products as your schedule fills.",
 };
 const STATIC_FAQ_COMMITMENT = {
   question: "What's the commitment period?",
@@ -137,6 +157,53 @@ const GROW_FALLBACK = [
 
 type ProductKey = 'coaching' | 'tuition' | 'workshop';
 
+// Stacked split bar used under each product tier section.
+// Coach portion is ALWAYS leftmost and accent-colored so it reads dominant
+// at a glance — that's the CRO hook ("you keep the largest share").
+function SplitBar({
+  coachPercent,
+  leadPercent,
+  coachColorClass,
+  coachTextClass,
+  coachLabel,
+  note,
+}: {
+  coachPercent: number;
+  leadPercent: number;
+  coachColorClass: string;   // e.g. 'bg-purple-500'
+  coachTextClass: string;    // e.g. 'text-purple-300'
+  coachLabel: string;        // e.g. 'You keep 50–60%'
+  note?: string;
+}) {
+  const platformPercent = Math.max(0, 100 - coachPercent - leadPercent);
+  return (
+    <div className="bg-surface-1 rounded-2xl p-6 border border-border mb-10">
+      <div className="flex items-center justify-between mb-3">
+        <span className={`font-semibold ${coachTextClass}`}>{coachLabel}</span>
+        {note && <span className="text-xs text-text-tertiary">{note}</span>}
+      </div>
+      <div className="h-3 bg-surface-2 rounded-full overflow-hidden flex">
+        <div className={coachColorClass} style={{ width: `${coachPercent}%` }} />
+        {leadPercent > 0 && <div className="bg-orange-400/80" style={{ width: `${leadPercent}%` }} />}
+        <div className="bg-gray-600/60" style={{ width: `${platformPercent}%` }} />
+      </div>
+      <div className="flex flex-wrap justify-between gap-2 text-xs text-text-tertiary mt-3">
+        <span className="flex items-center gap-1.5">
+          <span className={`w-2 h-2 rounded-full ${coachColorClass}`} /> Coach {coachPercent}%
+        </span>
+        {leadPercent > 0 && (
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-orange-400/80" /> Lead {leadPercent}%
+          </span>
+        )}
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-gray-600/60" /> Platform {platformPercent}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // Product tab visual tokens — match components/shared/RevenueCalculator.tsx
 // (blue=tuition, purple=coaching, teal=workshop) for cross-portal consistency.
 const PRODUCT_TABS: { key: ProductKey; label: string; activeBg: string; activeText: string; activeBorder: string; accentText: string; dot: string }[] = [
@@ -190,7 +257,14 @@ export default function YestorydAcademyPage() {
     academy_hero_stat_3_value: 'AI-Powered',
     academy_hero_stat_3_label: 'Progress Tracking',
     academy_coach_time_commitment: '3-4 hours per child/month',
+    academy_intelligence_stat_value: '< 2 min',
+    academy_intelligence_stat_label: 'avg post-session admin time',
   });
+
+  // Marketing-framing assumption: typical monthly session count per child.
+  // Decoupled from age_band_config so operational data stays clean.
+  // Default 6 matches a typical coaching + tuition practice cadence.
+  const [sessionsPerMonthAssumption, setSessionsPerMonthAssumption] = useState(6);
 
   // Session durations from site_settings
   const durations = useSessionDurations();
@@ -221,6 +295,12 @@ export default function YestorydAcademyPage() {
             let v: unknown = row.value;
             if (typeof v === 'string') {
               try { v = JSON.parse(v); } catch { /* keep as-is */ }
+            }
+            // Numeric assumption key handled separately — everything else coerced to string
+            if (row.key === 'academy_sessions_per_month_assumption') {
+              const n = Number(v);
+              if (Number.isFinite(n) && n > 0) setSessionsPerMonthAssumption(n);
+              continue;
             }
             merged[row.key] = typeof v === 'string' ? v : String(v ?? '');
           }
@@ -323,12 +403,18 @@ export default function YestorydAcademyPage() {
   };
 
   // ── Calculators (all formulas mirror Calculator B outputs) ─────
+  // sessionsPerMonthAssumption is the marketing-framing session count per child
+  // (default 6). We use it everywhere monthly earnings are displayed so the
+  // narrative stays consistent across tier cards + calculator + Combined Potential.
   const calcCoachingMonthly = () => {
     const tier = tiers[selectedTier];
     if (!tier) return { sessions: 0, base: 0, referral: 0, total: 0, perSession: 0 };
-    const sessionsPerStudent = Math.round(sessionsPerWeek * 4);
-    const totalSessions = childrenCount * sessionsPerStudent;
-    const base = totalSessions * tier.perSessionRate;
+    const sbRatio = coachingSessions > 0 ? sbSessions / coachingSessions : 0;
+    const sbPerStudent = Math.round(sessionsPerMonthAssumption * sbRatio);
+    const baseCoachPerStudent = sessionsPerMonthAssumption * tier.perSessionRate;
+    const sbPerStudentAmount = sbPerStudent * tier.sbRate;
+    const totalSessions = childrenCount * (sessionsPerMonthAssumption + sbPerStudent);
+    const base = childrenCount * (baseCoachPerStudent + sbPerStudentAmount);
     const referral = includeReferral ? childrenCount * referralBonusPerStudent : 0;
     return { sessions: totalSessions, base, referral, total: base + referral, perSession: tier.perSessionRate };
   };
@@ -360,36 +446,38 @@ export default function YestorydAcademyPage() {
     };
   };
 
-  // Combined Potential — realistic middle-tier coach running all 3 products.
-  // Numbers deliberately conservative: NOT max-slider; a believable target.
+  // Combined Potential — live sum of each product's current calculator output.
+  // Coach adjusts any tab's sliders, this card updates. "Not maxing out" copy
+  // flips to "At full capacity" past ₹50,000/month.
   const calcCombinedPotential = () => {
-    if (tiers.length < 2 || !tuitionData || !workshopData) return null;
-    const mid = tiers[Math.min(1, tiers.length - 1)]; // Expert (or highest available)
-    const sessPerMonth = Math.round(sessionsPerWeek * 4);
-    const sbPerMonth = coachingSessions > 0 ? Math.round(sbSessions * sessPerMonth / coachingSessions) : 0;
-    const COACHING_STUDENTS = 8;
-    const coachingMonthly = COACHING_STUDENTS * ((mid.perSessionRate * sessPerMonth) + (mid.sbRate * sbPerMonth));
+    if (tiers.length === 0) return null;
+    const coachingCalc = calcCoachingMonthly();
+    const tuitionCalc = calcTuitionMonthly();
+    const workshopCalc = calcWorkshopMonthly();
 
-    const tuitionTier = tuitionData.tiers.find((t) => t.name === mid.name) ?? tuitionData.tiers[0];
-    const batchMid = tuitionData.guardrails.batch.midpoint;
-    const perTuitionSession = Math.round(batchMid * tuitionTier.coach_cost_percent / 100);
-    const TUITION_BATCHES = 2;
-    const TUITION_SESSIONS_PER_WEEK = 4;
-    const tuitionMonthly = TUITION_BATCHES * TUITION_SESSIONS_PER_WEEK * 4 * perTuitionSession;
-
-    const WORKSHOPS_PER_MONTH = 1;
-    const workshopMonthly = workshopData.example_coach_earnings * WORKSHOPS_PER_MONTH;
+    const coachingMonthly = coachingCalc.total;
+    const tuitionMonthly = tuitionCalc?.total ?? 0;
+    const workshopMonthly = workshopCalc?.total ?? 0;
+    const total = coachingMonthly + tuitionMonthly + workshopMonthly;
 
     return {
-      tier: mid,
-      coachingStudents: COACHING_STUDENTS,
+      // Current coaching inputs
+      coachingTierName: tiers[selectedTier]?.displayName ?? 'Coach',
+      coachingStudents: childrenCount,
       coachingMonthly,
-      tuitionBatches: TUITION_BATCHES,
-      tuitionSessionsPerWeek: TUITION_SESSIONS_PER_WEEK,
+      // Current tuition inputs
+      tuitionSessionType,
+      tuitionSessionsPerWeek,
       tuitionMonthly,
-      workshopsPerMonth: WORKSHOPS_PER_MONTH,
+      tuitionAvailable: !!tuitionCalc,
+      // Current workshop inputs
+      workshopsPerMonth: workshopSessionsPerMonth,
+      workshopClassSize,
       workshopMonthly,
-      total: coachingMonthly + tuitionMonthly + workshopMonthly,
+      workshopAvailable: !!workshopCalc,
+      // Totals
+      total,
+      atFullCapacity: total > 50000,
     };
   };
 
@@ -426,10 +514,13 @@ export default function YestorydAcademyPage() {
   ] : [];
 
   const faqData = [
+    STATIC_FAQ_DIFFERENTIATOR,
     STATIC_FAQ_QUALIFICATIONS,
     timeFaq,
+    STATIC_FAQ_ADMIN_TIME,
     ...earningsFaqEntries,
     STATIC_FAQ_PARTNERSHIP,
+    STATIC_FAQ_MULTI_PRODUCT,
     STATIC_FAQ_TRAINING,
     ...referralFaqEntries,
     growthFaq,
@@ -607,7 +698,7 @@ export default function YestorydAcademyPage() {
               </p>
             </div>
 
-            {/* Yestoryd Handles */}
+            {/* Yestoryd Handles — 3 clusters tell the "intelligence stack" story */}
             <div className="bg-gradient-to-br from-surface-2 to-surface-1 rounded-2xl p-8 border border-border">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 bg-[#00abff]/20 rounded-xl flex items-center justify-center">
@@ -619,26 +710,70 @@ export default function YestorydAcademyPage() {
                 </div>
               </div>
 
-              <ul className="space-y-3">
+              <div className="space-y-5">
                 {[
-                  { icon: Brain, text: "AI-powered reading assessments" },
-                  { icon: BookOpen, text: "Scientific, age-appropriate curriculum" },
-                  { icon: FileText, text: "Session-by-session lesson plans" },
-                  { icon: Sparkles, text: "Pre-session child insights via rAI" },
-                  { icon: Calendar, text: "Automated scheduling & reminders" },
-                  { icon: Video, text: "Video session recording & transcription" },
-                  { icon: BarChart3, text: "Real-time progress tracking dashboard" },
-                  { icon: MessageCircle, text: "Parent communication tools & templates" },
-                  { icon: CreditCard, text: "Payment collection & monthly payouts" },
-                  { icon: Headphones, text: "Admin support for any issues" },
-                  { icon: GraduationCap, text: "Continuous training & resources" }
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <item.icon className="w-4 h-4 text-[#00abff] flex-shrink-0" />
-                    <span className="text-sm text-text-secondary">{item.text}</span>
-                  </li>
-                ))}
-              </ul>
+                  {
+                    clusterIcon: Brain,
+                    accent: 'text-purple-400',
+                    border: 'border-purple-500/20',
+                    bg: 'bg-purple-500/5',
+                    heading: 'Intelligence That Works While You Sleep',
+                    items: [
+                      { icon: Sparkles,    text: "AI reading assessment finds each child's exact gaps" },
+                      { icon: ClipboardCheck, text: 'Session prep generated before every session' },
+                      { icon: MessageCircle, text: "rAI answers parent questions 24/7 — you don't have to" },
+                      { icon: Activity,    text: 'Practice tracking with photo analysis between sessions' },
+                    ],
+                  },
+                  {
+                    clusterIcon: Zap,
+                    accent: 'text-blue-400',
+                    border: 'border-blue-500/20',
+                    bg: 'bg-blue-500/5',
+                    heading: 'Your Session, Supercharged',
+                    items: [
+                      { icon: Mic,       text: 'MicroNotes: capture observations in 3 taps' },
+                      { icon: Video,     text: 'Session recording + automatic transcription' },
+                      { icon: FileCheck, text: 'Post-session report auto-generated from your notes' },
+                      { icon: MessageCircle, text: 'Parent WhatsApp summary sent automatically after every session' },
+                    ],
+                  },
+                  {
+                    clusterIcon: Calendar,
+                    accent: 'text-teal-400',
+                    border: 'border-teal-500/20',
+                    bg: 'bg-teal-500/5',
+                    heading: 'Zero Admin, Ever',
+                    items: [
+                      { icon: Calendar,   text: 'Automated scheduling + reminders (Google Calendar sync)' },
+                      { icon: CreditCard, text: `Payment collection + monthly payouts on the ${payoutDay}${payoutDay === 1 ? 'st' : payoutDay === 2 ? 'nd' : payoutDay === 3 ? 'rd' : 'th'}` },
+                      { icon: FileText,   text: 'Homework auto-assigned based on session performance' },
+                      { icon: BookOpen,   text: 'E-learning content library for children between sessions' },
+                    ],
+                  },
+                ].map((cluster, ci) => {
+                  const ClusterIcon = cluster.clusterIcon;
+                  return (
+                    <div key={ci} className={`rounded-xl border ${cluster.border} ${cluster.bg} p-4`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <ClusterIcon className={`w-4 h-4 ${cluster.accent}`} />
+                        <span className={`text-sm font-semibold ${cluster.accent}`}>{cluster.heading}</span>
+                      </div>
+                      <ul className="space-y-2">
+                        {cluster.items.map((item, i) => {
+                          const ItemIcon = item.icon;
+                          return (
+                            <li key={i} className="flex items-start gap-3">
+                              <ItemIcon className="w-4 h-4 text-text-tertiary flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-text-secondary leading-snug">{item.text}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
 
               <p className="mt-6 text-sm text-[#00abff] font-medium">
                 You nurture. We handle the rest.
@@ -649,6 +784,119 @@ export default function YestorydAcademyPage() {
           <p className="text-center mt-8 text-text-tertiary">
             Minimum effort, maximum impact.
           </p>
+        </div>
+      </section>
+
+      {/* The Intelligence Behind Every Session — 4-stage timeline */}
+      <section className="py-20 bg-surface-0 border-t border-border">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-purple-500/15 text-purple-300 rounded-full px-4 py-2 mb-4 border border-purple-500/30">
+              <Brain className="w-4 h-4" />
+              <span className="text-sm font-medium">THE INTELLIGENCE STACK</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              The Intelligence Behind <span className="text-purple-400">Every Session</span>
+            </h2>
+            <p className="text-lg text-text-secondary max-w-2xl mx-auto">
+              You focus on the child. Our system captures, analyzes, and acts on everything else — so every session compounds on the last.
+            </p>
+          </div>
+
+          {/* Concrete stat — pulled from site_settings so it stays honest */}
+          {academyContent.academy_intelligence_stat_value && (
+            <div className="flex flex-col items-center mb-12">
+              <div className="bg-gradient-to-br from-purple-500/15 to-purple-500/5 rounded-2xl border border-purple-500/30 px-8 py-6 text-center">
+                <div className="text-4xl md:text-5xl font-bold text-purple-300 mb-1">
+                  {academyContent.academy_intelligence_stat_value}
+                </div>
+                <div className="text-sm text-text-tertiary">
+                  {academyContent.academy_intelligence_stat_label}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4 stage cards — horizontal scroll on mobile, 2x2 grid on md, 4-col on lg */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                stage: 1,
+                icon: ClipboardCheck,
+                title: 'Before the Session',
+                items: [
+                  'rAI generates a session brief: recent progress, struggles, recommended focus',
+                  'Coach opens the brief 5 minutes before — no studying notes',
+                  'Child-specific context auto-loaded from Reading Intelligence',
+                ],
+                tagline: 'You walk in knowing exactly what to work on.',
+              },
+              {
+                stage: 2,
+                icon: Mic,
+                title: 'During the Session',
+                items: [
+                  'MicroNotes: tap skills + observations in real time (grid / quick / voice)',
+                  'Session auto-recorded for quality (sampled audit)',
+                  "Scientific curriculum loaded per child's level",
+                ],
+                tagline: 'You focus on the child. The system captures everything.',
+              },
+              {
+                stage: 3,
+                icon: FileCheck,
+                title: 'After the Session',
+                items: [
+                  'Session Intelligence auto-fills from your MicroNotes + AI',
+                  'One-tap sign-off — no 30-minute reports',
+                  'Parent receives a warm WhatsApp summary automatically',
+                  'Homework assigned based on what was practiced',
+                ],
+                tagline: "Done in under 2 minutes. Parents get a summary you didn't write.",
+              },
+              {
+                stage: 4,
+                icon: TrendingUp,
+                title: 'Between Sessions',
+                items: [
+                  'Smart Practice recommends activities available for your students',
+                  'Photo homework analyzed by AI (Gemini Vision)',
+                  'rAI chatbot answers parent questions about their child',
+                  'Next session prep auto-generated from all this data',
+                ],
+                tagline: 'The system never stops learning about each child.',
+              },
+            ].map((stage) => {
+              const StageIcon = stage.icon;
+              return (
+                <div
+                  key={stage.stage}
+                  className="bg-gradient-to-br from-purple-500/10 via-surface-1 to-surface-1 rounded-2xl border border-purple-500/20 p-6 flex flex-col hover:border-purple-500/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                      <StageIcon className="w-5 h-5 text-purple-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-purple-400 font-medium">Stage {stage.stage}</div>
+                      <h3 className="font-bold text-white">{stage.title}</h3>
+                    </div>
+                  </div>
+                  <ul className="space-y-2 mb-4 flex-grow">
+                    {stage.items.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-text-secondary leading-snug">
+                        <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0 mt-2" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs italic text-purple-300 border-t border-purple-500/20 pt-3 mt-auto">
+                    "{stage.tagline}"
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -922,7 +1170,12 @@ export default function YestorydAcademyPage() {
                       <div className="pt-3 mt-2 border-t border-white/10 flex justify-between text-sm">
                         <span className="text-text-tertiary">Monthly est.</span>
                         <span className="text-text-secondary">
-                          ~₹{tier.monthlyEstimate.toLocaleString('en-IN')}
+                          {(() => {
+                            const sbRatio = coachingSessions > 0 ? sbSessions / coachingSessions : 0;
+                            const sbPerStudent = Math.round(sessionsPerMonthAssumption * sbRatio);
+                            const monthly = ((tier.perSessionRate * sessionsPerMonthAssumption) + (tier.sbRate * sbPerStudent)) * tier.exampleStudents;
+                            return <>~₹{monthly.toLocaleString('en-IN')}</>;
+                          })()}
                           <span className="text-text-tertiary"> ({tier.exampleStudents} kids)</span>
                         </span>
                       </div>
@@ -932,10 +1185,27 @@ export default function YestorydAcademyPage() {
               </div>
 
               {programPrice > 0 && (
-                <p className="text-center text-xs text-text-tertiary mb-10">
-                  Based on Full Course (₹{programPrice.toLocaleString('en-IN')}) · Building band (age 7-9) · Rates vary by age band and plan
+                <p className="text-center text-xs text-text-tertiary mb-4">
+                  Based on Full Course (₹{programPrice.toLocaleString('en-IN')}) · ~{sessionsPerMonthAssumption} sessions/child/month · Rates vary by age band and plan
                 </p>
               )}
+
+              {/* Revenue split — coaching (purple). Coach share = middle tier (Expert) as representative. */}
+              {tiers.length > 0 && (() => {
+                const mid = tiers[Math.min(1, tiers.length - 1)];
+                const minPct = Math.min(...tiers.map((t) => t.coachPercent));
+                const maxPct = Math.max(...tiers.map((t) => t.coachPercent));
+                return (
+                  <SplitBar
+                    coachPercent={mid.coachPercent}
+                    leadPercent={referralPercent}
+                    coachColorClass="bg-purple-500"
+                    coachTextClass="text-purple-300"
+                    coachLabel={`You keep ${minPct}–${maxPct}%`}
+                    note={`Shown: ${mid.displayName}`}
+                  />
+                );
+              })()}
 
               {/* Coaching Calculator */}
               <div className="bg-surface-1 rounded-2xl p-8 border border-border">
@@ -1042,9 +1312,26 @@ export default function YestorydAcademyPage() {
                   );
                 })}
               </div>
-              <p className="text-center text-xs text-text-tertiary mb-10">
+              <p className="text-center text-xs text-text-tertiary mb-4">
                 Batch samples at ₹{tuitionData.guardrails.batch.midpoint}/hr · 1:1 samples at ₹{tuitionData.guardrails.individual.midpoint}/hr · 60-min sessions
               </p>
+
+              {/* Revenue split — tuition (blue). Range spans tier coach %. */}
+              {(() => {
+                const minPct = Math.min(...tuitionData.tiers.map((t) => t.coach_cost_percent));
+                const maxPct = Math.max(...tuitionData.tiers.map((t) => t.coach_cost_percent));
+                const midTier = tuitionData.tiers[Math.min(1, tuitionData.tiers.length - 1)];
+                return (
+                  <SplitBar
+                    coachPercent={midTier.coach_cost_percent}
+                    leadPercent={tuitionData.lead_cost_percent}
+                    coachColorClass="bg-blue-500"
+                    coachTextClass="text-blue-300"
+                    coachLabel={`You keep ${minPct}–${maxPct}%`}
+                    note={`Shown: ${midTier.display_name}`}
+                  />
+                );
+              })()}
 
               {/* Tuition Calculator */}
               <div className="bg-surface-1 rounded-2xl p-8 border border-border">
@@ -1149,6 +1436,16 @@ export default function YestorydAcademyPage() {
                 </p>
               </div>
 
+              {/* Revenue split — workshop (teal). Flat percent, no tier variation. */}
+              <SplitBar
+                coachPercent={workshopData.default_coach_percent}
+                leadPercent={workshopData.lead_cost_percent}
+                coachColorClass="bg-teal-500"
+                coachTextClass="text-teal-300"
+                coachLabel={`You keep ${workshopData.default_coach_percent}%`}
+                note="Flat split — same for every workshop"
+              />
+
               {/* Workshop sample card */}
               <div className="bg-gradient-to-br from-teal-500/10 to-teal-500/5 rounded-2xl p-6 border border-teal-500/20 mb-10">
                 <h3 className="text-white font-bold mb-4">Sample workshop</h3>
@@ -1236,7 +1533,7 @@ export default function YestorydAcademyPage() {
             </>
           )}
 
-          {/* ═══════════ COMBINED POTENTIAL ═══════════ */}
+          {/* ═══════════ COMBINED POTENTIAL — live, reacts to every slider above ═══════════ */}
           {(() => {
             const combined = calcCombinedPotential();
             if (!combined) return null;
@@ -1248,41 +1545,53 @@ export default function YestorydAcademyPage() {
                     YOUR TOTAL POTENTIAL
                   </div>
                   <p className="text-text-secondary text-sm max-w-lg mx-auto">
-                    A realistic month for a {combined.tier.displayName} running all three products
+                    Live sum of every calculator above. Adjust any product — this updates instantly.
                   </p>
                 </div>
 
                 <div className="space-y-2 max-w-xl mx-auto mb-6">
                   <div className="flex items-center justify-between py-2 border-b border-white/5">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-purple-500" />
-                      <span className="text-sm text-text-secondary">{combined.coachingStudents} coaching students</span>
+                      <div className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />
+                      <span className="text-sm text-text-secondary">
+                        {combined.coachingStudents} coaching student{combined.coachingStudents === 1 ? '' : 's'} ({combined.coachingTierName})
+                      </span>
                     </div>
                     <span className="text-white font-medium">₹{combined.coachingMonthly.toLocaleString('en-IN')}</span>
                   </div>
+
                   <div className="flex items-center justify-between py-2 border-b border-white/5">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-500" />
-                      <span className="text-sm text-text-secondary">{combined.tuitionBatches} English batches · {combined.tuitionSessionsPerWeek} sessions/week each</span>
+                      <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      <span className="text-sm text-text-secondary">
+                        {combined.tuitionAvailable
+                          ? `${combined.tuitionSessionsPerWeek} ${combined.tuitionSessionType === 'batch' ? 'batch' : '1:1'} English session${combined.tuitionSessionsPerWeek === 1 ? '' : 's'}/week`
+                          : 'English Classes (unavailable)'}
+                      </span>
                     </div>
                     <span className="text-white font-medium">₹{combined.tuitionMonthly.toLocaleString('en-IN')}</span>
                   </div>
+
                   <div className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-teal-500" />
-                      <span className="text-sm text-text-secondary">{combined.workshopsPerMonth} workshop/month</span>
+                      <div className="w-2 h-2 rounded-full bg-teal-500 flex-shrink-0" />
+                      <span className="text-sm text-text-secondary">
+                        {combined.workshopAvailable
+                          ? `${combined.workshopsPerMonth} workshop${combined.workshopsPerMonth === 1 ? '' : 's'}/month · ${combined.workshopClassSize} children each`
+                          : 'Workshops (unavailable)'}
+                      </span>
                     </div>
                     <span className="text-white font-medium">₹{combined.workshopMonthly.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
 
                 <div className="text-center pt-4 border-t border-[#ff0099]/20">
-                  <p className="text-xs text-text-tertiary mb-1">Realistic monthly total</p>
+                  <p className="text-xs text-text-tertiary mb-1">Combined monthly</p>
                   <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#ff0099] to-[#7b008b] bg-clip-text text-transparent">
                     ₹{combined.total.toLocaleString('en-IN')}
                   </div>
                   <p className="text-xs text-text-tertiary mt-2">
-                    ~₹{(combined.total * 12).toLocaleString('en-IN')}/year · not maxing out any product
+                    ~₹{(combined.total * 12).toLocaleString('en-IN')}/year · {combined.atFullCapacity ? 'at full capacity' : 'not maxing out any product'}
                   </p>
                 </div>
               </div>
