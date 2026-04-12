@@ -185,8 +185,12 @@ export async function GET(request: NextRequest) {
     } else if (status === 'completed') {
       query = query.eq('status', 'completed');
       countQuery = countQuery.eq('status', 'completed');
+    } else if (status === 'converted') {
+      query = query.eq('status', 'converted');
+      countQuery = countQuery.eq('status', 'converted');
     }
-    // If status is '' or 'all', no filter
+    // If status is '' or 'all', no filter — list includes 'converted' so admin CRM
+    // still surfaces calls that progressed to enrollment with a distinct label.
 
     // Apply coach filter (enforced for coaches, optional for admins)
     if (effectiveCoachId) {

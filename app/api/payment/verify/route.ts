@@ -4,6 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { phoneSchemaOptional } from '@/lib/utils/phone';
@@ -623,6 +624,23 @@ export async function POST(request: NextRequest) {
       });
     } catch (logErr: any) {
       console.error(JSON.stringify({ requestId, event: 'activity_log_error', error: logErr.message }));
+    }
+
+    // Mark source discovery call as converted (if payment came from one).
+    // Non-blocking: a failure here must never fail payment verification.
+    if (body.discoveryCallId) {
+      try {
+        await supabase
+          .from('discovery_calls')
+          .update({ status: 'converted' })
+          .eq('id', body.discoveryCallId)
+          .neq('status', 'cancelled');
+      } catch (convertErr: any) {
+        console.error(JSON.stringify({ requestId, event: 'discovery_call_converted_update_error', error: convertErr.message }));
+        Sentry.captureException(convertErr, {
+          tags: { route: 'payment/verify', event: 'discovery_call_converted_update_error' },
+        });
+      }
     }
 
     // =====================================================

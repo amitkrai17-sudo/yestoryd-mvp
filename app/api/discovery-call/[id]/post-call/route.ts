@@ -159,6 +159,8 @@ export async function POST(
     };
 
     // If enrolled, also update call_status
+    // TODO: Consider keeping as 'completed' here — 'converted' should only be
+    // set by payment/verify after actual payment lands.
     if (validated.call_outcome === 'enrolled') {
       updateData.status = 'completed';
     }
