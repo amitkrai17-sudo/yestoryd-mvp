@@ -176,13 +176,8 @@ export async function POST(
       );
     }
 
-    // 8. Update child lead_status if completed
-    if (callStatus === 'completed' && existingCall.child_id) {
-      await supabase
-        .from('children')
-        .update({ lead_status: 'discovery_completed' })
-        .eq('id', existingCall.child_id);
-    }
+    // 8. (removed) lead_status='discovery_completed' now set by post-call route
+    // when the call actually finishes, not when questionnaire is saved.
 
     // 9. Feed RAG brain — create learning_event from discovery notes (non-blocking)
     const discoveryChildId = existingCall.child_id;
