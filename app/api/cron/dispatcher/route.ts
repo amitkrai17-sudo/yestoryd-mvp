@@ -278,6 +278,13 @@ const JOBS: Job[] = [
     method: 'GET',
     description: 'Reconcile payments with Razorpay',
   },
+  {
+    name: 'wa-lead-cleanup',
+    path: '/api/cron/wa-lead-cleanup',
+    schedule: { type: 'daily', istHour: 3, istMinute: 15 },
+    method: 'GET',
+    description: 'Delete stale (30d+) non-converted wa_lead_conversations',
+  },
 
   // ── Monthly jobs ──────────────────────────────────────────
   {

@@ -260,28 +260,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'rate_limited' });
     }
 
-    // 6.5. Enrolled-parent short-circuit — skip the lead funnel entirely
-    // when the sender's phone matches a child with an active enrollment.
-    // Keeps rate-limit guard above this check. Non-blocking on lookup error.
+    // 6.5. Enrolled-parent short-circuit — handle child-specific messages
+    // (session / practice / payment / cancel keywords) by linking to the
+    // dashboard / coach / support. General questions fall through to the
+    // FAQ handler so Gemini can answer them with full knowledge-base
+    // context. Keeps rate-limit guard above this check. Non-blocking on
+    // lookup error.
     try {
       const enrolledChildren = await findEnrolledChildrenByPhone(phone);
       if (enrolledChildren.length > 0) {
         const response = await handleEnrolledParent(phone, text || '', enrolledChildren);
-        await sendText(phone, response);
-        await saveBotMessage(conversationId, response, 'text', {
-          intent: 'ENROLLED_PARENT',
-          child_ids: enrolledChildren.map((c) => c.id),
-          child_count: enrolledChildren.length,
-          state_transition: `${liveState} → ${liveState}`,
-        });
+        if (response !== null) {
+          await sendText(phone, response);
+          await saveBotMessage(conversationId, response, 'text', {
+            intent: 'ENROLLED_PARENT',
+            child_ids: enrolledChildren.map((c) => c.id),
+            child_count: enrolledChildren.length,
+            state_transition: `${liveState} → ${liveState}`,
+          });
+          console.log(JSON.stringify({
+            requestId,
+            event: 'wa_leadbot_enrolled_parent_handled',
+            conversationId,
+            childCount: enrolledChildren.length,
+            childIds: enrolledChildren.map((c) => c.id),
+          }));
+          return NextResponse.json({ status: 'enrolled_parent_handled' });
+        }
         console.log(JSON.stringify({
           requestId,
-          event: 'wa_leadbot_enrolled_parent_handled',
+          event: 'wa_leadbot_enrolled_parent_fallthrough',
           conversationId,
           childCount: enrolledChildren.length,
-          childIds: enrolledChildren.map((c) => c.id),
         }));
-        return NextResponse.json({ status: 'enrolled_parent_handled' });
+        // Fall through to FAQ / classifier below.
       }
     } catch (lookupErr) {
       console.error(JSON.stringify({

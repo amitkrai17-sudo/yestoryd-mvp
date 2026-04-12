@@ -136,6 +136,41 @@ export function formatForDisplay(phone: string): string {
 }
 
 // ============================================================
+// LOOKUP VARIANTS (for DB .or() queries against legacy phone rows)
+// ============================================================
+
+/**
+ * Returns the set of phone format variants to match against a DB column that
+ * may hold phones in inconsistent formats (+91…, 91…, 10-digit, or empty).
+ * Variants are deduped so the caller can safely join them into an .or() filter.
+ *
+ * @example
+ *   getPhoneLookupVariants('9687606177')
+ *   // → ['+919687606177', '919687606177', '9687606177']
+ */
+export function getPhoneLookupVariants(phone: string): string[] {
+  const e164 = normalizePhone(phone);
+  if (!e164) return [];
+  const noPlus = e164.replace(/^\+/, '');
+  const digits10 = e164.slice(-10);
+  return Array.from(new Set([e164, noPlus, digits10]));
+}
+
+/**
+ * Builds a Supabase .or() filter string matching `column` against every phone
+ * variant from getPhoneLookupVariants. Returns '' if the phone is unparseable.
+ *
+ * @example
+ *   buildPhoneOrFilter('parent_phone', '9687606177')
+ *   // → 'parent_phone.eq.+919687606177,parent_phone.eq.919687606177,parent_phone.eq.9687606177'
+ */
+export function buildPhoneOrFilter(column: string, phone: string): string {
+  return getPhoneLookupVariants(phone)
+    .map((v) => `${column}.eq.${v}`)
+    .join(',');
+}
+
+// ============================================================
 // VALIDATION
 // ============================================================
 

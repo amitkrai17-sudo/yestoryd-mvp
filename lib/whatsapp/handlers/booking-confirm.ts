@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
 import { sendText } from '@/lib/whatsapp/cloud-api';
-import { normalizePhone } from '@/lib/utils/phone';
+import { normalizePhone, buildPhoneOrFilter } from '@/lib/utils/phone';
 import { parseSlotId, formatSlotLong, invalidateSlotCache } from '@/lib/whatsapp/agent/slots';
 import { handleSlotSelection } from './slot-selection';
 import type { ConversationState } from '@/lib/whatsapp/types';
@@ -73,14 +73,12 @@ export async function handleBookingConfirm(
   let childId: string | null = null;
 
   // Check if wa_lead has a linked child
-  const e164 = normalizePhone(phone);
-  const noPlus = e164.replace(/^\+/, '');
-  const digits10 = e164.slice(-10);
+  const waLeadPhoneFilter = buildPhoneOrFilter('phone_number', phone);
 
   const { data: waLead } = await supabase
     .from('wa_leads')
     .select('child_id')
-    .or(`phone_number.eq.${noPlus},phone_number.eq.${e164},phone_number.eq.${digits10}`)
+    .or(waLeadPhoneFilter)
     .single();
 
   if (waLead?.child_id) {
@@ -92,7 +90,7 @@ export async function handleBookingConfirm(
     const { data: existingChild } = await supabase
       .from('children')
       .select('id')
-      .or(`parent_phone.eq.${e164},parent_phone.eq.${noPlus},parent_phone.eq.${digits10}`)
+      .or(buildPhoneOrFilter('parent_phone', phone))
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();

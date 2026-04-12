@@ -3,12 +3,20 @@
 // PURPOSE: Handle inbound Lead Bot (8591) messages that arrive from an
 //          already-enrolled parent. Redirects to dashboard / coach /
 //          support rather than running the lead-qualification funnel.
+//
+// Returns a string reply when the message is clearly about the child's
+// enrollment (session / practice / payment / cancel keywords). Returns
+// null for general questions ("how is english classes different from
+// coaching") so the caller can fall through to the normal FAQ path —
+// those don't need child context and benefit from a Gemini answer.
 // ============================================================
 
 import type { EnrolledChild } from '@/lib/whatsapp/enrolled-parent-lookup';
 
 const DASHBOARD_URL = 'https://yestoryd.com/parent';
 const SUPPORT_EMAIL = 'engage@yestoryd.com';
+
+type KeywordBucket = 'session' | 'practice' | 'payment' | 'cancel';
 
 function firstWord(full: string | null | undefined, fallback: string): string {
   if (!full) return fallback;
@@ -17,6 +25,20 @@ function firstWord(full: string | null | undefined, fallback: string): string {
 
 function displayName(child: EnrolledChild): string {
   return firstWord(child.child_name || child.name, 'your child');
+}
+
+/**
+ * Classify the message into a child-context keyword bucket, or null if none
+ * match. Only bucketed messages get an enrolled-parent response; everything
+ * else falls through to the Lead Bot FAQ.
+ */
+function detectKeywordBucket(message: string): KeywordBucket | null {
+  const lower = (message || '').toLowerCase();
+  if (lower.includes('session') || lower.includes('class') || lower.includes('schedule')) return 'session';
+  if (lower.includes('practice') || lower.includes('homework') || lower.includes('task')) return 'practice';
+  if (lower.includes('pay') || lower.includes('fee') || lower.includes('renew')) return 'payment';
+  if (lower.includes('cancel') || lower.includes('stop') || lower.includes('pause')) return 'cancel';
+  return null;
 }
 
 /**
@@ -41,46 +63,46 @@ function buildDisambiguationPrompt(children: EnrolledChild[]): string {
   return `You have multiple children enrolled with Yestoryd:\n\n${lines}\n\nWhich child is this about? Reply with their name.\n\nYestoryd`;
 }
 
-function buildResponseForChild(message: string, child: EnrolledChild): string {
+function buildResponseForBucket(bucket: KeywordBucket, child: EnrolledChild): string {
   const childName = displayName(child);
   const coachName = firstWord(child.coachName, 'your coach');
-  const lowerMsg = (message || '').toLowerCase();
 
-  if (lowerMsg.includes('session') || lowerMsg.includes('class') || lowerMsg.includes('schedule')) {
-    return `For ${childName}'s session details, please check the dashboard:\n${DASHBOARD_URL}\n\nFor scheduling changes, please contact ${coachName} directly.\n\nYestoryd`;
+  switch (bucket) {
+    case 'session':
+      return `For ${childName}'s session details, please check the dashboard:\n${DASHBOARD_URL}\n\nFor scheduling changes, please contact ${coachName} directly.\n\nYestoryd`;
+    case 'practice':
+      return `${childName}'s practice tasks are on the dashboard:\n${DASHBOARD_URL}\n\nYestoryd`;
+    case 'payment':
+      return `For payment and renewal queries, please check the dashboard or contact us at ${SUPPORT_EMAIL}\n\n${DASHBOARD_URL}\n\nYestoryd`;
+    case 'cancel':
+      return `For enrollment changes, please contact us at ${SUPPORT_EMAIL} or call Rucha directly.\n\nYestoryd`;
   }
-
-  if (lowerMsg.includes('practice') || lowerMsg.includes('homework') || lowerMsg.includes('task')) {
-    return `${childName}'s practice tasks are on the dashboard:\n${DASHBOARD_URL}\n\nYestoryd`;
-  }
-
-  if (lowerMsg.includes('pay') || lowerMsg.includes('fee') || lowerMsg.includes('renew')) {
-    return `For payment and renewal queries, please check the dashboard or contact us at ${SUPPORT_EMAIL}\n\n${DASHBOARD_URL}\n\nYestoryd`;
-  }
-
-  if (lowerMsg.includes('cancel') || lowerMsg.includes('stop') || lowerMsg.includes('pause')) {
-    return `For enrollment changes, please contact us at ${SUPPORT_EMAIL} or call Rucha directly.\n\nYestoryd`;
-  }
-
-  return `Hi! ${childName} is enrolled with Yestoryd.\n\nFor session details, practice tasks, and progress — check the dashboard:\n${DASHBOARD_URL}\n\nFor anything else, reply here and we'll get back to you.\n\nYestoryd`;
 }
 
+/**
+ * Returns an enrolled-parent response string, or null to signal the caller
+ * should fall through to the normal Lead Bot FAQ flow.
+ */
 export async function handleEnrolledParent(
   _phone: string,
   message: string,
   children: EnrolledChild[]
-): Promise<string> {
-  if (children.length === 0) {
-    return `Hi! For session details, practice tasks, and progress — check the dashboard:\n${DASHBOARD_URL}\n\nYestoryd`;
+): Promise<string | null> {
+  if (children.length === 0) return null;
+
+  const bucket = detectKeywordBucket(message);
+  if (!bucket) {
+    // General question — let the FAQ handler answer it.
+    return null;
   }
 
   if (children.length === 1) {
-    return buildResponseForChild(message, children[0]);
+    return buildResponseForBucket(bucket, children[0]);
   }
 
   const matched = resolveChildFromMessage(message, children);
   if (matched) {
-    return buildResponseForChild(message, matched);
+    return buildResponseForBucket(bucket, matched);
   }
 
   return buildDisambiguationPrompt(children);

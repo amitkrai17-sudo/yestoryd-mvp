@@ -8,7 +8,7 @@
 //     row when an enrolled parent confirms a slot.
 // ============================================================
 
-import { normalizePhone } from '@/lib/utils/phone';
+import { normalizePhone, buildPhoneOrFilter } from '@/lib/utils/phone';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface EnrolledChild {
@@ -19,17 +19,58 @@ export interface EnrolledChild {
   enrollmentId: string | null;
 }
 
+// ── In-memory TTL cache ───────────────────────────────────────
+// Keyed by E.164 phone. Vercel lambdas recycle often, so this is a
+// per-instance hot cache — not a shared cache. Acceptable because
+// staleness is bounded by TTL and enrollment changes are rare relative
+// to inbound message volume.
+
+interface CacheEntry {
+  data: EnrolledChild[];
+  expiresAt: number;
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+const CACHE_MAX_ENTRIES = 2000;
+const cache = new Map<string, CacheEntry>();
+
+function cacheGet(key: string): EnrolledChild[] | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function cacheSet(key: string, data: EnrolledChild[]): void {
+  if (cache.size >= CACHE_MAX_ENTRIES) {
+    // Evict the oldest insertion (Map preserves insertion order)
+    const oldest = cache.keys().next().value;
+    if (oldest) cache.delete(oldest);
+  }
+  cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
 /**
- * Look up ALL active-enrollment children for a parent phone. Mirrors the
- * phone match pattern used in auth routes (send-otp, verify-otp,
- * middleware) plus an explicit +91<10-digit> reconstruction to cover
- * inputs that weren't cleanly normalized upstream.
- *
- * Formats matched:
- *   +919687606177 (E.164, normalizedPhone)
- *   919687606177  (no +, normalizedPhone.slice(1))
- *   9687606177    (10-digit, normalizedPhone.slice(3))
- *   +919687606177 reconstructed as `+91${digits10}` (defensive)
+ * Clear the enrolled-parent cache for a specific phone (E.164). Call after
+ * any code path that materially changes enrollment state (new enrollment,
+ * cancellation, phone update) so the next lookup re-reads the DB.
+ */
+export function invalidateEnrolledParentCache(phone?: string): void {
+  if (!phone) {
+    cache.clear();
+    return;
+  }
+  const normalized = normalizePhone(phone);
+  if (normalized) cache.delete(normalized);
+}
+
+/**
+ * Look up ALL active-enrollment children for a parent phone. Matches all
+ * common stored formats (+91…, 91…, 10-digit) via buildPhoneOrFilter.
+ * Cached per E.164 phone for 5 min.
  *
  * Returns an empty array if no match OR no active enrollment.
  */
@@ -37,8 +78,8 @@ export async function findEnrolledChildrenByPhone(phone: string): Promise<Enroll
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone) return [];
 
-  const digits10 = normalizedPhone.slice(3);
-  const plus91Reconstructed = `+91${digits10}`;
+  const cached = cacheGet(normalizedPhone);
+  if (cached) return cached;
 
   const supabase = createAdminClient();
 
@@ -55,12 +96,12 @@ export async function findEnrolledChildrenByPhone(phone: string): Promise<Enroll
         coaches!enrollments_coach_id_fkey ( name )
       )
     `)
-    .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(1)},parent_phone.eq.${normalizedPhone.slice(3)},parent_phone.eq.${plus91Reconstructed}`)
+    .or(buildPhoneOrFilter('parent_phone', normalizedPhone))
     .eq('enrollments.status', 'active');
 
   if (error || !data) return [];
 
-  return data.map((row) => {
+  const result: EnrolledChild[] = data.map((row) => {
     const enrollments = Array.isArray(row.enrollments) ? row.enrollments : [];
     const firstEnrollment = enrollments[0];
     const coaches = firstEnrollment?.coaches;
@@ -73,4 +114,7 @@ export async function findEnrolledChildrenByPhone(phone: string): Promise<Enroll
       enrollmentId: firstEnrollment?.id || null,
     };
   });
+
+  cacheSet(normalizedPhone, result);
+  return result;
 }
