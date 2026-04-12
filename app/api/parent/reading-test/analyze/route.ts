@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { data: child } = await supabase
       .from('children')
-      .select('id, child_name, age, parent_email, parent_id')
+      .select('id, child_name, age, parent_email, parent_id, current_streak, longest_streak, last_task_completed_date')
       .eq('id', task.child_id)
       .single();
 
@@ -217,6 +217,38 @@ Respond ONLY with valid JSON:
       .from('parent_daily_tasks')
       .update({ is_completed: true, completed_at: new Date().toISOString() })
       .eq('id', taskId);
+
+    // Update streak (mirrors parent/tasks/[childId]/complete streak logic)
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const lastCompleted = child.last_task_completed_date;
+      let currentStreak = child.current_streak || 0;
+      let longestStreak = child.longest_streak || 0;
+
+      if (lastCompleted === today) {
+        // Already completed a task today — streak stays the same
+      } else if (lastCompleted === yesterday) {
+        currentStreak += 1;
+      } else {
+        currentStreak = 1;
+      }
+
+      if (currentStreak > longestStreak) {
+        longestStreak = currentStreak;
+      }
+
+      await supabase
+        .from('children')
+        .update({
+          current_streak: currentStreak,
+          longest_streak: longestStreak,
+          last_task_completed_date: today,
+        })
+        .eq('id', child.id);
+    } catch (streakErr: any) {
+      console.error(JSON.stringify({ requestId, event: 'reading_test_streak_error', error: streakErr.message }));
+    }
 
     return NextResponse.json({
       success: true,

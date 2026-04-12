@@ -4,6 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import crypto from 'crypto';
@@ -182,6 +183,12 @@ export async function POST(
     } catch (leErr: any) {
       // Non-blocking — learning event failure should never block task completion
       console.error(JSON.stringify({ requestId, event: 'practice_learning_event_error', error: leErr.message }));
+      Sentry.captureException(leErr, {
+        tags: {
+          route: 'parent/tasks/complete',
+          event: 'practice_learning_event_error',
+        },
+      });
     }
 
     console.log(JSON.stringify({
