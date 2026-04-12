@@ -9,7 +9,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
-const P7_TEMPLATE_NAME = 'p7_goals_capture_1';
+const P7_TEMPLATE_NAME = 'parent_goals_capture_v3';
 
 interface GoalsCaptureResult {
   success: boolean;

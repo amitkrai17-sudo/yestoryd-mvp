@@ -26,7 +26,7 @@ import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
 
-const P7_TEMPLATE_NAME = 'p7_goals_capture_1';
+const P7_TEMPLATE_NAME = 'parent_goals_capture_v3';
 
 // --- CONFIGURATION (Lazy initialization) ---
 const getReceiver = () => new Receiver({

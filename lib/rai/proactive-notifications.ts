@@ -420,7 +420,7 @@ async function sendWhatsApp(phone: string, message: string): Promise<boolean> {
 
     const result = await sendWhatsAppMessage({
       to: formatted,
-      templateName: 'proactive_notification',
+      templateName: 'parent_proactive_notification_v3',
       variables: [message],
     });
 

@@ -137,7 +137,7 @@ export async function POST(
 
               await sendWhatsAppMessage({
                 to: child.parent_phone,
-                templateName: 'offline_parent_notification',
+                templateName: 'parent_offline_notification_v3',
                 variables: [parentFirst, childFirst, sessionDate],
               });
 

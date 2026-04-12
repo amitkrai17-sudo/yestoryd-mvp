@@ -127,7 +127,7 @@ export async function createTuitionOnboarding(
   try {
     await sendWhatsAppMessage({
       to: `91${params.parentPhone}`,
-      templateName: 'tuition_onboarding_form',
+      templateName: 'parent_tuition_onboarding_v3',
       variables: [
         coachFirstName,
         placeholderChildName === `Pending - ${params.parentPhone}` ? 'your child' : placeholderChildName,

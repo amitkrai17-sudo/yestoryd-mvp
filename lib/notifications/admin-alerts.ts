@@ -8,9 +8,9 @@
 // Main flows (assessment, discovery) MUST NOT break if alerts fail.
 //
 // Uses AiSensy templates:
-// - admin_new_lead_v3: {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone, {{5}}=location, {{6}}=score, {{7}}=wpm, {{8}}=leadStatus, {{9}}=timestamp
-// - admin_discovery_booked_v3: {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone, {{5}}=scheduledDateTime, {{6}}=coachName, {{7}}=score, {{8}}=wpm, {{9}}=timestamp
-// - admin_daily_digest: {{1}}=date, {{2}}=newLeadsCount, {{3}}=hotCount, {{4}}=warmCount, {{5}}=coolCount, {{6}}=bookedYesterday, {{7}}=scheduledToday, {{8}}=pendingFollowup, {{9}}=mtdTotal
+// - admin_new_lead_v4: {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone, {{5}}=location, {{6}}=score, {{7}}=wpm, {{8}}=leadStatus, {{9}}=timestamp
+// - admin_discovery_booked_v4: {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone, {{5}}=scheduledDateTime, {{6}}=coachName, {{7}}=score, {{8}}=wpm, {{9}}=timestamp
+// - admin_daily_digest_v3: {{1}}=date, {{2}}=newLeadsCount, {{3}}=hotCount, {{4}}=warmCount, {{5}}=coolCount, {{6}}=bookedYesterday, {{7}}=scheduledToday, {{8}}=pendingFollowup, {{9}}=mtdTotal
 //
 // Usage:
 //   sendNewLeadAlert(leadData).catch(err => console.error('Alert failed:', err));
@@ -141,14 +141,14 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
       timestamp,                        // {{9}} - Timestamp (hh:mm AM/PM)
     ];
 
-    console.log('[AdminAlert] Template: admin_new_lead_v3');
+    console.log('[AdminAlert] Template: admin_new_lead_v4');
     console.log('[AdminAlert] Variables:', JSON.stringify(templateVariables));
     console.log('[AdminAlert] Sending to AiSensy...');
 
     // Send WhatsApp alert using template
     const result = await sendWhatsAppMessage({
       to: ADMIN_PHONE,
-      templateName: 'admin_new_lead_v3',
+      templateName: 'admin_new_lead_v4',
       variables: templateVariables,
     });
 
@@ -221,7 +221,7 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
 // ============================================================
 // Called when a discovery call is booked - alerts admin about upcoming call
 //
-// Template: admin_discovery_booked_v3 (9 variables)
+// Template: admin_discovery_booked_v4 (9 variables)
 // {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone,
 // {{5}}=scheduledDateTime, {{6}}=coachName, {{7}}=score, {{8}}=wpm, {{9}}=timestamp
 
@@ -236,7 +236,7 @@ export async function sendDiscoveryBookedAlert(data: DiscoveryBookedData): Promi
     // Send WhatsApp alert using template
     const result = await sendWhatsAppMessage({
       to: ADMIN_PHONE,
-      templateName: 'admin_discovery_booked_v3',
+      templateName: 'admin_discovery_booked_v4',
       variables: [
         data.childName,                       // {{1}} - Child name
         String(data.childAge || 0),           // {{2}} - Age
@@ -310,7 +310,7 @@ export async function sendDiscoveryBookedAlert(data: DiscoveryBookedData): Promi
 // ============================================================
 // Called by cron job to send daily summary
 //
-// Template: admin_daily_digest (9 variables)
+// Template: admin_daily_digest_v3 (9 variables)
 // {{1}}=date, {{2}}=newLeadsCount, {{3}}=hotCount, {{4}}=warmCount,
 // {{5}}=coolCount, {{6}}=bookedYesterday, {{7}}=scheduledToday, {{8}}=pendingFollowup, {{9}}=mtdTotal
 
@@ -321,7 +321,7 @@ export async function sendDailyDigest(data: DailyDigestData): Promise<boolean> {
     // Send WhatsApp alert using template
     const result = await sendWhatsAppMessage({
       to: ADMIN_PHONE,
-      templateName: 'admin_daily_digest',
+      templateName: 'admin_daily_digest_v3',
       variables: [
         data.date,                            // {{1}} - Date (Jan 21)
         String(data.newLeadsCount),           // {{2}} - New leads count

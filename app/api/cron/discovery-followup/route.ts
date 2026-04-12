@@ -34,7 +34,7 @@ import type { Json } from '@/lib/supabase/database.types';
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = createAdminClient;
+const getSupabase = createAdminClient;
 
 // --- MAIN HANDLER ---
 export async function GET(request: NextRequest) {
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             apiKey: aisensyKey,
-            campaignName: 'discovery_followup_24hr',
+            campaignName: 'parent_discovery_reminder_v3',
             destination: call.parent_phone.replace(/\D/g, ''),
             userName: 'Yestoryd',
             templateParams: [

@@ -290,7 +290,7 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             apiKey: process.env.AISENSY_API_KEY,
-            campaignName: 'final_assessment_request',
+            campaignName: 'parent_final_assessment_v3',
             destination: parentPhone.replace(/\D/g, ''),
             userName: 'Yestoryd',
             templateParams: [childName, assessmentLink],

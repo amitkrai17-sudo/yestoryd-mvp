@@ -365,7 +365,7 @@ async function handler(request: NextRequest) {
   try {
     const wa = await sendWhatsAppMessage({
       to: adminPhone,
-      templateName: 'daily_health_report',
+      templateName: 'admin_daily_health_v3',
       variables: [message],
     });
     whatsappSent = wa.success;

@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             apiKey: process.env.AISENSY_API_KEY,
-            campaignName: 'coach_child_assigned_v3',
+            campaignName: 'coach_child_assigned_v4',
             destination: coach.phone.replace(/\D/g, ''),
             userName: 'Yestoryd',
             templateParams: [

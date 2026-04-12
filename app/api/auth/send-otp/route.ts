@@ -61,7 +61,7 @@ async function sendWhatsAppOTP(phone: string, otp: string): Promise<boolean> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         apiKey,
-        campaignName: 'auth_otp',
+        campaignName: 'parent_otp_v3',
         destination: phone,
         userName: 'Yestoryd LLP',
         source: 'new-landing-page form',

@@ -662,7 +662,7 @@ ${lead.latest_assessment_score !== null && lead.latest_assessment_score <= 3
         },
         body: JSON.stringify({
           apiKey: AISENSY_API_KEY,
-          campaignName: 'hot_lead_alert',
+          campaignName: 'admin_hot_lead_alert_v3',
           destination: ADMIN_PHONE.replace('+', ''),
           userName: 'Yestoryd System',
           templateParams: [

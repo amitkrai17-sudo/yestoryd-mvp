@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
         const waResult = await sendWhatsAppMessage({
           to: coach.phone,
-          templateName: 'session_completion_nudge',
+          templateName: 'parent_feedback_request_v3',
           variables: [
             coachFirstName,
             childFirstName,

@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
 
       await sendWhatsAppMessage({
         to: adminPhone,
-        templateName: 'admin_scheduling_alert',
+        templateName: 'admin_scheduling_alert_v3',
         variables: [
           enrollment.child_name,
           enrollment.id.slice(0, 8),

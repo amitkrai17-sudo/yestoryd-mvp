@@ -164,7 +164,7 @@ export async function deductTuitionBalance(
         try {
           const result = await sendWhatsAppMessage({
             to: formattedPhone,
-            templateName: 'tuition_renewal_link_v2', // was: tuition_renewal_link
+            templateName: 'parent_tuition_renewal_v3', // was: tuition_renewal_link
             variables: [
               parentName.split(' ')[0],
               childName,
@@ -182,14 +182,14 @@ export async function deductTuitionBalance(
               enrollmentId, phone: formattedPhone, error: result.error,
             }));
           }
-          await logTuitionWaSend('tuition_renewal_link_v2', formattedPhone, result.success, result.error);
+          await logTuitionWaSend('parent_tuition_renewal_v3', formattedPhone, result.success, result.error);
         } catch (waErr) {
           const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
           console.error(JSON.stringify({
             requestId, event: 'tuition_renewal_wa_exception',
             enrollmentId, phone: formattedPhone, error: errMsg,
           }));
-          await logTuitionWaSend('tuition_renewal_link_v2', formattedPhone, false, errMsg);
+          await logTuitionWaSend('parent_tuition_renewal_v3', formattedPhone, false, errMsg);
         }
       }
 
@@ -215,7 +215,7 @@ export async function deductTuitionBalance(
         try {
           const result = await sendWhatsAppMessage({
             to: formattedPhone,
-            templateName: 'tuition_low_balance_v3',
+            templateName: 'parent_tuition_low_balance_v3',
             variables: [
               parentName.split(' ')[0],
               childName,
@@ -231,14 +231,14 @@ export async function deductTuitionBalance(
               enrollmentId, phone: formattedPhone, error: result.error,
             }));
           }
-          await logTuitionWaSend('tuition_low_balance_v3', formattedPhone, result.success, result.error);
+          await logTuitionWaSend('parent_tuition_low_balance_v3', formattedPhone, result.success, result.error);
         } catch (waErr) {
           const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
           console.error(JSON.stringify({
             requestId, event: 'tuition_low_balance_wa_exception',
             enrollmentId, phone: formattedPhone, error: errMsg,
           }));
-          await logTuitionWaSend('tuition_low_balance_v3', formattedPhone, false, errMsg);
+          await logTuitionWaSend('parent_tuition_low_balance_v3', formattedPhone, false, errMsg);
         }
       }
 
@@ -323,7 +323,7 @@ async function checkAndPause(
     try {
       const result = await sendWhatsAppMessage({
         to: formattedPhone,
-        templateName: 'tuition_paused_v2', // was: tuition_paused
+        templateName: 'parent_tuition_paused_v3', // was: tuition_paused
         variables: [
           parentName.split(' ')[0],
           childName,
@@ -337,14 +337,14 @@ async function checkAndPause(
           enrollmentId, phone: formattedPhone, error: result.error,
         }));
       }
-      await logTuitionWaSend('tuition_paused_v2', formattedPhone, result.success, result.error);
+      await logTuitionWaSend('parent_tuition_paused_v3', formattedPhone, result.success, result.error);
     } catch (waErr) {
       const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
       console.error(JSON.stringify({
         requestId, event: 'tuition_paused_wa_exception',
         enrollmentId, phone: formattedPhone, error: errMsg,
       }));
-      await logTuitionWaSend('tuition_paused_v2', formattedPhone, false, errMsg);
+      await logTuitionWaSend('parent_tuition_paused_v3', formattedPhone, false, errMsg);
     }
   }
 

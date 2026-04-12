@@ -312,7 +312,7 @@ export async function POST(
     try {
       await sendWhatsAppMessage({
         to: `91${input.parentPhone}`,
-        templateName: 'tuition_payment_link',
+        templateName: 'parent_tuition_payment_v3',
         variables: [
           input.parentName.split(' ')[0],
           input.childFullName,

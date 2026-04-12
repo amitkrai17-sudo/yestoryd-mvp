@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
               const shortenedInsight = insightText.length > 500 ? insightText.substring(0, 497) + '...' : insightText;
               const waResult = await sendWhatsAppMessage({
                 to: parent.phone,
-                templateName: 'group_class_micro_insight_nonenrolled',
+                templateName: 'parent_group_micro_insight_v3',
                 variables: [parentName, childName, shortenedInsight, ctaLink],
               });
 

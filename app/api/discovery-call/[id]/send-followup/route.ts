@@ -202,7 +202,7 @@ export async function POST(
     const { data: template } = await supabase
       .from('whatsapp_templates')
       .select('template')
-      .eq('slug', 'discovery-followup-24hr')
+      .eq('slug', 'parent_discovery_followup_v3')
       .single();
 
     // Extract child's goal from questionnaire

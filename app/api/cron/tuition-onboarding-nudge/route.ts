@@ -122,12 +122,12 @@ export async function GET(request: NextRequest) {
         const coachFirstName = (coach?.name || 'Your coach').split(' ')[0];
         const magicLink = `${APP_URL}/tuition/onboard/${record.parent_form_token}`;
 
-        try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:tuition_onboarding_form', outcome: 'pending' }); } catch {}
+        try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v3', outcome: 'pending' }); } catch {}
 
-        // Send the same tuition_onboarding_form template (magic link still valid)
+        // Send the same parent_tuition_onboarding_v3 template (magic link still valid)
         await sendWhatsAppMessage({
           to: `91${record.parent_phone}`,
-          templateName: 'tuition_onboarding_form',
+          templateName: 'parent_tuition_onboarding_v3',
           variables: [
             coachFirstName,
             record.child_name?.startsWith('Pending') ? 'your child' : record.child_name,

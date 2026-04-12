@@ -147,7 +147,7 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             apiKey: process.env.AISENSY_API_KEY,
-            campaignName: 'final_assessment_request',
+            campaignName: 'parent_final_assessment_v3',
             destination: parent.phone.replace(/\D/g, ''),
             userName: 'Yestoryd',
             templateParams: [childName, assessmentLink],

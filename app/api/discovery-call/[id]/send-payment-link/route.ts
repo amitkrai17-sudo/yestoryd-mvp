@@ -370,7 +370,7 @@ export async function POST(
       const { data: template } = await supabase
         .from('whatsapp_templates')
         .select('template')
-        .eq('slug', 'discovery-payment-link')
+        .eq('slug', 'parent_discovery_payment_v3')
         .single();
 
       if (template) {

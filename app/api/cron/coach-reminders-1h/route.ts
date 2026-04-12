@@ -25,7 +25,7 @@ import { verifyCronRequest } from '@/lib/api/verify-cron';
 export const dynamic = 'force-dynamic';
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = createAdminClient;
+const getSupabase = createAdminClient;
 
 // --- MAIN PROCESSOR ---
 async function processReminders(requestId: string, source: string) {
@@ -157,7 +157,7 @@ async function processReminders(requestId: string, source: string) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             apiKey: aisensyKey,
-            campaignName: 'coach_session_1h',
+            campaignName: 'coach_session_reminder_1h_v3',
             destination: coach.phone.replace(/\D/g, ''),
             userName: 'Yestoryd',
             templateParams: [coachFirstName, childName, sessionTime],
@@ -255,7 +255,7 @@ async function processReminders(requestId: string, source: string) {
 
           const waResult = await sendWhatsAppMessage({
             to: coach.phone,
-            templateName: 'coach_report_deadline',
+            templateName: 'coach_report_deadline_v3',
             variables: [coachFirstName, childName, deadlineTime],
           });
 
@@ -307,7 +307,7 @@ async function processReminders(requestId: string, source: string) {
 
           const waResult = await sendWhatsAppMessage({
             to: adminPhone,
-            templateName: 'admin_report_overdue',
+            templateName: 'admin_report_overdue_v3',
             variables: [coachName, childName, s.scheduled_date || '', hoursOverdue],
           });
 

@@ -135,7 +135,7 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   try {
     await sendWhatsAppMessage({
       to: `91${input.parentPhone}`,
-      templateName: 'tuition_onboarding_form',
+      templateName: 'parent_tuition_onboarding_v3',
       variables: [
         coachFirstName,
         'your child',

@@ -700,7 +700,7 @@ export async function POST(request: NextRequest) {
 
           // ═══════════════════════════════════════════════════════════════════════════
           // PARENT WHATSAPP - Assessment Results with Let's Talk CTA (fire-and-forget)
-          // Template: assessment_results_v2 (pending Meta approval)
+          // Template: parent_assessment_results_v3
           // Variables: parent_name, child_name, overall_score, clarity_score,
           //            fluency_score, speed_score, booking_link
           // ═══════════════════════════════════════════════════════════════════════════
@@ -711,7 +711,7 @@ export async function POST(request: NextRequest) {
 
             sendWhatsAppMessage({
               to: parentPhone,
-              templateName: 'assessment_results_v2',
+              templateName: 'parent_assessment_results_v3',
               variables: [
                 parentName || 'Parent',       // {{1}} parent_name
                 name,                          // {{2}} child_name

@@ -84,7 +84,7 @@ export async function promoteNextWaitlisted(
     try {
       await sendWhatsAppMessage({
         to: parent.phone,
-        templateName: 'group_class_waitlist_spot_open',
+        templateName: 'parent_group_promotion_v3',
         variables: [parentName, childName, className, sessionDate, '24'],
       });
     } catch (err) {

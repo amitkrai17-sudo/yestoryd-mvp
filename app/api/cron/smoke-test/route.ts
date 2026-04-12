@@ -561,7 +561,7 @@ async function handler(request: NextRequest) {
     try {
       await sendWhatsAppMessage({
         to: adminPhone,
-        templateName: 'daily_health_report', // Reuse health report template
+        templateName: 'admin_daily_health_v3', // Reuse health report template
         variables: [message],
       });
     } catch (err: any) {
