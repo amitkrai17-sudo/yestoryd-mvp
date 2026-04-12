@@ -81,7 +81,7 @@ export function Footer({ variant = 'default', coachName }: FooterProps) {
                 </Link>
               </li>
               <li>
-                <Link href="/partner" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/yestoryd-academy" className="text-gray-400 hover:text-white transition-colors">
                   Become a Coach
                 </Link>
               </li>
