@@ -32,6 +32,7 @@ export interface ChildMeta {
   totalSessions?: number;
   intelligenceProfile?: IntelligenceProfileMeta | null;
   readingActivity?: ReadingActivityMeta | null;
+  latestAssessmentScore?: number | null;
 }
 
 function getStageName(age?: number): string {
@@ -42,9 +43,18 @@ function getStageName(age?: number): string {
 }
 
 function getSessionProgress(childName: string, meta?: ChildMeta): string {
-  if (meta?.sessionsCompleted == null) return '';
-  const total = meta.totalSessions || 0;
-  return `\n${childName} has completed ${meta.sessionsCompleted} of ${total} coaching sessions in the ${getStageName(meta.age)} stage.`;
+  const parts: string[] = [];
+
+  if (meta?.sessionsCompleted != null) {
+    const total = meta.totalSessions || 0;
+    parts.push(`${childName} has completed ${meta.sessionsCompleted} of ${total} coaching sessions in the ${getStageName(meta.age)} stage.`);
+  }
+
+  if (meta?.latestAssessmentScore != null) {
+    parts.push(`Latest reading assessment score: ${meta.latestAssessmentScore}/10`);
+  }
+
+  return parts.length > 0 ? `\n${parts.join('\n')}` : '';
 }
 
 // ============================================================

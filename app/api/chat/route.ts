@@ -543,6 +543,7 @@ async function handleLearningStreaming(
     sessionsCompleted: child.sessions_completed,
     totalSessions: child.total_sessions,
     intelligenceProfile,
+    latestAssessmentScore: child.latest_assessment_score ?? null,
   } : undefined;
 
   const systemPrompt = getSystemPrompt(
