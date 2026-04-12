@@ -156,7 +156,8 @@ export default function CoachOnboardStudentPage() {
 
   // ---- Earnings card (reused in step 2 + 3) ----
   const EarningsCard = () => {
-    if (!splitPreview || !rateRupees || isBlocked) return null;
+    if (!splitPreview || !rateRupees || isBlocked || !sessionsPurchased) return null;
+    const sessions = Number(sessionsPurchased);
     return (
       <div className="bg-emerald-500/10 rounded-xl border-l-4 border-emerald-400 p-4 space-y-2.5">
         <div className="flex items-start justify-between gap-3">
@@ -166,16 +167,16 @@ export default function CoachOnboardStudentPage() {
           </div>
           <div className="text-right">
             <p className="text-emerald-300 text-lg font-semibold">
-              {`\u20B9${(splitPreview.coach_amount_rupees * sessionsPurchased).toLocaleString('en-IN')}`}
+              {`\u20B9${(splitPreview.coach_amount_rupees * sessions).toLocaleString('en-IN')}`}
             </p>
             <p className="text-xs text-emerald-400/60">
-              {`\u20B9${splitPreview.coach_amount_rupees}/session \u00D7 ${sessionsPurchased}`}
+              {`\u20B9${splitPreview.coach_amount_rupees}/session \u00D7 ${sessions}`}
             </p>
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Parent pays ({sessionsPurchased} sessions)</span>
-          <span className="text-white font-semibold">{`\u20B9${(Number(rateRupees) * sessionsPurchased).toLocaleString('en-IN')}`}</span>
+          <span className="text-gray-400">Parent pays ({sessions} sessions)</span>
+          <span className="text-white font-semibold">{`\u20B9${(Number(rateRupees) * sessions).toLocaleString('en-IN')}`}</span>
         </div>
         <p className="text-xs text-gray-500 italic">Paid per completed session &middot; Payout on 7th of each month</p>
       </div>
@@ -207,7 +208,7 @@ export default function CoachOnboardStudentPage() {
               {`If this is your lead: +\u20B9${splitPreview.lead_amount_rupees}/session`}
             </p>
             <p className="text-sm text-pink-300 font-medium">
-              {`Total: \u20B9${splitPreview.coach_amount_rupees + splitPreview.lead_amount_rupees}/session (\u20B9${((splitPreview.coach_amount_rupees + splitPreview.lead_amount_rupees) * sessionsPurchased).toLocaleString('en-IN')} for ${sessionsPurchased} sessions)`}
+              {`Total: \u20B9${splitPreview.coach_amount_rupees + splitPreview.lead_amount_rupees}/session (\u20B9${((splitPreview.coach_amount_rupees + splitPreview.lead_amount_rupees) * Number(sessionsPurchased)).toLocaleString('en-IN')} for ${sessionsPurchased} sessions)`}
             </p>
           </div>
         )}
