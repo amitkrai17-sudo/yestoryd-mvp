@@ -119,7 +119,14 @@ async function findMatchingChild(parentEmail: string, childName: string): Promis
 // ============================================
 // POST handler - receives Cal.com webhook
 // ============================================
+// Cal.com integration retired Jan 2026.
+// Route kept for reference. Disabled for security (no signature verification).
 export async function POST(request: NextRequest) {
+  return NextResponse.json(
+    { message: 'Legacy endpoint disabled. Use /api/discovery/book' },
+    { status: 410 }
+  );
+
   console.log('=== CAL.COM WEBHOOK RECEIVED ===');
 
   try {
