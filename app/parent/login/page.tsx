@@ -11,6 +11,10 @@ import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
 
 const SUPPORT_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
 
+// Subtle square grid — shared across admin/parent/coach login pages
+const GRID_BG =
+  'pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e2e8f010_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f010_1px,transparent_1px)] bg-[size:4rem_4rem]';
+
 export default function ParentLoginPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -286,9 +290,10 @@ export default function ParentLoginPage() {
   // ─── RENDER: OTP Verification ───
   if (mode === 'phone-otp') {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex flex-col">
+      <div className="min-h-screen bg-[#0f1419] flex flex-col relative overflow-hidden">
+        <div aria-hidden className={GRID_BG} />
         {/* Top */}
-        <div className="flex flex-col items-center px-4 pt-8 pb-4">
+        <div className="relative flex flex-col items-center px-4 pt-8 pb-4">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
             actualOtpMethod === 'whatsapp' ? 'bg-[#1D9E75]' : 'bg-[#FF0099]'
           }`}>
@@ -305,7 +310,7 @@ export default function ParentLoginPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-[#1a2028] rounded-t-2xl px-5 py-6 sm:px-8 sm:py-8 max-w-md w-full mx-auto mt-auto">
+        <div className="relative bg-[#1a2028] rounded-t-2xl px-5 py-6 sm:px-8 sm:py-8 max-w-md w-full mx-auto mt-auto">
           <ErrorBanner />
 
           <div className="flex justify-center gap-2 mb-5" onPaste={handleOtpPaste}>
@@ -367,8 +372,9 @@ export default function ParentLoginPage() {
   // ─── RENDER: Phone Input ───
   if (mode === 'phone') {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex flex-col">
-        <div className="flex flex-col items-center px-4 pt-8 pb-4">
+      <div className="min-h-screen bg-[#0f1419] flex flex-col relative overflow-hidden">
+        <div aria-hidden className={GRID_BG} />
+        <div className="relative flex flex-col items-center px-4 pt-8 pb-4">
           <div className="w-12 h-12 bg-[#1D9E75] rounded-xl flex items-center justify-center mb-4">
             <MessageCircle className="w-6 h-6 text-white" />
           </div>
@@ -376,7 +382,7 @@ export default function ParentLoginPage() {
           <p className="text-sm text-gray-400 mt-1">Enter your registered mobile number</p>
         </div>
 
-        <div className="bg-[#1a2028] rounded-t-2xl px-5 py-6 sm:px-8 sm:py-8 max-w-md w-full mx-auto mt-auto">
+        <div className="relative bg-[#1a2028] rounded-t-2xl px-5 py-6 sm:px-8 sm:py-8 max-w-md w-full mx-auto mt-auto">
           <ErrorBanner />
 
           <label className="block text-sm text-gray-400 mb-2">Mobile Number</label>
@@ -427,7 +433,8 @@ export default function ParentLoginPage() {
 
   // ─── RENDER: Main Login Page ───
   return (
-    <div className="min-h-screen bg-[#0f1419] grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8">
+    <div className="min-h-screen bg-[#0f1419] grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8 relative overflow-hidden">
+      <div aria-hidden className={GRID_BG} />
       {/* ── Desktop Left Panel ── */}
       <div className="hidden md:flex flex-col justify-between p-12 relative overflow-hidden">
         <div className="relative z-10">
@@ -494,12 +501,12 @@ export default function ParentLoginPage() {
         </div>
 
         <div className="relative z-10 text-gray-600 text-xs">
-          &copy; 2025 Yestoryd. All rights reserved.
+          &copy; 2026 Yestoryd. All rights reserved.
         </div>
       </div>
 
       {/* ── Login Form (mobile: full width, desktop: right half centered) ── */}
-      <div className="flex flex-col items-center justify-center px-4 md:py-12">
+      <div className="relative flex flex-col items-center justify-center px-4 md:py-12">
         {/* Logo (mobile only) */}
         <Link href="/" className="md:hidden mt-8 mb-4">
           <Image src="/images/logo.png" alt="Yestoryd" width={140} height={38} className="h-9 w-auto" />
