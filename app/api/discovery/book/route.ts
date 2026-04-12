@@ -572,6 +572,29 @@ export async function POST(request: NextRequest) {
       }));
     }
 
+    // 10.5. Advance lead_status to 'discovery_scheduled' (non-blocking — a
+    // failure here must never fail the booking). Only fires when a child row
+    // is linked; standalone bookings with no child are picked up by the CRM.
+    if (linkedChildId) {
+      try {
+        await supabase
+          .from('children')
+          .update({ lead_status: 'discovery_scheduled' })
+          .eq('id', linkedChildId);
+      } catch (leadStatusErr: any) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'lead_status_update_error',
+          childId: linkedChildId,
+          error: leadStatusErr?.message,
+        }));
+        const { default: Sentry } = await import('@sentry/nextjs');
+        Sentry.captureException(leadStatusErr, {
+          tags: { route: 'discovery/book', event: 'lead_status_update_error' },
+        });
+      }
+    }
+
     // 11. Queue Notification (async, non-blocking)
     await sendBookingNotification(
       {

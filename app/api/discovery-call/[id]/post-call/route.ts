@@ -13,6 +13,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { conditionalUpdate } from '@/lib/db-utils';
 import { z } from 'zod';
@@ -189,6 +190,28 @@ export async function POST(
     }));
 
     // 9. Children sync handled by database trigger: trigger_sync_discovery_to_children
+
+    // 9b. Advance lead_status to 'discovery_completed' — any outcome means the
+    // call happened. 'converted' is set separately by payment/verify only after
+    // real payment lands. Non-blocking: failure must never fail post-call save.
+    if (updated && existingCall.child_id) {
+      try {
+        await supabase
+          .from('children')
+          .update({ lead_status: 'discovery_completed' })
+          .eq('id', existingCall.child_id);
+      } catch (leadStatusErr: any) {
+        console.error(JSON.stringify({
+          requestId,
+          event: 'lead_status_update_error',
+          childId: existingCall.child_id,
+          error: leadStatusErr?.message,
+        }));
+        Sentry.captureException(leadStatusErr, {
+          tags: { route: 'discovery-call/post-call', event: 'lead_status_update_error' },
+        });
+      }
+    }
 
     // 10. Audit log - only create if actual update happened
     if (updated) {
