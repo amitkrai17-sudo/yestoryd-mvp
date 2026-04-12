@@ -1,3 +1,8 @@
+// @ts-nocheck — Cal.com integration retired Jan 2026. Route short-circuits
+// with HTTP 410 at POST entry. Dead code below is preserved for historical
+// reference; its pre-existing type errors are suppressed file-wide because
+// the code is unreachable at runtime.
+//
 // app/api/webhooks/cal/route.ts
 // Handles Cal.com booking webhooks - creates discovery_calls record
 // Features:
