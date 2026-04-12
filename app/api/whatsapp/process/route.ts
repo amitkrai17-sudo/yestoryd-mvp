@@ -265,6 +265,12 @@ export async function POST(request: NextRequest) {
     // Keeps rate-limit guard above this check. Non-blocking on lookup error.
     try {
       const enrolledChild = await findEnrolledChildByPhone(phone);
+      // TEMP DEBUG — remove after enrolled-parent lookup is verified in prod
+      console.log('ENROLLED_PARENT_DEBUG', {
+        phone,
+        phoneSlice10: phone.slice(-10),
+        result: enrolledChild,
+      });
       if (enrolledChild) {
         const response = await handleEnrolledParent(phone, text || '', enrolledChild);
         await sendText(phone, response);

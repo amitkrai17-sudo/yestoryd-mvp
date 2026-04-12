@@ -60,6 +60,16 @@ export async function findEnrolledChildByPhone(phone: string): Promise<EnrolledC
     .limit(1)
     .maybeSingle();
 
+  // TEMP DEBUG — remove after enrolled-parent lookup is verified in prod
+  console.log('PHONE_LOOKUP_DEBUG', {
+    rawPhone: phone,
+    formats: [phone, phone.slice(-10), '91' + phone.slice(-10), '+91' + phone.slice(-10)],
+    normalizedPhone,
+    queryFormats: [normalizedPhone, normalizedPhone.slice(1), normalizedPhone.slice(3), plus91Reconstructed],
+    queryResult: data,
+    error,
+  });
+
   if (error || !data) return null;
 
   const enrollments = Array.isArray(data.enrollments) ? data.enrollments : [];
