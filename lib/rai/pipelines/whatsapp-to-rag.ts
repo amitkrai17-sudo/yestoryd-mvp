@@ -4,6 +4,7 @@
 // Called when a lead reaches a conversion milestone (books discovery, enrolls).
 // Creates ONE learning_event per conversation, with idempotency.
 
+import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from '@/lib/rai/embeddings';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
@@ -77,7 +78,20 @@ export async function summarizeLeadConversation(
 
   // 7. Create or update learning_event (idempotent by conversation_id)
   try {
-    const embedding = await generateEmbedding(searchableContent);
+    // Generate embedding in its own scope — failure must not block the text
+    // update. Stale embedding > no update. insertLearningEvent() on the insert
+    // branch generates its own embedding, so we only need this guard for the
+    // update path below.
+    let embedding: number[] | null = null;
+    try {
+      embedding = await generateEmbedding(searchableContent);
+    } catch (embedErr) {
+      console.error('[WhatsApp→RAG] Embedding generation failed, continuing with text update:', embedErr);
+      Sentry.captureException(embedErr, {
+        tags: { pipeline: 'whatsapp-to-rag', event: 'embedding_generation_failed' },
+        extra: { conversationId },
+      });
+    }
 
     const eventData = {
       conversation_id: conversationId,
@@ -108,10 +122,12 @@ export async function summarizeLeadConversation(
       .maybeSingle();
 
     if (existing) {
+      // Omit embedding from the update when regen failed — preserves the
+      // existing stored embedding rather than nulling it out.
       await supabase.from('learning_events').update({
         event_data: eventData,
         content_for_embedding: searchableContent,
-        embedding: JSON.stringify(embedding),
+        ...(embedding ? { embedding: JSON.stringify(embedding) } : {}),
         ai_summary: aiSummary,
         event_date: new Date().toISOString(),
       }).eq('id', existing.id);
