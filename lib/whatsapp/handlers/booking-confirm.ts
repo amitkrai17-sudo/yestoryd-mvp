@@ -86,6 +86,31 @@ export async function handleBookingConfirm(
   if (waLead?.child_id) {
     childId = waLead.child_id;
   } else {
+    // Guard: avoid creating a duplicate child for a phone that already has
+    // one on record (enrolled or in-progress). Reuses that child_id and
+    // links it to wa_leads so future messages stay consistent.
+    const { data: existingChild } = await supabase
+      .from('children')
+      .select('id')
+      .or(`parent_phone.eq.${e164},parent_phone.eq.${noPlus},parent_phone.eq.${digits10}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingChild?.id) {
+      console.warn(JSON.stringify({
+        event: 'agent2_booking_skipped_duplicate_child',
+        phone,
+        existing_child_id: existingChild.id,
+      }));
+      childId = existingChild.id;
+
+      // Link to wa_lead so the lookup hits on next turn
+      await supabase
+        .from('wa_leads')
+        .update({ child_id: childId })
+        .eq('phone_number', phone);
+    } else {
     // Create minimal child record
     const { data: newChild, error: childError } = await supabase
       .from('children')
@@ -116,6 +141,7 @@ export async function handleBookingConfirm(
         .from('wa_leads')
         .update({ child_id: childId })
         .eq('phone_number', phone);
+    }
     }
   }
 
