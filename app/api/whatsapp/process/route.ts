@@ -44,7 +44,7 @@ import { updateLifecycle } from '@/lib/whatsapp/agent/lifecycle';
 import type { AgentDecision, AgentContext } from '@/lib/whatsapp/agent/types';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { summarizeLeadConversation } from '@/lib/rai/pipelines/whatsapp-to-rag';
-import { findEnrolledChildByPhone } from '@/lib/whatsapp/enrolled-parent-lookup';
+import { findEnrolledChildrenByPhone } from '@/lib/whatsapp/enrolled-parent-lookup';
 import { handleEnrolledParent } from '@/lib/whatsapp/handlers/enrolled-parent';
 
 export const dynamic = 'force-dynamic';
@@ -264,21 +264,22 @@ export async function POST(request: NextRequest) {
     // when the sender's phone matches a child with an active enrollment.
     // Keeps rate-limit guard above this check. Non-blocking on lookup error.
     try {
-      const enrolledChild = await findEnrolledChildByPhone(phone);
-      if (enrolledChild) {
-        const response = await handleEnrolledParent(phone, text || '', enrolledChild);
+      const enrolledChildren = await findEnrolledChildrenByPhone(phone);
+      if (enrolledChildren.length > 0) {
+        const response = await handleEnrolledParent(phone, text || '', enrolledChildren);
         await sendText(phone, response);
         await saveBotMessage(conversationId, response, 'text', {
           intent: 'ENROLLED_PARENT',
-          child_id: enrolledChild.id,
-          enrollment_id: enrolledChild.enrollmentId,
+          child_ids: enrolledChildren.map((c) => c.id),
+          child_count: enrolledChildren.length,
           state_transition: `${liveState} → ${liveState}`,
         });
         console.log(JSON.stringify({
           requestId,
           event: 'wa_leadbot_enrolled_parent_handled',
           conversationId,
-          childId: enrolledChild.id,
+          childCount: enrolledChildren.length,
+          childIds: enrolledChildren.map((c) => c.id),
         }));
         return NextResponse.json({ status: 'enrolled_parent_handled' });
       }

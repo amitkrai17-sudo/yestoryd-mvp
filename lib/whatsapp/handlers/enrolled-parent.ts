@@ -15,13 +15,35 @@ function firstWord(full: string | null | undefined, fallback: string): string {
   return full.split(/\s+/)[0] || fallback;
 }
 
-export async function handleEnrolledParent(
-  _phone: string,
-  message: string,
-  childData: EnrolledChild
-): Promise<string> {
-  const childName = firstWord(childData.child_name || childData.name, 'your child');
-  const coachName = firstWord(childData.coachName, 'your coach');
+function displayName(child: EnrolledChild): string {
+  return firstWord(child.child_name || child.name, 'your child');
+}
+
+/**
+ * Find the child whose name appears in the message. Matches on first name
+ * (case-insensitive, word-boundary via simple includes). Returns null if
+ * no child name is mentioned or multiple children match the same token.
+ */
+function resolveChildFromMessage(message: string, children: EnrolledChild[]): EnrolledChild | null {
+  const lower = (message || '').toLowerCase();
+  const matches = children.filter((c) => {
+    const first = displayName(c).toLowerCase();
+    if (first === 'your' || first === 'child') return false;
+    return lower.includes(first);
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function buildDisambiguationPrompt(children: EnrolledChild[]): string {
+  const lines = children
+    .map((c, i) => `${i + 1}. ${displayName(c)}`)
+    .join('\n');
+  return `You have multiple children enrolled with Yestoryd:\n\n${lines}\n\nWhich child is this about? Reply with their name.\n\nYestoryd`;
+}
+
+function buildResponseForChild(message: string, child: EnrolledChild): string {
+  const childName = displayName(child);
+  const coachName = firstWord(child.coachName, 'your coach');
   const lowerMsg = (message || '').toLowerCase();
 
   if (lowerMsg.includes('session') || lowerMsg.includes('class') || lowerMsg.includes('schedule')) {
@@ -41,4 +63,25 @@ export async function handleEnrolledParent(
   }
 
   return `Hi! ${childName} is enrolled with Yestoryd.\n\nFor session details, practice tasks, and progress — check the dashboard:\n${DASHBOARD_URL}\n\nFor anything else, reply here and we'll get back to you.\n\nYestoryd`;
+}
+
+export async function handleEnrolledParent(
+  _phone: string,
+  message: string,
+  children: EnrolledChild[]
+): Promise<string> {
+  if (children.length === 0) {
+    return `Hi! For session details, practice tasks, and progress — check the dashboard:\n${DASHBOARD_URL}\n\nYestoryd`;
+  }
+
+  if (children.length === 1) {
+    return buildResponseForChild(message, children[0]);
+  }
+
+  const matched = resolveChildFromMessage(message, children);
+  if (matched) {
+    return buildResponseForChild(message, matched);
+  }
+
+  return buildDisambiguationPrompt(children);
 }

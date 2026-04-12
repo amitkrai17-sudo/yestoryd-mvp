@@ -1,7 +1,7 @@
 // ============================================================
 // FILE: lib/whatsapp/enrolled-parent-lookup.ts
 // PURPOSE: Detect whether an inbound WhatsApp phone number belongs
-//          to a parent with an active Yestoryd enrollment.
+//          to a parent with one or more active Yestoryd enrollments.
 // Used by:
 //   - /api/whatsapp/process (Lead Bot) to skip the lead funnel.
 //   - handlers/booking-confirm.ts to avoid creating a duplicate child
@@ -20,10 +20,10 @@ export interface EnrolledChild {
 }
 
 /**
- * Look up an active-enrollment child by parent phone. Mirrors the phone
- * match pattern used in auth routes (send-otp, verify-otp, middleware)
- * plus an explicit +91<10-digit> reconstruction to cover inputs that
- * weren't cleanly normalized upstream.
+ * Look up ALL active-enrollment children for a parent phone. Mirrors the
+ * phone match pattern used in auth routes (send-otp, verify-otp,
+ * middleware) plus an explicit +91<10-digit> reconstruction to cover
+ * inputs that weren't cleanly normalized upstream.
  *
  * Formats matched:
  *   +919687606177 (E.164, normalizedPhone)
@@ -31,11 +31,11 @@ export interface EnrolledChild {
  *   9687606177    (10-digit, normalizedPhone.slice(3))
  *   +919687606177 reconstructed as `+91${digits10}` (defensive)
  *
- * Returns null if no match OR no active enrollment.
+ * Returns an empty array if no match OR no active enrollment.
  */
-export async function findEnrolledChildByPhone(phone: string): Promise<EnrolledChild | null> {
+export async function findEnrolledChildrenByPhone(phone: string): Promise<EnrolledChild[]> {
   const normalizedPhone = normalizePhone(phone);
-  if (!normalizedPhone) return null;
+  if (!normalizedPhone) return [];
 
   const digits10 = normalizedPhone.slice(3);
   const plus91Reconstructed = `+91${digits10}`;
@@ -56,23 +56,21 @@ export async function findEnrolledChildByPhone(phone: string): Promise<EnrolledC
       )
     `)
     .or(`parent_phone.eq.${normalizedPhone},parent_phone.eq.${normalizedPhone.slice(1)},parent_phone.eq.${normalizedPhone.slice(3)},parent_phone.eq.${plus91Reconstructed}`)
-    .eq('enrollments.status', 'active')
-    .limit(1)
-    .maybeSingle();
+    .eq('enrollments.status', 'active');
 
-  if (error || !data) return null;
+  if (error || !data) return [];
 
-  const enrollments = Array.isArray(data.enrollments) ? data.enrollments : [];
-  const firstEnrollment = enrollments[0];
-  const coaches = firstEnrollment?.coaches;
-  const coachRow = Array.isArray(coaches) ? coaches[0] : coaches;
-  const coachName = coachRow?.name || null;
-
-  return {
-    id: data.id,
-    child_name: data.child_name,
-    name: data.name,
-    coachName,
-    enrollmentId: firstEnrollment?.id || null,
-  };
+  return data.map((row) => {
+    const enrollments = Array.isArray(row.enrollments) ? row.enrollments : [];
+    const firstEnrollment = enrollments[0];
+    const coaches = firstEnrollment?.coaches;
+    const coachRow = Array.isArray(coaches) ? coaches[0] : coaches;
+    return {
+      id: row.id,
+      child_name: row.child_name,
+      name: row.name,
+      coachName: coachRow?.name || null,
+      enrollmentId: firstEnrollment?.id || null,
+    };
+  });
 }
