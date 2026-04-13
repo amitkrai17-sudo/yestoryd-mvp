@@ -149,6 +149,7 @@ export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
+  try {
   // IP-based rate limiting
   const clientIP = getClientIP(request);
   const { success: ipSuccess, limit, remaining, reset } = await chatRateLimiter.limit(clientIP);
@@ -340,13 +341,19 @@ export async function POST(request: NextRequest) {
           trackAIUsage(requestId, userEmail, userRole, intent, response.source || 'sql', latency);
         }
       } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : 'Unknown error';
+        const errStack = error instanceof Error ? error.stack : undefined;
         console.error(JSON.stringify({
           requestId,
           event: 'chat_error',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errMsg,
+          stack: errStack,
           latencyMs: Date.now() - startTime,
         }));
-        send({ type: 'error', message: 'Something went wrong. Please try again.' });
+        const clientMsg = process.env.NODE_ENV === 'production'
+          ? 'Something went wrong. Please try again.'
+          : `rAI error: ${errMsg}`;
+        send({ type: 'error', message: clientMsg });
       } finally {
         try { controller.close(); } catch { /* already closed */ }
       }
@@ -356,6 +363,25 @@ export async function POST(request: NextRequest) {
   return new Response(stream, {
     headers: sseHeaders(requestId, rateLimit.remaining.toString()),
   });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown error';
+    const errStack = error instanceof Error ? error.stack : undefined;
+    console.error(JSON.stringify({
+      requestId,
+      event: 'chat_fatal',
+      error: errMsg,
+      stack: errStack,
+      latencyMs: Date.now() - startTime,
+    }));
+    return NextResponse.json(
+      {
+        error: 'Chat service error',
+        message: process.env.NODE_ENV === 'production' ? 'Service temporarily unavailable' : errMsg,
+        requestId,
+      },
+      { status: 500 }
+    );
+  }
 }
 
 // ============================================================

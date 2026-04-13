@@ -1,17 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles, Minimize2, Copy, MessageCircle, Check, RotateCw, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { readChatSSE } from '@/lib/rai/sse-client';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  isStreaming?: boolean;
-  isError?: boolean;
-}
+import { useChatStream } from '@/lib/hooks/useChatStream';
 
 interface ChatWidgetProps {
   childId?: string;
@@ -93,10 +84,7 @@ export function ChatWidget({
 }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'positive' | 'negative'>>({});
@@ -105,8 +93,19 @@ export function ChatWidget({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasAutoSent = useRef(false);
+  const wasOpen = useRef(false);
 
   const theme = themes[userRole] || themes.parent;
+
+  // Chat: state + send() via shared hook; widget still owns input, retry, child selection, feedback.
+  const { messages, setMessages, statusMessage, isSending, send } = useChatStream({
+    userRole,
+    userEmail,
+    childId,
+    onChildren: (children) => setPendingChildren(children),
+    onMessageSent: (fullText) => onMessageSent?.(fullText),
+    onSendError: (failedContent) => setLastFailedMessage(failedContent),
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,123 +132,11 @@ export function ChatWidget({
     }
   }, [initialPrompt, autoSend]);
 
-  const handleSendWithContent = async (content: string) => {
-    if (!content.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: content.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
+  const handleSendWithContent = (content: string) => {
+    if (!content.trim()) return;
     setInput('');
-    setIsLoading(true);
-    setStatusMessage(null);
     setLastFailedMessage(null);
-
-    const assistantId = (Date.now() + 1).toString();
-    let isStreaming = false;
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: content.trim(),
-          childId: activeChildId || childId,
-          userRole,
-          userEmail,
-          chatHistory: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const fullText = await readChatSSE(response, {
-        onStatus: (msg) => {
-          setStatusMessage(msg);
-        },
-
-        onChunk: (text) => {
-          if (!isStreaming) {
-            isStreaming = true;
-            setStatusMessage(null);
-            setMessages(prev => [...prev, {
-              id: assistantId,
-              role: 'assistant',
-              content: text,
-              timestamp: new Date(),
-              isStreaming: true,
-            }]);
-          } else {
-            setMessages(prev => prev.map(m =>
-              m.id === assistantId ? { ...m, content: m.content + text } : m
-            ));
-          }
-        },
-
-        onResponse: (responseContent) => {
-          setStatusMessage(null);
-          setMessages(prev => [...prev, {
-            id: assistantId,
-            role: 'assistant',
-            content: responseContent,
-            timestamp: new Date(),
-          }]);
-          isStreaming = true; // Prevent duplicate addition
-        },
-
-        onChildren: (children) => {
-          setPendingChildren(children);
-        },
-
-        onDone: () => {
-          // Finalize streaming message
-          setMessages(prev => prev.map(m =>
-            m.id === assistantId ? { ...m, isStreaming: false } : m
-          ));
-          setStatusMessage(null);
-        },
-
-        onError: (errorMsg) => {
-          setStatusMessage(null);
-          if (!isStreaming) {
-            setMessages(prev => [...prev, {
-              id: assistantId,
-              role: 'assistant',
-              content: errorMsg,
-              timestamp: new Date(),
-              isError: true,
-            }]);
-          }
-          setLastFailedMessage(content.trim());
-        },
-      });
-
-      if (fullText) {
-        onMessageSent?.(fullText);
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-      setStatusMessage(null);
-      if (!isStreaming) {
-        setMessages(prev => [...prev, {
-          id: assistantId,
-          role: 'assistant',
-          content: 'Sorry, something went wrong. Please try again.',
-          timestamp: new Date(),
-          isError: true,
-        }]);
-      }
-      setLastFailedMessage(content.trim());
-    } finally {
-      setIsLoading(false);
-      setStatusMessage(null);
-    }
+    send(content, activeChildId || childId);
   };
 
   const handleSend = () => {
@@ -341,8 +228,13 @@ export function ChatWidget({
   };
 
   // Notify parent when widget is closed (lets parent unmount the widget)
+  // Only fires on true→false transitions, not the initial false on mount.
   useEffect(() => {
-    if (!isOpen && onCloseProp) {
+    if (isOpen) {
+      wasOpen.current = true;
+      return;
+    }
+    if (wasOpen.current && onCloseProp) {
       onCloseProp();
     }
   }, [isOpen, onCloseProp]);
@@ -569,7 +461,7 @@ export function ChatWidget({
             )}
 
             {/* Typing/Status indicator */}
-            {isLoading && !messages.some(m => m.isStreaming) && (
+            {isSending && !messages.some(m => m.isStreaming) && (
               <div className="flex gap-2 justify-start">
                 <div className={`w-7 h-7 bg-gradient-to-br ${theme.gradient} rounded-lg flex items-center justify-center`}>
                   <Sparkles className="w-3.5 h-3.5 text-white" />
@@ -611,7 +503,7 @@ export function ChatWidget({
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isSending}
             className={`p-2.5 bg-gradient-to-r ${theme.gradient} text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all`}
           >
             <Send className="w-4 h-4" />
