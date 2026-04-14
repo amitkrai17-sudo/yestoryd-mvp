@@ -266,8 +266,6 @@ export default function CoachStudentsPage() {
     }
   };
 
-  const today = new Date().toISOString().split('T')[0];
-
   // ============================================================
   // RENDER
   // ============================================================
@@ -509,7 +507,6 @@ export default function CoachStudentsPage() {
                     type="date"
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
-                    min={today}
                     className="w-full h-11 px-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#00ABFF] [color-scheme:dark]"
                   />
                 </div>

@@ -13,7 +13,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import sharp from 'sharp';
 import { loadArtifactConfig, type ArtifactConfig } from '@/lib/config/artifact-config';
 
-const STORAGE_BUCKET = 'child-artifacts';
+export const STORAGE_BUCKET = 'child-artifacts';
 
 const ALLOWED_MIME_TYPES = [
   'image/jpeg',

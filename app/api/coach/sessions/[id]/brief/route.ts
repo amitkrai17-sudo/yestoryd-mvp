@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
+import { getArtifactSignedUrls } from '@/lib/storage/artifact-storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -331,6 +332,55 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
       // Non-fatal
     }
 
+    // 7c.2 — Canonical artifact read from child_artifacts (richer analysis data).
+    // Parallel to photo_urls above; new uploads land here first, photo_urls is a mirror.
+    let homeworkArtifacts: Array<{
+      id: string;
+      task_id: string | null;
+      upload_context: string | null;
+      analysis_status: string;
+      analysis_summary: string | null;
+      analysis_observations: string[];
+      completeness: string | null;
+      effort_level: string | null;
+      created_at: string;
+      thumbnail_signed_url: string | null;
+      processed_signed_url: string | null;
+    }> = [];
+    try {
+      const { data: recentArtifacts } = await supabase
+        .from('child_artifacts')
+        .select('id, task_id, upload_context, analysis_status, analysis_result, thumbnail_uri, processed_uri, created_at')
+        .eq('child_id', session.child_id)
+        .in('upload_context', ['session_homework', 'practice'])
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      homeworkArtifacts = await Promise.all((recentArtifacts || []).map(async (a) => {
+        const analysis = (a.analysis_result as Record<string, any> | null) || null;
+        const signed = await getArtifactSignedUrls(
+          { original_uri: '', processed_uri: a.processed_uri, thumbnail_uri: a.thumbnail_uri },
+          3600,
+        );
+        return {
+          id: a.id,
+          task_id: a.task_id,
+          upload_context: a.upload_context,
+          analysis_status: a.analysis_status,
+          analysis_summary: analysis?.content_summary || null,
+          analysis_observations: Array.isArray(analysis?.observations) ? analysis.observations : [],
+          completeness: analysis?.completeness || null,
+          effort_level: analysis?.effort_level || null,
+          created_at: a.created_at,
+          thumbnail_signed_url: signed.thumbnailUrl,
+          processed_signed_url: signed.processedUrl,
+        };
+      }));
+    } catch {
+      // Non-fatal — legacy photo_urls path still populated via backward-compat mirror
+    }
+
     // 7d. Practice intelligence — correlate practice events since last session
     let practiceIntelligence: {
       total_events: number;
@@ -450,6 +500,7 @@ export const GET = withParamsHandler<{ id: string }>(async (request, { id }, { a
       next_session_id: nextSessionId,
       parent_content_engagement: parentContentEngagement,
       homework_status: homeworkStatus,
+      homework_artifacts: homeworkArtifacts,
       practice_intelligence: practiceIntelligence,
       group_class_activity: (groupClassEvents || []).map(e => ({
         id: e.id,

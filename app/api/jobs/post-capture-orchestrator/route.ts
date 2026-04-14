@@ -18,6 +18,7 @@ import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
 import { getSignalConfidence } from '@/lib/intelligence/score';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { matchContentForSession, deriveDominantPerformance } from '@/lib/homework/content-matcher';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
   // Load child data
   const { data: child } = await supabase
     .from('children')
-    .select('id, child_name, name, age, parent_name, parent_phone, parent_email, parent_id')
+    .select('id, child_name, name, age, parent_name, parent_phone, parent_email, parent_id, yrl_level')
     .eq('id', childId)
     .single();
 
@@ -142,16 +143,19 @@ export async function POST(request: NextRequest) {
   }
 
   // ── STEP 2: Create homework tasks ──
-  // Parse homework from skill_performances JSON if it contains homework data
+  // Gate fires on ANY of:
+  //   (a) SCF manual toggle: capture.homework_assigned === true (may or may not have description)
+  //   (b) Voice capture: gemini_analysis.homework_description in skill_performances JSON
+  //   (c) Legacy path: custom_strength_note contains 'Practice Activity'
   const skillPerfs = capture.skill_performances;
-  const homeworkDesc = typeof skillPerfs === 'object' && skillPerfs !== null
+  const voiceHomework = typeof skillPerfs === 'object' && skillPerfs !== null
     ? (skillPerfs as any).gemini_analysis?.homework_description || null
     : null;
+  const scfHomeworkAssigned = capture.homework_assigned === true;
+  const scfHomeworkDesc = capture.homework_description || null;
+  const homeworkDesc = scfHomeworkDesc || voiceHomework;
 
-  // Also check for coach-assigned homework from capture context_tags or custom notes
-  // The capture route previously stored homework in its own payload fields
-  // but now the orchestrator receives only capture_id and reads from DB
-  if (homeworkDesc || capture.custom_strength_note?.includes('Practice Activity')) {
+  if (scfHomeworkAssigned || voiceHomework || capture.custom_strength_note?.includes('Practice Activity')) {
     try {
       let enrollmentId: string | null = null;
       if (sessionId) {
@@ -185,6 +189,44 @@ export async function POST(request: NextRequest) {
         .single();
 
       results.homework = true;
+
+      // Attach worksheet to the task. Priority: coach-attached > auto-matched > none.
+      if (task?.id) {
+        try {
+          let resolvedContentItemId: string | null = capture.content_item_id || null;
+          let matchReason = resolvedContentItemId ? 'coach_attached' : null;
+
+          if (!resolvedContentItemId) {
+            const skillsCovered = Array.isArray(capture.skills_covered) ? capture.skills_covered : [];
+            if (skillsCovered.length > 0) {
+              const perfs = capture.skill_performances as Record<string, { fluency?: string; rating?: string }> | null;
+              const match = await matchContentForSession({
+                skills: skillsCovered as string[],
+                childYrl: child?.yrl_level ?? null,
+                childId,
+                performanceLevel: deriveDominantPerformance(perfs),
+              });
+              if (match) {
+                resolvedContentItemId = match.contentItemId;
+                matchReason = match.matchReason;
+              }
+            }
+          }
+
+          if (resolvedContentItemId) {
+            await supabase
+              .from('parent_daily_tasks')
+              .update({ content_item_id: resolvedContentItemId })
+              .eq('id', task.id);
+            console.log(JSON.stringify({
+              requestId, event: 'step2_worksheet_attached',
+              taskId: task.id, contentItemId: resolvedContentItemId, reason: matchReason,
+            }));
+          }
+        } catch (e) {
+          console.error(JSON.stringify({ requestId, event: 'step2_matcher_error', error: (e as Error).message }));
+        }
+      }
 
       // SmartPractice (non-blocking)
       if (task?.id) {

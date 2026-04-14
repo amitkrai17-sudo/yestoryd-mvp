@@ -128,6 +128,7 @@ function validatePayload(body: unknown): { valid: true; data: StructuredCaptureP
       wordsMastered: Array.isArray(b.wordsMastered) ? b.wordsMastered.filter((w): w is string => typeof w === 'string') : undefined,
       homeworkAssigned: typeof b.homeworkAssigned === 'boolean' ? b.homeworkAssigned : undefined,
       homeworkDescription: typeof b.homeworkDescription === 'string' ? b.homeworkDescription : undefined,
+      contentItemId: typeof b.contentItemId === 'string' && b.contentItemId ? b.contentItemId : undefined,
       childArtifact,
     },
   };
@@ -379,6 +380,9 @@ export async function POST(request: NextRequest) {
         words_struggled: payload.wordsStruggled || [],
         words_mastered: payload.wordsMastered || [],
         coach_voice_note_url: payload.coachVoiceNoteUrl || null,
+        homework_assigned: payload.homeworkAssigned ?? null,
+        homework_description: payload.homeworkDescription || null,
+        content_item_id: payload.contentItemId || null,
         intelligence_score: score,
         submitted_at: new Date().toISOString(),
       } as any)

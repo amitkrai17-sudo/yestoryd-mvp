@@ -1264,6 +1264,7 @@ export type Database = {
           revision_of: string | null
           session_id: string | null
           status: string
+          task_id: string | null
           thumbnail_uri: string | null
           title: string | null
           updated_at: string
@@ -1295,6 +1296,7 @@ export type Database = {
           revision_of?: string | null
           session_id?: string | null
           status?: string
+          task_id?: string | null
           thumbnail_uri?: string | null
           title?: string | null
           updated_at?: string
@@ -1326,6 +1328,7 @@ export type Database = {
           revision_of?: string | null
           session_id?: string | null
           status?: string
+          task_id?: string | null
           thumbnail_uri?: string | null
           title?: string | null
           updated_at?: string
@@ -1333,6 +1336,13 @@ export type Database = {
           uploaded_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "child_artifacts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "parent_daily_tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "child_artifacts_child_id_fkey"
             columns: ["child_id"]
@@ -1770,6 +1780,7 @@ export type Database = {
           subscription_status: string | null
           total_sessions: number | null
           updated_at: string | null
+          yrl_level: string | null
         }
         Insert: {
           age?: number | null
@@ -1869,6 +1880,7 @@ export type Database = {
           subscription_status?: string | null
           total_sessions?: number | null
           updated_at?: string | null
+          yrl_level?: string | null
         }
         Update: {
           age?: number | null
@@ -1968,6 +1980,7 @@ export type Database = {
           subscription_status?: string | null
           total_sessions?: number | null
           updated_at?: string | null
+          yrl_level?: string | null
         }
         Relationships: [
           {
@@ -12820,6 +12833,7 @@ export type Database = {
           coach_confirmed: boolean | null
           coach_id: string
           coach_voice_note_url: string | null
+          content_item_id: string | null
           context_tags: string[] | null
           created_at: string | null
           custom_strength_note: string | null
@@ -12827,6 +12841,8 @@ export type Database = {
           delay_confidence_multiplier: number | null
           engagement_level: string
           group_session_id: string | null
+          homework_assigned: boolean | null
+          homework_description: string | null
           id: string
           intelligence_score: number | null
           recall_enrichment: Json | null
@@ -12855,6 +12871,7 @@ export type Database = {
           coach_confirmed?: boolean | null
           coach_id: string
           coach_voice_note_url?: string | null
+          content_item_id?: string | null
           context_tags?: string[] | null
           created_at?: string | null
           custom_strength_note?: string | null
@@ -12862,6 +12879,8 @@ export type Database = {
           delay_confidence_multiplier?: number | null
           engagement_level: string
           group_session_id?: string | null
+          homework_assigned?: boolean | null
+          homework_description?: string | null
           id?: string
           intelligence_score?: number | null
           recall_enrichment?: Json | null
@@ -12890,6 +12909,7 @@ export type Database = {
           coach_confirmed?: boolean | null
           coach_id?: string
           coach_voice_note_url?: string | null
+          content_item_id?: string | null
           context_tags?: string[] | null
           created_at?: string | null
           custom_strength_note?: string | null
@@ -12897,6 +12917,8 @@ export type Database = {
           delay_confidence_multiplier?: number | null
           engagement_level?: string
           group_session_id?: string | null
+          homework_assigned?: boolean | null
+          homework_description?: string | null
           id?: string
           intelligence_score?: number | null
           recall_enrichment?: Json | null

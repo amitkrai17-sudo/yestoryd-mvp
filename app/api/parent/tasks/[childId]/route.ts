@@ -70,7 +70,8 @@ export async function GET(
         .select(`
           *,
           enrollment:enrollments(id, billing_model, enrollment_type),
-          session:scheduled_sessions(id, scheduled_date, session_number)
+          session:scheduled_sessions(id, scheduled_date, session_number),
+          content_item:el_content_items(id, title, content_type, asset_url, asset_format, parent_instruction, thumbnail_url)
         `)
         .eq('child_id', childId)
         .eq('is_completed', false)
@@ -81,7 +82,8 @@ export async function GET(
         .select(`
           *,
           enrollment:enrollments(id, billing_model, enrollment_type),
-          session:scheduled_sessions(id, scheduled_date, session_number)
+          session:scheduled_sessions(id, scheduled_date, session_number),
+          content_item:el_content_items(id, title, content_type, asset_url, asset_format, parent_instruction, thumbnail_url)
         `)
         .eq('child_id', childId)
         .eq('is_completed', true)

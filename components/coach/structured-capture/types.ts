@@ -155,6 +155,13 @@ export interface CaptureFormState {
   homeworkDescription: string;
   parentUpdateNeeded: boolean;
   parentUpdateType: ParentUpdateType | null;
+
+  // Card 5b: Worksheet attachment (coach-uploaded PDF/image, auto-tagged)
+  worksheetContentItemId: string | null;
+  worksheetTitle: string | null;
+  worksheetYrl: string | null;
+  worksheetArc: string | null;
+  worksheetParentInstruction: string;
 }
 
 export function createInitialCaptureState(): CaptureFormState {
@@ -177,6 +184,11 @@ export function createInitialCaptureState(): CaptureFormState {
     homeworkDescription: '',
     parentUpdateNeeded: false,
     parentUpdateType: null,
+    worksheetContentItemId: null,
+    worksheetTitle: null,
+    worksheetYrl: null,
+    worksheetArc: null,
+    worksheetParentInstruction: '',
   };
 }
 

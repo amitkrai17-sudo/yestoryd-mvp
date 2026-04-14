@@ -153,6 +153,8 @@ export interface StructuredCapturePayload {
   homeworkAssigned?: boolean;
   /** Coach's homework description */
   homeworkDescription?: string;
+  /** Coach-attached worksheet/content item (el_content_items.id) — takes priority over auto-matcher */
+  contentItemId?: string;
   /** Child artifact (reading sample, etc.) */
   childArtifact?: {
     type: 'audio' | 'text' | 'image';

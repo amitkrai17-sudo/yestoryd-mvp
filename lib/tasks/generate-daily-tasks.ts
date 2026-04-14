@@ -4,6 +4,7 @@
 // ============================================================
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { matchContentForSession } from '@/lib/homework/content-matcher';
 const getSupabase = createAdminClient;
 
 // ============================================================
@@ -606,7 +607,7 @@ export async function generateAndInsertDailyTasks(
     // Get child details
     const { data: child } = await supabase
       .from('children')
-      .select('id, child_name, name, age_band')
+      .select('id, child_name, name, age_band, yrl_level')
       .eq('id', childId)
       .single();
 
@@ -695,17 +696,14 @@ export async function generateAndInsertDailyTasks(
       const dayTasks = generateDailyTasks(template, childName, i);
 
       for (const task of dayTasks) {
-        // Try to link to a content warehouse item matching the skill
         let contentItemId: string | null = null;
         if (task.linked_skill) {
-          const { data: contentItem } = await supabase
-            .from('el_content_items')
-            .select('id')
-            .eq('is_active', true)
-            .textSearch('search_text', task.linked_skill, { type: 'plain' })
-            .limit(1)
-            .maybeSingle();
-          contentItemId = contentItem?.id || null;
+          const match = await matchContentForSession({
+            skills: [task.linked_skill],
+            childYrl: child.yrl_level ?? null,
+            childId: child.id,
+          });
+          contentItemId = match?.contentItemId ?? null;
         }
 
         tasksToInsert.push({

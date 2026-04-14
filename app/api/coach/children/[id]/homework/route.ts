@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { sendCommunication } from '@/lib/communication';
+import { getArtifactSignedUrls } from '@/lib/storage/artifact-storage';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -131,10 +132,64 @@ export async function GET(
       }
     }
 
+    // Canonical child_artifacts for this child, keyed by task_id for merge below.
+    // Supplies richer analysis data than the legacy photo_urls JSONB path.
+    const artifactsByTaskId: Record<string, Array<{
+      id: string;
+      thumbnail_signed_url: string | null;
+      processed_signed_url: string | null;
+      analysis_status: string;
+      analysis_summary: string | null;
+      completeness: string | null;
+      effort_level: string | null;
+      created_at: string;
+    }>> = {};
+    try {
+      const taskIds = (tasks || []).map(t => t.id);
+      if (taskIds.length > 0) {
+        const { data: artifacts } = await supabase
+          .from('child_artifacts')
+          .select('id, task_id, thumbnail_uri, processed_uri, analysis_status, analysis_result, created_at')
+          .eq('child_id', childId)
+          .in('task_id', taskIds)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+
+        const signed = await Promise.all((artifacts || []).map(async (a) => {
+          const urls = await getArtifactSignedUrls(
+            { original_uri: '', processed_uri: a.processed_uri, thumbnail_uri: a.thumbnail_uri },
+            3600,
+          );
+          const analysis = (a.analysis_result as Record<string, any> | null) || null;
+          return {
+            task_id: a.task_id as string | null,
+            id: a.id,
+            thumbnail_signed_url: urls.thumbnailUrl,
+            processed_signed_url: urls.processedUrl,
+            analysis_status: a.analysis_status,
+            analysis_summary: analysis?.content_summary || null,
+            completeness: analysis?.completeness || null,
+            effort_level: analysis?.effort_level || null,
+            created_at: a.created_at,
+          };
+        }));
+
+        for (const row of signed) {
+          if (!row.task_id) continue;
+          if (!artifactsByTaskId[row.task_id]) artifactsByTaskId[row.task_id] = [];
+          const { task_id: _omit, ...rest } = row;
+          artifactsByTaskId[row.task_id].push(rest);
+        }
+      }
+    } catch (err) {
+      console.error('[coach/homework] child_artifacts fetch failed:', err);
+    }
+
     const tasksWithPhotos = await Promise.all((tasks || []).map(async (t) => {
       const signedUrls = await signPhotoUrls(supabase, t.photo_urls as any[] | null, t.photo_url);
       const quizResult = t.content_item_id ? quizResults[t.content_item_id] || null : null;
-      return { ...t, photo_signed_urls: signedUrls, quiz_result: quizResult };
+      const artifacts = artifactsByTaskId[t.id] || [];
+      return { ...t, photo_signed_urls: signedUrls, quiz_result: quizResult, artifacts };
     }));
 
     // Separate active vs past

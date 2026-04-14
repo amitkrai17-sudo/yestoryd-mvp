@@ -297,6 +297,7 @@ export default function StructuredCaptureForm(props: CaptureFormProps) {
             )}
             {currentCard === 2 && (
               <ReviewSubmitCard state={state} onUpdate={updateState}
+                childId={childId}
                 childName={childName} childAge={childAge} modules={modules}
                 voiceSegments={null} scorePreview={scorePreview}
                 submitting={submitting} submitError={submitError} onSubmit={handleSubmit}

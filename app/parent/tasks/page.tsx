@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle, Circle, Clock, Flame, BookOpen,
   Camera, X, Check, XCircle,
-  Smile, ThumbsUp, Frown,
+  Smile, ThumbsUp, Frown, FileDown,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { useParentContext } from '@/app/parent/context';
+import PhotoUploadModal, { type PhotoUploadModalContext } from '@/components/parent/PhotoUploadModal';
 
 // Skill icon backgrounds
 const SKILL_ICON_MAP: Record<string, { icon: typeof BookOpen; bg: string; color: string }> = {
@@ -41,8 +42,19 @@ interface Task {
   program_label: '1:1 Coaching' | 'English Classes' | null;
   session_date: string | null;
   session_number: number | null;
+  session_id: string | null;
+  enrollment_id: string | null;
   source: string;
   content_item_id: string | null;
+  content_item: {
+    id: string;
+    title: string;
+    content_type: string;
+    asset_url: string | null;
+    asset_format: string | null;
+    parent_instruction: string | null;
+    thumbnail_url: string | null;
+  } | null;
   photo_url: string | null;
   photo_urls: { url: string; uploaded_at: string; analysis?: any }[] | null;
 }
@@ -57,6 +69,10 @@ function getDayIndex(dateStr: string): number {
 function formatTaskDate(dateStr: string): string {
   const date = new Date(dateStr + 'T00:00:00');
   return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function isWorksheetTask(task: Task): boolean {
+  return task.content_item?.content_type === 'worksheet' && !!task.content_item.asset_url;
 }
 
 // Enrich generic task titles with skill label
@@ -88,12 +104,11 @@ export default function ParentTasksPage() {
   });
   const [completing, setCompleting] = useState<string | null>(null);
   const [showPhotoSheet, setShowPhotoSheet] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [feedbackStep, setFeedbackStep] = useState(false);
   const [difficultyRating, setDifficultyRating] = useState<string | null>(null);
   const [practiceDuration, setPracticeDuration] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadContext, setUploadContext] = useState<PhotoUploadModalContext | null>(null);
 
   const fetchTasks = useCallback(async (cId: string) => {
     try {
@@ -132,10 +147,27 @@ export default function ParentTasksPage() {
 
   const resetSheet = () => {
     setShowPhotoSheet(null);
-    setPhotoPreview(null);
     setFeedbackStep(false);
     setDifficultyRating(null);
     setPracticeDuration(null);
+  };
+
+  const openPhotoUpload = (task: Task) => {
+    setUploadContext({
+      type: task.source === 'coach_assigned' ? 'session_homework' : 'practice',
+      taskId: task.id,
+      sessionId: task.session_id || undefined,
+      enrollmentId: task.enrollment_id || undefined,
+      title: `Upload: ${getDisplayTitle(task)}`,
+      linkedSkill: task.linked_skill || undefined,
+    });
+    setUploadModalOpen(true);
+  };
+
+  const closePhotoUpload = () => {
+    setUploadModalOpen(false);
+    setUploadContext(null);
+    if (selectedChildId) fetchTasks(selectedChildId);
   };
 
   const handleCompleteTask = async (taskId: string) => {
@@ -176,45 +208,6 @@ export default function ParentTasksPage() {
     : null;
   const currentPhotos = (currentSheetTask?.photo_urls || []) as { url: string; uploaded_at: string }[];
   const canAddPhoto = currentPhotos.length < 3;
-
-  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedChildId || !showPhotoSheet) return;
-
-    setPhotoPreview(URL.createObjectURL(file));
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Photo must be under 5 MB');
-      setPhotoPreview(null);
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('taskId', showPhotoSheet);
-
-      const res = await fetch(`/api/parent/tasks/${selectedChildId}/upload-photo`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (!data.success) {
-        console.error('Photo upload failed:', data.error);
-        if (data.error?.includes('Maximum')) alert(data.error);
-      } else {
-        if (selectedChildId) fetchTasks(selectedChildId);
-      }
-    } catch (err) {
-      console.error('Photo upload error:', err);
-    } finally {
-      setUploading(false);
-      setPhotoPreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      setFeedbackStep(true);
-    }
-  };
 
   // Build weekly habit tracker data
   const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -358,8 +351,26 @@ export default function ParentTasksPage() {
                 </span>
               </div>
 
-              {/* CTA */}
-              {todayTask.content_item_id ? (
+              {isWorksheetTask(todayTask) && todayTask.content_item && (
+                <div className="space-y-2">
+                  <a
+                    href={todayTask.content_item.asset_url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-[#FFF5F9] border border-[#FFD6E8] rounded-xl px-4 h-10 text-sm font-medium text-[#FF0099] hover:bg-[#FFE8F2] transition w-full"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Download worksheet
+                  </a>
+                  {todayTask.content_item.parent_instruction && (
+                    <p className="text-xs text-gray-500 px-1">
+                      {todayTask.content_item.parent_instruction}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {todayTask.content_item_id && !isWorksheetTask(todayTask) ? (
                 <button
                   onClick={() => router.push(`/parent/practice/${todayTask.id}`)}
                   className="w-full py-3 bg-[#FF0099] text-white rounded-xl text-sm font-semibold hover:bg-[#E6008A] transition-colors min-h-[44px]"
@@ -470,16 +481,6 @@ export default function ParentTasksPage() {
         )}
       </div>
 
-      {/* Hidden file input for photo capture */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handlePhotoSelect}
-      />
-
       {/* Photo + feedback completion bottom sheet */}
       {showPhotoSheet && (
         <div
@@ -583,11 +584,6 @@ export default function ParentTasksPage() {
                         <img src={p.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                       </div>
                     ))}
-                    {uploading && (
-                      <div className="w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
-                        <Spinner size="sm" />
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -601,9 +597,11 @@ export default function ParentTasksPage() {
 
                 {canAddPhoto ? (
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="w-full flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl text-left hover:bg-gray-100 transition-colors min-h-[44px] disabled:opacity-50"
+                    onClick={() => {
+                      const task = weekTasks.find(t => t.id === showPhotoSheet) || (todayTask?.id === showPhotoSheet ? todayTask : null);
+                      if (task) openPhotoUpload(task);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl text-left hover:bg-gray-100 transition-colors min-h-[44px]"
                   >
                     <Camera className="w-4 h-4 text-gray-500" />
                     <div>
@@ -620,6 +618,18 @@ export default function ParentTasksPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Standalone photo upload modal */}
+      {uploadModalOpen && uploadContext && selectedChildId && (
+        <PhotoUploadModal
+          isOpen={uploadModalOpen}
+          onClose={closePhotoUpload}
+          childId={selectedChildId}
+          childName={childName}
+          context={uploadContext}
+          onUploadComplete={() => { if (selectedChildId) fetchTasks(selectedChildId); }}
+        />
       )}
     </div>
   );

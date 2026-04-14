@@ -16,6 +16,7 @@ import { Receiver } from '@upstash/qstash';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { matchContentForSession } from '@/lib/homework/content-matcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
         // Get child info for enrollment
         const { data: child } = await supabase
           .from('children')
-          .select('id, child_name, name')
+          .select('id, child_name, name, yrl_level')
           .eq('id', profile.child_id)
           .single();
 
@@ -267,28 +268,28 @@ export async function GET(request: NextRequest) {
           });
         }
 
-        // Also try to find matching el_content_items
-        if (growthSkills.length > 0) {
-          const { data: contentItems } = await supabase
-            .from('el_content_items')
-            .select('id, title, description, content_type, parent_instruction, difficulty_level')
-            .eq('is_active', true)
-            .textSearch('search_text', growthSkills.slice(0, 3).join(' | '))
-            .limit(1);
-
-          if (contentItems && contentItems.length > 0 && tasksToCreate.length < 3) {
-            const item = contentItems[0];
+        // Intelligent content match by growth skills + child YRL
+        let matchedContentItemId: string | null = null;
+        if (growthSkills.length > 0 && tasksToCreate.length < 3) {
+          const match = await matchContentForSession({
+            skills: growthSkills.slice(0, 3),
+            childYrl: child.yrl_level ?? null,
+            childId: child.id,
+          });
+          if (match) {
+            matchedContentItemId = match.contentItemId;
             tasksToCreate.push({
-              title: item.title || 'Practice Activity',
-              description: item.parent_instruction || item.description || 'Complete this practice activity together.',
+              title: match.title || 'Practice Activity',
+              description: match.parentInstruction || 'Complete this practice activity together.',
               linked_skill: growthSkills[0] || 'reading',
               duration_minutes: 10,
             });
           }
         }
 
-        // Insert tasks (limit to 3)
-        const insertTasks = tasksToCreate.slice(0, 3).map(t => ({
+        // Insert tasks (limit to 3). Attach matched content_item_id to the last task
+        // that carries the warehouse content (if any).
+        const insertTasks = tasksToCreate.slice(0, 3).map((t, idx, arr) => ({
           child_id: profile.child_id,
           enrollment_id: enrollment?.id || null,
           source: 'ai_recommended' as const,
@@ -297,6 +298,7 @@ export async function GET(request: NextRequest) {
           description: t.description,
           linked_skill: t.linked_skill,
           duration_minutes: t.duration_minutes,
+          content_item_id: matchedContentItemId && idx === arr.length - 1 ? matchedContentItemId : null,
         }));
 
         const { error: insertError } = await supabase

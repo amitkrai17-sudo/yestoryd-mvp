@@ -4,12 +4,14 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Pencil, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Pencil, Check, Sparkles, AlertCircle, Paperclip, FileText, X, Loader2 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { ScorePreview } from '../ScorePreview';
 import { getHomeworkSuggestions } from '@/lib/homework/suggestion-templates';
+import { supabase } from '@/lib/supabase/client';
+import { deriveDominantPerformance } from '@/lib/homework/content-matcher';
 import type { CardProps, ModuleGroup, EngagementLevel } from '../types';
 
 const ENGAGEMENT_LEVELS: { value: EngagementLevel; label: string; color: string }[] = [
@@ -20,6 +22,7 @@ const ENGAGEMENT_LEVELS: { value: EngagementLevel; label: string; color: string 
 ];
 
 interface ReviewSubmitCardProps extends CardProps {
+  childId: string;
   childName: string;
   childAge: number;
   modules: ModuleGroup[];
@@ -32,9 +35,76 @@ interface ReviewSubmitCardProps extends CardProps {
 }
 
 export function ReviewSubmitCard({
-  state, onUpdate, childName, childAge, modules,
+  state, onUpdate, childId, childName, childAge, modules,
   voiceSegments, scorePreview, submitting, submitError, onSubmit, selectedSkillSlugs,
 }: ReviewSubmitCardProps) {
+  const worksheetInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingWorksheet, setUploadingWorksheet] = useState(false);
+  const [worksheetError, setWorksheetError] = useState<string | null>(null);
+
+  const handleWorksheetFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setWorksheetError('File must be 10MB or less');
+      return;
+    }
+    const ok = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type);
+    if (!ok) {
+      setWorksheetError('Only PDF or image (jpeg/png/webp) accepted');
+      return;
+    }
+
+    setUploadingWorksheet(true);
+    setWorksheetError(null);
+    try {
+      const dominantPerf = deriveDominantPerformance(state.skillPerformances);
+
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('childId', childId);
+      fd.append('skillIds', JSON.stringify(state.selectedSkillIds));
+      if (dominantPerf) fd.append('performanceLevel', dominantPerf);
+      if (state.worksheetParentInstruction.trim()) {
+        fd.append('parentInstruction', state.worksheetParentInstruction.trim());
+      }
+      fd.append('title', file.name.replace(/\.\w+$/, ''));
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/coach/content/upload', { method: 'POST', body: fd, headers });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Upload failed');
+      }
+      const data = await res.json();
+      onUpdate({
+        worksheetContentItemId: data.contentItem.id,
+        worksheetTitle: data.contentItem.title,
+        worksheetYrl: data.contentItem.yrlLevel ?? null,
+        worksheetArc: data.contentItem.arcStage ?? null,
+        homeworkAssigned: true,
+      });
+    } catch (err) {
+      setWorksheetError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingWorksheet(false);
+    }
+  };
+
+  const removeWorksheet = () => {
+    onUpdate({
+      worksheetContentItemId: null,
+      worksheetTitle: null,
+      worksheetYrl: null,
+      worksheetArc: null,
+    });
+    setWorksheetError(null);
+  };
   const [summary, setSummary] = useState({ strengthSummary: '', growthSummary: '', homeworkSuggestion: '' });
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryGenerated, setSummaryGenerated] = useState(false);
@@ -236,6 +306,75 @@ export function ReviewSubmitCard({
                 rows={2}
                 className="w-full bg-surface-3 border border-border rounded-xl px-3 py-2 text-white text-sm resize-none focus:outline-none focus:ring-1 focus:ring-[#00ABFF] placeholder:text-text-tertiary"
               />
+            )}
+          </div>
+
+          {/* Worksheet attachment (auto-tagged from session context) */}
+          <div className="bg-surface-2 border border-border rounded-2xl p-3 space-y-2">
+            <p className="text-[#00ABFF] text-xs font-semibold">Worksheet (optional)</p>
+
+            <input
+              ref={worksheetInputRef}
+              type="file"
+              accept=".pdf,image/jpeg,image/png,image/webp"
+              onChange={handleWorksheetFile}
+              className="hidden"
+            />
+
+            {!state.worksheetContentItemId ? (
+              <button
+                type="button"
+                onClick={() => worksheetInputRef.current?.click()}
+                disabled={uploadingWorksheet}
+                className="w-full flex items-center gap-2 bg-surface-3 border border-border border-dashed rounded-xl px-4 h-10 text-sm text-text-tertiary hover:border-text-secondary hover:text-white transition disabled:opacity-50"
+              >
+                {uploadingWorksheet ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="w-4 h-4" />
+                    Attach worksheet
+                    <span className="text-text-tertiary text-xs ml-auto">PDF or image</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="bg-surface-3 border border-green-900/60 rounded-xl px-3 py-2.5 flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 min-w-0">
+                  <FileText className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-white font-medium truncate">{state.worksheetTitle}</p>
+                    <p className="text-[11px] text-text-tertiary mt-0.5">
+                      Tagged: {selectedSkillSlugs.slice(0, 2).join(', ') || 'session skills'}
+                      {state.worksheetYrl ? ` · ${state.worksheetYrl}` : ''}
+                      {state.worksheetArc ? ` · ${state.worksheetArc}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeWorksheet}
+                  className="h-6 w-6 rounded-full bg-surface-2 hover:bg-surface-1 flex items-center justify-center flex-shrink-0"
+                  aria-label="Remove worksheet"
+                >
+                  <X className="w-3 h-3 text-text-tertiary" />
+                </button>
+              </div>
+            )}
+
+            <input
+              type="text"
+              value={state.worksheetParentInstruction}
+              onChange={e => onUpdate({ worksheetParentInstruction: e.target.value })}
+              placeholder="Instructions for parent (optional)"
+              className="w-full bg-surface-3 border border-border rounded-xl px-3 h-10 text-sm text-white placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-[#00ABFF]"
+            />
+
+            {worksheetError && (
+              <p className="text-xs text-red-400">{worksheetError}</p>
             )}
           </div>
         </div>

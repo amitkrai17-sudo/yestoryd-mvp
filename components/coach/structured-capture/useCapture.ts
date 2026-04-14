@@ -387,6 +387,7 @@ export function useCapture(props: CaptureFormProps) {
         coachConfirmed: true,
         homeworkAssigned: state.homeworkAssigned || undefined,
         homeworkDescription: state.homeworkAssigned && state.homeworkDescription ? state.homeworkDescription : undefined,
+        contentItemId: state.worksheetContentItemId || undefined,
       };
 
       // Add artifact if present

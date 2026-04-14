@@ -1,6 +1,14 @@
 // ============================================================
 // FILE: app/api/parent/tasks/[childId]/upload-photo/route.ts
 // PURPOSE: Upload homework photo → Supabase Storage → update task
+//
+// @deprecated 2026-04-13 — New uploads should use POST /api/parent/artifacts/upload,
+// which writes to child_artifacts (canonical) with backward-compat mirror into
+// parent_daily_tasks.photo_urls. This legacy route only writes photo_urls and
+// does NOT create a child_artifacts row or a learning_event.
+//
+// Kept as a fallback until all clients migrate. Remove once PhotoUploadModal is
+// the only in-app upload path and no external callers remain.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
