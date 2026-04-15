@@ -28,6 +28,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import { logDecision } from '@/lib/backops';
 import type { Json } from '@/lib/supabase/database.types';
 
@@ -159,25 +160,26 @@ export async function GET(request: NextRequest) {
 
       try {
         // 7. ACTUALLY SEND WhatsApp via AiSensy
-        const waResponse = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: aisensyKey,
-            campaignName: 'parent_discovery_reminder_v3',
-            destination: call.parent_phone.replace(/\D/g, ''),
-            userName: 'Yestoryd',
-            templateParams: [
-              parentFirstName,                        // {{1}} Parent name
-              call.child_name || 'your child',        // {{2}} Child name
-              call.coach_name || 'Your Coach',        // {{3}} Coach name
-              childGoal,                              // {{4}} Child's goal
-              call.payment_link,                      // {{5}} Payment link
-            ],
-          }),
+        const waResult = await sendWhatsAppMessage({
+          to: call.parent_phone,
+          templateName: 'parent_discovery_reminder_v3',
+          variables: [
+            parentFirstName,
+            call.child_name || 'your child',
+            call.coach_name || 'Your Coach',
+            childGoal,
+            call.payment_link,
+          ],
+          meta: {
+            templateCode: 'P7_discovery_reminder_24h',
+            recipientType: 'parent',
+            triggeredBy: 'cron',
+            contextType: 'discovery_call',
+            contextId: call.id,
+          },
         });
 
-        if (waResponse.ok) {
+        if (waResult.success) {
           // 8. Update discovery call - ONLY after successful send
           await supabase
             .from('discovery_calls')
@@ -206,19 +208,18 @@ export async function GET(request: NextRequest) {
             childName: call.child_name,
           }));
         } else {
-          const errText = await waResponse.text();
           failed.push({
             id: call.id,
             parentName: call.parent_name,
             childName: call.child_name,
-            error: errText,
+            error: waResult.error ?? 'unknown',
           });
 
           console.error(JSON.stringify({
             requestId,
             event: 'followup_send_failed',
             callId: call.id,
-            error: errText,
+            error: waResult.error,
           }));
         }
       } catch (sendError: any) {

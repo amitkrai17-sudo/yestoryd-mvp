@@ -152,19 +152,21 @@ async function processReminders(requestId: string, source: string) {
       const sessionTime = session.scheduled_time?.slice(0, 5) || 'soon';
 
       try {
-        const waResponse = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: aisensyKey,
-            campaignName: 'coach_session_reminder_1h_v3',
-            destination: coach.phone.replace(/\D/g, ''),
-            userName: 'Yestoryd',
-            templateParams: [coachFirstName, childName, sessionTime],
-          }),
+        const waResult = await sendWhatsAppMessage({
+          to: coach.phone,
+          templateName: 'coach_session_reminder_1h_v3',
+          variables: [coachFirstName, childName, sessionTime],
+          meta: {
+            templateCode: 'C9_session_reminder',
+            recipientType: 'coach',
+            recipientId: coach.id,
+            triggeredBy: 'cron',
+            contextType: 'scheduled_session',
+            contextId: session.id,
+          },
         });
 
-        if (waResponse.ok) {
+        if (waResult.success) {
           await supabase
             .from('scheduled_sessions')
             .update({
@@ -183,9 +185,8 @@ async function processReminders(requestId: string, source: string) {
             childName,
           }));
         } else {
-          const errText = await waResponse.text();
           results.failed++;
-          results.errors.push(`Session ${session.id}: ${errText}`);
+          results.errors.push(`Session ${session.id}: ${waResult.error}`);
         }
       } catch (e: any) {
         results.failed++;

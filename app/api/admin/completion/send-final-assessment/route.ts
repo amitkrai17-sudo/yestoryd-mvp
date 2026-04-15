@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { getProgramLabel } from '@/lib/utils/program-label';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,18 +143,21 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
         .single() : { data: null };
 
       if (parent?.phone) {
-        const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: process.env.AISENSY_API_KEY,
-            campaignName: 'parent_final_assessment_v3',
-            destination: parent.phone.replace(/\D/g, ''),
-            userName: 'Yestoryd',
-            templateParams: [childName, assessmentLink],
-          }),
+        const waResult = await sendWhatsAppMessage({
+          to: parent.phone,
+          templateName: 'parent_final_assessment_v3',
+          variables: [childName, assessmentLink],
+          meta: {
+            templateCode: 'parent_final_assessment_v3',
+            recipientType: 'parent',
+            recipientId: enrollment.parent_id ?? null,
+            triggeredBy: 'admin',
+            triggeredByUserId: auth.userId ?? null,
+            contextType: 'enrollment',
+            contextId: enrollment.id,
+          },
         });
-        whatsappSent = response.ok;
+        whatsappSent = waResult.success;
       }
     } catch (waError) {
       console.error('WhatsApp send error:', waError);

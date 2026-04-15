@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { loadCoachConfig, loadIntegrationsConfig, loadEmailConfig } from '@/lib/config/loader';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
 export const dynamic = 'force-dynamic';
 
@@ -191,51 +192,30 @@ async function sendEngagementEmail(
 // =============================================================================
 
 async function sendEngagementWhatsApp(
-  coach: { name: string; phone: string },
+  coach: { id?: string; name: string; phone: string },
   template: string,
-  settings: { siteBaseUrl: string }
+  _settings: { siteBaseUrl: string }
 ) {
   if (!coach.phone || !process.env.AISENSY_API_KEY) {
     throw new Error('Missing phone or AiSensy API key');
   }
 
-  const messages: Record<string, string> = {
-    coach_approved_welcome: `🎉 Welcome to Yestoryd Academy, ${coach.name}!\n\nYou've been approved! Complete your onboarding here:\n👉 ${settings.siteBaseUrl}/coach/onboarding\n\nWe're excited to have you on board! 🌟`,
-    coach_onboarding_reminder: `Hi ${coach.name} 👋\n\nReminder: Complete your onboarding to start receiving students!\n👉 ${settings.siteBaseUrl}/coach/onboarding\n\nNeed help? Just reply here!`,
-    coach_week_checkin: `Hi ${coach.name} 🙏\n\nIt's been a week since your approval. How's everything going? Need any help with onboarding?\n\nJust reply here and we'll assist you!`,
-    coach_profile_live: `🌟 ${coach.name}, your coach profile is live!\n\nYou'll be notified as soon as a student is assigned. Check your dashboard:\n👉 ${settings.siteBaseUrl}/coach/dashboard`,
-    coach_preparing_student: `Hi ${coach.name} 👋\n\nWe're working on matching you with your first student. Hang tight!\n\nMeanwhile, explore your dashboard:\n👉 ${settings.siteBaseUrl}/coach/dashboard`,
-    coach_status_update: `Hi ${coach.name}, quick update! We're actively matching students. You'll hear from us soon. 🙏`,
-  };
-
-  const message = messages[template];
-  if (!message) throw new Error(`Unknown template: ${template}`);
-
-  // Format phone
-  let phone = coach.phone.replace(/\D/g, '');
-  if (phone.length === 10) phone = '91' + phone;
-
-  // Use AiSensy API
-  const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const result = await sendWhatsAppMessage({
+    to: coach.phone,
+    templateName: template,
+    variables: [coach.name],
+    source: 'coach-engagement-cron',
+    meta: {
+      templateCode: template,
+      recipientType: 'coach',
+      recipientId: coach.id ?? null,
+      triggeredBy: 'cron',
+      contextType: 'coach_engagement',
+      contextId: coach.id ?? null,
     },
-    body: JSON.stringify({
-      apiKey: process.env.AISENSY_API_KEY,
-      campaignName: template,
-      destination: phone,
-      userName: coach.name,
-      templateParams: [coach.name],
-      source: 'coach-engagement-cron',
-      media: {},
-      buttons: [],
-      carouselCards: [],
-      location: {},
-    }),
   });
 
-  if (!response.ok) {
-    throw new Error(`AiSensy error: ${response.status}`);
+  if (!result.success) {
+    throw new Error(`AiSensy error: ${result.error}`);
   }
 }

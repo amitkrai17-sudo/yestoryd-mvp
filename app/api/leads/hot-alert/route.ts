@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -654,38 +655,22 @@ ${lead.latest_assessment_score !== null && lead.latest_assessment_score <= 3
 
   // Try AiSensy
   if (AISENSY_API_KEY) {
-    try {
-      const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          apiKey: AISENSY_API_KEY,
-          campaignName: 'admin_hot_lead_alert_v3',
-          destination: ADMIN_PHONE.replace('+', ''),
-          userName: 'Yestoryd System',
-          templateParams: [
-            childName,
-            String(age),
-            parentName,
-            phone,
-            String(score),
-            String(leadScore),
-          ],
-          message: message,
-        }),
-      });
-
-      if (response.ok) {
-        console.log(`✅ WhatsApp alert sent for ${childName}`);
-        return true;
-      } else {
-        const errorData = await response.text();
-        console.error('AiSensy error:', errorData);
-      }
-    } catch (aiSensyError) {
-      console.error('AiSensy API error:', aiSensyError);
+    const result = await sendWhatsAppMessage({
+      to: ADMIN_PHONE,
+      templateName: 'admin_hot_lead_alert_v3',
+      variables: [childName, String(age), parentName, phone, String(score), String(leadScore)],
+      meta: {
+        templateCode: 'admin_hot_lead_alert_v3',
+        recipientType: 'admin',
+        triggeredBy: 'cron',
+        contextType: 'lead',
+        contextId: lead.id,
+        contextData: { freeform_message: message },
+      },
+    });
+    if (result.success) {
+      console.log(`WhatsApp alert sent for ${childName}`);
+      return true;
     }
   }
 

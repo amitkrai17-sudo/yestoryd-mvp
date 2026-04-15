@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadPricingPlan } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
 const supabase = createAdminClient();
 
@@ -15,7 +16,6 @@ export const dynamic = 'force-dynamic';
 
 // AiSensy WhatsApp API
 const AISENSY_API_KEY = process.env.AISENSY_API_KEY;
-const AISENSY_API_URL = 'https://backend.aisensy.com/campaign/t1/api/v2';
 
 // Email (Resend)
 import { sendEmail as resendSendEmail, isEmailConfigured } from '@/lib/email/resend-client';
@@ -115,53 +115,39 @@ export async function POST(request: NextRequest) {
     // SEND WHATSAPP (AiSensy)
     // ==========================================
     if (coach.phone && AISENSY_API_KEY) {
-      try {
-        // Format phone number (ensure +91)
-        let phone = coach.phone.replace(/\D/g, '');
-        if (phone.length === 10) phone = `91${phone}`;
-        if (!phone.startsWith('91')) phone = `91${phone}`;
+      const templateName = isPromotion ? 'coach_tier_promotion' : 'coach_tier_update';
+      const variables = isPromotion
+        ? [
+            coach.name.split(' ')[0],
+            tierEmoji,
+            newTierDisplayName,
+            `${newCoachPercent}%`,
+            `₹${coachEarnings.toLocaleString()}`,
+            `₹${coachEarningsWithLead.toLocaleString()}`,
+          ]
+        : [
+            coach.name.split(' ')[0],
+            newTierDisplayName,
+            `${newCoachPercent}%`,
+            reason || 'performance review',
+          ];
 
-        // Use appropriate template based on promotion/demotion
-        const templateName = isPromotion
-          ? 'coach_tier_promotion' // You'll need to create this in AiSensy
-          : 'coach_tier_update';
-
-        const whatsappResponse = await fetch(AISENSY_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            apiKey: AISENSY_API_KEY,
-            campaignName: templateName,
-            destination: phone,
-            userName: coach.name,
-            templateParams: isPromotion
-              ? [
-                  coach.name.split(' ')[0], // First name
-                  tierEmoji,
-                  newTierDisplayName,
-                  `${newCoachPercent}%`,
-                  `₹${coachEarnings.toLocaleString()}`,
-                  `₹${coachEarningsWithLead.toLocaleString()}`,
-                ]
-              : [
-                  coach.name.split(' ')[0],
-                  newTierDisplayName,
-                  `${newCoachPercent}%`,
-                  reason || 'performance review',
-                ],
-          }),
-        });
-
-        const whatsappResult = await whatsappResponse.json();
-        results.whatsapp.sent = whatsappResult.status === 'success' || whatsappResponse.ok;
-        if (!results.whatsapp.sent) {
-          results.whatsapp.error = whatsappResult.message || 'WhatsApp send failed';
-        }
-      } catch (whatsappError: any) {
-        results.whatsapp.error = whatsappError.message;
-      }
+      const waResult = await sendWhatsAppMessage({
+        to: coach.phone,
+        templateName,
+        variables,
+        meta: {
+          templateCode: templateName,
+          recipientType: 'coach',
+          recipientId: coachId,
+          triggeredBy: 'admin',
+          contextType: 'coach_tier_change',
+          contextId: coachId,
+          contextData: { isPromotion, oldTierName, newTierName, newCoachPercent },
+        },
+      });
+      results.whatsapp.sent = waResult.success;
+      if (!waResult.success) results.whatsapp.error = waResult.error ?? 'WhatsApp send failed';
     }
 
     // Log the tier change

@@ -11,6 +11,7 @@ import { getGeminiModel } from '@/lib/gemini-config';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { getProgramLabel } from '@/lib/utils/program-label';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
 const supabase = createAdminClient();
 
@@ -284,22 +285,19 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
 
     // Send WhatsApp via AiSensy (if phone available)
     if (parentPhone) {
-      try {
-        await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: process.env.AISENSY_API_KEY,
-            campaignName: 'parent_final_assessment_v3',
-            destination: parentPhone.replace(/\D/g, ''),
-            userName: 'Yestoryd',
-            templateParams: [childName, assessmentLink],
-          }),
-        });
-        console.log(`✅ Final assessment WhatsApp sent to ${parentPhone}`);
-      } catch (waError) {
-        console.error('WhatsApp send error:', waError);
-      }
+      await sendWhatsAppMessage({
+        to: parentPhone,
+        templateName: 'parent_final_assessment_v3',
+        variables: [childName, assessmentLink],
+        meta: {
+          templateCode: 'parent_final_assessment_v3',
+          recipientType: 'parent',
+          recipientId: enrollment.parent_id ?? null,
+          triggeredBy: 'system',
+          contextType: 'enrollment',
+          contextId: enrollment.id,
+        },
+      });
     }
 
     return {

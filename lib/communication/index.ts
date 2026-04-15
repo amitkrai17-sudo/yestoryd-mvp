@@ -2,6 +2,7 @@
 // Central Communication Engine
 
 import { sendWhatsAppMessage, isWhatsAppConfigured } from './aisensy';
+import { logCommunication, RecipientType, TriggeredBy } from './log';
 import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { loadAuthConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -10,6 +11,8 @@ const supabase = createAdminClient();
 
 // Re-export WhatsApp Cloud API (prospect-facing AI assistant)
 export { sendWhatsAppCloudMessage, markMessageAsRead, isWhatsAppCloudConfigured } from './whatsapp-cloud';
+// Re-export unified logger
+export { logCommunication } from './log';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Admin phone numbers for alerts (add more as needed)
@@ -79,7 +82,14 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
       // Send to all admins
       for (const adminPhone of ADMIN_PHONES) {
         if (template.use_whatsapp && !params.skipChannels?.includes('whatsapp')) {
-          const waResult = await sendWhatsAppToRecipient(template, adminPhone, params.variables);
+          const waResult = await sendWhatsAppToRecipient(template, adminPhone, params.variables, {
+            templateCode: params.templateCode,
+            recipientType: 'admin',
+            triggeredBy: (params.triggeredBy as TriggeredBy) ?? 'system',
+            triggeredByUserId: params.triggeredByUserId ?? null,
+            contextType: params.contextType ?? params.relatedEntityType ?? null,
+            contextId: params.contextId ?? params.relatedEntityId ?? null,
+          });
           results.push({ channel: 'whatsapp', ...waResult });
         }
       }
@@ -88,6 +98,18 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
         if (template.use_email && !params.skipChannels?.includes('email')) {
           const emailResult = await sendEmailToRecipient(template, adminEmail, params.variables);
           results.push({ channel: 'email', ...emailResult });
+          await logCommunication({
+            templateCode: params.templateCode,
+            recipientType: 'admin',
+            recipientEmail: adminEmail,
+            emailSent: emailResult.success,
+            errorMessage: emailResult.error ?? null,
+            triggeredBy: (params.triggeredBy as TriggeredBy) ?? 'system',
+            triggeredByUserId: params.triggeredByUserId ?? null,
+            contextType: params.contextType ?? params.relatedEntityType ?? null,
+            contextId: params.contextId ?? params.relatedEntityId ?? null,
+            contextData: { variables: params.variables, provider_message_id: emailResult.messageId ?? null },
+          });
         }
       }
     } else {
@@ -133,14 +155,39 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
       const whatsappAllowed = prefs.whatsapp !== false && categoryAllowed;
       const emailAllowed = prefs.email !== false && categoryAllowed;
 
+      const waMeta = {
+        templateCode: params.templateCode,
+        recipientType: params.recipientType as RecipientType,
+        recipientId: params.recipientId ?? null,
+        recipientEmail: email ?? null,
+        triggeredBy: (params.triggeredBy as TriggeredBy) ?? 'system' as TriggeredBy,
+        triggeredByUserId: params.triggeredByUserId ?? null,
+        contextType: params.contextType ?? params.relatedEntityType ?? null,
+        contextId: params.contextId ?? params.relatedEntityId ?? null,
+      };
+
       if (template.use_whatsapp && phone && !params.skipChannels?.includes('whatsapp') && whatsappAllowed) {
-        const waResult = await sendWhatsAppToRecipient(template, phone, mergedVariables);
+        const waResult = await sendWhatsAppToRecipient(template, phone, mergedVariables, waMeta);
         results.push({ channel: 'whatsapp', ...waResult });
       }
 
       if (template.use_email && email && !params.skipChannels?.includes('email') && emailAllowed) {
         const emailResult = await sendEmailToRecipient(template, email, mergedVariables);
         results.push({ channel: 'email', ...emailResult });
+        await logCommunication({
+          templateCode: params.templateCode,
+          recipientType: params.recipientType as RecipientType,
+          recipientId: params.recipientId ?? null,
+          recipientEmail: email,
+          recipientPhone: phone ?? null,
+          emailSent: emailResult.success,
+          errorMessage: emailResult.error ?? null,
+          triggeredBy: (params.triggeredBy as TriggeredBy) ?? 'system',
+          triggeredByUserId: params.triggeredByUserId ?? null,
+          contextType: params.contextType ?? params.relatedEntityType ?? null,
+          contextId: params.contextId ?? params.relatedEntityId ?? null,
+          contextData: { variables: params.variables, provider_message_id: emailResult.messageId ?? null },
+        });
       }
 
       if (template.use_sms && phone && !params.skipChannels?.includes('sms')) {
@@ -148,29 +195,6 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
         console.log(`[Comm] SMS not implemented yet. Would send to ${phone}`);
         results.push({ channel: 'sms', success: false, error: 'SMS not implemented' });
       }
-    }
-
-    // 4. Log all communications
-    for (const result of results) {
-      await logCommunication({
-        templateId: template.id,
-        templateCode: params.templateCode,
-        channel: result.channel,
-        recipientType: params.recipientType,
-        recipientId: params.recipientId,
-        recipientName: name,
-        recipientContact: result.channel === 'email' ? email : phone,
-        variablesUsed: params.variables,
-        status: result.success ? 'sent' : 'failed',
-        providerMessageId: result.messageId,
-        errorMessage: result.error,
-        relatedEntityType: params.relatedEntityType,
-        relatedEntityId: params.relatedEntityId,
-        triggeredBy: params.triggeredBy,
-        triggeredByUserId: params.triggeredByUserId,
-        contextType: params.contextType,
-        contextId: params.contextId,
-      });
     }
 
     const overallSuccess = results.some(r => r.success);
@@ -189,7 +213,17 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
 async function sendWhatsAppToRecipient(
   template: any,
   phone: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  meta: {
+    templateCode: string;
+    recipientType: RecipientType;
+    recipientId?: string | null;
+    recipientEmail?: string | null;
+    triggeredBy: TriggeredBy;
+    triggeredByUserId?: string | null;
+    contextType?: string | null;
+    contextId?: string | null;
+  }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!isWhatsAppConfigured()) {
     return { success: false, error: 'WhatsApp not configured' };
@@ -202,6 +236,7 @@ async function sendWhatsAppToRecipient(
     to: phone,
     templateName: template.wa_template_name,
     variables: variableArray,
+    meta,
   });
 }
 
@@ -259,53 +294,6 @@ async function getRecipientContact(
     email: data.email,
     name: data.name ?? undefined,
   };
-}
-
-// Log communication to database
-async function logCommunication(params: {
-  templateId: string;
-  templateCode: string;
-  channel: string;
-  recipientType: string;
-  recipientId?: string;
-  recipientName?: string | null;
-  recipientContact?: string | null;
-  variablesUsed: Record<string, string>;
-  status: string;
-  providerMessageId?: string;
-  errorMessage?: string;
-  relatedEntityType?: string;
-  relatedEntityId?: string;
-  triggeredBy?: string;
-  triggeredByUserId?: string;
-  contextType?: string;
-  contextId?: string;
-}): Promise<void> {
-  try {
-    await supabase.from('communication_logs').insert({
-      template_id: params.templateId,
-      template_code: params.templateCode,
-      channel: params.channel,
-      recipient_type: params.recipientType,
-      recipient_id: params.recipientId,
-      recipient_name: params.recipientName,
-      recipient_contact: params.recipientContact,
-      variables_used: params.variablesUsed,
-      status: params.status,
-      provider_message_id: params.providerMessageId,
-      error_message: params.errorMessage,
-      related_entity_type: params.relatedEntityType,
-      related_entity_id: params.relatedEntityId,
-      sent_at: params.status === 'sent' ? new Date().toISOString() : null,
-      failed_at: params.status === 'failed' ? new Date().toISOString() : null,
-      triggered_by: params.triggeredBy || 'system',
-      triggered_by_user_id: params.triggeredByUserId || null,
-      context_type: params.contextType || null,
-      context_id: params.contextId || null,
-    });
-  } catch (error) {
-    console.error('[Comm] Failed to log communication:', error);
-  }
 }
 
 // Schedule a message for later

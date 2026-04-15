@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 
 const supabase = createAdminClient();
 
@@ -98,43 +99,33 @@ export async function POST(request: NextRequest) {
 
     // 1. Send WhatsApp via AiSensy
     if (coach.phone) {
-      try {
-        const waResponse = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: process.env.AISENSY_API_KEY,
-            campaignName: 'coach_child_assigned_v4',
-            destination: coach.phone.replace(/\D/g, ''),
-            userName: 'Yestoryd',
-            templateParams: [
-              coachFirstName,                    // {{1}} - Coach name
-              childName,                          // {{2}} - Child name
-              String(childAge),                   // {{3}} - Child age
-              String(readingLevel),               // {{4}} - Reading level
-              firstSession.date && firstSession.time 
-                ? `${firstSession.date}, ${firstSession.time}` 
-                : 'To be scheduled',              // {{5}} - First session
-            ],
-            media: {},
-            buttons: [
-              {
-                type: 'url',
-                url: `https://www.yestoryd.com/coach/dashboard`,
-              },
-            ],
-          }),
-        });
-
-        if (waResponse.ok) {
-          results.whatsapp = true;
-          console.log(`✅ WhatsApp sent to coach ${coach.name} for child ${childName}`);
-        } else {
-          const waError = await waResponse.text();
-          results.errors.push(`WhatsApp failed: ${waError}`);
-        }
-      } catch (waErr: any) {
-        results.errors.push(`WhatsApp error: ${waErr.message}`);
+      const waResult = await sendWhatsAppMessage({
+        to: coach.phone,
+        templateName: 'coach_child_assigned_v4',
+        variables: [
+          coachFirstName,
+          childName,
+          String(childAge),
+          String(readingLevel),
+          firstSession.date && firstSession.time
+            ? `${firstSession.date}, ${firstSession.time}`
+            : 'To be scheduled',
+        ],
+        buttons: [{ type: 'url', url: 'https://www.yestoryd.com/coach/dashboard' }],
+        meta: {
+          templateCode: 'C8_child_assigned',
+          recipientType: 'coach',
+          recipientId: coachId,
+          triggeredBy: 'admin',
+          contextType: enrollmentId ? 'enrollment' : 'child',
+          contextId: enrollmentId ?? childId,
+          contextData: { childId, enrollmentId },
+        },
+      });
+      if (waResult.success) {
+        results.whatsapp = true;
+      } else {
+        results.errors.push(`WhatsApp failed: ${waResult.error}`);
       }
     } else {
       results.errors.push('Coach has no phone number');

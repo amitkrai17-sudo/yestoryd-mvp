@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
 import { queueEnrollmentComplete } from '@/lib/qstash';
+import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
@@ -348,32 +349,34 @@ export async function GET(request: NextRequest) {
 
         try {
           const aisensyKey = process.env.AISENSY_API_KEY;
-          
+
           if (!aisensyKey) {
             results.coachReminders24h.errors.push('AISENSY_API_KEY not configured');
             break;
           }
 
-          const waResponse = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              apiKey: aisensyKey,
-              campaignName: 'coach_session_reminder',
-              destination: coach.phone.replace(/\D/g, ''),
-              userName: 'Yestoryd',
-              templateParams: [
-                coachFirstName,
-                childName,
-                sessionDate,
-                sessionTime,
-                'Review assessment',
-                'Continue progress',
-              ],
-            }),
+          const waResult = await sendWhatsAppMessage({
+            to: coach.phone,
+            templateName: 'coach_session_reminder',
+            variables: [
+              coachFirstName,
+              childName,
+              sessionDate,
+              sessionTime,
+              'Review assessment',
+              'Continue progress',
+            ],
+            meta: {
+              templateCode: 'coach_session_reminder',
+              recipientType: 'coach',
+              recipientId: coach.id,
+              triggeredBy: 'cron',
+              contextType: 'scheduled_session',
+              contextId: session.id,
+            },
           });
 
-          if (waResponse.ok) {
+          if (waResult.success) {
             await supabase
               .from('scheduled_sessions')
               .update({
@@ -384,12 +387,11 @@ export async function GET(request: NextRequest) {
 
             results.coachReminders24h.sent++;
           } else {
-            const errText = await waResponse.text();
             results.coachReminders24h.failed++;
-            results.coachReminders24h.errors.push(`Session ${session.id}: ${errText}`);
+            results.coachReminders24h.errors.push(`Session ${session.id}: ${waResult.error}`);
           }
 
-          try { await logOpsEvent({ event_type: 'nudge_sent', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'session', entity_id: session.id, action_taken: 'aisensy:coach_session_reminder', action_outcome: waResponse.ok ? 'success' : 'failed', resolved_by: 'auto' }); } catch {}
+          try { await logOpsEvent({ event_type: 'nudge_sent', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'session', entity_id: session.id, action_taken: 'aisensy:coach_session_reminder', action_outcome: waResult.success ? 'success' : 'failed', resolved_by: 'auto' }); } catch {}
         } catch (e: any) {
           results.coachReminders24h.failed++;
           results.coachReminders24h.errors.push(`Session ${session.id}: ${e.message}`);
