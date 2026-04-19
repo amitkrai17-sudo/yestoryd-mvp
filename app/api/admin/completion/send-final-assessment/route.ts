@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { getProgramLabel } from '@/lib/utils/program-label';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,30 +133,21 @@ export const POST = withApiHandler(async (request, { auth, supabase, requestId }
       console.error('Email send error:', emailError);
     }
 
-    // Send via AiSensy WhatsApp
+    // Send via WhatsApp (unified notify engine)
     let whatsappSent = false;
     try {
-      const { data: parent } = enrollment.parent_id ? await supabase
-        .from('parents')
-        .select('phone')
-        .eq('id', enrollment.parent_id)
-        .single() : { data: null };
-
-      if (parent?.phone) {
-        const waResult = await sendWhatsAppMessage({
-          to: parent.phone,
-          templateName: 'parent_final_assessment_v3',
-          variables: [childName, assessmentLink],
-          meta: {
-            templateCode: 'parent_final_assessment_v3',
-            recipientType: 'parent',
-            recipientId: enrollment.parent_id ?? null,
+      if (enrollment.parent_id) {
+        const waResult = await sendNotification(
+          'parent_final_assessment_v3',
+          enrollment.parent_id,
+          { child_name: childName, assessment_link: assessmentLink },
+          {
             triggeredBy: 'admin',
             triggeredByUserId: auth.userId ?? null,
             contextType: 'enrollment',
             contextId: enrollment.id,
           },
-        });
+        );
         whatsappSent = waResult.success;
       }
     } catch (waError) {

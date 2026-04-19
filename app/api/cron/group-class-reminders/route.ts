@@ -17,7 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { sendEmail } from '@/lib/email/resend-client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
@@ -210,19 +210,15 @@ async function processReminders(requestId: string, source: string) {
         // WhatsApp via AiSensy
         if (parent.phone) {
           try {
-            const variables = window === '24h'
-              ? [parentName, childName, className, dateTime, meetLink]
-              : [parentName, childName, className, meetLink];
+            const params: Record<string, string> = window === '24h'
+              ? { parent_name: parentName, child_name: childName, class_name: className, date_time: dateTime, meet_link: meetLink }
+              : { parent_name: parentName, child_name: childName, class_name: className, meet_link: meetLink };
 
-            const waResult = await sendWhatsAppMessage({
-              to: parent.phone,
-              templateName: templateCode,
-              variables,
-            });
+            const waResult = await sendNotification(templateCode, parent.phone, params);
 
             waSent = waResult.success;
             if (!waResult.success) {
-              results.errors.push(`WA ${templateCode} to ${parent.phone}: ${waResult.error}`);
+              results.errors.push(`WA ${templateCode} to ${parent.phone}: ${waResult.reason}`);
             }
           } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Unknown';
@@ -313,14 +309,16 @@ async function processReminders(requestId: string, source: string) {
             // WhatsApp
             if (instructor.phone) {
               try {
-                const waResult = await sendWhatsAppMessage({
-                  to: instructor.phone,
-                  templateName: instructorTemplateCode,
-                  variables: [instructorName, className, sessionTime, participantCount, meetLink],
+                const waResult = await sendNotification(instructorTemplateCode, instructor.phone, {
+                  instructor_name: instructorName,
+                  class_name: className,
+                  session_time: sessionTime,
+                  participant_count: participantCount,
+                  meet_link: meetLink,
                 });
                 instructorWaSent = waResult.success;
                 if (!waResult.success) {
-                  results.errors.push(`Instructor WA: ${waResult.error}`);
+                  results.errors.push(`Instructor WA: ${waResult.reason}`);
                 }
               } catch (e: unknown) {
                 results.errors.push(`Instructor WA exception: ${e instanceof Error ? e.message : 'Unknown'}`);

@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { getPolicy, logDecision } from '@/lib/backops';
@@ -84,15 +84,20 @@ export async function GET(request: NextRequest) {
       try {
         try { await logDecision({ source: 'cron:session-completion-nudge', entity_type: 'session', entity_id: session.id, decision: 'send_completion_nudge', reason: { stale_minutes: staleMinutes, coach: coachFirstName, child: childFirstName } as Json, action: 'aisensy:session_completion_nudge', outcome: 'pending' }); } catch {}
 
-        const waResult = await sendWhatsAppMessage({
-          to: coach.phone,
-          templateName: 'parent_feedback_request_v3',
-          variables: [
-            coachFirstName,
-            childFirstName,
-            String(session.session_number || ''),
-          ],
-        });
+        const waResult = await sendNotification(
+          'parent_feedback_request_v3',
+          coach.phone,
+          {
+            coach_first_name: coachFirstName,
+            child_name: childFirstName,
+            session_number: String(session.session_number || ''),
+          },
+          {
+            triggeredBy: 'cron',
+            contextType: 'session',
+            contextId: session.id,
+          },
+        );
 
         // Mark nudge as sent regardless of WA success (prevent spam)
         await supabase
@@ -104,7 +109,7 @@ export async function GET(request: NextRequest) {
           nudged++;
         } else {
           failed++;
-          console.error(JSON.stringify({ requestId, event: 'nudge_wa_failed', sessionId: session.id, error: waResult.error }));
+          console.error(JSON.stringify({ requestId, event: 'nudge_wa_failed', sessionId: session.id, error: waResult.reason }));
         }
       } catch (sendError: any) {
         failed++;

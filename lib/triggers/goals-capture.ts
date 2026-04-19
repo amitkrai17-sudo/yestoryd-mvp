@@ -7,7 +7,7 @@
 // ============================================================
 
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 
 const P7_TEMPLATE_NAME = 'parent_goals_capture_v3';
 
@@ -100,19 +100,22 @@ export async function sendGoalsCaptureMessage(childId: string): Promise<GoalsCap
     const parentFirstName = child.parent_name?.split(' ')[0] || 'Parent';
     const childName = child.name || 'your child';
 
-    // Send WhatsApp message via AiSensy
-    // Template: p7_goals_capture_1
-    // Variables: {{1}}=parent_name, {{2}}=child_name, {{3}}=child_name, {{4}}=coach_name
-    const result = await sendWhatsAppMessage({
-      to: child.parent_phone,
-      templateName: P7_TEMPLATE_NAME,
-      variables: [
-        parentFirstName,  // {{1}} Parent name
-        childName,        // {{2}} Child name (first mention)
-        childName,        // {{3}} Child name (second mention)
-        'Our Coach',      // {{4}} Coach name
-      ],
-    });
+    // Send WhatsApp message via unified notify engine
+    const result = await sendNotification(
+      P7_TEMPLATE_NAME,
+      child.parent_phone,
+      {
+        parent_first_name: parentFirstName,
+        child_name: childName,
+        child_name_2: childName,
+        coach_name: 'Our Coach',
+      },
+      {
+        triggeredBy: 'system',
+        contextType: 'assessment',
+        contextId: childId,
+      },
+    );
 
     if (result.success) {
       // Mark message as sent
@@ -127,13 +130,13 @@ export async function sendGoalsCaptureMessage(childId: string): Promise<GoalsCap
       return {
         success: true,
         action: 'sent',
-        messageId: result.messageId,
+        messageId: result.logId,
       };
     } else {
       return {
         success: false,
         action: 'error',
-        reason: result.error || 'WhatsApp send failed',
+        reason: result.reason || 'WhatsApp send failed',
       };
     }
   } catch (error) {

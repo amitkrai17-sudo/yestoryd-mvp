@@ -11,7 +11,7 @@ import { getGeminiModel } from '@/lib/gemini-config';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { getProgramLabel } from '@/lib/utils/program-label';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 
 const supabase = createAdminClient();
 
@@ -283,21 +283,18 @@ async function checkAndTriggerFinalAssessment(childId: string): Promise<{
       console.error('Email send error:', emailError);
     }
 
-    // Send WhatsApp via AiSensy (if phone available)
-    if (parentPhone) {
-      await sendWhatsAppMessage({
-        to: parentPhone,
-        templateName: 'parent_final_assessment_v3',
-        variables: [childName, assessmentLink],
-        meta: {
-          templateCode: 'parent_final_assessment_v3',
-          recipientType: 'parent',
-          recipientId: enrollment.parent_id ?? null,
+    // Send WhatsApp via unified notify engine
+    if (enrollment.parent_id) {
+      await sendNotification(
+        'parent_final_assessment_v3',
+        enrollment.parent_id,
+        { child_name: childName, assessment_link: assessmentLink },
+        {
           triggeredBy: 'system',
           contextType: 'enrollment',
           contextId: enrollment.id,
         },
-      });
+      );
     }
 
     return {

@@ -18,7 +18,7 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 
@@ -152,19 +152,26 @@ async function processReminders(requestId: string, source: string) {
       const sessionTime = session.scheduled_time?.slice(0, 5) || 'soon';
 
       try {
-        const waResult = await sendWhatsAppMessage({
-          to: coach.phone,
-          templateName: 'coach_session_reminder_1h_v3',
-          variables: [coachFirstName, childName, sessionTime],
-          meta: {
-            templateCode: 'C9_session_reminder',
-            recipientType: 'coach',
-            recipientId: coach.id,
+        // TODO: replace last_focus/next_focus with actual session data
+        // from session_prep_data or last SCF response (C9 shim — Apr 2026)
+        // This is the 1h caller — only 3 core params available in scope.
+        // Enrollment-lifecycle (24h caller) has the same shim.
+        const waResult = await sendNotification(
+          'coach_session_reminder_1h_v3',
+          coach.phone,
+          {
+            coach_first_name: coachFirstName,
+            child_name: childName,
+            session_time: sessionTime,
+            last_focus: '',
+            next_focus: '',
+          },
+          {
             triggeredBy: 'cron',
             contextType: 'scheduled_session',
             contextId: session.id,
           },
-        });
+        );
 
         if (waResult.success) {
           await supabase
@@ -186,7 +193,7 @@ async function processReminders(requestId: string, source: string) {
           }));
         } else {
           results.failed++;
-          results.errors.push(`Session ${session.id}: ${waResult.error}`);
+          results.errors.push(`Session ${session.id}: ${waResult.reason}`);
         }
       } catch (e: any) {
         results.failed++;
@@ -254,17 +261,26 @@ async function processReminders(requestId: string, source: string) {
               })
             : 'soon';
 
-          const waResult = await sendWhatsAppMessage({
-            to: coach.phone,
-            templateName: 'coach_report_deadline_v3',
-            variables: [coachFirstName, childName, deadlineTime],
-          });
+          const waResult = await sendNotification(
+            'coach_report_deadline_v3',
+            coach.phone,
+            {
+              coach_first_name: coachFirstName,
+              child_name: childName,
+              deadline_time: deadlineTime,
+            },
+            {
+              triggeredBy: 'cron',
+              contextType: 'session',
+              contextId: s.id,
+            },
+          );
 
           if (waResult.success) {
             reportResults.coachReminders++;
             console.log(JSON.stringify({ requestId, event: 'report_deadline_reminder_sent', sessionId: s.id }));
           } else {
-            reportResults.reportErrors.push(`Session ${s.id}: ${waResult.error}`);
+            reportResults.reportErrors.push(`Session ${s.id}: ${waResult.reason}`);
           }
 
           await new Promise(resolve => setTimeout(resolve, 200));
@@ -306,17 +322,18 @@ async function processReminders(requestId: string, source: string) {
             ? String(Math.round((Date.now() - new Date(s.report_deadline).getTime()) / (1000 * 60 * 60)))
             : '?';
 
-          const waResult = await sendWhatsAppMessage({
-            to: adminPhone,
-            templateName: 'admin_report_overdue_v3',
-            variables: [coachName, childName, s.scheduled_date || '', hoursOverdue],
+          const waResult = await sendNotification('admin_report_overdue_v3', adminPhone, {
+            coach_name: coachName,
+            child_name: childName,
+            session_date: s.scheduled_date || '',
+            hours_overdue: hoursOverdue,
           });
 
           if (waResult.success) {
             reportResults.adminEscalations++;
             console.log(JSON.stringify({ requestId, event: 'report_overdue_admin_alert', sessionId: s.id }));
           } else {
-            reportResults.reportErrors.push(`Admin alert ${s.id}: ${waResult.error}`);
+            reportResults.reportErrors.push(`Admin alert ${s.id}: ${waResult.reason}`);
           }
 
           await new Promise(resolve => setTimeout(resolve, 200));

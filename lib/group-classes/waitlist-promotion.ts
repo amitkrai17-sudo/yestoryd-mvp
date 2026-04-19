@@ -12,7 +12,7 @@
 // ============================================================
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { sendEmail } from '@/lib/email/resend-client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
@@ -82,10 +82,12 @@ export async function promoteNextWaitlisted(
   // WhatsApp
   if (parent?.phone) {
     try {
-      await sendWhatsAppMessage({
-        to: parent.phone,
-        templateName: 'parent_group_promotion_v3',
-        variables: [parentName, childName, className, sessionDate, '24'],
+      await sendNotification('parent_group_promotion_v3', parent.phone, {
+        parent_name: parentName,
+        child_name: childName,
+        class_name: className,
+        session_date: sessionDate,
+        hours: '24',
       });
     } catch (err) {
       console.error('[waitlist-promotion] WhatsApp failed:', err instanceof Error ? err.message : err);

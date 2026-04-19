@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import crypto from 'crypto';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
@@ -198,17 +198,22 @@ export async function POST(request: NextRequest) {
       const childName = child.name || 'your child';
 
       try {
-        // 9. Send WhatsApp message via AiSensy
-        const waResult = await sendWhatsAppMessage({
-          to: child.parent_phone,
-          templateName: P7_TEMPLATE_NAME,
-          variables: [
-            parentFirstName,  // {{1}} Parent name
-            childName,        // {{2}} Child name (first mention)
-            childName,        // {{3}} Child name (second mention)
-            'Our Coach',      // {{4}} Coach name
-          ],
-        });
+        // 9. Send WhatsApp message via unified notify engine
+        const waResult = await sendNotification(
+          P7_TEMPLATE_NAME,
+          child.parent_phone,
+          {
+            parent_first_name: parentFirstName,
+            child_name: childName,
+            child_name_2: childName,
+            coach_name: 'Our Coach',
+          },
+          {
+            triggeredBy: 'cron',
+            contextType: 'assessment',
+            contextId: child.id,
+          },
+        );
 
         if (waResult.success) {
           // 10. Mark message as sent
@@ -225,7 +230,7 @@ export async function POST(request: NextRequest) {
             childName: child.name,
             parentPhone: `***${child.parent_phone.slice(-4)}`,
             status: 'sent',
-            messageId: waResult.messageId,
+            messageId: waResult.logId,
           });
 
           console.log(JSON.stringify({
@@ -235,12 +240,12 @@ export async function POST(request: NextRequest) {
             childName: child.name,
           }));
         } else {
-          failed.push({ id: child.id, childName: child.name, error: waResult.error });
+          failed.push({ id: child.id, childName: child.name, error: waResult.reason });
           console.error(JSON.stringify({
             requestId,
             event: 'goals_message_failed',
             childId: child.id,
-            error: waResult.error,
+            error: waResult.reason,
           }));
         }
       } catch (sendError: any) {

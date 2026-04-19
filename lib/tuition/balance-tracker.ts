@@ -6,7 +6,7 @@
 // ============================================================
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
@@ -16,30 +16,6 @@ interface DeductResult {
   newBalance: number;
   alertSent: 'none' | 'low_balance' | 'renewal' | 'paused';
   error?: string;
-}
-
-/**
- * Log a tuition WA send attempt to communication_logs for observability.
- */
-async function logTuitionWaSend(
-  templateCode: string,
-  recipientPhone: string,
-  success: boolean,
-  errorMessage?: string,
-) {
-  try {
-    const supabase = createAdminClient();
-    await supabase.from('communication_logs').insert({
-      template_code: templateCode,
-      recipient_type: 'parent',
-      recipient_phone: recipientPhone,
-      wa_sent: success,
-      email_sent: false,
-      error_message: errorMessage || null,
-    });
-  } catch {
-    // Logging failure must never block the main flow
-  }
 }
 
 /**
@@ -162,34 +138,28 @@ export async function deductTuitionBalance(
 
       if (formattedPhone) {
         try {
-          const result = await sendWhatsAppMessage({
-            to: formattedPhone,
-            templateName: 'parent_tuition_renewal_v3', // was: tuition_renewal_link
-            variables: [
-              parentName.split(' ')[0],
-              childName,
-              String(enrollment.sessions_purchased || 0),
-              coachName,
-              childName,
-              renewalUrl,
-            ],
+          const result = await sendNotification('parent_tuition_renewal_v3', formattedPhone, {
+            parent_first_name: parentName.split(' ')[0],
+            child_name: childName,
+            sessions_purchased: String(enrollment.sessions_purchased || 0),
+            coach_name: coachName,
+            child_name_2: childName,
+            renewal_url: renewalUrl,
           });
           if (result.success) {
             alertSent = 'renewal';
           } else {
             console.error(JSON.stringify({
               requestId, event: 'tuition_renewal_wa_failed',
-              enrollmentId, phone: formattedPhone, error: result.error,
+              enrollmentId, phone: formattedPhone, reason: result.reason,
             }));
           }
-          await logTuitionWaSend('parent_tuition_renewal_v3', formattedPhone, result.success, result.error);
         } catch (waErr) {
           const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
           console.error(JSON.stringify({
             requestId, event: 'tuition_renewal_wa_exception',
             enrollmentId, phone: formattedPhone, error: errMsg,
           }));
-          await logTuitionWaSend('parent_tuition_renewal_v3', formattedPhone, false, errMsg);
         }
       }
 
@@ -213,32 +183,26 @@ export async function deductTuitionBalance(
 
       if (formattedPhone) {
         try {
-          const result = await sendWhatsAppMessage({
-            to: formattedPhone,
-            templateName: 'parent_tuition_low_balance_v3',
-            variables: [
-              parentName.split(' ')[0],
-              childName,
-              String(newBalance),
-              renewalUrl,
-            ],
+          const result = await sendNotification('parent_tuition_low_balance_v3', formattedPhone, {
+            parent_first_name: parentName.split(' ')[0],
+            child_name: childName,
+            new_balance: String(newBalance),
+            renewal_url: renewalUrl,
           });
           if (result.success) {
             alertSent = 'low_balance';
           } else {
             console.error(JSON.stringify({
               requestId, event: 'tuition_low_balance_wa_failed',
-              enrollmentId, phone: formattedPhone, error: result.error,
+              enrollmentId, phone: formattedPhone, reason: result.reason,
             }));
           }
-          await logTuitionWaSend('parent_tuition_low_balance_v3', formattedPhone, result.success, result.error);
         } catch (waErr) {
           const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
           console.error(JSON.stringify({
             requestId, event: 'tuition_low_balance_wa_exception',
             enrollmentId, phone: formattedPhone, error: errMsg,
           }));
-          await logTuitionWaSend('parent_tuition_low_balance_v3', formattedPhone, false, errMsg);
         }
       }
 
@@ -321,30 +285,24 @@ async function checkAndPause(
 
   if (formattedPhone) {
     try {
-      const result = await sendWhatsAppMessage({
-        to: formattedPhone,
-        templateName: 'parent_tuition_paused_v3', // was: tuition_paused
-        variables: [
-          parentName.split(' ')[0],
-          childName,
-          renewalUrl,
-          childName,
-        ],
+      const result = await sendNotification('parent_tuition_paused_v3', formattedPhone, {
+        parent_first_name: parentName.split(' ')[0],
+        child_name: childName,
+        renewal_url: renewalUrl,
+        child_name_2: childName,
       });
       if (!result.success) {
         console.error(JSON.stringify({
           requestId, event: 'tuition_paused_wa_failed',
-          enrollmentId, phone: formattedPhone, error: result.error,
+          enrollmentId, phone: formattedPhone, reason: result.reason,
         }));
       }
-      await logTuitionWaSend('parent_tuition_paused_v3', formattedPhone, result.success, result.error);
     } catch (waErr) {
       const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
       console.error(JSON.stringify({
         requestId, event: 'tuition_paused_wa_exception',
         enrollmentId, phone: formattedPhone, error: errMsg,
       }));
-      await logTuitionWaSend('parent_tuition_paused_v3', formattedPhone, false, errMsg);
     }
   }
 

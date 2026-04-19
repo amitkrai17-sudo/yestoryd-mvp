@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,17 +63,13 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
 
   // 4. Resend WhatsApp
   try {
-    await sendWhatsAppMessage({
-      to: `91${onboarding.parent_phone}`,
-      templateName: 'parent_tuition_onboarding_v3',
-      variables: [
-        coachFirstName,
-        'your child',
-        magicLink,
-        String(onboarding.sessions_purchased),
-        String(Math.round(onboarding.session_rate / 100)),
-        coachFirstName,
-      ],
+    await sendNotification('parent_tuition_onboarding_v3', `91${onboarding.parent_phone}`, {
+      coach_first_name: coachFirstName,
+      child_name: 'your child',
+      magic_link: magicLink,
+      sessions_purchased: String(onboarding.sessions_purchased),
+      rate_rupees: String(Math.round(onboarding.session_rate / 100)),
+      coach_first_name_2: coachFirstName,
     });
 
     console.log(JSON.stringify({

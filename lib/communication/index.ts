@@ -13,6 +13,8 @@ const supabase = createAdminClient();
 export { sendWhatsAppCloudMessage, markMessageAsRead, isWhatsAppCloudConfigured } from './whatsapp-cloud';
 // Re-export unified logger
 export { logCommunication } from './log';
+// Re-export unified sendNotification() engine
+export { sendNotification, type NotifyResult } from './notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 // Admin phone numbers for alerts (add more as needed)

@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { sendEmail } from '@/lib/email/resend-client';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -164,10 +164,11 @@ export async function POST(request: NextRequest) {
           if (parent.phone) {
             try {
               const shortenedInsight = insightText.length > 500 ? insightText.substring(0, 497) + '...' : insightText;
-              const waResult = await sendWhatsAppMessage({
-                to: parent.phone,
-                templateName: 'parent_group_micro_insight_v3',
-                variables: [parentName, childName, shortenedInsight, ctaLink],
+              const waResult = await sendNotification('parent_group_micro_insight_v3', parent.phone, {
+                parent_name: parentName,
+                child_name: childName,
+                shortened_insight: shortenedInsight,
+                cta_link: ctaLink,
               });
 
               await supabase.from('communication_logs').insert({
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
                 recipient_id: parentId,
                 recipient_phone: parent.phone,
                 wa_sent: waResult.success,
-                error_message: waResult.error || null,
+                error_message: waResult.reason || null,
                 context_data: { session_id, child_id: childId, child_name: childName, cta_type: ctaType },
                 sent_at: waResult.success ? new Date().toISOString() : null,
               });

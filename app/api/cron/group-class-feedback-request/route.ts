@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
@@ -114,10 +114,10 @@ export async function POST(request: NextRequest) {
         const childName = child?.child_name || 'your child';
 
         // Send WhatsApp via AiSensy
-        const waResult = await sendWhatsAppMessage({
-          to: parent.phone,
-          templateName: 'group_class_parent_feedback_request',
-          variables: [parentName, childName, className],
+        const waResult = await sendNotification('group_class_parent_feedback_request', parent.phone, {
+          parent_name: parentName,
+          child_name: childName,
+          class_name: className,
         });
 
         // Log in communication_logs
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
           recipient_id: parentId,
           recipient_phone: parent.phone,
           wa_sent: waResult.success,
-          error_message: waResult.error || null,
+          error_message: waResult.reason || null,
           context_data: {
             session_id,
             child_ids: childIds,

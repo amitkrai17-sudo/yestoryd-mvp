@@ -48,6 +48,8 @@ interface AiSensyResponse {
 }
 
 /**
+ * @deprecated Prefer sendNotification() from lib/communication/notify.ts.
+ *   Direct callers of sendWhatsAppMessage will be migrated in a follow-up pass.
  * Send WhatsApp message via AiSensy. Always logs to communication_logs.
  */
 export async function sendWhatsAppMessage(params: AiSensyMessageParams): Promise<AiSensyResponse> {

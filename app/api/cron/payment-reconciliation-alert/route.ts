@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { loadAuthConfig } from '@/lib/config/loader';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
@@ -189,15 +189,11 @@ export async function GET(request: NextRequest) {
         ? 'Calendar scheduling failed'
         : '0 sessions scheduled';
 
-      await sendWhatsAppMessage({
-        to: adminPhone,
-        templateName: 'admin_scheduling_alert_v3',
-        variables: [
-          enrollment.child_name,
-          enrollment.id.slice(0, 8),
-          String(enrollment.minutes_ago),
-          reason,
-        ],
+      await sendNotification('admin_scheduling_alert_v3', adminPhone, {
+        child_name: enrollment.child_name,
+        enrollment_short_id: enrollment.id.slice(0, 8),
+        minutes_ago: String(enrollment.minutes_ago),
+        reason,
       }).catch(err =>
         console.error(JSON.stringify({
           requestId,

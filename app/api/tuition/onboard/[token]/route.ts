@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServiceSupabase } from '@/lib/api-auth';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { parentDetailsSchema, childDetailsSchema, addressSchema } from '@/components/forms/schemas';
 import { z } from 'zod';
@@ -310,17 +310,13 @@ export async function POST(
 
     // 9. Send payment WA to parent
     try {
-      await sendWhatsAppMessage({
-        to: `91${input.parentPhone}`,
-        templateName: 'parent_tuition_payment_v3',
-        variables: [
-          input.parentName.split(' ')[0],
-          input.childFullName,
-          String(onboarding.sessions_purchased),
-          String(rateRupees),
-          String(totalRupees),
-          checkoutUrl,
-        ],
+      await sendNotification('parent_tuition_payment_v3', `91${input.parentPhone}`, {
+        parent_first_name: input.parentName.split(' ')[0],
+        child_full_name: input.childFullName,
+        sessions_purchased: String(onboarding.sessions_purchased),
+        rate_rupees: String(rateRupees),
+        total_rupees: String(totalRupees),
+        checkout_url: checkoutUrl,
       });
     } catch (waErr) {
       console.error(JSON.stringify({ requestId, event: 'tuition_payment_wa_error', error: waErr instanceof Error ? waErr.message : String(waErr) }));

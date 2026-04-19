@@ -4,7 +4,7 @@
 // short auto-reply. Rate-limited to 1 reply per phone per 24h to prevent loops.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizePhone } from '@/lib/utils/phone';
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const { data: recent } = await supabase
       .from('communication_logs')
       .select('id')
-      .eq('template_code', 'auto_reply_redirect')
+      .eq('template_code', 'parent_auto_reply_redirect_v3')
       .eq('recipient_contact', phone)
       .gte('sent_at', cutoff)
       .limit(1);
@@ -54,24 +54,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'rate_limited' });
     }
 
-    const result = await sendWhatsAppMessage({
-      to: phone,
-      templateName: AUTO_REPLY_TEMPLATE,
-      variables: [],
-    });
-
-    await supabase.from('communication_logs').insert({
-      template_code: 'auto_reply_redirect',
-      channel: 'whatsapp',
-      recipient_type: 'parent',
-      recipient_contact: phone,
-      variables_used: { inbound_text: text, message_id: payload.messageId },
-      status: result.success ? 'sent' : 'failed',
-      provider_message_id: result.messageId,
-      error_message: result.error,
-      sent_at: result.success ? new Date().toISOString() : null,
-      failed_at: result.success ? null : new Date().toISOString(),
-    });
+    const result = await sendNotification(
+      AUTO_REPLY_TEMPLATE,
+      phone,
+      {},
+      {
+        triggeredBy: 'system',
+        contextType: 'auto_reply',
+      },
+    );
 
     console.log(JSON.stringify({
       requestId,

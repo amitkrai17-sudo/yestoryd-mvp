@@ -28,7 +28,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { logDecision } from '@/lib/backops';
 import type { Json } from '@/lib/supabase/database.types';
 
@@ -160,24 +160,22 @@ export async function GET(request: NextRequest) {
 
       try {
         // 7. ACTUALLY SEND WhatsApp via AiSensy
-        const waResult = await sendWhatsAppMessage({
-          to: call.parent_phone,
-          templateName: 'parent_discovery_reminder_v3',
-          variables: [
-            parentFirstName,
-            call.child_name || 'your child',
-            call.coach_name || 'Your Coach',
-            childGoal,
-            call.payment_link,
-          ],
-          meta: {
-            templateCode: 'P7_discovery_reminder_24h',
-            recipientType: 'parent',
+        const waResult = await sendNotification(
+          'parent_discovery_reminder_v3',
+          call.parent_phone,
+          {
+            parent_first_name: parentFirstName,
+            child_name: call.child_name || 'your child',
+            coach_name: call.coach_name || 'Your Coach',
+            child_goal: childGoal,
+            payment_link: call.payment_link,
+          },
+          {
             triggeredBy: 'cron',
             contextType: 'discovery_call',
             contextId: call.id,
           },
-        });
+        );
 
         if (waResult.success) {
           // 8. Update discovery call - ONLY after successful send
@@ -212,14 +210,14 @@ export async function GET(request: NextRequest) {
             id: call.id,
             parentName: call.parent_name,
             childName: call.child_name,
-            error: waResult.error ?? 'unknown',
+            error: waResult.reason ?? 'unknown',
           });
 
           console.error(JSON.stringify({
             requestId,
             event: 'followup_send_failed',
             callId: call.id,
-            error: waResult.error,
+            error: waResult.reason,
           }));
         }
       } catch (sendError: any) {

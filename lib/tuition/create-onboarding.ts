@@ -4,7 +4,7 @@
 // =============================================================================
 
 import crypto from 'crypto';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
@@ -125,17 +125,13 @@ export async function createTuitionOnboarding(
   // 5. Send WhatsApp to parent
   const coachFirstName = (params.coachName || 'Your coach').split(' ')[0];
   try {
-    await sendWhatsAppMessage({
-      to: `91${params.parentPhone}`,
-      templateName: 'parent_tuition_onboarding_v3',
-      variables: [
-        coachFirstName,
-        placeholderChildName === `Pending - ${params.parentPhone}` ? 'your child' : placeholderChildName,
-        magicLink,
-        String(params.sessionsPurchased),
-        String(Math.round(params.sessionRate / 100)),
-        coachFirstName,
-      ],
+    await sendNotification('parent_tuition_onboarding_v3', `91${params.parentPhone}`, {
+      coach_first_name: coachFirstName,
+      child_name: placeholderChildName === `Pending - ${params.parentPhone}` ? 'your child' : placeholderChildName,
+      magic_link: magicLink,
+      sessions_purchased: String(params.sessionsPurchased),
+      rate_rupees: String(Math.round(params.sessionRate / 100)),
+      coach_first_name_2: coachFirstName,
     });
   } catch (waErr) {
     console.error(JSON.stringify({

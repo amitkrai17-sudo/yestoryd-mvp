@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSetting } from '@/lib/settings/getSettings';
 import { updateCalendarEventForOffline } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
 
 export const dynamic = 'force-dynamic';
@@ -224,11 +224,11 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
         try {
           const { data: child } = await supabase
             .from('children')
-            .select('child_name, parent_phone, parent_name')
+            .select('child_name, parent_name')
             .eq('id', childIdForNotify)
             .single();
 
-          if (child?.parent_phone) {
+          if (child) {
             const parentFirst = (child.parent_name || 'Parent').split(' ')[0];
             const childFirst = (child.child_name || 'Student').split(' ')[0];
             const sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}`)
@@ -242,13 +242,19 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
                 hour12: true,
               });
 
-            await sendWhatsAppMessage({
-              to: child.parent_phone,
-              templateName: 'parent_offline_notification_v3',
-              variables: [parentFirst, childFirst, sessionDate],
-            });
+            await sendNotification(
+              'parent_offline_notification_v3',
+              childIdForNotify,
+              { parent_first_name: parentFirst, child_name: childFirst, session_date: sessionDate },
+              {
+                triggeredBy: 'coach',
+                triggeredByUserId: coachId,
+                contextType: 'session',
+                contextId: sessionId,
+              },
+            );
 
-            console.log(JSON.stringify({ requestId, event: 'parent_offline_notified', sessionId, parentPhone: child.parent_phone }));
+            console.log(JSON.stringify({ requestId, event: 'parent_offline_notified', sessionId }));
           }
         } catch (err) {
           console.error(JSON.stringify({ requestId, event: 'parent_offline_notify_error', error: err instanceof Error ? err.message : 'Unknown' }));

@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/lib/supabase/database.types';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
@@ -363,13 +363,11 @@ async function handler(request: NextRequest) {
   const adminPhone = process.env.ADMIN_WHATSAPP_PHONE || '+919687606177';
   let whatsappSent = false;
   try {
-    const wa = await sendWhatsAppMessage({
-      to: adminPhone,
-      templateName: 'admin_daily_health_v3',
-      variables: [message],
+    const wa = await sendNotification('admin_daily_health_v3', adminPhone, {
+      message,
     });
     whatsappSent = wa.success;
-    if (!wa.success) console.error(JSON.stringify({ requestId, event: 'whatsapp_error', error: wa.error }));
+    if (!wa.success) console.error(JSON.stringify({ requestId, event: 'whatsapp_error', reason: wa.reason }));
   } catch (err: any) {
     console.error(JSON.stringify({ requestId, event: 'whatsapp_exception', error: err.message }));
   }

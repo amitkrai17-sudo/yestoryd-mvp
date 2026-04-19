@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { sendEmail } from '@/lib/email/resend-client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
@@ -185,10 +185,11 @@ async function processNudges(requestId: string, source: string) {
 
           // Admin WhatsApp
           try {
-            await sendWhatsAppMessage({
-              to: adminPhone,
-              templateName: 'admin_group_class_overdue',
-              variables: [instructorName, className, sessionTime, hoursOverdue],
+            await sendNotification('admin_group_class_overdue', adminPhone, {
+              instructor_name: instructorName,
+              class_name: className,
+              session_time: sessionTime,
+              hours_overdue: hoursOverdue,
             });
           } catch (err) {
             results.errors.push(`Admin WA for ${session.id}: ${err instanceof Error ? err.message : 'Unknown'}`);

@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { getPolicy, logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
 import type { Json } from '@/lib/supabase/database.types';
@@ -125,17 +125,13 @@ export async function GET(request: NextRequest) {
         try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v3', outcome: 'pending' }); } catch {}
 
         // Send the same parent_tuition_onboarding_v3 template (magic link still valid)
-        await sendWhatsAppMessage({
-          to: `91${record.parent_phone}`,
-          templateName: 'parent_tuition_onboarding_v3',
-          variables: [
-            coachFirstName,
-            record.child_name?.startsWith('Pending') ? 'your child' : record.child_name,
-            magicLink,
-            String(record.sessions_purchased),
-            String(Math.round(record.session_rate / 100)),
-            coachFirstName,
-          ],
+        await sendNotification('parent_tuition_onboarding_v3', `91${record.parent_phone}`, {
+          coach_first_name: coachFirstName,
+          child_name: (record.child_name && !record.child_name.startsWith('Pending')) ? record.child_name : 'your child',
+          magic_link: magicLink,
+          sessions_purchased: String(record.sessions_purchased),
+          rate_rupees: String(Math.round(record.session_rate / 100)),
+          coach_first_name_2: coachFirstName,
         });
 
         // Log to communication_logs

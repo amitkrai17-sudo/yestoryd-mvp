@@ -3,7 +3,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 
 const supabase = createAdminClient();
 
@@ -413,16 +413,15 @@ function formatParentMessage(
 
 async function sendWhatsApp(phone: string, message: string): Promise<boolean> {
   try {
-    let formatted = phone.replace(/\D/g, '');
-    if (!formatted.startsWith('91') && formatted.length === 10) {
-      formatted = '91' + formatted;
-    }
-
-    const result = await sendWhatsAppMessage({
-      to: formatted,
-      templateName: 'parent_proactive_notification_v3',
-      variables: [message],
-    });
+    const result = await sendNotification(
+      'parent_proactive_notification_v3',
+      phone,
+      { message },
+      {
+        triggeredBy: 'system',
+        contextType: 'proactive_notification',
+      },
+    );
 
     return result.success;
   } catch (e) {

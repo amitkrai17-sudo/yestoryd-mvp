@@ -700,32 +700,32 @@ export async function POST(request: NextRequest) {
 
           // ═══════════════════════════════════════════════════════════════════════════
           // PARENT WHATSAPP - Assessment Results with Let's Talk CTA (fire-and-forget)
-          // Template: parent_assessment_results_v3
-          // Variables: parent_name, child_name, overall_score, clarity_score,
-          //            fluency_score, speed_score, booking_link
           // ═══════════════════════════════════════════════════════════════════════════
           const bookingLink = `https://yestoryd.com/lets-talk?childId=${childId}&childName=${encodeURIComponent(name)}&source=assessment_whatsapp`;
 
-          import('@/lib/communication/aisensy').then(({ sendWhatsAppMessage }) => {
-            console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_triggering' }));
-
-            sendWhatsAppMessage({
-              to: parentPhone,
-              templateName: 'parent_assessment_results_v3',
-              variables: [
-                parentName || 'Parent',       // {{1}} parent_name
-                name,                          // {{2}} child_name
-                String(overallScore),          // {{3}} overall_score
-                String(clarityScore),          // {{4}} clarity_score
-                String(fluencyScore),          // {{5}} fluency_score
-                String(speedScore),            // {{6}} speed_score
-                bookingLink,                   // {{7}} booking_link (CTA URL)
-              ],
-            }).then(result => {
+          import('@/lib/communication/notify').then(({ sendNotification }) => {
+            sendNotification(
+              'parent_assessment_results_v3',
+              parentPhone,
+              {
+                parent_name: parentName || 'Parent',
+                child_name: name,
+                overall_score: String(overallScore),
+                clarity_score: String(clarityScore),
+                fluency_score: String(fluencyScore),
+                speed_score: String(speedScore),
+                booking_link: bookingLink,
+              },
+              {
+                triggeredBy: 'system',
+                contextType: 'assessment',
+                contextId: childId,
+              },
+            ).then(result => {
               if (result.success) {
-                console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_sent', childId, messageId: result.messageId }));
+                console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_sent', childId, logId: result.logId }));
               } else {
-                console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_failed', childId, error: result.error }));
+                console.log(JSON.stringify({ requestId, event: 'parent_whatsapp_failed', childId, error: result.reason }));
               }
             }).catch(err => {
               console.error(JSON.stringify({ requestId, event: 'parent_whatsapp_error', childId, error: err.message }));

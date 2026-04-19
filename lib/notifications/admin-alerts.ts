@@ -1,27 +1,33 @@
 // ============================================================
 // FILE: lib/notifications/admin-alerts.ts
 // ============================================================
-// Admin Alert System - Fire-and-forget WhatsApp notifications
-// Yestoryd - AI-Powered Reading Intelligence Platform
+// Admin Alert System — fire-and-forget WhatsApp notifications.
+// Yestoryd — AI-Powered Reading Intelligence Platform.
 //
-// CRITICAL: These functions NEVER throw errors to the caller!
+// CRITICAL: these functions NEVER throw errors to the caller!
 // Main flows (assessment, discovery) MUST NOT break if alerts fail.
 //
-// Uses AiSensy templates:
-// - admin_new_lead_v4: {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone, {{5}}=location, {{6}}=score, {{7}}=wpm, {{8}}=leadStatus, {{9}}=timestamp
-// - admin_discovery_booked_v4: {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone, {{5}}=scheduledDateTime, {{6}}=coachName, {{7}}=score, {{8}}=wpm, {{9}}=timestamp
-// - admin_daily_digest_v3: {{1}}=date, {{2}}=newLeadsCount, {{3}}=hotCount, {{4}}=warmCount, {{5}}=coolCount, {{6}}=bookedYesterday, {{7}}=scheduledToday, {{8}}=pendingFollowup, {{9}}=mtdTotal
+// All sends route through the unified sendNotification() engine in
+// lib/communication/notify.ts. That engine handles idempotency,
+// daily caps, quiet-hours deferral, and logging to
+// communication_logs. No local logging needed here.
 //
-// Usage:
-//   sendNewLeadAlert(leadData).catch(err => console.error('Alert failed:', err));
-//
+// Templates (named params must match wa_variables in DB):
+//   admin_new_lead_v4
+//     [child_name, age, parent_name, parent_phone, location,
+//      score, wpm, lead_status, timestamp]
+//   admin_discovery_booked_v4
+//     [child_name, age, parent_name, parent_phone,
+//      scheduled_date_time, coach_name, score, wpm, timestamp]
+//   admin_daily_digest_v3
+//     [date, new_leads_count, hot_count, warm_count, cool_count,
+//      booked_yesterday, scheduled_today, pending_followup, mtd_total]
 // ============================================================
 
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
-import { getServiceSupabase } from '@/lib/api-auth';
+import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
-// Admin phone - from env or fallback
+// Admin phone — from env or fallback (raw-phone path in sendNotification).
 const ADMIN_PHONE = COMPANY_CONFIG.adminWhatsApp;
 
 // ============================================================
@@ -108,16 +114,11 @@ function formatScheduledDateTime(date: Date): string {
 // ============================================================
 // SEND NEW LEAD ALERT
 // ============================================================
-// Called after assessment completion - alerts admin about new lead
-//
-// Template: admin_new_lead_v3 (9 variables)
-// {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone,
-// {{5}}=location, {{6}}=score, {{7}}=wpm, {{8}}=leadStatus, {{9}}=timestamp
+// Called after assessment completion — alerts admin about new lead.
 
 export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
   const startTime = Date.now();
 
-  // DETAILED LOGGING: Track full flow
   console.log('[AdminAlert] ========== sendNewLeadAlert START ==========');
   console.log('[AdminAlert] Child:', data.childName, 'Age:', data.childAge);
   console.log('[AdminAlert] Parent:', data.parentName, 'Phone:', data.parentPhone);
@@ -129,51 +130,19 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
     const timestamp = formatTimeOnly(new Date());
     const leadStatus = getLeadStatusLabel(data.leadStatus);
 
-    const templateVariables = [
-      data.childName,                   // {{1}} - Child name
-      String(data.childAge),            // {{2}} - Age
-      data.parentName,                  // {{3}} - Parent name
-      data.parentPhone,                 // {{4}} - Parent phone
-      data.location || 'India',         // {{5}} - Location
-      String(data.assessmentScore),     // {{6}} - Score
-      String(data.wpm || 0),            // {{7}} - WPM
-      leadStatus,                       // {{8}} - Lead status (HOT/WARM/COOL)
-      timestamp,                        // {{9}} - Timestamp (hh:mm AM/PM)
-    ];
-
-    console.log('[AdminAlert] Template: admin_new_lead_v4');
-    console.log('[AdminAlert] Variables:', JSON.stringify(templateVariables));
-    console.log('[AdminAlert] Sending to AiSensy...');
-
-    // Send WhatsApp alert using template
-    const result = await sendWhatsAppMessage({
-      to: ADMIN_PHONE,
-      templateName: 'admin_new_lead_v4',
-      variables: templateVariables,
+    const result = await sendNotification('admin_new_lead_v4', ADMIN_PHONE, {
+      child_name: data.childName,
+      age: String(data.childAge),
+      parent_name: data.parentName,
+      parent_phone: data.parentPhone,
+      location: data.location || 'India',
+      score: String(data.assessmentScore),
+      wpm: String(data.wpm || 0),
+      lead_status: leadStatus,
+      timestamp,
     });
 
-    console.log('[AdminAlert] AiSensy response:', JSON.stringify(result));
-
     const duration = Date.now() - startTime;
-
-    // Log to communication_logs (non-blocking)
-    console.log('[AdminAlert] Logging to DB...');
-    logAdminAlert({
-      alertType: 'new_lead',
-      relatedEntityType: 'child',
-      relatedEntityId: data.childId,
-      success: result.success,
-      errorMessage: result.error,
-      variables: {
-        child_name: data.childName,
-        parent_name: data.parentName,
-        score: data.assessmentScore,
-        wpm: data.wpm,
-        lead_status: data.leadStatus,
-        request_id: data.requestId,
-      },
-      duration,
-    }).catch(err => console.error('[AdminAlert] DB log failed:', err));
 
     if (result.success) {
       console.log('[AdminAlert] SUCCESS - Alert sent');
@@ -186,12 +155,12 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
         requestId: data.requestId,
       }));
     } else {
-      console.error('[AdminAlert] FAILED - AiSensy error:', result.error);
+      console.error('[AdminAlert] FAILED - reason:', result.reason);
       console.error(JSON.stringify({
         event: 'admin_alert_failed',
         type: 'new_lead',
         childId: data.childId,
-        error: result.error,
+        reason: result.reason,
         duration: `${duration}ms`,
         requestId: data.requestId,
       }));
@@ -201,7 +170,7 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
     return result.success;
 
   } catch (error: any) {
-    // CRITICAL: Never throw - just log and return false
+    // CRITICAL: never throw — just log and return false
     console.error('[AdminAlert] EXCEPTION:', error.message);
     console.error('[AdminAlert] Stack:', error.stack);
     console.error(JSON.stringify({
@@ -219,11 +188,7 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
 // ============================================================
 // SEND DISCOVERY BOOKED ALERT
 // ============================================================
-// Called when a discovery call is booked - alerts admin about upcoming call
-//
-// Template: admin_discovery_booked_v4 (9 variables)
-// {{1}}=childName, {{2}}=age, {{3}}=parentName, {{4}}=parentPhone,
-// {{5}}=scheduledDateTime, {{6}}=coachName, {{7}}=score, {{8}}=wpm, {{9}}=timestamp
+// Called when a discovery call is booked — alerts admin about upcoming call.
 
 export async function sendDiscoveryBookedAlert(data: DiscoveryBookedData): Promise<boolean> {
   const startTime = Date.now();
@@ -233,42 +198,19 @@ export async function sendDiscoveryBookedAlert(data: DiscoveryBookedData): Promi
     const scheduledDateTime = formatScheduledDateTime(scheduledDate);
     const timestamp = formatTimeOnly(new Date());
 
-    // Send WhatsApp alert using template
-    const result = await sendWhatsAppMessage({
-      to: ADMIN_PHONE,
-      templateName: 'admin_discovery_booked_v4',
-      variables: [
-        data.childName,                       // {{1}} - Child name
-        String(data.childAge || 0),           // {{2}} - Age
-        data.parentName,                      // {{3}} - Parent name
-        data.parentPhone,                     // {{4}} - Parent phone
-        scheduledDateTime,                    // {{5}} - Scheduled date/time (Jan 21, 2026 at 10:00 AM)
-        data.coachName || 'Pending',          // {{6}} - Coach name
-        String(data.assessmentScore || 0),    // {{7}} - Score
-        String(data.wpm || 0),                // {{8}} - WPM
-        timestamp,                            // {{9}} - Timestamp (hh:mm AM/PM)
-      ],
+    const result = await sendNotification('admin_discovery_booked_v4', ADMIN_PHONE, {
+      child_name: data.childName,
+      age: String(data.childAge || 0),
+      parent_name: data.parentName,
+      parent_phone: data.parentPhone,
+      scheduled_date_time: scheduledDateTime,
+      coach_name: data.coachName || 'Pending',
+      score: String(data.assessmentScore || 0),
+      wpm: String(data.wpm || 0),
+      timestamp,
     });
 
     const duration = Date.now() - startTime;
-
-    // Log to communication_logs (non-blocking)
-    logAdminAlert({
-      alertType: 'discovery_booked',
-      relatedEntityType: 'discovery_call',
-      relatedEntityId: data.discoveryCallId,
-      success: result.success,
-      variables: {
-        child_name: data.childName,
-        parent_name: data.parentName,
-        scheduled_at: data.scheduledAt,
-        coach_name: data.coachName,
-        score: data.assessmentScore,
-        wpm: data.wpm,
-        request_id: data.requestId,
-      },
-      duration,
-    }).catch(err => console.error('Failed to log alert:', err));
 
     if (result.success) {
       console.log(JSON.stringify({
@@ -283,7 +225,7 @@ export async function sendDiscoveryBookedAlert(data: DiscoveryBookedData): Promi
         event: 'admin_alert_failed',
         type: 'discovery_booked',
         discoveryCallId: data.discoveryCallId,
-        error: result.error,
+        reason: result.reason,
         duration: `${duration}ms`,
         requestId: data.requestId,
       }));
@@ -292,7 +234,6 @@ export async function sendDiscoveryBookedAlert(data: DiscoveryBookedData): Promi
     return result.success;
 
   } catch (error: any) {
-    // CRITICAL: Never throw - just log and return false
     console.error(JSON.stringify({
       event: 'admin_alert_error',
       type: 'discovery_booked',
@@ -308,31 +249,22 @@ export async function sendDiscoveryBookedAlert(data: DiscoveryBookedData): Promi
 // ============================================================
 // SEND DAILY DIGEST
 // ============================================================
-// Called by cron job to send daily summary
-//
-// Template: admin_daily_digest_v3 (9 variables)
-// {{1}}=date, {{2}}=newLeadsCount, {{3}}=hotCount, {{4}}=warmCount,
-// {{5}}=coolCount, {{6}}=bookedYesterday, {{7}}=scheduledToday, {{8}}=pendingFollowup, {{9}}=mtdTotal
+// Called by cron job to send daily summary.
 
 export async function sendDailyDigest(data: DailyDigestData): Promise<boolean> {
   const startTime = Date.now();
 
   try {
-    // Send WhatsApp alert using template
-    const result = await sendWhatsAppMessage({
-      to: ADMIN_PHONE,
-      templateName: 'admin_daily_digest_v3',
-      variables: [
-        data.date,                            // {{1}} - Date (Jan 21)
-        String(data.newLeadsCount),           // {{2}} - New leads count
-        String(data.hotCount),                // {{3}} - Hot count
-        String(data.warmCount),               // {{4}} - Warm count
-        String(data.coolCount),               // {{5}} - Cool count
-        String(data.bookedYesterday),         // {{6}} - Booked yesterday
-        String(data.scheduledToday),          // {{7}} - Scheduled today
-        String(data.pendingFollowup),         // {{8}} - Pending followup
-        String(data.mtdTotal),                // {{9}} - MTD total
-      ],
+    const result = await sendNotification('admin_daily_digest_v3', ADMIN_PHONE, {
+      date: data.date,
+      new_leads_count: String(data.newLeadsCount),
+      hot_count: String(data.hotCount),
+      warm_count: String(data.warmCount),
+      cool_count: String(data.coolCount),
+      booked_yesterday: String(data.bookedYesterday),
+      scheduled_today: String(data.scheduledToday),
+      pending_followup: String(data.pendingFollowup),
+      mtd_total: String(data.mtdTotal),
     });
 
     const duration = Date.now() - startTime;
@@ -347,7 +279,7 @@ export async function sendDailyDigest(data: DailyDigestData): Promise<boolean> {
       console.error(JSON.stringify({
         event: 'admin_alert_failed',
         type: 'daily_digest',
-        error: result.error,
+        reason: result.reason,
         duration: `${duration}ms`,
       }));
     }
@@ -362,70 +294,5 @@ export async function sendDailyDigest(data: DailyDigestData): Promise<boolean> {
     }));
 
     return false;
-  }
-}
-
-// ============================================================
-// LOG ADMIN ALERT TO DB
-// ============================================================
-// Non-blocking logging to communication_logs table
-//
-// CORRECT COLUMNS (as of Jan 2026):
-// - template_code (text)
-// - recipient_type (text)
-// - recipient_phone (text)
-// - recipient_email (text)
-// - wa_sent (boolean)
-// - email_sent (boolean)
-// - sms_sent (boolean)
-// - context_data (jsonb)
-// - error_message (text)
-// - sent_at (timestamptz)
-
-async function logAdminAlert(params: {
-  alertType: string;
-  relatedEntityType: string;
-  relatedEntityId: string;
-  success: boolean;
-  errorMessage?: string;
-  variables: Record<string, any>;
-  duration: number;
-}): Promise<void> {
-  try {
-    const supabase = getServiceSupabase();
-
-    // Use CORRECT column names for communication_logs table
-    const insertData = {
-      template_code: `admin_${params.alertType}`,
-      recipient_type: 'admin',
-      recipient_phone: ADMIN_PHONE,
-      recipient_email: null,
-      wa_sent: params.success,
-      email_sent: false,
-      sms_sent: false,
-      context_data: {
-        ...params.variables,
-        related_entity_type: params.relatedEntityType,
-        related_entity_id: params.relatedEntityId,
-        duration_ms: params.duration,
-      },
-      error_message: params.success ? null : (params.errorMessage || 'Unknown error'),
-      sent_at: params.success ? new Date().toISOString() : null,
-    };
-
-    console.log('[AdminAlert] DB insert data:', JSON.stringify(insertData));
-
-    const { error: insertError } = await supabase.from('communication_logs').insert(insertData);
-
-    if (insertError) {
-      console.error('[AdminAlert] DB insert error:', insertError.message);
-      console.error('[AdminAlert] DB error details:', JSON.stringify(insertError));
-    } else {
-      console.log('[AdminAlert] DB log successful');
-    }
-  } catch (error: any) {
-    // Never throw from logging
-    console.error('[AdminAlert] DB log exception:', error.message);
-    console.error('[AdminAlert] DB exception stack:', error.stack);
   }
 }

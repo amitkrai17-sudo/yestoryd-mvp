@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import { sendEmail } from '@/lib/email/resend-client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
@@ -559,10 +559,8 @@ async function handler(request: NextRequest) {
     // WhatsApp alert
     const adminPhone = process.env.ADMIN_WHATSAPP_PHONE || COMPANY_CONFIG.adminWhatsApp;
     try {
-      await sendWhatsAppMessage({
-        to: adminPhone,
-        templateName: 'admin_daily_health_v3', // Reuse health report template
-        variables: [message],
+      await sendNotification('admin_daily_health_v3', adminPhone, {
+        message,
       });
     } catch (err: any) {
       console.error(JSON.stringify({ requestId, event: 'smoke_wa_alert_failed', error: err.message }));

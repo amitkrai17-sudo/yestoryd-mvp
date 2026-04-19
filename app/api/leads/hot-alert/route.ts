@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 // Auth handled by api-auth.ts
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
-import { sendWhatsAppMessage } from '@/lib/communication/aisensy';
+import { sendNotification } from '@/lib/communication/notify';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -655,18 +655,13 @@ ${lead.latest_assessment_score !== null && lead.latest_assessment_score <= 3
 
   // Try AiSensy
   if (AISENSY_API_KEY) {
-    const result = await sendWhatsAppMessage({
-      to: ADMIN_PHONE,
-      templateName: 'admin_hot_lead_alert_v3',
-      variables: [childName, String(age), parentName, phone, String(score), String(leadScore)],
-      meta: {
-        templateCode: 'admin_hot_lead_alert_v3',
-        recipientType: 'admin',
-        triggeredBy: 'cron',
-        contextType: 'lead',
-        contextId: lead.id,
-        contextData: { freeform_message: message },
-      },
+    const result = await sendNotification('admin_hot_lead_alert_v3', ADMIN_PHONE, {
+      child_name: childName,
+      age: String(age),
+      parent_name: parentName,
+      phone,
+      score: String(score),
+      lead_score: String(leadScore),
     });
     if (result.success) {
       console.log(`WhatsApp alert sent for ${childName}`);
