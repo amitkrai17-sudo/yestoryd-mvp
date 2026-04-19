@@ -221,8 +221,6 @@ export async function GET(request: NextRequest) {
           variables: {
             parent_name: parentData.parentName,
             child_name: childName,
-            pending_count: pendingCount,
-            task_list: taskList,
           },
           relatedEntityType: 'practice_nudge',
           triggeredBy: 'system',
