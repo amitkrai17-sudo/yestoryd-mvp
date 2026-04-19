@@ -125,31 +125,17 @@ export async function GET(request: NextRequest) {
         try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v3', outcome: 'pending' }); } catch {}
 
         // Send the same parent_tuition_onboarding_v3 template (magic link still valid)
-        await sendNotification('parent_tuition_onboarding_v3', `91${record.parent_phone}`, {
+        await sendNotification('parent_tuition_onboarding_v3', record.parent_phone, {
           coach_first_name: coachFirstName,
           child_name: (record.child_name && !record.child_name.startsWith('Pending')) ? record.child_name : 'your child',
           magic_link: magicLink,
           sessions_purchased: String(record.sessions_purchased),
           rate_rupees: String(Math.round(record.session_rate / 100)),
           coach_first_name_2: coachFirstName,
-        });
-
-        // Log to communication_logs
-        await supabase.from('communication_logs').insert({
-          template_code: 'tuition_onboarding_nudge',
-          recipient_type: 'parent',
-          recipient_phone: `91${record.parent_phone}`,
-          recipient_name: record.parent_name_hint || null,
-          channel: 'whatsapp',
-          status: 'sent',
-          related_entity_type: 'tuition_onboarding',
-          related_entity_id: record.id,
-          variables: {
-            coach_name: coachFirstName,
-            child_name: record.child_name,
-            magic_link: magicLink,
-            nudge_number: alreadySent + 1,
-          },
+        }, {
+          triggeredBy: 'cron',
+          contextType: 'tuition_nudge',
+          contextId: record.id,
         });
 
         nudged++;

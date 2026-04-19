@@ -132,13 +132,10 @@ export async function deductTuitionBalance(
     if (newBalance <= 0) {
       // Zero or negative — send renewal link
       const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
-      const formattedPhone = parentPhone
-        ? (parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`)
-        : null;
 
-      if (formattedPhone) {
+      if (parentPhone) {
         try {
-          const result = await sendNotification('parent_tuition_renewal_v3', formattedPhone, {
+          const result = await sendNotification('parent_tuition_renewal_v3', parentPhone, {
             parent_first_name: parentName.split(' ')[0],
             child_name: childName,
             sessions_purchased: String(enrollment.sessions_purchased || 0),
@@ -151,14 +148,14 @@ export async function deductTuitionBalance(
           } else {
             console.error(JSON.stringify({
               requestId, event: 'tuition_renewal_wa_failed',
-              enrollmentId, phone: formattedPhone, reason: result.reason,
+              enrollmentId, phone: parentPhone, reason: result.reason,
             }));
           }
         } catch (waErr) {
           const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
           console.error(JSON.stringify({
             requestId, event: 'tuition_renewal_wa_exception',
-            enrollmentId, phone: formattedPhone, error: errMsg,
+            enrollmentId, phone: parentPhone, error: errMsg,
           }));
         }
       }
@@ -177,13 +174,10 @@ export async function deductTuitionBalance(
     } else if (newBalance <= 2) {
       // Low balance alert
       const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
-      const formattedPhone = parentPhone
-        ? (parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`)
-        : null;
 
-      if (formattedPhone) {
+      if (parentPhone) {
         try {
-          const result = await sendNotification('parent_tuition_low_balance_v3', formattedPhone, {
+          const result = await sendNotification('parent_tuition_low_balance_v3', parentPhone, {
             parent_first_name: parentName.split(' ')[0],
             child_name: childName,
             new_balance: String(newBalance),
@@ -194,14 +188,14 @@ export async function deductTuitionBalance(
           } else {
             console.error(JSON.stringify({
               requestId, event: 'tuition_low_balance_wa_failed',
-              enrollmentId, phone: formattedPhone, reason: result.reason,
+              enrollmentId, phone: parentPhone, reason: result.reason,
             }));
           }
         } catch (waErr) {
           const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
           console.error(JSON.stringify({
             requestId, event: 'tuition_low_balance_wa_exception',
-            enrollmentId, phone: formattedPhone, error: errMsg,
+            enrollmentId, phone: parentPhone, error: errMsg,
           }));
         }
       }
@@ -279,13 +273,10 @@ async function checkAndPause(
 
   // Send paused WA
   const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
-  const formattedPhone = parentPhone
-    ? (parentPhone.startsWith('91') ? parentPhone : `91${parentPhone}`)
-    : null;
 
-  if (formattedPhone) {
+  if (parentPhone) {
     try {
-      const result = await sendNotification('parent_tuition_paused_v3', formattedPhone, {
+      const result = await sendNotification('parent_tuition_paused_v3', parentPhone, {
         parent_first_name: parentName.split(' ')[0],
         child_name: childName,
         renewal_url: renewalUrl,
@@ -294,14 +285,14 @@ async function checkAndPause(
       if (!result.success) {
         console.error(JSON.stringify({
           requestId, event: 'tuition_paused_wa_failed',
-          enrollmentId, phone: formattedPhone, reason: result.reason,
+          enrollmentId, phone: parentPhone, reason: result.reason,
         }));
       }
     } catch (waErr) {
       const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
       console.error(JSON.stringify({
         requestId, event: 'tuition_paused_wa_exception',
-        enrollmentId, phone: formattedPhone, error: errMsg,
+        enrollmentId, phone: parentPhone, error: errMsg,
       }));
     }
   }

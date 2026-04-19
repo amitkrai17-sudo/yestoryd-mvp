@@ -118,24 +118,10 @@ export async function POST(request: NextRequest) {
           parent_name: parentName,
           child_name: childName,
           class_name: className,
-        });
-
-        // Log in communication_logs
-        await supabase.from('communication_logs').insert({
-          template_code: 'group_class_parent_feedback_request',
-          recipient_type: 'parent',
-          recipient_id: parentId,
-          recipient_phone: parent.phone,
-          wa_sent: waResult.success,
-          error_message: waResult.reason || null,
-          context_data: {
-            session_id,
-            child_ids: childIds,
-            child_name: childName,
-            class_name: className,
-            type: 'group_class_feedback_request',
-          },
-          sent_at: waResult.success ? new Date().toISOString() : null,
+        }, {
+          triggeredBy: 'cron',
+          contextType: 'group_class_session',
+          contextId: session_id,
         });
 
         if (waResult.success) feedbackRequestsSent++;

@@ -169,17 +169,10 @@ export async function POST(request: NextRequest) {
                 child_name: childName,
                 shortened_insight: shortenedInsight,
                 cta_link: ctaLink,
-              });
-
-              await supabase.from('communication_logs').insert({
-                template_code: 'group_class_micro_insight_nonenrolled',
-                recipient_type: 'parent',
-                recipient_id: parentId,
-                recipient_phone: parent.phone,
-                wa_sent: waResult.success,
-                error_message: waResult.reason || null,
-                context_data: { session_id, child_id: childId, child_name: childName, cta_type: ctaType },
-                sent_at: waResult.success ? new Date().toISOString() : null,
+              }, {
+                triggeredBy: 'cron',
+                contextType: 'group_class_session',
+                contextId: session_id,
               });
 
               if (waResult.success) notificationsSent++;
