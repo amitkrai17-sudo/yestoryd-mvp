@@ -279,7 +279,7 @@ async function sendBookingNotification(
     // Insert into communication queue for async processing
     // This is better than self-HTTP calls
     await supabase.from('communication_queue').insert({
-      template_code: 'P6_discovery_booked',
+      template_code: 'parent_discovery_booked_v3',
       recipient_type: 'parent',
       recipient_id: data.phone,
       scheduled_for: new Date().toISOString(),
@@ -320,7 +320,7 @@ async function sendBookingNotification(
     console.log(JSON.stringify({
       requestId,
       event: 'notification_queued',
-      template: 'P6_discovery_booked',
+      template: 'parent_discovery_booked_v3',
     }));
 
   } catch (error: any) {

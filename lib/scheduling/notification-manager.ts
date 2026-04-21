@@ -112,26 +112,26 @@ const EVENT_TEMPLATES: Record<SchedulingEvent, {
   admin?: string;
 }> = {
   'session.scheduled': {
-    parent: 'P_session_scheduled',
-    coach: 'C_session_scheduled',
+    parent: 'parent_session_scheduled_v3',
+    coach: 'session_scheduled_coach',
   },
   'session.rescheduled': {
-    parent: 'P_session_rescheduled',
-    coach: 'C_session_rescheduled',
+    parent: 'parent_reschedule_confirmed_v3',
+    coach: 'session_rescheduled_coach',
   },
   'session.cancelled': {
-    parent: 'P_session_cancelled',
-    coach: 'C_session_cancelled',
+    parent: 'parent_session_cancelled_v5',
+    coach: 'session_cancelled_coach',
   },
   'coach.reassigned': {
-    parent: 'P_coach_reassigned',
-    admin: 'A_coach_reassigned',
+    parent: 'coach_reassigned_parent',
+    // admin variant: no AiSensy campaign registered; drop entry
   },
   'session.manual_needed': {
-    admin: 'A_manual_scheduling_needed',
+    admin: 'manual_scheduling_admin',
   },
   'enrollment.at_risk': {
-    admin: 'A_enrollment_at_risk',
+    admin: 'enrollment_at_risk_admin',
   },
 };
 

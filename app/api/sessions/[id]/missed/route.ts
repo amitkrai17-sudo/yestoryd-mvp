@@ -136,7 +136,7 @@ export async function POST(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              templateCode: 'P23_session_noshow',
+              templateCode: 'parent_session_noshow_v3',
               recipientType: 'parent',
               recipientPhone: child.parent_phone,
               variables: {

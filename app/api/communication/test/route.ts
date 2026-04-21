@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Test] Running ${testType} test...`);
 
-    // Test with P1_assessment_complete template (has both WhatsApp and Email)
+    // Test with parent_assessment_results_v3 template (has both WhatsApp and Email)
     const result = await sendCommunication({
-      templateCode: 'P1_assessment_complete',
+      templateCode: 'parent_assessment_results_v3',
       recipientType: 'parent',
       recipientPhone: testPhone,
       recipientEmail: testEmail,

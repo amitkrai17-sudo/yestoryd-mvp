@@ -364,7 +364,7 @@ export async function POST(request: NextRequest) {
         const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
         await sendCommunication({
-          templateCode: 'P14_payment_confirmed',
+          templateCode: 'parent_payment_confirmed_v3',
           recipientType: 'parent',
           recipientId: tuitionEnrollment.parent_id || undefined,
           recipientPhone: body.parentPhone,
@@ -392,7 +392,7 @@ export async function POST(request: NextRequest) {
             user_type: 'system',
             metadata: {
               error: waErr instanceof Error ? waErr.message : String(waErr),
-              template: 'P14_payment_confirmed',
+              template: 'parent_payment_confirmed_v3',
               parent_id: tuitionEnrollment.parent_id,
               enrollment_id: tuitionEnrollmentId,
               payment_path: 'tuition_verify',
@@ -781,7 +781,7 @@ export async function POST(request: NextRequest) {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
       const coachingEnr = { billing_model: 'prepaid_season' as const };
       await sendCommunication({
-        templateCode: 'P14_payment_confirmed',
+        templateCode: 'parent_payment_confirmed_v3',
         recipientType: 'parent',
         recipientId: parent.id,
         recipientPhone: body.parentPhone,
@@ -809,7 +809,7 @@ export async function POST(request: NextRequest) {
           user_type: 'system',
           metadata: {
             error: waErr instanceof Error ? waErr.message : String(waErr),
-            template: 'P14_payment_confirmed',
+            template: 'parent_payment_confirmed_v3',
             parent_id: parent.id,
             enrollment_id: enrollment.id,
             payment_path: 'standard_verify',

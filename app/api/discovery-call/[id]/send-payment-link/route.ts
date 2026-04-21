@@ -244,7 +244,7 @@ export async function POST(
           const { sendCommunication } = await import('@/lib/communication');
           
           const result = await sendCommunication({
-            templateCode: 'discovery_payment_link',
+            templateCode: 'parent_discovery_payment_v3',
             recipientType: 'parent',
             recipientPhone: call.parent_phone,
             recipientEmail: call.parent_email,

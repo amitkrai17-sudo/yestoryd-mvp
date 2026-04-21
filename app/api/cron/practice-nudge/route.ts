@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
         const { count: recentNudge } = await supabase
           .from('communication_logs')
           .select('*', { count: 'exact', head: true })
-          .eq('template_code', 'practice_nudge')
+          .eq('template_code', 'parent_practice_nudge_v3')
           .eq('recipient_id', parentData.parentId)
           .gt('created_at', nudgeThresholdDate);
 
@@ -209,10 +209,10 @@ export async function GET(request: NextRequest) {
         const pendingCount = String(allTasks.length);
         const taskList = allTasks.slice(0, 3).join(', ') + (allTasks.length > 3 ? ` +${allTasks.length - 3} more` : '');
 
-        try { await logDecision({ source: 'cron:practice-nudge', entity_type: 'parent', entity_id: parentData.parentId, decision: 'send_practice_nudge', reason: { engagement: completionRate, nudge_threshold_hours: nudgeThresholdHours, pending_count: allTasks.length } as Json, action: 'sendCommunication:practice_nudge', outcome: 'pending' }); } catch {}
+        try { await logDecision({ source: 'cron:practice-nudge', entity_type: 'parent', entity_id: parentData.parentId, decision: 'send_practice_nudge', reason: { engagement: completionRate, nudge_threshold_hours: nudgeThresholdHours, pending_count: allTasks.length } as Json, action: 'sendCommunication:parent_practice_nudge_v3', outcome: 'pending' }); } catch {}
 
         await sendCommunication({
-          templateCode: 'practice_nudge',
+          templateCode: 'parent_practice_nudge_v3',
           recipientType: 'parent',
           recipientId: parentData.parentId,
           recipientPhone: parentData.parentPhone,

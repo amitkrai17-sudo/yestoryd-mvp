@@ -261,7 +261,7 @@ export async function POST(
           const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
 
           const commResult = await sendCommunication({
-            templateCode: 'P22_practice_tasks_assigned',
+            templateCode: 'parent_practice_tasks_v3',
             recipientType: 'parent',
             recipientId: childInfo.parent_id || undefined,
             recipientPhone: childInfo.parent_phone || undefined,

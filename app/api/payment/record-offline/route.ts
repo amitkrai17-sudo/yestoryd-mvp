@@ -230,7 +230,7 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
     const offlineEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: body.sessions_purchased };
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
     await sendCommunication({
-      templateCode: 'P14_payment_confirmed',
+      templateCode: 'parent_payment_confirmed_v3',
       recipientType: 'parent',
       recipientId: enrollment.parent_id || undefined,
       recipientPhone: parentPhone,
@@ -258,7 +258,7 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
         user_type: 'system',
         metadata: {
           error: waErr instanceof Error ? waErr.message : String(waErr),
-          template: 'P14_payment_confirmed',
+          template: 'parent_payment_confirmed_v3',
           parent_id: enrollment.parent_id,
           enrollment_id: body.enrollment_id,
           payment_path: 'offline_payment',

@@ -357,7 +357,7 @@ async function processPaymentCaptured(
       const { data: existingSend } = await supabase
         .from('communication_logs')
         .select('id')
-        .eq('template_code', 'P14_payment_confirmed')
+        .eq('template_code', 'parent_payment_confirmed_v3')
         .eq('related_entity_id', tuitionEnrollmentId)
         .eq('related_entity_type', 'enrollment')
         .eq('status', 'sent')
@@ -376,7 +376,7 @@ async function processPaymentCaptured(
         const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
         await sendCommunication({
-          templateCode: 'P14_payment_confirmed',
+          templateCode: 'parent_payment_confirmed_v3',
           recipientType: 'parent',
           recipientId: tuitionEnrollment.parent_id || undefined,
           recipientPhone: bookingData.parent_phone,
@@ -405,7 +405,7 @@ async function processPaymentCaptured(
           user_type: 'system',
           metadata: {
             error: waErr.message,
-            template: 'P14_payment_confirmed',
+            template: 'parent_payment_confirmed_v3',
             parent_id: tuitionEnrollment.parent_id,
             enrollment_id: tuitionEnrollmentId,
             payment_path: 'tuition_webhook',
@@ -726,7 +726,7 @@ async function processPaymentCaptured(
     const { data: existingSend } = await supabase
       .from('communication_logs')
       .select('id')
-      .eq('template_code', 'P14_payment_confirmed')
+      .eq('template_code', 'parent_payment_confirmed_v3')
       .eq('related_entity_id', enrollment.id)
       .eq('related_entity_type', 'enrollment')
       .eq('status', 'sent')
@@ -739,7 +739,7 @@ async function processPaymentCaptured(
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
       const coachingEnr = { billing_model: 'prepaid_season' as const };
       await sendCommunication({
-        templateCode: 'P14_payment_confirmed',
+        templateCode: 'parent_payment_confirmed_v3',
         recipientType: 'parent',
         recipientId: booking.parent_id ?? undefined,
         recipientPhone: bookingData.parent_phone,
@@ -768,7 +768,7 @@ async function processPaymentCaptured(
         user_type: 'system',
         metadata: {
           error: waErr.message,
-          template: 'P14_payment_confirmed',
+          template: 'parent_payment_confirmed_v3',
           parent_id: booking.parent_id,
           enrollment_id: enrollment.id,
           payment_path: 'standard_webhook',

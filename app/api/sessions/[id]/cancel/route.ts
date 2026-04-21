@@ -129,7 +129,7 @@ export async function POST(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              templateCode: 'P_session_cancelled',
+              templateCode: 'parent_session_cancelled_v5',
               recipientType: 'parent',
               recipientPhone: child.parent_phone,
               variables: {

@@ -23,7 +23,7 @@ interface OutcomeRule {
 
 const OUTCOME_RULES: OutcomeRule[] = [
   {
-    action_pattern: /practice_nudge/,
+    action_pattern: /parent_practice_nudge_v3/,
     min_wait_hours: 6,
     max_wait_hours: 48,
     checker: async (supabase, _entityType, entityId, actionTime) => {
