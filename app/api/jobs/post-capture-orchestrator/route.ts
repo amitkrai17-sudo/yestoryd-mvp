@@ -47,19 +47,12 @@ export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
 
   // Verify QStash signature
-  const auth = await verifyCronRequest(request);
-  if (!auth.isValid) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const rawBody = await request.text();
+  const auth = await verifyCronRequest(request, rawBody);
+  if (!auth.isValid) return new Response('Unauthorized', { status: 401 });
+  const body: OrchestratorPayload = JSON.parse(rawBody);
 
-  let payload: OrchestratorPayload;
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
-
-  const { captureId, sessionId, childId, coachId, sessionModality } = payload;
+  const { captureId, sessionId, childId, coachId, sessionModality } = body;
   const supabase = createAdminClient();
   const results: StepResults = {
     learning_event: false,
