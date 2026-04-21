@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
       try {
         // 7. ACTUALLY SEND WhatsApp via AiSensy
         const waResult = await sendNotification(
-          'parent_discovery_reminder_v3',
+          'P7_discovery_reminder_24h',
           call.parent_phone,
           {
             parent_first_name: parentFirstName,

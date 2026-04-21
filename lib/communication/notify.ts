@@ -203,6 +203,10 @@ async function resolveRecipientPhone(recipientId: string): Promise<string | null
 /**
  * Send a WhatsApp notification via the unified engine.
  *
+ * IMPORTANT: first arg must be template_code (DB primary key),
+ * NOT wa_template_name (AiSensy campaign name). They differ for
+ * legacy templates (e.g. C9_session_reminder ≠ coach_session_reminder_1h_v3).
+ *
  * Flow: template lookup → param validation → phone resolution →
  *       daily cap → quiet hours → idempotency → channel-routed send → log annotation.
  *

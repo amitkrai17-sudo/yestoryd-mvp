@@ -705,7 +705,7 @@ export async function POST(request: NextRequest) {
 
           import('@/lib/communication/notify').then(({ sendNotification }) => {
             sendNotification(
-              'parent_assessment_results_v3',
+              'P1_assessment_complete',
               parentPhone,
               {
                 parent_name: parentName || 'Parent',

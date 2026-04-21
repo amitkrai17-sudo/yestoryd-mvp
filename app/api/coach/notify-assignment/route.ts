@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     // 1. Send WhatsApp via unified notify engine
     if (coach.phone) {
       const waResult = await sendNotification(
-        'coach_child_assigned_v4',
+        'C8_child_assigned',
         coach.phone,
         {
           coach_first_name: coachFirstName,
