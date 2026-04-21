@@ -138,7 +138,7 @@ async function generateReadingTip(childAge: number | null, concern: string | nul
 
   // Static fallback
   return `Try reading aloud with your child for just 10 minutes a day — it builds both vocabulary and confidence! Pick a book they love and take turns reading pages.`;
-}
+}
 
 // ============================================================
 // MAIN HANDLER
@@ -150,7 +150,8 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. AUTHORIZATION
-    const auth = await verifyCronRequest(request);
+    const rawBody = await request.text();
+    const auth = await verifyCronRequest(request, rawBody);
     if (!auth.isValid) {
       console.error(JSON.stringify({ requestId, event: 'nurture_auth_failed' }));
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

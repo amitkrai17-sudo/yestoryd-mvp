@@ -31,7 +31,7 @@ import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic';
 
 // --- TYPES ---
 interface LeadDigestData {
@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. AUTHORIZATION (Required)
-    const auth = await verifyCronRequest(request);
+    const rawBody = await request.text();
+    const auth = await verifyCronRequest(request, rawBody);
 
     if (!auth.isValid) {
       console.error(JSON.stringify({
