@@ -101,6 +101,7 @@ export default function ParentTasksPage() {
     total_this_week: 0,
     current_streak: 0,
     longest_streak: 0,
+    active_count: 0,
   });
   const [completing, setCompleting] = useState<string | null>(null);
   const [showPhotoSheet, setShowPhotoSheet] = useState<string | null>(null);
@@ -122,6 +123,7 @@ export default function ParentTasksPage() {
           total_this_week: data.stats.total_this_week,
           current_streak: data.stats.current_streak,
           longest_streak: data.stats.longest_streak,
+          active_count: data.stats.active_count || 0,
         });
       }
     } catch (err) {
@@ -395,29 +397,31 @@ export default function ParentTasksPage() {
                 </button>
               )}
             </div>
-          ) : todayTask && todayTask.is_completed ? (
-            /* Today done */
+          ) : stats.active_count > 0 ? (
+            /* Backlog-prompt: no active today task but pending tasks exist */
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-[#FFF5F9] flex items-center justify-center mx-auto mb-3">
+                <BookOpen className="w-6 h-6 text-[#FF0099]" />
+              </div>
+              <p className="text-base font-medium text-gray-900">
+                You have {pluralize(stats.active_count, 'task')} from earlier this week
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Tap one below to get started.
+              </p>
+            </div>
+          ) : (todayTask?.is_completed || weekTasks.length > 0) ? (
+            /* Celebratory: some progress this week and no backlog */
             <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-[#E8FCF1] flex items-center justify-center mx-auto mb-3">
                 <Check className="w-6 h-6 text-emerald-600" />
               </div>
-              <p className="text-base font-medium text-gray-900">All done for today!</p>
+              <p className="text-base font-medium text-gray-900">All done this week!</p>
               <p className="text-sm text-gray-500 mt-1">
                 New tasks will appear after the next session
               </p>
             </div>
-          ) : (
-            /* No task today */
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-[#E8FCF1] flex items-center justify-center mx-auto mb-3">
-                <Check className="w-6 h-6 text-emerald-600" />
-              </div>
-              <p className="text-base font-medium text-gray-900">All done for today!</p>
-              <p className="text-sm text-gray-500 mt-1">
-                New tasks will appear after the next session
-              </p>
-            </div>
-          )}
+          ) : null}
         </div>
 
         {/* ============ SECTION 4: THIS WEEK ============ */}
