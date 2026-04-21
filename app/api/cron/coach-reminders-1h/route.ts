@@ -157,7 +157,7 @@ async function processReminders(requestId: string, source: string) {
         // This is the 1h caller — only 3 core params available in scope.
         // Enrollment-lifecycle (24h caller) has the same shim.
         const waResult = await sendNotification(
-          'coach_session_reminder_1h_v3',
+          'C9_session_reminder',
           coach.phone,
           {
             coach_first_name: coachFirstName,

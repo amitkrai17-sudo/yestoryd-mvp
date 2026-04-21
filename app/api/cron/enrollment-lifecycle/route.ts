@@ -351,7 +351,7 @@ export async function GET(request: NextRequest) {
           // TODO: replace last_focus/next_focus with actual session data
           // from session_prep_data or last SCF response (C9 shim — Apr 2026)
           const waResult = await sendNotification(
-            'coach_session_reminder_1h_v3',
+            'C9_session_reminder',
             coach.phone,
             {
               coach_first_name: coachFirstName,
@@ -383,7 +383,7 @@ export async function GET(request: NextRequest) {
             results.coachReminders24h.errors.push(`Session ${session.id}: ${waResult.reason}`);
           }
 
-          try { await logOpsEvent({ event_type: 'nudge_sent', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'session', entity_id: session.id, action_taken: 'aisensy:coach_session_reminder_1h_v3', action_outcome: waResult.success ? 'success' : 'failed', resolved_by: 'auto' }); } catch {}
+          try { await logOpsEvent({ event_type: 'nudge_sent', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'session', entity_id: session.id, action_taken: 'aisensy:C9_session_reminder', action_outcome: waResult.success ? 'success' : 'failed', resolved_by: 'auto' }); } catch {}
         } catch (e: any) {
           results.coachReminders24h.failed++;
           results.coachReminders24h.errors.push(`Session ${session.id}: ${e.message}`);

@@ -314,7 +314,8 @@ export async function sendNotification(
   // ── STEP 5. Quiet hours ──
   const hour = istHour();
   const inQuiet = hour >= settings.quietStart || hour < settings.quietEnd;
-  if (inQuiet) {
+  const isAdmin = template.recipient_type === 'admin';
+  if (!isAdmin && inQuiet) {
     const deferUntil = nextQuietEndUtc(settings.quietEnd);
     // Raw insert — logCommunication doesn't support deferred_until/channel yet.
     const { data: insertedRows } = await supabase
