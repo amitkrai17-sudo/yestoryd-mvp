@@ -104,7 +104,92 @@ ORDER BY scr.created_at;
 
 Pass criteria: all 11 rows show `event_emitted = true`, `task_created = true`, `p22_email_delivered = true`.
 
+## Post-Republish Step: Task Date Override (REQUIRED before closing batch)
+
+Run this UPDATE **after** all 11 QStash publishes complete AND the verification query above shows all 11 rows passing. This corrects `task_date` on the newly-created reconciliation tasks so they render as today-actionable in the parent dashboard.
+
+```sql
+UPDATE parent_daily_tasks
+SET task_date = CURRENT_DATE, updated_at = NOW()
+WHERE id IN (
+  SELECT id FROM parent_daily_tasks
+  WHERE source = 'coach_assigned'
+    AND created_at > NOW() - INTERVAL '1 hour'
+    AND child_id IN (
+      SELECT child_id FROM structured_capture_responses
+      WHERE id = ANY(ARRAY[
+        '08f24312-cd8d-458b-93cf-9d0db9ee3916',
+        '4db9f6af-fa77-4f9e-a5c1-39d0f6468d57',
+        '57f97b1e-f44e-450d-b783-3cfae7ecb2a9',
+        '2f8a36c0-b8de-438a-ad01-962c2a323762',
+        '889e1e0a-285d-4c97-871c-99d696c496ce',
+        'cc36e00f-e750-455a-8659-3ef3f7f46fc3',
+        '93f45b31-9807-42a4-930d-9198787f335f',
+        '5f4b2911-7b8e-457c-ba74-d5ee63cc3133',
+        'aa503e38-2c35-46f6-8d1e-67bafa1375eb',
+        '98a51b45-5905-4b00-afb2-7969d2fccef7',
+        '8d7d50d0-bd46-487a-8242-d64dc81da6ec'
+      ]::uuid[])
+    )
+);
+```
+
+Expected: 11 rows updated.
+
+### Rationale
+
+- The orchestrator's Step 2 sets `task_date = capture.session_date` (`app/api/jobs/post-capture-orchestrator/route.ts:180`).
+- For reconciliation traffic, `session_date` is 3-11 days old → tasks render as **EXPIRED** immediately in parent dashboard UI, since any UI bucketer that compares `task_date` to `CURRENT_DATE` / `date_trunc('week', CURRENT_DATE)` places them in the "past" bucket.
+- Parents would receive the P22 WhatsApp/email (correctly, notifying them of the newly-assigned task) but then open the dashboard and see an "expired" task — bad UX, likely undermines trust and the reconciliation value.
+- Override `task_date = CURRENT_DATE` on the 11 reconciliation tasks so they render as today-actionable.
+- `session_id` on each task still preserves linkage to the original coaching session for any downstream reporting. Only the calendar-display date changes.
+
+### Verification
+
+```sql
+SELECT child_id, title, task_date, created_at, updated_at
+FROM parent_daily_tasks
+WHERE source = 'coach_assigned'
+  AND created_at > NOW() - INTERVAL '2 hours'
+  AND child_id IN (
+    SELECT child_id FROM structured_capture_responses
+    WHERE id = ANY(ARRAY[
+      '08f24312-cd8d-458b-93cf-9d0db9ee3916',
+      '4db9f6af-fa77-4f9e-a5c1-39d0f6468d57',
+      '57f97b1e-f44e-450d-b783-3cfae7ecb2a9',
+      '2f8a36c0-b8de-438a-ad01-962c2a323762',
+      '889e1e0a-285d-4c97-871c-99d696c496ce',
+      'cc36e00f-e750-455a-8659-3ef3f7f46fc3',
+      '93f45b31-9807-42a4-930d-9198787f335f',
+      '5f4b2911-7b8e-457c-ba74-d5ee63cc3133',
+      'aa503e38-2c35-46f6-8d1e-67bafa1375eb',
+      '98a51b45-5905-4b00-afb2-7969d2fccef7',
+      '8d7d50d0-bd46-487a-8242-d64dc81da6ec'
+    ]::uuid[])
+  )
+ORDER BY child_id, task_date;
+```
+
+Expected: all 11 rows show `task_date = CURRENT_DATE` and `updated_at > created_at`.
+
 ## Known out-of-scope issues flagged during this exercise
 
 - **L2 (WhatsApp P22)** — AiSensy campaign `P22_practice_tasks_assigned` rejects current payload with `"Template params does not match the campaign"`. Caller sends positional array `[parent_first_name, child_name, task_count, dashboard_link]`; AiSensy template registration expects a different order or named params. Fix is AiSensy-side template edit + possibly `sendCommunication` variable wiring. Tracked separately.
 - **RUN 10 Redesign 6 (hardening)** — Make `body` required in `lib/api/verify-cron.ts` to prevent B1-style silent recurrence. Follow-up, not part of this reconciliation.
+- **Avani Aditya Dumbre, 2026-04-18** — two captures collapsed to one task (UNIQUE constraint on (child_id, task_date, title)). Parent was notified via P22. Second capture's event emitted to learning_events but no task row. Accepted for this batch.
+
+## OPEN for Week 1 — RUN 10 TASK-001 (createTask signature)
+
+Prevent the task_date override from being needed again for any future reconciliation batch. Sibling work:
+
+- Introduce a `createTask()` function in the homework module that takes `task_date` as an explicit parameter, with a default of `CURRENT_DATE` (today). Internal call sites pass explicit values where they need a non-today date.
+- Update `post-capture-orchestrator/route.ts:180` to pass `task_date = today` for real-time captures (not `capture.session_date`). The session linkage is already preserved via `session_id` on the task row — `task_date` should represent "when the parent should do this practice", not "when the session happened".
+- Keep `capture.session_date` available on the capture row for reporting, but stop propagating it into `parent_daily_tasks.task_date`.
+- After this change: no special reconciliation override is needed when a pipeline outage is repaired — late-republished captures produce today-dated tasks automatically.
+
+### TASK-007 — Session-distinguishing task title (Week 1, sibling to TASK-001)
+
+- Orchestrator Step 2 hardcodes `title = 'Practice Activity'` (`app/api/jobs/post-capture-orchestrator/route.ts:174`), causing UNIQUE collisions on `(child_id, task_date, title)` for same-day multi-session children.
+- Observed live during the 2026-04-22 reconciliation batch: Avani had two captures for the same session_date; first insert won, second failed silently inside Step 2's try/catch.
+- `createTask()` (introduced by TASK-001) should use a session-distinguishing title — e.g., append first 6 chars of `session_id`, or a session-time-of-day marker — so two same-day sessions for one child produce two distinguishable task rows.
+- Fix as part of Week 1 task layer unification, alongside TASK-001 (explicit `task_date` parameter).
