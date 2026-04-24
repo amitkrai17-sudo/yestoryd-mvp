@@ -183,18 +183,17 @@ export async function processRetry(
     }
 
     // Import dynamically to avoid circular deps
-    const { scheduleSession } = await import('./session-manager');
+    const { rescheduleExistingSession } = await import('./operations/reschedule-session');
 
-    const result = await scheduleSession(
-      {
-        enrollmentId: session.enrollment_id,
-        childId: session.child_id,
-        coachId: session.coach_id,
-        sessionType: session.session_type || 'coaching',
-        weekNumber: session.week_number,
-        durationMinutes: session.duration_minutes || 45, // Fallback for Building band; actual value from scheduled_sessions.duration_minutes
-      },
-      { isRetry: true, sessionId }
+    if (!session.scheduled_date || !session.scheduled_time) {
+      return { success: false, error: 'Session missing scheduled_date/time for retry' };
+    }
+
+    const result = await rescheduleExistingSession(
+      sessionId,
+      session.scheduled_date,
+      session.scheduled_time,
+      session.duration_minutes || 45, // Fallback for Building band; actual value from scheduled_sessions.duration_minutes
     );
 
     if (result.success) {

@@ -16,8 +16,6 @@ export interface ScheduleSessionInput {
 }
 
 export interface ScheduleSessionOptions {
-  isRetry?: boolean;
-  sessionId?: string;
   skipNotifications?: boolean;
   skipCalendar?: boolean;
   skipRecall?: boolean;

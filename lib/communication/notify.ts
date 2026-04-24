@@ -52,6 +52,13 @@ export interface NotifyMeta {
   triggeredByUserId?: string | null;
   contextType?: string | null;
   contextId?: string | null;
+  /**
+   * Arbitrary observability payload merged into communication_logs.context_data
+   * alongside named_params + recipient_id. Used by the batched-reminder dedupe
+   * (2.4) to record batch_id + sibling_session_ids + child_count when one
+   * send stands in for N scheduled_sessions rows.
+   */
+  contextData?: Record<string, unknown>;
 }
 
 interface TemplateRow {
@@ -251,7 +258,11 @@ export async function sendNotification(
     recipientType: templateRecipientType,
     triggeredBy: meta?.triggeredBy ?? 'system' as const,
     triggeredByUserId: meta?.triggeredByUserId ?? null,
-    contextData: { named_params: namedParams, recipient_id: recipientId },
+    contextData: {
+      named_params: namedParams,
+      recipient_id: recipientId,
+      ...(meta?.contextData ?? {}),
+    },
   };
 
   if (!template.is_active) {

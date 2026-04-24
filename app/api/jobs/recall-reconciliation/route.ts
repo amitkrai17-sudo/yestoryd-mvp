@@ -684,7 +684,7 @@ export async function GET(request: NextRequest) {
           const homework = analysis.homework_description || 'Keep reading daily!';
 
           await supabase.from('communication_queue').insert({
-            template_code: 'session_summary_parent',
+            template_code: 'parent_session_summary_v3',
             recipient_id: session.child_id ?? session.id,
             recipient_type: 'parent',
             related_entity_type: 'child',

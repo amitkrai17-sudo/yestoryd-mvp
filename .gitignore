@@ -32,3 +32,6 @@ supabase/.temp/
 # Local Claude Code + TypeScript build cache
 .claude/settings.local.json
 tsconfig.tsbuildinfo
+# Graphify analyzer outputs
+graphify-out/
+**/graphify-out/

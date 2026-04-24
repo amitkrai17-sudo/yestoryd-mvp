@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     const { data: outboundLogs } = await supabase
       .from('communication_logs')
       .select('id, recipient_id, recipient_phone, context_data, sent_at')
-      .eq('template_code', 'group_class_parent_feedback_request')
+      .eq('template_code', 'parent_group_feedback_v3')
       .eq('wa_sent', true)
       .gte('sent_at', cutoff)
       .order('sent_at', { ascending: false })

@@ -29,6 +29,11 @@ import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { logOpsEvent } from '@/lib/backops';
 import type { Json } from '@/lib/supabase/database.types';
+import {
+  groupSessionsForReminder,
+  joinChildNames,
+} from '@/lib/scheduling/group-sessions-for-reminder';
+import { formatDateShort } from '@/lib/utils/date-format';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,6 +70,7 @@ interface EnrollmentWithRelations {
 
 interface SessionWithRelations {
   id: string;
+  batch_id: string | null;
   scheduled_date: string;
   scheduled_time: string | null;
   session_type: string | null;
@@ -305,6 +311,7 @@ export async function GET(request: NextRequest) {
       .from('scheduled_sessions')
       .select(`
         id,
+        batch_id,
         scheduled_date,
         scheduled_time,
         session_type,
@@ -328,24 +335,34 @@ export async function GET(request: NextRequest) {
         count: sessions24h.length,
       }));
 
-      for (const rawSession of sessions24h) {
-        const session = rawSession as unknown as SessionWithRelations;
-        const coach = unwrapRelation(session.coaches);
-        const child = unwrapRelation(session.children);
+      // Dedupe by batch_id — mirrors Phase 1 of 2.4 in coach-reminders-1h.
+      // Siblings sharing (batch_id, scheduled_date, scheduled_time) collapse
+      // into ONE send per coach per slot; unbatched rows fall through as
+      // their own groups of one.
+      type SessionRow = (typeof sessions24h)[number];
+      const groups24h = groupSessionsForReminder<SessionRow>(sessions24h);
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'groups_built_24h',
+        sessionCount: sessions24h.length,
+        groupCount: groups24h.length,
+      }));
+
+      for (const group of groups24h) {
+        const primary = group.primary as unknown as SessionWithRelations;
+        const coach = unwrapRelation(primary.coaches);
 
         if (!coach?.phone) {
-          results.coachReminders24h.errors.push(`Session ${session.id}: Coach has no phone`);
+          results.coachReminders24h.errors.push(`Group ${group.key}: Coach has no phone`);
           continue;
         }
 
-        const childName = child?.name || child?.child_name || 'Student';
+        const childName = joinChildNames(group.childNames);
         const coachFirstName = coach.name?.split(' ')[0] || 'Coach';
-        const sessionDate = new Date(session.scheduled_date).toLocaleDateString('en-IN', {
-          weekday: 'short',
-          day: 'numeric',
-          month: 'short',
-        });
-        const sessionTime = session.scheduled_time?.slice(0, 5) || 'TBD';
+        const sessionDate = formatDateShort(primary.scheduled_date);
+        const sessionTime = primary.scheduled_time?.slice(0, 5) || 'TBD';
+        const batchId = primary.batch_id ?? null;
 
         try {
           // TODO: replace last_focus/next_focus with actual session data
@@ -364,7 +381,12 @@ export async function GET(request: NextRequest) {
             {
               triggeredBy: 'cron',
               contextType: 'scheduled_session',
-              contextId: session.id,
+              contextId: primary.id,
+              contextData: {
+                batch_id: batchId,
+                sibling_session_ids: group.sessionIds,
+                child_count: group.sessionIds.length,
+              },
             },
           );
 
@@ -375,18 +397,18 @@ export async function GET(request: NextRequest) {
                 coach_reminder_24h_sent: true,
                 coach_reminder_24h_sent_at: new Date().toISOString(),
               })
-              .eq('id', session.id);
+              .in('id', group.sessionIds);
 
-            results.coachReminders24h.sent++;
+            results.coachReminders24h.sent += group.sessionIds.length;
           } else {
-            results.coachReminders24h.failed++;
-            results.coachReminders24h.errors.push(`Session ${session.id}: ${waResult.reason}`);
+            results.coachReminders24h.failed += group.sessionIds.length;
+            results.coachReminders24h.errors.push(`Group ${group.key}: ${waResult.reason}`);
           }
 
-          try { await logOpsEvent({ event_type: 'nudge_sent', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'session', entity_id: session.id, action_taken: 'aisensy:coach_session_reminder_1h_v3', action_outcome: waResult.success ? 'success' : 'failed', resolved_by: 'auto' }); } catch {}
+          try { await logOpsEvent({ event_type: 'nudge_sent', source: 'cron:enrollment-lifecycle', severity: 'info', entity_type: 'session', entity_id: primary.id, action_taken: 'aisensy:coach_session_reminder_1h_v3', action_outcome: waResult.success ? 'success' : 'failed', resolved_by: 'auto' }); } catch {}
         } catch (e: any) {
-          results.coachReminders24h.failed++;
-          results.coachReminders24h.errors.push(`Session ${session.id}: ${e.message}`);
+          results.coachReminders24h.failed += group.sessionIds.length;
+          results.coachReminders24h.errors.push(`Group ${group.key}: ${e.message}`);
         }
 
         // Rate limiting delay

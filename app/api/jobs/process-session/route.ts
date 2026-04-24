@@ -499,7 +499,7 @@ async function queueParentSummary(
   const homework = extra?.homeworkDescription || 'Keep reading daily!';
 
   await supabase.from('communication_queue').insert({
-    template_code: 'session_summary_parent',
+    template_code: 'parent_session_summary_v3',
     recipient_id: childId,
     recipient_type: 'parent',
     related_entity_type: 'child',

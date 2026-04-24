@@ -301,7 +301,7 @@ export async function POST(
 
     // Send via communication engine (handles both WhatsApp + email)
     const commResult = await sendCommunication({
-      templateCode: 'session_summary_parent',
+      templateCode: 'parent_session_summary_v3',
       recipientType: 'parent',
       recipientPhone: child.parent_phone,
       recipientEmail: child.parent_email || null,

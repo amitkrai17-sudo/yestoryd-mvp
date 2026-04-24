@@ -16,7 +16,6 @@
 //
 // ============================================================================
 
-import { Database } from '@/lib/supabase/database.types';
 import {
   getPlanSchedule,
   getSessionTitle,
@@ -25,6 +24,10 @@ import {
 } from './config';
 import { findAvailableSlot, findSlotsForSchedule, SlotSearchResult } from './smart-slot-finder';
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  createScheduledSessionsBatch,
+  type CreateSessionParams,
+} from './session-engine';
 
 // ============================================================================
 // TYPES
@@ -473,73 +476,37 @@ async function insertAndFinalize(
     };
   }
 
-  // Insert sessions
-  const { error: insertError } = await supabase
-    .from('scheduled_sessions')
-    .insert(sessionsToCreate as Database['public']['Tables']['scheduled_sessions']['Insert'][]);
+  const paramsArray: CreateSessionParams[] = sessionsToCreate.map(toCreateParams);
 
-  if (insertError) {
-    console.error(`[EnrollmentScheduler] [${requestId}] Insert error:`, insertError);
+  const results = await createScheduledSessionsBatch(paramsArray, {
+    skipCalendar: true,
+    skipRecall: true,
+    skipNotifications: true,
+    requestId,
+    onInsertComplete: async (sessionIds) => {
+      await assignTemplatesAndUpdateEnrollment(
+        supabase,
+        enrollmentId,
+        childId,
+        sessionsToCreate,
+        sessionIds,
+        errors,
+        requestId,
+      );
+    },
+  });
+
+  const insertFailure = !results.some((r) => r.success);
+  if (insertFailure) {
+    const msg = results[0]?.error ?? 'insert failed';
+    console.error(`[EnrollmentScheduler] [${requestId}] Insert error:`, msg);
     return {
       success: false,
       sessionsCreated: 0,
       sessions: [],
       manualRequired: 0,
-      errors: [`Failed to insert sessions: ${insertError.message}`],
+      errors: [`Failed to insert sessions: ${msg}`],
     };
-  }
-
-  // Auto-assign session templates from season_learning_plans
-  try {
-    const { data: learningPlans } = await supabase
-      .from('season_learning_plans')
-      .select('week_number, session_template_id')
-      .eq('child_id', childId) as { data: { week_number: number; session_template_id: string | null }[] | null };
-
-    if (learningPlans && learningPlans.length > 0) {
-      const templateByWeek = new Map<number, string>();
-      for (const plan of learningPlans) {
-        if (plan.session_template_id) {
-          templateByWeek.set(plan.week_number, plan.session_template_id);
-        }
-      }
-
-      for (const session of sessionsToCreate) {
-        if (session.session_type !== 'coaching') continue;
-        const templateId = templateByWeek.get(session.week_number);
-        if (templateId) {
-          await supabase
-            .from('scheduled_sessions')
-            .update({ session_template_id: templateId })
-            .eq('enrollment_id', enrollmentId)
-            .eq('session_number', session.session_number);
-        }
-      }
-
-      console.log(`[EnrollmentScheduler] [${requestId}] Templates assigned:`, {
-        plansFound: learningPlans.length,
-        sessionsMatched: sessionsToCreate.filter(
-          s => s.session_type === 'coaching' && templateByWeek.has(s.week_number)
-        ).length,
-      });
-    }
-  } catch (templateErr) {
-    console.warn(`[EnrollmentScheduler] [${requestId}] Template assignment skipped:`, templateErr);
-  }
-
-  // Update enrollment record
-  const { error: updateError } = await supabase
-    .from('enrollments')
-    .update({
-      schedule_confirmed: true,
-      sessions_scheduled: sessionsToCreate.length,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', enrollmentId);
-
-  if (updateError) {
-    console.error(`[EnrollmentScheduler] [${requestId}] Enrollment update error:`, updateError);
-    errors.push(`Warning: Failed to update enrollment: ${updateError.message}`);
   }
 
   const manualRequired = sessionsToCreate.filter(s => s.slot_match_type === 'manual_required').length;
@@ -558,6 +525,102 @@ async function insertAndFinalize(
     manualRequired,
     errors,
   };
+}
+
+// ----------------------------------------------------------------------------
+// Shape translator: ScheduledSession (internal, pre-insert) → CreateSessionParams
+// ----------------------------------------------------------------------------
+function toCreateParams(s: ScheduledSession): CreateSessionParams {
+  const p: CreateSessionParams = {
+    enrollmentId: s.enrollment_id,
+    childId: s.child_id,
+    coachId: s.coach_id,
+    sessionType: s.session_type,
+    sessionNumber: s.session_number,
+    sessionTitle: s.session_title,
+    weekNumber: s.week_number,
+    scheduledDate: s.scheduled_date,
+    scheduledTime: s.scheduled_time,
+    durationMinutes: s.duration_minutes,
+    status: s.status,
+  };
+  if (s.is_diagnostic) p.isDiagnostic = true;
+  if (s.slot_match_type) p.slotMatchType = s.slot_match_type;
+  if (s.session_mode) p.sessionMode = s.session_mode;
+  const extra = s as ScheduledSession & { batch_id?: string | null; google_meet_link?: string | null };
+  if (extra.batch_id !== undefined) p.batchId = extra.batch_id;
+  if (extra.google_meet_link) p.googleMeetLink = extra.google_meet_link;
+  return p;
+}
+
+// ----------------------------------------------------------------------------
+// Shared hook body: template autoassign + enrollment update.
+// Runs inside createScheduledSessionsBatch's onInsertComplete, so it fires
+// AFTER rows are inserted. Preserves the original sequence:
+//   1. Map child_id → week → session_template_id
+//   2. Per inserted coaching row, write session_template_id (keyed by week)
+//   3. Update enrollments: schedule_confirmed=true, sessions_scheduled=N
+// ----------------------------------------------------------------------------
+async function assignTemplatesAndUpdateEnrollment(
+  supabase: ReturnType<typeof createAdminClient>,
+  enrollmentId: string,
+  childId: string,
+  sessionsToCreate: ScheduledSession[],
+  sessionIds: string[],
+  errors: string[],
+  requestId: string,
+): Promise<void> {
+  try {
+    const { data: learningPlans } = await supabase
+      .from('season_learning_plans')
+      .select('week_number, session_template_id')
+      .eq('child_id', childId) as { data: { week_number: number; session_template_id: string | null }[] | null };
+
+    if (learningPlans && learningPlans.length > 0) {
+      const templateByWeek = new Map<number, string>();
+      for (const plan of learningPlans) {
+        if (plan.session_template_id) {
+          templateByWeek.set(plan.week_number, plan.session_template_id);
+        }
+      }
+
+      for (let i = 0; i < sessionsToCreate.length; i++) {
+        const session = sessionsToCreate[i];
+        if (session.session_type !== 'coaching') continue;
+        const templateId = templateByWeek.get(session.week_number);
+        const sessionId = sessionIds[i];
+        if (templateId && sessionId) {
+          await supabase
+            .from('scheduled_sessions')
+            .update({ session_template_id: templateId })
+            .eq('id', sessionId);
+        }
+      }
+
+      console.log(`[EnrollmentScheduler] [${requestId}] Templates assigned:`, {
+        plansFound: learningPlans.length,
+        sessionsMatched: sessionsToCreate.filter(
+          s => s.session_type === 'coaching' && templateByWeek.has(s.week_number)
+        ).length,
+      });
+    }
+  } catch (templateErr) {
+    console.warn(`[EnrollmentScheduler] [${requestId}] Template assignment skipped:`, templateErr);
+  }
+
+  const { error: updateError } = await supabase
+    .from('enrollments')
+    .update({
+      schedule_confirmed: true,
+      sessions_scheduled: sessionsToCreate.length,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', enrollmentId);
+
+  if (updateError) {
+    console.error(`[EnrollmentScheduler] [${requestId}] Enrollment update error:`, updateError);
+    errors.push(`Warning: Failed to update enrollment: ${updateError.message}`);
+  }
 }
 
 // ============================================================================
@@ -701,60 +764,42 @@ export async function createSessionsSimple(
       });
     }
 
-    // Insert
-    const { error: insertError } = await supabase
-      .from('scheduled_sessions')
-      .insert(sessionsToCreate as Database['public']['Tables']['scheduled_sessions']['Insert'][]);
+    // Engine-backed insert. skipCalendar because createSessionsSimple is the
+    // simple-fallback path and has never synced calendar — preserving that.
+    // Site #2 currently returns errors: [] on success regardless of enrollment-
+    // update outcome, so the hook's warnings drain into a throwaway array.
+    const paramsArray: CreateSessionParams[] = sessionsToCreate.map(toCreateParams);
+    const ignoredErrors: string[] = [];
 
-    if (insertError) {
+    const results = await createScheduledSessionsBatch(paramsArray, {
+      skipCalendar: true,
+      skipRecall: true,
+      skipNotifications: true,
+      requestId,
+      onInsertComplete: async (sessionIds) => {
+        await assignTemplatesAndUpdateEnrollment(
+          supabase,
+          enrollmentId,
+          childId,
+          sessionsToCreate,
+          sessionIds,
+          ignoredErrors,
+          requestId,
+        );
+      },
+    });
+
+    const insertFailure = !results.some((r) => r.success);
+    if (insertFailure) {
+      const msg = results[0]?.error ?? 'insert failed';
       return {
         success: false,
         sessionsCreated: 0,
         sessions: [],
         manualRequired: 0,
-        errors: [`Insert failed: ${insertError.message}`],
+        errors: [`Insert failed: ${msg}`],
       };
     }
-
-    // Auto-assign templates
-    try {
-      const { data: learningPlans } = await supabase
-        .from('season_learning_plans')
-        .select('week_number, session_template_id')
-        .eq('child_id', childId) as { data: { week_number: number; session_template_id: string | null }[] | null };
-
-      if (learningPlans && learningPlans.length > 0) {
-        const templateByWeek = new Map<number, string>();
-        for (const plan of learningPlans) {
-          if (plan.session_template_id) {
-            templateByWeek.set(plan.week_number, plan.session_template_id);
-          }
-        }
-        for (const session of sessionsToCreate) {
-          if (session.session_type !== 'coaching') continue;
-          const templateId = templateByWeek.get(session.week_number);
-          if (templateId) {
-            await supabase
-              .from('scheduled_sessions')
-              .update({ session_template_id: templateId })
-              .eq('enrollment_id', enrollmentId)
-              .eq('session_number', session.session_number);
-          }
-        }
-      }
-    } catch {
-      // Non-blocking
-    }
-
-    // Update enrollment
-    await supabase
-      .from('enrollments')
-      .update({
-        schedule_confirmed: true,
-        sessions_scheduled: sessionsToCreate.length,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', enrollmentId);
 
     return {
       success: true,
@@ -1042,26 +1087,37 @@ export async function scheduleTuitionSessions(
       lastDate: sessionsToCreate[sessionsToCreate.length - 1].scheduled_date,
     });
 
-    // 7. Insert sessions
-    const { error: insertError } = await supabase
-      .from('scheduled_sessions')
-      .insert(sessionsToCreate as Database['public']['Tables']['scheduled_sessions']['Insert'][]);
+    // 7. Engine-backed insert. skipCalendar: per-session calendar events are NOT
+    // created at row-insert time for tuition — a batch-level Calendar event is
+    // created separately by admin tooling when the batch is formed. Per-row
+    // batch_id + persistent google_meet_link (for online batches) are carried
+    // through via toCreateParams().
+    const paramsArray: CreateSessionParams[] = sessionsToCreate.map(toCreateParams);
 
-    if (insertError) {
-      console.error(`[TuitionScheduler] Insert error:`, insertError);
-      return { success: false, sessionsCreated: 0, errors: [`Insert failed: ${insertError.message}`] };
+    const results = await createScheduledSessionsBatch(paramsArray, {
+      skipCalendar: true,
+      skipRecall: true,
+      skipNotifications: true,
+      onInsertComplete: async () => {
+        // 8. Update enrollment (cumulative formula — preserves prior behavior).
+        const totalScheduled = (existingCount || 0) + sessionsToCreate.length;
+        await supabase
+          .from('enrollments')
+          .update({
+            schedule_confirmed: true,
+            sessions_scheduled: totalScheduled,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', enrollmentId);
+      },
+    });
+
+    const insertFailure = !results.some((r) => r.success);
+    if (insertFailure) {
+      const msg = results[0]?.error ?? 'insert failed';
+      console.error(`[TuitionScheduler] Insert error:`, msg);
+      return { success: false, sessionsCreated: 0, errors: [`Insert failed: ${msg}`] };
     }
-
-    // 8. Update enrollment
-    const totalScheduled = (existingCount || 0) + sessionsToCreate.length;
-    await supabase
-      .from('enrollments')
-      .update({
-        schedule_confirmed: true,
-        sessions_scheduled: totalScheduled,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', enrollmentId);
 
     return {
       success: true,

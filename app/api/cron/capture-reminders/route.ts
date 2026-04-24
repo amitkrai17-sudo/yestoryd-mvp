@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       if (coachPhone) {
         try {
           await sendCommunication({
-            templateCode: 'session_completion_nudge',
+            templateCode: 'parent_feedback_request_v3',
             recipientType: 'coach',
             recipientPhone: coachPhone,
             recipientName: coachName,

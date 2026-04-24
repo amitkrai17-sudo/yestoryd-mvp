@@ -21,6 +21,11 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import {
+  groupSessionsForReminder,
+  joinChildNames,
+} from '@/lib/scheduling/group-sessions-for-reminder';
+import { formatDateShort } from '@/lib/utils/date-format';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +79,7 @@ async function processReminders(requestId: string, source: string) {
       .from('scheduled_sessions')
       .select(`
         id,
+        batch_id,
         scheduled_date,
         scheduled_time,
         session_type,
@@ -137,19 +143,33 @@ async function processReminders(requestId: string, source: string) {
       );
     }
 
-    for (const session of sessions) {
-      const coach = session.coaches as any;
-      const child = session.children as any;
+    // Dedupe by batch_id: sessions sharing (batch_id, scheduled_date,
+    // scheduled_time) collapse into ONE reminder send per coach per slot.
+    // Non-batched rows (batch_id null) fall through as their own groups of
+    // one — behavior identical to pre-2.4 for today's 1:1 coaching load.
+    type SessionRow = (typeof sessions)[number];
+    const groups = groupSessionsForReminder<SessionRow>(sessions);
+
+    console.log(JSON.stringify({
+      requestId,
+      event: 'groups_built',
+      sessionCount: sessions.length,
+      groupCount: groups.length,
+    }));
+
+    for (const group of groups) {
+      const coach = group.primary.coaches as any;
 
       if (!coach?.phone) {
-        results.skipped++;
-        results.errors.push(`Session ${session.id}: Coach has no phone`);
+        results.skipped += group.sessionIds.length;
+        results.errors.push(`Group ${group.key}: Coach has no phone`);
         continue;
       }
 
-      const childName = child?.name || child?.child_name || 'Student';
+      const childName = joinChildNames(group.childNames);
       const coachFirstName = coach.name?.split(' ')[0] || 'Coach';
-      const sessionTime = session.scheduled_time?.slice(0, 5) || 'soon';
+      const sessionTime = group.primary.scheduled_time?.slice(0, 5) || 'soon';
+      const batchId = group.primary.batch_id ?? null;
 
       try {
         // TODO: replace last_focus/next_focus with actual session data
@@ -162,6 +182,7 @@ async function processReminders(requestId: string, source: string) {
           {
             coach_first_name: coachFirstName,
             child_name: childName,
+            session_date: formatDateShort(group.primary.scheduled_date),
             session_time: sessionTime,
             last_focus: '',
             next_focus: '',
@@ -169,7 +190,12 @@ async function processReminders(requestId: string, source: string) {
           {
             triggeredBy: 'cron',
             contextType: 'scheduled_session',
-            contextId: session.id,
+            contextId: group.primary.id,
+            contextData: {
+              batch_id: batchId,
+              sibling_session_ids: group.sessionIds,
+              child_count: group.sessionIds.length,
+            },
           },
         );
 
@@ -180,24 +206,27 @@ async function processReminders(requestId: string, source: string) {
               coach_reminder_1h_sent: true,
               coach_reminder_1h_sent_at: new Date().toISOString(),
             })
-            .eq('id', session.id);
+            .in('id', group.sessionIds);
 
-          results.sent++;
+          results.sent += group.sessionIds.length;
 
           console.log(JSON.stringify({
             requestId,
             event: 'reminder_sent',
-            sessionId: session.id,
+            groupKey: group.key,
+            primarySessionId: group.primary.id,
+            siblingSessionIds: group.sessionIds,
+            childCount: group.sessionIds.length,
             coachName: coach.name,
             childName,
           }));
         } else {
-          results.failed++;
-          results.errors.push(`Session ${session.id}: ${waResult.reason}`);
+          results.failed += group.sessionIds.length;
+          results.errors.push(`Group ${group.key}: ${waResult.reason}`);
         }
       } catch (e: any) {
-        results.failed++;
-        results.errors.push(`Session ${session.id}: ${e.message}`);
+        results.failed += group.sessionIds.length;
+        results.errors.push(`Group ${group.key}: ${e.message}`);
       }
 
       // Rate limiting delay
@@ -356,6 +385,7 @@ async function processReminders(requestId: string, source: string) {
         target_date: targetDateStr,
         target_time: `${targetTimeStart} - ${targetTimeEnd}`,
         sessions_found: sessions.length,
+        groups_built: groups.length,
         sent: results.sent,
         failed: results.failed,
         skipped: results.skipped,

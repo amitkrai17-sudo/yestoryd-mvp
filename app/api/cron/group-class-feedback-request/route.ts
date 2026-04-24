@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         const childName = child?.child_name || 'your child';
 
         // Send WhatsApp via AiSensy
-        const waResult = await sendNotification('group_class_parent_feedback_request', parent.phone, {
+        const waResult = await sendNotification('parent_group_feedback_v3', parent.phone, {
           parent_name: parentName,
           child_name: childName,
           class_name: className,

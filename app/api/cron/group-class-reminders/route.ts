@@ -182,8 +182,8 @@ async function processReminders(requestId: string, source: string) {
         if (!participant.child_id || !participant.parent_id) continue;
 
         const templateCode = window === '24h'
-          ? 'group_class_reminder_24h'
-          : 'group_class_reminder_1h';
+          ? 'parent_group_reminder_24h_v3'
+          : 'parent_group_reminder_1h_v3';
 
         // Dedup check
         const sent = await alreadySent(supabase, templateCode, session.id, participant.child_id);
@@ -310,7 +310,6 @@ async function processReminders(requestId: string, source: string) {
             if (instructor.phone) {
               try {
                 const waResult = await sendNotification(instructorTemplateCode, instructor.phone, {
-                  instructor_name: instructorName,
                   class_name: className,
                   session_time: sessionTime,
                   participant_count: participantCount,
