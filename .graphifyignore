@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.vercel/
+dist/
+build/
+*.log
+*.lock
+package-lock.json
+supabase/.branches/
+supabase/.temp/
+public/
+.env*
+graphify-out/
+voice-samples/
