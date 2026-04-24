@@ -233,3 +233,40 @@ Pricing: ₹1,499 (Starter) / ₹5,999 (Continuance) / ₹6,999 (Full) — from 
 ## Check After Every Multi-File Change (MANDATORY)
 
 Run post-change verification grep checks (see Post-Change Verification section above). Fix any violations BEFORE reporting done. This is non-negotiable.
+
+## Graphify — interpretation rules
+
+Graphify audits run Apr 24 2026 on lib/ + app/api/ (1658 nodes, 2841 edges). Outputs in graphify-out/. Invoked via /graphify-windows in Claude Code.
+
+**Interpretation rule — AST edges ≠ runtime cost.** God-node scoring measures "how many files import this symbol," not runtime resource consumption. For infrastructure-layer findings (database clients, loggers, connection managers, API clients), always validate the structural signal against SDK/library mechanics before prioritizing refactor work.
+
+**Tool boundaries:**
+- Graphify answers "what bridges what" — structure, god nodes, community clustering, cross-module coupling.
+- Grep answers "who calls X" — AST name-matching misses cross-file imports. Example: graphify found 3 `sendNotification()` callers; grep found 33. For enumerating callers of a named symbol, always grep.
+
+**Edge confidence tags:**
+- `EXTRACTED` — found directly in source via tree-sitter AST. Ground truth.
+- `INFERRED` — reasonable inference with confidence score. Treat as "probably right, worth spot-checking."
+- `AMBIGUOUS` — flagged for review. Do not act on without verification.
+
+## Architecture decisions — closed findings
+
+### createAdminClient() scale concern — CLOSED (non-finding, Apr 24 2026)
+
+**Graphify signal:** 47 edges across 10 communities (later confirmed 232 actual call sites). Concern: PgBouncer pool exhaustion at scale.
+
+**Resolution:** Hypothesis test confirmed Supabase JS SDK's `createClient()` is a stateless HTTPS wrapper around PostgREST. Zero network I/O at construction. No TCP socket, no connection pool held per client instance. All queries execute as one-shot HTTPS POSTs; connection pooling is entirely Supabase-server-side.
+
+**Scale projection:** Connection saturation is driven by concurrent in-flight query volume × p95 latency, not client-object count. At 500 students, estimated 30-100 concurrent queries at peak — well within Supabase Pro pool defaults. Pool pressure threshold ~600 sustained concurrent queries (≈3000 DAU with aggressive fan-out).
+
+**Do not refactor createAdminClient() to a shared factory** based on graphify edge-count alone. The pattern as currently implemented is correct for Supabase's HTTP-based architecture.
+
+## Debt log — createAdminClient cleanup (low priority)
+
+Three style/documentation inconsistencies found during the Apr 24 hypothesis test. None are correctness or scale issues. Fix organically on clean days when touching these files; no dedicated sprint.
+
+- **D1 — Doc canon conflict:** `lib/supabase/admin.ts:9-10` comment says "For a singleton, use supabaseAdmin from './server'." `lib/supabase/server.ts:4` comment says "CANONICAL PATTERN: Use createAdminClient() from '@/lib/supabase/admin'." These contradict. Pick one canonical pattern and update the other file's comment to reference it.
+
+- **D2 — Single bypass:** `app/api/cron/daily-health-check/route.ts:39` calls `createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)` inline instead of using the `createAdminClient()` helper. Not a security issue (same env vars, same scope), but inconsistent. Migrate when next touching that cron.
+
+- **D3 — Mixed instantiation pattern:** Some callers use module-level `const` (per-worker singleton); others construct per-function. No functional difference given Supabase SDK is stateless. Choose one convention, document in this file, migrate organically.
