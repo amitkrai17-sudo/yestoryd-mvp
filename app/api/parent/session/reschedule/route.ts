@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
         .toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
       await sendCommunication({
-        templateCode: 'C10_reschedule_request',
+        templateCode: 'coach_reschedule_request_v3',
         recipientType: 'coach',
         recipientId: coach.id,
         recipientPhone: coach.phone,
