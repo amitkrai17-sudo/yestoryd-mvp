@@ -231,9 +231,14 @@ export async function deleteCalendarEvent(eventId: string, organizerEmail?: stri
   }
 }
 
-export async function updateCalendarEventForOffline(
+// Patch a calendar event when session_mode changes. Preserves
+// conferenceData + Meet link (conferenceDataVersion: 0) in both directions.
+// offline: appends the '[OFFLINE SESSION - In Person]' marker and sets location.
+// online:  strips any '[OFFLINE SESSION...]' marker and clears location.
+export async function updateCalendarEventForMode(
   eventId: string,
   organizerEmail: string,
+  mode: 'online' | 'offline',
   location?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -245,24 +250,36 @@ export async function updateCalendarEventForOffline(
     });
 
     const currentDescription = current.data.description || '';
-    const updatedDescription = currentDescription.includes('[OFFLINE SESSION')
-      ? currentDescription
-      : currentDescription + '\n\n[OFFLINE SESSION - In Person]';
+
+    let updatedDescription = currentDescription;
+    if (mode === 'offline') {
+      if (!currentDescription.includes('[OFFLINE SESSION')) {
+        updatedDescription = currentDescription + '\n\n[OFFLINE SESSION - In Person]';
+      }
+    } else {
+      updatedDescription = currentDescription
+        .replace(/\n?\n?\[OFFLINE SESSION[^\]]*\]/g, '')
+        .trimEnd();
+    }
+
+    const requestBody: Record<string, unknown> = { description: updatedDescription };
+    if (mode === 'offline') {
+      if (location) requestBody.location = location;
+    } else {
+      requestBody.location = '';
+    }
 
     await calendar.events.patch({
       calendarId: organizerEmail,
       eventId,
       conferenceDataVersion: 0,
-      requestBody: {
-        description: updatedDescription,
-        ...(location ? { location } : {}),
-      },
+      requestBody,
       sendUpdates: 'all',
     });
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating event for offline:', error);
+    console.error('Error updating calendar event for mode:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update calendar event',

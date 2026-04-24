@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSetting } from '@/lib/settings/getSettings';
-import { updateCalendarEventForOffline } from '@/lib/googleCalendar';
+import { updateCalendarEventForMode } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { sendNotification } from '@/lib/communication/notify';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
@@ -200,9 +200,10 @@ export const POST = withParamsHandler<{ id: string }>(async (request, { id: sess
           .single();
 
         if (coach?.email) {
-          const calResult = await updateCalendarEventForOffline(
+          const calResult = await updateCalendarEventForMode(
             session.google_event_id,
             coach.email,
+            'offline',
             body.location
           );
           if (!calResult.success) {

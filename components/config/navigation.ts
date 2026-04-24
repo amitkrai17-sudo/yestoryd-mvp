@@ -25,6 +25,7 @@ import {
   UserPlus,
   Sparkles,
   Banknote,
+  RefreshCw,
 } from 'lucide-react';
 import type { FeatureKey } from '@/lib/features/types';
 
@@ -124,6 +125,7 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
       { id: 'group-classes', label: 'Workshops', href: '/admin/group-classes', icon: Calendar, group: 'Operations' },
       { id: 'tuition', label: 'English Classes', href: '/admin/tuition', icon: BookOpen, group: 'Operations' },
       { id: 'communication', label: 'Communication', href: '/admin/communication', icon: Radio, group: 'Operations' },
+      { id: 'mode-change', label: 'Session Modes', href: '/admin/sessions/mode-change', icon: RefreshCw, group: 'Operations' },
       { id: 'templates', label: 'Templates', href: '/admin/templates', icon: FileText, group: 'Content' },
       { id: 'content', label: 'Content', href: '/admin/content-upload', icon: BookOpen, group: 'Content' },
       { id: 'books', label: 'Books Library', href: '/admin/books', icon: BookMarked, group: 'Content' },

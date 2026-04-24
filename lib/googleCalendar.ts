@@ -13,7 +13,7 @@ export {
   rescheduleEvent,
   cancelEvent,
   deleteCalendarEvent,
-  updateCalendarEventForOffline,
+  updateCalendarEventForMode,
   getEventDetails,
   cancelAllFutureSessions,
   getDiscoverySlots,

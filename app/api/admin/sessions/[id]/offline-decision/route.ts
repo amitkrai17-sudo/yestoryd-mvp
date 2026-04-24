@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, getServiceSupabase } from '@/lib/api-auth';
 import { getSetting } from '@/lib/settings/getSettings';
-import { updateCalendarEventForOffline } from '@/lib/googleCalendar';
+import { updateCalendarEventForMode } from '@/lib/googleCalendar';
 import { cancelRecallBot } from '@/lib/recall-auto-bot';
 import { sendNotification } from '@/lib/communication/notify';
 import crypto from 'crypto';
@@ -93,9 +93,10 @@ export async function POST(
           .single();
 
         if (coach?.email) {
-          const calResult = await updateCalendarEventForOffline(
+          const calResult = await updateCalendarEventForMode(
             session.google_event_id,
             coach.email,
+            'offline',
             session.offline_location ?? undefined
           );
           if (!calResult.success) {
