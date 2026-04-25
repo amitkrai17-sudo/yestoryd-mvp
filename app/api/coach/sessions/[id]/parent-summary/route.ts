@@ -10,6 +10,7 @@ import { getServiceSupabase } from '@/lib/api-auth';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 import { sendCommunication } from '@/lib/communication';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { extractLastSentence } from '@/lib/utils/text';
 import crypto from 'crypto';
 import {
   generateParentWhatsAppSummary,
@@ -267,37 +268,32 @@ export async function POST(
     }
 
     // 6. Build template variables for both WhatsApp + email
-    const parentFirstName = (child.parent_name || 'Parent').split(' ')[0];
     const childFirstName = child.child_name.split(' ')[0];
 
-    // Derive topic from completed activity names
+    // Coach first name lookup
+    const { data: coachData } = await supabase
+      .from('coaches')
+      .select('name')
+      .eq('id', session.coach_id)
+      .single();
+    const coachFirstName = (coachData?.name || 'Coach').split(' ')[0];
+
+    // Derive focus from completed activity names
     const completedActivities = activityLogs
       .filter((a: any) => a.status === 'completed' || a.status === 'partial')
       .map((a: any) => a.activity_name);
-    const topic = completedActivities.length > 0
+    const focus = completedActivities.length > 0
       ? completedActivities.slice(0, 3).join(', ')
       : 'Reading skills practice';
 
-    // Derive highlight from best-performing activities
-    const highlightActivity = activityLogs.find((a: any) => a.status === 'completed' && a.coach_note);
-    const highlight = highlightActivity?.coach_note
-      ? highlightActivity.coach_note
-      : statusCounts.completed > 0
-        ? `Completed ${statusCounts.completed} of ${activityLogs.length} activities successfully`
-        : 'Showed great effort throughout the session';
-
-    // Derive homework from practice items or default
-    const homework = practiceItems.length > 0
-      ? practiceItems.map((item: any) => item.title).slice(0, 3).join(', ')
-      : 'Keep reading daily!';
-
-    // Derive new_words from activity purposes or default
-    const vocabActivities = activityLogs
-      .filter((a: any) => a.activity_purpose && /vocab|word|sight|phonics/i.test(a.activity_purpose))
-      .map((a: any) => a.activity_name);
-    const newWords = vocabActivities.length > 0
-      ? vocabActivities.join(', ')
-      : 'Various reading skills';
+    // Pull progress trajectory from narrative_profile last sentence
+    const { data: profile } = await supabase
+      .from('child_intelligence_profiles')
+      .select('narrative_profile')
+      .eq('child_id', session.child_id)
+      .single();
+    const summaryText = (profile?.narrative_profile as any)?.summary || '';
+    const progress = extractLastSentence(summaryText) || 'Progress noted in session capture.';
 
     // Send via communication engine (handles both WhatsApp + email)
     const commResult = await sendCommunication({
@@ -307,14 +303,10 @@ export async function POST(
       recipientEmail: child.parent_email || null,
       recipientName: child.parent_name || null,
       variables: {
-        parent_name: parentFirstName,
-        child_name: childFirstName,
-        session_number: String(session.session_number || ''),
-        summary: fullSummary,
-        topic,
-        new_words: newWords,
-        highlight,
-        homework,
+        child_first_name: childFirstName,
+        coach_first_name: coachFirstName,
+        focus,
+        progress,
       },
       relatedEntityType: 'session',
       relatedEntityId: sessionId,

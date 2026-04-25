@@ -18,6 +18,7 @@ import { downloadAndStoreAudio } from '@/lib/audio-storage';
 import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifications';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { analyzeSessionTranscript, type SessionAnalysis, type BatchContext } from '@/lib/gemini/session-prompts';
+import { extractLastSentence } from '@/lib/utils/text';
 
 export const dynamic = 'force-dynamic';
 
@@ -492,11 +493,28 @@ async function queueParentSummary(
   const supabase = getServiceSupabase();
 
   const childFirstName = childName.split(' ')[0];
-  const topic = extra?.focusArea?.replace(/_/g, ' ') || 'Reading skills practice';
-  const newWords = extra?.skillsWorkedOn?.length
-    ? extra.skillsWorkedOn.slice(0, 3).join(', ')
-    : 'Various reading skills';
-  const homework = extra?.homeworkDescription || 'Keep reading daily!';
+  const focus = extra?.focusArea?.replace(/_/g, ' ') || 'Reading skills practice';
+
+  // Coach first name lookup via session
+  let coachFirstName = 'Coach';
+  if (sessionId) {
+    const { data: sessionRow } = await supabase
+      .from('scheduled_sessions')
+      .select('coach_id, coaches(name)')
+      .eq('id', sessionId)
+      .single();
+    const coachName = ((sessionRow as any)?.coaches?.name) as string | undefined;
+    if (coachName) coachFirstName = coachName.split(' ')[0];
+  }
+
+  // Pull progress trajectory from narrative_profile last sentence
+  const { data: profile } = await supabase
+    .from('child_intelligence_profiles')
+    .select('narrative_profile')
+    .eq('child_id', childId)
+    .single();
+  const summaryText = (profile?.narrative_profile as any)?.summary || '';
+  const progress = extractLastSentence(summaryText) || 'Progress noted in session capture.';
 
   await supabase.from('communication_queue').insert({
     template_code: 'parent_session_summary_v3',
@@ -506,14 +524,10 @@ async function queueParentSummary(
     related_entity_id: childId,
     scheduled_for: new Date().toISOString(),
     variables: {
-      child_name: childFirstName,
-      summary,
-      session_id: sessionId,
-      request_id: requestId,
-      topic,
-      new_words: newWords,
-      highlight: summary.split('.')[0] || 'Great session today',
-      homework,
+      child_first_name: childFirstName,
+      coach_first_name: coachFirstName,
+      focus,
+      progress,
     },
     status: 'pending',
   });

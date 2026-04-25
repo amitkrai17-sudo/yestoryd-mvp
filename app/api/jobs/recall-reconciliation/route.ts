@@ -21,6 +21,7 @@ import { getGenAI } from '@/lib/gemini/client';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
+import { extractLastSentence } from '@/lib/utils/text';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -677,11 +678,32 @@ export async function GET(request: NextRequest) {
         // 2g. Queue parent summary
         if (analysis.parent_summary) {
           const childFirstName = childName.split(' ')[0];
-          const topic = analysis.focus_area?.replace(/_/g, ' ') || 'Reading skills practice';
-          const newWords = analysis.skills_worked_on?.length
-            ? analysis.skills_worked_on.slice(0, 3).join(', ')
-            : 'Various reading skills';
-          const homework = analysis.homework_description || 'Keep reading daily!';
+          const focus = analysis.focus_area?.replace(/_/g, ' ') || 'Reading skills practice';
+
+          // Coach first name lookup
+          let coachFirstName = 'Coach';
+          if (session.coach_id) {
+            const { data: coachRow } = await supabase
+              .from('coaches')
+              .select('name')
+              .eq('id', session.coach_id)
+              .single();
+            const coachName = coachRow?.name as string | undefined;
+            if (coachName) coachFirstName = coachName.split(' ')[0];
+          }
+
+          // Pull progress trajectory from narrative_profile last sentence
+          let progress = 'Progress noted in session capture.';
+          if (session.child_id) {
+            const { data: profile } = await supabase
+              .from('child_intelligence_profiles')
+              .select('narrative_profile')
+              .eq('child_id', session.child_id)
+              .single();
+            const summaryText = (profile?.narrative_profile as any)?.summary || '';
+            const last = extractLastSentence(summaryText);
+            if (last) progress = last;
+          }
 
           await supabase.from('communication_queue').insert({
             template_code: 'parent_session_summary_v3',
@@ -691,14 +713,10 @@ export async function GET(request: NextRequest) {
             related_entity_id: session.child_id,
             scheduled_for: new Date().toISOString(),
             variables: {
-              child_name: childFirstName,
-              summary: analysis.parent_summary,
-              session_id: session.id,
-              request_id: requestId,
-              topic,
-              new_words: newWords,
-              highlight: analysis.parent_summary.split('.')[0] || 'Great session today',
-              homework,
+              child_first_name: childFirstName,
+              coach_first_name: coachFirstName,
+              focus,
+              progress,
             },
             status: 'pending',
           });
