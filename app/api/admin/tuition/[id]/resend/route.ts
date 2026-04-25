@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
 import { sendNotification } from '@/lib/communication/notify';
+import { resolveParentName } from '@/lib/communication/resolveParentName';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
   // 1. Fetch existing onboarding
   const { data: onboarding, error: fetchErr } = await supabase
     .from('tuition_onboarding')
-    .select('id, child_name, parent_phone, parent_name_hint, coach_id, status, sessions_purchased, session_rate')
+    .select('id, child_name, child_id, parent_phone, parent_name_hint, coach_id, status, sessions_purchased, session_rate')
     .eq('id', id)
     .single();
 
@@ -51,25 +52,20 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
     return NextResponse.json({ error: 'Failed to regenerate token' }, { status: 500 });
   }
 
-  // 3. Fetch coach name
-  const { data: coach } = await supabase
-    .from('coaches')
-    .select('name')
-    .eq('id', onboarding.coach_id)
-    .single();
-
-  const coachFirstName = (coach?.name || 'Your coach').split(' ')[0];
   const magicLink = `${APP_URL}/tuition/onboard/${newToken}`;
 
   // 4. Resend WhatsApp
   try {
-    await sendNotification('parent_tuition_onboarding_v3', `91${onboarding.parent_phone}`, {
-      coach_first_name: coachFirstName,
-      child_name: 'your child',
+    const parentFirstName = await resolveParentName(
+      onboarding.parent_name_hint,
+      onboarding.child_id
+    );
+    await sendNotification('parent_tuition_onboarding_v4', `91${onboarding.parent_phone}`, {
+      parent_first_name: parentFirstName,
+      child_name: onboarding.child_name && !onboarding.child_name.startsWith('Pending')
+        ? onboarding.child_name
+        : 'your child',
       magic_link: magicLink,
-      sessions_purchased: String(onboarding.sessions_purchased),
-      rate_rupees: String(Math.round(onboarding.session_rate / 100)),
-      coach_first_name_2: coachFirstName,
     });
 
     console.log(JSON.stringify({

@@ -24,6 +24,7 @@ import { createLogger } from '../logger';
 import { executeWithCompensation, type TransactionStep } from '../transaction-manager';
 import { getSupabase, logAudit, getSessionWithRelations } from './helpers';
 import type { SessionResult } from './types';
+import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
 
 const logger = createLogger('session-manager');
 
@@ -327,8 +328,8 @@ export async function rescheduleExistingSession(
           parentPhone: child?.parent_phone ?? undefined,
           parentEmail,
           parentName: child?.parent_name ?? undefined,
-          sessionDate: scheduledDate,
-          sessionTime: scheduledTime,
+          sessionDate: formatDateShort(scheduledDate),
+          sessionTime: formatTime12(scheduledTime),
           sessionType: session.session_type,
           meetLink,
         });

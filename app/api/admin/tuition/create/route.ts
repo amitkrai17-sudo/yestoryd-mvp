@@ -9,6 +9,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { sendNotification } from '@/lib/communication/notify';
+import { resolveParentName } from '@/lib/communication/resolveParentName';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,17 +130,17 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   }
 
   const magicLink = `${APP_URL}/tuition/onboard/${token}`;
-  const coachFirstName = (coach.name || 'Your coach').split(' ')[0];
 
   // 6. Send WhatsApp to parent
   try {
-    await sendNotification('parent_tuition_onboarding_v3', `91${input.parentPhone}`, {
-      coach_first_name: coachFirstName,
-      child_name: 'your child',
+    const parentFirstName = await resolveParentName(
+      (input as any).parentName,
+      (input as any).childId
+    );
+    await sendNotification('parent_tuition_onboarding_v4', `91${input.parentPhone}`, {
+      parent_first_name: parentFirstName,
+      child_name: (input as any).childName ?? 'your child',
       magic_link: magicLink,
-      sessions_purchased: String(input.sessionsPurchased),
-      rate_rupees: String(Math.round(input.sessionRate / 100)),
-      coach_first_name_2: coachFirstName,
     });
 
     console.log(JSON.stringify({

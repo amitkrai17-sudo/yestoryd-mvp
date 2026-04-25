@@ -25,7 +25,7 @@ import {
   groupSessionsForReminder,
   joinChildNames,
 } from '@/lib/scheduling/group-sessions-for-reminder';
-import { formatDateShort } from '@/lib/utils/date-format';
+import { formatTime12 } from '@/lib/utils/date-format';
 
 export const dynamic = 'force-dynamic';
 
@@ -167,25 +167,16 @@ async function processReminders(requestId: string, source: string) {
       }
 
       const childName = joinChildNames(group.childNames);
-      const coachFirstName = coach.name?.split(' ')[0] || 'Coach';
-      const sessionTime = group.primary.scheduled_time?.slice(0, 5) || 'soon';
       const batchId = group.primary.batch_id ?? null;
 
       try {
-        // TODO: replace last_focus/next_focus with actual session data
-        // from session_prep_data or last SCF response (C9 shim — Apr 2026)
-        // This is the 1h caller — only 3 core params available in scope.
-        // Enrollment-lifecycle (24h caller) has the same shim.
         const waResult = await sendNotification(
           'coach_session_reminder_1h_v3',
           coach.phone,
           {
-            coach_first_name: coachFirstName,
             child_name: childName,
-            session_date: formatDateShort(group.primary.scheduled_date),
-            session_time: sessionTime,
-            last_focus: '',
-            next_focus: '',
+            session_time: formatTime12(group.primary.scheduled_time),
+            meet_link: group.primary.google_meet_link || 'In-person session',
           },
           {
             triggeredBy: 'cron',

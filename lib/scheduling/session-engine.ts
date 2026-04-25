@@ -30,6 +30,7 @@ import { enqueue as retryEnqueue } from './retry-queue';
 import { notify } from './notification-manager';
 import { createLogger } from './logger';
 import { logAudit } from './operations/helpers';
+import { formatDateShort, formatTime12 } from '@/lib/utils/date-format';
 
 const logger = createLogger('session-engine');
 
@@ -418,8 +419,8 @@ export async function createScheduledSession(
           parentPhone: child?.parent_phone ?? undefined,
           parentEmail,
           parentName: child?.parent_name ?? undefined,
-          sessionDate: params.scheduledDate,
-          sessionTime: params.scheduledTime,
+          sessionDate: formatDateShort(params.scheduledDate),
+          sessionTime: formatTime12(params.scheduledTime),
           sessionType: params.sessionType,
           meetLink,
         });

@@ -33,7 +33,7 @@ import {
   groupSessionsForReminder,
   joinChildNames,
 } from '@/lib/scheduling/group-sessions-for-reminder';
-import { formatDateShort } from '@/lib/utils/date-format';
+import { formatTime12 } from '@/lib/utils/date-format';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -359,24 +359,16 @@ export async function GET(request: NextRequest) {
         }
 
         const childName = joinChildNames(group.childNames);
-        const coachFirstName = coach.name?.split(' ')[0] || 'Coach';
-        const sessionDate = formatDateShort(primary.scheduled_date);
-        const sessionTime = primary.scheduled_time?.slice(0, 5) || 'TBD';
         const batchId = primary.batch_id ?? null;
 
         try {
-          // TODO: replace last_focus/next_focus with actual session data
-          // from session_prep_data or last SCF response (C9 shim — Apr 2026)
           const waResult = await sendNotification(
             'coach_session_reminder_1h_v3',
             coach.phone,
             {
-              coach_first_name: coachFirstName,
               child_name: childName,
-              session_date: sessionDate,
-              session_time: sessionTime,
-              last_focus: 'Review assessment',
-              next_focus: 'Continue progress',
+              session_time: primary.scheduled_time ? formatTime12(primary.scheduled_time) : 'TBD',
+              meet_link: primary.google_meet_link || 'In-person session',
             },
             {
               triggeredBy: 'cron',

@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
+import { resolveParentName } from '@/lib/communication/resolveParentName';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { getPolicy, logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
 import type { Json } from '@/lib/supabase/database.types';
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     // ── Phase A: Find parent_pending records 24h–7d old ──────────
     const { data: pendingRecords } = await supabase
       .from('tuition_onboarding')
-      .select('id, parent_phone, parent_name_hint, child_name, coach_id, session_rate, sessions_purchased, parent_form_token, created_at')
+      .select('id, parent_phone, parent_name_hint, child_id, child_name, coach_id, session_rate, sessions_purchased, parent_form_token, created_at')
       .eq('status', 'parent_pending')
       .lt('created_at', twentyFourHoursAgo)
       .gt('created_at', sevenDaysAgo)
@@ -112,26 +113,19 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Fetch coach name for the template
-        const { data: coach } = await supabase
-          .from('coaches')
-          .select('name')
-          .eq('id', record.coach_id)
-          .single();
-
-        const coachFirstName = (coach?.name || 'Your coach').split(' ')[0];
         const magicLink = `${APP_URL}/tuition/onboard/${record.parent_form_token}`;
 
-        try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v3', outcome: 'pending' }); } catch {}
+        try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v4', outcome: 'pending' }); } catch {}
 
-        // Send the same parent_tuition_onboarding_v3 template (magic link still valid)
-        await sendNotification('parent_tuition_onboarding_v3', record.parent_phone, {
-          coach_first_name: coachFirstName,
+        // Send the parent_tuition_onboarding_v4 template (magic link still valid)
+        const parentFirstName = await resolveParentName(
+          record.parent_name_hint,
+          record.child_id
+        );
+        await sendNotification('parent_tuition_onboarding_v4', record.parent_phone, {
+          parent_first_name: parentFirstName,
           child_name: (record.child_name && !record.child_name.startsWith('Pending')) ? record.child_name : 'your child',
           magic_link: magicLink,
-          sessions_purchased: String(record.sessions_purchased),
-          rate_rupees: String(Math.round(record.session_rate / 100)),
-          coach_first_name_2: coachFirstName,
         }, {
           triggeredBy: 'cron',
           contextType: 'tuition_nudge',
