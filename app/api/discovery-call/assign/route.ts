@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     // 3. Verify coach exists and is active
     const { data: coach, error: coachError } = await supabase
       .from('coaches')
-      .select('id, name, email, is_active, status')
+      .select('id, name, email, phone, is_active, status')
       .eq('id', coach_id)
       .single();
 
@@ -225,15 +225,15 @@ export async function POST(request: NextRequest) {
       await sendCommunication({
         templateCode: 'coach_discovery_assigned',
         recipientType: 'coach',
+        recipientPhone: coach.phone,
         recipientEmail: coach.email,
         recipientName: coach.name,
         variables: {
-          coach_name: coach.name,
-          child_name: updatedCall.child_name || 'Child',
+          child_first_name: (updatedCall.child_name || 'Child').split(' ')[0],
           parent_name: updatedCall.parent_name || 'Parent',
-          scheduled_date: updatedCall.scheduled_at 
-            ? new Date(updatedCall.scheduled_at).toLocaleDateString('en-IN', { 
-                weekday: 'long', day: 'numeric', month: 'long' 
+          scheduled_date: updatedCall.scheduled_at
+            ? new Date(updatedCall.scheduled_at).toLocaleDateString('en-IN', {
+                weekday: 'long', day: 'numeric', month: 'long'
               })
             : 'TBD',
           scheduled_time: updatedCall.scheduled_at
@@ -242,7 +242,6 @@ export async function POST(request: NextRequest) {
               })
             : 'TBD',
           meet_link: updatedCall.google_meet_link || '',
-          discovery_call_id: discovery_call_id,
         },
         relatedEntityType: 'discovery_call',
         relatedEntityId: discovery_call_id,

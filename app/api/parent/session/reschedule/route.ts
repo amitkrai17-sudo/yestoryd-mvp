@@ -166,9 +166,9 @@ export async function POST(request: NextRequest) {
         recipientEmail: coach.email,
         recipientName: coach.name,
         variables: {
-          coach_name: coach.name?.split(' ')[0] || 'Coach',
+          coach_first_name: coach.name?.split(' ')[0] || 'Coach',
           parent_name: parent.name?.split(' ')[0] || 'Parent',
-          child_name: childName,
+          child_first_name: childName.split(' ')[0],
           old_date: oldDateStr,
           new_date: newDateStr,
           reason,

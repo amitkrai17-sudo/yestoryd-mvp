@@ -708,8 +708,7 @@ export async function POST(request: NextRequest) {
               'parent_assessment_results_v3',
               parentPhone,
               {
-                parent_name: parentName || 'Parent',
-                child_name: name,
+                child_first_name: name.split(' ')[0],
                 overall_score: String(overallScore),
                 clarity_score: String(clarityScore),
                 fluency_score: String(fluencyScore),

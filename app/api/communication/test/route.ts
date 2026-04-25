@@ -25,9 +25,11 @@ export async function POST(request: NextRequest) {
       recipientEmail: testEmail,
       recipientName: 'Test Parent',
       variables: {
-        parent_name: 'Test Parent',
-        child_name: 'Test Child',
-        score: '7',
+        child_first_name: 'Test',
+        overall_score: '7',
+        clarity_score: '8',
+        fluency_score: '6',
+        speed_score: '7',
         booking_link: 'https://yestoryd.com/book-discovery',
       },
       skipChannels: testType === 'email' 
