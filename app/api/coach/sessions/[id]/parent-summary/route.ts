@@ -271,12 +271,15 @@ export async function POST(
     const childFirstName = child.child_name.split(' ')[0];
 
     // Coach first name lookup
-    const { data: coachData } = await supabase
-      .from('coaches')
-      .select('name')
-      .eq('id', session.coach_id)
-      .single();
-    const coachFirstName = (coachData?.name || 'Coach').split(' ')[0];
+    let coachFirstName = 'Coach';
+    if (session.coach_id) {
+      const { data: coachData } = await supabase
+        .from('coaches')
+        .select('name')
+        .eq('id', session.coach_id)
+        .single();
+      if (coachData?.name) coachFirstName = coachData.name.split(' ')[0];
+    }
 
     // Derive focus from completed activity names
     const completedActivities = activityLogs
@@ -287,13 +290,17 @@ export async function POST(
       : 'Reading skills practice';
 
     // Pull progress trajectory from narrative_profile last sentence
-    const { data: profile } = await supabase
-      .from('child_intelligence_profiles')
-      .select('narrative_profile')
-      .eq('child_id', session.child_id)
-      .single();
-    const summaryText = (profile?.narrative_profile as any)?.summary || '';
-    const progress = extractLastSentence(summaryText) || 'Progress noted in session capture.';
+    let progress = 'Progress noted in session capture.';
+    if (session.child_id) {
+      const { data: profile } = await supabase
+        .from('child_intelligence_profiles')
+        .select('narrative_profile')
+        .eq('child_id', session.child_id)
+        .single();
+      const summaryText = (profile?.narrative_profile as any)?.summary || '';
+      const last = extractLastSentence(summaryText);
+      if (last) progress = last;
+    }
 
     // Send via communication engine (handles both WhatsApp + email)
     const commResult = await sendCommunication({

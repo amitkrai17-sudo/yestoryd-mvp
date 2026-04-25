@@ -228,7 +228,15 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
       .single();
     const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
     const offlineEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: body.sessions_purchased };
-    const coachFirstName = (coach?.name || 'Coach').split(' ')[0];
+    let coachFirstName = 'Coach';
+    if (enrollment.coach_id) {
+      const { data: coachForTpl } = await supabase
+        .from('coaches')
+        .select('name')
+        .eq('id', enrollment.coach_id)
+        .single();
+      if (coachForTpl?.name) coachFirstName = coachForTpl.name.split(' ')[0];
+    }
     await sendCommunication({
       templateCode: 'parent_payment_confirmed_v3',
       recipientType: 'parent',

@@ -374,12 +374,15 @@ async function processPaymentCaptured(
           .single();
         const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
         const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
-        const { data: coachForTpl } = await supabase
-          .from('coaches')
-          .select('name')
-          .eq('id', tuitionEnrollment.coach_id)
-          .single();
-        const coachFirstName = (coachForTpl?.name || 'Coach').split(' ')[0];
+        let coachFirstName = 'Coach';
+        if (tuitionEnrollment.coach_id) {
+          const { data: coachForTpl } = await supabase
+            .from('coaches')
+            .select('name')
+            .eq('id', tuitionEnrollment.coach_id)
+            .single();
+          if (coachForTpl?.name) coachFirstName = coachForTpl.name.split(' ')[0];
+        }
         await sendCommunication({
           templateCode: 'parent_payment_confirmed_v3',
           recipientType: 'parent',
