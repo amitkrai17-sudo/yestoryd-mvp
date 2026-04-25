@@ -353,7 +353,7 @@ export async function POST(request: NextRequest) {
       // Send payment confirmation WhatsApp + Email (all payments: first + renewals)
       try {
         const { sendCommunication } = await import('@/lib/communication');
-        const { getProgramLabel, getScheduleDescription } = await import('@/lib/utils/program-label');
+        const { getProgramLabel } = await import('@/lib/utils/program-label');
         // Fetch program label for tuition (may have a linked category)
         const { data: onboardingForLabel } = await supabase
           .from('tuition_onboarding')
@@ -362,7 +362,12 @@ export async function POST(request: NextRequest) {
           .single();
         const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
         const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+        const { data: coachForTpl } = await supabase
+          .from('coaches')
+          .select('name')
+          .eq('id', tuitionEnrollment.coach_id)
+          .single();
+        const coachFirstName = (coachForTpl?.name || 'Coach').split(' ')[0];
         await sendCommunication({
           templateCode: 'parent_payment_confirmed_v3',
           recipientType: 'parent',
@@ -371,14 +376,10 @@ export async function POST(request: NextRequest) {
           recipientEmail: body.parentEmail,
           recipientName: body.parentName,
           variables: {
-            parent_first_name: body.parentName?.split(' ')[0] || 'Parent',
-            amount: String(verifiedAmount),
-            child_name: body.childName,
-            enrollment_id: tuitionEnrollmentId,
+            child_first_name: (body.childName || 'Child').split(' ')[0],
+            plan: getProgramLabel(tuitionEnr, catLabel),
             sessions_count: String(sessionsPurchased),
-            dashboard_link: `${baseUrl}/parent/dashboard`,
-            program_label: getProgramLabel(tuitionEnr, catLabel),
-            schedule_description: getScheduleDescription(tuitionEnr),
+            coach_name: coachFirstName,
           },
           relatedEntityType: 'enrollment',
           relatedEntityId: tuitionEnrollmentId,
@@ -777,9 +778,9 @@ export async function POST(request: NextRequest) {
     // Send payment confirmation WhatsApp + Email
     try {
       const { sendCommunication } = await import('@/lib/communication');
-      const { getScheduleDescription } = await import('@/lib/utils/program-label');
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+      const { getProgramLabel } = await import('@/lib/utils/program-label');
       const coachingEnr = { billing_model: 'prepaid_season' as const };
+      const coachFirstName = (coach?.name || 'Coach').split(' ')[0];
       await sendCommunication({
         templateCode: 'parent_payment_confirmed_v3',
         recipientType: 'parent',
@@ -788,14 +789,10 @@ export async function POST(request: NextRequest) {
         recipientEmail: body.parentEmail,
         recipientName: body.parentName,
         variables: {
-          parent_first_name: body.parentName?.split(' ')[0] || 'Parent',
-          amount: String(verifiedAmount),
-          child_name: body.childName,
-          enrollment_id: enrollment.id,
+          child_first_name: (body.childName || 'Child').split(' ')[0],
+          plan: getProgramLabel(coachingEnr),
           sessions_count: String(sessionsCount),
-          dashboard_link: `${baseUrl}/parent/dashboard`,
-          program_label: 'English Coaching Program',
-          schedule_description: getScheduleDescription(coachingEnr),
+          coach_name: coachFirstName,
         },
         relatedEntityType: 'enrollment',
         relatedEntityId: enrollment.id,

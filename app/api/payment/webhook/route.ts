@@ -366,7 +366,7 @@ async function processPaymentCaptured(
 
       if (!existingSend) {
         const { sendCommunication } = await import('@/lib/communication');
-        const { getProgramLabel, getScheduleDescription } = await import('@/lib/utils/program-label');
+        const { getProgramLabel } = await import('@/lib/utils/program-label');
         const { data: onboardingForLabel } = await supabase
           .from('tuition_onboarding')
           .select('category_id, skill_categories!category_id(parent_label)')
@@ -374,7 +374,12 @@ async function processPaymentCaptured(
           .single();
         const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
         const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+        const { data: coachForTpl } = await supabase
+          .from('coaches')
+          .select('name')
+          .eq('id', tuitionEnrollment.coach_id)
+          .single();
+        const coachFirstName = (coachForTpl?.name || 'Coach').split(' ')[0];
         await sendCommunication({
           templateCode: 'parent_payment_confirmed_v3',
           recipientType: 'parent',
@@ -383,14 +388,10 @@ async function processPaymentCaptured(
           recipientEmail: bookingData.parent_email,
           recipientName: bookingData.parent_name,
           variables: {
-            parent_first_name: bookingData.parent_name?.split(' ')[0] || 'Parent',
-            amount: String(amount),
-            child_name: bookingData.child_name,
-            enrollment_id: tuitionEnrollmentId,
+            child_first_name: (bookingData.child_name || 'Child').split(' ')[0],
+            plan: getProgramLabel(tuitionEnr, catLabel),
             sessions_count: String(sessionsPurchased),
-            dashboard_link: `${baseUrl}/parent/dashboard`,
-            program_label: getProgramLabel(tuitionEnr, catLabel),
-            schedule_description: getScheduleDescription(tuitionEnr),
+            coach_name: coachFirstName,
           },
           relatedEntityType: 'enrollment',
           relatedEntityId: tuitionEnrollmentId,
@@ -735,9 +736,14 @@ async function processPaymentCaptured(
 
     if (!existingSend) {
       const { sendCommunication } = await import('@/lib/communication');
-      const { getScheduleDescription } = await import('@/lib/utils/program-label');
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
+      const { getProgramLabel } = await import('@/lib/utils/program-label');
       const coachingEnr = { billing_model: 'prepaid_season' as const };
+      const { data: coachForTpl } = await supabase
+        .from('coaches')
+        .select('name')
+        .eq('id', finalCoachId)
+        .single();
+      const coachFirstName = (coachForTpl?.name || 'Coach').split(' ')[0];
       await sendCommunication({
         templateCode: 'parent_payment_confirmed_v3',
         recipientType: 'parent',
@@ -746,14 +752,10 @@ async function processPaymentCaptured(
         recipientEmail: bookingData.parent_email,
         recipientName: bookingData.parent_name,
         variables: {
-          parent_first_name: bookingData.parent_name?.split(' ')[0] || 'Parent',
-          amount: String(amount),
-          child_name: bookingData.child_name,
-          enrollment_id: enrollment.id,
+          child_first_name: (bookingData.child_name || 'Child').split(' ')[0],
+          plan: getProgramLabel(coachingEnr),
           sessions_count: String(sessionsCount),
-          dashboard_link: `${baseUrl}/parent/dashboard`,
-          program_label: 'English Coaching Program',
-          schedule_description: getScheduleDescription(coachingEnr),
+          coach_name: coachFirstName,
         },
         relatedEntityType: 'enrollment',
         relatedEntityId: enrollment.id,

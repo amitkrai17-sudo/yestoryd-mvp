@@ -127,15 +127,19 @@ export async function POST(
         if (child?.parent_phone) {
           await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/communication/send`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': process.env.INTERNAL_API_KEY || '',
+            },
             body: JSON.stringify({
               templateCode: 'parent_session_cancelled_v5',
               recipientType: 'parent',
               recipientPhone: child.parent_phone,
               variables: {
-                child_name: child.child_name || child.name || 'your child',
+                child_first_name: (child.child_name || child.name || 'your child').split(' ')[0],
+                session_date: session.scheduled_date,
+                session_time: session.scheduled_time,
                 reason,
-                reschedule_link: `${process.env.NEXT_PUBLIC_APP_URL}/parent/reschedule`,
               },
             }),
           });

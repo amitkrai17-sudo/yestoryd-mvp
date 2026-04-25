@@ -280,7 +280,7 @@ export async function notify(
 function buildVariables(data: NotificationData): Record<string, string> {
   const vars: Record<string, string> = {};
 
-  if (data.childName) vars.child_name = data.childName;
+  if (data.childName) vars.child_first_name = data.childName.split(' ')[0];
   if (data.parentName) vars.parent_name = data.parentName;
   if (data.coachName) vars.coach_name = data.coachName;
   if (data.sessionDate) vars.session_date = data.sessionDate;
