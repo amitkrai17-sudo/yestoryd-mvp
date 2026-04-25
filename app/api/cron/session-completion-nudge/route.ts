@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const { data: staleSessions, error: queryError } = await supabase
       .from('scheduled_sessions')
       .select(`
-        id, session_number, session_started_at, completion_nudge_sent_at,
+        id, session_started_at, completion_nudge_sent_at,
         coach_id, child_id,
         coaches (id, name, phone, email),
         children (id, child_name)
@@ -85,12 +85,10 @@ export async function GET(request: NextRequest) {
         try { await logDecision({ source: 'cron:session-completion-nudge', entity_type: 'session', entity_id: session.id, decision: 'send_completion_nudge', reason: { stale_minutes: staleMinutes, coach: coachFirstName, child: childFirstName } as Json, action: 'aisensy:session_completion_nudge', outcome: 'pending' }); } catch {}
 
         const waResult = await sendNotification(
-          'parent_feedback_request_v3',
+          'coach_report_deadline_v3',
           coach.phone,
           {
-            coach_first_name: coachFirstName,
             child_name: childFirstName,
-            session_number: String(session.session_number || ''),
           },
           {
             triggeredBy: 'cron',

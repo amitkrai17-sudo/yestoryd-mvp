@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendCommunication } from '@/lib/communication';
+import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 
@@ -21,13 +21,6 @@ const NUDGE_TIERS = [
   { key: '6hr', minHours: 6, maxHours: 6.5 },
   { key: '24hr', minHours: 24, maxHours: 24.5 },
 ] as const;
-
-const NUDGE_MESSAGES: Record<string, (childName: string) => string> = {
-  '15min': (name) => `${name}'s session just ended! Fill the session report while it's fresh.`,
-  '2hr': (name) => `Reminder: ${name}'s session report is still pending. Quick 2-min form.`,
-  '6hr': (name) => `You have 1 unreported session from today (${name}). Reports help track progress.`,
-  '24hr': (name) => `Final reminder: ${name}'s session from yesterday needs a report. Intelligence quality drops after 24hrs.`,
-};
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID();
@@ -86,25 +79,22 @@ export async function GET(request: NextRequest) {
 
       const childName = (session.children as any)?.child_name || 'your student';
       const coachPhone = (session.coaches as any)?.phone;
-      const coachName = (session.coaches as any)?.name || 'Coach';
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yestoryd.com';
-      const captureUrl = `${baseUrl}/coach/sessions?openCapture=${session.id}`;
 
       // Send notification
       if (coachPhone) {
         try {
-          await sendCommunication({
-            templateCode: 'parent_feedback_request_v3',
-            recipientType: 'coach',
-            recipientPhone: coachPhone,
-            recipientName: coachName,
-            variables: {
-              coach_name: coachName.split(' ')[0],
+          await sendNotification(
+            'coach_report_deadline_v3',
+            coachPhone,
+            {
               child_name: childName.split(' ')[0],
-              message: NUDGE_MESSAGES[tier.key](childName.split(' ')[0]),
-              capture_url: captureUrl,
             },
-          });
+            {
+              triggeredBy: 'cron',
+              contextType: 'capture_reminder',
+              contextId: tier.key,
+            },
+          );
           sent++;
         } catch (err: any) {
           console.error(JSON.stringify({ requestId, event: 'capture_nudge_send_error', tier: tier.key, sessionId: session.id, error: err.message }));

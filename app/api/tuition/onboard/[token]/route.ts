@@ -305,17 +305,12 @@ export async function POST(
     }
 
     const checkoutUrl = `${APP_URL}/tuition/pay/${enrollment.id}`;
-    const rateRupees = onboarding.session_rate / 100;
-    const totalRupees = rateRupees * onboarding.sessions_purchased;
 
     // 9. Send payment WA to parent
     try {
       await sendNotification('parent_tuition_payment_v3', `91${input.parentPhone}`, {
         parent_first_name: input.parentName.split(' ')[0],
-        child_full_name: input.childFullName,
-        sessions_purchased: String(onboarding.sessions_purchased),
-        rate_rupees: String(rateRupees),
-        total_rupees: String(totalRupees),
+        child_first_name: input.childFullName.split(' ')[0],
         checkout_url: checkoutUrl,
       });
     } catch (waErr) {

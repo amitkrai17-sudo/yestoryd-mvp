@@ -41,7 +41,7 @@ export async function deductTuitionBalance(
     // 1. Fetch enrollment with child/parent info
     const { data: enrollment, error: fetchErr } = await supabase
       .from('enrollments')
-      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, sessions_purchased, enrollment_type, status')
+      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, enrollment_type, status')
       .eq('id', enrollmentId)
       .single();
 
@@ -114,18 +114,6 @@ export async function deductTuitionBalance(
       }
     }
 
-    let coachName = 'Coach';
-    if (enrollment.coach_id) {
-      const { data: coach } = await supabase
-        .from('coaches')
-        .select('name')
-        .eq('id', enrollment.coach_id)
-        .single();
-      if (coach) {
-        coachName = coach.name?.split(' ')[0] || 'Coach';
-      }
-    }
-
     let alertSent: DeductResult['alertSent'] = 'none';
 
     // 5. Balance alerts
@@ -137,10 +125,7 @@ export async function deductTuitionBalance(
         try {
           const result = await sendNotification('parent_tuition_renewal_v3', parentPhone, {
             parent_first_name: parentName.split(' ')[0],
-            child_name: childName,
-            sessions_purchased: String(enrollment.sessions_purchased || 0),
-            coach_name: coachName,
-            child_name_2: childName,
+            child_first_name: childName.split(' ')[0],
             renewal_url: renewalUrl,
           });
           if (result.success) {
@@ -179,7 +164,7 @@ export async function deductTuitionBalance(
         try {
           const result = await sendNotification('parent_tuition_low_balance_v3', parentPhone, {
             parent_first_name: parentName.split(' ')[0],
-            child_name: childName,
+            child_first_name: childName.split(' ')[0],
             new_balance: String(newBalance),
             renewal_url: renewalUrl,
           });
@@ -278,9 +263,8 @@ async function checkAndPause(
     try {
       const result = await sendNotification('parent_tuition_paused_v3', parentPhone, {
         parent_first_name: parentName.split(' ')[0],
-        child_name: childName,
+        child_first_name: childName.split(' ')[0],
         renewal_url: renewalUrl,
-        child_name_2: childName,
       });
       if (!result.success) {
         console.error(JSON.stringify({
