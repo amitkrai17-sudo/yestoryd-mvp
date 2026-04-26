@@ -982,9 +982,36 @@ export default function CoachSessionsPage() {
                   intelligenceScore: result.intelligenceScore,
                 }),
               });
-              if (!res.ok) console.error('Failed to complete session:', await res.text());
-            } catch (err) { console.error('Error completing session:', err); }
-            handleCompleteSuccess();
+
+              if (res.ok) {
+                handleCompleteSuccess();
+                return;
+              }
+
+              // Failure path — DO NOT close the modal. Surface the actual error so
+              // the coach knows the session is still incomplete and can retry.
+              // (Pre-fix: success was reported regardless of res.ok, leaving 14+
+              //  sessions stuck in 'scheduled' while the coach believed they were done.)
+              let errBody: { error?: string; message?: string; captureId?: string } = {};
+              try { errBody = await res.json(); } catch { /* non-JSON body */ }
+              const errCode = errBody.error || `http_${res.status}`;
+              const errMsg = errBody.message || errBody.error || `Failed to complete session (HTTP ${res.status}).`;
+
+              console.error('Session complete failed:', { status: res.status, body: errBody });
+
+              if (errCode === 'pending_capture') {
+                // Capture wasn't marked coach_confirmed before /complete fired
+                // (stale modal state or race). Keep the SCF modal open so the
+                // coach can re-submit it.
+                alert('Please review and confirm the session capture before completing.');
+                return;
+              }
+
+              alert(errMsg);
+            } catch (err) {
+              console.error('Network error completing session:', err);
+              alert(err instanceof Error ? err.message : 'Network error. Please try again.');
+            }
           }}
         />
       )}
