@@ -160,7 +160,7 @@ export async function POST(
 
     const parentNotifyPromise: Promise<NotifyResult> = child?.parent_phone
       ? sendNotification(
-          'parent_session_mode_online_v1',
+          'parent_session_mode_changed_v1',
           child.parent_phone,
           {
             parent_first_name: (child.parent_name || 'Parent').split(' ')[0],

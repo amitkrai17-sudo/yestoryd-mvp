@@ -1264,6 +1264,7 @@ export type Database = {
           revision_of: string | null
           session_id: string | null
           status: string
+          task_id: string | null
           thumbnail_uri: string | null
           title: string | null
           updated_at: string
@@ -1295,6 +1296,7 @@ export type Database = {
           revision_of?: string | null
           session_id?: string | null
           status?: string
+          task_id?: string | null
           thumbnail_uri?: string | null
           title?: string | null
           updated_at?: string
@@ -1326,6 +1328,7 @@ export type Database = {
           revision_of?: string | null
           session_id?: string | null
           status?: string
+          task_id?: string | null
           thumbnail_uri?: string | null
           title?: string | null
           updated_at?: string
@@ -1395,6 +1398,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "session_recording_status"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "child_artifacts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "parent_daily_tasks"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1703,6 +1713,7 @@ export type Database = {
           enrolled_at: string | null
           enrollment_status: string | null
           favorite_topics: string[] | null
+          feature_overrides: Json | null
           goals_capture_method: string | null
           goals_captured_at: string | null
           goals_message_sent: boolean | null
@@ -1763,11 +1774,13 @@ export type Database = {
           renewal_likelihood: string | null
           school_name: string | null
           sessions_completed: number | null
+          smart_practice_enabled: boolean | null
           status: string | null
           struggling_phonemes: string[] | null
           subscription_status: string | null
           total_sessions: number | null
           updated_at: string | null
+          yrl_level: string | null
         }
         Insert: {
           age?: number | null
@@ -1800,6 +1813,7 @@ export type Database = {
           enrolled_at?: string | null
           enrollment_status?: string | null
           favorite_topics?: string[] | null
+          feature_overrides?: Json | null
           goals_capture_method?: string | null
           goals_captured_at?: string | null
           goals_message_sent?: boolean | null
@@ -1860,11 +1874,13 @@ export type Database = {
           renewal_likelihood?: string | null
           school_name?: string | null
           sessions_completed?: number | null
+          smart_practice_enabled?: boolean | null
           status?: string | null
           struggling_phonemes?: string[] | null
           subscription_status?: string | null
           total_sessions?: number | null
           updated_at?: string | null
+          yrl_level?: string | null
         }
         Update: {
           age?: number | null
@@ -1897,6 +1913,7 @@ export type Database = {
           enrolled_at?: string | null
           enrollment_status?: string | null
           favorite_topics?: string[] | null
+          feature_overrides?: Json | null
           goals_capture_method?: string | null
           goals_captured_at?: string | null
           goals_message_sent?: boolean | null
@@ -1957,11 +1974,13 @@ export type Database = {
           renewal_likelihood?: string | null
           school_name?: string | null
           sessions_completed?: number | null
+          smart_practice_enabled?: boolean | null
           status?: string | null
           struggling_phonemes?: string[] | null
           subscription_status?: string | null
           total_sessions?: number | null
           updated_at?: string | null
+          yrl_level?: string | null
         }
         Relationships: [
           {
@@ -2681,11 +2700,13 @@ export type Database = {
           payout_period: string | null
           payout_type: string
           processed_at: string | null
+          product_type: string | null
           razorpay_payout_id: string | null
           razorpay_status: string | null
           reconciled_at: string | null
           reconciled_by: string | null
           scheduled_date: string
+          session_id: string | null
           session_type: string | null
           status: string | null
           tds_amount: number | null
@@ -2715,11 +2736,13 @@ export type Database = {
           payout_period?: string | null
           payout_type: string
           processed_at?: string | null
+          product_type?: string | null
           razorpay_payout_id?: string | null
           razorpay_status?: string | null
           reconciled_at?: string | null
           reconciled_by?: string | null
           scheduled_date: string
+          session_id?: string | null
           session_type?: string | null
           status?: string | null
           tds_amount?: number | null
@@ -2749,11 +2772,13 @@ export type Database = {
           payout_period?: string | null
           payout_type?: string
           processed_at?: string | null
+          product_type?: string | null
           razorpay_payout_id?: string | null
           razorpay_status?: string | null
           reconciled_at?: string | null
           reconciled_by?: string | null
           scheduled_date?: string
+          session_id?: string | null
           session_type?: string | null
           status?: string | null
           tds_amount?: number | null
@@ -3741,13 +3766,17 @@ export type Database = {
       }
       communication_logs: {
         Row: {
+          channel: string | null
           context_data: Json | null
           context_id: string | null
           context_type: string | null
+          cost_per_send: number | null
           created_at: string | null
+          deferred_until: string | null
           email_sent: boolean | null
           error_message: string | null
           id: string
+          idempotency_key: string | null
           recipient_email: string | null
           recipient_id: string | null
           recipient_phone: string | null
@@ -3760,13 +3789,17 @@ export type Database = {
           wa_sent: boolean | null
         }
         Insert: {
+          channel?: string | null
           context_data?: Json | null
           context_id?: string | null
           context_type?: string | null
+          cost_per_send?: number | null
           created_at?: string | null
+          deferred_until?: string | null
           email_sent?: boolean | null
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           recipient_email?: string | null
           recipient_id?: string | null
           recipient_phone?: string | null
@@ -3779,13 +3812,17 @@ export type Database = {
           wa_sent?: boolean | null
         }
         Update: {
+          channel?: string | null
           context_data?: Json | null
           context_id?: string | null
           context_type?: string | null
+          cost_per_send?: number | null
           created_at?: string | null
+          deferred_until?: string | null
           email_sent?: boolean | null
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           recipient_email?: string | null
           recipient_id?: string | null
           recipient_phone?: string | null
@@ -3913,8 +3950,10 @@ export type Database = {
       communication_templates: {
         Row: {
           admin_can_trigger: boolean | null
+          channel: string
           channels: Json | null
           coach_can_trigger: boolean | null
+          cost_per_send: number | null
           cost_tier: string | null
           created_at: string | null
           created_by: string | null
@@ -3933,7 +3972,7 @@ export type Database = {
           priority: number | null
           push_config: Json | null
           recipient_type: string
-          required_variables: string[] | null
+          required_variables: string[]
           respect_window: boolean | null
           routing_rules: Json | null
           send_window_end: string | null
@@ -3949,12 +3988,15 @@ export type Database = {
           wa_approved: boolean | null
           wa_template_category: string | null
           wa_template_name: string | null
+          wa_variable_derivations: Json | null
           wa_variables: string[] | null
         }
         Insert: {
           admin_can_trigger?: boolean | null
+          channel?: string
           channels?: Json | null
           coach_can_trigger?: boolean | null
+          cost_per_send?: number | null
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -3973,7 +4015,7 @@ export type Database = {
           priority?: number | null
           push_config?: Json | null
           recipient_type: string
-          required_variables?: string[] | null
+          required_variables?: string[]
           respect_window?: boolean | null
           routing_rules?: Json | null
           send_window_end?: string | null
@@ -3989,12 +4031,15 @@ export type Database = {
           wa_approved?: boolean | null
           wa_template_category?: string | null
           wa_template_name?: string | null
+          wa_variable_derivations?: Json | null
           wa_variables?: string[] | null
         }
         Update: {
           admin_can_trigger?: boolean | null
+          channel?: string
           channels?: Json | null
           coach_can_trigger?: boolean | null
+          cost_per_send?: number | null
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4013,7 +4058,7 @@ export type Database = {
           priority?: number | null
           push_config?: Json | null
           recipient_type?: string
-          required_variables?: string[] | null
+          required_variables?: string[]
           respect_window?: boolean | null
           routing_rules?: Json | null
           send_window_end?: string | null
@@ -4029,6 +4074,7 @@ export type Database = {
           wa_approved?: boolean | null
           wa_template_category?: string | null
           wa_template_name?: string | null
+          wa_variable_derivations?: Json | null
           wa_variables?: string[] | null
         }
         Relationships: []
@@ -5816,6 +5862,7 @@ export type Database = {
       el_skill_observations: {
         Row: {
           age_bands: string[] | null
+          conflict_pair_id: string | null
           created_at: string | null
           id: string
           is_active: boolean | null
@@ -5824,9 +5871,11 @@ export type Database = {
           skill_id: string
           sort_order: number | null
           updated_at: string | null
+          visible_at_ratings: string[] | null
         }
         Insert: {
           age_bands?: string[] | null
+          conflict_pair_id?: string | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -5835,9 +5884,11 @@ export type Database = {
           skill_id: string
           sort_order?: number | null
           updated_at?: string | null
+          visible_at_ratings?: string[] | null
         }
         Update: {
           age_bands?: string[] | null
+          conflict_pair_id?: string | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -5846,6 +5897,7 @@ export type Database = {
           skill_id?: string
           sort_order?: number | null
           updated_at?: string | null
+          visible_at_ratings?: string[] | null
         }
         Relationships: [
           {
@@ -7163,43 +7215,58 @@ export type Database = {
           amount: number | null
           attempt_count: number | null
           booking_id: string | null
+          child_id: string | null
           converted_at: string | null
           created_at: string | null
           error_code: string | null
           error_description: string | null
           id: string
           notified: boolean | null
+          notified_at: string | null
           parent_email: string | null
+          parent_id: string | null
           razorpay_order_id: string
           razorpay_payment_id: string
+          retry_token_id: string | null
+          updated_at: string | null
         }
         Insert: {
           amount?: number | null
           attempt_count?: number | null
           booking_id?: string | null
+          child_id?: string | null
           converted_at?: string | null
           created_at?: string | null
           error_code?: string | null
           error_description?: string | null
           id?: string
           notified?: boolean | null
+          notified_at?: string | null
           parent_email?: string | null
+          parent_id?: string | null
           razorpay_order_id: string
           razorpay_payment_id: string
+          retry_token_id?: string | null
+          updated_at?: string | null
         }
         Update: {
           amount?: number | null
           attempt_count?: number | null
           booking_id?: string | null
+          child_id?: string | null
           converted_at?: string | null
           created_at?: string | null
           error_code?: string | null
           error_description?: string | null
           id?: string
           notified?: boolean | null
+          notified_at?: string | null
           parent_email?: string | null
+          parent_id?: string | null
           razorpay_order_id?: string
           razorpay_payment_id?: string
+          retry_token_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -7207,6 +7274,34 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "failed_payments_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "failed_payments_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "failed_payments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "failed_payments_retry_token_id_fkey"
+            columns: ["retry_token_id"]
+            isOneToOne: false
+            referencedRelation: "payment_retry_tokens"
             referencedColumns: ["id"]
           },
         ]
@@ -8770,6 +8865,137 @@ export type Database = {
           },
         ]
       }
+      micro_observations: {
+        Row: {
+          activity_index: number | null
+          activity_name: string | null
+          capture_mode: string | null
+          captured_at: string | null
+          child_id: string
+          coach_id: string
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          minutes_into_session: number | null
+          note_text: string | null
+          observation_id: string | null
+          observation_type: string
+          session_id: string
+          skill_id: string | null
+          word_status: string | null
+          word_text: string | null
+        }
+        Insert: {
+          activity_index?: number | null
+          activity_name?: string | null
+          capture_mode?: string | null
+          captured_at?: string | null
+          child_id: string
+          coach_id: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          minutes_into_session?: number | null
+          note_text?: string | null
+          observation_id?: string | null
+          observation_type: string
+          session_id: string
+          skill_id?: string | null
+          word_status?: string | null
+          word_text?: string | null
+        }
+        Update: {
+          activity_index?: number | null
+          activity_name?: string | null
+          capture_mode?: string | null
+          captured_at?: string | null
+          child_id?: string
+          coach_id?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          minutes_into_session?: number | null
+          note_text?: string | null
+          observation_id?: string | null
+          observation_type?: string
+          session_id?: string
+          skill_id?: string | null
+          word_status?: string | null
+          word_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "micro_observations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_activity_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_workload"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches_with_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "el_skill_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "micro_observations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_recording_status"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "micro_observations_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "el_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nps_responses: {
         Row: {
           category: string | null
@@ -8925,6 +9151,78 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      observation_continuations: {
+        Row: {
+          child_id: string
+          continuation_status: string | null
+          created_at: string | null
+          id: string
+          observation_id: string
+          resolved_at: string | null
+          resolved_capture_id: string | null
+          source_capture_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          child_id: string
+          continuation_status?: string | null
+          created_at?: string | null
+          id?: string
+          observation_id: string
+          resolved_at?: string | null
+          resolved_capture_id?: string | null
+          source_capture_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          child_id?: string
+          continuation_status?: string | null
+          created_at?: string | null
+          id?: string
+          observation_id?: string
+          resolved_at?: string | null
+          resolved_capture_id?: string | null
+          source_capture_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observation_continuations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "el_skill_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_resolved_capture_id_fkey"
+            columns: ["resolved_capture_id"]
+            isOneToOne: false
+            referencedRelation: "structured_capture_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_continuations_source_capture_id_fkey"
+            columns: ["source_capture_id"]
+            isOneToOne: false
+            referencedRelation: "structured_capture_responses"
             referencedColumns: ["id"]
           },
         ]
@@ -9216,6 +9514,7 @@ export type Database = {
       parent_daily_tasks: {
         Row: {
           child_id: string
+          coach_notes: string | null
           completed_at: string | null
           content_item_id: string | null
           created_at: string
@@ -9229,6 +9528,7 @@ export type Database = {
           linked_template_code: string | null
           photo_analysis: Json | null
           photo_url: string | null
+          photo_urls: Json | null
           practice_duration: string | null
           session_id: string | null
           source: string | null
@@ -9237,6 +9537,7 @@ export type Database = {
         }
         Insert: {
           child_id: string
+          coach_notes?: string | null
           completed_at?: string | null
           content_item_id?: string | null
           created_at?: string
@@ -9250,6 +9551,7 @@ export type Database = {
           linked_template_code?: string | null
           photo_analysis?: Json | null
           photo_url?: string | null
+          photo_urls?: Json | null
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null
@@ -9258,6 +9560,7 @@ export type Database = {
         }
         Update: {
           child_id?: string
+          coach_notes?: string | null
           completed_at?: string | null
           content_item_id?: string | null
           created_at?: string
@@ -9271,6 +9574,7 @@ export type Database = {
           linked_template_code?: string | null
           photo_analysis?: Json | null
           photo_url?: string | null
+          photo_urls?: Json | null
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null
@@ -9406,27 +9710,45 @@ export type Database = {
       }
       payment_retry_tokens: {
         Row: {
+          amount: number | null
           booking_id: string | null
+          child_id: string | null
           created_at: string | null
           expires_at: string
           id: string
+          parent_id: string | null
+          product_code: string | null
+          razorpay_order_id: string
           token: string
+          used: boolean
           used_at: string | null
         }
         Insert: {
+          amount?: number | null
           booking_id?: string | null
+          child_id?: string | null
           created_at?: string | null
           expires_at: string
           id?: string
+          parent_id?: string | null
+          product_code?: string | null
+          razorpay_order_id?: string
           token: string
+          used?: boolean
           used_at?: string | null
         }
         Update: {
+          amount?: number | null
           booking_id?: string | null
+          child_id?: string | null
           created_at?: string | null
           expires_at?: string
           id?: string
+          parent_id?: string | null
+          product_code?: string | null
+          razorpay_order_id?: string
           token?: string
+          used?: boolean
           used_at?: string | null
         }
         Relationships: [
@@ -9435,6 +9757,27 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_retry_tokens_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_retry_tokens_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "payment_retry_tokens_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
             referencedColumns: ["id"]
           },
         ]
@@ -9863,6 +10206,33 @@ export type Database = {
           processed_at?: string | null
           request_id?: string | null
           webhook_id?: string
+        }
+        Relationships: []
+      }
+      product_features: {
+        Row: {
+          created_at: string | null
+          enabled: boolean
+          feature_key: string
+          id: string
+          product_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          product_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          product_type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -11062,6 +11432,7 @@ export type Database = {
           attendance_summary: Json | null
           audio_storage_path: string | null
           audio_url: string | null
+          batch_id: string | null
           book_id: string | null
           bot_error_at: string | null
           bot_error_reason: string | null
@@ -11142,6 +11513,7 @@ export type Database = {
           quiz_topic: string | null
           rating_overall: number | null
           recall_bot_id: string | null
+          recall_prefill_data: Json | null
           recall_status: string | null
           recording_processed_at: string | null
           recording_url: string | null
@@ -11158,6 +11530,7 @@ export type Database = {
           session_mode: string
           session_notes: string | null
           session_number: number | null
+          session_prep_data: Json | null
           session_started_at: string | null
           session_struggles: Json | null
           session_subtype: string | null
@@ -11196,6 +11569,7 @@ export type Database = {
           attendance_summary?: Json | null
           audio_storage_path?: string | null
           audio_url?: string | null
+          batch_id?: string | null
           book_id?: string | null
           bot_error_at?: string | null
           bot_error_reason?: string | null
@@ -11276,6 +11650,7 @@ export type Database = {
           quiz_topic?: string | null
           rating_overall?: number | null
           recall_bot_id?: string | null
+          recall_prefill_data?: Json | null
           recall_status?: string | null
           recording_processed_at?: string | null
           recording_url?: string | null
@@ -11292,6 +11667,7 @@ export type Database = {
           session_mode?: string
           session_notes?: string | null
           session_number?: number | null
+          session_prep_data?: Json | null
           session_started_at?: string | null
           session_struggles?: Json | null
           session_subtype?: string | null
@@ -11330,6 +11706,7 @@ export type Database = {
           attendance_summary?: Json | null
           audio_storage_path?: string | null
           audio_url?: string | null
+          batch_id?: string | null
           book_id?: string | null
           bot_error_at?: string | null
           bot_error_reason?: string | null
@@ -11410,6 +11787,7 @@ export type Database = {
           quiz_topic?: string | null
           rating_overall?: number | null
           recall_bot_id?: string | null
+          recall_prefill_data?: Json | null
           recall_status?: string | null
           recording_processed_at?: string | null
           recording_url?: string | null
@@ -11426,6 +11804,7 @@ export type Database = {
           session_mode?: string
           session_notes?: string | null
           session_number?: number | null
+          session_prep_data?: Json | null
           session_started_at?: string | null
           session_struggles?: Json | null
           session_subtype?: string | null
@@ -11821,6 +12200,7 @@ export type Database = {
           id: string
           planned_duration_minutes: number | null
           session_id: string
+          skill_id: string | null
           source: string | null
           started_at: string | null
           status: string
@@ -11836,6 +12216,7 @@ export type Database = {
           id?: string
           planned_duration_minutes?: number | null
           session_id: string
+          skill_id?: string | null
           source?: string | null
           started_at?: string | null
           status: string
@@ -11851,6 +12232,7 @@ export type Database = {
           id?: string
           planned_duration_minutes?: number | null
           session_id?: string
+          skill_id?: string | null
           source?: string | null
           started_at?: string | null
           status?: string
@@ -11869,6 +12251,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "session_recording_status"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "session_activity_log_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "el_skills"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -12459,10 +12848,12 @@ export type Database = {
           label: string
           label_hindi: string | null
           parent_label: string | null
+          rubric: Json | null
           scope: string
           slug: string
           sort_order: number
           updated_at: string
+          voice_prompts: Json | null
         }
         Insert: {
           color?: string
@@ -12473,10 +12864,12 @@ export type Database = {
           label: string
           label_hindi?: string | null
           parent_label?: string | null
+          rubric?: Json | null
           scope?: string
           slug: string
           sort_order?: number
           updated_at?: string
+          voice_prompts?: Json | null
         }
         Update: {
           color?: string
@@ -12487,10 +12880,12 @@ export type Database = {
           label?: string
           label_hindi?: string | null
           parent_label?: string | null
+          rubric?: Json | null
           scope?: string
           slug?: string
           sort_order?: number
           updated_at?: string
+          voice_prompts?: Json | null
         }
         Relationships: []
       }
@@ -12530,6 +12925,7 @@ export type Database = {
       structured_capture_responses: {
         Row: {
           ai_prefilled: boolean | null
+          capture_delay_hours: number | null
           capture_method: string
           child_artifact_analysis: Json | null
           child_artifact_duration_seconds: number | null
@@ -12539,14 +12935,20 @@ export type Database = {
           child_id: string
           coach_confirmed: boolean | null
           coach_id: string
+          coach_voice_note_url: string | null
+          content_item_id: string | null
           context_tags: string[] | null
           created_at: string | null
           custom_strength_note: string | null
           custom_struggle_note: string | null
+          delay_confidence_multiplier: number | null
           engagement_level: string
           group_session_id: string | null
+          homework_assigned: boolean | null
+          homework_description: string | null
           id: string
           intelligence_score: number | null
+          recall_enrichment: Json | null
           session_date: string
           session_id: string | null
           session_modality: string
@@ -12556,9 +12958,12 @@ export type Database = {
           struggle_observations: string[] | null
           submitted_at: string | null
           voice_input_url: string | null
+          words_mastered: string[] | null
+          words_struggled: string[] | null
         }
         Insert: {
           ai_prefilled?: boolean | null
+          capture_delay_hours?: number | null
           capture_method: string
           child_artifact_analysis?: Json | null
           child_artifact_duration_seconds?: number | null
@@ -12568,14 +12973,20 @@ export type Database = {
           child_id: string
           coach_confirmed?: boolean | null
           coach_id: string
+          coach_voice_note_url?: string | null
+          content_item_id?: string | null
           context_tags?: string[] | null
           created_at?: string | null
           custom_strength_note?: string | null
           custom_struggle_note?: string | null
+          delay_confidence_multiplier?: number | null
           engagement_level: string
           group_session_id?: string | null
+          homework_assigned?: boolean | null
+          homework_description?: string | null
           id?: string
           intelligence_score?: number | null
+          recall_enrichment?: Json | null
           session_date: string
           session_id?: string | null
           session_modality: string
@@ -12585,9 +12996,12 @@ export type Database = {
           struggle_observations?: string[] | null
           submitted_at?: string | null
           voice_input_url?: string | null
+          words_mastered?: string[] | null
+          words_struggled?: string[] | null
         }
         Update: {
           ai_prefilled?: boolean | null
+          capture_delay_hours?: number | null
           capture_method?: string
           child_artifact_analysis?: Json | null
           child_artifact_duration_seconds?: number | null
@@ -12597,14 +13011,20 @@ export type Database = {
           child_id?: string
           coach_confirmed?: boolean | null
           coach_id?: string
+          coach_voice_note_url?: string | null
+          content_item_id?: string | null
           context_tags?: string[] | null
           created_at?: string | null
           custom_strength_note?: string | null
           custom_struggle_note?: string | null
+          delay_confidence_multiplier?: number | null
           engagement_level?: string
           group_session_id?: string | null
+          homework_assigned?: boolean | null
+          homework_description?: string | null
           id?: string
           intelligence_score?: number | null
+          recall_enrichment?: Json | null
           session_date?: string
           session_id?: string | null
           session_modality?: string
@@ -12614,6 +13034,8 @@ export type Database = {
           struggle_observations?: string[] | null
           submitted_at?: string | null
           voice_input_url?: string | null
+          words_mastered?: string[] | null
+          words_struggled?: string[] | null
         }
         Relationships: [
           {
@@ -12656,6 +13078,20 @@ export type Database = {
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coaches_with_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "structured_capture_responses_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "el_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "structured_capture_responses_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_content_with_skills"
             referencedColumns: ["id"]
           },
         ]
@@ -13020,24 +13456,32 @@ export type Database = {
           admin_filled_at: string | null
           admin_filled_by: string | null
           admin_notes: string | null
+          batch_id: string | null
+          calendar_event_id: string | null
           category_id: string | null
           child_approximate_age: number | null
           child_id: string | null
           child_name: string
           coach_id: string
+          coach_split_snapshot: Json | null
           created_at: string | null
           default_session_mode: string | null
           enrollment_id: string | null
+          hourly_rate_calculated: number | null
           id: string
+          meet_link: string | null
+          onboarded_by: string | null
           parent_form_completed_at: string | null
           parent_form_token: string
           parent_form_token_expires_at: string
           parent_id: string | null
           parent_name_hint: string | null
           parent_phone: string
+          rate_flag: string | null
           schedule_preference: string | null
           session_duration_minutes: number | null
           session_rate: number
+          session_type: string | null
           sessions_per_week: number | null
           sessions_purchased: number
           status: string
@@ -13047,24 +13491,32 @@ export type Database = {
           admin_filled_at?: string | null
           admin_filled_by?: string | null
           admin_notes?: string | null
+          batch_id?: string | null
+          calendar_event_id?: string | null
           category_id?: string | null
           child_approximate_age?: number | null
           child_id?: string | null
           child_name: string
           coach_id: string
+          coach_split_snapshot?: Json | null
           created_at?: string | null
           default_session_mode?: string | null
           enrollment_id?: string | null
+          hourly_rate_calculated?: number | null
           id?: string
+          meet_link?: string | null
+          onboarded_by?: string | null
           parent_form_completed_at?: string | null
           parent_form_token: string
           parent_form_token_expires_at: string
           parent_id?: string | null
           parent_name_hint?: string | null
           parent_phone: string
+          rate_flag?: string | null
           schedule_preference?: string | null
           session_duration_minutes?: number | null
           session_rate: number
+          session_type?: string | null
           sessions_per_week?: number | null
           sessions_purchased: number
           status?: string
@@ -13074,24 +13526,32 @@ export type Database = {
           admin_filled_at?: string | null
           admin_filled_by?: string | null
           admin_notes?: string | null
+          batch_id?: string | null
+          calendar_event_id?: string | null
           category_id?: string | null
           child_approximate_age?: number | null
           child_id?: string | null
           child_name?: string
           coach_id?: string
+          coach_split_snapshot?: Json | null
           created_at?: string | null
           default_session_mode?: string | null
           enrollment_id?: string | null
+          hourly_rate_calculated?: number | null
           id?: string
+          meet_link?: string | null
+          onboarded_by?: string | null
           parent_form_completed_at?: string | null
           parent_form_token?: string
           parent_form_token_expires_at?: string
           parent_id?: string | null
           parent_name_hint?: string | null
           parent_phone?: string
+          rate_flag?: string | null
           schedule_preference?: string | null
           session_duration_minutes?: number | null
           session_rate?: number
+          session_type?: string | null
           sessions_per_week?: number | null
           sessions_purchased?: number
           status?: string
@@ -15429,6 +15889,7 @@ export type Database = {
           worksheet_count: number
         }[]
       }
+      normalize_phone_to_e164: { Args: { raw: string }; Returns: string }
       process_payout_batch: {
         Args: {
           p_admin_email: string

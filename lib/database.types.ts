@@ -1337,13 +1337,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "child_artifacts_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "parent_daily_tasks"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "child_artifacts_child_id_fkey"
             columns: ["child_id"]
             isOneToOne: false
@@ -1405,6 +1398,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "session_recording_status"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "child_artifacts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "parent_daily_tasks"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3766,13 +3766,17 @@ export type Database = {
       }
       communication_logs: {
         Row: {
+          channel: string | null
           context_data: Json | null
           context_id: string | null
           context_type: string | null
+          cost_per_send: number | null
           created_at: string | null
+          deferred_until: string | null
           email_sent: boolean | null
           error_message: string | null
           id: string
+          idempotency_key: string | null
           recipient_email: string | null
           recipient_id: string | null
           recipient_phone: string | null
@@ -3785,13 +3789,17 @@ export type Database = {
           wa_sent: boolean | null
         }
         Insert: {
+          channel?: string | null
           context_data?: Json | null
           context_id?: string | null
           context_type?: string | null
+          cost_per_send?: number | null
           created_at?: string | null
+          deferred_until?: string | null
           email_sent?: boolean | null
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           recipient_email?: string | null
           recipient_id?: string | null
           recipient_phone?: string | null
@@ -3804,13 +3812,17 @@ export type Database = {
           wa_sent?: boolean | null
         }
         Update: {
+          channel?: string | null
           context_data?: Json | null
           context_id?: string | null
           context_type?: string | null
+          cost_per_send?: number | null
           created_at?: string | null
+          deferred_until?: string | null
           email_sent?: boolean | null
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           recipient_email?: string | null
           recipient_id?: string | null
           recipient_phone?: string | null
@@ -3938,8 +3950,10 @@ export type Database = {
       communication_templates: {
         Row: {
           admin_can_trigger: boolean | null
+          channel: string
           channels: Json | null
           coach_can_trigger: boolean | null
+          cost_per_send: number | null
           cost_tier: string | null
           created_at: string | null
           created_by: string | null
@@ -3958,7 +3972,7 @@ export type Database = {
           priority: number | null
           push_config: Json | null
           recipient_type: string
-          required_variables: string[] | null
+          required_variables: string[]
           respect_window: boolean | null
           routing_rules: Json | null
           send_window_end: string | null
@@ -3974,12 +3988,15 @@ export type Database = {
           wa_approved: boolean | null
           wa_template_category: string | null
           wa_template_name: string | null
+          wa_variable_derivations: Json | null
           wa_variables: string[] | null
         }
         Insert: {
           admin_can_trigger?: boolean | null
+          channel?: string
           channels?: Json | null
           coach_can_trigger?: boolean | null
+          cost_per_send?: number | null
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -3998,7 +4015,7 @@ export type Database = {
           priority?: number | null
           push_config?: Json | null
           recipient_type: string
-          required_variables?: string[] | null
+          required_variables?: string[]
           respect_window?: boolean | null
           routing_rules?: Json | null
           send_window_end?: string | null
@@ -4014,12 +4031,15 @@ export type Database = {
           wa_approved?: boolean | null
           wa_template_category?: string | null
           wa_template_name?: string | null
+          wa_variable_derivations?: Json | null
           wa_variables?: string[] | null
         }
         Update: {
           admin_can_trigger?: boolean | null
+          channel?: string
           channels?: Json | null
           coach_can_trigger?: boolean | null
+          cost_per_send?: number | null
           cost_tier?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4038,7 +4058,7 @@ export type Database = {
           priority?: number | null
           push_config?: Json | null
           recipient_type?: string
-          required_variables?: string[] | null
+          required_variables?: string[]
           respect_window?: boolean | null
           routing_rules?: Json | null
           send_window_end?: string | null
@@ -4054,6 +4074,7 @@ export type Database = {
           wa_approved?: boolean | null
           wa_template_category?: string | null
           wa_template_name?: string | null
+          wa_variable_derivations?: Json | null
           wa_variables?: string[] | null
         }
         Relationships: []
@@ -7194,43 +7215,58 @@ export type Database = {
           amount: number | null
           attempt_count: number | null
           booking_id: string | null
+          child_id: string | null
           converted_at: string | null
           created_at: string | null
           error_code: string | null
           error_description: string | null
           id: string
           notified: boolean | null
+          notified_at: string | null
           parent_email: string | null
+          parent_id: string | null
           razorpay_order_id: string
           razorpay_payment_id: string
+          retry_token_id: string | null
+          updated_at: string | null
         }
         Insert: {
           amount?: number | null
           attempt_count?: number | null
           booking_id?: string | null
+          child_id?: string | null
           converted_at?: string | null
           created_at?: string | null
           error_code?: string | null
           error_description?: string | null
           id?: string
           notified?: boolean | null
+          notified_at?: string | null
           parent_email?: string | null
+          parent_id?: string | null
           razorpay_order_id: string
           razorpay_payment_id: string
+          retry_token_id?: string | null
+          updated_at?: string | null
         }
         Update: {
           amount?: number | null
           attempt_count?: number | null
           booking_id?: string | null
+          child_id?: string | null
           converted_at?: string | null
           created_at?: string | null
           error_code?: string | null
           error_description?: string | null
           id?: string
           notified?: boolean | null
+          notified_at?: string | null
           parent_email?: string | null
+          parent_id?: string | null
           razorpay_order_id?: string
           razorpay_payment_id?: string
+          retry_token_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -7238,6 +7274,34 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "failed_payments_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "failed_payments_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "failed_payments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "failed_payments_retry_token_id_fkey"
+            columns: ["retry_token_id"]
+            isOneToOne: false
+            referencedRelation: "payment_retry_tokens"
             referencedColumns: ["id"]
           },
         ]
@@ -9646,27 +9710,45 @@ export type Database = {
       }
       payment_retry_tokens: {
         Row: {
+          amount: number | null
           booking_id: string | null
+          child_id: string | null
           created_at: string | null
           expires_at: string
           id: string
+          parent_id: string | null
+          product_code: string | null
+          razorpay_order_id: string
           token: string
+          used: boolean
           used_at: string | null
         }
         Insert: {
+          amount?: number | null
           booking_id?: string | null
+          child_id?: string | null
           created_at?: string | null
           expires_at: string
           id?: string
+          parent_id?: string | null
+          product_code?: string | null
+          razorpay_order_id?: string
           token: string
+          used?: boolean
           used_at?: string | null
         }
         Update: {
+          amount?: number | null
           booking_id?: string | null
+          child_id?: string | null
           created_at?: string | null
           expires_at?: string
           id?: string
+          parent_id?: string | null
+          product_code?: string | null
+          razorpay_order_id?: string
           token?: string
+          used?: boolean
           used_at?: string | null
         }
         Relationships: [
@@ -9675,6 +9757,27 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_retry_tokens_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_retry_tokens_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "v_remedial_eligibility"
+            referencedColumns: ["child_id"]
+          },
+          {
+            foreignKeyName: "payment_retry_tokens_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parents"
             referencedColumns: ["id"]
           },
         ]
@@ -12975,6 +13078,20 @@ export type Database = {
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coaches_with_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "structured_capture_responses_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "el_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "structured_capture_responses_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_content_with_skills"
             referencedColumns: ["id"]
           },
         ]

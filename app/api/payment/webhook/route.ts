@@ -8,9 +8,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { z } from 'zod';
-import { queueEnrollmentComplete } from '@/lib/qstash';
+import { qstash, queueEnrollmentComplete } from '@/lib/qstash';
 import { loadCoachConfig, loadPaymentConfig } from '@/lib/config/loader';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendNotification } from '@/lib/communication/notify';
+import { startOfTodayIST } from '@/lib/utils/date-format';
 import { getSessionsForTier, getBoosterCreditsForTier } from '@/types/v2-schema';
 import {
   getAgeBandConfig,
@@ -867,14 +869,11 @@ async function processPaymentFailed(
   requestId: string
 ): Promise<ProcessingResult> {
   const { id: paymentId, order_id: orderId, amount: amountPaise, error_code, error_description } = payment;
+  const amount = (amountPaise || 0) / 100; // paise → rupees
 
   console.log(JSON.stringify({
-    requestId,
-    event: 'payment_failed',
-    paymentId,
-    orderId,
-    errorCode: error_code,
-    reason: error_description,
+    requestId, event: 'payment_failed_start', paymentId, orderId,
+    errorCode: error_code, reason: error_description,
   }));
 
   // 1. Update booking status
@@ -887,7 +886,7 @@ async function processPaymentFailed(
     })
     .eq('razorpay_order_id', orderId);
 
-  // 2. Find booking to get parent/child details
+  // 2. Find booking
   const { data: booking } = await supabase
     .from('bookings')
     .select('id, child_id, parent_id, amount, metadata')
@@ -899,119 +898,258 @@ async function processPaymentFailed(
     return { status: 'success', message: 'Failure recorded - no booking found' };
   }
 
-  // Extract metadata for failed payment handling
   const failedMeta = (booking.metadata as Record<string, any>) || {};
   const bookingData = {
-    child_name: failedMeta.child_name || 'Child',
-    parent_name: failedMeta.parent_name || 'Parent',
-    parent_email: failedMeta.parent_email || '',
-    parent_phone: failedMeta.parent_phone || '',
+    child_name: (failedMeta.child_name as string) || 'Child',
+    parent_name: (failedMeta.parent_name as string) || '',
+    parent_email: (failedMeta.parent_email as string) || '',
   };
 
-  // 3. Check for existing failed_payment record (increment attempt_count)
-  const { data: existingFailed } = await supabase
-    .from('failed_payments')
-    .select('id, attempt_count')
+  // 3. NEW (B2.3): 5-min captured-payment lookahead.
+  //    Razorpay can fire payment.failed for one attempt and payment.captured
+  //    for a subsequent retry on the same order_id within seconds. Suppress
+  //    the failure flow if a capture already exists for this order in the
+  //    last 5 min — avoids spamming the parent and creating phantom failures.
+  const fiveMinAgoIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: capturedRow } = await supabase
+    .from('payments')
+    .select('id, captured_at')
     .eq('razorpay_order_id', orderId)
+    .eq('status', 'captured')
+    .gte('captured_at', fiveMinAgoIso)
+    .limit(1)
     .maybeSingle();
 
-  if (existingFailed) {
-    await supabase
-      .from('failed_payments')
-      .update({
-        razorpay_payment_id: paymentId,
-        error_code: error_code || null,
-        error_description: error_description || null,
-        attempt_count: (existingFailed.attempt_count ?? 0) + 1,
-      })
-      .eq('id', existingFailed.id);
-  } else {
-    // 4. Generate retry token
-    const retryToken = crypto.randomUUID();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 48);
+  if (capturedRow) {
+    console.log(JSON.stringify({
+      requestId, event: 'failed_payment_suppressed_captured_within_5min',
+      orderId, paymentId, capturedPaymentId: capturedRow.id,
+    }));
+    return { status: 'success', message: 'Suppressed - captured within 5min' };
+  }
 
-    const productCode = (failedMeta.product_code as string) || 'full';
+  // 4. Insert payment_retry_tokens (7-day window per spec)
+  const retryToken = crypto.randomUUID();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  const productCode = (failedMeta.product_code as string) || 'full';
 
-    const { data: tokenRecord } = await supabase
-      .from('payment_retry_tokens')
-      .insert({
-        token: retryToken,
-        booking_id: booking.id,
-        parent_id: booking.parent_id,
-        child_id: booking.child_id,
-        razorpay_order_id: orderId,
-        amount: booking.amount,
-        product_code: productCode,
-        expires_at: expiresAt.toISOString(),
-      })
-      .select('id')
-      .single();
-
-    // 5. Create failed_payment record
-    await supabase.from('failed_payments').insert({
+  const { data: tokenRecord, error: tokenErr } = await supabase
+    .from('payment_retry_tokens')
+    .insert({
+      token: retryToken,
       booking_id: booking.id,
-      razorpay_order_id: orderId,
-      razorpay_payment_id: paymentId,
       parent_id: booking.parent_id,
       child_id: booking.child_id,
-      amount: (amountPaise || 0) / 100,
+      razorpay_order_id: orderId,
+      amount: booking.amount, // bookings.amount is in rupees (per A1 verification)
+      product_code: productCode,
+      expires_at: expiresAt.toISOString(),
+      used: false,
+    })
+    .select('id')
+    .single();
+
+  if (tokenErr || !tokenRecord) {
+    console.error(JSON.stringify({
+      requestId, event: 'failed_payment_retry_token_insert_error',
+      error: tokenErr?.message, code: tokenErr?.code,
+    }));
+    return { status: 'error', message: 'Failed to create retry token' };
+  }
+
+  // 5. Insert failed_payments (UNIQUE on razorpay_payment_id —
+  //    duplicate webhook delivery is handled gracefully via 23505)
+  const { data: failedRow, error: failedErr } = await supabase
+    .from('failed_payments')
+    .insert({
+      razorpay_payment_id: paymentId,
+      razorpay_order_id: orderId,
+      booking_id: booking.id,
+      parent_id: booking.parent_id,
+      child_id: booking.child_id,
+      parent_email: bookingData.parent_email || null,
+      amount,
       error_code: error_code || null,
       error_description: error_description || null,
-      retry_token_id: tokenRecord?.id || null,
-    });
+      retry_token_id: tokenRecord.id,
+      attempt_count: 1,
+      notified: false,
+    })
+    .select('id')
+    .single();
 
-    // 6. Queue parent notification with retry link via QStash
-    try {
-      const { qstash: qstashClient } = await import('@/lib/qstash');
-      const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
+  if (failedErr) {
+    if (failedErr.code === '23505') {
+      // Duplicate webhook delivery for the same payment.failed event.
+      console.log(JSON.stringify({
+        requestId, event: 'failed_payment_duplicate_webhook', paymentId,
+      }));
+      return { status: 'success', message: 'Duplicate failed_payment, no-op' };
+    }
+    console.error(JSON.stringify({
+      requestId, event: 'failed_payment_insert_error',
+      error: failedErr.message, code: failedErr.code,
+    }));
+    return { status: 'error', message: 'Failed to record failed payment' };
+  }
 
-      if (qstashClient) {
-        await qstashClient.publishJSON({
-          url: `${APP_URL}/api/jobs/send-communication`,
-          body: {
-            templateCode: 'payment_failed_retry',
-            recipientType: 'parent',
-            recipientId: booking.parent_id ?? '',
-            recipientPhone: bookingData.parent_phone,
-            recipientEmail: bookingData.parent_email,
-            recipientName: bookingData.parent_name,
-            variables: {
-              parent_name: bookingData.parent_name || 'there',
-              child_name: bookingData.child_name || 'your child',
-              amount: String(booking.amount ?? 0),
-              retry_link: `${APP_URL}/payment/retry?token=${retryToken}`,
-              error_reason: error_description || 'Payment could not be processed',
-            },
-            relatedEntityType: 'booking',
-            relatedEntityId: booking.id,
+  if (!failedRow) {
+    return { status: 'error', message: 'Failed to record failed payment - no row returned' };
+  }
+
+  const failedPaymentId = failedRow.id;
+  const childName = bookingData.child_name;
+
+  // 6. Send parent failure notification via canonical sendNotification.
+  //    contextId = razorpay_payment_id → per-failure dedup in idempotency hash.
+  //    Day-bucket dedup (firstParam = child_name) is the backstop.
+  //
+  // (B2.4) DEBOUNCE: per-order, per-IST-day. Audit trail above is per-attempt;
+  //   the parent-FACING notification is dampened to one per order per day.
+  //   Fail-safe policy: on debounce-check ERROR, proceed with the send
+  //   (better to over-notify than miss a real failure).
+  if (booking.parent_id) {
+    const istDayStart = startOfTodayIST();
+    const { data: priorNotified, error: priorErr } = await supabase
+      .from('failed_payments')
+      .select('id, razorpay_payment_id, notified_at')
+      .eq('razorpay_order_id', orderId)
+      .eq('notified', true)
+      .gte('notified_at', istDayStart.toISOString())
+      .limit(1);
+
+    if (priorErr) {
+      console.error(JSON.stringify({
+        requestId, event: 'failed_payment_debounce_check_error',
+        error: priorErr.message, code: priorErr.code,
+      }));
+      // FAIL SAFE — fall through to send.
+    }
+
+    const isDebounced = !priorErr && priorNotified && priorNotified.length > 0;
+
+    if (isDebounced) {
+      await supabase.from('activity_log').insert({
+        action: 'payment_failed_notification_debounced',
+        user_email: 'system',
+        user_type: 'system',
+        metadata: {
+          razorpay_order_id: orderId,
+          razorpay_payment_id: paymentId,
+          failed_payment_id: failedPaymentId,
+          parent_id: booking.parent_id,
+          prior_payment_id: priorNotified![0].razorpay_payment_id,
+          prior_notified_at: priorNotified![0].notified_at,
+          reason: 'already_notified_today',
+          job: 'webhook_payment_failed',
+        },
+      });
+      console.log(JSON.stringify({
+        requestId, event: 'failed_payment_notification_debounced',
+        orderId, paymentId, priorPaymentId: priorNotified![0].razorpay_payment_id,
+      }));
+      // Skip the send. failed_payments row stays notified=false (correct —
+      // no message went out for THIS attempt). Nudge is still queued below.
+    } else {
+      // (B2.5) Resolve canonical parent_name. Prefer booking.metadata; fall
+      // back to the parents table. Validator's resolveDerivations() will
+      // produce parent_first_name / child_first_name from the canonical
+      // names — we never pass first names directly.
+      let parentName = bookingData.parent_name;
+      if (!parentName) {
+        const { data: parentRow } = await supabase
+          .from('parents')
+          .select('name')
+          .eq('id', booking.parent_id)
+          .maybeSingle();
+        parentName = parentRow?.name ?? '';
+      }
+      const retryLink = `https://yestoryd.com/r/${retryToken}`;
+
+      let sendOk = false;
+      let sendReason: string | undefined;
+      try {
+        const result = await sendNotification(
+          'parent_payment_failed_v1',
+          booking.parent_id,
+          {
+            parent_name: parentName,
+            child_name: childName,
+            retry_link: retryLink,
           },
-          retries: 3,
-        });
+          { contextId: paymentId, contextType: 'failed_payment', triggeredBy: 'system' },
+        );
+        sendOk = result.success;
+        sendReason = result.reason;
+      } catch (sendErr: unknown) {
+        // sendNotification doesn't throw under normal conditions; log defensively.
+        sendOk = false;
+        sendReason = sendErr instanceof Error ? sendErr.message : String(sendErr);
+        console.error(JSON.stringify({
+          requestId, event: 'failed_payment_notify_threw', error: sendReason,
+        }));
+      }
 
-        // Mark as notified
+      if (sendOk) {
+        // 7. Mark notified ONLY on send success.
         await supabase
           .from('failed_payments')
           .update({ notified: true, notified_at: new Date().toISOString() })
-          .eq('razorpay_order_id', orderId);
-
-        console.log(JSON.stringify({
-          requestId,
-          event: 'failed_payment_notification_queued',
-          parentEmail: bookingData.parent_email,
-          retryToken,
-        }));
+          .eq('id', failedPaymentId);
+      } else {
+        // Per B2.3 addition #1: log to activity_log; do NOT throw.
+        await supabase.from('activity_log').insert({
+          action: 'payment_failed_notification_send_failed',
+          user_email: 'system',
+          user_type: 'system',
+          metadata: {
+            razorpay_payment_id: paymentId,
+            razorpay_order_id: orderId,
+            parent_id: booking.parent_id,
+            failed_payment_id: failedPaymentId,
+            reason: sendReason ?? 'unknown',
+            job: 'webhook_payment_failed',
+          },
+        });
       }
-    } catch (notifyErr: any) {
-      console.error(JSON.stringify({
-        requestId,
-        event: 'failed_payment_notification_error',
-        error: notifyErr.message,
-      }));
-    }
+    } // close: else (debounce path not taken)
+  } else {
+    console.log(JSON.stringify({
+      requestId, event: 'failed_payment_no_parent_id', paymentId, failedPaymentId,
+    }));
   }
 
-  return { status: 'success', message: 'Failure recorded with retry token' };
+  // 8. Queue 30-min retry nudge via QStash
+  try {
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
+    if (qstash) {
+      await qstash.publishJSON({
+        url: `${APP_URL}/api/jobs/payment-failed-nudge`,
+        body: { failedPaymentId },
+        delay: 1800, // 30 minutes
+        retries: 3,
+      });
+      console.log(JSON.stringify({
+        requestId, event: 'failed_payment_nudge_queued',
+        failedPaymentId, delaySeconds: 1800,
+      }));
+    } else {
+      console.warn(JSON.stringify({
+        requestId, event: 'qstash_unavailable_nudge_skipped', failedPaymentId,
+      }));
+    }
+  } catch (queueErr: unknown) {
+    const msg = queueErr instanceof Error ? queueErr.message : String(queueErr);
+    console.error(JSON.stringify({
+      requestId, event: 'failed_payment_nudge_queue_error', error: msg, failedPaymentId,
+    }));
+  }
+
+  console.log(JSON.stringify({
+    requestId, event: 'payment_failed_complete', paymentId, failedPaymentId,
+  }));
+  return { status: 'success', message: 'Failure recorded; parent notified; nudge queued' };
 }
 
 // --- 4b. REFUND HANDLERS ---

@@ -16,6 +16,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsAppMessage } from './aisensy';
 import { logCommunication, type RecipientType } from './log';
 import { formatForWhatsApp } from '@/lib/utils/phone';
+import {
+  resolveDerivations,
+  resolveRecipient,
+  validateNotification,
+  type ValidatorTemplate,
+  type DerivationsMap,
+} from './validate-notification';
 
 // NOTE: module-level client is safe in lib/ server code.
 // Do NOT copy this pattern into route handlers or components —
@@ -69,6 +76,8 @@ interface TemplateRow {
   is_active: boolean | null;
   channel: string;
   wa_variables: string[] | null;
+  required_variables: string[];
+  wa_variable_derivations: DerivationsMap | null;
   cost_per_send: number | null;
 }
 
@@ -231,7 +240,7 @@ export async function sendNotification(
   // ── STEP 1. Template lookup ──
   const { data: templateRows, error: tmplErr } = await supabase
     .from('communication_templates')
-    .select('template_code, wa_template_name, recipient_type, use_whatsapp, is_active, channel, wa_variables, cost_per_send')
+    .select('template_code, wa_template_name, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send')
     .eq('template_code', templateCode)
     .limit(1);
 
@@ -358,12 +367,65 @@ export async function sendNotification(
     return { success: false, reason: 'deferred_quiet_hours', deferred: true, logId };
   }
 
+  // ── STEP 5.5 (B2.2). Derivation resolution + Pillar 2B validator ──
+  // - resolveDerivations() fills in any *_first_name aliases from canonical
+  //   *_name fields when wa_variable_derivations is populated for this
+  //   template. No-op for templates without derivations.
+  // - validateNotification() runs Rules 1, 3, 4, 5, 6, 8 (Rule 2 is stubbed,
+  //   Rule 7 enforced inline at the AiSensy POST result handling below).
+  // - Mode is hardcoded 'warn' for this commit. Failures are logged to
+  //   activity_log; send proceeds. Rules 3 and 7 always enforce regardless.
+  // TODO(b2.2-followup): replace with site_settings.notify_validator_mode
+  //   reader once getSiteSetting() string-coercion bug is fixed.
+  const validatorTemplate: ValidatorTemplate = {
+    template_code: template.template_code,
+    recipient_type: template.recipient_type,
+    wa_template_name: template.wa_template_name,
+    use_whatsapp: template.use_whatsapp,
+    wa_variables: template.wa_variables,
+    required_variables: template.required_variables ?? [],
+    wa_variable_derivations: template.wa_variable_derivations,
+  };
+  const finalParams = resolveDerivations(validatorTemplate, namedParams);
+  // Recompute positional params from finalParams so AiSensy receives derived values.
+  const finalPositionalParams = (template.wa_variables ?? []).map((key) => finalParams[key]);
+  const resolvedRecipient = await resolveRecipient(recipientId);
+  const validatorMode: 'warn' | 'enforce' = 'warn'; // hardcoded — see TODO above
+  const validation = await validateNotification(
+    validatorTemplate,
+    resolvedRecipient,
+    phone,
+    finalParams,
+    validatorMode,
+  );
+  if (!validation.ok && validation.mode === 'enforce') {
+    // ENFORCE: rules 3, 7, or future enforce-mode rules — abort the send.
+    await logCommunication({
+      ...logBase,
+      recipientPhone: phone,
+      waSent: false,
+      errorMessage: `validator_rule_${validation.failedRule}: ${validation.reason}`,
+      contextData: { ...logBase.contextData, validator: { failedRule: validation.failedRule, reason: validation.reason } },
+    });
+    return { success: false, reason: 'send_failed' };
+  }
+  // WARN-mode failures already logged to activity_log inside validateNotification.
+
   // ── STEP 6. Idempotency ──
-  const firstParam = positionalParams[0] ?? '';
-  const idempotencyKey = crypto
-    .createHash('sha256')
-    .update(`${templateCode}:${phone}:${todayIST()}:${firstParam}`)
-    .digest('hex');
+  // Backward-compatible: when meta.contextId is unset, the hash is identical
+  // to the pre-B2.2 4-element shape. With contextId, an extra element is
+  // mixed in for per-incident dedupe (e.g. razorpay_payment_id).
+  const firstParam = (finalPositionalParams[0] as string | undefined) ?? '';
+  const ctx = meta?.contextId;
+  const idempotencyKey = ctx
+    ? crypto
+        .createHash('sha256')
+        .update(`${templateCode}:${phone}:${todayIST()}:${firstParam}:${ctx}`)
+        .digest('hex')
+    : crypto
+        .createHash('sha256')
+        .update(`${templateCode}:${phone}:${todayIST()}:${firstParam}`)
+        .digest('hex');
 
   const { data: existingRows } = await supabase
     .from('communication_logs')
@@ -389,7 +451,11 @@ export async function sendNotification(
     const result = await sendWhatsAppMessage({
       to: phone,
       templateName: template.wa_template_name,
-      variables: positionalParams,
+      // Use derivation-resolved positional params so AiSensy receives the
+      // derived value (e.g. child_first_name) when the caller passed only
+      // the canonical (e.g. child_name). For templates without derivations
+      // this is identical to the original positionalParams.
+      variables: finalPositionalParams as string[],
       meta: {
         templateCode,
         recipientType: templateRecipientType,
