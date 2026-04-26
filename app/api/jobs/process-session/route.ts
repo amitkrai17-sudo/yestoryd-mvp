@@ -412,8 +412,11 @@ async function saveSessionData(
                   })
                   .eq('id', sibCapture.id);
               } else {
-                // Create pending capture for sibling
-                const { data: newSibCapture } = await supabase
+                // Create pending capture for sibling.
+                // Race-safety: the partial UNIQUE index throws 23505 if another
+                // worker (e.g. capture-reminders) won the race. Treat as benign —
+                // re-fetch the winning row's id to keep scheduled_sessions linkage.
+                const { data: newSibCapture, error: insertErr } = await supabase
                   .from('structured_capture_responses')
                   .insert({
                     session_id: sibling.id,
@@ -442,10 +445,30 @@ async function saveSessionData(
                   .select('id')
                   .single();
 
-                if (newSibCapture?.id) {
+                let captureIdForLink: string | null = newSibCapture?.id ?? null;
+
+                if (insertErr && (insertErr as any).code === '23505') {
+                  console.warn(JSON.stringify({
+                    requestId, event: 'auto_filled_capture_race_lost',
+                    sessionId: sibling.id, source: 'process_session_sibling_fanout',
+                  }));
+                  // Re-fetch the winning row so we can still link scheduled_sessions.
+                  const { data: winnerRow } = await supabase
+                    .from('structured_capture_responses')
+                    .select('id')
+                    .eq('session_id', sibling.id)
+                    .eq('capture_method', 'auto_filled')
+                    .limit(1)
+                    .maybeSingle();
+                  captureIdForLink = winnerRow?.id ?? null;
+                } else if (insertErr) {
+                  throw insertErr;
+                }
+
+                if (captureIdForLink) {
                   await supabase
                     .from('scheduled_sessions')
-                    .update({ capture_id: newSibCapture.id })
+                    .update({ capture_id: captureIdForLink })
                     .eq('id', sibling.id);
                 }
               }

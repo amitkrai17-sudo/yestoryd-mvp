@@ -123,20 +123,38 @@ export async function GET(request: NextRequest) {
             .maybeSingle();
 
           if (!existingCapture) {
-            await supabase.from('structured_capture_responses').insert({
-              session_id: session.id,
-              child_id: session.child_id,
-              coach_id: session.coach_id,
-              session_date: session.scheduled_date,
-              session_modality: inferModality({ sessionMode: session.session_mode ?? undefined }),
-              capture_method: 'auto_filled',
-              ai_prefilled: true,
-              coach_confirmed: false,
-              engagement_level: 'moderate',
-              custom_strength_note: 'Session completed — please review and add your observations.',
-              capture_delay_hours: Math.round(hoursSinceEnd * 10) / 10,
-              delay_confidence_multiplier: 0.5,
-            } as any);
+            // INSERT race-safety: the partial UNIQUE index
+            // (structured_capture_responses_session_id_auto_filled_unique)
+            // throws 23505 if a concurrent run won the race. Treat as benign
+            // "another worker already created it" and skip — the winning row
+            // is acceptable and the next pre-check will find it.
+            const { error: insertErr } = await supabase
+              .from('structured_capture_responses')
+              .insert({
+                session_id: session.id,
+                child_id: session.child_id,
+                coach_id: session.coach_id,
+                session_date: session.scheduled_date,
+                session_modality: inferModality({ sessionMode: session.session_mode ?? undefined }),
+                capture_method: 'auto_filled',
+                ai_prefilled: true,
+                coach_confirmed: false,
+                engagement_level: 'moderate',
+                custom_strength_note: 'Session completed — please review and add your observations.',
+                capture_delay_hours: Math.round(hoursSinceEnd * 10) / 10,
+                delay_confidence_multiplier: 0.5,
+              } as any);
+
+            if (insertErr) {
+              if ((insertErr as any).code === '23505') {
+                console.warn(JSON.stringify({
+                  requestId, event: 'auto_filled_capture_race_lost',
+                  sessionId: session.id, source: 'capture_reminders_24hr',
+                }));
+              } else {
+                throw insertErr;
+              }
+            }
 
             // Store capture_id on session for UI linkage
             const { data: newCapture } = await supabase

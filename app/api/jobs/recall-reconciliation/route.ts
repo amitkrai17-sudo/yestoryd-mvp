@@ -364,8 +364,11 @@ async function saveReconciliationData(
       })
       .eq('id', existingCapture.id);
   } else {
-    // Create new pending capture
-    await supabase
+    // Create new pending capture.
+    // Race-safety: the partial UNIQUE index throws 23505 if a concurrent
+    // worker (e.g. capture-reminders 24hr fallback) already inserted an
+    // auto_filled row. Treat as benign — the winning row is acceptable.
+    const { error: insertErr } = await supabase
       .from('structured_capture_responses')
       .insert({
         session_id: sessionId,
@@ -400,6 +403,17 @@ async function saveReconciliationData(
         words_mastered: [],
         words_struggled: [],
       });
+
+    if (insertErr) {
+      if ((insertErr as any).code === '23505') {
+        console.warn(JSON.stringify({
+          event: 'auto_filled_capture_race_lost',
+          sessionId, source: 'recall_reconciliation',
+        }));
+      } else {
+        throw insertErr;
+      }
+    }
   }
 
   // 4. Increment sessions completed
