@@ -10,6 +10,7 @@ import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
+import { inferModality } from '@/lib/intelligence/modality';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     const { data: unreported } = await supabase
       .from('scheduled_sessions')
-      .select('id, child_id, coach_id, scheduled_date, scheduled_time, duration_minutes, children(child_name), coaches(name, phone, email)')
+      .select('id, child_id, coach_id, scheduled_date, scheduled_time, duration_minutes, session_mode, children(child_name), coaches(name, phone, email)')
       .in('status', ['scheduled', 'confirmed', 'in_progress', 'completed'])
       .is('capture_id', null)
       .gte('scheduled_date', twoDaysAgo)
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
               child_id: session.child_id,
               coach_id: session.coach_id,
               session_date: session.scheduled_date,
-              session_modality: 'online',
+              session_modality: inferModality({ sessionMode: session.session_mode ?? undefined }),
               capture_method: 'auto_filled',
               ai_prefilled: true,
               coach_confirmed: false,

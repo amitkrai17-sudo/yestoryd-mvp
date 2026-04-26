@@ -19,6 +19,7 @@ import { checkAndSendProactiveNotifications } from '@/lib/rai/proactive-notifica
 import { createAdminClient } from '@/lib/supabase/admin';
 import { analyzeSessionTranscript, type SessionAnalysis, type BatchContext } from '@/lib/gemini/session-prompts';
 import { extractLastSentence } from '@/lib/utils/text';
+import { inferModality } from '@/lib/intelligence/modality';
 
 export const dynamic = 'force-dynamic';
 
@@ -366,7 +367,7 @@ async function saveSessionData(
         if (batchId && thisSession) {
           const { data: siblings } = await supabase
             .from('scheduled_sessions')
-            .select('id, child_id, coach_id')
+            .select('id, child_id, coach_id, session_mode')
             .eq('batch_id' as any, batchId)
             .eq('scheduled_date', thisSession.scheduled_date!)
             .eq('scheduled_time', thisSession.scheduled_time!)
@@ -418,7 +419,10 @@ async function saveSessionData(
                     session_id: sibling.id,
                     child_id: sibling.child_id,
                     coach_id: sibling.coach_id || coachId,
-                    session_modality: 'online',
+                    // Recall sibling fanout: parent session had a Recall transcript,
+                    // so the batched siblings were online too. sessionMode is a
+                    // belt-and-suspenders fallback if Recall semantics ever change.
+                    session_modality: inferModality({ hasRecallBot: true, sessionMode: sibling.session_mode ?? undefined }),
                     capture_method: 'auto_filled',
                     ai_prefilled: true,
                     coach_confirmed: false,

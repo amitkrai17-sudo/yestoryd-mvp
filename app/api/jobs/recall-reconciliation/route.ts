@@ -22,6 +22,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGeminiModel } from '@/lib/gemini-config';
 import { extractLastSentence } from '@/lib/utils/text';
+import { inferModality } from '@/lib/intelligence/modality';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -370,7 +371,8 @@ async function saveReconciliationData(
         session_id: sessionId,
         child_id: childId,
         coach_id: coachId,
-        session_modality: 'online',
+        // Recall transcript exists ⇒ session was conducted online by definition.
+        session_modality: inferModality({ hasRecallBot: true }),
         capture_method: 'auto_filled',
         ai_prefilled: true,
         coach_confirmed: false,
