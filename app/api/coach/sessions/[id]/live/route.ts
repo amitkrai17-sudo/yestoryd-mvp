@@ -5,7 +5,9 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
+import { getSiteSetting, getSiteSettingInt } from '@/lib/config/site-settings-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -413,7 +415,7 @@ export const PATCH = withParamsHandler<{ id: string }>(async (request, { id }, {
     // Only update if currently 'scheduled' — don't overwrite other states
     const { data: session } = await supabase
       .from('scheduled_sessions')
-      .select('id, status')
+      .select('id, status, coach_id')
       .eq('id', id)
       .single();
 
@@ -424,6 +426,147 @@ export const PATCH = withParamsHandler<{ id: string }>(async (request, { id }, {
     if (session.status !== 'scheduled') {
       // Already started or in another state — just acknowledge
       return NextResponse.json({ success: true, status: session.status, already: true });
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Layer B: forcing function on session start
+    // ──────────────────────────────────────────────────────────
+    // Block this start if the coach has >= threshold sessions older than 48h
+    // with an unconfirmed (or absent) structured capture. Threshold is
+    // sourced from site_settings.coach_max_pending_signoffs (default 3).
+    //
+    // The (capture_id IS NULL OR coach_confirmed = false) filter correctly
+    // excludes admin_force_complete captures because those are inserted with
+    // coach_confirmed=true (see Step 4, app/api/admin/sessions/[id]/force-complete).
+    //
+    // Coach IDs may be absent when admin role is impersonating; skip the block
+    // entirely in that case so admins are never gated by their own queue.
+    const coachId = (auth.role === 'coach' ? auth.coachId : null) ?? session.coach_id;
+    if (auth.role === 'coach' && coachId) {
+      try {
+        const rawThreshold = await getSiteSetting('coach_max_pending_signoffs');
+        const threshold = await getSiteSettingInt('coach_max_pending_signoffs', 3);
+        // Misconfiguration warning: key present but unparseable as int.
+        const parsedFromRaw = rawThreshold !== null ? parseInt(rawThreshold, 10) : NaN;
+        if (rawThreshold !== null && Number.isNaN(parsedFromRaw)) {
+          Sentry.captureMessage(
+            'coach_max_pending_signoffs misconfigured, using default 3',
+            { level: 'warning', extra: { raw_value: rawThreshold } },
+          );
+        }
+
+        // Fetch coach's status='scheduled' rows.
+        const { data: scheduledRows } = await supabase
+          .from('scheduled_sessions')
+          .select('id, scheduled_date, scheduled_time, capture_id, children!scheduled_sessions_child_id_fkey(child_name)')
+          .eq('coach_id', coachId)
+          .eq('status', 'scheduled');
+
+        // Fetch coach_confirmed for any referenced captures (single batched query).
+        const captureIds = (scheduledRows ?? [])
+          .map(r => r.capture_id)
+          .filter((cid): cid is string => !!cid);
+        const captureConfirmedMap = new Map<string, boolean>();
+        if (captureIds.length > 0) {
+          const { data: captureRows } = await supabase
+            .from('structured_capture_responses')
+            .select('id, coach_confirmed')
+            .in('id', captureIds);
+          for (const c of captureRows ?? []) {
+            captureConfirmedMap.set(c.id, c.coach_confirmed === true);
+          }
+        }
+
+        // Filter "older than 48h IST + (no capture OR coach_confirmed=false)".
+        // 4-line IST cutoff pattern (duplicated per architecture rule —
+        //   see tech-debt log: "consolidate effectivePast/IST helpers — duplicated
+        //   across SessionCard, app/coach/sessions/page.tsx, this route").
+        // Server-side variant uses an explicit +05:30 offset because Vercel runs
+        // in UTC and the bare ISO without offset would parse as UTC.
+        const cutoffMs = Date.now() - 48 * 60 * 60 * 1000;
+        const pending = (scheduledRows ?? [])
+          .filter(r => {
+            if (!r.scheduled_date || !r.scheduled_time) return false;
+            const sessionMs = new Date(`${r.scheduled_date}T${r.scheduled_time}+05:30`).getTime();
+            if (sessionMs >= cutoffMs) return false;
+            const confirmed = r.capture_id
+              ? captureConfirmedMap.get(r.capture_id) === true
+              : false;
+            return !confirmed;
+          })
+          // Don't include the session being started — it's not yet "older than 48h with no capture",
+          // and surfacing it in the modal would be confusing.
+          .filter(r => r.id !== id)
+          .sort((a, b) => {
+            const aMs = new Date(`${a.scheduled_date}T${a.scheduled_time}+05:30`).getTime();
+            const bMs = new Date(`${b.scheduled_date}T${b.scheduled_time}+05:30`).getTime();
+            return aMs - bMs;
+          });
+
+        const pendingCount = pending.length;
+
+        if (pendingCount >= threshold) {
+          const pendingSlice = pending.slice(0, 5).map(r => {
+            const sessionMs = new Date(`${r.scheduled_date}T${r.scheduled_time}+05:30`).getTime();
+            return {
+              id: r.id,
+              child_name: ((r.children as any)?.child_name as string | undefined) ?? 'Student',
+              scheduled_date: r.scheduled_date,
+              scheduled_time: r.scheduled_time,
+              age_hours: Math.floor((Date.now() - sessionMs) / (60 * 60 * 1000)),
+            };
+          });
+
+          const requiredSignoffs = pendingCount - threshold + 1;
+          const message = `You have ${pendingCount} sessions awaiting sign-off from earlier sessions. Sign off at least ${requiredSignoffs} before starting today's session.`;
+
+          // Audit-log the block (best-effort; do not let logging failure
+          // unblock the coach).
+          try {
+            await supabase.from('activity_log').insert({
+              user_email: auth.email ?? 'unknown',
+              user_type: 'coach',
+              action: 'coach_session_start_blocked',
+              page_path: request.nextUrl.pathname,
+              metadata: {
+                coach_id: coachId,
+                attempted_session_id: id,
+                pending_count: pendingCount,
+                threshold,
+              },
+            });
+          } catch (logErr) {
+            console.error(JSON.stringify({
+              requestId, event: 'coach_session_start_blocked_log_failed',
+              error: logErr instanceof Error ? logErr.message : String(logErr),
+            }));
+          }
+
+          console.log(JSON.stringify({
+            requestId, event: 'coach_session_start_blocked',
+            coachId, attemptedSessionId: id, pendingCount, threshold,
+          }));
+
+          return NextResponse.json(
+            {
+              blocked: true,
+              pending_count: pendingCount,
+              threshold,
+              pending_sessions: pendingSlice,
+              message,
+            },
+            { status: 423 }, // 423 Locked
+          );
+        }
+      } catch (blockErr) {
+        // Never let a Layer B failure block legitimate session starts.
+        // Log + continue with the normal flow.
+        Sentry.captureException(blockErr, { extra: { sessionId: id, coachId } });
+        console.error(JSON.stringify({
+          requestId, event: 'layer_b_check_error',
+          error: blockErr instanceof Error ? blockErr.message : String(blockErr),
+        }));
+      }
     }
 
     const { error: updateError } = await supabase

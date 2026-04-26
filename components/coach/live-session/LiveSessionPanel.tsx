@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ClipboardList, Info, Bot, Play, Video, StopCircle, X, Timer } from 'lucide-react';
+import { ClipboardList, Info, Bot, Play, Video, StopCircle, X, Timer, AlertTriangle } from 'lucide-react';
 import SessionHeader from './SessionHeader';
 import ActivityTab from './ActivityTab';
 import InfoTab from './InfoTab';
@@ -210,6 +210,24 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // --- Layer B forcing-function block state ---
+  // Set when PATCH /live returns 423 because the coach has too many
+  // unsigned-off sessions. While set, the modal blocks the live panel.
+  interface PendingSessionRow {
+    id: string;
+    child_name: string;
+    scheduled_date: string;
+    scheduled_time: string;
+    age_hours: number;
+  }
+  interface PendingBlockPayload {
+    pending_count: number;
+    threshold: number;
+    pending_sessions: PendingSessionRow[];
+    message: string;
+  }
+  const [pendingBlock, setPendingBlock] = useState<PendingBlockPayload | null>(null);
+
   // --- Wake lock ---
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
@@ -279,20 +297,62 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
   }, [phase, currentIndex, activities, elapsedSeconds, session.id]);
 
   // --- Mark status as in_progress on server ---
-  const markSessionStarted = useCallback(async () => {
+  // Returns { ok: true } on 2xx, or a structured failure object otherwise.
+  // The caller (startSession) MUST gate setPhase('live') on { ok: true }.
+  // (Pre-Apr-27 the catch was empty and any non-OK response silently flipped
+  // the local phase to 'live', producing a session that was never recorded
+  // server-side. See Bug 4 sibling fix at app/coach/sessions/page.tsx:975.)
+  type StartResult =
+    | { ok: true }
+    | { ok: false; reason: 'blocked'; payload: PendingBlockPayload }
+    | { ok: false; reason: 'error'; message: string };
+
+  const markSessionStarted = useCallback(async (): Promise<StartResult> => {
+    let res: Response;
     try {
-      await fetch(`/api/coach/sessions/${session.id}/live`, {
+      res = await fetch(`/api/coach/sessions/${session.id}/live`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
-      // Non-blocking — session data is still tracked locally
+    } catch (err) {
+      return {
+        ok: false,
+        reason: 'error',
+        message: 'Could not start session, check your connection.',
+      };
     }
+
+    if (res.ok) return { ok: true };
+
+    // Non-OK: parse the body for actionable info.
+    let body: any = {};
+    try { body = await res.json(); } catch { /* non-JSON */ }
+
+    if (res.status === 423 && body && Array.isArray(body.pending_sessions)) {
+      return {
+        ok: false,
+        reason: 'blocked',
+        payload: {
+          pending_count: body.pending_count ?? body.pending_sessions.length,
+          threshold: body.threshold ?? 3,
+          pending_sessions: body.pending_sessions,
+          message: body.message ?? 'You have sessions awaiting sign-off.',
+        },
+      };
+    }
+
+    return {
+      ok: false,
+      reason: 'error',
+      message:
+        (body && typeof body.error === 'string' && body.error) ||
+        `Could not start session (HTTP ${res.status}).`,
+    };
   }, [session.id]);
 
   // --- Start session ---
-  const startSession = useCallback(() => {
-    // Cancel any countdown
+  const startSession = useCallback(async () => {
+    // Cancel any countdown FIRST so a blocked start doesn't auto-fire again.
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
       countdownRef.current = null;
@@ -300,10 +360,18 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
     setCountdown(null);
     setShowResumeBanner(false);
 
+    const result = await markSessionStarted();
+    if (!result.ok) {
+      if (result.reason === 'blocked') {
+        setPendingBlock(result.payload);
+      } else {
+        alert(result.message);
+      }
+      return;
+    }
+
     setPhase('live');
     activityStartRef.current = Date.now();
-
-    markSessionStarted();
 
     // Persist immediately
     savePersistedState(session.id, {
@@ -523,6 +591,76 @@ export default function LiveSessionPanel({ data }: LiveSessionPanelProps) {
             </button>
           </div>
         </div>
+
+        {/* Layer B forcing-function block modal — only path forward is to clear pending sign-offs */}
+        {pendingBlock && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pending-signoff-title"
+          >
+            <div className="bg-[#1a1f26] border border-white/10 rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+              <div className="p-5 border-b border-white/10">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 id="pending-signoff-title" className="text-white font-semibold text-base">
+                      Sign off earlier sessions first
+                    </h2>
+                    <p className="text-white/60 text-xs mt-1">
+                      {pendingBlock.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 space-y-2">
+                {pendingBlock.pending_sessions.map((p) => (
+                  <a
+                    key={p.id}
+                    href={`/coach/sessions/${p.id}`}
+                    className="block bg-white/5 border border-white/10 rounded-xl p-3 active:scale-[0.99] transition-transform hover:bg-white/[0.07]"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium truncate">
+                          {p.child_name}
+                        </p>
+                        <p className="text-white/40 text-[11px] mt-0.5">
+                          {p.scheduled_date} · {p.scheduled_time?.slice(0, 5)} · {p.age_hours}h ago
+                        </p>
+                      </div>
+                      <span className="text-[#00ABFF] text-xs font-medium flex-shrink-0">
+                        Open →
+                      </span>
+                    </div>
+                  </a>
+                ))}
+                {pendingBlock.pending_count > pendingBlock.pending_sessions.length && (
+                  <p className="text-white/40 text-[11px] text-center pt-1">
+                    {pendingBlock.pending_count - pendingBlock.pending_sessions.length} more not shown
+                  </p>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-white/10 sticky bottom-0 bg-[#1a1f26]">
+                <a
+                  href={
+                    pendingBlock.pending_sessions[0]
+                      ? `/coach/sessions/${pendingBlock.pending_sessions[0].id}`
+                      : '/coach/sessions'
+                  }
+                  className="block w-full py-3 bg-[#00ABFF] text-white rounded-xl font-semibold text-sm text-center active:scale-[0.98] transition-transform min-h-[48px] flex items-center justify-center"
+                >
+                  Open earliest pending session
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
