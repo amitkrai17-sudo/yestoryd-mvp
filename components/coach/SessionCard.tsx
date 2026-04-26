@@ -293,7 +293,13 @@ export function SessionCard({
         icon: <Send className="w-4 h-4" />,
         onClick: onComplete,
       });
-    } else {
+    } else if (!hasPendingCapture) {
+      // Suppress when a pending capture exists: the API would 400 with
+      // 'pending_capture' anyway, and the coach must clear the capture via
+      // the SCF flow ("Review AI Capture" / "Fill Report") before any
+      // completion action is meaningful. Phase 0 audit (Apr 26) confirmed
+      // this branch was dead UX — coaches couldn't reach it for the 14
+      // stuck sessions because needsReport=true always took the if-branch.
       dropdownActions.push({
         label: 'Mark as Complete',
         icon: ActionIcons.complete,
