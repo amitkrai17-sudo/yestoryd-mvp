@@ -41,7 +41,7 @@ export async function deductTuitionBalance(
     // 1. Fetch enrollment with child/parent info
     const { data: enrollment, error: fetchErr } = await supabase
       .from('enrollments')
-      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, enrollment_type, status')
+      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, enrollment_type, status, is_paused, renewal_intent, renewal_intent_set_at, low_balance_nudges_sent, last_low_balance_nudge_at')
       .eq('id', enrollmentId)
       .single();
 
@@ -157,6 +157,60 @@ export async function deductTuitionBalance(
       await checkAndPause(enrollmentId, newBalance, childName, parentPhone, parentName, requestId);
 
     } else if (newBalance <= 2) {
+      // ── Spam prevention guards (added 2026-04-26 for parent_tuition_low_balance_v3) ──
+      // Defensive: pause is currently set via status='tuition_paused', is_paused flag
+      // is dormant in production. Check both to prevent latent bug.
+      if (enrollment.is_paused === true || enrollment.status === 'tuition_paused') {
+        await supabase.from('activity_log').insert({
+          action: 'low_balance_skipped',
+          user_email: COMPANY_CONFIG.supportEmail,
+          user_type: 'system',
+          metadata: {
+            enrollment_id: enrollment.id,
+            child_id: enrollment.child_id,
+            skip_reason: 'paused',
+            sessions_remaining: newBalance,
+          },
+        });
+        return { deducted: true, newBalance, alertSent: 'none' };
+      }
+
+      // Renewal intent: only fire to parents who are 'pending' or 'needs_more_info'.
+      // Honors declined intent and stops nudging confirmed renewals.
+      const intent = enrollment.renewal_intent ?? 'pending';
+      if (!['pending', 'needs_more_info'].includes(intent)) {
+        await supabase.from('activity_log').insert({
+          action: 'low_balance_skipped',
+          user_email: COMPANY_CONFIG.supportEmail,
+          user_type: 'system',
+          metadata: {
+            enrollment_id: enrollment.id,
+            child_id: enrollment.child_id,
+            skip_reason: `intent_${intent}`,
+            sessions_remaining: newBalance,
+          },
+        });
+        return { deducted: true, newBalance, alertSent: 'none' };
+      }
+
+      // Lifetime nudge cap: max 2 nudges per enrollment, ever.
+      const nudgesSent = enrollment.low_balance_nudges_sent ?? 0;
+      if (nudgesSent >= 2) {
+        await supabase.from('activity_log').insert({
+          action: 'low_balance_skipped',
+          user_email: COMPANY_CONFIG.supportEmail,
+          user_type: 'system',
+          metadata: {
+            enrollment_id: enrollment.id,
+            child_id: enrollment.child_id,
+            skip_reason: 'cap_reached',
+            nudges_sent: nudgesSent,
+            sessions_remaining: newBalance,
+          },
+        });
+        return { deducted: true, newBalance, alertSent: 'none' };
+      }
+
       // Low balance alert
       const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
 
@@ -170,6 +224,13 @@ export async function deductTuitionBalance(
           });
           if (result.success) {
             alertSent = 'low_balance';
+            await supabase
+              .from('enrollments')
+              .update({
+                low_balance_nudges_sent: nudgesSent + 1,
+                last_low_balance_nudge_at: new Date().toISOString(),
+              })
+              .eq('id', enrollment.id);
           } else {
             console.error(JSON.stringify({
               requestId, event: 'tuition_low_balance_wa_failed',

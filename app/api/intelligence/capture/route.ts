@@ -313,6 +313,22 @@ export async function POST(request: NextRequest) {
 
       // Dispatch downstream automation to orchestrator (async)
       const { queuePostCaptureOrchestrator } = await import('@/lib/qstash');
+
+      // Invariant: AI-prefilled captures always have a coach_id at this branch.
+      // They're created by capture-reminders / recall-reconciliation / process-session
+      // sibling fanout, all of which set a real coach_id. The only writer that nulls
+      // coach_id is admin force-complete (Step 4), which sets coach_confirmed=true
+      // and bypasses this confirmation branch entirely. Schema went nullable on
+      // Apr 27 (force_complete_coach_id_nullable migration); this invariant predates
+      // that change. If we ever see null here, upstream state is corrupt — throw
+      // loudly rather than silently mis-dispatch the orchestrator.
+      if (existing.coach_id === null) {
+        throw new Error(
+          `coach_id null on AI-prefill confirmation path (captureId=${captureId}). ` +
+          `Upstream invariant broken — fix the auto-fill writer that produced this row.`
+        );
+      }
+
       await queuePostCaptureOrchestrator({
         captureId,
         sessionId: existing.session_id,

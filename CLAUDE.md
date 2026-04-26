@@ -60,6 +60,20 @@ grep -rP "[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]" app/ componen
 grep -rn "new GoogleGenerativeAI" app/ lib/ --include="*.ts" | grep -v "lib/gemini/client.ts"
 ```
 
+### Local Build Discipline (MANDATORY before push)
+
+**Local `npm run build` is mandatory before push for any commit that:**
+- Adds new Supabase queries with `.eq()` / `.single()` / `.maybeSingle()` chains
+- Adds new SELECT columns or JOINs
+- Touches files with new variable references (e.g. lifting a query to a new scope, switching between try blocks)
+- Modifies more than 5 files in one commit
+
+Skip the build only for: doc-only commits, migration-only commits, comment-only changes, or single-line config tweaks.
+
+**Reasoning:** Vercel build budget concerns are NEVER worth a divergent production state. A failed Vercel deploy with already-applied DB migrations leaves production code stale while DB expects new shape — silent runtime failures result. Local build catches TS2345 / type errors that Vercel would catch 3 minutes later, but without the cost of a broken deploy.
+
+The 2026-04-25 four-template alignment incident demonstrated this: two consecutive deploys ERRORED on nullable-type guards (commits `a461f731` and `698ff708`), leaving DB migrations applied while production code stayed on stale deploy. 60-minute divergence window — zero send attempts during it by luck only.
+
 ## Plugin & Skill Usage Rules (ENFORCE ALWAYS)
 
 - ALWAYS use **frontend-design** plugin for any UI/component/page work — even small changes
