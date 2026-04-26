@@ -72,6 +72,20 @@ export function formatTime12(timeStr: string): string {
   return `${hour12}:${minutes} ${ampm}`;
 }
 
+/**
+ * Date object representing 00:00:00 IST (Asia/Kolkata) of TODAY.
+ * Useful for IST-day-bucket SQL filters: `.gte('column', startOfTodayIST().toISOString())`.
+ *
+ * Implementation: shift current UTC time by +5:30 to get the "IST clock",
+ * floor to midnight, then shift back to UTC instant.
+ */
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+export function startOfTodayIST(): Date {
+  const istNow = new Date(Date.now() + IST_OFFSET_MS);
+  istNow.setUTCHours(0, 0, 0, 0);
+  return new Date(istNow.getTime() - IST_OFFSET_MS);
+}
+
 /** "Today" / "Tomorrow" / "Mon, 7 Mar" — relative-aware short format */
 export function formatDateRelative(dateStr: string): string {
   const date = new Date(dateStr + 'T00:00:00');
