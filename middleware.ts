@@ -110,6 +110,57 @@ function isParentRoute(pathname: string): boolean {
   return pathname.startsWith('/parent');
 }
 
+// ==================== AUTH REJECTION OBSERVABILITY ====================
+
+function captureAuthRejection(req: NextRequest, params: {
+  reason: string,
+  user_email?: string,
+  user_id?: string,
+  tier_failed?: string,
+  extra?: Record<string, unknown>,
+}) {
+  const ctx = {
+    reason: params.reason,
+    user_email: params.user_email,
+    user_id: params.user_id,
+    tier_failed: params.tier_failed,
+    target_path: req.nextUrl.pathname,
+    target_search: req.nextUrl.search,
+    referer: req.headers.get('referer'),
+    has_code_param: req.nextUrl.searchParams.has('code'),
+    cookie_names: req.cookies.getAll().map(c => c.name),
+    user_agent: req.headers.get('user-agent'),
+    ...params.extra,
+  };
+  console.log(`[Middleware] AuthRejection ${params.reason}`, JSON.stringify(ctx));
+  try {
+    Sentry.captureMessage(`Middleware AuthRejection: ${params.reason}`, {
+      level: 'warning',
+      tags: {
+        surface: 'middleware',
+        reason: params.reason,
+        tier: params.tier_failed ?? 'n/a',
+        actor_email: params.user_email ?? 'unknown',
+      },
+      extra: {
+        reason: params.reason,
+        actor_address: params.user_email,
+        actor_ref: params.user_id,
+        tier_failed: params.tier_failed,
+        target_path: req.nextUrl.pathname,
+        target_search: req.nextUrl.search,
+        referer: req.headers.get('referer'),
+        has_code_param: req.nextUrl.searchParams.has('code'),
+        cookie_names: req.cookies.getAll().map(c => c.name),
+        user_agent: req.headers.get('user-agent'),
+        ...params.extra,
+      },
+    });
+  } catch (e) {
+    console.error('[Middleware] Sentry capture failed', e);
+  }
+}
+
 // ==================== MAIN MIDDLEWARE ====================
 
 export async function middleware(request: NextRequest) {
@@ -188,8 +239,10 @@ export async function middleware(request: NextRequest) {
     if (code) {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) {
-        console.error('[Middleware] Code exchange failed:', exchangeError.message);
-        Sentry.captureMessage(`Code exchange failed: ${exchangeError.message}`, { level: 'warning', extra: { pathname } });
+        captureAuthRejection(request, {
+          reason: 'pkce_exchange_failed',
+          extra: { error_message: exchangeError.message },
+        });
         // Redirect to login with clear error instead of silent fail
         const loginPath = pathname.startsWith('/coach') ? '/coach/login' : '/parent/login';
         return NextResponse.redirect(new URL(`${loginPath}?error=link_expired`, request.url));
@@ -212,11 +265,16 @@ export async function middleware(request: NextRequest) {
     //     This prevents redirect loops: without clearing cookies, the login page
     //     sees stale tokens via getSession() and redirects back to dashboard.
     if (error || !user) {
+      const cookies = request.cookies.getAll();
+      captureAuthRejection(request, {
+        reason: 'no_session_or_invalid',
+        extra: { had_cookies: cookies.length > 0, error_message: error?.message },
+      });
       const loginUrl = getLoginUrl(pathname, request.nextUrl);
       const redirectResponse = NextResponse.redirect(loginUrl);
 
       // Clear all Supabase auth cookies to prevent stale-session redirect loops
-      request.cookies.getAll().forEach(cookie => {
+      cookies.forEach(cookie => {
         if (cookie.name.startsWith('sb-')) {
           redirectResponse.cookies.delete(cookie.name);
         }
@@ -352,8 +410,12 @@ export async function middleware(request: NextRequest) {
               .single();
 
             if (!childRecord) {
-              Sentry.captureMessage(`Parent login denied: no parent/child record for ${userEmail}`, { level: 'warning', extra: { authUserId: user.id } });
-              console.log(`[Middleware] Unauthorized parent access attempt: ${userEmail} (DB check)`);
+              captureAuthRejection(request, {
+                reason: 'tier_3_no_parent_found',
+                user_email: userEmail,
+                user_id: user?.id,
+                tier_failed: 'tier_3_children_fallback',
+              });
               return NextResponse.redirect(new URL('/parent/login?error=unauthorized', request.url));
             }
 
@@ -395,8 +457,10 @@ export async function middleware(request: NextRequest) {
     // Fail-open on ALL errors. Client layouts validate auth as fallback.
     // Better to let a request through than to crash middleware or
     // redirect-loop during Supabase outages / cold starts / ECONNRESET.
-    Sentry.captureException(error, { extra: { context: 'middleware-auth-check', pathname: request.nextUrl.pathname } });
-    console.error('[Middleware] Auth check error, failing open:', error?.code || error?.message || error);
+    captureAuthRejection(request, {
+      reason: 'middleware_unhandled_error',
+      extra: { error_message: error?.message || String(error), error_code: error?.code },
+    });
     return response;
   }
 }
