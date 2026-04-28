@@ -368,6 +368,53 @@
 
 ---
 
+## Architecture Decisions
+
+Reverse-chronological log of significant architecture commitments. One entry per decision. Add new entries at the top.
+
+### 2026-04-28 — WhatsApp BSP migration: AiSensy → Meta Cloud direct
+
+**Context:** AiSensy free tier (Basic ₹999/mo) blocks inbound webhooks. Webhook unlock requires Pro Plan upgrade (~₹3,200/mo) PLUS Webhook Add-on (₹24,000 + 18% GST = ₹28,320/yr). Combined ~₹66,720/yr just to enable parent quick-reply button replies and other inbound traffic.
+
+**Decision:** Migrate outbound from AiSensy → Meta Cloud direct on Lead Bot WABA (8591). Keep AiSensy Basic running for 6 months as fallback hedge.
+
+**Rationale:**
+- AiSensy upgrade economics don't make sense at our stage. ₹66K/yr = 11x one Continuation enrollment.
+- Lead Bot WABA (8591) is already on Meta Cloud direct with full inbound webhook plumbing wired and tested at `app/api/whatsapp/webhook/route.ts` and `app/api/whatsapp/process/route.ts`.
+- Lead Bot WABA is a separate WABA from AiSensy WABA — clean quality rating, no inheritance from April 24 mass-pause event.
+- Eliminates AiSensy Campaign drift class (Pillar 2B Rule 2 stub becomes irrelevant). Consistency triangle becomes a line: DB row ↔ Meta-approved template ↔ Code caller.
+- One number for parents (8591) for both inbound and outbound — cleaner UX than current dual-number setup (8976 outbound, 8591 wa.me).
+
+**Trade-offs accepted:**
+- ~25-30 hours engineering investment over 4 weeks vs. paying ~₹66K/yr indefinitely.
+- ~50 templates need re-approval on Lead Bot WABA (Meta Business Suite UI, 1-24h per template).
+- Lose AiSensy dashboard/agent UI — not used today by Rucha, acceptable.
+- Lose BSP support layer — already debugging Meta-side issues directly anyway.
+
+**Migration shape (4 weeks):**
+- Week 1: Verify Lead Bot WABA tier/verification/access tokens. Build `lib/communication/leadbot.ts` adapter mirroring `aisensy.ts` shape. Add `channel='leadbot'` routing in `notify.ts`. Pilot with `parent_otp_v3`.
+- Week 2: Migrate 6 hot-path templates currently firing in production (`parent_practice_tasks_v3`, `coach_session_reminder_1h_v3`, `admin_daily_health_v3`, `parent_practice_nudge_v3`, `parent_tuition_onboarding_v4`, `parent_otp_v3`).
+- Week 3: Submit `parent_tuition_low_balance_v5` with native quick-reply buttons on Lead Bot WABA. Wire 4 ack templates. **This is when two-way renewal flow goes live without paying for AiSensy webhook.**
+- Week 4: Long-tail migration + decommission planning. Wired-but-dormant templates can stay on AiSensy until needed.
+
+**Reverted alternatives (do not revisit without new information):**
+- AiSensy PRO + Webhook upgrade — economics killed it (~₹66K/yr).
+- URL-redirect renewal flow (Path D) — superseded by native buttons on Lead Bot once outbound migration ships.
+- Big-bang migration in one sprint — phased is lower risk given solo engineering bandwidth.
+
+**Pre-flight verification needed before Week 1 implementation:**
+1. Lead Bot WABA verification status (Business Suite → Settings → Business Info)
+2. Lead Bot WABA quality rating + messaging tier (WhatsApp Manager → Phone Numbers → 8591 → Quality)
+3. Existing template approvals on Lead Bot WABA (WhatsApp Manager → Message Templates)
+4. Lead Bot phone number display name as it appears to parents in WhatsApp
+5. System user with `whatsapp_business_messaging` permission + non-expiring access token
+
+**Status:** Decision committed. Pre-flight checks pending. Implementation deferred to dedicated session.
+
+**Reference:** Discussed in chat session on 2026-04-28 covering the full path comparison (AiSensy PRO vs Lead Bot migration vs hybrid vs web-form) and Yash @ AiSensy's quote breakdown.
+
+---
+
 ## Known Tech Debt
 
 | # | Item | Severity | Location |
