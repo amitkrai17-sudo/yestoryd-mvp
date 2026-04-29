@@ -33,8 +33,10 @@ async function handler(request: NextRequest) {
     const cutoff = new Date(Date.now() - config.taskExpiryDays * 24 * 60 * 60 * 1000)
       .toISOString().split('T')[0];
 
-    const { data: expired, error } = await supabase
-      .from('parent_daily_tasks')
+    // Cast: status column added in migration 20260429130100; database.types.ts
+    // regenerates after deploy. PR 2.5 will type the column properly.
+    const { data: expired, error } = await (supabase
+      .from('parent_daily_tasks') as any)
       .update({ status: 'expired' })
       .eq('status', 'active')
       .lt('task_date', cutoff)

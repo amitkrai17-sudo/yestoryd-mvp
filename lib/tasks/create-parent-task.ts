@@ -41,7 +41,7 @@ export type CreateTaskResult =
   | { created: false; reason: 'duplicate' }
   | { created: false; reason: 'cap_reached' };
 
-const CAPPED_SOURCES: ReadonlySet<TaskSource> = new Set([
+const CAPPED_SOURCES: ReadonlySet<TaskSource> = new Set<TaskSource>([
   'ai_recommended',
   'template_generated',
 ]);
@@ -53,8 +53,9 @@ export async function createParentTask(input: CreateTaskInput): Promise<CreateTa
   const idempotency_key = `${input.source}:${input.idempotency_seed}`;
 
   if (CAPPED_SOURCES.has(input.source)) {
-    const { count } = await supabase
-      .from('parent_daily_tasks')
+    // Cast: status column added in migration 20260429130100.
+    const { count } = await (supabase
+      .from('parent_daily_tasks') as any)
       .select('id', { count: 'exact', head: true })
       .eq('child_id', input.child_id)
       .eq('status', 'active');
@@ -64,8 +65,10 @@ export async function createParentTask(input: CreateTaskInput): Promise<CreateTa
     }
   }
 
-  const { data, error } = await supabase
-    .from('parent_daily_tasks')
+  // Cast: status + idempotency_key columns added in migration 20260429130100;
+  // database.types.ts regenerates after deploy. PR 2.5 will type these properly.
+  const { data, error } = await (supabase
+    .from('parent_daily_tasks') as any)
     .insert({
       child_id: input.child_id,
       source: input.source,
