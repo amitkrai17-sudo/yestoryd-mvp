@@ -188,6 +188,13 @@ const JOBS: Job[] = [
     description: 'Decay intelligence profile freshness (fresh->aging->stale)',
   },
   {
+    name: 'expire-stale-tasks',
+    path: '/api/cron/expire-stale-tasks',
+    schedule: { type: 'daily', istHour: 6, istMinute: 0 },
+    method: 'GET',
+    description: 'Auto-expire parent_daily_tasks beyond the grace window (active -> expired)',
+  },
+  {
     name: 'micro-assessment-trigger',
     path: '/api/cron/micro-assessment-trigger',
     schedule: { type: 'daily', istHour: 4, istMinute: 0 },
