@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
@@ -14,6 +15,27 @@ const SUPPORT_WHATSAPP = COMPANY_CONFIG.leadBotWhatsApp;
 // Subtle square grid — shared across admin/parent/coach login pages
 const GRID_BG =
   'pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e2e8f010_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f010_1px,transparent_1px)] bg-[size:4rem_4rem]';
+
+// Defense-in-depth: confirm an authenticated user has a parents row before
+// redirecting to /parent/dashboard. Middleware already enforces this server-side,
+// but the login page can hard-navigate stale admin/coach sessions into a redirect
+// loop without this check. False on RLS error or no row — both mean "not a parent".
+async function verifyParentRole(
+  supabase: any,
+  user: { id?: string; email?: string | null } | null,
+): Promise<boolean> {
+  if (!user?.id || !user?.email) return false;
+  const { data, error } = await supabase
+    .from('parents')
+    .select('id')
+    .or(`user_id.eq.${user.id},email.eq.${user.email.toLowerCase()}`)
+    .limit(1);
+  if (error) {
+    console.error('[parent/login] verifyParentRole error', error);
+    return false;
+  }
+  return (data?.length ?? 0) > 0;
+}
 
 export default function ParentLoginPage() {
   const [email, setEmail] = useState('');
@@ -25,7 +47,7 @@ export default function ParentLoginPage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
   const searchParams = useSearchParams();
-  const errorParam = searchParams.get('error');
+  const [errorParam, setErrorParam] = useState<string | null>(() => searchParams.get('error'));
   const unauthorizedError = errorParam === 'unauthorized';
   const linkExpiredError = errorParam === 'link_expired';
 
@@ -48,14 +70,31 @@ export default function ParentLoginPage() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (isProcessingHash.current) return;
-      if (event === 'SIGNED_IN' && session && !unauthorizedError) {
+      if (event === 'SIGNED_IN' && session) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          window.location.href = '/parent/dashboard';
-        } else {
+        if (!user) {
           await supabase.auth.signOut();
           setCheckingSession(false);
+          return;
         }
+        const isParent = await verifyParentRole(supabase, user);
+        if (isParent) {
+          window.location.href = '/parent/dashboard';
+          return;
+        }
+        console.warn('[parent/login] Fresh sign-in with no parent record, signing out', { email: user.email });
+        Sentry.captureMessage('Login page: fresh sign-in with no parent record', {
+          level: 'info',
+          tags: {
+            surface: 'parent_login',
+            reason: 'fresh_signin_no_parent',
+            actor_email: user.email ?? 'unknown',
+          },
+          extra: { actor_address: user.email, actor_ref: user.id },
+        });
+        await supabase.auth.signOut();
+        setError("This email isn't linked to a parent account. If you have an account, please sign in with the email you used to enroll. Need help via WhatsApp.");
+        setCheckingSession(false);
       }
       if (event === 'SIGNED_OUT') {
         setCheckingSession(false);
@@ -66,15 +105,34 @@ export default function ParentLoginPage() {
       if (linkExpiredError) {
         setError('This login link has expired or was opened in a different browser. Please request a new one from the browser you want to use.');
         setCheckingSession(false);
-      } else if (user && unauthorizedError) {
-        await supabase.auth.signOut();
-        setError('Your account is not registered as a parent. Please take a free assessment first or contact support.');
-        setCheckingSession(false);
-      } else if (user && !userError) {
-        window.location.href = '/parent/dashboard';
-      } else {
-        setCheckingSession(false);
+        return;
       }
+      if (user && !userError) {
+        const isParent = await verifyParentRole(supabase, user);
+        if (isParent) {
+          window.location.href = '/parent/dashboard';
+          return;
+        }
+        // Stale non-parent session (admin/coach signed in elsewhere, or user_id
+        // never linked). Clean up silently — sign out, strip the misleading
+        // ?error=unauthorized from the URL, and let the form render clean.
+        console.warn('[parent/login] Stale non-parent session detected, signing out silently', { email: user.email });
+        await supabase.auth.signOut();
+        window.history.replaceState(null, '', '/parent/login');
+        setErrorParam(null);
+        Sentry.captureMessage('Login page: stale non-parent session signed out', {
+          level: 'info',
+          tags: {
+            surface: 'parent_login',
+            reason: 'stale_session_cleared',
+            actor_email: user.email ?? 'unknown',
+          },
+          extra: { actor_address: user.email, actor_ref: user.id },
+        });
+        setCheckingSession(false);
+        return;
+      }
+      setCheckingSession(false);
     });
 
     return () => subscription.unsubscribe();
@@ -247,6 +305,26 @@ export default function ParentLoginPage() {
           setError('Failed to establish session. Please try again.');
           return;
         }
+        // Defense-in-depth: /api/auth/verify-otp should only succeed for parent
+        // emails. Reaching here as a non-parent would be a real bug — surface it
+        // loudly via Sentry but DO NOT navigate.
+        const { data: { user: verifiedUser } } = await supabase.auth.getUser();
+        const isParent = await verifyParentRole(supabase, verifiedUser);
+        if (!isParent) {
+          Sentry.captureMessage('Parent OTP verified but no parent record found', {
+            level: 'error',
+            tags: {
+              surface: 'parent_login',
+              reason: 'otp_verified_no_parent',
+              actor_email: verifiedUser?.email ?? 'unknown',
+            },
+            extra: { actor_address: verifiedUser?.email, actor_ref: verifiedUser?.id },
+          });
+          await supabase.auth.signOut();
+          isProcessingHash.current = false;
+          setError("This email isn't linked to a parent account. If you have an account, please sign in with the email you used to enroll. Need help via WhatsApp.");
+          return;
+        }
         // Hard navigation so middleware re-evaluates the new session cookie
         window.location.href = data.redirectTo || '/parent/dashboard';
         return;
@@ -275,6 +353,21 @@ export default function ParentLoginPage() {
   const SuccessBanner = () => message ? (
     <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm">
       {message}
+    </div>
+  ) : null;
+
+  const UnauthorizedBanner = () => (unauthorizedError && !checkingSession) ? (
+    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+      We couldn&apos;t find a parent account linked to that session. If you have an account, please sign in with the email you used to enroll. Need help?{' '}
+      <a
+        href={`https://wa.me/${SUPPORT_WHATSAPP}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[#1D9E75] underline"
+      >
+        WhatsApp us
+      </a>
+      .
     </div>
   ) : null;
 
@@ -520,6 +613,7 @@ export default function ParentLoginPage() {
 
         {/* Login card */}
         <div className="bg-[#1a2028] rounded-2xl px-5 py-6 sm:px-8 sm:py-8 max-w-md w-full">
+          <UnauthorizedBanner />
           <ErrorBanner />
           <SuccessBanner />
 
