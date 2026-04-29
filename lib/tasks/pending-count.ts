@@ -1,24 +1,24 @@
 // ============================================================
 // FILE: lib/tasks/pending-count.ts
-// PURPOSE: Shared helper for homework task count limits
-// Rule: Max 3 pending tasks per child (auto-generated only)
-// Coach-assigned tasks bypass the cap.
+// Counts tasks still within their actionable window (task_date >= today
+// AND is_completed = false). Used by the recs cron and generate-daily-tasks
+// to enforce MAX_PENDING_TASKS cap. Expired tasks (task_date < today) do
+// NOT count toward the cap regardless of source.
 // ============================================================
 
 export const MAX_PENDING_TASKS = 3;
 
-/**
- * Count pending (incomplete) tasks for a child.
- */
 export async function getPendingTaskCount(
   supabase: { from: (table: string) => any },
   childId: string,
 ): Promise<number> {
+  const todayStr = new Date().toISOString().split('T')[0];
   const { count } = await supabase
     .from('parent_daily_tasks')
     .select('id', { count: 'exact', head: true })
     .eq('child_id', childId)
-    .eq('is_completed', false);
+    .eq('is_completed', false)
+    .gte('task_date', todayStr);
 
   return count || 0;
 }

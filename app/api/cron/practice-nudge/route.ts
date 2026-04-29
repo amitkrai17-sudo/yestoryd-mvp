@@ -39,12 +39,10 @@ export async function GET(request: NextRequest) {
   const p = policy as Record<string, number>;
 
   try {
-    // Find overdue tasks: incomplete, created within policy windows
-    const now = new Date();
-    const overdueMinMs = (p.overdue_min_hours || 48) * 60 * 60 * 1000;
-    const overdueMaxMs = (p.overdue_max_days || 7) * 24 * 60 * 60 * 1000;
-    const fortyEightHoursAgo = new Date(now.getTime() - overdueMinMs).toISOString();
-    const sevenDaysAgo = new Date(now.getTime() - overdueMaxMs).toISOString();
+    // Find overdue tasks: incomplete, scheduled within the last 7 days through today
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sevenDaysAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      .toISOString().split('T')[0];
 
     const { data: overdueTasks } = await supabase
       .from('parent_daily_tasks')
@@ -55,8 +53,8 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('is_completed', false)
-      .lt('created_at', fortyEightHoursAgo)
-      .gt('created_at', sevenDaysAgo)
+      .lte('task_date', todayStr)
+      .gte('task_date', sevenDaysAgoStr)
       .order('child_id');
 
     if (!overdueTasks || overdueTasks.length === 0) {

@@ -63,7 +63,12 @@ export async function GET(
     sunday.setDate(monday.getDate() + 6);
     const sundayStr = sunday.toISOString().split('T')[0];
 
-    // Fetch ALL pending tasks (not just this week) for priority ordering
+    // Only show pending tasks from the last 7 days — older incomplete rows are
+    // legacy / expired and should not surface on the parent dashboard.
+    const sevenDaysAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      .toISOString().split('T')[0];
+
+    // Fetch pending tasks within the active 7-day window for priority ordering
     const [pendingResult, completedResult] = await Promise.all([
       supabase
         .from('parent_daily_tasks')
@@ -75,6 +80,7 @@ export async function GET(
         `)
         .eq('child_id', childId)
         .eq('is_completed', false)
+        .gte('task_date', sevenDaysAgoStr)
         .order('created_at', { ascending: false })
         .limit(50),
       supabase

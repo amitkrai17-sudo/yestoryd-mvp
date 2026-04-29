@@ -345,12 +345,13 @@ export async function POST(
     try {
       const sess = session as any;
       if (sess.homework_assigned && sess.homework_description) {
-        // Race condition guard: check if coach already submitted capture with homework
+        // Race condition guard: check if coach already submitted capture with
+        // homework, and dedup against our own QStash retries (ai_recommended).
         const { data: existingTasks } = await supabase
           .from('parent_daily_tasks')
           .select('id')
           .eq('session_id', sessionId)
-          .in('source', ['coach_assigned'])
+          .in('source', ['coach_assigned', 'ai_recommended'])
           .limit(1);
 
         if (!existingTasks || existingTasks.length === 0) {
