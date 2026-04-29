@@ -9538,6 +9538,7 @@ export type Database = {
           duration_minutes: number | null
           enrollment_id: string | null
           id: string
+          idempotency_key: string | null
           is_completed: boolean
           linked_skill: string | null
           linked_template_code: string | null
@@ -9547,6 +9548,7 @@ export type Database = {
           practice_duration: string | null
           session_id: string | null
           source: string | null
+          status: string
           task_date: string
           title: string
         }
@@ -9561,6 +9563,7 @@ export type Database = {
           duration_minutes?: number | null
           enrollment_id?: string | null
           id?: string
+          idempotency_key?: string | null
           is_completed?: boolean
           linked_skill?: string | null
           linked_template_code?: string | null
@@ -9570,6 +9573,7 @@ export type Database = {
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null
+          status?: string
           task_date: string
           title: string
         }
@@ -9584,6 +9588,7 @@ export type Database = {
           duration_minutes?: number | null
           enrollment_id?: string | null
           id?: string
+          idempotency_key?: string | null
           is_completed?: boolean
           linked_skill?: string | null
           linked_template_code?: string | null
@@ -9593,6 +9598,7 @@ export type Database = {
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null
+          status?: string
           task_date?: string
           title?: string
         }

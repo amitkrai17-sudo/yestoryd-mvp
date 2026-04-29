@@ -53,9 +53,8 @@ export async function createParentTask(input: CreateTaskInput): Promise<CreateTa
   const idempotency_key = `${input.source}:${input.idempotency_seed}`;
 
   if (CAPPED_SOURCES.has(input.source)) {
-    // Cast: status column added in migration 20260429130100.
-    const { count } = await (supabase
-      .from('parent_daily_tasks') as any)
+    const { count } = await supabase
+      .from('parent_daily_tasks')
       .select('id', { count: 'exact', head: true })
       .eq('child_id', input.child_id)
       .eq('status', 'active');
@@ -65,10 +64,8 @@ export async function createParentTask(input: CreateTaskInput): Promise<CreateTa
     }
   }
 
-  // Cast: status + idempotency_key columns added in migration 20260429130100;
-  // database.types.ts regenerates after deploy. PR 2.5 will type these properly.
-  const { data, error } = await (supabase
-    .from('parent_daily_tasks') as any)
+  const { data, error } = await supabase
+    .from('parent_daily_tasks')
     .insert({
       child_id: input.child_id,
       source: input.source,

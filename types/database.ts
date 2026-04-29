@@ -6707,8 +6707,10 @@ export type Database = {
           is_continuation: boolean | null
           is_paused: boolean | null
           last_alert_sent_at: string | null
+          last_low_balance_nudge_at: string | null
           lead_source: string | null
           lead_source_coach_id: string | null
+          low_balance_nudges_sent: number
           max_reschedules: number | null
           no_show_count: number | null
           nps_score: number | null
@@ -6743,6 +6745,9 @@ export type Database = {
           refund_amount: number | null
           remedial_sessions_max: number | null
           remedial_sessions_used: number | null
+          renewal_intent: string
+          renewal_intent_set_at: string | null
+          renewal_intent_set_by: string | null
           renewal_offered_at: string | null
           renewal_status: string | null
           renewed_from_enrollment_id: string | null
@@ -6807,8 +6812,10 @@ export type Database = {
           is_continuation?: boolean | null
           is_paused?: boolean | null
           last_alert_sent_at?: string | null
+          last_low_balance_nudge_at?: string | null
           lead_source?: string | null
           lead_source_coach_id?: string | null
+          low_balance_nudges_sent?: number
           max_reschedules?: number | null
           no_show_count?: number | null
           nps_score?: number | null
@@ -6843,6 +6850,9 @@ export type Database = {
           refund_amount?: number | null
           remedial_sessions_max?: number | null
           remedial_sessions_used?: number | null
+          renewal_intent?: string
+          renewal_intent_set_at?: string | null
+          renewal_intent_set_by?: string | null
           renewal_offered_at?: string | null
           renewal_status?: string | null
           renewed_from_enrollment_id?: string | null
@@ -6907,8 +6917,10 @@ export type Database = {
           is_continuation?: boolean | null
           is_paused?: boolean | null
           last_alert_sent_at?: string | null
+          last_low_balance_nudge_at?: string | null
           lead_source?: string | null
           lead_source_coach_id?: string | null
+          low_balance_nudges_sent?: number
           max_reschedules?: number | null
           no_show_count?: number | null
           nps_score?: number | null
@@ -6943,6 +6955,9 @@ export type Database = {
           refund_amount?: number | null
           remedial_sessions_max?: number | null
           remedial_sessions_used?: number | null
+          renewal_intent?: string
+          renewal_intent_set_at?: string | null
+          renewal_intent_set_by?: string | null
           renewal_offered_at?: string | null
           renewal_status?: string | null
           renewed_from_enrollment_id?: string | null
@@ -9523,6 +9538,7 @@ export type Database = {
           duration_minutes: number | null
           enrollment_id: string | null
           id: string
+          idempotency_key: string | null
           is_completed: boolean
           linked_skill: string | null
           linked_template_code: string | null
@@ -9532,6 +9548,7 @@ export type Database = {
           practice_duration: string | null
           session_id: string | null
           source: string | null
+          status: string
           task_date: string
           title: string
         }
@@ -9546,6 +9563,7 @@ export type Database = {
           duration_minutes?: number | null
           enrollment_id?: string | null
           id?: string
+          idempotency_key?: string | null
           is_completed?: boolean
           linked_skill?: string | null
           linked_template_code?: string | null
@@ -9555,6 +9573,7 @@ export type Database = {
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null
+          status?: string
           task_date: string
           title: string
         }
@@ -9569,6 +9588,7 @@ export type Database = {
           duration_minutes?: number | null
           enrollment_id?: string | null
           id?: string
+          idempotency_key?: string | null
           is_completed?: boolean
           linked_skill?: string | null
           linked_template_code?: string | null
@@ -9578,6 +9598,7 @@ export type Database = {
           practice_duration?: string | null
           session_id?: string | null
           source?: string | null
+          status?: string
           task_date?: string
           title?: string
         }
@@ -12934,7 +12955,7 @@ export type Database = {
           child_artifact_url: string | null
           child_id: string
           coach_confirmed: boolean | null
-          coach_id: string
+          coach_id: string | null
           coach_voice_note_url: string | null
           content_item_id: string | null
           context_tags: string[] | null
@@ -12972,7 +12993,7 @@ export type Database = {
           child_artifact_url?: string | null
           child_id: string
           coach_confirmed?: boolean | null
-          coach_id: string
+          coach_id?: string | null
           coach_voice_note_url?: string | null
           content_item_id?: string | null
           context_tags?: string[] | null
@@ -13010,7 +13031,7 @@ export type Database = {
           child_artifact_url?: string | null
           child_id?: string
           coach_confirmed?: boolean | null
-          coach_id?: string
+          coach_id?: string | null
           coach_voice_note_url?: string | null
           content_item_id?: string | null
           context_tags?: string[] | null

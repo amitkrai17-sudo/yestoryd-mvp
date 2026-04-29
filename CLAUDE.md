@@ -284,3 +284,5 @@ Three style/documentation inconsistencies found during the Apr 24 hypothesis tes
 - **D2 — Single bypass:** `app/api/cron/daily-health-check/route.ts:39` calls `createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)` inline instead of using the `createAdminClient()` helper. Not a security issue (same env vars, same scope), but inconsistent. Migrate when next touching that cron.
 
 - **D3 — Mixed instantiation pattern:** Some callers use module-level `const` (per-worker singleton); others construct per-function. No functional difference given Supabase SDK is stateless. Choose one convention, document in this file, migrate organically.
+
+- **D4 — Three parallel `database.types.ts` files:** `lib/database.types.ts`, `lib/supabase/database.types.ts`, and `types/database.ts` all hold the same generated types but drift independently. Currently kept in sync via Copy-Item. Consolidate to a single source with re-exports from the other two paths. Required before PR 2 (writer migration touches all three import roots).
