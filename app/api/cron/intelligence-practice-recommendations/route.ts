@@ -2,11 +2,11 @@
 // FILE: app/api/cron/intelligence-practice-recommendations/route.ts
 // ============================================================
 // Intelligence-Driven Practice Recommendations
-// Runs daily to create parent_daily_tasks based on the child's
-// intelligence profile growth areas and matching content.
+// Runs Mon-Fri IST (skips Sat/Sun) to create parent_daily_tasks based on
+// the child's intelligence profile growth areas and matching content.
 //
-// QStash Schedule:
-//   cron: "0 3 * * *"  (3:00 AM UTC daily)
+// QStash Schedule (via dispatcher):
+//   daily 08:00 IST — weekend early-return enforced inside handler
 //   url: /api/cron/intelligence-practice-recommendations
 // ============================================================
 
@@ -321,9 +321,11 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Insert tasks (limit to 3). Attach matched content_item_id to the last task
-        // that carries the warehouse content (if any).
-        const insertTasks = tasksToCreate.slice(0, 3).map((t, idx, arr) => ({
+        // Insert single best task per child per day (post-PR-7 policy).
+        // tasksToCreate is built in priority order: growth-skill matches first,
+        // GENERIC fallback if none matched. Slicing to 1 picks the highest-priority.
+        // Attach matched content_item_id to that task if the warehouse matched.
+        const insertTasks = tasksToCreate.slice(0, 1).map((t, idx, arr) => ({
           child_id: profile.child_id,
           enrollment_id: enrollment?.id || null,
           source: 'ai_recommended' as const,
