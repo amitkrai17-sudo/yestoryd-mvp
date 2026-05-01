@@ -84,6 +84,40 @@ export async function GET(request: NextRequest) {
     console.log(JSON.stringify({ requestId, event: 'practice_recs_started', authSource: auth.source }));
 
     const supabase = getServiceSupabase();
+
+    // Skip weekends — Indian families need Sat/Sun for family time, not homework.
+    // Per product policy revision (May 2026): no auto-task generation Sat/Sun IST.
+    // Coach-assigned tasks (W1, W3) are unaffected — Rucha can still create
+    // tasks any day if she chooses.
+    const istNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const istDay = istNow.getDay();   // 0 = Sunday, 6 = Saturday
+    if (istDay === 0 || istDay === 6) {
+      const dayName = istDay === 0 ? 'Sunday' : 'Saturday';
+      console.log(JSON.stringify({
+        requestId,
+        event: 'practice_recs_weekend_skip',
+        day: dayName
+      }));
+
+      await supabase.from('activity_log').insert({
+        user_email: COMPANY_CONFIG.supportEmail,
+        user_type: 'system',
+        action: 'intelligence_practice_recommendations_weekend_skip',
+        metadata: {
+          request_id: requestId,
+          skipped_day: dayName,
+          timestamp: new Date().toISOString(),
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        skipped: 'weekend',
+        day: dayName,
+      });
+    }
+
     const today = new Date().toISOString().split('T')[0];
 
     // Find children with intelligence profiles
