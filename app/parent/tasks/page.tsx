@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   CheckCircle, Circle, Clock, Flame, BookOpen,
   Camera, X, Check, XCircle,
-  Smile, ThumbsUp, Frown, FileDown,
+  Smile, ThumbsUp, Frown, FileDown, UserCircle,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { useParentContext } from '@/app/parent/context';
@@ -45,6 +45,7 @@ interface Task {
   session_id: string | null;
   enrollment_id: string | null;
   source: string;
+  coach_notes: string | null;
   content_item_id: string | null;
   content_item: {
     id: string;
@@ -86,6 +87,10 @@ function getDisplayTitle(task: Task): string {
 
 function pluralize(n: number, word: string): string {
   return `${n} ${word}${n !== 1 ? 's' : ''}`;
+}
+
+function isCoachDerived(source: string | null | undefined): boolean {
+  return source === 'coach_assigned' || source === 'template_generated';
 }
 
 export default function ParentTasksPage() {
@@ -324,19 +329,31 @@ export default function ParentTasksPage() {
 
           {todayTask && !todayTask.is_completed ? (
             <div className="bg-white rounded-2xl border-[1.5px] border-[#FFD6E8] p-4 space-y-3">
+              {isCoachDerived(todayTask.source) && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFF5F9] text-[#FF0099] border border-[#FFD6E8] text-xs font-medium">
+                  <UserCircle className="w-3 h-3" />
+                  From your coach
+                </span>
+              )}
               <div className="flex items-start gap-3">
                 {/* Icon */}
                 <div className="w-10 h-10 rounded-xl bg-[#FFF5F9] flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-5 h-5 text-[#FF0099]" />
+                  {isCoachDerived(todayTask.source) ? (
+                    <UserCircle className="w-5 h-5 text-[#FF0099]" />
+                  ) : (
+                    <BookOpen className="w-5 h-5 text-[#FF0099]" />
+                  )}
                 </div>
                 {/* Title + subtitle */}
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-medium text-gray-900">{getDisplayTitle(todayTask)}</p>
-                  {todayTask.session_number && (
+                  {todayTask.session_number ? (
                     <p className="text-sm text-gray-500 mt-0.5">
                       From {todayTask.program_label?.toLowerCase() || 'coaching'} session #{todayTask.session_number}
                     </p>
-                  )}
+                  ) : !isCoachDerived(todayTask.source) ? (
+                    <p className="text-sm text-gray-500 mt-0.5">From your reading plan</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -352,6 +369,13 @@ export default function ParentTasksPage() {
                   {todayTask.duration_minutes} min
                 </span>
               </div>
+
+              {isCoachDerived(todayTask.source) && todayTask.coach_notes && (
+                <div className="bg-[#FFF5F9] border-l-2 border-[#FF0099] pl-3 py-2 rounded-r-lg">
+                  <p className="text-xs text-[#FF0099] font-medium uppercase tracking-wide mb-1">From your coach</p>
+                  <p className="text-sm italic text-[#993556] leading-snug">{todayTask.coach_notes}</p>
+                </div>
+              )}
 
               {isWorksheetTask(todayTask) && todayTask.content_item && (
                 <div className="space-y-2">
@@ -447,9 +471,14 @@ export default function ParentTasksPage() {
 
                   {/* Task info — no truncation */}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!task.is_completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                      {getDisplayTitle(task)}
-                    </p>
+                    <div className="flex items-start gap-1.5">
+                      {isCoachDerived(task.source) && (
+                        <UserCircle className="w-3 h-3 text-[#FF0099] flex-shrink-0 mt-1" />
+                      )}
+                      <p className={`text-sm ${!task.is_completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                        {getDisplayTitle(task)}
+                      </p>
+                    </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
                       {task.session_number && (
                         <span className="text-xs text-gray-400">

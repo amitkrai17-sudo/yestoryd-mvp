@@ -264,17 +264,39 @@ All HNSW indexes are built. 126/126 tables have embedding coverage.
 // Reading site_settings
 const { data } = await supabase
   .from('site_settings')
-  .select('setting_value')
-  .eq('setting_key', 'your_key')
+  .select('value')
+  .eq('key', 'your_key')
   .limit(1)
 
-const value = data?.[0]?.setting_value ?? HARDCODED_FALLBACK
+const value = data?.[0]?.value ?? HARDCODED_FALLBACK
 ```
 
 **Rules:**
 - Always provide a hardcoded fallback (app never crashes if DB unavailable)
 - **Pricing comes from `pricing_plans` table, NOT site_settings**
 - All pages are dynamic — fetch display text from site_settings
+
+### Writing site_settings (INSERT / UPSERT shape)
+
+When seeding or updating `site_settings` via SQL or migration:
+
+- **Required columns:** `category`, `key`, `value`, `description`. NOT NULL on each — omitting any will fail with "null value in column ... violates not-null constraint".
+- **`value` is JSONB** — always cast literals: `'3'::jsonb`, `'"text"'::jsonb`, `'true'::jsonb`. Bare `'3'` is treated as text and the cast fails.
+- **`ON CONFLICT` target is `(key)`** — there's a unique constraint on `key` alone. `ON CONFLICT (category, key)` will fail with "no unique or exclusion constraint matching".
+- **`updated_at` does NOT auto-update** — no trigger; include `updated_at = NOW()` explicitly in `DO UPDATE SET` if you want a fresh timestamp.
+
+Canonical upsert:
+
+```sql
+INSERT INTO site_settings (category, key, value, description)
+VALUES ('tasks', 'task_max_pending', '2'::jsonb, 'Max active parent_daily_tasks per child for auto-generated content.')
+ON CONFLICT (key) DO UPDATE
+SET value = EXCLUDED.value,
+    description = EXCLUDED.description,
+    updated_at = NOW();
+```
+
+**Why this matters:** Got us in PR 1 migration 2 (a8bc9d35 → cb45b7e7 fixup) and again during Phase 7 Policy Change 3 SQL drafting (2026-04-30). Both times the wrong-shape SQL appeared correct from training data; only running it surfaces the failure. Always match this shape for site_settings writes.
 
 ## QStash / Cron Patterns
 

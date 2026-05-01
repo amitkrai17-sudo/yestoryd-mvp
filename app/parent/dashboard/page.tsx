@@ -11,7 +11,7 @@ import Link from 'next/link';
 import {
   Calendar, ChevronRight, AlertCircle, RefreshCw,
   Sparkles, BookOpen, Users, HelpCircle, MessageCircle,
-  Brain,
+  Brain, UserCircle,
 } from 'lucide-react';
 import ReEnrollmentBanner from '@/components/parent/ReEnrollmentBanner';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
@@ -558,8 +558,13 @@ export default function ParentDashboardPage() {
                 <div className="w-2 h-2 rounded-full bg-[#FF0099] animate-pulse" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#993556] truncate">{todayTask.title}</p>
-                <p className="text-xs text-[#993556]/70">15 min practice</p>
+                <p className="text-sm font-medium text-[#993556] truncate">
+                  {(todayTask.source === 'coach_assigned' || todayTask.source === 'template_generated') && (
+                    <UserCircle className="w-3 h-3 inline-block mr-1 -mt-0.5" />
+                  )}
+                  {todayTask.title}
+                </p>
+                <p className="text-xs text-[#993556]/70">{todayTask.duration_minutes ?? 15} min practice</p>
               </div>
               <Link
                 href="/parent/tasks"
