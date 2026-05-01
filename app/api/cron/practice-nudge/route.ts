@@ -1,7 +1,7 @@
 // ============================================================
 // FILE: app/api/cron/practice-nudge/route.ts
 // PURPOSE: Nudge parents with overdue incomplete tasks (48h+)
-// SCHEDULE: Daily at 10:00 AM IST via dispatcher
+// SCHEDULE: Daily at 19:00 IST via dispatcher (reading practice happens 19:00–22:00)
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';

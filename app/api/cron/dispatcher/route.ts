@@ -267,7 +267,7 @@ const JOBS: Job[] = [
   {
     name: 'practice-nudge',
     path: '/api/cron/practice-nudge',
-    schedule: { type: 'daily', istHour: 10, istMinute: 0 },
+    schedule: { type: 'daily', istHour: 19, istMinute: 0 },
     method: 'GET',
     description: 'Nudge parents with overdue practice tasks (48h+)',
   },
