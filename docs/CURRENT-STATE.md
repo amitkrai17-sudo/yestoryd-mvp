@@ -372,6 +372,67 @@
 
 Reverse-chronological log of significant architecture commitments. One entry per decision. Add new entries at the top.
 
+### 2026-04-29 — Spine principle audit findings (read-only)
+
+**Context:** After committing the BSP migration decision (62f8bb2c), ran a two-pass audit to validate the strategy session's claims about codebase state before locking the 5-block spine consolidation roadmap. First pass: 25 claims across comms, codebase architecture, and BSP migration readiness. Second pass: three targeted follow-up checks on the gaps from pass one.
+
+**Audit outcome — pass 1 (25 claims):**
+- ✅ 7 verified
+- ⚠ 9 partial
+- ❌ 7 incorrect
+- ❓ 2 undetermined (require Meta Business Manager UI access)
+
+**Material findings that change the plan:**
+
+1. **Lead Bot already has full Meta Cloud send capability.** `lib/whatsapp/cloud-api.ts` exports `sendTemplate`, `sendButtons`, `sendList`, `sendText`, `sendTextWithPreview`, `markAsRead` (6 functions). BSP migration outbound is not net-new code — only an adapter translating positional `wa_variables[]` to Meta `components[{type:'body', parameters[]}]`. Block 2 timeline reduced from ~4 weeks to ~2 weeks.
+
+2. **Pillar 2B Rule 7 (`assertAiSensyResponseOk`) is exported but never invoked.** notify.ts:475 checks `result.success` directly instead of calling the validator. Silent-fail detection promised but not implemented. Block 1 priority.
+
+3. **`direct:*` template-code bypass is historical, not ongoing.** 2 caller sites in `app/api/backops/command/route.ts:101, 306` produce the bypass when called without `meta.templateCode`. Last fired Apr 18-19, before unification migration 20260421130000 landed. Fix is a 2-line replace per site. Schedule in Block 1 cleanup; not a Block 2 prerequisite.
+
+4. **`coach_session_reminder` (no v3) is not a duplicate.** All 26 "sends" in 30-day window were AiSensy 406 errors ("Campaign is Not Live") from a stale caller, already resolved by the same Apr 21 unification migration. Forensic residue, not a parallel reminder path.
+
+5. **Pre-existing audit docs in repo:** `docs/wa-audit-2026-04-16.md` and `docs/wa-validation-audit-2026-04-19.md` cover the same template-alignment incident class that motivated the spine principle. Their action items have largely been completed via the Apr 21 migration. Read before locking Block 1 scope to avoid redundant work.
+
+**Audit outcome — pass 2 (template inventory):**
+- communication_templates total rows: 76
+- Active (is_active=true): 55
+- Active + Meta-approved (is_active=true AND wa_approved=true): 54 — this is the BSP migration scope
+- Active templates that fired in last 30 days: 13
+- Active templates with zero 30-day sends: 41 (mostly low-frequency triggers; parent_session_reminder_1h_v3 / _24h_v3 are notable — coach equivalents fire reliably, parent equivalents don't)
+- Version-drift duplicates: 2 base names (parent_tuition_low_balance, parent_tuition_onboarding); both clean (one active, one retired per base)
+
+**Validator state (lib/communication/validate-notification.ts):**
+- 8 rules documented; 6 wired into checks array; Rule 2 is a stub (returns ok:true unconditionally); Rule 7 exported but unwired
+- Mode hardcoded `'warn'` at notify.ts:393; Rules 3 and 7 always enforce regardless (Rule 7 enforcement is theoretical until invoked)
+
+**Adapter shape captured for BSP migration:**
+- `lib/communication/aisensy.ts:33-42` input: `{to, templateName, variables[], buttons?, source?, meta?}`
+- AiSensy outbound payload: `{apiKey, campaignName: templateName, destination, userName: 'Yestoryd', templateParams: variables}`
+- Meta Cloud equivalent in `lib/whatsapp/cloud-api.ts:185` already exists: `sendTemplate(to, templateName, languageCode, components)`
+- Translation needed: `variables[]` → `components[{type:'body', parameters[]}]`
+
+**Schema additions for BSP migration:**
+- `language_code` (varchar) — Meta API requires per-send (NOT FOUND in current schema)
+- `meta_template_id` (varchar, nullable) — useful for reconciliation, optional
+- `components_template` (jsonb, nullable) — derivable from wa_variables, optional
+
+**Open questions deferred to investigation:**
+- `parent_session_reminder_1h_v3` / `parent_session_reminder_24h_v3` — zero 30-day sends despite coach equivalents firing reliably. Either intentional (parents get reminders via different path) or missing caller. 5-minute spot check before BSP migration.
+- AiSensy webhook handlers count: 3 (catch-all, feedback, goals), not 6 as previously claimed. Confirmed via direct ls of app/api/webhooks/aisensy/.
+- Twilio code path is reachable at `app/api/coach/send-status-notification/route.ts:443-485`. Env vars unset in production assumed but not verified. Block 3 cleanup target.
+
+**Roadmap confidence after audit:**
+- Block 1 (May, stabilization): NEEDS REVISION — scope smaller than originally framed (deprecated tables done, tests exist, hardcoded pricing 1 file not 20). Real work: wire Rule 7, fix 2 backops bypasses, retire `lib/razorpay.ts:calculateRevenueSplit` competitor to Calculator B.
+- Block 2 (June, comms spine consolidation): SOLID, FASTER — sendTemplate already exists; 1-2 weeks not 4. Add language_code column; add 'leadbot' channel branch in notify.ts; build adapter translation.
+- Block 3 (July, comms spine cleanup): SOLID — 25 sendCommunication callers across 17 files; Resend port + notification_preferences gating; Twilio code deletion.
+- Block 4 (August+, cross-domain spine): SOLID — auth resolver, admin_emails parsers consolidate to lib/config/loader.ts:requireJsonArray, retire lib/razorpay.ts competitor, 359→target as any sweep.
+- Block 5 (September+, borrowed UI): SOLID — no audit findings against it.
+
+**Status:** Audit complete. Findings folded into roadmap. Implementation deferred to dedicated sessions per block.
+
+**Reference:** Two-pass audit conducted 2026-04-29. Full audit reports retained in chat session context.
+
 ### 2026-04-28 — WhatsApp BSP migration: AiSensy → Meta Cloud direct
 
 **Context:** AiSensy free tier (Basic ₹999/mo) blocks inbound webhooks. Webhook unlock requires Pro Plan upgrade (~₹3,200/mo) PLUS Webhook Add-on (₹24,000 + 18% GST = ₹28,320/yr). Combined ~₹66,720/yr just to enable parent quick-reply button replies and other inbound traffic.
@@ -420,14 +481,14 @@ Reverse-chronological log of significant architecture commitments. One entry per
 | # | Item | Severity | Location |
 |---|------|----------|----------|
 | 1 | **Untyped Supabase client in enrollment-scheduler** | Low | `lib/scheduling/enrollment-scheduler.ts` uses `createClient()` without `<Database>` generic; queries cast with `as any` |
-| 2 | **13 deprecated tables still in schema** | Low | `_deprecated_*` tables exist but have zero code references |
-| 3 | **Duplicate communication tables** | Low | Both `communication_log` (21 cols) and `communication_logs` (13 cols) exist |
-| 4 | **`children` table has 95 columns** | Medium | Candidate for vertical partitioning (assessment data, profile, contact info) |
-| 5 | **`scheduled_sessions` table has 110 columns** | Medium | Candidate for partitioning (scheduling, completion, recording, billing) |
-| 6 | **No practice reminder cron** | Low | Parents get materials in WhatsApp summary but no follow-up nudge if not opened |
-| 7 | **AiSensy template character limits** | Low | Practice materials appended to summary text; may truncate if many items |
-| 8 | **`el_learning_units.parent_instruction` unused** | Low | Column exists but not resolved in live route or parent-summary |
-| 9 | **E-learning content gap** | High | Video player UI exists but needs 477-1,178 videos for full curriculum |
-| 10 | **No automated test suite** | High | Only one test file (`__tests__/coach-journey.test.ts`) with broken imports |
-| 11 | **`elearning_game_engines` duplicate** | Low | Both `el_game_engines` and `elearning_game_engines` exist with similar schemas |
-| 12 | **Missing index on learning_events** | Medium | `event_type + child_id + created_at` composite index would speed up profile synthesis and engagement queries |
+| 2 | **`children` table has 95 columns** | Medium | Candidate for vertical partitioning (assessment data, profile, contact info) |
+| 3 | **`scheduled_sessions` table has 110 columns** | Medium | Candidate for partitioning (scheduling, completion, recording, billing) |
+| 4 | **No practice reminder cron** | Low | Parents get materials in WhatsApp summary but no follow-up nudge if not opened |
+| 5 | **AiSensy template character limits** | Low | Practice materials appended to summary text; may truncate if many items |
+| 6 | **`el_learning_units.parent_instruction` unused** | Low | Column exists but not resolved in live route or parent-summary |
+| 7 | **E-learning content gap** | High | Video player UI exists but needs 477-1,178 videos for full curriculum |
+| 8 | **Partial test coverage — 12 test files** | Medium | `tests/` has communication, enrollment, payout, referral suites; `__tests__/` has coach-journey, scheduling (6 files), utils/date-format. Heavy coverage on payouts and scheduling. Thin coverage on payments end-to-end, comms end-to-end, cron orchestration. |
+| 9 | **`elearning_game_engines` duplicate** | Low | Both `el_game_engines` and `elearning_game_engines` exist with similar schemas |
+| 10 | **Missing index on learning_events** | Medium | `event_type + child_id + created_at` composite index would speed up profile synthesis and engagement queries |
+| 11 | **359 `as any` type assertions across 152 files** | Medium | platform-wide; top hotspots: `app/api/admin/completion/list` (12), `lib/gamification.ts` (10), `app/api/intelligence/capture` (8), `app/api/coach/sessions/[id]/parent-summary` (8) |
+| 12 | **1 production file with hardcoded pricing** | Low | `lib/whatsapp/handlers/faq.ts` — matches 1499/5999/6999 pattern; needs review whether it's editorial copy or dynamic program-label rendering |
