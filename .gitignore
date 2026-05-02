@@ -35,3 +35,4 @@ tsconfig.tsbuildinfo
 # Graphify analyzer outputs
 graphify-out/
 **/graphify-out/
+PHASE_2_DRAFT.md
