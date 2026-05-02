@@ -14,6 +14,7 @@
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsAppMessage } from './aisensy';
+import { sendLeadBotMessage } from './leadbot';
 import { logCommunication, type RecipientType } from './log';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import {
@@ -71,6 +72,7 @@ export interface NotifyMeta {
 interface TemplateRow {
   template_code: string;
   wa_template_name: string | null;
+  language_code: string;
   recipient_type: string;
   use_whatsapp: boolean | null;
   is_active: boolean | null;
@@ -240,7 +242,7 @@ export async function sendNotification(
   // ── STEP 1. Template lookup ──
   const { data: templateRows, error: tmplErr } = await supabase
     .from('communication_templates')
-    .select('template_code, wa_template_name, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send')
+    .select('template_code, wa_template_name, language_code, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send')
     .eq('template_code', templateCode)
     .limit(1);
 
@@ -513,14 +515,76 @@ export async function sendNotification(
   }
 
   if (template.channel === 'leadbot') {
-    console.warn('[notify] leadbot channel not routable from sendNotification — use webhook handler');
-    await logCommunication({
-      ...logBase,
-      recipientPhone: phone,
-      waSent: false,
-      errorMessage: 'leadbot_not_routable_here',
-    });
-    return { success: false, reason: 'send_failed' };
+    if (!template.wa_template_name) {
+      await logCommunication({
+        ...logBase,
+        recipientPhone: phone,
+        waSent: false,
+        errorMessage: 'wa_template_name is null',
+      });
+      return { success: false, reason: 'send_failed' };
+    }
+
+    const result = await sendLeadBotMessage(
+      {
+        to: phone,
+        templateName: template.wa_template_name,
+        languageCode: template.language_code || 'en',
+        variables: finalPositionalParams as string[],
+        meta: {
+          templateCode,
+          recipientType: templateRecipientType,
+          recipientId: isUuidRecipient ? recipientId : null,
+          triggeredBy: meta?.triggeredBy ?? 'system',
+          triggeredByUserId: meta?.triggeredByUserId ?? null,
+          contextType: meta?.contextType ?? null,
+          contextId: meta?.contextId ?? null,
+          contextData: { named_params: namedParams, original_recipient_id: recipientId },
+        },
+      },
+      { isDryRun: false }, // TASK 4 will replace with site_settings reader (leadbot_live_sends)
+    );
+
+    // Annotate the log row leadbot.ts just inserted with idempotency_key,
+    // cost_per_send, channel. Failures stay unannotated for retry.
+    let logId: string | undefined;
+    if (result.success) {
+      const { data: recentRows } = await supabase
+        .from('communication_logs')
+        .select('id')
+        .eq('template_code', templateCode)
+        .eq('recipient_phone', phone)
+        .is('idempotency_key', null)
+        .gte('created_at', new Date(Date.now() - POST_SEND_LOG_WINDOW_MS).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const rowId = recentRows?.[0]?.id as string | undefined;
+      if (rowId) {
+        try {
+          await supabase
+            .from('communication_logs')
+            .update({
+              idempotency_key: idempotencyKey,
+              cost_per_send: template.cost_per_send,
+              channel: 'leadbot',
+              triggered_by: meta?.triggeredBy ?? 'system',
+              triggered_by_user_id: meta?.triggeredByUserId ?? null,
+              context_type: meta?.contextType ?? null,
+              context_id: meta?.contextId ?? null,
+            })
+            .eq('id', rowId);
+          logId = rowId;
+        } catch (err) {
+          console.warn('[notify] log annotate failed:', err instanceof Error ? err.message : err);
+        }
+      }
+    }
+
+    return {
+      success: result.success,
+      reason: result.success ? undefined : 'send_failed',
+      logId,
+    };
   }
 
   console.error('[notify] unknown channel:', template.channel);
