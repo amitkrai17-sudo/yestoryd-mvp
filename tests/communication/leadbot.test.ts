@@ -193,6 +193,75 @@ describe('buildLeadBotPayload', () => {
     });
     expect(payload.to).toBe('918591287997');
   });
+
+  it('authentication category emits dual-component payload with OTP duplicated in body and button', () => {
+    const params: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_otp_v3',
+      templateCategory: 'authentication',
+      languageCode: 'en',
+      variables: ['123456'],
+    };
+
+    const payload = buildLeadBotPayload(params);
+    const components = payload.template.components;
+
+    expect(components).toHaveLength(2);
+
+    const bodyComp = components?.[0];
+    expect(bodyComp?.type).toBe('body');
+    expect(bodyComp?.parameters).toEqual([{ type: 'text', text: '123456' }]);
+
+    const buttonComp = components?.[1];
+    expect(buttonComp?.type).toBe('button');
+    expect(buttonComp?.sub_type).toBe('url');
+    expect(buttonComp?.index).toBe('0');
+    expect(buttonComp?.parameters).toEqual([{ type: 'text', text: '123456' }]);
+
+    // Meta contract: body and button OTP text must be identical strings
+    const bodyText = (bodyComp?.parameters as Array<{ text: string }>)?.[0]?.text;
+    const buttonText = (buttonComp?.parameters as Array<{ text: string }>)?.[0]?.text;
+    expect(bodyText).toBe(buttonText);
+  });
+
+  it('authentication category throws when variables.length is not exactly 1', () => {
+    const baseParams: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_otp_v3',
+      templateCategory: 'authentication',
+      languageCode: 'en',
+      variables: [],
+    };
+
+    expect(() => buildLeadBotPayload({ ...baseParams, variables: [] })).toThrow(
+      /exactly 1 variable/,
+    );
+    expect(() =>
+      buildLeadBotPayload({ ...baseParams, variables: ['a', 'b'] }),
+    ).toThrow(/exactly 1 variable/);
+  });
+
+  it('non-authentication path is regression-safe (templateCategory undefined or other value)', () => {
+    // Input A: templateCategory absent entirely → legacy body-only path
+    const paramsNoCategory: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_session_reminder_1h_v3',
+      languageCode: 'en',
+      variables: ['Ira', '7:00 PM'],
+    };
+    const payloadA = buildLeadBotPayload(paramsNoCategory);
+    expect(payloadA.template.components).toHaveLength(1);
+    expect(payloadA.template.components?.[0]?.type).toBe('body');
+
+    // Input B: templateCategory='utility' → legacy body-only path (NOT auth)
+    const paramsUtility: WaSendParams = {
+      ...paramsNoCategory,
+      templateCategory: 'utility',
+    };
+    const payloadB = buildLeadBotPayload(paramsUtility);
+    expect(payloadB.template.components).toHaveLength(1);
+    expect(payloadB.template.components?.[0]?.type).toBe('body');
+  });
 });
 
 // =============================================================================

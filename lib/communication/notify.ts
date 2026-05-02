@@ -73,6 +73,7 @@ interface TemplateRow {
   template_code: string;
   wa_template_name: string | null;
   language_code: string;
+  wa_template_category: string | null;
   recipient_type: string;
   use_whatsapp: boolean | null;
   is_active: boolean | null;
@@ -242,7 +243,7 @@ export async function sendNotification(
   // ── STEP 1. Template lookup ──
   const { data: templateRows, error: tmplErr } = await supabase
     .from('communication_templates')
-    .select('template_code, wa_template_name, language_code, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send')
+    .select('template_code, wa_template_name, language_code, wa_template_category, recipient_type, use_whatsapp, is_active, channel, wa_variables, required_variables, wa_variable_derivations, cost_per_send')
     .eq('template_code', templateCode)
     .limit(1);
 
@@ -453,6 +454,7 @@ export async function sendNotification(
     const result = await sendWhatsAppMessage({
       to: phone,
       templateName: template.wa_template_name,
+      templateCategory: template.wa_template_category ?? undefined,
       // Use derivation-resolved positional params so AiSensy receives the
       // derived value (e.g. child_first_name) when the caller passed only
       // the canonical (e.g. child_name). For templates without derivations
@@ -530,6 +532,7 @@ export async function sendNotification(
         to: phone,
         templateName: template.wa_template_name,
         languageCode: template.language_code || 'en',
+        templateCategory: template.wa_template_category ?? undefined,
         variables: finalPositionalParams as string[],
         meta: {
           templateCode,

@@ -95,6 +95,18 @@ export interface WaSendParams {
   variables: string[];
   /** BCP-47 short form: 'en', 'hi', 'en_US'. Lead Bot only. */
   languageCode?: string;
+  /**
+   * Meta WhatsApp template category. When 'authentication', buildLeadBotPayload
+   * emits the dual-component shape required by Meta auth templates (body +
+   * button.url with OTP duplicated in both components). For undefined or any
+   * other value, falls through to legacy body-only payload — backward compatible
+   * with all existing callers.
+   *
+   * Source: communication_templates.wa_template_category column. Set by notify.ts
+   * step 2 (template SELECT) and passed verbatim into the envelope. Adapter does
+   * not query DB.
+   */
+  templateCategory?: string;
   /** Structured header media (Lead Bot only). */
   header?: WhatsAppHeaderMedia;
   /** Legacy flat field: AiSensy media URL. */

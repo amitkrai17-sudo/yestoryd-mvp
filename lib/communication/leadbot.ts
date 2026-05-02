@@ -108,6 +108,74 @@ export function isLeadBotConfigured(): boolean {
  * languageCode defaults to 'en' (matching cloud-api.ts:188).
  */
 export function buildLeadBotPayload(params: WaSendParams): MetaCloudPayload {
+  // ────────────────────────────────────────────────────────────
+  // AUTHENTICATION-CATEGORY BRANCH (Block 2.5)
+  // ────────────────────────────────────────────────────────────
+  // Meta Authentication templates (e.g. parent_otp_v3 with Copy Code button)
+  // require a strict dual-component payload shape: [body, button.url]
+  // with the OTP value duplicated identically into both components.
+  // This is contractually distinct from utility/marketing templates,
+  // which use the legacy header/body/buttons path below.
+  //
+  // Trigger: params.templateCategory === 'authentication' (exact lowercase).
+  // Source: communication_templates.wa_template_category, set in DB and
+  // plumbed through notify.ts. Adapter does not query DB.
+  //
+  // Defensive rules:
+  //   - variables.length must be exactly 1 (the OTP). Other counts throw.
+  //   - params.header is ignored with a warn (Meta auth templates have
+  //     no customer-facing header).
+  //   - params.buttons is ignored with a warn (Meta auto-synthesizes the
+  //     Copy Code / one-tap button — caller-supplied buttons are inapplicable).
+  //
+  // Returns the standard MetaCloudPayload envelope; only the components
+  // array structure differs from the legacy path.
+  if (params.templateCategory === 'authentication') {
+    if (params.variables.length !== 1) {
+      throw new Error(
+        `[WA-LeadBot] Authentication template '${params.templateName}' requires exactly 1 variable (OTP), got ${params.variables.length}`,
+      );
+    }
+    if (params.header || params.mediaUrl) {
+      console.warn(
+        '[WA-LeadBot] auth_template_warning: header/mediaUrl ignored for authentication template',
+        params.templateName,
+      );
+    }
+    if (params.buttons?.length) {
+      console.warn(
+        '[WA-LeadBot] auth_template_warning: caller-supplied buttons ignored for authentication template',
+        params.templateName,
+      );
+    }
+
+    const otp = String(params.variables[0] ?? '');
+    const authComponents: MetaCloudComponent[] = [
+      {
+        type: 'body',
+        parameters: [{ type: 'text', text: otp }],
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: '0',
+        parameters: [{ type: 'text', text: otp }],
+      },
+    ];
+
+    return {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: formatForWhatsApp(params.to),
+      type: 'template',
+      template: {
+        name: params.templateName,
+        language: { code: params.languageCode ?? 'en' },
+        components: authComponents,
+      },
+    };
+  }
+
   const components: MetaCloudComponent[] = [];
 
   // 1. Header (must come first in components array)
