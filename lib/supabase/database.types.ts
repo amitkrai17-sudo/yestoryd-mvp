@@ -3966,6 +3966,7 @@ export type Database = {
           in_app_config: Json | null
           is_active: boolean | null
           journey: string | null
+          language_code: string
           meta_category: string | null
           name: string
           notes: string | null
@@ -4009,6 +4010,7 @@ export type Database = {
           in_app_config?: Json | null
           is_active?: boolean | null
           journey?: string | null
+          language_code?: string
           meta_category?: string | null
           name: string
           notes?: string | null
@@ -4052,6 +4054,7 @@ export type Database = {
           in_app_config?: Json | null
           is_active?: boolean | null
           journey?: string | null
+          language_code?: string
           meta_category?: string | null
           name?: string
           notes?: string | null
