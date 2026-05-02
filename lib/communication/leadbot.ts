@@ -25,6 +25,7 @@
 // Architecture Decisions entry.
 // ============================================================
 
+import { getSiteSettingBool } from '@/lib/config/site-settings-loader';
 import { formatForWhatsApp, isValidPhone } from '@/lib/utils/phone';
 import { logCommunication, RecipientType, TriggeredBy } from './log';
 import type {
@@ -199,13 +200,13 @@ export async function sendLeadBotMessage(
   params: WaSendParams,
   options: SendOptions = {},
 ): Promise<WaSendResult> {
-  // Phase A safety: dry-run is the default. Caller must opt in to live send.
-  const isDryRun = options.isDryRun ?? true;
-
-  // PHASE B TODO: when site_settings.leadbot_live_sends is added, force
-  // isDryRun=true if that setting is false. Belt + suspenders + emergency
-  // brake — even if a caller passes {isDryRun:false}, the kill-switch wins.
-  // Reference: docs/CURRENT-STATE.md "2026-04-29" entry, Roadmap Block 2.
+  // Phase B kill-switch: site_settings.leadbot_live_sends is the runtime gate.
+  // When false (default), this adapter forces dry-run regardless of caller's
+  // isDryRun option. Cache TTL is 5 min — flipping the row takes up to 5 min
+  // to propagate. For immediate effect, flip channel='aisensy' on affected
+  // templates (DB-row rollback is the belt-and-suspenders fallback).
+  const liveSendsEnabled = await getSiteSettingBool('leadbot_live_sends');
+  const isDryRun = !liveSendsEnabled || (options.isDryRun ?? true);
 
   // Build the log row scaffold. Same shape as aisensy.ts logBase so the
   // notify.ts post-send annotate block (lines 471-505) treats both

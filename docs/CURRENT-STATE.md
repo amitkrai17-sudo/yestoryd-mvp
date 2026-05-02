@@ -429,6 +429,8 @@ Reverse-chronological log of significant architecture commitments. One entry per
 - Block 4 (August+, cross-domain spine): SOLID — auth resolver, admin_emails parsers consolidate to lib/config/loader.ts:requireJsonArray, retire lib/razorpay.ts competitor, 359→target as any sweep.
 - Block 5 (September+, borrowed UI): SOLID — no audit findings against it.
 
+**Kill-switch (Phase B, implemented Task 4):** `site_settings.leadbot_live_sends` (default false). Has 5-min flip latency due to in-process cache TTL — for immediate stop, flip `channel='aisensy'` on affected templates (DB-row rollback is the belt-and-suspenders fallback).
+
 **Status:** Audit complete. Findings folded into roadmap. Implementation deferred to dedicated sessions per block.
 
 **Reference:** Two-pass audit conducted 2026-04-29. Full audit reports retained in chat session context.

@@ -18,7 +18,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // --- Hoisted mock state. vi.hoisted runs before any vi.mock calls. ---
-const { insertCalls, supabaseChain } = vi.hoisted(() => {
+const { insertCalls, supabaseChain, getSiteSettingBoolMock } = vi.hoisted(() => {
   const insertCalls: Array<{ table: string; row: any }> = [];
   const supabaseChain = {
     from: vi.fn((table: string) => ({
@@ -28,11 +28,18 @@ const { insertCalls, supabaseChain } = vi.hoisted(() => {
       }),
     })),
   };
-  return { insertCalls, supabaseChain };
+  // Default true (kill-switch DISABLED) so existing real-send tests work
+  // without per-test mock setup. Phase B kill-switch tests override to false.
+  const getSiteSettingBoolMock = vi.fn().mockResolvedValue(true);
+  return { insertCalls, supabaseChain, getSiteSettingBoolMock };
 });
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: vi.fn(() => supabaseChain),
+}));
+
+vi.mock('@/lib/config/site-settings-loader', () => ({
+  getSiteSettingBool: getSiteSettingBoolMock,
 }));
 
 import { buildLeadBotPayload, sendLeadBotMessage } from '@/lib/communication/leadbot';
@@ -81,6 +88,10 @@ const fetchMock = vi.fn();
 beforeEach(() => {
   insertCalls.length = 0;
   fetchMock.mockReset();
+  // Re-arm site_settings mock to default-true (kill-switch disabled) each test.
+  // Phase B kill-switch tests override to false explicitly.
+  getSiteSettingBoolMock.mockReset();
+  getSiteSettingBoolMock.mockResolvedValue(true);
   vi.stubGlobal('fetch', fetchMock);
   vi.stubEnv('META_WA_PHONE_NUMBER_ID', '1055529114299828');
   vi.stubEnv('META_WA_ACCESS_TOKEN', 'test-token');
@@ -376,5 +387,50 @@ describe('B1 AUTH: prefix on 401/403', () => {
     expect(result.error).not.toMatch(/^AUTH: /);
     expect(result.error).toBe('Template parameter mismatch');
     expect(insertCalls[0].row.error_message).not.toMatch(/^AUTH: /);
+  });
+});
+
+// =============================================================================
+// Phase B kill-switch (site_settings.leadbot_live_sends) — 3 tests
+// =============================================================================
+
+describe('Phase B kill-switch (site_settings.leadbot_live_sends)', () => {
+  it('kill-switch false forces dry-run despite options.isDryRun=false (B3 anti-bypass)', async () => {
+    // Override default-true mock: simulate site_settings.leadbot_live_sends=false
+    getSiteSettingBoolMock.mockResolvedValueOnce(false);
+
+    const result = await sendLeadBotMessage(BASIC_PARAMS, { isDryRun: false });
+    // Kill-switch wins over caller's explicit isDryRun=false
+    expect(result.success).toBe(true);
+    expect(result.messageId).toMatch(/^DRY_RUN_\d+$/);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(insertCalls).toHaveLength(1);
+    expect(insertCalls[0].row.error_message).toBe('dry_run');
+    expect(insertCalls[0].row.wa_sent).toBe(false);
+  });
+
+  it('kill-switch false + no options → dry-run (canonical Phase B behavior)', async () => {
+    getSiteSettingBoolMock.mockResolvedValueOnce(false);
+
+    const result = await sendLeadBotMessage(BASIC_PARAMS);
+    expect(result.success).toBe(true);
+    expect(result.messageId).toMatch(/^DRY_RUN_\d+$/);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(insertCalls[0].row.error_message).toBe('dry_run');
+  });
+
+  it('kill-switch true + options.isDryRun=false → real send fires', async () => {
+    // Explicit mock value (matches default, but explicit for clarity)
+    getSiteSettingBoolMock.mockResolvedValueOnce(true);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ messages: [{ id: 'wamid.PHASEB' }] }),
+    });
+
+    const result = await sendLeadBotMessage(BASIC_PARAMS, { isDryRun: false });
+    expect(result).toEqual({ success: true, messageId: 'wamid.PHASEB' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(insertCalls[0].row.wa_sent).toBe(true);
   });
 });
