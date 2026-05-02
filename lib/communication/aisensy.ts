@@ -5,54 +5,26 @@
 // Every send is logged to communication_logs via logCommunication().
 // Optional `meta` enriches the log row with recipient/context info;
 // if omitted, the send is still logged with recipient_type='system'.
+//
+// Input/return shapes live in ./types and are shared with the Lead Bot
+// adapter (Phase B). AiSensy silently ignores the languageCode and
+// header fields on WaSendParams — those are Meta Cloud concerns.
 // ============================================================
 
 import { formatForWhatsApp, isValidPhone } from '@/lib/utils/phone';
 import { logCommunication, RecipientType, TriggeredBy } from './log';
-
-export interface AiSensyButton {
-  type: string;
-  sub_type?: string;
-  index?: number;
-  url?: string;
-  parameters?: Array<{ type: string; text: string }>;
-}
-
-export interface AiSensySendMeta {
-  templateCode?: string;
-  recipientType?: RecipientType;
-  recipientId?: string | null;
-  recipientEmail?: string | null;
-  triggeredBy?: TriggeredBy;
-  triggeredByUserId?: string | null;
-  contextType?: string | null;
-  contextId?: string | null;
-  contextData?: Record<string, unknown> | null;
-}
-
-interface AiSensyMessageParams {
-  to: string;
-  templateName: string;
-  variables: string[];
-  mediaUrl?: string;
-  mediaFilename?: string;
-  buttons?: AiSensyButton[];
-  source?: string;
-  meta?: AiSensySendMeta;
-}
-
-interface AiSensyResponse {
-  success: boolean;
-  messageId?: string;
-  error?: string;
-}
+import type { WaSendParams, WaSendResult } from './types';
 
 /**
  * @deprecated Prefer sendNotification() from lib/communication/notify.ts.
  *   Direct callers of sendWhatsAppMessage will be migrated in a follow-up pass.
  * Send WhatsApp message via AiSensy. Always logs to communication_logs.
+ *
+ * Fields on WaSendParams that AiSensy ignores: languageCode (handled
+ * server-side by AiSensy), header (use the flat mediaUrl/mediaFilename
+ * pair instead).
  */
-export async function sendWhatsAppMessage(params: AiSensyMessageParams): Promise<AiSensyResponse> {
+export async function sendWhatsAppMessage(params: WaSendParams): Promise<WaSendResult> {
   const apiKey = process.env.AISENSY_API_KEY;
   const baseUrl = process.env.AISENSY_BASE_URL || 'https://backend.aisensy.com/campaign/t1/api/v2';
 
