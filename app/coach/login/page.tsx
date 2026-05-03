@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, CheckCircle, MessageCircle } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
@@ -12,6 +13,34 @@ import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
 // Subtle square grid — shared across admin/parent/coach login pages
 const GRID_BG =
   'pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e2e8f010_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f010_1px,transparent_1px)] bg-[size:4rem_4rem]';
+
+// Defense-in-depth: confirm an authenticated user has an ACTIVE coaches row
+// before redirecting to /coach/dashboard. Middleware already enforces this
+// server-side, but the login page can hard-navigate stale parent/admin
+// sessions into a redirect loop without this check. False on RLS error,
+// no row, or is_active=false — all mean "not a coach".
+//
+// Mirrors verifyParentRole in app/parent/login/page.tsx (Phase 1C, commit
+// ecec510b). Differences: queries the coaches table; adds .eq('is_active',
+// true) because coaches can be soft-deactivated and deactivated coaches
+// must NOT be redirected to /coach/dashboard.
+async function verifyCoachRole(
+  supabase: any,
+  user: { id?: string; email?: string | null } | null,
+): Promise<boolean> {
+  if (!user?.id || !user?.email) return false;
+  const { data, error } = await supabase
+    .from('coaches')
+    .select('id')
+    .or(`user_id.eq.${user.id},email.eq.${user.email.toLowerCase()}`)
+    .eq('is_active', true)
+    .limit(1);
+  if (error) {
+    console.error('[coach/login] verifyCoachRole error', error);
+    return false;
+  }
+  return (data?.length ?? 0) > 0;
+}
 
 export default function CoachLoginPage() {
   const [email, setEmail] = useState('');
@@ -24,7 +53,7 @@ export default function CoachLoginPage() {
   const [whatsappNumber, setWhatsappNumber] = useState<string>(COMPANY_CONFIG.leadBotWhatsApp);
   const [checkingSession, setCheckingSession] = useState(true);
   const searchParams = useSearchParams();
-  const errorParam = searchParams.get('error');
+  const [errorParam, setErrorParam] = useState<string | null>(() => searchParams.get('error'));
   const unauthorizedError = errorParam === 'unauthorized';
   const linkExpiredError = errorParam === 'link_expired';
 
@@ -78,16 +107,35 @@ export default function CoachLoginPage() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (isProcessingHash.current) return;
-      if (event === 'SIGNED_IN' && session && !unauthorizedError) {
-        // Verify the session is actually valid server-side before redirecting
+      if (event === 'SIGNED_IN' && session) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          window.location.href = '/coach/dashboard';
-        } else {
+        if (!user) {
           // Token looked valid locally but server rejected it — clear it
           await supabase.auth.signOut();
           setCheckingSession(false);
+          return;
         }
+        const isCoach = await verifyCoachRole(supabase, user);
+        if (isCoach) {
+          window.location.href = '/coach/dashboard';
+          return;
+        }
+        // Authenticated user is NOT an active coach — likely a stale parent
+        // or admin session, or a deactivated coach. Sign out and let the
+        // page render the login form. URL-driven UnauthorizedBanner shows
+        // copy when ?error=unauthorized is present (Phase 2F).
+        console.warn('[coach/login] Fresh sign-in with no active coach record, signing out', { email: user.email });
+        Sentry.captureMessage('Coach login: fresh sign-in with no coach record', {
+          level: 'info',
+          tags: {
+            surface: 'coach_login',
+            reason: 'fresh_signin_no_coach',
+            actor_email: user.email ?? 'unknown',
+          },
+          extra: { actor_address: user.email, actor_ref: user.id },
+        });
+        await supabase.auth.signOut();
+        setCheckingSession(false);
       }
       if (event === 'INITIAL_SESSION') {
         // Don't set checkingSession false here — let the getUser() check below handle it
@@ -102,17 +150,39 @@ export default function CoachLoginPage() {
       if (linkExpiredError) {
         setError('This login link has expired or was opened in a different browser. Please request a new one from the browser you want to use.');
         setCheckingSession(false);
-      } else if (user && unauthorizedError) {
-        // Middleware rejected this user — sign out to break redirect loop
-        await supabase.auth.signOut();
-        setError('Your account is not registered as an active coach. Contact support if this is unexpected.');
-        setCheckingSession(false);
-      } else if (user && !userError) {
-        window.location.href = '/coach/dashboard';
-      } else {
-        // No valid session — show login form
-        setCheckingSession(false);
+        return;
       }
+      if (userError || !user) {
+        setCheckingSession(false);
+        return;
+      }
+      const isCoach = await verifyCoachRole(supabase, user);
+      if (isCoach) {
+        // Already signed in as an active coach — redirect to dashboard.
+        window.location.href = '/coach/dashboard';
+        return;
+      }
+      // Authenticated but NOT an active coach — likely stale parent/admin
+      // session, or a deactivated coach. Sign out, strip ?error=unauthorized
+      // from URL, and let the page render the login form afresh.
+      console.warn('[coach/login] Stale session cleared (non-coach signed in)', { email: user.email });
+      Sentry.captureMessage('Coach login: stale session cleared on mount', {
+        level: 'info',
+        tags: {
+          surface: 'coach_login',
+          reason: 'stale_session_cleared',
+          actor_email: user.email ?? 'unknown',
+        },
+        extra: { actor_address: user.email, actor_ref: user.id },
+      });
+      await supabase.auth.signOut();
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('error');
+        window.history.replaceState({}, '', url.toString());
+      }
+      setErrorParam(null);
+      setCheckingSession(false);
     });
 
     return () => subscription.unsubscribe();
@@ -310,6 +380,27 @@ export default function CoachLoginPage() {
           setError('Failed to establish session. Please try again.');
           return;
         }
+        // Defense-in-depth: /api/auth/verify-otp should only succeed for coach
+        // phones (server gates by userType='coach'). Reaching here as a non-
+        // coach would be a real bug — surface it loudly via Sentry but DO NOT
+        // navigate. Block 1D Phase 2D.
+        const { data: { user: verifiedUser } } = await supabase.auth.getUser();
+        const isCoach = await verifyCoachRole(supabase, verifiedUser);
+        if (!isCoach) {
+          Sentry.captureMessage('Coach OTP verified but no active coach record found', {
+            level: 'error',
+            tags: {
+              surface: 'coach_login',
+              reason: 'otp_verified_no_coach',
+              actor_email: verifiedUser?.email ?? 'unknown',
+            },
+            extra: { actor_address: verifiedUser?.email, actor_ref: verifiedUser?.id },
+          });
+          await supabase.auth.signOut();
+          isProcessingHash.current = false;
+          setError('Your account is not registered as an active coach. Please contact support if this is unexpected.');
+          return;
+        }
         // Hard navigation so middleware re-evaluates the new session cookie
         window.location.href = data.redirectTo || '/coach/dashboard';
         return;
@@ -339,6 +430,21 @@ export default function CoachLoginPage() {
   const SuccessBanner = () => message ? (
     <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm">
       {message}
+    </div>
+  ) : null;
+
+  const UnauthorizedBanner = () => (unauthorizedError && !checkingSession) ? (
+    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+      We couldn&apos;t find an active coach account linked to that session. If you have an account, please sign in with the credentials you used to register. Need help?{' '}
+      <a
+        href={`https://wa.me/${whatsappNumber}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[#1D9E75] underline"
+      >
+        WhatsApp us
+      </a>
+      .
     </div>
   ) : null;
 
@@ -586,6 +692,7 @@ export default function CoachLoginPage() {
 
         {/* Login card */}
         <div className="bg-[#1a2028] rounded-2xl px-5 py-6 sm:px-8 sm:py-8 max-w-md w-full">
+          <UnauthorizedBanner />
           <ErrorBanner />
           <SuccessBanner />
 
