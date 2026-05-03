@@ -17,6 +17,7 @@ import { sendWhatsAppMessage } from './aisensy';
 import { sendLeadBotMessage } from './leadbot';
 import { logCommunication, type RecipientType } from './log';
 import type { TemplateButtons } from './types';
+import { redactNamedParams } from './redact';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import {
   resolveDerivations,
@@ -80,6 +81,30 @@ export interface NotifyMeta {
    * sendNotification (vs the bypass route which hand-rolls the payload).
    */
   templateButtons?: TemplateButtons;
+  /**
+   * Keys in namedParams whose values should be redacted as '[REDACTED]' before
+   * being written to communication_logs.context_data.named_params.
+   *
+   * Use case: sensitive credentials (OTPs, password reset tokens, payment
+   * confirmation codes) that must reach the message provider but must NOT
+   * persist in queryable log rows.
+   *
+   * The values are still passed verbatim to the adapter for delivery; only
+   * the log row is redacted.
+   *
+   * Block 2.6b addition. Required for parent_otp_v3 to prevent OTP values
+   * from landing in communication_logs. See lib/communication/redact.ts for
+   * the redaction helper.
+   */
+  redactInLog?: string[];
+  /**
+   * Optional AiSensy attribution string passed through to the AiSensy adapter's
+   * payload.source field for analytics. Lead Bot adapter ignores it.
+   *
+   * Block 2.6b addition. Preserves the 'new-landing-page form' attribution
+   * from the legacy bypass at app/api/auth/send-otp/route.ts.
+   */
+  source?: string;
 }
 
 interface TemplateRow {
@@ -253,6 +278,14 @@ export async function sendNotification(
 ): Promise<NotifyResult> {
   const isUuidRecipient = UUID_RE.test(recipientId);
 
+  // Block 2.6b: redact sensitive namedParams values in log writes only.
+  // The original namedParams continues to flow to the adapter for on-wire
+  // delivery. safeNamedParams replaces namedParams in 5 context_data writes
+  // (template_not_found early reject, logBase, deferred_quiet_hours raw
+  // insert, AiSensy adapter envelope, Lead Bot adapter envelope).
+  // See lib/communication/redact.ts for the redaction helper.
+  const safeNamedParams = redactNamedParams(namedParams, meta?.redactInLog);
+
   // ── STEP 1. Template lookup ──
   const { data: templateRows, error: tmplErr } = await supabase
     .from('communication_templates')
@@ -272,7 +305,7 @@ export async function sendNotification(
       recipientType: 'system',
       waSent: false,
       errorMessage: 'template_not_found',
-      contextData: { named_params: namedParams, recipient_id: recipientId },
+      contextData: { named_params: safeNamedParams, recipient_id: recipientId },
     });
     return { success: false, reason: 'template_not_found' };
   }
@@ -284,7 +317,7 @@ export async function sendNotification(
     triggeredBy: meta?.triggeredBy ?? 'system' as const,
     triggeredByUserId: meta?.triggeredByUserId ?? null,
     contextData: {
-      named_params: namedParams,
+      named_params: safeNamedParams,
       recipient_id: recipientId,
       ...(meta?.contextData ?? {}),
     },
@@ -372,7 +405,7 @@ export async function sendNotification(
         channel: 'aisensy',
         deferred_until: deferUntil,
         context_data: {
-          named_params: namedParams,
+          named_params: safeNamedParams,
           recipient_id: recipientId,
           quiet_start: settings.quietStart,
           quiet_end: settings.quietEnd,
@@ -469,6 +502,7 @@ export async function sendNotification(
       templateName: template.wa_template_name,
       templateCategory: template.wa_template_category ?? undefined,
       templateButtons: meta?.templateButtons,
+      source: meta?.source,
       // Use derivation-resolved positional params so AiSensy receives the
       // derived value (e.g. child_first_name) when the caller passed only
       // the canonical (e.g. child_name). For templates without derivations
@@ -482,7 +516,7 @@ export async function sendNotification(
         triggeredByUserId: meta?.triggeredByUserId ?? null,
         contextType: meta?.contextType ?? null,
         contextId: meta?.contextId ?? null,
-        contextData: { named_params: namedParams, original_recipient_id: recipientId },
+        contextData: { named_params: safeNamedParams, original_recipient_id: recipientId },
       },
     });
 
@@ -548,6 +582,7 @@ export async function sendNotification(
         languageCode: template.language_code || 'en',
         templateCategory: template.wa_template_category ?? undefined,
         templateButtons: meta?.templateButtons,
+        source: meta?.source,
         variables: finalPositionalParams as string[],
         meta: {
           templateCode,
@@ -557,7 +592,7 @@ export async function sendNotification(
           triggeredByUserId: meta?.triggeredByUserId ?? null,
           contextType: meta?.contextType ?? null,
           contextId: meta?.contextId ?? null,
-          contextData: { named_params: namedParams, original_recipient_id: recipientId },
+          contextData: { named_params: safeNamedParams, original_recipient_id: recipientId },
         },
       },
       { isDryRun: false }, // TASK 4 will replace with site_settings reader (leadbot_live_sends)

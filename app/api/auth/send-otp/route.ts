@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidPhone, normalizePhone } from '@/lib/utils/phone';
 import { generateOTP, hashOTP } from '@/lib/utils/otp';
-import { logCommunication } from '@/lib/communication/log';
+import { sendNotification } from '@/lib/communication/notify';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
@@ -48,68 +48,38 @@ interface SendOTPResponse {
 }
 
 async function sendWhatsAppOTP(phone: string, otp: string): Promise<boolean> {
-  const apiKey = process.env.AISENSY_API_KEY;
-  const baseUrl = process.env.AISENSY_BASE_URL || 'https://backend.aisensy.com/campaign/t1/api/v2';
-  const templateCode = 'parent_otp_v3';
-
-  const logResult = async (sent: boolean, errorMessage: string | null, extra?: Record<string, unknown>) => {
-    await logCommunication({
-      templateCode,
-      recipientType: 'parent',
-      recipientPhone: phone,
-      waSent: sent,
-      errorMessage,
+  // Block 2.6b: migrated from direct AiSensy fetch to sendNotification.
+  // - templateButtons.otp drives AiSensy auth-synthesis (synthesizes the
+  //   buttons[] required by Meta Authentication templates server-side).
+  // - redactInLog: ['otp'] masks the OTP value in communication_logs.
+  //   context_data.named_params before insert, while the wire send still
+  //   carries the real value via templateButtons.otp + variables[0].
+  // - source preserves the 'new-landing-page form' AiSensy attribution
+  //   from the legacy bypass.
+  const result = await sendNotification(
+    'parent_otp_v3',
+    phone,
+    { otp },
+    {
       triggeredBy: 'system',
       contextType: 'auth_otp',
-      contextData: { masked_phone: `***${phone.slice(-4)}`, ...(extra ?? {}) },
-    });
-  };
+      contextData: { masked_phone: `***${phone.slice(-4)}` },
+      templateButtons: { category: 'authentication', otp },
+      redactInLog: ['otp'],
+      source: 'new-landing-page form',
+    },
+  );
 
-  if (!apiKey) {
-    console.error('[OTP] AISENSY_API_KEY not configured');
-    await logResult(false, 'AISENSY_API_KEY not configured');
-    return false;
+  if (!result.success) {
+    console.error(
+      '[send-otp] sendNotification failed:',
+      result.reason ?? 'unknown',
+      'phone:',
+      `***${phone.slice(-4)}`,
+    );
   }
 
-  try {
-    const response = await fetch(baseUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        campaignName: templateCode,
-        destination: phone,
-        userName: 'Yestoryd LLP',
-        source: 'new-landing-page form',
-        templateParams: [otp],
-        buttons: [
-          {
-            type: 'button',
-            sub_type: 'url',
-            index: 0,
-            parameters: [{ type: 'text', text: otp }],
-          },
-        ],
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok && (data.success === 'true' || data.success === true || data.status === 'success' || data.status === 'submitted')) {
-      console.log(`[OTP] WhatsApp sent to ${phone.slice(-4)}`);
-      await logResult(true, null, { http_status: response.status, provider_message_id: data.messageId ?? data.id ?? null });
-      return true;
-    }
-
-    console.error('[OTP] AiSensy error:', data);
-    await logResult(false, data.message || data.error || `HTTP ${response.status}`, { http_status: response.status, response_body: data });
-    return false;
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Network error';
-    console.error('[OTP] WhatsApp send failed:', error);
-    await logResult(false, msg, { exception: true });
-    return false;
-  }
+  return result.success;
 }
 
 async function sendEmailOTP(email: string, otp: string): Promise<boolean> {
