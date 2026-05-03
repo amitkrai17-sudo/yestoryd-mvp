@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, CheckCircle, MessageCircle } from 'lucide-react';
 import * as Sentry from '@sentry/nextjs';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/supabase/database.types';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
@@ -25,7 +27,7 @@ const GRID_BG =
 // true) because coaches can be soft-deactivated and deactivated coaches
 // must NOT be redirected to /coach/dashboard.
 async function verifyCoachRole(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   user: { id?: string; email?: string | null } | null,
 ): Promise<boolean> {
   if (!user?.id || !user?.email) return false;

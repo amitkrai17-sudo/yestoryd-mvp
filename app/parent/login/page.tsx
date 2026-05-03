@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, ArrowRight, CheckCircle, MessageCircle, Sparkles } from 'lucide-react';
 import * as Sentry from '@sentry/nextjs';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/supabase/database.types';
 import { supabase } from '@/lib/supabase/client';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { useHashSessionRedirect } from '@/hooks/useHashSessionRedirect';
@@ -21,7 +23,7 @@ const GRID_BG =
 // but the login page can hard-navigate stale admin/coach sessions into a redirect
 // loop without this check. False on RLS error or no row — both mean "not a parent".
 async function verifyParentRole(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   user: { id?: string; email?: string | null } | null,
 ): Promise<boolean> {
   if (!user?.id || !user?.email) return false;
