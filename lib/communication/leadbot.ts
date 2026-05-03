@@ -33,6 +33,7 @@ import type {
   WaSendResult,
   SendOptions,
   WhatsAppHeaderMedia,
+  TemplateButtons,
 } from './types';
 
 const GRAPH_API_VERSION = 'v21.0';
@@ -149,7 +150,29 @@ export function buildLeadBotPayload(params: WaSendParams): MetaCloudPayload {
       );
     }
 
-    const otp = String(params.variables[0] ?? '');
+    // OTP resolution priority (Block 2.6a):
+    //   1. params.templateButtons.otp (if union present, category matches)
+    //   2. params.variables[0] (backward-compat fallback)
+    //   3. throw — auth contract violation
+    const tb = params.templateButtons;
+    if (tb && tb.category !== 'authentication') {
+      console.warn(
+        '[WA-LeadBot] auth_template_warning: templateButtons.category mismatch with templateCategory',
+        params.templateName,
+        tb.category,
+      );
+    }
+
+    const otp =
+      tb && tb.category === 'authentication'
+        ? tb.otp
+        : String(params.variables[0] ?? '');
+
+    if (!otp) {
+      throw new Error(
+        `[WA-LeadBot] Authentication template '${params.templateName}' resolved empty OTP from templateButtons and variables`,
+      );
+    }
     const authComponents: MetaCloudComponent[] = [
       {
         type: 'body',

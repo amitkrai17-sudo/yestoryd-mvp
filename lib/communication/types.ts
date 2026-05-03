@@ -35,6 +35,31 @@ export interface WhatsAppButton {
   parameters?: Array<{ type: string; text: string }>;
 }
 
+/**
+ * Discriminated union of template-button shapes by Meta category.
+ * Caller passes the minimal data; each adapter synthesizes its own
+ * correct on-wire payload (Meta dual-component for authentication,
+ * AiSensy flat buttons[] for the same case).
+ *
+ * Add new variants here when new template categories enter production.
+ * Each variant must be expressible in BOTH adapter dialects (AiSensy
+ * via params.buttons; Lead Bot via MetaCloudComponent).
+ *
+ * The discriminator field 'category' must align with the value of
+ * communication_templates.wa_template_category for the corresponding row.
+ *
+ * Co-exists with WaSendParams.buttons?: WhatsAppButton[] which remains
+ * for the legacy admin/test route at app/api/whatsapp/send/route.ts.
+ * New code should prefer this union; legacy field will be deprecated
+ * in a future cycle.
+ */
+export type TemplateButtons =
+  | { category: 'authentication'; otp: string };
+// Future variants — add when a real caller emerges (YAGNI):
+// | { category: 'utility_cta'; url: string }
+// | { category: 'utility_call'; phone: string }
+// | { category: 'marketing_quick_reply'; payloads: string[] };
+
 // ────────────────────────────────────────────────────────────
 // HEADER MEDIA
 // ────────────────────────────────────────────────────────────
@@ -107,6 +132,20 @@ export interface WaSendParams {
    * not query DB.
    */
   templateCategory?: string;
+  /**
+   * Structured button data by template category. Adapters use this to
+   * synthesize the correct on-wire payload (Meta dual-component for
+   * authentication, AiSensy flat buttons[] for the same case).
+   *
+   * Distinct from the legacy `buttons?: WhatsAppButton[]` field which
+   * remains for the admin/test route. New code should prefer this
+   * discriminated union; both adapters fall back to variables[0] for
+   * backward compatibility when templateButtons is absent but
+   * templateCategory='authentication'.
+   *
+   * Source: NotifyMeta.templateButtons; plumbed through notify.ts.
+   */
+  templateButtons?: TemplateButtons;
   /** Structured header media (Lead Bot only). */
   header?: WhatsAppHeaderMedia;
   /** Legacy flat field: AiSensy media URL. */

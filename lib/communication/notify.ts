@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsAppMessage } from './aisensy';
 import { sendLeadBotMessage } from './leadbot';
 import { logCommunication, type RecipientType } from './log';
+import type { TemplateButtons } from './types';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import {
   resolveDerivations,
@@ -67,6 +68,18 @@ export interface NotifyMeta {
    * send stands in for N scheduled_sessions rows.
    */
   contextData?: Record<string, unknown>;
+  /**
+   * Structured button data for templates that require category-specific
+   * button shapes (e.g. Meta Authentication templates with Copy Code).
+   * Plumbed through notify.ts → WaSendParams.templateButtons → adapter,
+   * where each adapter synthesizes the correct on-wire payload.
+   *
+   * See TemplateButtons union (lib/communication/types.ts) for variants.
+   *
+   * Block 2.6a addition. Required for parent_otp_v3 when calling via
+   * sendNotification (vs the bypass route which hand-rolls the payload).
+   */
+  templateButtons?: TemplateButtons;
 }
 
 interface TemplateRow {
@@ -455,6 +468,7 @@ export async function sendNotification(
       to: phone,
       templateName: template.wa_template_name,
       templateCategory: template.wa_template_category ?? undefined,
+      templateButtons: meta?.templateButtons,
       // Use derivation-resolved positional params so AiSensy receives the
       // derived value (e.g. child_first_name) when the caller passed only
       // the canonical (e.g. child_name). For templates without derivations
@@ -533,6 +547,7 @@ export async function sendNotification(
         templateName: template.wa_template_name,
         languageCode: template.language_code || 'en',
         templateCategory: template.wa_template_category ?? undefined,
+        templateButtons: meta?.templateButtons,
         variables: finalPositionalParams as string[],
         meta: {
           templateCode,

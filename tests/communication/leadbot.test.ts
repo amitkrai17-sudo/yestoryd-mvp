@@ -262,6 +262,49 @@ describe('buildLeadBotPayload', () => {
     expect(payloadB.template.components).toHaveLength(1);
     expect(payloadB.template.components?.[0]?.type).toBe('body');
   });
+
+  it('authentication category prefers templateButtons.otp over variables[0]', () => {
+    const params: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_otp_v3',
+      templateCategory: 'authentication',
+      templateButtons: { category: 'authentication', otp: '999999' },
+      languageCode: 'en',
+      variables: ['111111'], // should be ignored — templateButtons.otp wins
+    };
+
+    const payload = buildLeadBotPayload(params);
+    const components = payload.template.components;
+
+    expect(components).toHaveLength(2);
+
+    const bodyText = (components?.[0]?.parameters as Array<{ text: string }>)?.[0]?.text;
+    const buttonText = (components?.[1]?.parameters as Array<{ text: string }>)?.[0]?.text;
+
+    expect(bodyText).toBe('999999');
+    expect(buttonText).toBe('999999');
+    expect(bodyText).not.toBe('111111');
+  });
+
+  it('authentication category falls back to variables[0] when templateButtons absent', () => {
+    const params: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_otp_v3',
+      templateCategory: 'authentication',
+      // templateButtons intentionally omitted
+      languageCode: 'en',
+      variables: ['654321'],
+    };
+
+    const payload = buildLeadBotPayload(params);
+    const components = payload.template.components;
+
+    expect(components).toHaveLength(2);
+    const bodyText = (components?.[0]?.parameters as Array<{ text: string }>)?.[0]?.text;
+    const buttonText = (components?.[1]?.parameters as Array<{ text: string }>)?.[0]?.text;
+    expect(bodyText).toBe('654321');
+    expect(buttonText).toBe('654321');
+  });
 });
 
 // =============================================================================
