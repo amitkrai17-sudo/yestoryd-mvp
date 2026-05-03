@@ -66,3 +66,63 @@ export function redactNamedParams(
   }
   return safeParams;
 }
+
+/**
+ * Returns a positionally-redacted variables array. Used by adapter-side
+ * context_data writes where the on-wire variables array (a positional
+ * conversion of namedParams) gets logged AS WELL AS sent. The wire send
+ * uses the original un-redacted array; the log write uses the result of
+ * this function.
+ *
+ * Mapping logic: redactKeys gives KEY NAMES (e.g. ['otp']). The schema
+ * (template.wa_variables) gives the order of those keys in the positional
+ * array (e.g. ['otp']). The intersection of the two gives the indices of
+ * positional whose values must be replaced with REDACTION_SENTINEL.
+ *
+ * Behavior:
+ *   - If redactKeys is undefined or empty, returns the original positional
+ *     array reference (no copy made — performance optimization).
+ *   - If schema and positional have mismatched lengths, the function
+ *     defensively iterates only over the SHORTER length and ignores the
+ *     trailing entries on the longer array (matches notify.ts's existing
+ *     graceful handling of derivation drift).
+ *   - Schema entries not present in redactKeys leave the corresponding
+ *     positional entry untouched.
+ *   - Keys in redactKeys that are NOT in schema are silently ignored
+ *     (consistent with redactNamedParams).
+ *
+ * @param positional - The positional variables array (post-derivation,
+ *                     post-conversion-from-namedParams). For OTP templates
+ *                     this is e.g. ['777934'].
+ * @param schema - The wa_variables array from the template row, giving the
+ *                 ordered key names (e.g. ['otp']).
+ * @param redactKeys - Optional list of keys whose corresponding positional
+ *                     entries should be masked.
+ * @returns A positional-shaped array safe to write to communication_logs.
+ *
+ * @example
+ *   redactVariables(['777934'], ['otp'], ['otp'])
+ *   // → ['[REDACTED]']
+ *
+ *   redactVariables(['Ira', 'reading session'], ['child_name', 'topic'], ['otp'])
+ *   // → ['Ira', 'reading session'] (otp not in schema, no-op)
+ *
+ *   redactVariables(['777934'], ['otp'], undefined)
+ *   // → ['777934'] (same reference, no copy)
+ */
+export function redactVariables(
+  positional: string[],
+  schema: string[],
+  redactKeys?: string[],
+): string[] {
+  if (!redactKeys || redactKeys.length === 0) return positional;
+
+  const safePositional: string[] = [...positional];
+  const len = Math.min(positional.length, schema.length);
+  for (let i = 0; i < len; i++) {
+    if (redactKeys.includes(schema[i])) {
+      safePositional[i] = REDACTION_SENTINEL;
+    }
+  }
+  return safePositional;
+}

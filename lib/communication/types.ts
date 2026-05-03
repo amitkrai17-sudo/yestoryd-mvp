@@ -97,6 +97,24 @@ export interface SendMeta {
   contextType?: string | null;
   contextId?: string | null;
   contextData?: Record<string, unknown> | null;
+  /**
+   * Pre-redacted variables array for adapter-side log writes.
+   *
+   * The adapter's buildContextData() helper writes params.variables to
+   * communication_logs.context_data.variables — but for templates with
+   * sensitive credentials in their positional payload (e.g. parent_otp_v3
+   * with ['<otp-value>']), the raw value would leak into queryable log
+   * rows.
+   *
+   * notify.ts pre-computes a redacted copy via redactVariables() once per
+   * send, using template.wa_variables (schema) + meta?.redactInLog (key
+   * list). The adapter falls back to params.variables when this field is
+   * absent, preserving zero-cost behavior for non-redacting callers.
+   *
+   * Block 2.6c addition. Sibling of contextData on SendMeta — both are
+   * observability/log-shape data, not adapter behavior data.
+   */
+  safeVariables?: string[];
 }
 
 // ────────────────────────────────────────────────────────────

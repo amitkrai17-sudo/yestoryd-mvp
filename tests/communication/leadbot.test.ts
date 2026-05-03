@@ -359,7 +359,14 @@ describe('sendLeadBotMessage — dry-run (Phase A safety)', () => {
     expect(insertCalls[0].row.wa_sent).toBe(false);
     // The DRY_RUN_<ts> marker must also appear in context_data.provider_message_id
     expect(insertCalls[0].row.context_data?.provider_message_id).toMatch(/^DRY_RUN_\d+$/);
-    expect(insertCalls[0].row.context_data?.payload).toBeDefined();
+    // Block 2.6c: payload deliberately omitted from dry-run context_data.
+    // Synthesized auth payloads contain OTP values verbatim in
+    // body.parameters[0].text + button.parameters[0].text. The dry-run
+    // signal lives entirely in provider_message_id (DRY_RUN_<ts>) +
+    // error_message='dry_run'. The variables array (now safely passing
+    // through meta.safeVariables when redactInLog is set) carries the
+    // "what would have been sent" debugging signal.
+    expect(insertCalls[0].row.context_data?.payload).toBeUndefined();
   });
 
   it('dry-run preserves meta.templateCode in log row (B2)', async () => {

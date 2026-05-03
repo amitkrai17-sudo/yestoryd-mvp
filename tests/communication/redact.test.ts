@@ -12,7 +12,7 @@
 // appear in communication_logs.context_data.named_params.
 
 import { describe, it, expect } from 'vitest';
-import { redactNamedParams, REDACTION_SENTINEL } from '@/lib/communication/redact';
+import { redactNamedParams, redactVariables, REDACTION_SENTINEL } from '@/lib/communication/redact';
 
 describe('redactNamedParams', () => {
   it('redacts the specified key with REDACTION_SENTINEL', () => {
@@ -49,5 +49,56 @@ describe('redactNamedParams', () => {
     redactNamedParams(input, ['otp']);
     expect(input).toEqual(inputBefore);
     expect(input.otp).toBe('123456');
+  });
+});
+
+describe('redactVariables', () => {
+  it('redacts positional entry whose schema key is in redactKeys', () => {
+    const result = redactVariables(['777934'], ['otp'], ['otp']);
+    expect(result).toEqual([REDACTION_SENTINEL]);
+  });
+
+  it('redacts multiple keys at correct positions per schema mapping', () => {
+    const result = redactVariables(
+      ['Amit', '777934', 'extra'],
+      ['name', 'otp', 'note'],
+      ['otp'],
+    );
+    expect(result).toEqual(['Amit', REDACTION_SENTINEL, 'extra']);
+  });
+
+  it('returns same reference when redactKeys is undefined', () => {
+    const input = ['777934'];
+    const result = redactVariables(input, ['otp'], undefined);
+    expect(result).toBe(input); // same reference, no copy
+  });
+
+  it('returns same reference when redactKeys is empty array', () => {
+    const input = ['777934'];
+    const result = redactVariables(input, ['otp'], []);
+    expect(result).toBe(input); // same reference, no copy
+  });
+
+  it('silently ignores redactKeys entries that are not in schema', () => {
+    const result = redactVariables(['Ira'], ['child_name'], ['otp', 'password']);
+    expect(result).toEqual(['Ira']); // otp/password not in schema, no-op
+  });
+
+  it('handles schema/positional length mismatch defensively', () => {
+    // positional shorter than schema — should iterate over shorter length
+    const result1 = redactVariables(['777934'], ['otp', 'extra'], ['otp']);
+    expect(result1).toEqual([REDACTION_SENTINEL]);
+
+    // positional longer than schema — should iterate over shorter length
+    const result2 = redactVariables(['777934', 'extra'], ['otp'], ['otp']);
+    expect(result2).toEqual([REDACTION_SENTINEL, 'extra']);
+  });
+
+  it('does not mutate the original positional array', () => {
+    const input = ['777934'];
+    const inputBefore = [...input];
+    redactVariables(input, ['otp'], ['otp']);
+    expect(input).toEqual(inputBefore);
+    expect(input[0]).toBe('777934');
   });
 });

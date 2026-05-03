@@ -17,7 +17,7 @@ import { sendWhatsAppMessage } from './aisensy';
 import { sendLeadBotMessage } from './leadbot';
 import { logCommunication, type RecipientType } from './log';
 import type { TemplateButtons } from './types';
-import { redactNamedParams } from './redact';
+import { redactNamedParams, redactVariables } from './redact';
 import { formatForWhatsApp } from '@/lib/utils/phone';
 import {
   resolveDerivations,
@@ -438,6 +438,20 @@ export async function sendNotification(
   const finalParams = resolveDerivations(validatorTemplate, namedParams);
   // Recompute positional params from finalParams so AiSensy receives derived values.
   const finalPositionalParams = (template.wa_variables ?? []).map((key) => finalParams[key]);
+
+  // Block 2.6c: pre-redact variables array for adapter-side log writes.
+  // The adapters' buildContextData() helper writes params.variables to
+  // communication_logs.context_data.variables — leaking sensitive values
+  // (e.g. OTP) for templates that opted into redactInLog. Compute once
+  // here using template.wa_variables (schema) + meta?.redactInLog (key
+  // list); plumb via meta.safeVariables to both adapters.
+  // See lib/communication/redact.ts for the redaction helper.
+  const safeVariables = redactVariables(
+    finalPositionalParams as string[],
+    (template.wa_variables as string[] | null) ?? [],
+    meta?.redactInLog,
+  );
+
   const resolvedRecipient = await resolveRecipient(recipientId);
   const validatorMode: 'warn' | 'enforce' = 'warn'; // hardcoded — see TODO above
   const validation = await validateNotification(
@@ -517,6 +531,7 @@ export async function sendNotification(
         contextType: meta?.contextType ?? null,
         contextId: meta?.contextId ?? null,
         contextData: { named_params: safeNamedParams, original_recipient_id: recipientId },
+        safeVariables,
       },
     });
 
@@ -593,6 +608,7 @@ export async function sendNotification(
           contextType: meta?.contextType ?? null,
           contextId: meta?.contextId ?? null,
           contextData: { named_params: safeNamedParams, original_recipient_id: recipientId },
+          safeVariables,
         },
       },
       { isDryRun: false }, // TASK 4 will replace with site_settings reader (leadbot_live_sends)

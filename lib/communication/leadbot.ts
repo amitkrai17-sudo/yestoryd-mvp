@@ -315,7 +315,7 @@ export async function sendLeadBotMessage(
   };
 
   const buildContextData = (extra: Record<string, unknown>) => ({
-    variables: params.variables,
+    variables: params.meta?.safeVariables ?? params.variables,
     ...(params.meta?.contextData ?? {}),
     ...extra,
   });
@@ -369,7 +369,6 @@ export async function sendLeadBotMessage(
       errorMessage: 'dry_run',
       contextData: buildContextData({
         provider_message_id: dryRunId,
-        payload,
       }),
     });
     return { success: true, messageId: dryRunId };

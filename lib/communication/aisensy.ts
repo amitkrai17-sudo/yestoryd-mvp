@@ -41,7 +41,7 @@ export async function sendWhatsAppMessage(params: WaSendParams): Promise<WaSendR
   };
 
   const buildContextData = (extra: Record<string, unknown>) => ({
-    variables: params.variables,
+    variables: params.meta?.safeVariables ?? params.variables,
     ...(params.meta?.contextData ?? {}),
     ...extra,
   });
