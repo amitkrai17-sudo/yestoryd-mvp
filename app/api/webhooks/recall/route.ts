@@ -15,6 +15,7 @@ import { Client } from '@upstash/qstash';
 import { Webhook } from 'svix';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logOpsEvent, generateCorrelationId } from '@/lib/backops';
+import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import type { Json } from '@/lib/supabase/database.types';
 
 const supabase = createAdminClient();
@@ -488,8 +489,11 @@ async function handleStatusChange(
         // Queue notification
         await supabase.from('communication_queue').insert({
           template_code: 'session_no_show',
-          recipient_id: sessionId ?? 'system',
           recipient_type: 'admin',
+          recipient_id: null,
+          recipient_phone: COMPANY_CONFIG.adminWhatsApp,
+          related_entity_type: 'session',
+          related_entity_id: sessionId,
           scheduled_for: new Date().toISOString(),
           variables: { session_id: sessionId, reason: latestChange.message, request_id: requestId },
           status: 'pending',
@@ -652,7 +656,10 @@ async function handleBotDone(
         await supabase.from('communication_queue').insert({
           template_code: outcome.status === 'coach_no_show' ? 'coach_no_show_urgent' : 'session_no_show',
           recipient_type: 'admin',
-          recipient_id: 'admin',
+          recipient_id: null,
+          recipient_phone: COMPANY_CONFIG.adminWhatsApp,
+          related_entity_type: 'session',
+          related_entity_id: sessionId,
           scheduled_for: new Date().toISOString(),
           variables: { session_id: sessionId, reason: outcome.reason, request_id: requestId },
           status: 'pending',

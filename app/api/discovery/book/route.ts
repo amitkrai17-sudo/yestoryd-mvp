@@ -281,7 +281,8 @@ async function sendBookingNotification(
     await supabase.from('communication_queue').insert({
       template_code: 'parent_discovery_booked_v3',
       recipient_type: 'parent',
-      recipient_id: data.phone,
+      recipient_id: null,
+      recipient_phone: data.phone,
       scheduled_for: new Date().toISOString(),
       variables: {
         parent_first_name: (data.parentName || 'Parent').split(' ')[0],
