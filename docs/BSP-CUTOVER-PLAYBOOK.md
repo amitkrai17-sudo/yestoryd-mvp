@@ -358,6 +358,92 @@ than as a victory log.
 
 ---
 
+## Spam-stop runbook
+
+If a template is sending wrong, abusive, or unintended content and you
+need to halt it immediately, use this section. All actions are
+data-driven (no redeploy required) and effective within 5 minutes
+(in-process cache TTL).
+
+### Stop ONE specific template
+
+```sql
+UPDATE communication_templates
+   SET is_active = false
+ WHERE code = '<template_code>';
+```
+
+Effect: `notify.ts` step 1 rejects with `template_disabled`. New sends
+stop within 5 min. **Does not stop already-deferred messages** — those
+must be handled separately:
+
+```sql
+UPDATE communication_queue
+   SET status = 'manually_stopped',
+       error_message = 'operator_halt_<reason>'
+ WHERE template_code = '<template_code>'
+   AND status = 'pending';
+
+-- Legacy: if any deferred rows still exist in communication_logs
+-- (pre-Drain-2B writes), close them out too:
+UPDATE communication_logs
+   SET error_message = 'manually_stopped'
+ WHERE template_code = '<template_code>'
+   AND error_message = 'deferred_quiet_hours'
+   AND wa_sent = false;
+```
+
+### Stop ALL leadbot sends (BSP-side emergency)
+
+```sql
+UPDATE site_settings
+   SET value = 'false'::jsonb
+ WHERE key = 'leadbot_live_sends';
+```
+
+Effect: `leadbot.ts` forces dry-run on every send within 5 minutes.
+AiSensy-channel templates continue to send (different adapter, not
+affected). Use this when the issue is BSP-channel-specific (e.g.
+Meta API misbehaving, leadbot adapter bug).
+
+### Stop ALL sends across both channels
+
+No single-statement equivalent today. Sequence:
+
+```sql
+-- Stop leadbot:
+UPDATE site_settings SET value='false'::jsonb WHERE key='leadbot_live_sends';
+
+-- Disable every active template (nuclear; affects every channel):
+UPDATE communication_templates SET is_active = false WHERE is_active = true;
+```
+
+The second statement is destructive — re-enabling requires a
+templates-level audit afterward to know which were intentionally
+active. Use only in genuine emergencies.
+
+### Cache-bust caveat
+
+The `getSiteSettingBool` cache TTL is 5 minutes. The `is_active` cache
+on `communication_templates` follows the same pattern. Worst-case
+latency from `UPDATE` to effective stop is ~5 minutes. For sub-minute
+emergency halts, a faster cache-bust mechanism is on backlog (Block
+CACHE-INVALIDATE).
+
+### After stopping
+
+Always log the operator action to `activity_log`:
+
+```sql
+INSERT INTO activity_log (action_type, details, created_by)
+VALUES ('template_manually_stopped',
+        jsonb_build_object('template_code', '<code>', 'reason', '<why>'),
+        '<your_admin_email>');
+```
+
+This produces an audit trail for post-incident review and ensures
+analytics queries see the cause of the send-rate drop.
+
 ## Document maintenance
 
 - Update Cutover Log after every cutover (within 24h of completion).

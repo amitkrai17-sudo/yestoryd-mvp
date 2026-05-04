@@ -372,6 +372,58 @@
 
 Reverse-chronological log of significant architecture commitments. One entry per decision. Add new entries at the top.
 
+### 2026-05-04 — Deferred-message contract: 24h SLA
+
+**Context:** Drain Worker Phase 0 audit on May 3 2026 surfaced 69
+stranded messages in `communication_logs` accumulated over 13 days
+(2026-04-20 → 2026-05-03). No drainer existed. Stop-gap deferral logic
+in `notify.ts:386-417` had been in place for months, marked with a
+"yet" comment that was never followed up. Customer impact was small
+(low volume, silent failure mode, no complaints) but unbounded — the
+gap would have grown rapidly under Batch 1+ template cutover volume.
+
+**Material findings that change the plan:**
+
+1. **Deferral now has an explicit contract.** Any message deferred by
+   `notify.ts` (currently: quiet-hours window 21:00–08:00 IST for
+   non-admin, non-authentication-category templates) is guaranteed to
+   be either (a) drained within 24 hours of its `deferred_until`
+   timestamp, or (b) explicitly marked `drained_expired` /
+   `drained_dropped` / `drained_template_retired` /
+   `manually_stopped`. No silent abandonment is permitted. The
+   24h ceiling is the SLA — Drain-2C's daily 08:05 IST cron drains
+   within minutes of quiet-end; the 24h figure is the hard upper
+   bound including catastrophic cron-failure scenarios.
+
+2. **Deferral target migrates from `communication_logs` to
+   `communication_queue`.** Drain-2A (this commit) prepares
+   `communication_queue` schema (adds `recipient_phone`, drops NOT
+   NULL on `recipient_id`, adds routing-required CHECK constraint).
+   Drain-2B switches `notify.ts:386-417` deferral insert to
+   `communication_queue`. Drain-2C builds the cron drainer.
+
+3. **Existing 69 rows closed out as `drained_expired`** in this
+   migration. They stay in `communication_logs` for traceability
+   but are never re-sent. Closure is idempotent.
+
+4. **Authentication-category templates skip quiet-hours entirely**
+   (Drain-2B will implement). Auth/OTP messages are user-initiated;
+   blocking them at 11pm produces user-confusing login failures
+   while violating no actual quiet-hours protection (the user is
+   waiting for the message they just requested).
+
+5. **Status vocabulary on `communication_queue`** is convention-only
+   (free-form `varchar`, no CHECK constraint). Statuses: `pending`,
+   `drained`, `drained_expired`, `drained_dropped` (auth-class
+   replay impossible due to redactInLog), `drained_template_retired`
+   (template `is_active=false` at drain time), `manually_stopped`
+   (operator override). Discipline lives in `notify.ts` and the
+   drain cron, not in DB constraints.
+
+**Pairs with:** `docs/BSP-CUTOVER-PLAYBOOK.md` "Spam stop runbook"
+section (this commit) — the operational counterpart describing how
+to halt sends in flight.
+
 ### 2026-04-29 — Spine principle audit findings (read-only)
 
 **Context:** After committing the BSP migration decision (62f8bb2c), ran a two-pass audit to validate the strategy session's claims about codebase state before locking the 5-block spine consolidation roadmap. First pass: 25 claims across comms, codebase architecture, and BSP migration readiness. Second pass: three targeted follow-up checks on the gaps from pass one.
