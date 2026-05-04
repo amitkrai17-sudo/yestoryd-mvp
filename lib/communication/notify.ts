@@ -53,6 +53,8 @@ export type NotifyReason =
 export interface NotifyResult {
   success: boolean;
   logId?: string;
+  /** communication_queue.id — set on deferred result; logId stays unset on that branch */
+  queueId?: string;
   reason?: NotifyReason;
   deferred?: boolean;
 }
@@ -387,33 +389,34 @@ export async function sendNotification(
   const hour = istHour();
   const inQuiet = hour >= settings.quietStart || hour < settings.quietEnd;
   const isAdmin = template.recipient_type === 'admin';
-  if (!isAdmin && inQuiet) {
+  const isAuthCategory = template.wa_template_category === 'authentication';
+  if (!isAdmin && !isAuthCategory && inQuiet) {
     const deferUntil = nextQuietEndUtc(settings.quietEnd);
-    // Raw insert — logCommunication doesn't support deferred_until/channel yet.
+    // Raw insert into communication_queue (different table from
+    // communication_logs which logCommunication targets). Drain-2C cron
+    // at app/api/cron/process-deferred-comms/route.ts processes pending
+    // rows daily at 08:05 IST. See docs/CURRENT-STATE.md Architecture
+    // Decisions 2026-05-04 for the deferred-message contract.
     const { data: insertedRows } = await supabase
-      .from('communication_logs')
+      .from('communication_queue')
       .insert({
         template_code: templateCode,
         recipient_type: template.recipient_type,
+        recipient_id: isUuidRecipient ? recipientId : null,
         recipient_phone: phone,
-        triggered_by: meta?.triggeredBy ?? 'system',
-        triggered_by_user_id: meta?.triggeredByUserId ?? null,
-        wa_sent: false,
-        email_sent: false,
-        sms_sent: false,
-        error_message: 'deferred_quiet_hours',
-        channel: 'aisensy',
-        deferred_until: deferUntil,
-        context_data: {
-          named_params: safeNamedParams,
-          recipient_id: recipientId,
-          quiet_start: settings.quietStart,
-          quiet_end: settings.quietEnd,
+        scheduled_for: deferUntil,
+        variables: {
+          template_vars: safeNamedParams,
+          _meta: {
+            triggered_by_user_id: meta?.triggeredByUserId ?? null,
+          },
         },
+        status: 'pending',
+        created_by: meta?.triggeredBy ?? 'system',
       })
       .select('id');
-    const logId = insertedRows?.[0]?.id as string | undefined;
-    return { success: false, reason: 'deferred_quiet_hours', deferred: true, logId };
+    const queueId = insertedRows?.[0]?.id as string | undefined;
+    return { success: false, reason: 'deferred_quiet_hours', deferred: true, queueId };
   }
 
   // ── STEP 5.5 (B2.2). Derivation resolution + Pillar 2B validator ──
