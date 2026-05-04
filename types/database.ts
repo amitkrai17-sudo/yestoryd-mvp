@@ -3893,7 +3893,8 @@ export type Database = {
           next_attempt_at: string | null
           priority: string | null
           processed_at: string | null
-          recipient_id: string
+          recipient_id: string | null
+          recipient_phone: string | null
           recipient_type: string
           related_entity_id: string | null
           related_entity_type: string | null
@@ -3914,7 +3915,8 @@ export type Database = {
           next_attempt_at?: string | null
           priority?: string | null
           processed_at?: string | null
-          recipient_id: string
+          recipient_id?: string | null
+          recipient_phone?: string | null
           recipient_type: string
           related_entity_id?: string | null
           related_entity_type?: string | null
@@ -3935,7 +3937,8 @@ export type Database = {
           next_attempt_at?: string | null
           priority?: string | null
           processed_at?: string | null
-          recipient_id?: string
+          recipient_id?: string | null
+          recipient_phone?: string | null
           recipient_type?: string
           related_entity_id?: string | null
           related_entity_type?: string | null
