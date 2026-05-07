@@ -251,6 +251,13 @@ const JOBS: Job[] = [
     description: 'Generate practice recommendations',
   },
   {
+    name: 'process-deferred-comms',
+    path: '/api/cron/process-deferred-comms',
+    schedule: { type: 'daily', istHour: 8, istMinute: 0 },
+    method: 'GET',
+    description: 'Drain-2C: drain stale communication_queue rows through notify.ts',
+  },
+  {
     name: 're-enrollment-nudge',
     path: '/api/cron/re-enrollment-nudge',
     schedule: { type: 'daily', istHour: 9, istMinute: 0 },
