@@ -372,6 +372,185 @@
 
 Reverse-chronological log of significant architecture commitments. One entry per decision. Add new entries at the top.
 
+### 2026-05-07 — Block 3 BATCH_1 Session 1A: 5 templates submitted to Meta Cloud direct
+
+**Context:** First non-OTP submission to Meta Cloud direct on Lead Bot
+WABA (8591287997, WABA ID `2231266930732292`). Activates the BSP
+migration path that Block 2 + 2.5 + 2.6 set up. Pairs with Block 3
+batch template migration roadmap from `62f8bb2c`.
+
+**Templates submitted (all IN REVIEW pending Meta approval):**
+- `parent_payment_confirmed_v3` — Razorpay payment success confirmation
+- `parent_payment_failed_v1` — payment.failed webhook handler trigger
+- `parent_payment_retry_nudge_v1` — 30-min retry nudge
+- `parent_tuition_payment_v3` — payment link delivery
+- `parent_tuition_low_balance_v3` — sessions remaining alert (interim,
+  until v4 ships in Session 1B)
+
+**Design decisions locked during Session 1A:**
+1. **All 5 submitted under Utility category.** Cost optimization vs
+   Marketing classification; India rates ~5x cheaper for Utility.
+2. **Convention exception applied** (`Hi {{parent_first_name}},` line 1
+   instead of standard `Hi {{child_first_name}},`). Documented in
+   separate 2026-05-07 entry.
+3. **Footer = `Yestoryd` on all 5.** Brand anchor + density-classification
+   dilution.
+4. **1 URL CTA per template, no quick-reply buttons in this batch.**
+   Intent-capture deferred to Session 1B button-flow set
+   (`parent_tuition_low_balance_v4` + 4 ack templates).
+5. **`parent_payment_confirmed_v3` slot count expanded from 4 to 5**
+   (added `amount`). Requires DB migration + Razorpay webhook caller code
+   update at cutover. Filed for BATCH_1 cutover commit, not separate.
+6. **"English classes" in body copy, not "tuition".** Internal naming
+   stays `parent_tuition_*` (template_code), parent-facing language
+   matches what they bought.
+
+**Meta validation rules surfaced live during submission:**
+1. **Variable density rule.** Bodies with > ~1 variable per ~25 chars
+   trigger "too many variables for length" error. Solved by adding
+   `Yestoryd` footer + restructuring body for natural language
+   (~30 chars/variable target).
+2. **Leading/trailing variable rule.** Bodies cannot end on `{{var}}.` —
+   must have multi-character static suffix. Solved by reordering slots
+   so trailing static text bookends the body.
+
+**Status (end of submission day):** 5 of 5 APPROVED within hours
+of submission. All 5 retained Utility category — no Marketing
+reclassification. Validates the design choices (neutral
+transactional tone, no excitement language, "Yestoryd" footer,
+"English classes" not "tuition" in body copy). Lead Bot WABA now
+holds 6 approved templates total (`parent_otp_v3` from Block 2.6
+plus the 5 from Session 1A) of 250-template cap. Cutover
+(channel='leadbot' DB flip) follows per-template;
+`parent_payment_confirmed_v3` cutover also gates on DB migration
+adding `amount` slot + Razorpay webhook caller code update.
+
+**Reference:** Per-template body + button design specs in
+`docs/BATCH-1-TEMPLATES-DESIGN.md`. Submission flow walked in chat
+2026-05-07.
+
+**Next:** Session 1B — 5 button-flow templates
+(`parent_tuition_low_balance_v4`, `parent_renewal_confirmed_v1`,
+`parent_renewal_declined_v1`, `parent_renewal_followup_v1`,
+`coach_renewal_followup_needed_v1`).
+
+### 2026-05-07 — Convention exception: parent-action templates address parent in line 1
+
+**Context:** Standing Yestoryd convention is body line 1 =
+`Hi {{child_first_name}},` for all parent-facing WhatsApp templates
+(per `.claude/skills/yestoryd-whatsapp-templates/SKILL.md`).
+Block 3 BATCH_1 Session 1A design surfaced that this convention
+fights communication intent on parent-action templates.
+
+**Decision:** Parent-action and parent-confirmation templates use
+`Hi {{parent_first_name}},` in line 1 instead of
+`Hi {{child_first_name}},`.
+
+**Scope of exception (uses parent_first_name):**
+- Parent-action templates: payment retry, payment link, low balance
+  top-up, renewal flow — any template where the parent must take a
+  transactional action.
+- Parent-confirmation templates: payment received, enrollment
+  confirmed — any template confirming a parent transaction.
+
+**NOT in scope (still use child_first_name):**
+- Session reminders (engagement-focused, child-experience context)
+- Practice nudges (directed at child's experience)
+- Assessment, goals, discovery templates (relationship-building,
+  not transactional)
+- Any future template where the message is *about* the child's
+  learning experience rather than the parent's account state.
+
+**Rationale:** Parent-action templates require direct address to the
+actor. Addressing the child first reads indirect and reduces
+engagement. Convention serves communication; for templates where
+the parent IS the actor, addressing them directly is correct.
+
+**Templates affected in BATCH_1:** all 5 of Session 1A
+(`parent_payment_confirmed_v3`, `parent_payment_failed_v1`,
+`parent_payment_retry_nudge_v1`, `parent_tuition_payment_v3`,
+`parent_tuition_low_balance_v3`). Likely most of Session 1B and 1C
+as well — finalized per-template during those sessions.
+
+**Status:** Locked. Skill update needed to document the exception
+in `.claude/skills/yestoryd-whatsapp-templates/SKILL.md` — filed as
+Block 1.5 backlog.
+
+**Reference:** Block 3 BATCH_1 Session 1A chat 2026-05-07.
+
+### 2026-05-07 — Block 1 Drain-2C cron drainer shipped (Block 1 partial closure)
+
+**Context:** Block 1 (Stabilization, scoped May 3 in commit
+`62f8bb2c`) had three open items as of 2026-05-07 morning: Drain-2C,
+Rule 7 wiring, Auth Phase 1C. Drain-2C shipped this commit; Rule 7
++ Phase 1C still open.
+
+**Commit:** `2bb7915a` (Vercel deployment
+`dpl_Ch4RMGuGQ2dCZnHnmbKYDcHZe6Xa`, READY).
+
+**What ships:**
+- New route `app/api/cron/process-deferred-comms/route.ts` (260
+  lines) drains stale `communication_queue` rows through `notify.ts`
+  spine.
+- Dispatcher JOBS entry: daily at 08:00 IST (slot-aligned), placed
+  alongside other 08:00 IST jobs in
+  `app/api/cron/dispatcher/route.ts`.
+
+**Design decisions:**
+1. **Single-shot retry semantics.** `max_attempts` /
+   `next_attempt_at` columns exist in schema but are not exercised.
+   Failed rows retry on next day's cron via `processed_at IS NULL`
+   filter. Documented as future-hardening backlog (would require
+   adding `attempt_count` column).
+2. **Variables unwrapping.** Queue stores `{template_vars, _meta}`
+   envelope; drainer unwraps to `sendNotification`'s flat
+   `(templateCode, recipient, namedParams, meta)` shape.
+3. **`triggeredBy` validated via type guard, not cast.** Explicit
+   narrowing pattern via new `isTriggeredBy()` type guard at
+   `app/api/cron/process-deferred-comms/route.ts:45`. NOT an
+   `as TriggeredBy` cast.
+4. **`last_attempt_at` written on every attempt.** Free
+   observability, separate from retry semantics.
+5. **Drain-2A.3 dependency accepted.** Queue rows for templates
+   that don't yet exist in `communication_templates`
+   (`session_no_show`, `coach_no_show_urgent` expected) will fail
+   naturally with `error_message='template_not_found'` on each
+   daily tick until those templates are created.
+
+**Block 1 items still open after this commit:**
+- **Rule 7 wiring.** `assertAiSensyResponseOk` exported but never
+  called in `notify.ts`. Load-bearing for Block 3 BSP migration
+  safety during the 6-week dual-running window. Sequenced as next
+  Block 1 task.
+- **Auth Phase 1C commit.** Login page parent-role guard, staged
+  uncommitted ~10 days. Closes auth thread from Phase 1B (commit
+  `bb1984a9`).
+
+**Block 1 items deferred to Block 1.5:**
+- `lib/razorpay.ts:calculateRevenueSplit` retirement (independent
+  of comms).
+- 2 backops `direct:*` template-code bypasses (status uncertain,
+  requires further audit).
+- Drain-2D tests (not blocking Block 3).
+- 8 `as TriggeredBy` cast sites in `lib/communication/leadbot.ts`,
+  `lib/whatsapp/index.ts`, `lib/communication/aisensy.ts` — migrate
+  to new `isTriggeredBy()` type guard.
+- `tests/referral.test.ts` pre-existing tsc errors (vi missing,
+  PayoutConfig undefined-guard).
+
+**Verification post-deploy:** First drain runs 2026-05-08 at 08:00
+IST. 5 stale rows currently queued (from Drain-2A.1+2A.2 fixes
+2026-05-05–06). Expected outcome: most drain successfully via
+leadbot/aisensy adapters, 2 expected failures with
+`error_message='template_not_found'` for the Drain-2A.3 template
+gap.
+
+**Status:** Drain-2C shipped, Block 1 ~67% complete. Rule 7 + Auth
+Phase 1C remaining tasks gate Block 3 BATCH_1 cutover (currently
+in IN REVIEW with Meta).
+
+**Reference:** Phased work this conversation 2026-05-07.
+
 ### 2026-05-04 — Deferred-message contract: 24h SLA
 
 **Context:** Drain Worker Phase 0 audit on May 3 2026 surfaced 69
