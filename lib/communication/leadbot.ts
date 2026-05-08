@@ -199,6 +199,88 @@ export function buildLeadBotPayload(params: WaSendParams): MetaCloudPayload {
     };
   }
 
+  // ────────────────────────────────────────────────────────────
+  // UTILITY_CTA BRANCH (Commit 1 — BATCH_1 spine extension)
+  // ────────────────────────────────────────────────────────────
+  // Body + button-URL utility templates. Caller passes the URL
+  // value (token, suffix, query value) via templateButtons; spine
+  // emits Meta's required body+button.url component shape.
+  //
+  // Trigger: params.templateButtons?.category === 'utility_cta'.
+  // Validation: url must be non-empty (V1 from Phase 1 lock).
+  //
+  // Header derivation is inlined (mirrors the default branch's
+  // logic at lines below) rather than shared, so the existing
+  // default-branch flow is untouched. Duplication is the cost of
+  // a conservative spine extension; future cleanup is fine but
+  // out of scope here.
+  if (params.templateButtons?.category === 'utility_cta') {
+    const url = params.templateButtons.url;
+    if (!url || url.trim().length === 0) {
+      throw new Error('utility_cta requires non-empty url');
+    }
+
+    const utilityComponents: MetaCloudComponent[] = [];
+
+    // 1. Header — only if explicitly passed (mirror default branch)
+    const utilityHeaderSrc: WhatsAppHeaderMedia | null = params.header
+      ?? (params.mediaUrl
+        ? { type: 'document', url: params.mediaUrl, filename: params.mediaFilename }
+        : null);
+
+    if (utilityHeaderSrc) {
+      let mediaParam: Record<string, unknown>;
+      if (utilityHeaderSrc.type === 'image') {
+        mediaParam = { type: 'image', image: { link: utilityHeaderSrc.url } };
+      } else if (utilityHeaderSrc.type === 'video') {
+        mediaParam = { type: 'video', video: { link: utilityHeaderSrc.url } };
+      } else {
+        mediaParam = {
+          type: 'document',
+          document: {
+            link: utilityHeaderSrc.url,
+            filename: utilityHeaderSrc.filename ?? 'document',
+          },
+        };
+      }
+      utilityComponents.push({
+        type: 'header',
+        parameters: [mediaParam],
+      });
+    }
+
+    // 2. Body — sequential positional variable mapping (mirror default branch)
+    if (params.variables.length > 0) {
+      utilityComponents.push({
+        type: 'body',
+        parameters: params.variables.map((v) => ({
+          type: 'text',
+          text: String(v ?? ''),
+        })),
+      });
+    }
+
+    // 3. Button URL — always emit, single button at index 0
+    utilityComponents.push({
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [{ type: 'text', text: url }],
+    });
+
+    return {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: formatForWhatsApp(params.to),
+      type: 'template',
+      template: {
+        name: params.templateName,
+        language: { code: params.languageCode ?? 'en' },
+        components: utilityComponents,
+      },
+    };
+  }
+
   const components: MetaCloudComponent[] = [];
 
   // 1. Header (must come first in components array)

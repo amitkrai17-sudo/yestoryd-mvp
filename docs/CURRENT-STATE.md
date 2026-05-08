@@ -372,6 +372,87 @@
 
 Reverse-chronological log of significant architecture commitments. One entry per decision. Add new entries at the top.
 
+### 2026-05-08 — Spine extension: utility_cta variant for body+URL utility templates
+
+**Context:** Phase 0.6 falsification (this conversation 2026-05-08)
+confirmed with HIGH confidence that the leadbot adapter cannot emit
+body+button-URL components for non-auth utility templates. Default
+branch in `buildLeadBotPayload` emits body component only; auth branch
+is hardcoded for OTP dual-component shape; no utility-CTA path exists.
+Without this extension, BATCH_1 cutover for any of 4 dynamic-URL
+templates would produce Meta error 132000 ("Number of parameters does
+not match") on every send.
+
+**Decision:** Extend `TemplateButtons` discriminated union with
+`utility_cta` variant. Add corresponding branch to `buildLeadBotPayload`
+that emits body + button-URL components. No changes to `aisensy.ts`
+per clean-break decision (BATCH_1 templates ship as one-way cutover;
+AiSensy is not a per-template rollback target).
+
+**Commit:** `{SHA}` (this commit — fill in post-push)
+
+**Architectural rationale:**
+1. Mirrors the existing auth-branch idiom (category-specific branch in
+   `buildLeadBotPayload`, single-string field in discriminated union).
+2. Preserves the spine principle — caller passes URL value via
+   `templateButtons` metadata; spine handles Meta component shape.
+3. Reusable for all 4 dynamic-URL BATCH_1 templates and likely BATCH_2
+   templates with URL buttons (`parent_session_summary_v3`, etc.).
+4. No DB schema change. The URL value moves out of the body-positional
+   `wa_variables` array and into `templateButtons` metadata at the
+   caller layer; DB just records the body-only `wa_variables`.
+
+**What this commit ships:**
+- `lib/communication/types.ts` — `utility_cta` variant in
+  `TemplateButtons` union (single line uncommented).
+- `lib/communication/leadbot.ts` — new branch in `buildLeadBotPayload`
+  (84 lines added, both existing branches byte-identical post-edit).
+- `tests/communication/leadbot.test.ts` — four unit tests:
+  emit-correctness without header, empty-url-rejection,
+  URL-passthrough-verbatim, header+body+button emit-correctness.
+
+**What this commit does NOT change:**
+- `lib/communication/aisensy.ts` — unchanged per clean-break decision.
+  AiSensy continues to handle URL-in-body templates the way it did
+  pre-cutover. After cutover, AiSensy is no longer called for these
+  templates. Cross-adapter symmetry comment in `types.ts:38-55` is
+  intentionally left aspirational; clean-break is a one-time exception
+  documented here, not a permanent policy change.
+- `lib/communication/notify.ts` — no caller plumbing changes. notify.ts
+  already plumbs `templateButtons` to `sendLeadBotMessage` (lines
+  585-618). Commit 2 (template cutover) is what adds production callers
+  passing `templateButtons: { category: 'utility_cta', url }`.
+- DB schema — no migration. The DB schema change happens in Commit 2.
+
+**Reachability framing:** The new `utility_cta` branch is
+reachable-by-test (4 unit tests exercise it directly) but
+unreachable-by-prod (no production caller passes `templateButtons:
+{ category: 'utility_cta' }` until Commit 2). Production behavior
+unchanged — all existing OTP and body-only utility paths are
+byte-identical to pre-edit.
+
+**Validation:** Four new unit tests cover the new branch's behavior
+(emit shape, validation, URL passthrough, header path). Existing OTP
+and body-only utility test paths unchanged — confirmed via `npm test`
+passing all existing assertions. tsc baseline (54 errors from Drain-2C)
+held at 54 with zero delta.
+
+**Block 3 BATCH_1 sequence:**
+- Commit 1 (this) — spine extension. No template cutover.
+- Commit 2 — `parent_payment_failed_v1` + `parent_payment_retry_nudge_v1`
+  cutover. Caller refactor + DB migration + Meta channel flip.
+- Cutovers 3-5 — one template per commit (`parent_tuition_payment_v3`,
+  `parent_tuition_low_balance_v3`, `parent_payment_confirmed_v3`).
+  Each ships caller refactor + DB migration + Meta URL edit (for
+  templates with dynamic URLs). Each ~30-60 min once spine is in place.
+
+**Reference:** `docs/BATCH-1-URL-AUDIT.md` (Phase 2 route audit, Phase 1
+caller audit). Phase 0.6 falsification this conversation 2026-05-08.
+
+**Status:** Awaiting Vercel deploy + 24h soak on existing test paths to
+confirm no regression to OTP path or body-only utility path. Commit 2
+unblocks once soak is clean.
+
 ### 2026-05-07 — Block 3 BATCH_1 Session 1A: 5 templates submitted to Meta Cloud direct
 
 **Context:** First non-OTP submission to Meta Cloud direct on Lead Bot

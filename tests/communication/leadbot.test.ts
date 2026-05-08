@@ -308,6 +308,95 @@ describe('buildLeadBotPayload', () => {
 });
 
 // =============================================================================
+// utility_cta variant — Commit 1 BATCH_1 spine extension — 4 tests
+// =============================================================================
+
+describe('utility_cta variant', () => {
+  it('emits body + button URL components for body+URL utility template', () => {
+    const params: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_payment_failed_v1',
+      languageCode: 'en',
+      templateCategory: 'utility',
+      variables: ['Asha', 'Aarav'],
+      templateButtons: { category: 'utility_cta', url: 'abc123token' },
+    };
+
+    const payload = buildLeadBotPayload(params);
+
+    expect(payload.template.components).toHaveLength(2);
+    expect(payload.template.components?.[0]).toEqual({
+      type: 'body',
+      parameters: [
+        { type: 'text', text: 'Asha' },
+        { type: 'text', text: 'Aarav' },
+      ],
+    });
+    expect(payload.template.components?.[1]).toEqual({
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [{ type: 'text', text: 'abc123token' }],
+    });
+  });
+
+  it('throws when utility_cta url is empty', () => {
+    const params: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_payment_failed_v1',
+      languageCode: 'en',
+      templateCategory: 'utility',
+      variables: ['Asha', 'Aarav'],
+      templateButtons: { category: 'utility_cta', url: '' },
+    };
+
+    expect(() => buildLeadBotPayload(params)).toThrow(
+      /utility_cta requires non-empty url/,
+    );
+  });
+
+  it('passes UUID v4 url verbatim through button parameter', () => {
+    const realisticUuid = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    const params: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_payment_failed_v1',
+      languageCode: 'en',
+      templateCategory: 'utility',
+      variables: ['Asha', 'Aarav'],
+      templateButtons: { category: 'utility_cta', url: realisticUuid },
+    };
+
+    const payload = buildLeadBotPayload(params);
+    const buttonComponent = payload.template.components?.[1];
+    const buttonText = (buttonComponent?.parameters as Array<{ text: string }>)?.[0]?.text;
+
+    expect(buttonText).toBe(realisticUuid);
+  });
+
+  it('emits 3 components (header + body + button) when params.header is set', () => {
+    const params: WaSendParams = {
+      to: PHONE_OK,
+      templateName: 'parent_payment_failed_v1',
+      languageCode: 'en',
+      templateCategory: 'utility',
+      variables: ['Asha', 'Aarav'],
+      templateButtons: { category: 'utility_cta', url: 'abc123token' },
+      header: { type: 'image', url: 'https://example.com/header.jpg' },
+    };
+
+    const payload = buildLeadBotPayload(params);
+
+    expect(payload.template.components).toHaveLength(3);
+    expect(payload.template.components?.[0]).toEqual({
+      type: 'header',
+      parameters: [{ type: 'image', image: { link: 'https://example.com/header.jpg' } }],
+    });
+    expect(payload.template.components?.[1]?.type).toBe('body');
+    expect(payload.template.components?.[2]?.type).toBe('button');
+  });
+});
+
+// =============================================================================
 // sendLeadBotMessage — env + phone validation — 2 tests
 // =============================================================================
 
