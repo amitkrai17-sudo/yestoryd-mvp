@@ -77,7 +77,7 @@ const TPL_NO_DERIVATIONS: ValidatorTemplate = {
   wa_template_name: 'parent_payment_failed_v1',
   use_whatsapp: true,
   wa_variables: ['child_name'],
-  required_variables: ['child_name', 'retry_link', 'parent_phone'],
+  required_variables: ['child_name', 'parent_phone'],
   wa_variable_derivations: null,
 };
 
@@ -330,7 +330,7 @@ describe('Rule 5 — recipientTypeMatches', () => {
 
 describe('Rule 6 — variableNamesConsistent', () => {
   it('PASS via path (a) — wa_var name in required_variables directly', async () => {
-    const finalParams = { child_name: 'Aarav', retry_link: 'https://x', parent_phone: '919687606177' };
+    const finalParams = { child_name: 'Aarav', parent_phone: '919687606177' };
     const result = await validateNotification(
       TPL_NO_DERIVATIONS, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams,
     );
@@ -398,7 +398,7 @@ describe('Rule 6 — variableNamesConsistent', () => {
 describe('Rule 8 — recipientNotPaused', () => {
   it('PASS when parent.status is "active"', async () => {
     const finalParams = {
-      child_name: 'Aarav', retry_link: 'x', parent_phone: '919687606177',
+      child_name: 'Aarav', parent_phone: '919687606177',
     };
     const result = await validateNotification(
       TPL_NO_DERIVATIONS, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams,
@@ -408,7 +408,7 @@ describe('Rule 8 — recipientNotPaused', () => {
 
   it('FAIL when parent.status is "paused"', async () => {
     const finalParams = {
-      child_name: 'Aarav', retry_link: 'x', parent_phone: '919687606177',
+      child_name: 'Aarav', parent_phone: '919687606177',
     };
     const result = await validateNotification(
       TPL_NO_DERIVATIONS, RECIPIENT_PARENT_PAUSED, PHONE_OK, finalParams,
@@ -424,7 +424,7 @@ describe('Rule 8 — recipientNotPaused', () => {
     const tpl: ValidatorTemplate = { ...TPL_NO_DERIVATIONS, recipient_type: 'coach' };
     const result = await validateNotification(
       tpl, RECIPIENT_COACH_EXITED, PHONE_OK, {
-        child_name: 'Aarav', retry_link: 'x', parent_phone: '919687606177',
+        child_name: 'Aarav', parent_phone: '919687606177',
       },
     );
     expect(result.ok).toBe(false);
@@ -435,7 +435,7 @@ describe('Rule 8 — recipientNotPaused', () => {
     const tpl: ValidatorTemplate = { ...TPL_NO_DERIVATIONS, recipient_type: 'admin' };
     const result = await validateNotification(
       tpl, RECIPIENT_ADMIN, PHONE_OK, {
-        child_name: 'Aarav', retry_link: 'x', parent_phone: '919687606177',
+        child_name: 'Aarav', parent_phone: '919687606177',
       },
     );
     expect(result.ok).toBe(true);
@@ -449,7 +449,7 @@ describe('Rule 8 — recipientNotPaused', () => {
 describe('Rule 3 — phoneIsNormalized', () => {
   it('FAIL with mode=enforce on a phone missing the 91 country code prefix', async () => {
     const finalParams = {
-      child_name: 'Aarav', retry_link: 'x', parent_phone: '919687606177',
+      child_name: 'Aarav', parent_phone: '919687606177',
     };
     const result = await validateNotification(
       TPL_NO_DERIVATIONS, RECIPIENT_PARENT_ACTIVE, PHONE_BAD_NO_91, finalParams, 'warn',
@@ -463,7 +463,7 @@ describe('Rule 3 — phoneIsNormalized', () => {
 
   it('FAIL on a phone whose subscriber prefix is not 6-9', async () => {
     const finalParams = {
-      child_name: 'Aarav', retry_link: 'x', parent_phone: '919687606177',
+      child_name: 'Aarav', parent_phone: '919687606177',
     };
     const result = await validateNotification(
       TPL_NO_DERIVATIONS, RECIPIENT_PARENT_ACTIVE, PHONE_BAD_FIVES, finalParams,
@@ -536,9 +536,10 @@ describe('Rule 7 — assertAiSensyResponseOk', () => {
 // B2.5 — post-Meta-approval template shape alignment
 // =============================================================================
 // Mirrors the actual DB row shape for parent_payment_failed_v1 and
-// parent_payment_retry_nudge_v1 after Meta approval expanded wa_variables
-// to 3 elements with 2 derivations. Confirms the webhook + nudge payload
-// shape (canonical names + retry_link) flows correctly end-to-end:
+// parent_payment_retry_nudge_v1 post-BATCH-1-A1 cutover (leadbot channel,
+// retry URL removed from body — now flows as templateButtons.url).
+// Confirms the canonical webhook + nudge payload (parent_name + child_name)
+// flows correctly end-to-end:
 //   resolveDerivations → validateNotification → idempotency hash.
 // =============================================================================
 
@@ -547,8 +548,8 @@ const TPL_PARENT_PAYMENT_FAILED_V1: ValidatorTemplate = {
   recipient_type: 'parent',
   wa_template_name: 'parent_payment_failed_v1',
   use_whatsapp: true,
-  wa_variables: ['parent_first_name', 'child_first_name', 'retry_link'],
-  required_variables: ['parent_name', 'child_name', 'retry_link', 'parent_phone'],
+  wa_variables: ['parent_first_name', 'child_first_name'],
+  required_variables: ['parent_name', 'child_name'],
   wa_variable_derivations: {
     child_first_name: { source: 'child_name', transform: 'first_word' },
     parent_first_name: { source: 'parent_name', transform: 'first_word' },
@@ -566,12 +567,10 @@ describe('B2.5 — webhook payload shape against parent_payment_failed_v1 fixtur
     const callerParams = {
       parent_name: 'Priya Kumar',
       child_name: 'Aarav Sharma',
-      retry_link: 'https://yestoryd.com/r/abc',
     };
     const merged = resolveDerivations(TPL_PARENT_PAYMENT_FAILED_V1, callerParams);
     expect(merged.parent_name).toBe('Priya Kumar');
     expect(merged.child_name).toBe('Aarav Sharma');
-    expect(merged.retry_link).toBe('https://yestoryd.com/r/abc');
     expect(merged.parent_first_name).toBe('Priya');
     expect(merged.child_first_name).toBe('Aarav');
   });
@@ -580,8 +579,6 @@ describe('B2.5 — webhook payload shape against parent_payment_failed_v1 fixtur
     const callerParams = {
       parent_name: 'Priya Kumar',
       child_name: 'Aarav Sharma',
-      retry_link: 'https://yestoryd.com/r/abc',
-      parent_phone: '919687606177', // required_variables includes parent_phone
     };
     const merged = resolveDerivations(TPL_PARENT_PAYMENT_FAILED_V1, callerParams);
     insertCalls.length = 0;
@@ -598,14 +595,14 @@ describe('B2.5 — webhook payload shape against parent_payment_failed_v1 fixtur
     expect(validatorLogs.length).toBe(0);
   });
 
-  it('Part 3.3 — Rule 4 catches missing parent_phone (validator surfaces required_variables gap)', async () => {
+  it('Part 3.3 — Rule 4 catches an empty required field', async () => {
+    // Post-BATCH-1-A1 cutover, required_variables shrunk to
+    // ['parent_name', 'child_name']. Send an empty child_name to surface
+    // the validator's truthy-check (Rule 4). Rule 1 still passes because
+    // child_first_name is present in merged (empty-string derivation result).
     const callerParams = {
       parent_name: 'Priya Kumar',
-      child_name: 'Aarav Sharma',
-      retry_link: 'https://yestoryd.com/r/abc',
-      // parent_phone deliberately missing — webhook callers don't pass it,
-      // and required_variables for these templates includes parent_phone.
-      // This documents the warn-mode gap that must be closed before enforce.
+      child_name: '',
     };
     const merged = resolveDerivations(TPL_PARENT_PAYMENT_FAILED_V1, callerParams);
     const result = await validateNotification(
@@ -618,17 +615,15 @@ describe('B2.5 — webhook payload shape against parent_payment_failed_v1 fixtur
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.failedRule).toBe(4);
-      expect(result.reason).toContain('parent_phone');
+      expect(result.reason).toContain('child_name');
       expect(result.mode).toBe('warn'); // logged + send proceeds in warn
     }
   });
 
-  it('Part 3.4 — same fixture works for the nudge template (post-approval shape is identical)', async () => {
+  it('Part 3.4 — same fixture works for the nudge template (post-cutover shape is identical)', async () => {
     const merged = resolveDerivations(TPL_PARENT_PAYMENT_RETRY_NUDGE_V1, {
       parent_name: 'Priya Kumar',
       child_name: 'Aarav Sharma',
-      retry_link: 'https://yestoryd.com/r/abc',
-      parent_phone: '919687606177',
     });
     expect(merged.parent_first_name).toBe('Priya');
     expect(merged.child_first_name).toBe('Aarav');

@@ -372,6 +372,98 @@
 
 Reverse-chronological log of significant architecture commitments. One entry per decision. Add new entries at the top.
 
+### 2026-05-20 — BATCH-1-A1: parent_payment_failed_v1 + parent_payment_retry_nudge_v1 cutover
+
+**Context:** Two parent-facing payment retry templates were Meta-approved
+as Utility on 2026-05-08 (BATCH_1 Session 1A) and have been Active on
+Lead Bot WABA for 12 days with zero quality issues. Spine extension
+shipping the `utility_cta` variant for body+button-URL templates landed
+2026-05-08 in commit `99607638`. This commit completes the cutover from
+AiSensy to Meta Cloud direct for both templates.
+
+Both templates fire from the Razorpay payment failure flow:
+- `parent_payment_failed_v1` fires from the Razorpay webhook
+  (`app/api/payment/webhook/route.ts:1074`) immediately when a payment
+  fails.
+- `parent_payment_retry_nudge_v1` fires from the QStash-scheduled cron
+  (`app/api/jobs/payment-failed-nudge/route.ts:211`) 30 minutes after
+  the initial failure if the payment is still unpaid.
+
+**Collateral bug fix (dead `/r/<token>` route):** Phase 0 audit confirmed
+both callers were constructing the retry URL as
+`https://yestoryd.com/r/${retryToken}`. The `/r/<token>` route does NOT
+exist in production — no `app/r/` directory, no rewrite in next.config,
+no redirect in vercel.json. Every parent who experienced a payment
+failure since AiSensy launch has received a WhatsApp message with a
+404'd retry URL. This cutover incidentally fixes the bug: Meta's
+button URL pattern (`https://www.yestoryd.com/payment/retry?token={{1}}`)
+points to the LIVE retry handler at `app/payment/retry/page.tsx` which
+correctly validates the token via `/api/payment/validate-retry`.
+The `payment_retry_tokens` table has been empty for 10+ days (no
+organic Razorpay failures in that window), so user-facing impact of
+the prior bug is bounded — but the fix is real and material.
+
+**Decision:** Migrate both templates from AiSensy to Meta Cloud direct
+(leadbot channel) in a single atomic commit. Drop `retry_link` from
+body-positional variables (DB `wa_variables` and `required_variables`
+arrays shrink 3 → 2). Add `templateButtons: { category: 'utility_cta',
+url: retryToken }` to caller meta — caller passes bare UUID token, Meta
+substitutes into static URL prefix. Preserve `wa_variable_derivations`
+jsonb (Pattern B for `parent_first_name` / `child_first_name`).
+Restructure nudge caller's token lookup with explicit early-return
+guards (Phase 1 Decision 4) to prevent empty-url throws from the
+leadbot adapter's `utility_cta` validation.
+
+**Commit:** `{SHA}` (this commit — fill in post-push)
+
+**What this commit ships:**
+- `app/api/payment/webhook/route.ts` — Webhook caller refactor: drop
+  `retry_link` namedParam, drop dead `retryLink` URL construction, add
+  `templateButtons` to meta.
+- `app/api/jobs/payment-failed-nudge/route.ts` — Nudge caller refactor
+  + early-return guards for missing `retry_token_id` and missing
+  `tokenRow.token`. Same templateButtons addition.
+- `supabase/migrations/20260520200000_batch_1_a1_payment_retry_cutover.sql`
+  — single UPDATE flipping channel + shrinking wa_variables +
+  required_variables + updating cost_per_send. Idempotent via
+  `WHERE channel='aisensy'` predicate.
+- `tests/communication/validate-notification.test.ts` — ~13 fixture
+  occurrences of `retry_link` removed/updated.
+- `docs/CURRENT-STATE.md` — this entry.
+
+**What this commit does NOT change:**
+- `lib/communication/notify.ts` — no spine changes. The
+  `meta?.templateButtons` plumbing already supports `utility_cta`
+  (added 2026-05-08 in commit `99607638`).
+- `lib/communication/leadbot.ts` — no adapter changes. utility_cta
+  branch already handles body+button-URL templates correctly.
+- `lib/communication/aisensy.ts` — unchanged. AiSensy continues to
+  exist as a parallel adapter; these 2 templates simply route through
+  leadbot now.
+- `wa_variable_derivations` — preserved as-is (Pattern B unchanged).
+- Idempotency at caller sites — both callers already pass `meta` with
+  `contextId` and `contextType`. No Phase 2B-style add needed.
+
+**Block 3 BATCH_1 sequence:**
+- 2026-05-08 — Commit 1 (`99607638`): leadbot adapter utility_cta extension. Shipped.
+- 2026-05-20 — ADMIN-LEAD-FIX (`7827691d`): admin_new_lead_v4 → v5. Shipped.
+- 2026-05-20 — BATCH-1-A1 (this): parent_payment_failed_v1 + parent_payment_retry_nudge_v1.
+- Next — BATCH-1-A2: parent_payment_confirmed_v3 (includes amount slot expansion).
+- Next — BATCH-1-B: parent_tuition_payment_v3 + parent_tuition_low_balance_v3.
+
+**Reference:**
+- `docs/BATCH-1-URL-AUDIT.md` — original April 25 audit.
+- `docs/BATCH-1-A1-PHASE-0-PROMPT.md` — Phase 0 audit prompt.
+- Phase 0 Q1-Q7 report 2026-05-20.
+- Phase 1 design lock 2026-05-20 (chat).
+- Meta approval 2026-05-08 (BATCH_1 Session 1A).
+
+**Status:** Migration applied via Supabase MCP after Vercel deploy
+READY. End-to-end validation waits for the next organic Razorpay
+payment failure (no synthetic tests per Amit's preference). Until
+then, the cutover is shipped-but-unexercised — but correct by
+construction.
+
 ### 2026-05-20 — admin_new_lead migration: v4 → v5 + idempotency + backfill SQL retirement
 
 **Context:** During 2026-05-10 to 2026-05-12, `admin_new_lead_v4` failed

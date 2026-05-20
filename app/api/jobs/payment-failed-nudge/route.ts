@@ -192,17 +192,30 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   const parentName = parentRow?.name ?? '';
 
-  let retryLink = '';
-  if (failed.retry_token_id) {
-    const { data: tokenRow } = await supabase
-      .from('payment_retry_tokens')
-      .select('token')
-      .eq('id', failed.retry_token_id)
-      .maybeSingle();
-    if (tokenRow?.token) {
-      retryLink = `https://yestoryd.com/r/${tokenRow.token}`;
-    }
+  // Phase 1 lock Decision 4: explicit early-return guards before send.
+  // Both guards prevent the leadbot adapter from throwing on empty url.
+  if (!failed.retry_token_id) {
+    console.warn(JSON.stringify({
+      requestId, event: 'nudge_no_retry_token_id', failedPaymentId,
+    }));
+    return NextResponse.json({ status: 'no_retry_token_id' });
   }
+
+  const { data: tokenRow } = await supabase
+    .from('payment_retry_tokens')
+    .select('token')
+    .eq('id', failed.retry_token_id)
+    .maybeSingle();
+
+  if (!tokenRow?.token) {
+    console.warn(JSON.stringify({
+      requestId, event: 'nudge_retry_token_missing',
+      failedPaymentId, retryTokenId: failed.retry_token_id,
+    }));
+    return NextResponse.json({ status: 'retry_token_missing' });
+  }
+
+  const retryToken = tokenRow.token;
 
   let sendOk = false;
   let sendReason: string | undefined;
@@ -213,12 +226,12 @@ export async function POST(request: NextRequest) {
       {
         parent_name: parentName,
         child_name: childName,
-        retry_link: retryLink,
       },
       {
         contextId: failed.razorpay_payment_id,
         contextType: 'failed_payment_nudge',
         triggeredBy: 'system',
+        templateButtons: { category: 'utility_cta', url: retryToken },
       },
     );
     sendOk = result.success;

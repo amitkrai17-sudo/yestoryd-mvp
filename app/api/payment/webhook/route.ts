@@ -1065,8 +1065,6 @@ async function processPaymentFailed(
           .maybeSingle();
         parentName = parentRow?.name ?? '';
       }
-      const retryLink = `https://yestoryd.com/r/${retryToken}`;
-
       let sendOk = false;
       let sendReason: string | undefined;
       try {
@@ -1076,9 +1074,13 @@ async function processPaymentFailed(
           {
             parent_name: parentName,
             child_name: childName,
-            retry_link: retryLink,
           },
-          { contextId: paymentId, contextType: 'failed_payment', triggeredBy: 'system' },
+          {
+            contextId: paymentId,
+            contextType: 'failed_payment',
+            triggeredBy: 'system',
+            templateButtons: { category: 'utility_cta', url: retryToken },
+          },
         );
         sendOk = result.success;
         sendReason = result.reason;
