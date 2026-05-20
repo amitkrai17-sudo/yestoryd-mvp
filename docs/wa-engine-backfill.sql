@@ -77,7 +77,11 @@ COMMIT;
 
 BEGIN;
 
--- ─── Admin alerts (9 templates) ─────────────────────────────
+-- ─── Admin alerts (8 active + 1 deprecated) ───────────
+/*
+-- DEPRECATED 2026-05-20 — replaced by supabase/migrations/20260520180300_admin_new_lead_v5_migration.sql
+-- See docs/CURRENT-STATE.md for Block ADMIN-LEAD-FIX rationale.
+
 INSERT INTO communication_templates
   (template_code, name, recipient_type, use_whatsapp, use_email,
    wa_template_name, wa_variables, channel, cost_per_send)
@@ -92,6 +96,7 @@ ON CONFLICT (template_code) DO UPDATE SET
   channel          = EXCLUDED.channel,
   cost_per_send    = EXCLUDED.cost_per_send,
   use_whatsapp     = EXCLUDED.use_whatsapp;
+*/
 
 INSERT INTO communication_templates
   (template_code, name, recipient_type, use_whatsapp, use_email,

@@ -372,6 +372,87 @@
 
 Reverse-chronological log of significant architecture commitments. One entry per decision. Add new entries at the top.
 
+### 2026-05-20 — admin_new_lead migration: v4 → v5 + idempotency + backfill SQL retirement
+
+**Context:** During 2026-05-10 to 2026-05-12, `admin_new_lead_v4` failed
+10/10 production sends with AiSensy error "Template params does not match
+the campaign". Phase 0 audit (Block ADMIN-LEAD-FIX) confirmed the DB row's
+`wa_variables` (9 positionals) did not match the live AiSensy campaign
+body's slot count. Same failure class as F2 (`parent_practice_tasks_v3`)
+and the parent_tuition_onboarding_v3 incident from April 2026.
+
+Recovery analysis confirmed zero genuine missed leads — all 10 failures
+were retries triggered by an existing parent (Sneha Patel, mother of
+active tuition student Harshi Mandar Sohoni) re-doing the free reading
+assessment. But the bug was real: the next genuinely new lead would
+have failed to notify Rucha too.
+
+**Decision:** Migrate `admin_new_lead_v4` to Meta Cloud direct (leadbot
+channel) as `admin_new_lead_v5` with a 3-variable Utility template. Meta
+approved 2026-05-20 as Utility category (cost: ₹0.12/msg vs ₹0.88
+Marketing). Body: "Assessment completed on Yestoryd. / Child: {{1}} /
+Parent: {{2}} / Phone: {{3}} / Please check the admin dashboard for
+details. / Yestoryd". Dropped 6 fields from the legacy template:
+`age`, `location`, `score`, `wpm`, `lead_status`, `timestamp`. These
+were sales-pipeline vocabulary (HOT/WARM/COOL) that risked Marketing
+classification, and the score/age data is available to Rucha in the
+admin dashboard anyway.
+
+**Commit:** `{SHA}` (this commit — fill in post-push)
+
+**What this commit ships:**
+- `lib/notifications/admin-alerts.ts` — `sendNewLeadAlert` function:
+  template_code 'admin_new_lead_v4' → 'admin_new_lead_v5', namedParams
+  reduced from 9 keys to 3 keys, optional `meta` arg added for
+  idempotency propagation.
+- `app/api/assessment/analyze/route.ts` — call site passes
+  `meta: { contextType: 'assessment', contextId: childId }` so notify.ts
+  can dedupe repeat fires within the configured window.
+- `supabase/migrations/20260520180300_admin_new_lead_v5_migration.sql`
+  — proper migration file (idempotent UPSERT). Replaces the hand-run
+  docs/wa-engine-backfill.sql block (Q7 finding 1 cleanup from Phase 0).
+  Deactivates the legacy v4 row (UPDATE is_active=false) without
+  deleting it (preserves audit trail).
+- `docs/wa-engine-backfill.sql` — v4 block commented out with reference
+  to new migration.
+
+**Idempotency mechanism:** notify.ts already supports dedup based on
+(template_code, recipient_phone, context_type, context_id) tuple. Before
+this commit, the assessment route was firing `sendNewLeadAlert`
+fire-and-forget with no context, so 5 retries by the same parent in 15
+minutes triggered 5 separate sendNotification calls. Post-commit, the
+contextId being `childId` means re-assessments by the same parent (which
+generate the same children row each time — separate Bug 2 to file)
+would still produce separate fires, but a single parent re-submitting
+the same assessment form within the dedup window will only notify once.
+
+**What this commit does NOT change:**
+- The duplicate `children` row creation when a returning parent
+  re-takes the free assessment (Bug 2 from Phase 0 recovery). Filed as
+  backlog: "duplicate-children-row-detection".
+- The data-quality bug where the form let parent's own name go in
+  `child_name` field (Bug 3). Filed as backlog: "child-name-validation".
+- Pattern B alignment for adjacent admin templates
+  (admin_discovery_booked_v4, admin_daily_digest_v3) flagged in Phase 0
+  Q7 finding 2. Filed as backlog: "admin-templates-pattern-b-audit".
+
+**Block 3 BATCH_1 sequence continues:**
+- Commit 1 of BATCH_1 (2026-05-08, SHA 99607638) — leadbot adapter
+  utility_cta extension. Shipped.
+- ADMIN-LEAD-FIX (this commit) — admin_new_lead_v4 → v5 migration.
+- BATCH_1 Commit 2 — `parent_payment_failed_v1` +
+  `parent_payment_retry_nudge_v1` cutover. Caller refactor + DB
+  migration + channel flip. Next in queue.
+
+**Reference:** Phase 0 audit Q1-Q7 report 2026-05-20. Phase 1 design
+lock 2026-05-20. Meta approval 2026-05-20. docs/wa-validation-audit-
+2026-04-19.md for precedent (parent_tuition_onboarding_v3 incident).
+
+**Status:** Migration applied via Supabase MCP after Vercel deploy
+READY. Awaiting first genuine new lead to validate end-to-end. Rucha
+informed via separate channel that admin notifications were broken
+during May 10-12 (no missed leads, but flagging for transparency).
+
 ### 2026-05-08 — Spine extension: utility_cta variant for body+URL utility templates
 
 **Context:** Phase 0.6 falsification (this conversation 2026-05-08)

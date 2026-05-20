@@ -678,18 +678,24 @@ export async function POST(request: NextRequest) {
           import('@/lib/notifications/admin-alerts').then(({ sendNewLeadAlert }) => {
             console.log(JSON.stringify({ requestId, event: 'admin_alert_imported' }));
 
-            sendNewLeadAlert({
-              childId,
-              childName: name,
-              childAge: age,
-              parentName: parentName || 'Parent',
-              parentPhone: parentPhone,
-              parentEmail: parentEmail || undefined,
-              assessmentScore: overallScore,
-              wpm: analysisResult.wpm || 0,
-              leadStatus: leadStatus as 'hot' | 'warm' | 'cool',
-              requestId,
-            }).then(success => {
+            sendNewLeadAlert(
+              {
+                childId,
+                childName: name,
+                childAge: age,
+                parentName: parentName || 'Parent',
+                parentPhone: parentPhone,
+                parentEmail: parentEmail || undefined,
+                assessmentScore: overallScore,
+                wpm: analysisResult.wpm || 0,
+                leadStatus: leadStatus as 'hot' | 'warm' | 'cool',
+                requestId,
+              },
+              {
+                contextType: 'assessment',
+                contextId: childId,
+              },
+            ).then(success => {
               console.log(JSON.stringify({ requestId, event: 'admin_alert_result', success }));
             }).catch(err => {
               console.error(JSON.stringify({ requestId, event: 'admin_alert_error', error: err.message }));

@@ -13,9 +13,8 @@
 // communication_logs. No local logging needed here.
 //
 // Templates (named params must match wa_variables in DB):
-//   admin_new_lead_v4
-//     [child_name, age, parent_name, parent_phone, location,
-//      score, wpm, lead_status, timestamp]
+//   admin_new_lead_v5
+//     [child_name, parent_name, parent_phone]
 //   admin_discovery_booked_v4
 //     [child_name, age, parent_name, parent_phone,
 //      scheduled_date_time, coach_name, score, wpm, timestamp]
@@ -77,19 +76,6 @@ export interface DailyDigestData {
 // HELPER FUNCTIONS
 // ============================================================
 
-function getLeadStatusLabel(status: 'hot' | 'warm' | 'cool'): string {
-  switch (status) {
-    case 'hot':
-      return 'HOT';
-    case 'warm':
-      return 'WARM';
-    case 'cool':
-      return 'COOL';
-    default:
-      return 'NEW';
-  }
-}
-
 function formatTimeOnly(date: Date): string {
   return date.toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata',
@@ -116,7 +102,10 @@ function formatScheduledDateTime(date: Date): string {
 // ============================================================
 // Called after assessment completion — alerts admin about new lead.
 
-export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
+export async function sendNewLeadAlert(
+  data: NewLeadData,
+  meta?: { contextType?: string; contextId?: string },
+): Promise<boolean> {
   const startTime = Date.now();
 
   console.log('[AdminAlert] ========== sendNewLeadAlert START ==========');
@@ -127,20 +116,16 @@ export async function sendNewLeadAlert(data: NewLeadData): Promise<boolean> {
   console.log('[AdminAlert] RequestId:', data.requestId);
 
   try {
-    const timestamp = formatTimeOnly(new Date());
-    const leadStatus = getLeadStatusLabel(data.leadStatus);
-
-    const result = await sendNotification('admin_new_lead_v4', ADMIN_PHONE, {
-      child_name: data.childName,
-      age: String(data.childAge),
-      parent_name: data.parentName,
-      parent_phone: data.parentPhone,
-      location: data.location || 'India',
-      score: String(data.assessmentScore),
-      wpm: String(data.wpm || 0),
-      lead_status: leadStatus,
-      timestamp,
-    });
+    const result = await sendNotification(
+      'admin_new_lead_v5',
+      ADMIN_PHONE,
+      {
+        child_name: data.childName,
+        parent_name: data.parentName,
+        parent_phone: data.parentPhone,
+      },
+      meta,
+    );
 
     const duration = Date.now() - startTime;
 
