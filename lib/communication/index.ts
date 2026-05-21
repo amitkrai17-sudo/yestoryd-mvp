@@ -2,6 +2,8 @@
 // Central Communication Engine
 
 import { sendWhatsAppMessage, isWhatsAppConfigured } from './aisensy';
+import { sendLeadBotMessage } from './leadbot';
+import { resolveDerivations, type ValidatorTemplate } from './validate-notification';
 import { logCommunication, RecipientType, TriggeredBy } from './log';
 import { sendEmail, isEmailConfigured } from '@/lib/email/resend-client';
 import { loadAuthConfig } from '@/lib/config/loader';
@@ -227,19 +229,43 @@ async function sendWhatsAppToRecipient(
     contextId?: string | null;
   }
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  if (!isWhatsAppConfigured()) {
-    return { success: false, error: 'WhatsApp not configured' };
-  }
+  // Apply Pattern B derivations (additive; no-op if caller already passed the alias)
+  const validatorTemplate: ValidatorTemplate = {
+    template_code: template.template_code,
+    recipient_type: template.recipient_type,
+    wa_template_name: template.wa_template_name,
+    use_whatsapp: template.use_whatsapp,
+    wa_variables: template.wa_variables || [],
+    required_variables: template.required_variables || [],
+    wa_variable_derivations: template.wa_variable_derivations || null,
+  };
+  const derivedVariables = resolveDerivations(validatorTemplate, variables);
 
-  // Build variables array in order specified by template
-  const variableArray = (template.wa_variables || []).map((key: string) => variables[key] || '');
+  // Positional array preserves the lenient-substitution behaviour callers depend on
+  const variableArray = (template.wa_variables || []).map(
+    (key: string) => (derivedVariables[key] as string) || '',
+  );
 
-  return sendWhatsAppMessage({
+  const waParams = {
     to: phone,
     templateName: template.wa_template_name,
     variables: variableArray,
     meta,
-  });
+  };
+
+  // Channel routing — mirror of notify.ts STEP 7
+  if (template.channel === 'leadbot') {
+    return sendLeadBotMessage(
+      { ...waParams, languageCode: template.language_code || 'en' },
+      { isDryRun: false },
+    );
+  }
+
+  // Default branch — aisensy (preserves behaviour for every template where channel ≠ 'leadbot')
+  if (!isWhatsAppConfigured()) {
+    return { success: false, error: 'WhatsApp not configured' };
+  }
+  return sendWhatsAppMessage(waParams);
 }
 
 // Send Email using template
