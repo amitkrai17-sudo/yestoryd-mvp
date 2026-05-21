@@ -363,13 +363,17 @@ export async function POST(request: NextRequest) {
         const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
         const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
         let coachFirstName = 'Coach';
+        let coachFullName = 'Coach';
         if (tuitionEnrollment.coach_id) {
           const { data: coachForTpl } = await supabase
             .from('coaches')
             .select('name')
             .eq('id', tuitionEnrollment.coach_id)
             .single();
-          if (coachForTpl?.name) coachFirstName = coachForTpl.name.split(' ')[0];
+          if (coachForTpl?.name) {
+            coachFirstName = coachForTpl.name.split(' ')[0];
+            coachFullName = coachForTpl.name;
+          }
         }
         await sendCommunication({
           templateCode: 'parent_payment_confirmed_v3',
@@ -379,10 +383,11 @@ export async function POST(request: NextRequest) {
           recipientEmail: body.parentEmail,
           recipientName: body.parentName,
           variables: {
-            child_first_name: (body.childName || 'Child').split(' ')[0],
-            plan: getProgramLabel(tuitionEnr, catLabel),
+            parent_name: body.parentName,
+            amount: String(verifiedAmount),
+            child_name: body.childName,
+            coach_name: coachFullName,
             sessions_count: String(sessionsPurchased),
-            coach_name: coachFirstName,
           },
           relatedEntityType: 'enrollment',
           relatedEntityId: tuitionEnrollmentId,
@@ -792,10 +797,11 @@ export async function POST(request: NextRequest) {
         recipientEmail: body.parentEmail,
         recipientName: body.parentName,
         variables: {
-          child_first_name: (body.childName || 'Child').split(' ')[0],
-          plan: getProgramLabel(coachingEnr),
+          parent_name: body.parentName,
+          amount: String(verifiedAmount),
+          child_name: body.childName,
+          coach_name: coach?.name || 'Coach',
           sessions_count: String(sessionsCount),
-          coach_name: coachFirstName,
         },
         relatedEntityType: 'enrollment',
         relatedEntityId: enrollment.id,

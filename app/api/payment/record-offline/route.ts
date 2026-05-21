@@ -229,13 +229,17 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
     const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
     const offlineEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: body.sessions_purchased };
     let coachFirstName = 'Coach';
+    let coachFullName = 'Coach';
     if (enrollment.coach_id) {
       const { data: coachForTpl } = await supabase
         .from('coaches')
         .select('name')
         .eq('id', enrollment.coach_id)
         .single();
-      if (coachForTpl?.name) coachFirstName = coachForTpl.name.split(' ')[0];
+      if (coachForTpl?.name) {
+        coachFirstName = coachForTpl.name.split(' ')[0];
+        coachFullName = coachForTpl.name;
+      }
     }
     await sendCommunication({
       templateCode: 'parent_payment_confirmed_v3',
@@ -245,10 +249,11 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
       recipientEmail: parentEmail,
       recipientName: parentName,
       variables: {
-        child_first_name: (childName || 'Child').split(' ')[0],
-        plan: getProgramLabel(offlineEnr, catLabel),
+        parent_name: parentName,
+        amount: String(body.amount),
+        child_name: childName,
+        coach_name: coachFullName,
         sessions_count: String(body.sessions_purchased),
-        coach_name: coachFirstName,
       },
       relatedEntityType: 'enrollment',
       relatedEntityId: body.enrollment_id,

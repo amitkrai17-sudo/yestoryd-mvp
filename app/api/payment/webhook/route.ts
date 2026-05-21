@@ -377,13 +377,17 @@ async function processPaymentCaptured(
         const catLabel = (onboardingForLabel?.skill_categories as any)?.parent_label ?? null;
         const tuitionEnr = { billing_model: 'prepaid_sessions' as const, sessions_remaining: sessionsPurchased };
         let coachFirstName = 'Coach';
+        let coachFullName = 'Coach';
         if (tuitionEnrollment.coach_id) {
           const { data: coachForTpl } = await supabase
             .from('coaches')
             .select('name')
             .eq('id', tuitionEnrollment.coach_id)
             .single();
-          if (coachForTpl?.name) coachFirstName = coachForTpl.name.split(' ')[0];
+          if (coachForTpl?.name) {
+            coachFirstName = coachForTpl.name.split(' ')[0];
+            coachFullName = coachForTpl.name;
+          }
         }
         await sendCommunication({
           templateCode: 'parent_payment_confirmed_v3',
@@ -393,10 +397,11 @@ async function processPaymentCaptured(
           recipientEmail: bookingData.parent_email,
           recipientName: bookingData.parent_name,
           variables: {
-            child_first_name: (bookingData.child_name || 'Child').split(' ')[0],
-            plan: getProgramLabel(tuitionEnr, catLabel),
+            parent_name: bookingData.parent_name,
+            amount: String(amount),
+            child_name: bookingData.child_name,
+            coach_name: coachFullName,
             sessions_count: String(sessionsPurchased),
-            coach_name: coachFirstName,
           },
           relatedEntityType: 'enrollment',
           relatedEntityId: tuitionEnrollmentId,
@@ -757,10 +762,11 @@ async function processPaymentCaptured(
         recipientEmail: bookingData.parent_email,
         recipientName: bookingData.parent_name,
         variables: {
-          child_first_name: (bookingData.child_name || 'Child').split(' ')[0],
-          plan: getProgramLabel(coachingEnr),
+          parent_name: bookingData.parent_name,
+          amount: String(amount),
+          child_name: bookingData.child_name,
+          coach_name: coachForTpl?.name || 'Coach',
           sessions_count: String(sessionsCount),
-          coach_name: coachFirstName,
         },
         relatedEntityType: 'enrollment',
         relatedEntityId: enrollment.id,

@@ -60,14 +60,12 @@ const TPL_PARENT_PAYMENT_CONFIRMED: ValidatorTemplate = {
   recipient_type: 'parent',
   wa_template_name: 'parent_payment_confirmed_v3',
   use_whatsapp: true,
-  wa_variables: ['child_first_name', 'plan', 'sessions_count', 'coach_name'],
-  required_variables: [
-    'parent_name', 'child_name', 'amount', 'coach_name',
-    'dashboard_link', 'program_label', 'schedule_description',
-    'plan', 'sessions_count',
-  ],
+  wa_variables: ['parent_first_name', 'amount', 'child_first_name', 'coach_first_name', 'sessions_count'],
+  required_variables: ['parent_name', 'amount', 'child_name', 'coach_name', 'sessions_count'],
   wa_variable_derivations: {
-    child_first_name: { source: 'child_name', transform: 'first_word' },
+    parent_first_name: { source: 'parent_name', transform: 'first_word' },
+    child_first_name:  { source: 'child_name',  transform: 'first_word' },
+    coach_first_name:  { source: 'coach_name',  transform: 'first_word' },
   },
 };
 
@@ -197,13 +195,13 @@ describe('resolveDerivations', () => {
 
 describe('Rule 1 — variableArityMatches', () => {
   it('PASS when every wa_variables key is present in finalParams', async () => {
-    const finalParams = {
-      child_first_name: 'Aarav', plan: 'Full', sessions_count: '12', coach_name: 'Rucha',
-      // required-only fields
-      parent_name: 'Asha', child_name: 'Aarav Mehta', amount: '5999',
-      dashboard_link: 'https://x.y/d', program_label: '1:1 Coaching',
-      schedule_description: 'Weekly Mon/Wed',
-    };
+    const finalParams = resolveDerivations(TPL_PARENT_PAYMENT_CONFIRMED, {
+      parent_name: 'Asha Patel',
+      child_name: 'Aarav Mehta',
+      amount: '5999',
+      coach_name: 'Rucha Rai',
+      sessions_count: '12',
+    });
     const result = await validateNotification(
       TPL_PARENT_PAYMENT_CONFIRMED, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams,
     );
@@ -247,11 +245,13 @@ describe('Rule 1 — variableArityMatches', () => {
 
 describe('Rule 4 — allRequiredParamsTruthy', () => {
   it('FAIL when a required key is empty string', async () => {
-    const finalParams = {
-      child_first_name: 'Aarav', plan: 'Full', sessions_count: '12', coach_name: 'Rucha',
-      parent_name: 'Asha', child_name: 'Aarav Mehta', amount: '',
-      dashboard_link: 'x', program_label: 'y', schedule_description: 'z',
-    };
+    const finalParams = resolveDerivations(TPL_PARENT_PAYMENT_CONFIRMED, {
+      parent_name: 'Asha Patel',
+      child_name: 'Aarav Mehta',
+      amount: '',
+      coach_name: 'Rucha Rai',
+      sessions_count: '12',
+    });
     const result = await validateNotification(
       TPL_PARENT_PAYMENT_CONFIRMED, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams,
     );
@@ -263,11 +263,13 @@ describe('Rule 4 — allRequiredParamsTruthy', () => {
   });
 
   it('FAIL when value is the literal string "undefined"', async () => {
-    const finalParams = {
-      child_first_name: 'Aarav', plan: 'Full', sessions_count: '12', coach_name: 'Rucha',
-      parent_name: 'Asha', child_name: 'Aarav Mehta', amount: 'undefined',
-      dashboard_link: 'x', program_label: 'y', schedule_description: 'z',
-    };
+    const finalParams = resolveDerivations(TPL_PARENT_PAYMENT_CONFIRMED, {
+      parent_name: 'Asha Patel',
+      child_name: 'Aarav Mehta',
+      amount: 'undefined',
+      coach_name: 'Rucha Rai',
+      sessions_count: '12',
+    });
     const result = await validateNotification(
       TPL_PARENT_PAYMENT_CONFIRMED, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams,
     );
@@ -276,11 +278,13 @@ describe('Rule 4 — allRequiredParamsTruthy', () => {
   });
 
   it('FAIL when value is null', async () => {
-    const finalParams: Record<string, unknown> = {
-      child_first_name: 'Aarav', plan: 'Full', sessions_count: '12', coach_name: 'Rucha',
-      parent_name: 'Asha', child_name: 'Aarav Mehta', amount: null,
-      dashboard_link: 'x', program_label: 'y', schedule_description: 'z',
-    };
+    const finalParams: Record<string, unknown> = resolveDerivations(TPL_PARENT_PAYMENT_CONFIRMED, {
+      parent_name: 'Asha Patel',
+      child_name: 'Aarav Mehta',
+      amount: null,
+      coach_name: 'Rucha Rai',
+      sessions_count: '12',
+    });
     const result = await validateNotification(
       TPL_PARENT_PAYMENT_CONFIRMED, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams,
     );
@@ -312,11 +316,13 @@ describe('Rule 5 — recipientTypeMatches', () => {
   });
 
   it('PASS when template recipient_type matches resolved recipient.type', async () => {
-    const finalParams = {
-      child_first_name: 'A', plan: 'F', sessions_count: '1', coach_name: 'R',
-      parent_name: 'A', child_name: 'A B', amount: '1',
-      dashboard_link: 'x', program_label: 'y', schedule_description: 'z',
-    };
+    const finalParams = resolveDerivations(TPL_PARENT_PAYMENT_CONFIRMED, {
+      parent_name: 'Asha Patel',
+      child_name: 'Aarav Mehta',
+      amount: '1',
+      coach_name: 'Rucha Rai',
+      sessions_count: '1',
+    });
     const result = await validateNotification(
       TPL_PARENT_PAYMENT_CONFIRMED, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams,
     );
@@ -666,11 +672,13 @@ describe('B2.5 — webhook payload shape against parent_payment_failed_v1 fixtur
 
 describe('activity_log side effect', () => {
   it('writes one row per validator failure', async () => {
-    const finalParams = {
-      child_first_name: 'Aarav', plan: 'Full', sessions_count: '12', coach_name: 'Rucha',
-      parent_name: 'Asha', child_name: 'Aarav Mehta', amount: '',  // ← Rule 4 FAIL
-      dashboard_link: 'x', program_label: 'y', schedule_description: 'z',
-    };
+    const finalParams = resolveDerivations(TPL_PARENT_PAYMENT_CONFIRMED, {
+      parent_name: 'Asha Patel',
+      child_name: 'Aarav Mehta',
+      amount: '',  // ← Rule 4 FAIL
+      coach_name: 'Rucha Rai',
+      sessions_count: '12',
+    });
     insertCalls.length = 0;
     await validateNotification(
       TPL_PARENT_PAYMENT_CONFIRMED, RECIPIENT_PARENT_ACTIVE, PHONE_OK, finalParams, 'warn',
