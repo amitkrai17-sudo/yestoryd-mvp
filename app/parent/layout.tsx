@@ -25,7 +25,15 @@ import { ParentContext, ParentContextType, ParentData, ChildData } from './conte
 export { useParentContext } from './context';
 
 // ==================== ROUTE CONFIGURATION ====================
-const PUBLIC_ROUTES = ['/parent/login', '/parent/book-skill-booster'];
+// B0-FIX: redirect routes must bypass the client-side auth gate so server-side
+// redirect() fires before hydration. These prefixes match /parent/checkout/<id>
+// and /parent/topup/<id> via isPublicRoute() prefix-match logic.
+const PUBLIC_ROUTES = [
+  '/parent/login',
+  '/parent/book-skill-booster',
+  '/parent/checkout',
+  '/parent/topup',
+];
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
