@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
+import { addTuitionBalance } from '@/lib/tuition/add-balance';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,22 +40,12 @@ export const POST = withParamsHandler<{ id: string }>(async (req: NextRequest, {
     return NextResponse.json({ error: 'Not a tuition enrollment' }, { status: 400 });
   }
 
-  const previousBalance = enrollment.sessions_remaining || 0;
-  const newBalance = previousBalance + amount;
-
-  // Update balance
-  await supabase
-    .from('enrollments')
-    .update({ sessions_remaining: newBalance, updated_at: new Date().toISOString() })
-    .eq('id', enrollmentId);
-
-  // Ledger entry
-  await supabase.from('tuition_session_ledger').insert({
-    enrollment_id: enrollmentId,
-    change_amount: amount,
-    balance_after: newBalance,
+  // Ledger entry + sessions_remaining update (centralized helper)
+  const { previousBalance, newBalance } = await addTuitionBalance({
+    enrollmentId,
+    changeAmount: amount,
     reason: `admin_adjustment: ${reason}`,
-    created_by: auth.email ?? 'admin',
+    createdBy: auth.email ?? 'admin',
   });
 
   // Activity log

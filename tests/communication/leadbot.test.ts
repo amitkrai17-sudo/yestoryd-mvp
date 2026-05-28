@@ -642,3 +642,119 @@ describe('Phase B kill-switch (site_settings.leadbot_live_sends)', () => {
     expect(insertCalls[0].row.wa_sent).toBe(true);
   });
 });
+
+// =============================================================================
+// marketing_quick_reply branch (BATCH-3-INBOUND) — 5 tests
+// =============================================================================
+
+describe('buildLeadBotPayload — marketing_quick_reply branch', () => {
+  it('1 payload + body variables → body + 1 button component', () => {
+    const payload = buildLeadBotPayload({
+      to: PHONE_OK,
+      templateName: 'parent_renewal_intent_v1',
+      variables: ['Alice', 'Bobby'],
+      templateButtons: {
+        category: 'marketing_quick_reply',
+        payloads: [{ id: 'btn_renew_yes', title: 'Yes, renew' }],
+      },
+    });
+    expect(payload.template.components).toEqual([
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: 'Alice' },
+          { type: 'text', text: 'Bobby' },
+        ],
+      },
+      {
+        type: 'button',
+        sub_type: 'quick_reply',
+        index: '0',
+        parameters: [{ type: 'payload', payload: 'btn_renew_yes' }],
+      },
+    ]);
+  });
+
+  it('3 payloads → body + 3 button components with indices "0","1","2"', () => {
+    const payload = buildLeadBotPayload({
+      to: PHONE_OK,
+      templateName: 'parent_renewal_intent_v1',
+      variables: ['Alice', 'Bobby'],
+      templateButtons: {
+        category: 'marketing_quick_reply',
+        payloads: [
+          { id: 'btn_renew_yes',   title: 'Yes, renew' },
+          { id: 'btn_renew_pause', title: 'Pause for now' },
+          { id: 'btn_renew_talk',  title: 'Talk to coach' },
+        ],
+      },
+    });
+    const buttons = payload.template.components?.filter((c) => c.type === 'button');
+    expect(buttons).toHaveLength(3);
+    expect(buttons?.[0]).toEqual({
+      type: 'button',
+      sub_type: 'quick_reply',
+      index: '0',
+      parameters: [{ type: 'payload', payload: 'btn_renew_yes' }],
+    });
+    expect(buttons?.[1]).toEqual({
+      type: 'button',
+      sub_type: 'quick_reply',
+      index: '1',
+      parameters: [{ type: 'payload', payload: 'btn_renew_pause' }],
+    });
+    expect(buttons?.[2]).toEqual({
+      type: 'button',
+      sub_type: 'quick_reply',
+      index: '2',
+      parameters: [{ type: 'payload', payload: 'btn_renew_talk' }],
+    });
+  });
+
+  it('4 payloads → throws (Meta limit is 3)', () => {
+    expect(() =>
+      buildLeadBotPayload({
+        to: PHONE_OK,
+        templateName: 'parent_renewal_intent_v1',
+        variables: [],
+        templateButtons: {
+          category: 'marketing_quick_reply',
+          payloads: [
+            { id: 'a', title: 'A' },
+            { id: 'b', title: 'B' },
+            { id: 'c', title: 'C' },
+            { id: 'd', title: 'D' },
+          ],
+        },
+      }),
+    ).toThrow(/at most 3/);
+  });
+
+  it('empty payloads array → throws', () => {
+    expect(() =>
+      buildLeadBotPayload({
+        to: PHONE_OK,
+        templateName: 'parent_renewal_intent_v1',
+        variables: [],
+        templateButtons: {
+          category: 'marketing_quick_reply',
+          payloads: [],
+        },
+      }),
+    ).toThrow(/at least 1 payload/);
+  });
+
+  it('title >20 chars → throws', () => {
+    expect(() =>
+      buildLeadBotPayload({
+        to: PHONE_OK,
+        templateName: 'parent_renewal_intent_v1',
+        variables: [],
+        templateButtons: {
+          category: 'marketing_quick_reply',
+          payloads: [{ id: 'btn_too_long', title: 'This title is way too long for Meta' }],
+        },
+      }),
+    ).toThrow(/20 chars/);
+  });
+});

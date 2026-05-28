@@ -281,6 +281,101 @@ export function buildLeadBotPayload(params: WaSendParams): MetaCloudPayload {
     };
   }
 
+  // ────────────────────────────────────────────────────────────
+  // MARKETING_QUICK_REPLY BRANCH (BATCH-3-INBOUND)
+  // ────────────────────────────────────────────────────────────
+  // Body + 1-3 quick-reply buttons. Caller passes payload ids +
+  // titles; Meta enforces 20-char title cap. Body component is
+  // built from params.variables (positional), mirroring the
+  // default branch's body logic. Header support mirrors utility_cta
+  // for symmetry, even though Meta marketing quick-reply templates
+  // rarely declare a header.
+  //
+  // Trigger: params.templateButtons?.category === 'marketing_quick_reply'.
+  // Validation: 1-3 payloads, each with non-empty id + title ≤20 chars.
+  if (params.templateButtons?.category === 'marketing_quick_reply') {
+    const payloads = params.templateButtons.payloads;
+    if (!payloads || payloads.length === 0) {
+      throw new Error('marketing_quick_reply requires at least 1 payload');
+    }
+    if (payloads.length > 3) {
+      throw new Error('marketing_quick_reply supports at most 3 payloads (Meta limit)');
+    }
+    for (const p of payloads) {
+      if (!p.id || p.id.trim().length === 0) {
+        throw new Error('marketing_quick_reply payload requires non-empty id');
+      }
+      if (!p.title || p.title.trim().length === 0) {
+        throw new Error('marketing_quick_reply payload requires non-empty title');
+      }
+      if (p.title.length > 20) {
+        throw new Error('marketing_quick_reply payload title must be ≤20 chars (Meta limit)');
+      }
+    }
+
+    const qrComponents: MetaCloudComponent[] = [];
+
+    // 1. Header — only if explicitly passed (mirror utility_cta)
+    const qrHeaderSrc: WhatsAppHeaderMedia | null = params.header
+      ?? (params.mediaUrl
+        ? { type: 'document', url: params.mediaUrl, filename: params.mediaFilename }
+        : null);
+
+    if (qrHeaderSrc) {
+      let mediaParam: Record<string, unknown>;
+      if (qrHeaderSrc.type === 'image') {
+        mediaParam = { type: 'image', image: { link: qrHeaderSrc.url } };
+      } else if (qrHeaderSrc.type === 'video') {
+        mediaParam = { type: 'video', video: { link: qrHeaderSrc.url } };
+      } else {
+        mediaParam = {
+          type: 'document',
+          document: {
+            link: qrHeaderSrc.url,
+            filename: qrHeaderSrc.filename ?? 'document',
+          },
+        };
+      }
+      qrComponents.push({
+        type: 'header',
+        parameters: [mediaParam],
+      });
+    }
+
+    // 2. Body — sequential positional variable mapping (mirror utility_cta)
+    if (params.variables.length > 0) {
+      qrComponents.push({
+        type: 'body',
+        parameters: params.variables.map((v) => ({
+          type: 'text',
+          text: String(v ?? ''),
+        })),
+      });
+    }
+
+    // 3. Buttons — one component per payload, index string 0..N
+    payloads.forEach((p, i) => {
+      qrComponents.push({
+        type: 'button',
+        sub_type: 'quick_reply',
+        index: String(i),
+        parameters: [{ type: 'payload', payload: p.id }],
+      });
+    });
+
+    return {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: formatForWhatsApp(params.to),
+      type: 'template',
+      template: {
+        name: params.templateName,
+        language: { code: params.languageCode ?? 'en' },
+        components: qrComponents,
+      },
+    };
+  }
+
   const components: MetaCloudComponent[] = [];
 
   // 1. Header (must come first in components array)

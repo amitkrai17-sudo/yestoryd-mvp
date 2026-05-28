@@ -23,6 +23,7 @@ import {
 } from '@/lib/payment/enrollment-creator';
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
+import { addTuitionBalance } from '@/lib/tuition/add-balance';
 import { logOpsEvent, generateCorrelationId } from '@/lib/backops';
 import { scheduleTuitionSessions } from '@/lib/scheduling';
 import type { Json } from '@/lib/supabase/database.types';
@@ -258,7 +259,6 @@ async function processPaymentCaptured(
 
     const enrollmentUpdate: Record<string, unknown> = {
       status: 'active',
-      sessions_remaining: newRemaining,
       amount: existingAmount + amount,
       payment_id: paymentId,
       updated_at: new Date().toISOString(),
@@ -270,15 +270,14 @@ async function processPaymentCaptured(
 
     await supabase.from('enrollments').update(enrollmentUpdate).eq('id', tuitionEnrollmentId);
 
-    // Ledger entry
-    await supabase.from('tuition_session_ledger').insert({
-      enrollment_id: tuitionEnrollmentId,
-      change_amount: sessionsPurchased,
-      balance_after: newRemaining,
+    // Ledger entry + sessions_remaining (centralized helper)
+    await addTuitionBalance({
+      enrollmentId: tuitionEnrollmentId,
+      changeAmount: sessionsPurchased,
       reason: isFirstPayment ? 'initial_purchase' : 'renewal',
-      payment_id: paymentId,
+      paymentId,
       notes: `Webhook: Payment of ₹${amount} — ${sessionsPurchased} sessions credited`,
-      created_by: 'webhook',
+      createdBy: 'webhook',
     });
 
     // Update child

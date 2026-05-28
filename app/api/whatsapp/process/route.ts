@@ -268,6 +268,23 @@ export async function POST(request: NextRequest) {
     // lookup error.
     try {
       const enrolledChildren = await findEnrolledChildrenByPhone(phone);
+
+      // BATCH-3-INBOUND: dispatch renewal intent button taps to dedicated handler.
+      // Must run BEFORE keyword-bucket routing — a tap on "Yes, renew" arrives as
+      // text='Yes, renew' which the keyword router would (mis)classify as payment.
+      if (enrolledChildren.length > 0 && interactiveId?.startsWith('btn_renew_')) {
+        const { handleRenewalIntent } = await import('@/lib/whatsapp/handlers/renewal-intent');
+        await handleRenewalIntent(interactiveId, phone, enrolledChildren, messageId);
+        console.log(JSON.stringify({
+          requestId,
+          event: 'wa_leadbot_renewal_intent_handled',
+          conversationId,
+          interactiveId,
+          childCount: enrolledChildren.length,
+        }));
+        return NextResponse.json({ status: 'renewal_intent_handled' });
+      }
+
       if (enrolledChildren.length > 0) {
         const response = await handleEnrolledParent(phone, text || '', enrolledChildren);
         if (response !== null) {

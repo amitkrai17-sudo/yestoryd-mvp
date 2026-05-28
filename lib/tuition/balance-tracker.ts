@@ -155,6 +155,55 @@ export async function deductTuitionBalance(
       // 6. Pause check — only if balance has been at 0 for 3+ days
       await checkAndPause(enrollmentId, newBalance, childName, parentPhone, parentName, requestId);
 
+    } else if (newBalance === 1 && !(enrollment as any).parent_renewal_check_sent_at) {
+      // BATCH-3-INBOUND: Renewal intent capture — fires once per cycle at
+      // sessions_remaining=1. Idempotent via parent_renewal_check_sent_at.
+      // Reset to NULL when parent tops up (handled by addTuitionBalance helper).
+      // Column added in BATCH-3 migration; `as any` until types regenerated.
+      if (parentPhone) {
+        try {
+          const result = await sendNotification('parent_renewal_intent_v1', parentPhone, {
+            parent_name: parentName,
+            child_name: childName,
+          }, {
+            templateButtons: {
+              category: 'marketing_quick_reply',
+              payloads: [
+                { id: 'btn_renew_yes',   title: 'Yes, renew' },
+                { id: 'btn_renew_pause', title: 'Pause for now' },
+                { id: 'btn_renew_talk',  title: 'Talk to coach' },
+              ],
+            },
+            contextType: 'enrollment',
+            contextId: enrollmentId,
+          });
+          if (result.success) {
+            await supabase
+              .from('enrollments')
+              .update({ parent_renewal_check_sent_at: new Date().toISOString() } as any)
+              .eq('id', enrollmentId);
+            alertSent = 'low_balance';
+          } else {
+            console.error(JSON.stringify({
+              requestId, event: 'renewal_intent_wa_failed',
+              enrollmentId, phone: parentPhone, reason: result.reason,
+            }));
+          }
+        } catch (waErr) {
+          const errMsg = waErr instanceof Error ? waErr.message : String(waErr);
+          console.error(JSON.stringify({
+            requestId, event: 'renewal_intent_wa_exception',
+            enrollmentId, phone: parentPhone, error: errMsg,
+          }));
+        }
+      }
+
+      console.log(JSON.stringify({
+        requestId,
+        event: 'renewal_intent_capture_sent',
+        enrollmentId,
+        newBalance,
+      }));
     } else if (newBalance <= 2) {
       // ── Spam prevention guards (added 2026-04-26 for parent_tuition_low_balance_v3) ──
       // Defensive: pause is currently set via status='tuition_paused', is_paused flag

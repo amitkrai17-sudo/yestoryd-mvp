@@ -55,10 +55,8 @@ export interface WhatsAppButton {
  */
 export type TemplateButtons =
   | { category: 'authentication'; otp: string }
-  | { category: 'utility_cta'; url: string };
-// Future variants — add when a real caller emerges (YAGNI):
-// | { category: 'utility_call'; phone: string }
-// | { category: 'marketing_quick_reply'; payloads: string[] };
+  | { category: 'utility_cta'; url: string }
+  | { category: 'marketing_quick_reply'; payloads: Array<{ id: string; title: string }> };
 
 // ────────────────────────────────────────────────────────────
 // HEADER MEDIA

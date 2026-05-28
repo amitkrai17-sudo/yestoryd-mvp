@@ -34,6 +34,7 @@ import {
 } from '@/lib/payment/enrollment-creator';
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { calculateRevenueSplit, type RevenueResult } from '@/lib/payment/post-payment-notifications';
+import { addTuitionBalance } from '@/lib/tuition/add-balance';
 
 const supabase = createAdminClient();
 
@@ -233,10 +234,9 @@ export async function POST(request: NextRequest) {
       const isFirstPayment = !tuitionEnrollment.program_start;
       const existingAmount = tuitionEnrollment.amount || 0;
 
-      // Update enrollment
+      // Update enrollment (sessions_remaining handled by addTuitionBalance helper below)
       const enrollmentUpdate: Record<string, unknown> = {
         status: 'active',
-        sessions_remaining: newRemaining,
         amount: existingAmount + verifiedAmount,
         payment_id: body.razorpay_payment_id,
         updated_at: new Date().toISOString(),
@@ -248,15 +248,14 @@ export async function POST(request: NextRequest) {
 
       await supabase.from('enrollments').update(enrollmentUpdate).eq('id', tuitionEnrollmentId);
 
-      // Ledger entry
-      await supabase.from('tuition_session_ledger').insert({
-        enrollment_id: tuitionEnrollmentId,
-        change_amount: sessionsPurchased,
-        balance_after: newRemaining,
+      // Ledger entry + sessions_remaining (centralized helper)
+      await addTuitionBalance({
+        enrollmentId: tuitionEnrollmentId,
+        changeAmount: sessionsPurchased,
         reason: isFirstPayment ? 'initial_purchase' : 'renewal',
-        payment_id: body.razorpay_payment_id,
+        paymentId: body.razorpay_payment_id,
         notes: `Payment of ₹${verifiedAmount} — ${sessionsPurchased} sessions credited`,
-        created_by: body.parentEmail || 'system',
+        createdBy: body.parentEmail || 'system',
       });
 
       // Update child as enrolled + safety net: ensure name is populated

@@ -12,6 +12,7 @@ import { scheduleTuitionSessions } from '@/lib/scheduling';
 import { queueEnrollmentComplete } from '@/lib/qstash';
 import { getCoach } from '@/lib/payment/coach-assigner';
 import { calculateRevenueSplit } from '@/lib/payment/post-payment-notifications';
+import { addTuitionBalance } from '@/lib/tuition/add-balance';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,7 +111,6 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
 
   const enrollmentUpdate: Record<string, unknown> = {
     status: 'active',
-    sessions_remaining: newRemaining,
     amount: existingAmount + body.amount,
     updated_at: new Date().toISOString(),
   };
@@ -121,15 +121,14 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
 
   await supabase.from('enrollments').update(enrollmentUpdate).eq('id', body.enrollment_id);
 
-  // 5. Ledger entry
-  await supabase.from('tuition_session_ledger').insert({
-    enrollment_id: body.enrollment_id,
-    change_amount: body.sessions_purchased,
-    balance_after: newRemaining,
+  // 5. Ledger entry + sessions_remaining (centralized helper)
+  await addTuitionBalance({
+    enrollmentId: body.enrollment_id,
+    changeAmount: body.sessions_purchased,
     reason: isFirstPayment ? 'initial_purchase' : 'top_up',
-    payment_id: payment.id,
+    paymentId: payment.id,
     notes: `Offline ${body.payment_method}: ₹${body.amount} — ${body.sessions_purchased} sessions credited${body.notes ? ` (${body.notes})` : ''}`,
-    created_by: auth.email || 'system',
+    createdBy: auth.email || 'system',
   });
 
   // 6. Update child as enrolled + safety net for name
