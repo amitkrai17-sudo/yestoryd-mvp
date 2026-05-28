@@ -341,9 +341,28 @@ export async function sendNotification(
     return { success: false, reason: 'openclaw_invalid' };
   }
 
+  // ── STEP 1.5 (B3-VALIDATOR-FIX). Derivation resolution ──
+  // resolveDerivations() runs BEFORE STEP 2 so Pattern B callers — who pass
+  // canonical names (e.g. parent_name) — have their *_first_name aliases
+  // filled in before the wa_variables presence check. Without this move,
+  // STEP 2 sees alias keys as missing and returns 'missing_params' even
+  // though the canonical source key was provided. Pillar 2B validator
+  // (STEP 5.5 below) reuses the same finalParams — no double-compute.
+  const validatorTemplate: ValidatorTemplate = {
+    template_code: template.template_code,
+    recipient_type: template.recipient_type,
+    wa_template_name: template.wa_template_name,
+    use_whatsapp: template.use_whatsapp,
+    wa_variables: template.wa_variables,
+    required_variables: template.required_variables ?? [],
+    wa_variable_derivations: template.wa_variable_derivations,
+  };
+  const finalParams = resolveDerivations(validatorTemplate, namedParams);
+
   // ── STEP 2. Param validation + positional conversion ──
+  // Checks against finalParams (post-derivation) so Pattern B callers pass.
   const schema = template.wa_variables ?? [];
-  const missing = schema.filter(key => namedParams[key] === undefined);
+  const missing = schema.filter(key => finalParams[key] === undefined);
   if (missing.length > 0) {
     console.warn('[notify] missing params for', templateCode, missing);
     await logCommunication({
@@ -354,7 +373,7 @@ export async function sendNotification(
     });
     return { success: false, reason: 'missing_params' };
   }
-  const positionalParams = schema.map(key => namedParams[key]);
+  const finalPositionalParams = schema.map(key => finalParams[key]);
 
   // ── STEP 3. Resolve recipient phone ──
   const phone = await resolveRecipientPhone(recipientId);
@@ -419,28 +438,18 @@ export async function sendNotification(
     return { success: false, reason: 'deferred_quiet_hours', deferred: true, queueId };
   }
 
-  // ── STEP 5.5 (B2.2). Derivation resolution + Pillar 2B validator ──
-  // - resolveDerivations() fills in any *_first_name aliases from canonical
-  //   *_name fields when wa_variable_derivations is populated for this
-  //   template. No-op for templates without derivations.
-  // - validateNotification() runs Rules 1, 3, 4, 5, 6, 8 (Rule 2 is stubbed,
-  //   Rule 7 enforced inline at the AiSensy POST result handling below).
-  // - Mode is hardcoded 'warn' for this commit. Failures are logged to
-  //   activity_log; send proceeds. Rules 3 and 7 always enforce regardless.
+  // ── STEP 5.5 (B2.2 + B3-VALIDATOR-FIX). Pillar 2B validator ──
+  // validatorTemplate + finalParams + finalPositionalParams were constructed
+  // before STEP 2 (B3-VALIDATOR-FIX) so resolveDerivations runs before the
+  // wa_variables presence check. Pattern B callers pass canonical names;
+  // derivations fill in the *_first_name aliases ahead of STEP 2's filter.
+  //
+  // validateNotification() runs Rules 1, 3, 4, 5, 6, 8 (Rule 2 is stubbed,
+  // Rule 7 enforced inline at the AiSensy POST result handling below).
+  // Mode is hardcoded 'warn' for this commit. Failures are logged to
+  // activity_log; send proceeds. Rules 3 and 7 always enforce regardless.
   // TODO(b2.2-followup): replace with site_settings.notify_validator_mode
   //   reader once getSiteSetting() string-coercion bug is fixed.
-  const validatorTemplate: ValidatorTemplate = {
-    template_code: template.template_code,
-    recipient_type: template.recipient_type,
-    wa_template_name: template.wa_template_name,
-    use_whatsapp: template.use_whatsapp,
-    wa_variables: template.wa_variables,
-    required_variables: template.required_variables ?? [],
-    wa_variable_derivations: template.wa_variable_derivations,
-  };
-  const finalParams = resolveDerivations(validatorTemplate, namedParams);
-  // Recompute positional params from finalParams so AiSensy receives derived values.
-  const finalPositionalParams = (template.wa_variables ?? []).map((key) => finalParams[key]);
 
   // Block 2.6c: pre-redact variables array for adapter-side log writes.
   // The adapters' buildContextData() helper writes params.variables to
