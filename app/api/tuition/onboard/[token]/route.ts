@@ -304,14 +304,15 @@ export async function POST(
         .eq('id', childId);
     }
 
+    // 9. Send payment WA to parent
     const checkoutUrl = `${APP_URL}/tuition/pay/${enrollment.id}`;
 
-    // 9. Send payment WA to parent
     try {
       await sendNotification('parent_tuition_payment_v3', `91${input.parentPhone}`, {
-        parent_first_name: input.parentName.split(' ')[0],
-        child_first_name: input.childFullName.split(' ')[0],
-        checkout_url: checkoutUrl,
+        parent_name: input.parentName,
+        child_name: input.childFullName,
+      }, {
+        templateButtons: { category: 'utility_cta', url: enrollment.id },
       });
     } catch (waErr) {
       console.error(JSON.stringify({ requestId, event: 'tuition_payment_wa_error', error: waErr instanceof Error ? waErr.message : String(waErr) }));

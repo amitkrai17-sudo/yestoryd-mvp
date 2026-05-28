@@ -212,15 +212,14 @@ export async function deductTuitionBalance(
       }
 
       // Low balance alert
-      const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
-
       if (parentPhone) {
         try {
           const result = await sendNotification('parent_tuition_low_balance_v3', parentPhone, {
-            parent_first_name: parentName.split(' ')[0],
-            child_first_name: childName.split(' ')[0],
+            parent_name: parentName,
+            child_name: childName,
             new_balance: String(newBalance),
-            renewal_url: renewalUrl,
+          }, {
+            templateButtons: { category: 'utility_cta', url: enrollmentId },
           });
           if (result.success) {
             alertSent = 'low_balance';

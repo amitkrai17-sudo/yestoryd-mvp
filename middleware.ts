@@ -191,6 +191,25 @@ export async function middleware(request: NextRequest) {
     return subdomainResult;
   }
 
+  // B1-COMBINED: parent payment redirect routes — emit clean HTTP 307 before
+  // any auth gate. Replaces the B0/B0-FIX page.tsx + PUBLIC_ROUTES approach,
+  // which produced 200 OK with meta-refresh fallback due to client-component
+  // layout boundaries.
+  const checkoutMatch = pathname.match(/^\/parent\/checkout\/([^/]+)$/);
+  if (checkoutMatch) {
+    return NextResponse.redirect(
+      new URL(`/tuition/pay/${checkoutMatch[1]}`, request.url),
+      307
+    );
+  }
+  const topupMatch = pathname.match(/^\/parent\/topup\/([^/]+)$/);
+  if (topupMatch) {
+    return NextResponse.redirect(
+      new URL(`/tuition/pay/${topupMatch[1]}?renewal=true`, request.url),
+      307
+    );
+  }
+
   // 4. Check if route is public (skip auth)
   if (isPublicRoute(pathname)) {
     return response;
