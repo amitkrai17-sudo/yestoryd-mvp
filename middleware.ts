@@ -210,6 +210,15 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // BATCH-2-MEGA: parent onboarding redirect — 307 to /tuition/onboard/<token>
+  const onboardMatch = pathname.match(/^\/parent\/onboard\/([^/]+)$/);
+  if (onboardMatch) {
+    return NextResponse.redirect(
+      new URL(`/tuition/onboard/${onboardMatch[1]}`, request.url),
+      307
+    );
+  }
+
   // 4. Check if route is public (skip auth)
   if (isPublicRoute(pathname)) {
     return response;

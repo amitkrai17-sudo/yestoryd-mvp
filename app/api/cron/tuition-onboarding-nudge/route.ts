@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentName } from '@/lib/communication/resolveParentName';
+import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { getPolicy, logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
 import type { Json } from '@/lib/supabase/database.types';
@@ -113,23 +113,21 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        const magicLink = `${APP_URL}/tuition/onboard/${record.parent_form_token}`;
-
         try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v4', outcome: 'pending' }); } catch {}
 
         // Send the parent_tuition_onboarding_v4 template (magic link still valid)
-        const parentFirstName = await resolveParentName(
+        const parentFullName = await resolveParentFullName(
           record.parent_name_hint,
           record.child_id
         );
         await sendNotification('parent_tuition_onboarding_v4', record.parent_phone, {
-          parent_first_name: parentFirstName,
+          parent_name: parentFullName,
           child_name: (record.child_name && !record.child_name.startsWith('Pending')) ? record.child_name : 'your child',
-          magic_link: magicLink,
         }, {
           triggeredBy: 'cron',
           contextType: 'tuition_nudge',
           contextId: record.id,
+          templateButtons: { category: 'utility_cta', url: record.parent_form_token },
         });
 
         nudged++;

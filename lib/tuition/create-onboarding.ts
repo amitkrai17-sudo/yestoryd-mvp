@@ -5,7 +5,7 @@
 
 import crypto from 'crypto';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentName } from '@/lib/communication/resolveParentName';
+import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
@@ -125,14 +125,15 @@ export async function createTuitionOnboarding(
 
   // 5. Send WhatsApp to parent
   try {
-    const parentFirstName = await resolveParentName(
+    const parentFullName = await resolveParentFullName(
       (params as any).parentName,
       (params as any).childId
     );
     await sendNotification('parent_tuition_onboarding_v4', `91${params.parentPhone}`, {
-      parent_first_name: parentFirstName,
+      parent_name: parentFullName,
       child_name: placeholderChildName === `Pending - ${params.parentPhone}` ? 'your child' : placeholderChildName,
-      magic_link: magicLink,
+    }, {
+      templateButtons: { category: 'utility_cta', url: token },
     });
   } catch (waErr) {
     console.error(JSON.stringify({

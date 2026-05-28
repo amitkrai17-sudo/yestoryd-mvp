@@ -119,14 +119,13 @@ export async function deductTuitionBalance(
     // 5. Balance alerts
     if (newBalance <= 0) {
       // Zero or negative — send renewal link
-      const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
-
       if (parentPhone) {
         try {
           const result = await sendNotification('parent_tuition_renewal_v3', parentPhone, {
-            parent_first_name: parentName.split(' ')[0],
-            child_first_name: childName.split(' ')[0],
-            renewal_url: renewalUrl,
+            parent_name: parentName,
+            child_name: childName,
+          }, {
+            templateButtons: { category: 'utility_cta', url: enrollmentId },
           });
           if (result.success) {
             alertSent = 'renewal';
@@ -317,14 +316,13 @@ async function checkAndPause(
     .eq('id', enrollmentId);
 
   // Send paused WA
-  const renewalUrl = `${APP_URL}/tuition/pay/${enrollmentId}?renewal=true`;
-
   if (parentPhone) {
     try {
       const result = await sendNotification('parent_tuition_paused_v3', parentPhone, {
-        parent_first_name: parentName.split(' ')[0],
-        child_first_name: childName.split(' ')[0],
-        renewal_url: renewalUrl,
+        parent_name: parentName,
+        child_name: childName,
+      }, {
+        templateButtons: { category: 'utility_cta', url: enrollmentId },
       });
       if (!result.success) {
         console.error(JSON.stringify({

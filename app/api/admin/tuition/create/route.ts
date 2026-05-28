@@ -9,7 +9,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentName } from '@/lib/communication/resolveParentName';
+import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,14 +133,15 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
 
   // 6. Send WhatsApp to parent
   try {
-    const parentFirstName = await resolveParentName(
+    const parentFullName = await resolveParentFullName(
       (input as any).parentName,
       (input as any).childId
     );
     await sendNotification('parent_tuition_onboarding_v4', `91${input.parentPhone}`, {
-      parent_first_name: parentFirstName,
+      parent_name: parentFullName,
       child_name: (input as any).childName ?? 'your child',
-      magic_link: magicLink,
+    }, {
+      templateButtons: { category: 'utility_cta', url: token },
     });
 
     console.log(JSON.stringify({

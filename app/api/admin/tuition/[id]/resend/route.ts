@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentName } from '@/lib/communication/resolveParentName';
+import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,16 +56,17 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
 
   // 4. Resend WhatsApp
   try {
-    const parentFirstName = await resolveParentName(
+    const parentFullName = await resolveParentFullName(
       onboarding.parent_name_hint,
       onboarding.child_id
     );
     await sendNotification('parent_tuition_onboarding_v4', `91${onboarding.parent_phone}`, {
-      parent_first_name: parentFirstName,
+      parent_name: parentFullName,
       child_name: onboarding.child_name && !onboarding.child_name.startsWith('Pending')
         ? onboarding.child_name
         : 'your child',
-      magic_link: magicLink,
+    }, {
+      templateButtons: { category: 'utility_cta', url: newToken },
     });
 
     console.log(JSON.stringify({

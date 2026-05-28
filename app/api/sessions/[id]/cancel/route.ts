@@ -9,6 +9,7 @@ import { requireAdminOrCoach } from '@/lib/api-auth';
 import { randomUUID } from 'crypto';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendCommunication } from '@/lib/communication';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,23 +126,18 @@ export async function POST(
           .single();
 
         if (child?.parent_phone) {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/communication/send`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': process.env.INTERNAL_API_KEY || '',
+          await sendCommunication({
+            templateCode: 'parent_session_cancelled_v5',
+            recipientType: 'parent',
+            recipientPhone: child.parent_phone,
+            variables: {
+              child_name: child.child_name || child.name || 'your child',
+              session_date: session.scheduled_date,
+              session_time: session.scheduled_time,
+              reason,
             },
-            body: JSON.stringify({
-              templateCode: 'parent_session_cancelled_v5',
-              recipientType: 'parent',
-              recipientPhone: child.parent_phone,
-              variables: {
-                child_first_name: (child.child_name || child.name || 'your child').split(' ')[0],
-                session_date: session.scheduled_date,
-                session_time: session.scheduled_time,
-                reason,
-              },
-            }),
+            contextType: 'session',
+            contextId: sessionId,
           });
         }
       } catch (notifyError) {
