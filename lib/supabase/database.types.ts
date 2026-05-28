@@ -6727,6 +6727,9 @@ export type Database = {
           original_program_end: string | null
           original_referrer_id: string | null
           parent_id: string | null
+          parent_renewal_check_sent_at: string | null
+          parent_renewal_decision: string | null
+          parent_renewal_decision_at: string | null
           pause_count: number | null
           pause_end_date: string | null
           pause_reason: string | null
@@ -6832,6 +6835,9 @@ export type Database = {
           original_program_end?: string | null
           original_referrer_id?: string | null
           parent_id?: string | null
+          parent_renewal_check_sent_at?: string | null
+          parent_renewal_decision?: string | null
+          parent_renewal_decision_at?: string | null
           pause_count?: number | null
           pause_end_date?: string | null
           pause_reason?: string | null
@@ -6937,6 +6943,9 @@ export type Database = {
           original_program_end?: string | null
           original_referrer_id?: string | null
           parent_id?: string | null
+          parent_renewal_check_sent_at?: string | null
+          parent_renewal_decision?: string | null
+          parent_renewal_decision_at?: string | null
           pause_count?: number | null
           pause_end_date?: string | null
           pause_reason?: string | null

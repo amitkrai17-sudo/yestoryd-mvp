@@ -41,7 +41,7 @@ export async function deductTuitionBalance(
     // 1. Fetch enrollment with child/parent info
     const { data: enrollment, error: fetchErr } = await supabase
       .from('enrollments')
-      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, enrollment_type, status, is_paused, renewal_intent, renewal_intent_set_at, low_balance_nudges_sent, last_low_balance_nudge_at')
+      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, enrollment_type, status, is_paused, renewal_intent, renewal_intent_set_at, low_balance_nudges_sent, last_low_balance_nudge_at, parent_renewal_check_sent_at')
       .eq('id', enrollmentId)
       .single();
 
@@ -155,11 +155,10 @@ export async function deductTuitionBalance(
       // 6. Pause check — only if balance has been at 0 for 3+ days
       await checkAndPause(enrollmentId, newBalance, childName, parentPhone, parentName, requestId);
 
-    } else if (newBalance === 1 && !(enrollment as any).parent_renewal_check_sent_at) {
+    } else if (newBalance === 1 && !enrollment.parent_renewal_check_sent_at) {
       // BATCH-3-INBOUND: Renewal intent capture — fires once per cycle at
       // sessions_remaining=1. Idempotent via parent_renewal_check_sent_at.
       // Reset to NULL when parent tops up (handled by addTuitionBalance helper).
-      // Column added in BATCH-3 migration; `as any` until types regenerated.
       if (parentPhone) {
         try {
           const result = await sendNotification('parent_renewal_intent_v1', parentPhone, {
@@ -180,7 +179,7 @@ export async function deductTuitionBalance(
           if (result.success) {
             await supabase
               .from('enrollments')
-              .update({ parent_renewal_check_sent_at: new Date().toISOString() } as any)
+              .update({ parent_renewal_check_sent_at: new Date().toISOString() })
               .eq('id', enrollmentId);
             alertSent = 'low_balance';
           } else {

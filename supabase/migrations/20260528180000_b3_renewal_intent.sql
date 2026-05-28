@@ -1,3 +1,7 @@
+-- BATCH-3-INBOUND migration (reconciled to match deployed schema)
+-- Original commit at 2d5d413c was missing name + recipient_type NOT NULL columns;
+-- MCP-applied version included them. This file is the source of truth.
+--
 -- BATCH-3-INBOUND: parent renewal intent capture columns + 2 template seeds
 
 -- 1. New columns on enrollments (parent_-prefixed to avoid collision with
@@ -20,12 +24,16 @@ END $$;
 
 -- 3. Seed parent_renewal_intent_v1 template (idempotent)
 INSERT INTO communication_templates (
-  template_code, channel, is_active, use_whatsapp,
+  template_code, name, recipient_type,
+  channel, is_active, use_whatsapp,
   wa_template_name, wa_template_category, language_code,
   wa_variables, required_variables, wa_variable_derivations,
   cost_per_send, created_at, updated_at
 ) VALUES (
-  'parent_renewal_intent_v1', 'leadbot', true, true,
+  'parent_renewal_intent_v1',
+  'Parent renewal intent check (1 session left)',
+  'parent',
+  'leadbot', true, true,
   'parent_renewal_intent_v1', 'utility', 'en',
   ARRAY['parent_first_name','child_first_name'],
   ARRAY['parent_name','child_name'],
@@ -38,12 +46,16 @@ INSERT INTO communication_templates (
 
 -- 4. Seed coach_parent_callback_request_v1 template (idempotent)
 INSERT INTO communication_templates (
-  template_code, channel, is_active, use_whatsapp,
+  template_code, name, recipient_type,
+  channel, is_active, use_whatsapp,
   wa_template_name, wa_template_category, language_code,
   wa_variables, required_variables, wa_variable_derivations,
   cost_per_send, created_at, updated_at
 ) VALUES (
-  'coach_parent_callback_request_v1', 'leadbot', true, true,
+  'coach_parent_callback_request_v1',
+  'Coach callback request from parent renewal intent tap',
+  'coach',
+  'leadbot', true, true,
   'coach_parent_callback_request_v1', 'utility', 'en',
   ARRAY['coach_first_name','parent_name','child_name','parent_phone'],
   ARRAY['coach_name','parent_name','child_name','parent_phone'],

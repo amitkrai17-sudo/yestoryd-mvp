@@ -69,16 +69,16 @@ export async function handleRenewalIntent(
     .from('enrollments')
     .select('id, child_id, coach_id, sessions_remaining, parent_renewal_check_sent_at, parent_renewal_decision_at')
     .in('child_id', childIds)
-    .not('parent_renewal_check_sent_at' as any, 'is', null)
-    .is('parent_renewal_decision_at' as any, null)
-    .order('parent_renewal_check_sent_at' as any, { ascending: false })
+    .not('parent_renewal_check_sent_at', 'is', null)
+    .is('parent_renewal_decision_at', null)
+    .order('parent_renewal_check_sent_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   const enrollment = enrollmentData as EnrollmentAwaiting | null;
 
-  if (!enrollment) {
-    // Defensive: button tap but no awaiting enrollment found.
+  if (!enrollment || !enrollment.child_id) {
+    // Defensive: button tap but no awaiting enrollment found (or orphan with null child_id).
     await sendText(phone, "Thanks for the response! Coach will reach out shortly.");
     await supabase.from('activity_log').insert({
       action: 'renewal_intent_orphan',
@@ -94,13 +94,13 @@ export async function handleRenewalIntent(
     return;
   }
 
-  // 3. Update enrollment with parent's decision (new columns; cast until types regen)
+  // 3. Update enrollment with parent's decision
   await supabase
     .from('enrollments')
     .update({
       parent_renewal_decision: decision,
       parent_renewal_decision_at: new Date().toISOString(),
-    } as any)
+    })
     .eq('id', enrollment.id);
 
   // Resolve child + coach details from the EnrolledChild[] in scope
@@ -122,7 +122,7 @@ export async function handleRenewalIntent(
     signal_source: 'parent_whatsapp',
     signal_confidence: 'high',
     content_for_embedding: `Parent renewal decision: ${decision} for ${childName}`,
-  } as any);
+  });
 
   // 5. Free-form ack reply (within 24h window opened by parent's tap; no template needed)
   const coachFirstName = coachName.split(/\s+/)[0] || 'your coach';
