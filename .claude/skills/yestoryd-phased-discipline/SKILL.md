@@ -186,3 +186,46 @@ path MUST set up an alerting mechanism (Sentry capture, daily health
 check, or admin dashboard tile) that surfaces stranded volume above a
 threshold within 24 hours. "We'll get to it later" with no monitor is
 the failure mode that produced Drain Worker.
+
+## Output formatting — required style for verification tables
+
+Use column-aligned tables with ✓ / ✗ / ⚠ symbols for every binary check across
+Phase 0 audits, Phase 2X R-check sweeps, Phase 4 diff review checklists,
+Phase 6 post-push verifications, and any other discipline-pattern verification
+output. One concern per row. No prose "all good" reports.
+
+Format:
+
+| Check                       | Expected | Actual | Status |
+|-----------------------------|----------|--------|--------|
+| tsc errors                  | 54       | 54     |   ✓    |
+| vitest passed               | 264      | 264    |   ✓    |
+| no stale `btn_renew_`       | 0        | 0      |   ✓    |
+| dispatch on interactiveTitle| yes      | yes    |   ✓    |
+
+Symbol semantics:
+
+- `✓` — pass / met expectation
+- `✗` — fail / unmet expectation (with a one-line reason next to it in the
+  row, e.g. "✗ (tests 263, expected 264 — one removed by accident)")
+- `⚠` — passes but worth noting: approved spec deviations, future-fragility
+  flags, partial-only states, debugging aids left in place
+
+Rules:
+
+- One concern per row. Never bundle multiple checks ("x AND y AND z") into
+  one row.
+- Final summary line always present in this form: `tsc=N, tests=N, <key
+  invariant>` — e.g. `tsc=54, tests=264, no stale btn_renew_ in changed files`.
+- Header row must include all four columns (Check / Expected / Actual /
+  Status) even when Expected and Actual are trivially equal — the visual
+  alignment is what makes scan-time fast.
+- Free-text findings (e.g. "what does the file look like at L275–286") don't
+  belong in this table — quote them inline instead. Only checks that can be
+  answered with a discrete state (number, yes/no, exists/missing,
+  equals/differs) go in the table.
+
+Reason: scanning 15+ checks at once is faster with column-aligned ✓/✗ than
+with prose sentences. The eye locks on the rightmost column and only descends
+into rows that aren't ✓. Established as the preferred format in
+B3-INBOUND-FIX-v2 Phase 6 report (2026-05-29).
