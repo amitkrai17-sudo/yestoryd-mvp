@@ -75,7 +75,8 @@ vi.mock('@/lib/communication/notify', () => ({
   }),
 }));
 
-import { GET, ONLINE_1H_TEMPLATE_LIVE } from '@/app/api/cron/parent-reminders-1h/route';
+import { GET } from '@/app/api/cron/parent-reminders-1h/route';
+import { ONLINE_1H_TEMPLATE_LIVE } from '@/app/api/cron/parent-reminders-1h/_config';
 
 const fakeRequest = () => ({} as any);
 

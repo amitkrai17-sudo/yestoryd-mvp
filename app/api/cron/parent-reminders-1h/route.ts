@@ -14,17 +14,12 @@ import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
 import { groupSessionsForReminder } from '@/lib/scheduling/group-sessions-for-reminder';
+import { ONLINE_1H_TEMPLATE_LIVE } from './_config';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-
-// WA-WIRE-REMINDERS: flip to true once parent_session_reminder_1h_online_v1
-// is Active on Meta AND its row has been migrated to channel='leadbot'.
-// Until then, the 1h cron SKIPS online sessions entirely (does NOT send via
-// the offline template — wrong link behaviour).
-export const ONLINE_1H_TEMPLATE_LIVE = false;
 
 interface ReminderResult {
   sent: number;
