@@ -269,17 +269,23 @@ export async function POST(request: NextRequest) {
     try {
       const enrolledChildren = await findEnrolledChildrenByPhone(phone);
 
-      // BATCH-3-INBOUND: dispatch renewal intent button taps to dedicated handler.
+      // BATCH-3-INBOUND-FIX-v2: dispatch on interactiveTitle because Meta UI-created
+      // quick-reply template buttons return button TEXT in .button.payload (ignoring
+      // the developer-defined payload we send via parameters[0]). To use custom payloads,
+      // templates must be registered via Meta Graph API. See BACKLOG: B5-meta-graph-api.
+      // MUST MATCH parent_renewal_intent_v1 Meta-approved button text EXACTLY.
       // Must run BEFORE keyword-bucket routing — a tap on "Yes, renew" arrives as
       // text='Yes, renew' which the keyword router would (mis)classify as payment.
-      if (enrolledChildren.length > 0 && interactiveId?.startsWith('btn_renew_')) {
+      const RENEWAL_BUTTON_TITLES = new Set(['Yes, renew', 'Pause for now', 'Talk to coach']);
+      if (enrolledChildren.length > 0 && RENEWAL_BUTTON_TITLES.has(interactiveTitle ?? '')) {
         const { handleRenewalIntent } = await import('@/lib/whatsapp/handlers/renewal-intent');
-        await handleRenewalIntent(interactiveId, phone, enrolledChildren, messageId);
+        await handleRenewalIntent(interactiveTitle!, phone, enrolledChildren, messageId);
         console.log(JSON.stringify({
           requestId,
           event: 'wa_leadbot_renewal_intent_handled',
           conversationId,
-          interactiveId,
+          interactiveTitle,
+          interactiveId,  // keep this in the log for one debugging cycle — remove in cleanup commit
           childCount: enrolledChildren.length,
         }));
         return NextResponse.json({ status: 'renewal_intent_handled' });

@@ -152,7 +152,7 @@ beforeEach(() => {
 
 describe('handleRenewalIntent', () => {
   it("'yes_renew' → enrollment updated + learning_event written + ack with topup URL + activity_log", async () => {
-    await handleRenewalIntent('btn_renew_yes', PHONE, CHILDREN, 'wamid.IN');
+    await handleRenewalIntent('Yes, renew', PHONE, CHILDREN, 'wamid.IN');
 
     expect(state.enrollmentUpdateCalls).toHaveLength(1);
     expect(state.enrollmentUpdateCalls[0].patch).toMatchObject({
@@ -184,7 +184,7 @@ describe('handleRenewalIntent', () => {
   });
 
   it("'pause_for_now' → enrollment updated + learning_event written + ack (no coach notify)", async () => {
-    await handleRenewalIntent('btn_renew_pause', PHONE, CHILDREN, 'wamid.IN');
+    await handleRenewalIntent('Pause for now', PHONE, CHILDREN, 'wamid.IN');
 
     expect(state.enrollmentUpdateCalls[0].patch.parent_renewal_decision).toBe('pause_for_now');
     expect(state.learningEventInserts[0].event_data.decision).toBe('pause_for_now');
@@ -193,7 +193,7 @@ describe('handleRenewalIntent', () => {
   });
 
   it("'talk_to_coach' → ack with coach name + fires coach_parent_callback_request_v1 to coach phone", async () => {
-    await handleRenewalIntent('btn_renew_talk', PHONE, CHILDREN, 'wamid.IN');
+    await handleRenewalIntent('Talk to coach', PHONE, CHILDREN, 'wamid.IN');
 
     expect(state.enrollmentUpdateCalls[0].patch.parent_renewal_decision).toBe('talk_to_coach');
     expect(state.sendTextCalls[0].text).toContain('Rucha');
@@ -209,8 +209,8 @@ describe('handleRenewalIntent', () => {
     });
   });
 
-  it('unknown button payload (btn_renew_unknown) → no-op (no DB writes, no sends)', async () => {
-    await handleRenewalIntent('btn_renew_unknown', PHONE, CHILDREN, 'wamid.IN');
+  it("unknown button text ('Maybe later') → no-op (no DB writes, no sends)", async () => {
+    await handleRenewalIntent('Maybe later', PHONE, CHILDREN, 'wamid.IN');
 
     expect(state.enrollmentUpdateCalls).toHaveLength(0);
     expect(state.learningEventInserts).toHaveLength(0);

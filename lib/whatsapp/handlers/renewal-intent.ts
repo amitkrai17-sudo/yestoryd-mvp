@@ -4,7 +4,8 @@
 //          parent_renewal_intent_v1 (BATCH-3-INBOUND).
 //
 // Dispatched from app/api/whatsapp/process/route.ts when an
-// inbound message has interactiveId starting with 'btn_renew_'.
+// inbound message's interactiveTitle matches a known renewal
+// button label (see RENEWAL_BUTTON_TITLES set in process/route.ts).
 // Reaches here only when sender is an enrolled parent.
 //
 // Flow:
@@ -26,10 +27,14 @@ import type { EnrolledChild } from '../enrolled-parent-lookup';
 
 type RenewalDecision = 'yes_renew' | 'pause_for_now' | 'talk_to_coach';
 
+// BATCH-3-INBOUND-FIX-v2: keys are button TEXT (not developer payloads) because
+// Meta UI-created templates ignore the parameters[0].payload override.
+// Source of truth: the Meta-approved parent_renewal_intent_v1 template buttons.
+// MUST MATCH exactly. See BACKLOG: B5-meta-graph-api for the principled fix.
 const RESPONSE_MAP: Record<string, RenewalDecision> = {
-  btn_renew_yes:   'yes_renew',
-  btn_renew_pause: 'pause_for_now',
-  btn_renew_talk:  'talk_to_coach',
+  'Yes, renew':    'yes_renew',
+  'Pause for now': 'pause_for_now',
+  'Talk to coach': 'talk_to_coach',
 };
 
 interface EnrollmentAwaiting {
@@ -45,13 +50,13 @@ interface ParentRow {
 }
 
 export async function handleRenewalIntent(
-  interactiveId: string,
+  buttonText: string,     // The user-visible button label (e.g. 'Pause for now')
   phone: string,
   children: EnrolledChild[],
   messageId: string | null,
 ): Promise<void> {
-  const decision = RESPONSE_MAP[interactiveId];
-  if (!decision) return; // safety: unknown btn_renew_* payload
+  const decision = RESPONSE_MAP[buttonText];
+  if (!decision) return; // safety: unknown renewal button text
 
   const supabase = createAdminClient();
 
@@ -87,7 +92,10 @@ export async function handleRenewalIntent(
       metadata: {
         parent_id: parent?.id ?? null,
         phone,
-        interactive_id: interactiveId,
+        // NOTE: wa_lead_messages.interactive_id column stores the button title for
+        // UI-created template buttons (Meta returns button text in .button.payload).
+        // The column name is legacy; semantics are correct.
+        button_text: buttonText,
         wa_message_id: messageId,
       },
     });
