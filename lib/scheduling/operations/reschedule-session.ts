@@ -80,6 +80,14 @@ export async function rescheduleSession(
         scheduled_time: newSlot.time,
         google_meet_link: newMeetLink,
         status: 'scheduled',
+        // WA-WIRE-REMINDERS: a reschedule moves the session to a new time —
+        // the prior reminder is stale, reset so the cron sends a fresh one.
+        coach_reminder_1h_sent: false,
+        coach_reminder_1h_sent_at: null,
+        parent_reminder_24h_sent: false,
+        parent_reminder_24h_sent_at: null,
+        parent_reminder_1h_sent: false,
+        parent_reminder_1h_sent_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', sessionId);
@@ -202,6 +210,14 @@ export async function rescheduleExistingSession(
               status: 'scheduled',
               failure_reason: null,
               next_retry_at: null,
+              // WA-WIRE-REMINDERS: reset reminder dedup flags so a retry-queue
+              // finalize triggers fresh reminders at the new slot.
+              coach_reminder_1h_sent: false,
+              coach_reminder_1h_sent_at: null,
+              parent_reminder_24h_sent: false,
+              parent_reminder_24h_sent_at: null,
+              parent_reminder_1h_sent: false,
+              parent_reminder_1h_sent_at: null,
               updated_at: new Date().toISOString(),
             })
             .eq('id', sessionId);

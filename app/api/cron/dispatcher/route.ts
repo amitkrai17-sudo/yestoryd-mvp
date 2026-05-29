@@ -142,6 +142,22 @@ const JOBS: Job[] = [
     description: '1-hour session reminders for coaches',
   },
 
+  {
+    name: 'parent-reminders-24h',
+    path: '/api/cron/parent-reminders-24h',
+    schedule: { type: 'interval', minutes: 60 },
+    method: 'GET',
+    description: '24-hour session reminders for parents (tuition only)',
+  },
+
+  {
+    name: 'parent-reminders-1h',
+    path: '/api/cron/parent-reminders-1h',
+    schedule: { type: 'interval', minutes: 60 },
+    method: 'GET',
+    description: '1-hour session reminders for parents (tuition only; online gated until _online_v1 Meta approval)',
+  },
+
   // ── Interval: every 120 min ───────────────────────────────
   {
     name: 'agent-nurture',
