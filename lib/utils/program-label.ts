@@ -9,7 +9,8 @@
 // Display name mapping:
 //   tuition (billing_model='prepaid_sessions') → "English Classes"
 //   coaching (default)                         → "1:1 Coaching"
-//   workshop/group_class                       → "Workshop"
+//   (Workshops are NOT enrollments — they live in group_sessions/group_class_* and
+//    never reach this function; no "Workshop" value is returned here.)
 //
 // Usage:
 //   import { getProgramContext } from '@/lib/utils/program-label';

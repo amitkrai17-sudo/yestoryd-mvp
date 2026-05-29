@@ -344,6 +344,51 @@ Pricing: ₹1,499 (Starter) / ₹5,999 (Continuance) / ₹6,999 (Full) — from 
 | `activity_log` | All cron/system activity logging |
 | `coupon_usages` | Coupon tracking (NOT coupon_uses — unified March 2026) |
 
+## Products (canonical — verified 2026-05-29)
+
+Identity is `enrollment_type` + `billing_model`. There is NO `products` table.
+Display name: `getProgramLabel()` (lib/utils/program-label.ts) discriminates on
+billing_model ONLY (prepaid_sessions|session_pack ⇒ English Classes; else ⇒ 1:1 Coaching).
+Workshops do NOT pass through getProgramLabel (separate group_sessions path).
+
+### English Classes — enrollment_type='tuition', billing_model='prepaid_sessions'
+Prepaid session pack. Price = session_rate × sessions_purchased (NOT the tier table).
+Assigned coach. Online/offline. Moderate AI, NO Recall recording. All live enrollments are this.
+Flow:
+  1. admin /api/admin/tuition/create OR coach /api/coach/onboard-student
+     → createTuitionOnboarding() → tuition_onboarding + 7-day parent_form_token,
+       status='parent_pending' → WhatsApp parent_tuition_onboarding_v4
+  2. parent /api/tuition/onboard/[token] → enrollment (sessions_remaining=0,
+     status='payment_pending') + ledger 'enrollment_created'(0)
+  3. Razorpay webhook/verify branch on enrollment_type → sessions added
+     → parent_payment_confirmed_v3
+  4. /api/tuition/schedule (tuition-guarded) → scheduled_sessions.session_mode.
+     offline needs approval: request-offline → admin offline-decision.
+     change-mode is offline→online ONLY (online→offline returns 501).
+  5. Coach SCF (structured_capture_responses, coach_confirmed=true) GATES completion.
+     /api/coach/sessions/[id]/complete → deductTuitionBalance() → ledger
+     'session_completed'(-N) → sessions_remaining drops. DECREMENT IS AT COMPLETION, NOT SCF SUBMIT.
+  6. balance-tracker thresholds: ==1 → parent_renewal_intent_v1 (buttons, idempotent
+     via parent_renewal_check_sent_at); ≤2 → parent_tuition_low_balance_v3 (lifetime cap 2);
+     ≤0 → parent_tuition_renewal_v3; 3-days-at-zero → parent_tuition_paused_v3
+  7. top-up/renewal payment → ledger 'top_up'/'renewal'(+) → cycle repeats
+
+### 1:1 Coaching — tiered, NOT prepaid-sessions
+Starter ₹1499 / Continuation ₹5999 / Full ₹6999 + Foundation/Building/Mastery bands
++ 90-day seasons + skill boosters + Recall recording + full AI flywheel. Zero live enrollments.
+
+### Workshops — group_sessions / group_class_* (NOT enrollments)
+Group drop-in, rotating instructor, per-event billing. Basic AI (micro-insight). Separate code path.
+
+### Invariants / gotchas
+- Balance source of truth = tuition_session_ledger (append-only) → enrollments.sessions_remaining
+- Double-decrement guarded only by session.status='completed' 409 (no ledger idempotency key)
+- admin force-complete DELIBERATELY omits decrement + summary + learning_events
+  (billing-free AND brain-invisible — known hole)
+- rAI learning_event rule: web /api/chat writes parent_inquiry; WhatsApp FAQ path does NOT (gap)
+
+Full product spec (age bands, session counts, pricing, revenue splits, AI-depth tiers, intelligence modality, feature gates): see `docs/PRODUCTS.md`. Numbers are sourced from `age_band_config` / `pricing_plans` / `payout-config.ts` — never hardcode them.
+
 ## Communication Stack
 
 - AiSensy (918976287997): WhatsApp outbound templates to enrolled parents/coaches — system sends, user never sees this number
