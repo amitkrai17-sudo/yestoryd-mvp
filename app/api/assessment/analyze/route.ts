@@ -705,10 +705,12 @@ export async function POST(request: NextRequest) {
           });
 
           // ═══════════════════════════════════════════════════════════════════════════
-          // PARENT WHATSAPP - Assessment Results with Let's Talk CTA (fire-and-forget)
+          // PARENT WHATSAPP - Assessment Results with "View report" URL button
+          // (WA-FLIP-ASSESSMENT: utility template, base https://yestoryd.com/ +
+          //  send-time tail = `parent/assessment/<childId>`; tail resolves via
+          //  app/parent/assessment/[childId]/route.ts → /parent/intelligence/<id>).
+          // Fire-and-forget.
           // ═══════════════════════════════════════════════════════════════════════════
-          const bookingLink = `https://yestoryd.com/lets-talk?childId=${childId}&childName=${encodeURIComponent(name)}&source=assessment_whatsapp`;
-
           import('@/lib/communication/notify').then(({ sendNotification }) => {
             sendNotification(
               'parent_assessment_results_v3',
@@ -719,12 +721,12 @@ export async function POST(request: NextRequest) {
                 clarity_score: String(clarityScore),
                 fluency_score: String(fluencyScore),
                 speed_score: String(speedScore),
-                booking_link: bookingLink,
               },
               {
                 triggeredBy: 'system',
                 contextType: 'assessment',
                 contextId: childId,
+                templateButtons: { category: 'utility_cta', url: `parent/assessment/${childId}` },
               },
             ).then(result => {
               if (result.success) {

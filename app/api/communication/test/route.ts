@@ -17,7 +17,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Test] Running ${testType} test...`);
 
-    // Test with parent_assessment_results_v3 template (has both WhatsApp and Email)
+    // Test with parent_assessment_results_v3 template (has both WhatsApp and Email).
+    // WA-FLIP-ASSESSMENT: template is now Lead Bot Utility with a URL button.
+    // sendCommunication() does NOT plumb templateButtons through to the spine
+    // (see lib/communication/index.ts:218-254), so the WhatsApp path here would
+    // be missing the button component and Meta would reject. The 5-slot body
+    // still flows correctly via the email path. BACKLOG: extend
+    // sendCommunication to plumb templateButtons OR refactor this endpoint to
+    // call sendNotification directly for WhatsApp.
     const result = await sendCommunication({
       templateCode: 'parent_assessment_results_v3',
       recipientType: 'parent',
@@ -30,7 +37,6 @@ export async function POST(request: NextRequest) {
         clarity_score: '8',
         fluency_score: '6',
         speed_score: '7',
-        booking_link: 'https://yestoryd.com/book-discovery',
       },
       skipChannels: testType === 'email' 
         ? ['whatsapp', 'sms'] 
