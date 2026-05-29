@@ -71,6 +71,13 @@ If any R-check fails, STOP and report. Do not auto-fix or graft.
 
 ### Phase 3 — Pre-push build verification
 
+Phase 3 gate = `npx next build` exits 0. Quote the '✓ Compiled successfully'
+line + the route manifest entries for any new/changed routes in the report.
+tsc --noEmit and vitest are necessary but NOT sufficient — they do not run
+the .next/types/ route-export constraint pass, so a route.ts that passes tsc
+can still fail next build. No push without the next build success output
+pasted.
+
 Sequence:
 1. `git add` the commit's files
 2. Park 7 pre-existing untracked items via `/tmp/<block-id>-park`:
@@ -78,8 +85,9 @@ Sequence:
    - `.claude/skills/yestoryd-whatsapp-wiring/`
    - 5 audit-*.md files
 3. `rm -rf .next node_modules/.cache .turbo`
-4. `npm run build 2>&1 | tail -100`
-5. Confirm `.next/BUILD_ID` exists
+4. `npx next build 2>&1 | tail -100`
+5. Confirm `.next/BUILD_ID` exists AND new/changed routes appear in the
+   route manifest output
 6. Restore parked items
 7. Confirm git status returns to staged + 7 untracked
 
@@ -186,6 +194,15 @@ path MUST set up an alerting mechanism (Sentry capture, daily health
 check, or admin dashboard tile) that surfaces stranded volume above a
 threshold within 24 hours. "We'll get to it later" with no monitor is
 the failure mode that produced Drain Worker.
+
+## Route / API patterns
+
+`route.ts` files may export ONLY App-Router names (GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS
++ dynamic/runtime/maxDuration/revalidate/config). Any other named export
+(flag, helper, const) is typed `never` by Next's generated guard and fails
+`next build` (not tsc). Put config/flags/shared helpers in a sibling
+`_config.ts` (leading underscore = non-routable in App Router) or in `lib/`,
+and import into the route. Ref: ab32c8b8.
 
 ## Output formatting — required style for verification tables
 
