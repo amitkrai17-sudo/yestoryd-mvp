@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
+import { sendNotification } from '@/lib/communication/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,21 +33,32 @@ export async function POST(
 
     const { id: sessionId } = await params;
 
-    let body: { reason?: string; notifyParent?: boolean; missedBy?: string };
+    // WA-WIRE-NOSHOW: dropped notifyParent flag entirely — coach marking a
+    // session missed is itself the opt-in to notify the parent. The Meta-approved
+    // parent_session_noshow_v3 template fires unconditionally below.
+    // missedBy is dead in this route (read nowhere) — BACKLOG cleanup, out of scope here.
+    let body: { reason?: string; missedBy?: string };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { reason, notifyParent = false } = body;
+    const { reason } = body;
 
     const supabase = createAdminClient();
 
-    // Validate session exists and coach owns it
+    // Validate session exists and coach owns it.
+    // WA-WIRE-NOSHOW: fold coaches(name) + children(child_name, parent_phone)
+    // into this SELECT so the no-show parent send below can build the
+    // Pattern-B canonical {child_name, coach_name} without a second round-trip.
     const { data: session, error: sessionError } = await supabase
       .from('scheduled_sessions')
-      .select('id, child_id, session_number, status, coach_id, scheduled_date')
+      .select(`
+        id, child_id, session_number, status, coach_id, scheduled_date,
+        coaches (name),
+        children (child_name, name, parent_phone)
+      `)
       .eq('id', sessionId)
       .single();
 
@@ -122,35 +134,35 @@ export async function POST(
       console.error('[sessions-missed] No-show cascade error:', cascadeError);
     }
 
-    // Optionally notify parent
-    if (notifyParent) {
-      try {
-        const { data: child } = await supabase
-          .from('children')
-          .select('child_name, parent_phone, name')
-          .eq('id', session.child_id)
-          .single();
+    // WA-WIRE-NOSHOW: send parent_session_noshow_v3 via Lead Bot (sendNotification
+    // spine). Canonical {child_name, coach_name} — DB derivations expand to the
+    // 2-slot [child_first_name, coach_first_name] body shape. Non-blocking try/catch:
+    // if WhatsApp fails, the session-missed status update has already succeeded.
+    try {
+      const child = Array.isArray(session.children) ? session.children[0] : session.children;
+      const coach = Array.isArray(session.coaches) ? session.coaches[0] : session.coaches;
 
-        if (child?.parent_phone) {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/communication/send`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': process.env.INTERNAL_API_KEY || '',
-            },
-            body: JSON.stringify({
-              templateCode: 'parent_session_noshow_v3',
-              recipientType: 'parent',
-              recipientPhone: child.parent_phone,
-              variables: {
-                child_first_name: (child.child_name || child.name || 'your child').split(' ')[0],
-              },
-            }),
-          });
-        }
-      } catch (notifyError) {
-        console.error('[sessions-missed] Notify parent error:', notifyError);
+      if (child?.parent_phone) {
+        const childName = child.child_name || child.name || 'your child';
+        const coachName = coach?.name || 'your coach';
+
+        await sendNotification(
+          'parent_session_noshow_v3',
+          child.parent_phone,
+          {
+            child_name: childName,
+            coach_name: coachName,
+          },
+          {
+            triggeredBy: 'coach',
+            triggeredByUserId: coachId,
+            contextType: 'scheduled_session',
+            contextId: sessionId,
+          },
+        );
       }
+    } catch (notifyError) {
+      console.error('[sessions-missed] Notify parent error:', notifyError);
     }
 
     return NextResponse.json({
