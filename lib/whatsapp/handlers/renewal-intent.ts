@@ -47,6 +47,7 @@ interface EnrollmentAwaiting {
 interface ParentRow {
   id: string;
   name: string | null;
+  email: string;     // parents.email is text NOT NULL — always present
 }
 
 export async function handleRenewalIntent(
@@ -60,10 +61,10 @@ export async function handleRenewalIntent(
 
   const supabase = createAdminClient();
 
-  // 1. Resolve parent by phone (need parent.id + name for activity_log + ack)
+  // 1. Resolve parent by phone (need parent.id + name + email for activity_log + ack)
   const { data: parent } = await supabase
     .from('parents')
-    .select('id, name')
+    .select('id, name, email')
     .or(buildPhoneOrFilter('phone', phone))
     .limit(1)
     .maybeSingle() as { data: ParentRow | null };
@@ -144,10 +145,11 @@ export async function handleRenewalIntent(
   // 6. activity_log
   await supabase.from('activity_log').insert({
     action: 'parent_renewal_decision',
-    user_email: parent?.name ?? phone,
+    user_email: parent?.email ?? phone,
     user_type: 'parent',
     metadata: {
       parent_id: parent?.id ?? null,
+      parent_name: parent?.name ?? null,
       enrollment_id: enrollment.id,
       child_id: enrollment.child_id,
       decision,

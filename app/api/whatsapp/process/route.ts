@@ -285,7 +285,6 @@ export async function POST(request: NextRequest) {
           event: 'wa_leadbot_renewal_intent_handled',
           conversationId,
           interactiveTitle,
-          interactiveId,  // keep this in the log for one debugging cycle — remove in cleanup commit
           childCount: enrolledChildren.length,
         }));
         return NextResponse.json({ status: 'renewal_intent_handled' });
