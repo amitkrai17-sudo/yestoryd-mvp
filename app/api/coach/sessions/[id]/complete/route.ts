@@ -9,7 +9,7 @@ import { timedQuery } from '@/lib/db-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { dispatch } from '@/lib/scheduling/orchestrator';
 import { generateAndInsertDailyTasks } from '@/lib/tasks/generate-daily-tasks';
-import { queueProgressPulse } from '@/lib/qstash';
+import { queueProgressPulse, qstash } from '@/lib/qstash';
 import { getCategoryBySlug } from '@/lib/config/skill-categories';
 import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
 import { buildUnifiedEmbeddingContent } from '@/lib/intelligence/embedding-builder';
@@ -17,6 +17,9 @@ import { loadPayoutConfig, loadCoachGroup, calculateEnrollmentBreakdown, getTuit
 
 
 export const dynamic = 'force-dynamic';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.yestoryd.com');
 
 /**
  * Complete a coaching session
@@ -379,6 +382,10 @@ export async function POST(
     }
 
     // Tuition balance deduction
+    // TUITION-SESSION-SUMMARY-GAP: enrollmentType is hoisted out of the try block
+    // so the parent-summary QStash publish further down can reuse it without a
+    // second query.
+    let enrollmentType: string | null = null;
     if (session.enrollment_id) {
       try {
         const { data: enrollment } = await supabase
@@ -387,7 +394,9 @@ export async function POST(
           .eq('id', session.enrollment_id)
           .single();
 
-        if (enrollment?.enrollment_type === 'tuition') {
+        enrollmentType = enrollment?.enrollment_type ?? null;
+
+        if (enrollmentType === 'tuition') {
           const sessionsDelivered = payload.sessionsDelivered || 1;
           await deductTuitionBalance(
             session.enrollment_id,
@@ -481,6 +490,39 @@ export async function POST(
         }
       } catch (err) {
         console.error('[tuition-earnings] Pipeline error (non-blocking):', err);
+      }
+    }
+
+    // TUITION-SESSION-SUMMARY-GAP: tuition sessions don't traverse the Recall
+    // webhook → process-session path, so the parent_session_summary_v3 trigger
+    // is wired here. Coaching continues to publish from activity-log POST +
+    // offline-report; this guard fires ONLY for tuition to avoid a duplicate
+    // publish on the coaching path. Mirrors the activity-log:402-414 shape.
+    if (enrollmentType === 'tuition' && session.child_id) {
+      try {
+        if (qstash) {
+          const queueResult = await qstash.publishJSON({
+            url: `${APP_URL}/api/coach/sessions/${sessionId}/parent-summary`,
+            body: {
+              sessionId,
+              childId: session.child_id,
+              requestId: crypto.randomUUID(),
+            },
+            retries: 3,
+            delay: 5,
+          });
+          console.log(JSON.stringify({
+            event: 'tuition_parent_summary_queued',
+            sessionId,
+            messageId: queueResult.messageId,
+          }));
+        }
+      } catch (queueError: any) {
+        console.error(JSON.stringify({
+          event: 'tuition_parent_summary_queue_error',
+          sessionId,
+          error: queueError.message,
+        }));
       }
     }
 

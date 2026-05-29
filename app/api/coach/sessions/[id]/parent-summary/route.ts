@@ -75,15 +75,19 @@ export async function POST(
     }
 
     // 2. Fetch activity logs
-    const { data: activityLogs } = await supabase
+    const { data: activityLogsData } = await supabase
       .from('session_activity_log')
       .select('activity_name, activity_purpose, status, coach_note, actual_duration_seconds')
       .eq('session_id', sessionId)
       .order('activity_index', { ascending: true });
 
-    if (!activityLogs || activityLogs.length === 0) {
-      console.log(JSON.stringify({ requestId, event: 'parent_summary_skipped', reason: 'no activity logs', sessionId }));
-      return NextResponse.json({ success: true, skipped: true, reason: 'No activity logs' });
+    // TUITION-SESSION-SUMMARY-GAP: tuition sessions never write session_activity_log
+    // (companion-panel only). Coerce null/empty to [] and PROCEED — downstream
+    // fallbacks handle the empty case (Gemini catch path swaps in focus_area-based
+    // fallback; practice block at L169 self-guards on session_template_id).
+    const activityLogs = activityLogsData ?? [];
+    if (activityLogs.length === 0) {
+      console.log(JSON.stringify({ requestId, event: 'parent_summary_empty_logs', sessionId }));
     }
 
     // 3. Build activity summary for Gemini
@@ -139,7 +143,14 @@ export async function POST(
       // Fallback: simple template
       const firstName = child.child_name.split(' ')[0];
       const sessionTypeText = isOffline ? 'a wonderful in-person coaching session' : 'a great session';
-      summary = `${firstName} had ${sessionTypeText} today! We covered ${activityLogs.length} activities with ${statusCounts.completed} completed successfully.${statusCounts.struggled > 0 ? ` We'll keep working on ${statusCounts.struggled} area${statusCounts.struggled > 1 ? 's' : ''} that need more practice.` : ''}`;
+      if (activityLogs.length === 0) {
+        // TUITION-SESSION-SUMMARY-GAP: empty activity_logs (tuition path) — use
+        // session.focus_area instead of the "0 activities" phrasing.
+        const focusArea = (session as any).focus_area ?? 'Reading skills practice';
+        summary = `${firstName} had ${sessionTypeText} today! Focus: ${focusArea}.`;
+      } else {
+        summary = `${firstName} had ${sessionTypeText} today! We covered ${activityLogs.length} activities with ${statusCounts.completed} completed successfully.${statusCounts.struggled > 0 ? ` We'll keep working on ${statusCounts.struggled} area${statusCounts.struggled > 1 ? 's' : ''} that need more practice.` : ''}`;
+      }
     }
 
     // 5. Store summary in learning_events
