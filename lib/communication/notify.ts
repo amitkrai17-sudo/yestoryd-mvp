@@ -428,6 +428,17 @@ export async function sendNotification(
           template_vars: safeNamedParams,
           _meta: {
             triggered_by_user_id: meta?.triggeredByUserId ?? null,
+            // DRAIN-2C-FIX A+: carry the original caller's intent through the
+            // queue so the drained re-send preserves the parent two-way loop
+            // (templateButtons, including button TITLES for inbound title-match)
+            // AND keeps log attribution + cross-day idempotency aligned with
+            // the original incident (contextType, contextId).
+            // All optional — when absent the envelope is byte-identical to the
+            // pre-A+ shape, so non-button/no-context callers and historical
+            // queue rows remain unaffected.
+            templateButtons: meta?.templateButtons ?? null,
+            contextType: meta?.contextType ?? null,
+            contextId: meta?.contextId ?? null,
           },
         },
         status: 'pending',

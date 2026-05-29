@@ -34,6 +34,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
+import type { TemplateButtons } from '@/lib/communication/types';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -55,7 +56,16 @@ interface QueueRow {
   recipient_phone: string | null;
   variables: {
     template_vars?: Record<string, unknown>;
-    _meta?: { triggered_by_user_id?: string | null };
+    _meta?: {
+      triggered_by_user_id?: string | null;
+      // DRAIN-2C-FIX A+: optional envelope fields preserved across defer→drain.
+      // Read null-safe; precedence in the unwrap below is _meta → row column →
+      // literal fallback so historical rows (and the 15 stuck on 2026-05-13)
+      // behave identically to today.
+      templateButtons?: TemplateButtons | null;
+      contextType?: string | null;
+      contextId?: string | null;
+    };
   } | null;
   related_entity_type: string | null;
   related_entity_id: string | null;
@@ -125,10 +135,11 @@ export async function GET(request: NextRequest) {
       continue;
     }
 
-    // Unwrap Drain-2B's variables.{template_vars, _meta} envelope
+    // Unwrap Drain-2B's variables.{template_vars, _meta} envelope.
+    // DRAIN-2C-FIX A+: _meta may now also carry templateButtons + context.
     const v = row.variables ?? {};
     const templateVarsRaw = (v.template_vars ?? {}) as Record<string, unknown>;
-    const metaWrapped = (v._meta ?? {}) as { triggered_by_user_id?: string | null };
+    const metaWrapped = v._meta ?? {};
 
     // notify.ts namedParams is Record<string, string>; coerce defensively
     const templateVars: Record<string, string> = {};
@@ -140,6 +151,14 @@ export async function GET(request: NextRequest) {
     const createdBy = row.created_by ?? '';
     const triggeredBy: TriggeredBy = isTriggeredBy(createdBy) ? createdBy : 'cron';
 
+    // DRAIN-2C-FIX A+: precedence for context — _meta envelope (original
+    // caller's intent) > queue's native columns > cron literal fallback.
+    // Drops back to today's behaviour when _meta is the pre-A+ shape.
+    const resolvedContextType =
+      metaWrapped.contextType ?? row.related_entity_type ?? 'cron:process-deferred-comms';
+    const resolvedContextId =
+      metaWrapped.contextId ?? row.related_entity_id ?? null;
+
     try {
       const result = await sendNotification(
         row.template_code,
@@ -148,8 +167,10 @@ export async function GET(request: NextRequest) {
         {
           triggeredBy,
           triggeredByUserId: metaWrapped.triggered_by_user_id ?? null,
-          contextType: row.related_entity_type ?? 'cron:process-deferred-comms',
-          contextId: row.related_entity_id ?? null,
+          // A+ envelope value wins; falls back to today's behaviour when absent.
+          templateButtons: metaWrapped.templateButtons ?? undefined,
+          contextType: resolvedContextType,
+          contextId: resolvedContextId,
           contextData: {
             drained_from_queue_id: row.id,
             scheduled_for: row.scheduled_for,
@@ -163,6 +184,7 @@ export async function GET(request: NextRequest) {
           .from('communication_queue')
           .update({
             processed_at: nowIso,
+            sent_at: nowIso,
             log_id: result.logId ?? null,
             error_message: null,
             last_attempt_at: nowIso,
