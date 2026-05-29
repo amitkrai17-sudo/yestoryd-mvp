@@ -83,6 +83,78 @@ Sequence:
 6. Restore parked items
 7. Confirm git status returns to staged + 7 untracked
 
+#### Phase 3 — Extended pre-push checklist (folded in from deploy-check, 2026-05-29)
+
+Run these in addition to the build sequence above whenever the commit
+touches the indicated surface. Not every commit hits every section.
+
+**A. TypeScript / schema sync (only if a migration was applied)**
+- `npx supabase gen types typescript --project-id agnfzrkrpuwmtjulbbpd > lib/supabase/types.ts`
+  (PowerShell: write via `Set-Content -Encoding ASCII` to avoid UTF-16 BOM)
+- `npx tsc --noEmit` — must return 0 errors
+
+**B. Database consistency**
+- `npx supabase db diff` — no pending unapplied migrations
+- If site_settings shape changed: grep that admin save invalidation is wired
+  `grep -r "invalidate.*site_settings\|revalidate.*settings" app/api/admin/ --include="*.ts" -l`
+
+**C. Cron health (only if a cron was added or modified)**
+- New cron added to `/api/cron/dispatcher` schedule array
+- New cron added to daily-health-check monitoring
+- Logging goes to `activity_log` (NOT `cron_logs` — deprecated)
+
+**D. Mobile testing (only if UI was touched)**
+
+Test breakpoints (80%+ India mobile):
+- iPhone SE: 375px
+- Mid-range Android: 360px
+- iPad: 768px
+- Desktop: 1280px+
+
+Visual checks:
+- [ ] No horizontal overflow
+- [ ] Bottom nav visible and functional
+- [ ] Cards not clipped
+- [ ] Touch targets ≥ 44px
+- [ ] Forms usable on mobile keyboard
+
+**E. Security (only if new routes / handlers added)**
+- [ ] No API keys in client-side code
+- [ ] Auth checks on all protected routes (use `withApiHandler()`)
+- [ ] child_id isolation verified (no cross-user data leaks)
+- [ ] Webhook signatures verified (Razorpay timing-safe)
+- [ ] RLS policies on new tables
+
+**F. Feature flags / site_settings (only if a new toggle was added)**
+- [ ] New features behind `site_settings` toggles where appropriate
+- [ ] Fallback values defined for all new site_settings keys
+- [ ] Admin portal can control new settings
+
+**G. Monitoring (only if new pages / significant actions)**
+- [ ] Sentry error boundaries on new pages
+- [ ] `activity_log` writes for significant actions
+- [ ] `console.error` for caught exceptions (Sentry picks these up)
+
+**H. Communication (only if new send paths)**
+- [ ] Any new AiSensy templates submitted for Meta approval
+- [ ] Resend email fallback configured for critical alerts
+- [ ] WhatsApp template IDs in site_settings (NEVER hardcoded)
+- [ ] sendNotification call sites match `wa_variable_derivations` shape
+  (see `yestoryd-whatsapp-wiring` skill for the 3-way consistency triangle)
+
+**I. Common pre-push gotchas**
+- [ ] No white text on white background (explicit `text-gray-900` on inputs)
+- [ ] No hardcoded pricing (all from `pricing_plans` via `getPricingConfig()`)
+- [ ] ISR cache times reasonable (assessments: 300s, not 3600s)
+- [ ] No new `@ts-nocheck` added (only 1 existing allowed)
+- [ ] Supabase status page checked if ECONNRESET errors appear in build
+
+**J. Post-deploy verification (after Phase 5 push)**
+1. Visit each portal (parent / coach / admin) on mobile + desktop
+2. Check Sentry for new errors (wait 5 minutes after deploy)
+3. Verify cron dispatcher fires on next 15-min cycle
+4. Run one critical flow end-to-end (e.g. discovery booking → payment → enrollment)
+
 Stop-and-report. Wait for human go.
 
 ### Phase 4 — Diff review (human gate)
