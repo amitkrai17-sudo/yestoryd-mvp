@@ -963,6 +963,35 @@ to halt sends in flight.
 
 ---
 
+### 2026-04-24 — Graphify interpretation rules
+
+Graphify audits run Apr 24 2026 on lib/ + app/api/ (1658 nodes, 2841 edges). Outputs in graphify-out/. Invoked via /graphify-windows in Claude Code.
+
+**Interpretation rule — AST edges ≠ runtime cost.** God-node scoring measures "how many files import this symbol," not runtime resource consumption. For infrastructure-layer findings (database clients, loggers, connection managers, API clients), always validate the structural signal against SDK/library mechanics before prioritizing refactor work.
+
+**Tool boundaries:**
+- Graphify answers "what bridges what" — structure, god nodes, community clustering, cross-module coupling.
+- Grep answers "who calls X" — AST name-matching misses cross-file imports. Example: graphify found 3 `sendNotification()` callers; grep found 33. For enumerating callers of a named symbol, always grep.
+
+**Edge confidence tags:**
+- `EXTRACTED` — found directly in source via tree-sitter AST. Ground truth.
+- `INFERRED` — reasonable inference with confidence score. Treat as "probably right, worth spot-checking."
+- `AMBIGUOUS` — flagged for review. Do not act on without verification.
+
+---
+
+### 2026-04-24 — createAdminClient() scale concern — CLOSED (non-finding)
+
+**Graphify signal:** 47 edges across 10 communities (later confirmed 232 actual call sites). Concern: PgBouncer pool exhaustion at scale.
+
+**Resolution:** Hypothesis test confirmed Supabase JS SDK's `createClient()` is a stateless HTTPS wrapper around PostgREST. Zero network I/O at construction. No TCP socket, no connection pool held per client instance. All queries execute as one-shot HTTPS POSTs; connection pooling is entirely Supabase-server-side.
+
+**Scale projection:** Connection saturation is driven by concurrent in-flight query volume × p95 latency, not client-object count. At 500 students, estimated 30-100 concurrent queries at peak — well within Supabase Pro pool defaults. Pool pressure threshold ~600 sustained concurrent queries (≈3000 DAU with aggressive fan-out).
+
+**Do not refactor createAdminClient() to a shared factory** based on graphify edge-count alone. The pattern as currently implemented is correct for Supabase's HTTP-based architecture.
+
+---
+
 ## Known Tech Debt
 
 | # | Item | Severity | Location |
