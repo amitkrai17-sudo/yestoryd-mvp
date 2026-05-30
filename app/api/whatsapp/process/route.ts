@@ -43,6 +43,7 @@ import { logDecision } from '@/lib/whatsapp/agent/decision-log';
 import { updateLifecycle } from '@/lib/whatsapp/agent/lifecycle';
 import type { AgentDecision, AgentContext } from '@/lib/whatsapp/agent/types';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isInternalNumber, INTERNAL_FALLBACK_NUMBERS } from '@/lib/utils/phone';
 import { summarizeLeadConversation } from '@/lib/rai/pipelines/whatsapp-to-rag';
 import { findEnrolledChildrenByPhone } from '@/lib/whatsapp/enrolled-parent-lookup';
 import { handleEnrolledParent } from '@/lib/whatsapp/handlers/enrolled-parent';
@@ -145,6 +146,12 @@ async function upsertLead(
   leadScore: number,
   status?: string
 ) {
+  // Defensive twin of the webhook guard: /process is independently reachable
+  // (e.g. manual QStash replay), so re-check before any wa_leads write.
+  if (isInternalNumber(phone, INTERNAL_FALLBACK_NUMBERS)) {
+    return;
+  }
+
   const supabase = getSupabase();
   const leadData: Record<string, unknown> = {
     phone_number: phone,

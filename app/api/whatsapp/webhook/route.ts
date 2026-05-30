@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import { verifyWebhookSignature } from '@/lib/whatsapp/signature';
 import { extractMessages, extractStatuses } from '@/lib/whatsapp/extract';
 import type { WebhookPayload, ExtractedMessage, ConversationState } from '@/lib/whatsapp/types';
-import { normalizePhone } from '@/lib/utils/phone';
+import { normalizePhone, isInternalNumber, INTERNAL_FALLBACK_NUMBERS } from '@/lib/utils/phone';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -131,6 +131,13 @@ async function handleMessages(messages: ExtractedMessage[], requestId: string) {
 
   for (const msg of messages) {
     const phone = normalizePhone(msg.from);
+
+    // 0. Skip internal/staff/test numbers entirely — no conversation, no lead,
+    //    no /process enqueue. Meta still gets its 200 ACK (returned after the loop).
+    if (isInternalNumber(phone, INTERNAL_FALLBACK_NUMBERS)) {
+      console.log(JSON.stringify({ requestId, event: 'wa_internal_number_skipped', phone }));
+      continue;
+    }
 
     // 1. Deduplicate by wa_message_id
     const { data: existing } = await supabase
