@@ -30,6 +30,8 @@ import { sendText } from '@/lib/whatsapp/cloud-api';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import crypto from 'crypto';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
+import { getSiteSetting } from '@/lib/config/site-settings-loader';
+import { isInternalNumber, INTERNAL_FALLBACK_NUMBERS } from '@/lib/utils/phone';
 
 export const dynamic = 'force-dynamic';
 
@@ -353,7 +355,7 @@ async function fetchWaLeadDigest(
     // 1. All active wa_leads (not enrolled)
     const { data: allWaLeads, error: allError } = await supabase
       .from('wa_leads')
-      .select('id, parent_name, child_age, lead_score, status, conversation_id, created_at')
+      .select('id, parent_name, child_age, lead_score, status, conversation_id, created_at, phone_number')
       .not('status', 'eq', 'enrolled');
 
     if (allError) {
@@ -361,7 +363,12 @@ async function fetchWaLeadDigest(
       return null;
     }
 
-    const leads = allWaLeads || [];
+    const excludedSetting = await getSiteSetting('lead_bot_excluded_numbers');
+    const excluded = [
+      ...INTERNAL_FALLBACK_NUMBERS,
+      ...(excludedSetting ? excludedSetting.split(',') : []),
+    ].map((s) => s.trim()).filter(Boolean);
+    const leads = (allWaLeads || []).filter((l) => !isInternalNumber(l.phone_number, excluded));
 
     // 2. Count new in last 24h
     const newCount = leads.filter(l => l.created_at && l.created_at >= twentyFourHoursAgo).length;
@@ -403,18 +410,24 @@ async function fetchWaLeadDigest(
 
     // 5. Stuck in QUALIFYING >48h
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    const { count: stuckCount } = await supabase
+    const { data: stuckRows } = await supabase
       .from('wa_lead_conversations')
-      .select('*', { count: 'exact', head: true })
+      .select('phone_number')
       .eq('current_state', 'QUALIFYING')
       .eq('is_bot_active', true)
       .lt('last_message_at', fortyEightHoursAgo);
+    const stuckCount = (stuckRows ?? []).filter(
+      (c) => !isInternalNumber(c.phone_number, excluded)
+    ).length;
 
     // 6. Escalated (bot inactive)
-    const { count: escalatedCount } = await supabase
+    const { data: escalatedRows } = await supabase
       .from('wa_lead_conversations')
-      .select('*', { count: 'exact', head: true })
+      .select('phone_number')
       .eq('is_bot_active', false);
+    const escalatedCount = (escalatedRows ?? []).filter(
+      (c) => !isInternalNumber(c.phone_number, excluded)
+    ).length;
 
     const result: WaLeadDigestData = {
       newCount,
@@ -446,7 +459,7 @@ function formatWaLeadDigestMessage(date: string, wa: WaLeadDigestData): string {
   const lines: string[] = [];
 
   lines.push(`WhatsApp Leads — ${date}`);
-  lines.push(`New: ${wa.newCount} | Total active: ${wa.totalActive}`);
+  lines.push(`New today: ${wa.newCount} | Total active: ${wa.totalActive}`);
   lines.push('');
 
   // Status breakdown
@@ -454,7 +467,7 @@ function formatWaLeadDigestMessage(date: string, wa: WaLeadDigestData): string {
   if (wa.byStatus.qualifying > 0) statParts.push(`Qualifying: ${wa.byStatus.qualifying}`);
   if (wa.byStatus.qualified > 0) statParts.push(`Qualified: ${wa.byStatus.qualified}`);
   if (wa.byStatus.discovery_booked > 0) statParts.push(`Booked: ${wa.byStatus.discovery_booked}`);
-  if (wa.byStatus.new > 0) statParts.push(`New: ${wa.byStatus.new}`);
+  if (wa.byStatus.new > 0) statParts.push(`New (unqualified): ${wa.byStatus.new}`);
   if (statParts.length > 0) {
     lines.push(statParts.join(' | '));
   }

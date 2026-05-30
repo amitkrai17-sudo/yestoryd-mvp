@@ -248,3 +248,31 @@ export function combinePhone(countryCode: string, nationalNumber: string): strin
   const number = nationalNumber.replace(/\D/g, '');
   return normalizePhone(code + number);
 }
+
+// ============================================================
+// INTERNAL / STAFF NUMBER EXCLUSION (Lead Bot)
+// ============================================================
+
+/**
+ * Yestoryd-operated / staff / test numbers that must never surface as leads.
+ * BSP-agnostic: as AiSensy retires and Meta Cloud outbound numbers go live,
+ * add them to site_settings.lead_bot_excluded_numbers. This array is only the
+ * hardcoded fallback (Golden Rule 1).
+ */
+export const INTERNAL_FALLBACK_NUMBERS = [
+  '+918976287997', // AiSensy outbound sender (current BSP)
+  '+918591287997', // Lead Bot self (defensive vs self-loop post-consolidation)
+  '+919321287997', // OpenClaw co-pilot
+  '+919099145083', // Rucha (coach)
+  '+919687606177', // Admin / test
+];
+
+/** Pure membership check. Normalizes BOTH sides so stored format never matters. */
+export function isInternalNumber(
+  phone: string | null | undefined,
+  excluded: string[]
+): boolean {
+  if (!phone) return false;
+  const target = normalizePhone(phone);
+  return excluded.some((e) => normalizePhone(e) === target);
+}
