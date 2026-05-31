@@ -84,22 +84,24 @@ function AssessmentPageContent() {
         return;
       }
 
-      const { data, error: fetchError } = await (supabase
-        .from('coach_applications') as any)
-        .select('*')
-        .eq('id', applicationId!)
-        .single();
+      try {
+        const res = await fetch(`/api/coach-application/${applicationId}`);
+        const json = await res.json();
 
-      if (fetchError || !data) {
-        setError('Application not found. Please start over.');
-      } else {
-        // Redirect to confirmation if assessment is already complete
-        const completedStatuses = ['ai_assessment_complete', 'waitlist', 'qualified', 'not_qualified'];
-        if (completedStatuses.includes(data.status)) {
-          router.replace(`/yestoryd-academy/confirmation?applicationId=${applicationId}`);
-          return;
+        if (!json.ok || !json.application) {
+          setError('Application not found. Please start over.');
+        } else {
+          const app = json.application;
+          // Redirect to confirmation if assessment is already complete
+          const completedStatuses = ['ai_assessment_complete', 'waitlist', 'qualified', 'not_qualified'];
+          if (completedStatuses.includes(app.status)) {
+            router.replace(`/yestoryd-academy/confirmation?applicationId=${applicationId}`);
+            return;
+          }
+          setApplicationData(app);
         }
-        setApplicationData(data);
+      } catch {
+        setError('Application not found. Please start over.');
       }
       setIsLoading(false);
     };
@@ -245,31 +247,34 @@ function AssessmentPageContent() {
   const confirmVoice = async () => {
     if (!audioBlob || !applicationId) return;
 
-    // Upload audio to storage
+    // Upload audio via server-authorized signed URL, then persist via PATCH.
     try {
-      const fileName = `${applicationId}-voice-statement.webm`;
-      const filePath = `audio/${fileName}`;
+      const signRes = await fetch(`/api/coach-application/${applicationId}/upload-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'audio', contentType: audioBlob.type || 'audio/webm' }),
+      });
+      const signData = await signRes.json();
 
-      const { error: uploadError } = await supabase.storage
-        .from('coach-applications')
-        .upload(filePath, audioBlob, { upsert: true });
-
-      if (uploadError) {
-        console.error('Audio upload error:', uploadError);
+      if (!signData.ok) {
+        console.error('Audio upload-url error:', signData.code);
       } else {
-        // Update application with audio URL
-        const { data: urlData } = supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('coach-applications')
-          .getPublicUrl(filePath);
+          .uploadToSignedUrl(signData.path, signData.token, audioBlob);
 
-        await (supabase
-          .from('coach_applications') as any)
-          .update({
-            audio_statement_url: urlData.publicUrl,
-            audio_duration_seconds: recordingTime,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', applicationId!);
+        if (uploadError) {
+          console.error('Audio upload error:', uploadError);
+        } else {
+          await fetch(`/api/coach-application/${applicationId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audio_statement_url: signData.publicUrl,
+              audio_duration_seconds: recordingTime,
+            }),
+          });
+        }
       }
     } catch (err) {
       console.error('Error saving audio:', err);
@@ -402,18 +407,18 @@ function AssessmentPageContent() {
     if (!applicationId) return;
 
     try {
-      const { error: updateError } = await (supabase
-        .from('coach_applications') as any)
-        .update({
+      const res = await fetch(`/api/coach-application/${applicationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           ai_responses: allMessages, // Store FULL conversation
           ai_assessment_completed_at: new Date().toISOString(),
           status: 'ai_assessment_complete',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId!);
-
-      if (updateError) {
-        console.error('Error saving assessment:', updateError);
+        }),
+      });
+      const result = await res.json();
+      if (!result.ok) {
+        console.error('Error saving assessment:', result.code);
       }
     } catch (err) {
       console.error('Error saving assessment:', err);
@@ -432,12 +437,10 @@ function AssessmentPageContent() {
     setIsSubmitting(true);
 
     try {
-      // 1. Get application data for email
-      const { data: appData } = await (supabase
-        .from('coach_applications') as any)
-        .select('name, email, phone, city')
-        .eq('id', applicationId!)
-        .single();
+      // 1. Get application data for email (applicant-safe GET).
+      const appRes = await fetch(`/api/coach-application/${applicationId}`);
+      const appJson = await appRes.json();
+      const appData = appJson.ok ? appJson.application : null;
 
       // 2. Calculate score (don't wait, fire and forget)
       fetch('/api/coach-assessment/calculate-score', {

@@ -6,7 +6,6 @@ import { useEffect, useState, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import {
   CheckCircle2,
   Clock,
@@ -31,19 +30,19 @@ function ConfirmationPageContent() {
     const loadApplication = async () => {
       if (!applicationId) return;
 
-      const { data } = await supabase
-        .from('coach_applications')
-        .select('name, email, phone')
-        .eq('id', applicationId)
-        .single();
-
-      if (data) {
-        setApplicationData(data);
+      try {
+        const res = await fetch(`/api/coach-application/${applicationId}`);
+        const json = await res.json();
+        if (json.ok) {
+          setApplicationData(json.application);
+        }
+      } catch {
+        // Read-only confirmation — ignore load failure.
       }
     };
 
     loadApplication();
-  }, [applicationId, supabase]);
+  }, [applicationId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">

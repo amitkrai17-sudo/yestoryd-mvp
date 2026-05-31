@@ -62,6 +62,20 @@ const BONUS_QUALITIES = [
   }
 ];
 
+// Map a 2D route error code to an applicant-facing message.
+function messageForCode(code: string | undefined): string {
+  switch (code) {
+    case 'not_found':
+      return 'We could not find your application. Please start over.';
+    case 'invalid_input':
+      return 'Please check your details and try again.';
+    case 'forbidden_transition':
+      return 'This step can no longer be changed. Please contact us on WhatsApp.';
+    default:
+      return 'Something went wrong. Please try again or contact us on WhatsApp.';
+  }
+}
+
 function QualifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -84,20 +98,17 @@ function QualifyPageContent() {
       }
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from('coach_applications')
-          .select('*')
-          .eq('id', applicationId)
-          .single();
+        const res = await fetch(`/api/coach-application/${applicationId}`);
+        const data = await res.json();
 
-        if (fetchError || !data) {
-          console.error('Application not found:', fetchError);
-          setError('Application not found. Please start over.');
+        if (!data.ok) {
+          console.error('Application load failed:', data.code);
+          setError(messageForCode(data.code));
           setIsLoading(false);
           return;
         }
 
-        setApplicationData(data);
+        setApplicationData(data.application);
         setIsLoading(false);
       } catch (err) {
         console.error('Error loading application:', err);
@@ -107,7 +118,7 @@ function QualifyPageContent() {
     };
 
     loadApplication();
-  }, [applicationId, router, supabase]);
+  }, [applicationId, router]);
 
   const toggleEssential = (id: string) => {
     const newSet = new Set(essentialChecked);
@@ -162,46 +173,55 @@ function QualifyPageContent() {
     setError(null);
 
     try {
-      let resumeUrl = null;
+      let resumeUrl: string | null = null;
 
-      // Upload resume if provided
+      // Upload resume if provided — via server-authorized signed URL
+      // (no anon storage write; the bucket stays closed to anon).
       if (resumeFile && applicationId) {
-        const fileExt = resumeFile.name.split('.').pop();
-        const fileName = `${applicationId}-resume.${fileExt}`;
-        const filePath = `resumes/${fileName}`;
+        const signRes = await fetch(`/api/coach-application/${applicationId}/upload-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: 'resume', contentType: resumeFile.type }),
+        });
+        const signData = await signRes.json();
+
+        if (!signData.ok) {
+          setError(messageForCode(signData.code));
+          setIsSubmitting(false);
+          return;
+        }
 
         const { error: uploadError } = await supabase.storage
           .from('coach-applications')
-          .upload(filePath, resumeFile, { upsert: true });
+          .uploadToSignedUrl(signData.path, signData.token, resumeFile);
 
         if (uploadError) {
           console.error('Resume upload error:', uploadError);
-          // Continue anyway - resume is optional
+          // Resume is optional — continue without it.
         } else {
-          const { data: urlData } = supabase.storage
-            .from('coach-applications')
-            .getPublicUrl(filePath);
-          resumeUrl = urlData.publicUrl;
+          resumeUrl = signData.publicUrl;
         }
       }
 
-      // Update application
-      const { error: updateError } = await (supabase
-        .from('coach_applications') as any)
-        .update({
+      // Save step 2 + advance status (started → qualified) via the server route.
+      const patchRes = await fetch(`/api/coach-application/${applicationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           qualification_checklist: {
             essential: Array.from(essentialChecked),
-            bonus: Array.from(bonusChecked)
+            bonus: Array.from(bonusChecked),
           },
           resume_url: resumeUrl,
           status: 'qualified',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId);
+        }),
+      });
+      const patchData = await patchRes.json();
 
-      if (updateError) {
-        console.error('Update error:', updateError);
-        // Continue anyway
+      if (!patchData.ok) {
+        setError(messageForCode(patchData.code));
+        setIsSubmitting(false);
+        return;
       }
 
       // Navigate to Step 3 (Assessment)
