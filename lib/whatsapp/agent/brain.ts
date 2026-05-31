@@ -49,7 +49,7 @@ function tryShortcut(ctx: AgentContext): AgentDecision | null {
   }
 
   // 3. Affirmative reply — check both state AND last bot message content
-  const state = ctx.lifecycle?.current_state || ctx.conversation.current_state;
+  const state = ctx.lifecycle?.current_state ?? 'new';
   const isAffirmative = /^(yes|yeah|yep|ok|okay|sure|book|interested|haan|ha|ji|let's do it|call karo|book karo|theek hai)$/i.test(currentMessage.trim());
   const lastBotMessage = recentMessages.find(m => m.direction === 'outbound');
   const lastBotAskedForBooking = lastBotMessage?.content?.toLowerCase().includes('discovery call')
