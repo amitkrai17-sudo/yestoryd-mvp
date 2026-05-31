@@ -58,7 +58,8 @@ const submitSchema = z.object({
   country: z.string().max(100).optional().default('India'),
   referralCode: z.string().max(100).optional(),
   utm: utmSchema,
-  googleId: z.string().max(200).optional(),
+  // Anonymous submitters send `null` (not undefined) — must accept both.
+  googleId: z.string().max(200).nullable().optional(),
 });
 
 type ErrorCode = 'invalid_input' | 'duplicate_application' | 'system_error';

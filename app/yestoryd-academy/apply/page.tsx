@@ -198,7 +198,7 @@ export default function ApplyPage() {
       // Map the route's structured error code to a specific message.
       switch (data.code) {
         case 'invalid_input':
-          setError('Please check your details — a valid email and WhatsApp number are required.');
+          setError('Please check your details and try again.');
           break;
         case 'duplicate_application':
           setError("You've already applied with this email. We'll message you on WhatsApp about next steps.");
