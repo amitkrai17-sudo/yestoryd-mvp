@@ -6,6 +6,7 @@
 import { getGenAI } from '@/lib/gemini/client';
 import { sendText, sendButtons } from '@/lib/whatsapp/cloud-api';
 import type { ConversationState } from '@/lib/whatsapp/types';
+import { calculateWaLeadScore } from '@/lib/whatsapp/lead-score';
 
 import { getGeminiModel } from '@/lib/gemini-config';
 
@@ -21,19 +22,21 @@ export interface QualificationResult {
   allCollected: boolean;
 }
 
-/**
- * Calculate lead score based on collected data
- */
-function calculateLeadScore(data: Record<string, unknown>): number {
-  let score = 0;
-  const age = data.child_age as number | undefined;
-  if (age && age >= 4 && age <= 12) score += 30;
-  if (data.reading_concerns) score += 30;
-  // Quick responder bonus: if we have data, they're engaged
-  if (data.child_name) score += 20;
-  // Completion bonus
-  if (data.child_name && data.child_age && data.reading_concerns) score += 20;
-  return score;
+// Build a WaLeadRow-shaped object from the conversation's collected data.
+// Qualification has no message stats, so engagement points contribute 0;
+// the daily cron enriches the score later (child_id + engagement).
+function scoreFromMerged(merged: Record<string, unknown>): number {
+  return calculateWaLeadScore(
+    {
+      child_name: (merged.child_name as string) ?? null,
+      child_age: (merged.child_age as number) ?? null,
+      reading_concerns: (merged.reading_concerns as string) ?? null,
+      city: (merged.city as string) ?? null,
+      school: (merged.school as string) ?? null,
+      child_id: (merged.child_id as string) ?? null, // absent mid-conversation → null → +0
+    },
+    undefined,
+  );
 }
 
 export async function handleQualification(
@@ -103,7 +106,7 @@ Only include extracted fields that you found NEW info for. child_age must be a n
     if (parsed.extracted?.reading_concerns) merged.reading_concerns = parsed.extracted.reading_concerns;
 
     const allCollected = !!(merged.child_name && merged.child_age && merged.reading_concerns);
-    const leadScore = calculateLeadScore(merged);
+    const leadScore = scoreFromMerged(merged);
 
     if (allCollected) {
       // Send assessment CTA with buttons
@@ -156,7 +159,7 @@ Only include extracted fields that you found NEW info for. child_age must be a n
       response: fallbackMsg,
       extracted: {},
       nextState: 'QUALIFYING',
-      leadScore: calculateLeadScore(merged),
+      leadScore: scoreFromMerged(merged),
       allCollected: false,
     };
   }
