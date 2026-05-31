@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import {
   ArrowRight,
@@ -48,7 +48,8 @@ const INDIAN_CITIES = [
 
 export default function ApplyPage() {
   const router = useRouter();
-  
+  const searchParams = useSearchParams();
+
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,31 +150,66 @@ export default function ApplyPage() {
 
     try {
       // Determine final city value
-      const finalCity = formData.country === 'IN' 
+      const finalCity = formData.country === 'IN'
         ? (formData.city === 'Other' ? formData.customCity : formData.city)
         : formData.customCity;
 
-      // Create application record
-      const { data: application, error: insertError } = await (supabase
-        .from('coach_applications') as any)
-        .insert({
-          google_id: user?.id || null,
-          email: formData.email.trim(),
+      // Capture UTM params from the URL (omit absent keys).
+      const utmEntries = (
+        [
+          ['source', 'utm_source'],
+          ['medium', 'utm_medium'],
+          ['campaign', 'utm_campaign'],
+          ['term', 'utm_term'],
+          ['content', 'utm_content'],
+        ] as const
+      ).reduce<Record<string, string>>((acc, [key, param]) => {
+        const value = searchParams.get(param);
+        if (value) acc[key] = value;
+        return acc;
+      }, {});
+      const utm = Object.keys(utmEntries).length > 0 ? utmEntries : undefined;
+
+      // Submit via the server route (service role, bypasses RLS — replaces the
+      // old direct anon insert that silently failed for anonymous submitters).
+      const res = await fetch('/api/coach-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: formData.name.trim(),
+          email: formData.email.trim(),
           phone: formData.phone.trim(),
-          country: formData.country,
           city: finalCity,
-          referral_code_used: formData.referralCode.trim() || null,
-          status: 'started'
-        })
-        .select()
-        .single();
+          country: formData.country,
+          referralCode: formData.referralCode.trim() || undefined,
+          googleId: user?.id ?? null,
+          utm,
+        }),
+      });
 
-      if (insertError) throw insertError;
-      if (!application) throw new Error('Failed to create application');
+      const data = await res.json();
 
-      // Navigate to Step 2
-      router.push(`/yestoryd-academy/qualify?applicationId=${application.id}`);
+      if (data.ok) {
+        // Navigate to Step 2 (same query-param transport as before).
+        router.push(`/yestoryd-academy/qualify?applicationId=${data.applicationId}`);
+        return;
+      }
+
+      // Map the route's structured error code to a specific message.
+      switch (data.code) {
+        case 'invalid_input':
+          setError('Please check your details — a valid email and WhatsApp number are required.');
+          break;
+        case 'duplicate_application':
+          setError("You've already applied with this email. We'll message you on WhatsApp about next steps.");
+          break;
+        case 'system_error':
+          setError('We couldn\'t submit just now, but our team has been alerted and will reach out on WhatsApp.');
+          break;
+        default:
+          setError('Something went wrong. Please try again or contact us on WhatsApp.');
+      }
+      setIsSubmitting(false);
 
     } catch (err: unknown) {
       console.error('Error creating application:', err);
