@@ -206,6 +206,13 @@ async function scoreWhatsAppLeads(now: Date): Promise<{ processed: number; error
         })
         .eq('id', lead.id);
 
+      // Mirror canonical score into lead_lifecycle so agent-nurture .order('ai_lead_score') sorts live.
+      // Leads with no lifecycle row are simply unaffected (update matches 0 rows, no error).
+      await supabase
+        .from('lead_lifecycle')
+        .update({ ai_lead_score: newScore })
+        .eq('wa_lead_id', lead.id);
+
       console.log(JSON.stringify({
         event: 'wa_lead_scored',
         phone: lead.phone_number,
