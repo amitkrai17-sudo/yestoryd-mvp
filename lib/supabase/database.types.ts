@@ -2155,6 +2155,7 @@ export type Database = {
           interview_outcome: string | null
           interview_scheduled_at: string | null
           interview_score: number | null
+          lead_source: string | null
           name: string
           phone: string
           qualification: string | null
@@ -2167,6 +2168,7 @@ export type Database = {
           reviewed_by: string | null
           status: string
           updated_at: string | null
+          utm: Json | null
           why_join: string | null
         }
         Insert: {
@@ -2205,6 +2207,7 @@ export type Database = {
           interview_outcome?: string | null
           interview_scheduled_at?: string | null
           interview_score?: number | null
+          lead_source?: string | null
           name: string
           phone: string
           qualification?: string | null
@@ -2217,6 +2220,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           updated_at?: string | null
+          utm?: Json | null
           why_join?: string | null
         }
         Update: {
@@ -2255,6 +2259,7 @@ export type Database = {
           interview_outcome?: string | null
           interview_scheduled_at?: string | null
           interview_score?: number | null
+          lead_source?: string | null
           name?: string
           phone?: string
           qualification?: string | null
@@ -2267,6 +2272,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           updated_at?: string | null
+          utm?: Json | null
           why_join?: string | null
         }
         Relationships: [
@@ -11484,10 +11490,6 @@ export type Database = {
           coach_reminder_1h_sent_at: string | null
           coach_reminder_24h_sent: boolean | null
           coach_reminder_24h_sent_at: string | null
-          parent_reminder_1h_sent: boolean | null
-          parent_reminder_1h_sent_at: string | null
-          parent_reminder_24h_sent: boolean | null
-          parent_reminder_24h_sent_at: string | null
           coach_voice_note_path: string | null
           companion_panel_completed: boolean | null
           completed_at: string | null
@@ -11537,6 +11539,10 @@ export type Database = {
           parent_change_status: string | null
           parent_communication_needed: boolean | null
           parent_feedback: string | null
+          parent_reminder_1h_sent: boolean | null
+          parent_reminder_1h_sent_at: string | null
+          parent_reminder_24h_sent: boolean | null
+          parent_reminder_24h_sent_at: string | null
           parent_sees_progress: string | null
           parent_sentiment: string | null
           parent_summary: string | null
@@ -11625,10 +11631,6 @@ export type Database = {
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
-          parent_reminder_1h_sent?: boolean | null
-          parent_reminder_1h_sent_at?: string | null
-          parent_reminder_24h_sent?: boolean | null
-          parent_reminder_24h_sent_at?: string | null
           coach_voice_note_path?: string | null
           companion_panel_completed?: boolean | null
           completed_at?: string | null
@@ -11678,6 +11680,10 @@ export type Database = {
           parent_change_status?: string | null
           parent_communication_needed?: boolean | null
           parent_feedback?: string | null
+          parent_reminder_1h_sent?: boolean | null
+          parent_reminder_1h_sent_at?: string | null
+          parent_reminder_24h_sent?: boolean | null
+          parent_reminder_24h_sent_at?: string | null
           parent_sees_progress?: string | null
           parent_sentiment?: string | null
           parent_summary?: string | null
@@ -11766,10 +11772,6 @@ export type Database = {
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
-          parent_reminder_1h_sent?: boolean | null
-          parent_reminder_1h_sent_at?: string | null
-          parent_reminder_24h_sent?: boolean | null
-          parent_reminder_24h_sent_at?: string | null
           coach_voice_note_path?: string | null
           companion_panel_completed?: boolean | null
           completed_at?: string | null
@@ -11819,6 +11821,10 @@ export type Database = {
           parent_change_status?: string | null
           parent_communication_needed?: boolean | null
           parent_feedback?: string | null
+          parent_reminder_1h_sent?: boolean | null
+          parent_reminder_1h_sent_at?: string | null
+          parent_reminder_24h_sent?: boolean | null
+          parent_reminder_24h_sent_at?: string | null
           parent_sees_progress?: string | null
           parent_sentiment?: string | null
           parent_summary?: string | null
