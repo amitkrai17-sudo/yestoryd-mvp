@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateLeadScore } from '@/lib/logic/lead-scoring';
+import { calculateWaLeadScore, type MessageStats } from '@/lib/whatsapp/lead-score';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { logOpsEvent } from '@/lib/backops';
@@ -237,12 +238,6 @@ async function scoreWhatsAppLeads(now: Date): Promise<{ processed: number; error
 // Message stats fetcher — batch query for all conversations
 // ============================================================
 
-interface MessageStats {
-  messageCount: number;
-  firstInboundAt: string | null;
-  firstOutboundAt: string | null;
-}
-
 async function fetchMessageStats(
   conversationIds: string[]
 ): Promise<Map<string, MessageStats>> {
@@ -286,51 +281,3 @@ async function fetchMessageStats(
   return result;
 }
 
-// ============================================================
-// WhatsApp lead score calculator
-// ============================================================
-
-interface WaLeadRow {
-  child_name: string | null;
-  child_age: number | null;
-  reading_concerns: string | null;
-  city: string | null;
-  school: string | null;
-  child_id: string | null;
-}
-
-function calculateWaLeadScore(lead: WaLeadRow, stats: MessageStats | undefined): number {
-  let score = 0;
-
-  // Profile completeness
-  if (lead.child_name) score += 15;
-  if (lead.child_age !== null && lead.child_age >= 4 && lead.child_age <= 12) score += 20;
-  if (lead.reading_concerns) score += 20;
-  if (lead.city) score += 5;
-  if (lead.school) score += 5;
-
-  // Assessment completed (child linked)
-  if (lead.child_id) score += 25;
-
-  // Engagement signals from conversation
-  if (stats) {
-    // Active conversation (>5 messages exchanged)
-    if (stats.messageCount > 5) score += 10;
-
-    // Response speed: parent replied within 5 minutes of first bot message
-    if (stats.firstOutboundAt && stats.firstInboundAt) {
-      const firstOut = new Date(stats.firstOutboundAt).getTime();
-      const firstIn = new Date(stats.firstInboundAt).getTime();
-      // First inbound after first outbound = a reply (not the initial message)
-      // If first inbound is BEFORE first outbound, that's the initial message —
-      // look for the second inbound (not available here, so check if gap is small
-      // meaning fast initial engagement)
-      const gapMs = Math.abs(firstIn - firstOut);
-      if (gapMs <= 5 * 60 * 1000) {
-        score += 10;
-      }
-    }
-  }
-
-  return Math.min(score, 100);
-}
