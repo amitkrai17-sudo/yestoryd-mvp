@@ -264,7 +264,6 @@ export const INTERNAL_FALLBACK_NUMBERS = [
   '+918591287997', // Lead Bot self (defensive vs self-loop post-consolidation)
   '+919321287997', // OpenClaw co-pilot
   '+919099145083', // Rucha (coach)
-  '+919687606177', // Admin / test
 ];
 
 /** Pure membership check. Normalizes BOTH sides so stored format never matters. */
