@@ -119,7 +119,12 @@ async function dispatchAdminAlert(params: {
   try {
     const result = await sendNotification(
       'admin_coach_lead_v1',
-      'admin',
+      // Use the same admin recipient as sendNewLeadAlert (COMPANY_CONFIG.adminWhatsApp →
+      // ADMIN_WHATSAPP_PHONE). The literal 'admin' resolves via a DIFFERENT env var
+      // (ADMIN_WHATSAPP_NUMBER) in notify.ts, which is unset → falls back to the Lead Bot
+      // SENDER number (918591287997) → send-to-self → Meta (#100). admin_new_lead_v5 uses
+      // this same constant and reaches the admin successfully.
+      COMPANY_CONFIG.adminWhatsApp,
       { coach_name: name, phone, city, note },
       { triggeredBy: 'system', contextType: 'coach_application' },
     );
