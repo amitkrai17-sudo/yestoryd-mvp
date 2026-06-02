@@ -1,0 +1,83 @@
+-- Migration: drop_children_discovery_sync
+-- Purpose: Remove the bidirectional children<->discovery_calls coach-sync triggers
+--   and their functions. After Phase 2C-a, every reader was repointed off the
+--   children coach columns (enrollments.coach_id / scheduled_sessions.coach_id /
+--   discovery_calls.assigned_coach_id) and off the bare children->coaches embeds.
+--   These triggers are now dead weight AND an active hazard: they resurrect
+--   children.assigned_coach_id after a clear and clobber children.coach_id with the
+--   trial coach, which prevents coach clear/reassign from sticking. Dropping them is
+--   required for the OpenClaw coach clear/reassign flow (step 4).
+--
+-- NOTE: Applied to production via Supabase MCP separately (Claude Web). This file is
+--   the local audit-trail artifact. Idempotent (IF EXISTS) — safe to re-run.
+--
+-- Objects dropped:
+--   - TRIGGER  trigger_sync_discovery_to_children ON discovery_calls
+--   - TRIGGER  trigger_sync_children_to_discovery ON children
+--   - FUNCTION sync_discovery_to_children()
+--   - FUNCTION sync_children_to_discovery()
+
+DROP TRIGGER IF EXISTS trigger_sync_discovery_to_children ON discovery_calls;
+DROP TRIGGER IF EXISTS trigger_sync_children_to_discovery ON children;
+DROP FUNCTION IF EXISTS sync_discovery_to_children();
+DROP FUNCTION IF EXISTS sync_children_to_discovery();
+
+-- ============================================================================
+-- ROLLBACK
+-- ============================================================================
+-- IMPORTANT — authoritative bodies are NOT in this repo. These functions were
+-- created via the Supabase Dashboard/MCP, not via a migration file, so no verbatim
+-- CREATE statement exists in version control, and the Phase 0 audit recorded only
+-- their names + behavior (not their source). DO NOT trust the reconstruction below
+-- as byte-accurate.
+--
+-- BEFORE applying the DROP to production, capture the real definitions via MCP so a
+-- faithful rollback exists, then paste them in place of the reconstruction below:
+--
+--   SELECT pg_get_functiondef('sync_discovery_to_children()'::regprocedure);
+--   SELECT pg_get_functiondef('sync_children_to_discovery()'::regprocedure);
+--   -- trigger defs:
+--   SELECT pg_get_triggerdef(oid) FROM pg_trigger
+--    WHERE tgname IN ('trigger_sync_discovery_to_children',
+--                     'trigger_sync_children_to_discovery');
+--
+-- ---------------------------------------------------------------------------
+-- RECONSTRUCTION (NON-AUTHORITATIVE — from docs/sessions/session10-summary.md:48-56;
+-- documented behavior only: "Discovery -> Children syncs coach_id, lead_status
+-- (mapped from call_outcome); Children -> Discovery syncs coach_id, call_outcome
+-- (mapped from lead_status)." Exact column mappings, WHERE/match keys, NULL handling,
+-- and outcome<->status mapping tables are unknown — replace with pg_get_functiondef
+-- output captured above before relying on this for restore.)
+-- ---------------------------------------------------------------------------
+--
+-- CREATE OR REPLACE FUNCTION sync_discovery_to_children()
+-- RETURNS trigger LANGUAGE plpgsql AS $$
+-- BEGIN
+--   -- Approximate: propagate the trial coach + outcome down onto the child row.
+--   UPDATE children c
+--      SET coach_id          = NEW.assigned_coach_id,
+--          assigned_coach_id = NEW.assigned_coach_id
+--    WHERE c.id = NEW.child_id;
+--   RETURN NEW;
+-- END;
+-- $$;
+--
+-- CREATE OR REPLACE FUNCTION sync_children_to_discovery()
+-- RETURNS trigger LANGUAGE plpgsql AS $$
+-- BEGIN
+--   -- Approximate: propagate the child's coach back onto its discovery call(s).
+--   UPDATE discovery_calls d
+--      SET assigned_coach_id = NEW.coach_id
+--    WHERE d.child_id = NEW.id;
+--   RETURN NEW;
+-- END;
+-- $$;
+--
+-- CREATE TRIGGER trigger_sync_discovery_to_children
+--   AFTER INSERT OR UPDATE ON discovery_calls
+--   FOR EACH ROW EXECUTE FUNCTION sync_discovery_to_children();
+--
+-- CREATE TRIGGER trigger_sync_children_to_discovery
+--   AFTER UPDATE ON children
+--   FOR EACH ROW EXECUTE FUNCTION sync_children_to_discovery();
+-- ============================================================================
