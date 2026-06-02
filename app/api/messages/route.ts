@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveEnrolledCoachId } from '@/lib/coaches/resolve-enrolled-coach';
 
 const supabase = createAdminClient();
 
@@ -96,19 +97,21 @@ export async function GET(request: NextRequest) {
     // Get child and coach info
     const { data: child } = await supabase
       .from('children')
-      .select(`
-        id,
-        child_name,
-        parent_name,
-        assigned_coach_id,
-        coaches (
-          id,
-          name,
-          photo_url
-        )
-      `)
+      .select('id, child_name, parent_name')
       .eq('id', childId)
       .single();
+
+    // Resolve the active-enrollment coach explicitly (no implicit children->coaches FK)
+    let coach: { id: string; name: string; photo_url: string | null } | null = null;
+    const enrolledCoachId = await resolveEnrolledCoachId(supabase, childId);
+    if (enrolledCoachId) {
+      const { data: coachData } = await supabase
+        .from('coaches')
+        .select('id, name, photo_url')
+        .eq('id', enrolledCoachId)
+        .maybeSingle();
+      coach = coachData;
+    }
 
     return NextResponse.json({
       success: true,
@@ -118,7 +121,7 @@ export async function GET(request: NextRequest) {
         id: child.id,
         name: child.child_name,
         parent_name: child.parent_name,
-        coach: child.coaches,
+        coach,
       } : null,
       has_more: messages?.length === limit,
     });
@@ -275,15 +278,16 @@ async function verifyChildAccess(
   // Get child data
   const { data: child } = await supabase
     .from('children')
-    .select('assigned_coach_id, parent_id')
+    .select('parent_id')
     .eq('id', childId)
     .single();
 
   if (!child) return false;
 
-  // Coach must be assigned to this child
+  // Coach must be on this child's active enrollment
   if (auth.role === 'coach') {
-    return child.assigned_coach_id === auth.coachId;
+    const enrolledCoachId = await resolveEnrolledCoachId(supabase, childId);
+    return enrolledCoachId === auth.coachId;
   }
 
   // Parent must own this child
@@ -362,23 +366,30 @@ async function sendMessageNotification(
     // Get child and recipient info
     const { data: child } = await supabase
       .from('children')
-      .select(`
-        child_name,
-        parent_phone,
-        assigned_coach_id,
-        coaches (
-          whatsapp_number
-        )
-      `)
+      .select('child_name, parent_phone')
       .eq('id', childId)
       .single();
 
     if (!child) return;
 
+    // Resolve coach whatsapp via active enrollment (no implicit children->coaches FK)
+    let coachWhatsapp: string | null = null;
+    if (senderType !== 'coach') {
+      const enrolledCoachId = await resolveEnrolledCoachId(supabase, childId);
+      if (enrolledCoachId) {
+        const { data: coachData } = await supabase
+          .from('coaches')
+          .select('whatsapp_number')
+          .eq('id', enrolledCoachId)
+          .maybeSingle();
+        coachWhatsapp = coachData?.whatsapp_number ?? null;
+      }
+    }
+
     // Determine recipient
-    const recipientPhone = senderType === 'coach' 
+    const recipientPhone = senderType === 'coach'
       ? child.parent_phone  // Notify parent
-      : (child.coaches as any)?.whatsapp_number; // Notify coach
+      : coachWhatsapp; // Notify coach
 
     if (!recipientPhone) return;
 

@@ -28,7 +28,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 // --- CONFIGURATION (Lazy initialization) ---
-const getSupabase = createAdminClient;
+const getSupabase = createAdminClient;
 
 // --- HELPER: Save insight ---
 async function saveInsight(
@@ -87,13 +87,14 @@ async function computeInsights(requestId: string, source: string) {
       childrenResult,
       paymentsThisMonthResult,
       paymentsLastMonthResult,
+      activeEnrollmentsResult,
     ] = await Promise.all([
       supabase.from('coaches').select('id, name, email').eq('is_active', true),
       supabase.from('scheduled_sessions')
         .select('id, status, coach_id, child_id, scheduled_date')
         .gte('scheduled_date', thirtyDaysAgo),
       supabase.from('children')
-        .select('id, child_name, parent_email, status, coach_id, created_at'),
+        .select('id, child_name, parent_email, status, created_at'),
       supabase.from('payments')
         .select('amount, created_at')
         .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
@@ -103,6 +104,9 @@ async function computeInsights(requestId: string, source: string) {
         .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString())
         .lt('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
         .eq('status', 'captured'),
+      supabase.from('enrollments')
+        .select('child_id, coach_id')
+        .eq('status', 'active'),
     ]);
 
     const coaches = coachesResult.data || [];
@@ -110,6 +114,7 @@ async function computeInsights(requestId: string, source: string) {
     const allChildren = childrenResult.data || [];
     const paymentsThisMonth = paymentsThisMonthResult.data || [];
     const paymentsLastMonth = paymentsLastMonthResult.data || [];
+    const activeEnrollments = activeEnrollmentsResult.data || [];
 
     // Build lookup maps for O(1) access
     const sessionsByCoach = new Map<string, typeof allSessions>();
@@ -132,12 +137,22 @@ async function computeInsights(requestId: string, source: string) {
       }
     }
 
+    // Map each child to its active-enrollment coach (children.coach_id is demoted;
+    // enrollments.coach_id is canonical for the enrolled coach).
+    const childToActiveCoach = new Map<string, string>();
+    for (const enr of activeEnrollments) {
+      if (enr.child_id && enr.coach_id && !childToActiveCoach.has(enr.child_id)) {
+        childToActiveCoach.set(enr.child_id, enr.coach_id);
+      }
+    }
+
     for (const child of allChildren) {
-      if (child.coach_id) {
-        if (!childrenByCoach.has(child.coach_id)) {
-          childrenByCoach.set(child.coach_id, []);
+      const enrolledCoachId = childToActiveCoach.get(child.id);
+      if (enrolledCoachId) {
+        if (!childrenByCoach.has(enrolledCoachId)) {
+          childrenByCoach.set(enrolledCoachId, []);
         }
-        childrenByCoach.get(child.coach_id)!.push(child);
+        childrenByCoach.get(enrolledCoachId)!.push(child);
       }
     }
 

@@ -244,10 +244,10 @@ async function getCoachDashboardData(coachId: string) {
 
   // Get student count
   const { count: studentCount } = await supabase
-    .from('children')
-    .select('*', { count: 'exact', head: true })
-    .eq('assigned_coach_id', coachId)
-    .eq('status', 'enrolled');
+    .from('enrollments')
+    .select('child_id', { count: 'exact', head: true })
+    .eq('coach_id', coachId)
+    .eq('status', 'active');
 
   // Get recent activity
   const { data: recentActivity } = await supabase
@@ -296,6 +296,17 @@ async function getCoachSessionsData(coachId: string) {
 // Helper: Get coach students data
 // =====================================================
 async function getCoachStudentsData(coachId: string) {
+  // Children with an active enrollment under this coach (enrollments is canonical)
+  const { data: enr } = await supabase
+    .from('enrollments')
+    .select('child_id')
+    .eq('coach_id', coachId)
+    .eq('status', 'active');
+  const studentIds = Array.from(
+    new Set((enr || []).map(e => e.child_id).filter(Boolean))
+  ) as string[];
+  if (studentIds.length === 0) return { students: [] };
+
   const { data: students } = await supabase
     .from('children')
     .select(`
@@ -307,8 +318,7 @@ async function getCoachStudentsData(coachId: string) {
         phone
       )
     `)
-    .eq('assigned_coach_id', coachId)
-    .eq('status', 'enrolled')
+    .in('id', studentIds)
     .order('child_name');
 
   return { students: students || [] };
@@ -319,11 +329,18 @@ async function getCoachStudentsData(coachId: string) {
 // =====================================================
 async function getCoachChatData(coachId: string) {
   // Get coach's assigned children
-  const { data: children } = await supabase
-    .from('children')
-    .select('id, child_name')
-    .eq('assigned_coach_id', coachId)
-    .eq('status', 'enrolled');
+  // Children with an active enrollment under this coach (enrollments is canonical)
+  const { data: enr } = await supabase
+    .from('enrollments')
+    .select('child_id')
+    .eq('coach_id', coachId)
+    .eq('status', 'active');
+  const enrolledChildIds = Array.from(
+    new Set((enr || []).map(e => e.child_id).filter(Boolean))
+  ) as string[];
+  const { data: children } = enrolledChildIds.length
+    ? await supabase.from('children').select('id, child_name').in('id', enrolledChildIds)
+    : { data: [] as { id: string; child_name: string | null }[] };
 
   if (!children || children.length === 0) {
     return { conversations: [] };

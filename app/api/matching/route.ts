@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
     // Get child's learning needs
     const { data: child, error: childError } = await supabase
       .from('children')
-      .select('learning_needs, primary_focus_area, assigned_coach_id')
+      .select('learning_needs, primary_focus_area')
       .eq('id', childId)
       .single();
 
@@ -291,6 +291,17 @@ export async function GET(request: NextRequest) {
     }
 
     const learningNeeds = child.learning_needs || [];
+
+    // Trial coach to exclude from re-match (discovery_calls is canonical for the trial coach)
+    const { data: trialCall } = await supabase
+      .from('discovery_calls')
+      .select('assigned_coach_id')
+      .eq('child_id', childId)
+      .not('assigned_coach_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const trialCoachId = trialCall?.assigned_coach_id ?? null;
     
     if (learningNeeds.length === 0) {
       // No needs defined, return top-rated coaches
@@ -327,7 +338,7 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({
         child_id: childId,
         learning_needs: learningNeeds,
-        exclude_coach_ids: child.assigned_coach_id ? [child.assigned_coach_id] : [],
+        exclude_coach_ids: trialCoachId ? [trialCoachId] : [],
         max_results: limit,
       }),
     });

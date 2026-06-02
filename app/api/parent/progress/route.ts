@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveEnrolledCoachId } from '@/lib/coaches/resolve-enrolled-coach';
 
 const supabase = createAdminClient();
 
@@ -44,18 +45,12 @@ export async function GET(request: NextRequest) {
         child_name,
         age,
         parent_id,
-        assigned_coach_id,
         learning_needs,
         primary_focus_area,
         latest_assessment_score,
         assessment_wpm,
         total_sessions,
-        sessions_completed,
-        coaches (
-          id,
-          name,
-          photo_url
-        )
+        sessions_completed
       `)
       .eq('id', childId)
       .single();
@@ -75,6 +70,18 @@ export async function GET(request: NextRequest) {
       if (!parent || parent.id !== child.parent_id) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
       }
+    }
+
+    // Resolve active-enrollment coach explicitly (no implicit children->coaches FK)
+    let coach: { id: string; name: string; photo_url: string | null } | null = null;
+    const enrolledCoachId = await resolveEnrolledCoachId(supabase, childId);
+    if (enrolledCoachId) {
+      const { data: coachData } = await supabase
+        .from('coaches')
+        .select('id, name, photo_url')
+        .eq('id', enrolledCoachId)
+        .maybeSingle();
+      coach = coachData;
     }
 
     // Calculate date range
@@ -170,7 +177,7 @@ export async function GET(request: NextRequest) {
         id: child.id,
         name: child.child_name,
         age: child.age,
-        coach: child.coaches,
+        coach,
         learning_needs: child.learning_needs,
         primary_focus: child.primary_focus_area,
         initial_score: child.latest_assessment_score,

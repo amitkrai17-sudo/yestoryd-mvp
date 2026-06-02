@@ -94,10 +94,10 @@ export const GET = withApiHandler(async (req, { auth, supabase }) => {
 
   // Get current student count
   const { count: studentCount } = await supabase
-    .from('children')
-    .select('*', { count: 'exact', head: true })
-    .eq('assigned_coach_id', coachId)
-    .eq('status', 'enrolled');
+    .from('enrollments')
+    .select('child_id', { count: 'exact', head: true })
+    .eq('coach_id', coachId)
+    .eq('status', 'active');
 
   // Get session stats
   const { data: sessionStats } = await supabase

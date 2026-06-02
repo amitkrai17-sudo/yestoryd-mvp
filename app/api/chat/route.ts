@@ -54,6 +54,7 @@ import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { getPricingConfig, getSessionCountForChild } from '@/lib/config/pricing-config';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveEnrolledCoachId } from '@/lib/coaches/resolve-enrolled-coach';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 
 export const dynamic = 'force-dynamic';
@@ -444,11 +445,14 @@ async function handleLearningStreaming(
       return;
     }
 
-    if (child?.coach_id) {
+    // Resolve coach: enrolled child -> active enrollment coach; lead (no active
+    // enrollment) -> children.coach_id (the demoted lead-stage intended coach).
+    const resolvedCoachId = (await resolveEnrolledCoachId(supabase, child.id)) ?? child.coach_id;
+    if (resolvedCoachId) {
       const { data: coachData } = await supabase
         .from('coaches')
         .select('id, name, email, phone')
-        .eq('id', child.coach_id)
+        .eq('id', resolvedCoachId)
         .single();
       coach = coachData as Coach | null;
     }
@@ -463,7 +467,7 @@ async function handleLearningStreaming(
 
       const { data: childData } = await supabase
         .from('children')
-        .select('id, name, child_name, age, parent_email, coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
+        .select('id, name, child_name, age, parent_email, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
         .eq('id', childId)
         .single();
       child = childData as ChildWithCache;
@@ -473,7 +477,7 @@ async function handleLearningStreaming(
     if (childId) {
       const { data: childData } = await supabase
         .from('children')
-        .select('id, name, child_name, age, parent_email, coach_id, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
+        .select('id, name, child_name, age, parent_email, last_session_summary, last_session_date, last_session_focus, sessions_completed, total_sessions, latest_assessment_score')
         .eq('id', childId)
         .single();
       child = childData as ChildWithCache;
@@ -741,10 +745,10 @@ async function handleOperational(
       return { response: "I couldn't find your coach profile. Please contact support.", intent: 'OPERATIONAL', source: 'sql' };
     }
     const { count } = await supabase
-      .from('children')
-      .select('*', { count: 'exact', head: true })
+      .from('enrollments')
+      .select('child_id', { count: 'exact', head: true })
       .eq('coach_id', coachId)
-      .eq('status', 'enrolled');
+      .eq('status', 'active');
     return { response: `You currently have ${count || 0} active student${count !== 1 ? 's' : ''} enrolled.`, intent: 'OPERATIONAL', source: 'sql' };
   }
 
@@ -964,16 +968,18 @@ async function getCoachForParent(parentEmail: string): Promise<Coach | null> {
   const supabase = getSupabase();
   const { data: child } = await supabase
     .from('children')
-    .select('coach_id')
+    .select('id')
     .eq('parent_email', parentEmail)
     .eq('status', 'enrolled')
     .limit(1)
     .single();
-  if (!child?.coach_id) return null;
+  if (!child?.id) return null;
+  const enrolledCoachId = await resolveEnrolledCoachId(supabase, child.id);
+  if (!enrolledCoachId) return null;
   const { data: coach } = await supabase
     .from('coaches')
     .select('id, name, email, phone')
-    .eq('id', child.coach_id)
+    .eq('id', enrolledCoachId)
     .single();
   return coach as Coach | null;
 }

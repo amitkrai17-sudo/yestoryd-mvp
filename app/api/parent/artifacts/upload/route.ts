@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getServiceSupabase } from '@/lib/api-auth';
+import { resolveEnrolledCoachId } from '@/lib/coaches/resolve-enrolled-coach';
 import { uploadArtifact, getArtifactSignedUrl } from '@/lib/storage/artifact-storage';
 import { analyzeHomeworkPhoto } from '@/lib/homework/analyze-photo';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     // --- VERIFY PARENT OWNS CHILD (same pattern as existing upload-photo route) ---
     const { data: child } = await supabase
       .from('children')
-      .select('id, parent_id, parent_email, child_name, age, coach_id')
+      .select('id, parent_id, parent_email, child_name, age')
       .eq('id', childId)
       .single();
 
@@ -252,9 +253,24 @@ export async function POST(request: NextRequest) {
       contextType === 'assessment' ? 'assessment work' :
       'work';
 
+    // Attribution coach: prefer the session's coach when a session is in scope,
+    // else fall back to the child's active-enrollment coach.
+    let attributionCoachId: string | null = null;
+    if (sessionId) {
+      const { data: sess } = await supabase
+        .from('scheduled_sessions')
+        .select('coach_id')
+        .eq('id', sessionId)
+        .maybeSingle();
+      attributionCoachId = sess?.coach_id ?? null;
+    }
+    if (!attributionCoachId) {
+      attributionCoachId = await resolveEnrolledCoachId(supabase, childId);
+    }
+
     void insertLearningEvent({
       childId,
-      coachId: child.coach_id || null,
+      coachId: attributionCoachId,
       sessionId: sessionId || null,
       eventType: 'child_artifact',
       signalSource: 'parent_observation',

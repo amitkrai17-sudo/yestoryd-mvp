@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveEnrolledCoachId } from '@/lib/coaches/resolve-enrolled-coach';
 import { sendCommunication } from '@/lib/communication';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { getPolicy, logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
@@ -152,16 +153,12 @@ export async function GET(request: NextRequest) {
           const childEntries = Array.from(parentData.children.entries());
           for (const [childId, childData] of childEntries) {
             // Find the child's coach
-            const { data: childRow } = await supabase
-              .from('children')
-              .select('assigned_coach_id')
-              .eq('id', childId)
-              .maybeSingle();
-            if (childRow?.assigned_coach_id) {
+            const enrolledCoachId = await resolveEnrolledCoachId(supabase, childId);
+            if (enrolledCoachId) {
               const { data: coach } = await supabase
                 .from('coaches')
                 .select('user_id')
-                .eq('id', childRow.assigned_coach_id)
+                .eq('id', enrolledCoachId)
                 .maybeSingle();
               if (coach?.user_id) {
                 await supabase.from('activity_log').insert({
@@ -169,7 +166,7 @@ export async function GET(request: NextRequest) {
                   user_email: 'system',
                   user_type: 'system',
                   metadata: {
-                    coachId: childRow.assigned_coach_id,
+                    coachId: enrolledCoachId,
                     coachUserId: coach.user_id,
                     parentId: parentData.parentId,
                     parentName: parentData.parentName,
