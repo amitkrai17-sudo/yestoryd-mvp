@@ -4,6 +4,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_CONFIG } from '@/lib/config/company-config';
 import { sendNotification } from '@/lib/communication/notify';
+import { resolveEnrolledCoachId } from '@/lib/coaches/resolve-enrolled-coach';
 
 const supabase = createAdminClient();
 
@@ -69,8 +70,7 @@ export async function checkAndSendProactiveNotifications(
   try {
     const { data: child } = await supabase
       .from('children')
-      .select(`id, child_name, parent_email, parent_phone, coach_id,
-        coach:coaches!coach_id (id, name, email, phone)`)
+      .select('id, child_name, parent_email, parent_phone')
       .eq('id', childId)
       .single();
 
@@ -79,7 +79,17 @@ export async function checkAndSendProactiveNotifications(
       return result;
     }
 
-    const coach = child.coach as any;
+    // Enrolled coach is canonical in enrollments.coach_id (children.coach_id is lead-only).
+    let coach: any = null;
+    const enrolledCoachId = await resolveEnrolledCoachId(supabase, childId);
+    if (enrolledCoachId) {
+      const { data: coachData } = await supabase
+        .from('coaches')
+        .select('id, name, email, phone')
+        .eq('id', enrolledCoachId)
+        .maybeSingle();
+      coach = coachData;
+    }
     const previousSessions = await getRecentSessions(childId, 3);
     const triggers = detectSmartTriggers(analysis, previousSessions, childName);
 

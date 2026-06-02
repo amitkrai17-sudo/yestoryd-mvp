@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timedQuery } from '@/lib/db-utils';
 import { capitalizeName } from '@/lib/utils';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveEnrolledCoachId } from '@/lib/coaches/resolve-enrolled-coach';
 import { getPricingConfig } from '@/lib/config/pricing-config';
 
 const supabase = createAdminClient();
@@ -28,15 +29,7 @@ export async function GET(request: NextRequest) {
       async () => {
         const result = await supabase
           .from('children')
-          .select(`
-            *,
-            coaches (
-              id,
-              name,
-              email,
-              bio
-            )
-          `)
+          .select('*')
           .eq('parent_email', user.email ?? '')
           .eq('enrollment_status', 'active')
           .single();
@@ -54,6 +47,19 @@ export async function GET(request: NextRequest) {
         hasEnrollment: false,
         message: 'No active enrollment found'
       });
+    }
+
+    // Enrolled coach is canonical in enrollments.coach_id (children.coach_id is lead-only;
+    // a bare children->coaches embed would resolve to lead_source_coach_id — the referrer).
+    let coachData: { id: string; name: string | null; email: string | null; bio: string | null } | null = null;
+    const enrolledCoachId = await resolveEnrolledCoachId(supabase, child.id);
+    if (enrolledCoachId) {
+      const { data: c } = await supabase
+        .from('coaches')
+        .select('id, name, email, bio')
+        .eq('id', enrolledCoachId)
+        .maybeSingle();
+      coachData = c;
     }
 
     const { data: upcomingSessions } = await supabase
@@ -105,9 +111,9 @@ export async function GET(request: NextRequest) {
         programEndDate: child.program_end_date,
         daysRemaining,
       },
-      coach: child.coaches ? {
-        ...(child.coaches as any),
-        name: capitalizeName((child.coaches as any).name),
+      coach: coachData ? {
+        ...coachData,
+        name: coachData.name ? capitalizeName(coachData.name) : coachData.name,
       } : null,
       upcomingSessions: upcomingSessions || [],
       recentNotes: recentNotes || [],
