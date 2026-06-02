@@ -326,7 +326,6 @@ export async function getOrCreateChild(
         child_name: childName,
         enrollment_status: 'enrolled',
         lead_status: 'enrolled',
-        coach_id: coachId,
         parent_id: parentId,
         parent_email: parentEmail,
         enrolled_at: new Date().toISOString(),
@@ -351,7 +350,6 @@ export async function getOrCreateChild(
       parent_email: parentEmail,
       enrollment_status: 'enrolled',
       lead_status: 'enrolled',
-      coach_id: coachId,
       enrolled_at: new Date().toISOString(),
     })
     .select('id')

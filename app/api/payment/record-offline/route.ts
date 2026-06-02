@@ -137,7 +137,6 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
       is_enrolled: true,
       enrollment_status: 'enrolled',
       lead_status: 'enrolled',
-      coach_id: enrollment.coach_id,
       enrolled_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('id', enrollment.child_id);

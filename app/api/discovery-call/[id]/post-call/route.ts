@@ -189,8 +189,6 @@ export async function POST(
       outcome: validated.call_outcome,
     }));
 
-    // 9. Children sync handled by database trigger: trigger_sync_discovery_to_children
-
     // 9b. Advance lead_status to 'discovery_completed' — any outcome means the
     // call happened. 'converted' is set separately by payment/verify only after
     // real payment lands. Non-blocking: failure must never fail post-call save.

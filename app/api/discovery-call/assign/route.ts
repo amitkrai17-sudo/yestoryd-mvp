@@ -213,8 +213,6 @@ export async function POST(request: NextRequest) {
 
 
 
-      // 7b. Children sync handled by database trigger: trigger_sync_discovery_to_children
-
     // 8. CRITICAL: Sync external systems (Calendar + Notifications)
     const previousCoachId = existingCall.assigned_coach_id;
 

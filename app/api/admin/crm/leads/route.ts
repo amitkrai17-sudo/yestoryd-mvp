@@ -30,6 +30,8 @@ const updateLeadSchema = z.object({
   next_followup_at: z.string().datetime().optional(),
 }).passthrough();
 
+// children.coach_id = lead-stage intended coach (admin-set only). Enrolled coach lives in
+// enrollments.coach_id. Never write this from enrollment/payment paths.
 const ALLOWED_UPDATE_FIELDS = [
   'lead_status', 'coach_id', 'notes', 'next_followup_at',
   'parent_name', 'parent_phone', 'parent_email', 'age', 'grade',

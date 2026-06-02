@@ -264,7 +264,6 @@ export async function POST(request: NextRequest) {
           is_enrolled: true,
           enrollment_status: 'enrolled',
           lead_status: 'enrolled',
-          coach_id: tuitionEnrollment.coach_id,
           enrolled_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq('id', tuitionEnrollment.child_id);
