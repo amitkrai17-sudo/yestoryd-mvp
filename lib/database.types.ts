@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ab_test_events: {
@@ -3426,6 +3451,8 @@ export type Database = {
           last_seen_at: string | null
           leaderboard_opt_out: boolean | null
           lifetime_earnings: number | null
+          manual_hold: boolean
+          manual_hold_reason: string | null
           max_children: number | null
           max_sessions_per_day: number | null
           max_students: number | null
@@ -3515,6 +3542,8 @@ export type Database = {
           last_seen_at?: string | null
           leaderboard_opt_out?: boolean | null
           lifetime_earnings?: number | null
+          manual_hold?: boolean
+          manual_hold_reason?: string | null
           max_children?: number | null
           max_sessions_per_day?: number | null
           max_students?: number | null
@@ -3604,6 +3633,8 @@ export type Database = {
           last_seen_at?: string | null
           leaderboard_opt_out?: boolean | null
           lifetime_earnings?: number | null
+          manual_hold?: boolean
+          manual_hold_reason?: string | null
           max_children?: number | null
           max_sessions_per_day?: number | null
           max_students?: number | null
@@ -15741,6 +15772,17 @@ export type Database = {
       }
       get_agreement_config: { Args: never; Returns: Json }
       get_agreement_config_by_category: { Args: { cat: string }; Returns: Json }
+      get_assignable_coaches: {
+        Args: { p_date?: string }
+        Returns: {
+          current_children: number
+          email: string
+          id: string
+          last_assigned_at: string
+          max_children: number
+          name: string
+        }[]
+      }
       get_auto_apply_coupon: {
         Args: { p_child_id: string }
         Returns: {
@@ -16160,6 +16202,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
