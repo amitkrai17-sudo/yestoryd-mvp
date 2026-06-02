@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         id, name, age, lead_status, lead_source, created_at, enrolled_at,
         last_contacted_at, next_followup_at, lead_notes,
         parent:parents(name, email, phone),
-        coach:coaches(name, email)
+        coach:coaches!coach_id(name, email)
       `)
       .order('created_at', { ascending: false });
 
