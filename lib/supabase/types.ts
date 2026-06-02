@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ab_test_events: {
@@ -1689,7 +1714,6 @@ export type Database = {
           alumni_since: string | null
           assessment_completed_at: string | null
           assessment_wpm: number | null
-          assigned_coach_id: string | null
           assigned_to: string | null
           attendance_rate: number | null
           avatar_url: string | null
@@ -1789,7 +1813,6 @@ export type Database = {
           alumni_since?: string | null
           assessment_completed_at?: string | null
           assessment_wpm?: number | null
-          assigned_coach_id?: string | null
           assigned_to?: string | null
           attendance_rate?: number | null
           avatar_url?: string | null
@@ -1889,7 +1912,6 @@ export type Database = {
           alumni_since?: string | null
           assessment_completed_at?: string | null
           assessment_wpm?: number | null
-          assigned_coach_id?: string | null
           assigned_to?: string | null
           attendance_rate?: number | null
           avatar_url?: string | null
@@ -1988,34 +2010,6 @@ export type Database = {
             columns: ["age_band"]
             isOneToOne: false
             referencedRelation: "age_band_config"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_activity_summary"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_workload"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_with_groups"
             referencedColumns: ["id"]
           },
           {
@@ -2155,6 +2149,7 @@ export type Database = {
           interview_outcome: string | null
           interview_scheduled_at: string | null
           interview_score: number | null
+          lead_source: string | null
           name: string
           phone: string
           qualification: string | null
@@ -2167,6 +2162,7 @@ export type Database = {
           reviewed_by: string | null
           status: string
           updated_at: string | null
+          utm: Json | null
           why_join: string | null
         }
         Insert: {
@@ -2205,6 +2201,7 @@ export type Database = {
           interview_outcome?: string | null
           interview_scheduled_at?: string | null
           interview_score?: number | null
+          lead_source?: string | null
           name: string
           phone: string
           qualification?: string | null
@@ -2217,6 +2214,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           updated_at?: string | null
+          utm?: Json | null
           why_join?: string | null
         }
         Update: {
@@ -2255,6 +2253,7 @@ export type Database = {
           interview_outcome?: string | null
           interview_scheduled_at?: string | null
           interview_score?: number | null
+          lead_source?: string | null
           name?: string
           phone?: string
           qualification?: string | null
@@ -2267,6 +2266,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           updated_at?: string | null
+          utm?: Json | null
           why_join?: string | null
         }
         Relationships: [
@@ -3420,6 +3420,8 @@ export type Database = {
           last_seen_at: string | null
           leaderboard_opt_out: boolean | null
           lifetime_earnings: number | null
+          manual_hold: boolean
+          manual_hold_reason: string | null
           max_children: number | null
           max_sessions_per_day: number | null
           max_students: number | null
@@ -3509,6 +3511,8 @@ export type Database = {
           last_seen_at?: string | null
           leaderboard_opt_out?: boolean | null
           lifetime_earnings?: number | null
+          manual_hold?: boolean
+          manual_hold_reason?: string | null
           max_children?: number | null
           max_sessions_per_day?: number | null
           max_students?: number | null
@@ -3598,6 +3602,8 @@ export type Database = {
           last_seen_at?: string | null
           leaderboard_opt_out?: boolean | null
           lifetime_earnings?: number | null
+          manual_hold?: boolean
+          manual_hold_reason?: string | null
           max_children?: number | null
           max_sessions_per_day?: number | null
           max_students?: number | null
@@ -3893,7 +3899,8 @@ export type Database = {
           next_attempt_at: string | null
           priority: string | null
           processed_at: string | null
-          recipient_id: string
+          recipient_id: string | null
+          recipient_phone: string | null
           recipient_type: string
           related_entity_id: string | null
           related_entity_type: string | null
@@ -3914,7 +3921,8 @@ export type Database = {
           next_attempt_at?: string | null
           priority?: string | null
           processed_at?: string | null
-          recipient_id: string
+          recipient_id?: string | null
+          recipient_phone?: string | null
           recipient_type: string
           related_entity_id?: string | null
           related_entity_type?: string | null
@@ -3935,7 +3943,8 @@ export type Database = {
           next_attempt_at?: string | null
           priority?: string | null
           processed_at?: string | null
-          recipient_id?: string
+          recipient_id?: string | null
+          recipient_phone?: string | null
           recipient_type?: string
           related_entity_id?: string | null
           related_entity_type?: string | null
@@ -6724,6 +6733,9 @@ export type Database = {
           original_program_end: string | null
           original_referrer_id: string | null
           parent_id: string | null
+          parent_renewal_check_sent_at: string | null
+          parent_renewal_decision: string | null
+          parent_renewal_decision_at: string | null
           pause_count: number | null
           pause_end_date: string | null
           pause_reason: string | null
@@ -6829,6 +6841,9 @@ export type Database = {
           original_program_end?: string | null
           original_referrer_id?: string | null
           parent_id?: string | null
+          parent_renewal_check_sent_at?: string | null
+          parent_renewal_decision?: string | null
+          parent_renewal_decision_at?: string | null
           pause_count?: number | null
           pause_end_date?: string | null
           pause_reason?: string | null
@@ -6934,6 +6949,9 @@ export type Database = {
           original_program_end?: string | null
           original_referrer_id?: string | null
           parent_id?: string | null
+          parent_renewal_check_sent_at?: string | null
+          parent_renewal_decision?: string | null
+          parent_renewal_decision_at?: string | null
           pause_count?: number | null
           pause_end_date?: string | null
           pause_reason?: string | null
@@ -11472,10 +11490,6 @@ export type Database = {
           coach_reminder_1h_sent_at: string | null
           coach_reminder_24h_sent: boolean | null
           coach_reminder_24h_sent_at: string | null
-          parent_reminder_1h_sent: boolean | null
-          parent_reminder_1h_sent_at: string | null
-          parent_reminder_24h_sent: boolean | null
-          parent_reminder_24h_sent_at: string | null
           coach_voice_note_path: string | null
           companion_panel_completed: boolean | null
           completed_at: string | null
@@ -11525,6 +11539,10 @@ export type Database = {
           parent_change_status: string | null
           parent_communication_needed: boolean | null
           parent_feedback: string | null
+          parent_reminder_1h_sent: boolean | null
+          parent_reminder_1h_sent_at: string | null
+          parent_reminder_24h_sent: boolean | null
+          parent_reminder_24h_sent_at: string | null
           parent_sees_progress: string | null
           parent_sentiment: string | null
           parent_summary: string | null
@@ -11613,10 +11631,6 @@ export type Database = {
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
-          parent_reminder_1h_sent?: boolean | null
-          parent_reminder_1h_sent_at?: string | null
-          parent_reminder_24h_sent?: boolean | null
-          parent_reminder_24h_sent_at?: string | null
           coach_voice_note_path?: string | null
           companion_panel_completed?: boolean | null
           completed_at?: string | null
@@ -11666,6 +11680,10 @@ export type Database = {
           parent_change_status?: string | null
           parent_communication_needed?: boolean | null
           parent_feedback?: string | null
+          parent_reminder_1h_sent?: boolean | null
+          parent_reminder_1h_sent_at?: string | null
+          parent_reminder_24h_sent?: boolean | null
+          parent_reminder_24h_sent_at?: string | null
           parent_sees_progress?: string | null
           parent_sentiment?: string | null
           parent_summary?: string | null
@@ -11754,10 +11772,6 @@ export type Database = {
           coach_reminder_1h_sent_at?: string | null
           coach_reminder_24h_sent?: boolean | null
           coach_reminder_24h_sent_at?: string | null
-          parent_reminder_1h_sent?: boolean | null
-          parent_reminder_1h_sent_at?: string | null
-          parent_reminder_24h_sent?: boolean | null
-          parent_reminder_24h_sent_at?: string | null
           coach_voice_note_path?: string | null
           companion_panel_completed?: boolean | null
           completed_at?: string | null
@@ -11807,6 +11821,10 @@ export type Database = {
           parent_change_status?: string | null
           parent_communication_needed?: boolean | null
           parent_feedback?: string | null
+          parent_reminder_1h_sent?: boolean | null
+          parent_reminder_1h_sent_at?: string | null
+          parent_reminder_24h_sent?: boolean | null
+          parent_reminder_24h_sent_at?: string | null
           parent_sees_progress?: string | null
           parent_sentiment?: string | null
           parent_summary?: string | null
@@ -15723,6 +15741,17 @@ export type Database = {
       }
       get_agreement_config: { Args: never; Returns: Json }
       get_agreement_config_by_category: { Args: { cat: string }; Returns: Json }
+      get_assignable_coaches: {
+        Args: { p_date?: string }
+        Returns: {
+          current_children: number
+          email: string
+          id: string
+          last_assigned_at: string
+          max_children: number
+          name: string
+        }[]
+      }
       get_auto_apply_coupon: {
         Args: { p_child_id: string }
         Returns: {
@@ -15753,17 +15782,6 @@ export type Database = {
           is_blocked: boolean
           slot_type: string
           start_time: string
-        }[]
-      }
-      get_coach_students_events: {
-        Args: { coach_uuid: string; event_limit?: number }
-        Returns: {
-          ai_summary: string
-          child_id: string
-          child_name: string
-          event_date: string
-          event_type: string
-          id: string
         }[]
       }
       get_completed_session_counts: {
@@ -16142,6 +16160,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

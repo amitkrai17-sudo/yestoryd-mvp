@@ -1714,7 +1714,6 @@ export type Database = {
           alumni_since: string | null
           assessment_completed_at: string | null
           assessment_wpm: number | null
-          assigned_coach_id: string | null
           assigned_to: string | null
           attendance_rate: number | null
           avatar_url: string | null
@@ -1814,7 +1813,6 @@ export type Database = {
           alumni_since?: string | null
           assessment_completed_at?: string | null
           assessment_wpm?: number | null
-          assigned_coach_id?: string | null
           assigned_to?: string | null
           attendance_rate?: number | null
           avatar_url?: string | null
@@ -1914,7 +1912,6 @@ export type Database = {
           alumni_since?: string | null
           assessment_completed_at?: string | null
           assessment_wpm?: number | null
-          assigned_coach_id?: string | null
           assigned_to?: string | null
           attendance_rate?: number | null
           avatar_url?: string | null
@@ -2013,34 +2010,6 @@ export type Database = {
             columns: ["age_band"]
             isOneToOne: false
             referencedRelation: "age_band_config"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_activity_summary"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_workload"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_with_groups"
             referencedColumns: ["id"]
           },
           {
@@ -15813,17 +15782,6 @@ export type Database = {
           is_blocked: boolean
           slot_type: string
           start_time: string
-        }[]
-      }
-      get_coach_students_events: {
-        Args: { coach_uuid: string; event_limit?: number }
-        Returns: {
-          ai_summary: string
-          child_id: string
-          child_name: string
-          event_date: string
-          event_type: string
-          id: string
         }[]
       }
       get_completed_session_counts: {

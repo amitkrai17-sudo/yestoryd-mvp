@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ab_test_events: {
@@ -1689,7 +1714,6 @@ export type Database = {
           alumni_since: string | null
           assessment_completed_at: string | null
           assessment_wpm: number | null
-          assigned_coach_id: string | null
           assigned_to: string | null
           attendance_rate: number | null
           avatar_url: string | null
@@ -1789,7 +1813,6 @@ export type Database = {
           alumni_since?: string | null
           assessment_completed_at?: string | null
           assessment_wpm?: number | null
-          assigned_coach_id?: string | null
           assigned_to?: string | null
           attendance_rate?: number | null
           avatar_url?: string | null
@@ -1889,7 +1912,6 @@ export type Database = {
           alumni_since?: string | null
           assessment_completed_at?: string | null
           assessment_wpm?: number | null
-          assigned_coach_id?: string | null
           assigned_to?: string | null
           attendance_rate?: number | null
           avatar_url?: string | null
@@ -1988,34 +2010,6 @@ export type Database = {
             columns: ["age_band"]
             isOneToOne: false
             referencedRelation: "age_band_config"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_activity_summary"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_workload"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "children_assigned_coach_id_fkey"
-            columns: ["assigned_coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_with_groups"
             referencedColumns: ["id"]
           },
           {
@@ -3426,6 +3420,8 @@ export type Database = {
           last_seen_at: string | null
           leaderboard_opt_out: boolean | null
           lifetime_earnings: number | null
+          manual_hold: boolean
+          manual_hold_reason: string | null
           max_children: number | null
           max_sessions_per_day: number | null
           max_students: number | null
@@ -3515,6 +3511,8 @@ export type Database = {
           last_seen_at?: string | null
           leaderboard_opt_out?: boolean | null
           lifetime_earnings?: number | null
+          manual_hold?: boolean
+          manual_hold_reason?: string | null
           max_children?: number | null
           max_sessions_per_day?: number | null
           max_students?: number | null
@@ -3604,6 +3602,8 @@ export type Database = {
           last_seen_at?: string | null
           leaderboard_opt_out?: boolean | null
           lifetime_earnings?: number | null
+          manual_hold?: boolean
+          manual_hold_reason?: string | null
           max_children?: number | null
           max_sessions_per_day?: number | null
           max_students?: number | null
@@ -15741,6 +15741,17 @@ export type Database = {
       }
       get_agreement_config: { Args: never; Returns: Json }
       get_agreement_config_by_category: { Args: { cat: string }; Returns: Json }
+      get_assignable_coaches: {
+        Args: { p_date?: string }
+        Returns: {
+          current_children: number
+          email: string
+          id: string
+          last_assigned_at: string
+          max_children: number
+          name: string
+        }[]
+      }
       get_auto_apply_coupon: {
         Args: { p_child_id: string }
         Returns: {
@@ -15771,17 +15782,6 @@ export type Database = {
           is_blocked: boolean
           slot_type: string
           start_time: string
-        }[]
-      }
-      get_coach_students_events: {
-        Args: { coach_uuid: string; event_limit?: number }
-        Returns: {
-          ai_summary: string
-          child_id: string
-          child_name: string
-          event_date: string
-          event_type: string
-          id: string
         }[]
       }
       get_completed_session_counts: {
@@ -16160,6 +16160,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
