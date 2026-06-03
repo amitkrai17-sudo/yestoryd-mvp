@@ -706,9 +706,10 @@ export async function POST(request: NextRequest) {
 
           // ═══════════════════════════════════════════════════════════════════════════
           // PARENT WHATSAPP - Assessment Results with "View report" URL button
-          // (WA-FLIP-ASSESSMENT: utility template, base https://yestoryd.com/ +
-          //  send-time tail = `parent/assessment/<childId>`; tail resolves via
-          //  app/parent/assessment/[childId]/route.ts → /parent/intelligence/<id>).
+          // (WA-FLIP-ASSESSMENT: utility template, Meta base now
+          //  https://www.yestoryd.com/assessment/results/{{1}} + send-time tail =
+          //  bare childId; destination = PUBLIC /assessment/results/<childId>
+          //  (not the /parent/intelligence redirect)).
           // Fire-and-forget.
           // ═══════════════════════════════════════════════════════════════════════════
           import('@/lib/communication/notify').then(({ sendNotification }) => {
@@ -726,7 +727,7 @@ export async function POST(request: NextRequest) {
                 triggeredBy: 'system',
                 contextType: 'assessment',
                 contextId: childId,
-                templateButtons: { category: 'utility_cta', url: `parent/assessment/${childId}` },
+                templateButtons: { category: 'utility_cta', url: childId },
               },
             ).then(result => {
               if (result.success) {
