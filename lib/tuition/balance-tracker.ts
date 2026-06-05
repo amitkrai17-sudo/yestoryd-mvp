@@ -16,6 +16,12 @@ interface DeductResult {
   newBalance: number;
   alertSent: 'none' | 'low_balance' | 'renewal' | 'paused';
   error?: string;
+  /**
+   * True when the deduct was a no-op because this session was already processed
+   * (ledger insert hit the partial unique index → PG 23505). Additive — existing
+   * callers ignore it. See deductTuitionBalance INSERT-FIRST guard (2B.1).
+   */
+  idempotentSkip?: boolean;
 }
 
 /**
@@ -56,7 +62,50 @@ export async function deductTuitionBalance(
     const previousBalance = enrollment.sessions_remaining || 0;
     const newBalance = previousBalance - sessionsDelivered;
 
-    // 2. Deduct balance (can go negative — draft mode)
+    // 2. INSERT-FIRST idempotency gate (2B.1). The ledger insert is keyed by
+    // session_id via the partial unique index uniq_tuition_ledger_deduct_session
+    // (session_id WHERE reason='session_completed'). It runs BEFORE the balance
+    // decrement so a repeated deduct for the same session is a no-op:
+    //   - PG 23505 (unique_violation) → already processed → SKIP decrement, return
+    //     idempotentSkip:true. Do NOT throw.
+    //   - any OTHER insert error → the ledger row is the gate, so the decrement
+    //     does NOT run (intended failure-semantics flip vs pre-2B.1: no decrement
+    //     without a committed ledger row).
+    //   - clean insert → proceed to decrement EXACTLY as today (negative-allowed).
+    const { error: ledgerError } = await supabase
+      .from('tuition_session_ledger')
+      .insert({
+        enrollment_id: enrollmentId,
+        change_amount: -sessionsDelivered,
+        balance_after: newBalance,
+        reason: 'session_completed',
+        session_id: sessionId,
+        created_by: coachEmail,
+      });
+
+    if (ledgerError) {
+      if (ledgerError.code === '23505') {
+        console.log(JSON.stringify({
+          requestId,
+          event: 'deduct_idempotent_skip',
+          enrollmentId,
+          sessionId,
+          previousBalance,
+        }));
+        return { deducted: false, newBalance: previousBalance, alertSent: 'none', idempotentSkip: true };
+      }
+      console.error(JSON.stringify({
+        requestId,
+        event: 'tuition_ledger_insert_error',
+        enrollmentId,
+        sessionId,
+        error: ledgerError.message,
+      }));
+      return { deducted: false, newBalance: previousBalance, alertSent: 'none', error: ledgerError.message };
+    }
+
+    // 3. Deduct balance (can go negative — draft mode). Runs ONLY after a clean
+    // ledger insert — the ledger row is the idempotency gate.
     await supabase
       .from('enrollments')
       .update({
@@ -64,16 +113,6 @@ export async function deductTuitionBalance(
         updated_at: new Date().toISOString(),
       })
       .eq('id', enrollmentId);
-
-    // 3. Ledger entry
-    await supabase.from('tuition_session_ledger').insert({
-      enrollment_id: enrollmentId,
-      change_amount: -sessionsDelivered,
-      balance_after: newBalance,
-      reason: 'session_completed',
-      session_id: sessionId,
-      created_by: coachEmail,
-    });
 
     console.log(JSON.stringify({
       requestId,
