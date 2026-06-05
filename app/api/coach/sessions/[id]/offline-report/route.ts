@@ -15,7 +15,7 @@ import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { qstash } from '@/lib/qstash';
 import { insertLearningEvent, insertLearningEventsBatch } from '@/lib/rai/learning-events';
 import { transcribeVoiceNote, analyzeChildReading } from '@/lib/gemini/audio-analysis';
-import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
+import { closeTuitionSession } from '@/lib/tuition/session-closure';
 import type { ReadingAnalysis } from '@/lib/gemini/audio-analysis';
 import crypto from 'crypto';
 
@@ -432,25 +432,31 @@ export async function POST(
     const endTime = new Date(body.actual_end_time);
     const elapsedSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
 
-    const { error: sessionUpdateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'completed',
+    // Option A (Phase 2A): closeTuitionSession owns the SINGLE combined status update.
+    // status + completed_at are written by the helper; every other path-specific field
+    // passes through extraSessionFields so the one atomic .update() is preserved verbatim.
+    await closeTuitionSession({
+      supabase,
+      sessionId,
+      session: {
+        enrollment_id: session.enrollment_id,
+        child_id: childId,
+        coach_id: session.coach_id,
+      },
+      requestId,
+      setStatus: true,
+      extraSessionFields: {
         companion_panel_completed: true,
         coach_notes: body.coach_notes || null,
         session_timer_seconds: elapsedSeconds > 0 ? elapsedSeconds : null,
         transcript_status: 'none',
         voice_note_transcript: voiceNoteTranscript,
-        completed_at: new Date().toISOString(),
         report_submitted_at: new Date().toISOString(),
         report_late: reportLate,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId);
-
-    if (sessionUpdateError) {
-      console.error(JSON.stringify({ requestId, event: 'session_update_error', error: sessionUpdateError.message }));
-    }
+      },
+      appUrl: APP_URL,
+    });
 
     // ============================================================
     // STEP H: Increment coach streak
@@ -496,21 +502,30 @@ export async function POST(
 
         if (enrollment?.enrollment_type === 'tuition') {
           const sessionsDelivered = body.sessions_delivered || 1;
-          const balanceResult = await deductTuitionBalance(
-            session.enrollment_id,
+          const { deductResult } = await closeTuitionSession({
+            supabase,
             sessionId,
-            sessionsDelivered,
-            auth.email || 'coach',
+            session: {
+              enrollment_id: session.enrollment_id,
+              child_id: childId,
+              coach_id: session.coach_id,
+            },
             requestId,
-          );
+            setStatus: false,
+            deductBalance: true,
+            sessionsDelivered,
+            deductActor: auth.email || 'coach',
+            deductRequestId: requestId,
+            appUrl: APP_URL,
+          });
 
           console.log(JSON.stringify({
             requestId,
             event: 'tuition_balance_updated',
             sessionId,
             sessionsDelivered,
-            newBalance: balanceResult.newBalance,
-            alertSent: balanceResult.alertSent,
+            newBalance: deductResult?.newBalance,
+            alertSent: deductResult?.alertSent,
           }));
         }
       } catch (tuitionErr: unknown) {
@@ -525,40 +540,33 @@ export async function POST(
     // Mirrors activity-log route step 8
     // ============================================================
 
-    try {
-      if (qstash) {
-        const queueResult = await qstash.publishJSON({
-          url: `${APP_URL}/api/coach/sessions/${sessionId}/parent-summary`,
-          body: {
-            sessionId,
-            childId,
-            requestId,
-            // Extra offline context for the parent-summary route
-            offlineContext: {
-              session_mode: 'offline',
-              voice_note_transcript: voiceNoteTranscript,
-              reading_clip_analysis: readingAnalysis,
-              confidence_level: confidenceTag,
-              words_struggled: body.words_struggled || [],
-              words_mastered: body.words_mastered || [],
-            },
-          },
-          retries: 3,
-          delay: 5,
-        });
-
-        console.log(JSON.stringify({
-          requestId,
-          event: 'parent_summary_queued',
-          messageId: queueResult.messageId,
-        }));
-      } else {
-        console.log(JSON.stringify({ requestId, event: 'parent_summary_skipped', reason: 'QStash not configured' }));
-      }
-    } catch (queueError: unknown) {
-      const msg = queueError instanceof Error ? queueError.message : 'Unknown error';
-      console.error(JSON.stringify({ requestId, event: 'parent_summary_queue_error', error: msg }));
-    }
+    // Parent-summary dispatch routes through the SSOT helper. Gate stays qstash-only
+    // (NOT tuition-gated) — dispatchSummary:true so a non-tuition offline session still
+    // dispatches exactly as today; the helper's internal `if (qstash)` is the live gate.
+    await closeTuitionSession({
+      supabase,
+      sessionId,
+      session: {
+        enrollment_id: session.enrollment_id,
+        child_id: childId,
+        coach_id: session.coach_id,
+      },
+      requestId,
+      setStatus: false,
+      dispatchSummary: true,
+      summaryExtraBody: {
+        // Extra offline context for the parent-summary route
+        offlineContext: {
+          session_mode: 'offline',
+          voice_note_transcript: voiceNoteTranscript,
+          reading_clip_analysis: readingAnalysis,
+          confidence_level: confidenceTag,
+          words_struggled: body.words_struggled || [],
+          words_mastered: body.words_mastered || [],
+        },
+      },
+      appUrl: APP_URL,
+    });
 
     // ============================================================
     // Final response

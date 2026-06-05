@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrCoach, getServiceSupabase } from '@/lib/api-auth';
 import { qstash } from '@/lib/qstash';
 import crypto from 'crypto';
-import { deductTuitionBalance } from '@/lib/tuition/balance-tracker';
+import { closeTuitionSession } from '@/lib/tuition/session-closure';
 import { insertLearningEvent, insertLearningEventsBatch } from '@/lib/rai/learning-events';
 
 export const dynamic = 'force-dynamic';
@@ -244,23 +244,28 @@ export async function POST(
       // No bot attached — that's fine
     }
 
-    const { error: sessionUpdateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'completed',
+    // Option A (Phase 2A): closeTuitionSession owns the SINGLE combined status update.
+    // status + completed_at are written by the helper; the other path-specific fields pass
+    // through extraSessionFields so the one atomic .update() is preserved verbatim.
+    await closeTuitionSession({
+      supabase,
+      sessionId,
+      session: {
+        enrollment_id: session.enrollment_id,
+        child_id: session.child_id,
+        coach_id: session.coach_id,
+      },
+      requestId,
+      setStatus: true,
+      extraSessionFields: {
         companion_panel_completed: true,
         coach_notes: coach_notes || null,
         session_timer_seconds: session_elapsed_seconds || null,
         transcript_status: transcriptStatus,
-        completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId);
-
-    if (sessionUpdateError) {
-      console.error(JSON.stringify({ requestId, event: 'session_update_error', error: sessionUpdateError.message }));
-      // Non-fatal — activity logs already saved
-    }
+      },
+      appUrl: APP_URL,
+    });
 
     // 6. Increment coach.completed_sessions_with_logs
     try {
@@ -399,32 +404,23 @@ export async function POST(
       // Non-fatal — don't block activity log save
     }
 
-    // 8. Queue parent summary generation (via QStash → parent-summary endpoint)
-    try {
-      if (qstash) {
-        const queueResult = await qstash.publishJSON({
-          url: `${APP_URL}/api/coach/sessions/${sessionId}/parent-summary`,
-          body: {
-            sessionId,
-            childId: session.child_id,
-            requestId,
-          },
-          retries: 3,
-          delay: 5, // 5 second delay to let activity logs settle
-        });
-
-        console.log(JSON.stringify({
-          requestId,
-          event: 'parent_summary_queued',
-          messageId: queueResult.messageId,
-        }));
-      } else {
-        console.log(JSON.stringify({ requestId, event: 'parent_summary_skipped', reason: 'QStash not configured' }));
-      }
-    } catch (queueError: any) {
-      console.error(JSON.stringify({ requestId, event: 'parent_summary_queue_error', error: queueError.message }));
-      // Non-fatal — parent summary is a nice-to-have
-    }
+    // 8. Queue parent summary generation via the SSOT helper (QStash → parent-summary).
+    // 2B: normalize side-effect order across completion paths
+    // Gate stays qstash-only (NOT tuition-gated); kept BEFORE the deduct call below to
+    // preserve activity-log's current summary→deduct order (LOCK 3 / R9c).
+    await closeTuitionSession({
+      supabase,
+      sessionId,
+      session: {
+        enrollment_id: session.enrollment_id,
+        child_id: session.child_id,
+        coach_id: session.coach_id,
+      },
+      requestId,
+      setStatus: false,
+      dispatchSummary: true,
+      appUrl: APP_URL,
+    });
 
     console.log(JSON.stringify({
       requestId,
@@ -448,13 +444,22 @@ export async function POST(
 
         if (enrollment?.enrollment_type === 'tuition') {
           const sessionsDelivered = body.sessions_delivered || 1;
-          await deductTuitionBalance(
-            session.enrollment_id,
+          await closeTuitionSession({
+            supabase,
             sessionId,
-            sessionsDelivered,
-            auth.email || 'coach',
+            session: {
+              enrollment_id: session.enrollment_id,
+              child_id: session.child_id,
+              coach_id: session.coach_id,
+            },
             requestId,
-          );
+            setStatus: false,
+            deductBalance: true,
+            sessionsDelivered,
+            deductActor: auth.email || 'coach',
+            deductRequestId: requestId,
+            appUrl: APP_URL,
+          });
         }
       } catch (tuitionErr: any) {
         console.error(JSON.stringify({ requestId, event: 'tuition_balance_error', error: tuitionErr.message }));
