@@ -81,6 +81,8 @@ export interface DispatchPayload {
 
   // session.cancel / no_show
   cancelledBy?: string;
+  // 2B.3 fault axis written atomically with status='cancelled' (cancel-session.ts)
+  disposition?: string;
 
   // Generic
   requestId?: string;
@@ -398,7 +400,8 @@ async function dispatchInternal(
         const result = await cancelSession(
           payload.sessionId,
           payload.reason || 'Cancelled',
-          payload.cancelledBy || 'system'
+          payload.cancelledBy || 'system',
+          payload.disposition
         );
 
         return {

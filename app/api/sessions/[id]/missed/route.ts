@@ -11,10 +11,12 @@ import { dispatch } from '@/lib/scheduling/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { insertLearningEvent } from '@/lib/rai/learning-events';
 import { sendNotification } from '@/lib/communication/notify';
+import { closeTuitionSession } from '@/lib/tuition/session-closure';
 
 export const dynamic = 'force-dynamic';
 
 const VALID_PREVIOUS_STATUSES = ['scheduled', 'pending'];
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
 export async function POST(
   request: NextRequest,
@@ -55,7 +57,7 @@ export async function POST(
     const { data: session, error: sessionError } = await supabase
       .from('scheduled_sessions')
       .select(`
-        id, child_id, session_number, status, coach_id, scheduled_date,
+        id, child_id, session_number, status, coach_id, enrollment_id, scheduled_date,
         coaches (name),
         children (child_name, name, parent_phone)
       `)
@@ -92,19 +94,69 @@ export async function POST(
       );
     }
 
-    // Update session status
-    const { error: updateError } = await supabase
-      .from('scheduled_sessions')
-      .update({
-        status: 'missed',
-        coach_notes: reason ? `Missed - Reason: ${reason}` : 'Marked as missed by coach',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId);
+    const coachNotes = reason ? `Missed - Reason: ${reason}` : 'Marked as missed by coach';
 
-    if (updateError) {
-      console.error('[sessions-missed] Update failed:', updateError.message);
-      return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
+    // 2B.3 disposition: for TUITION, marking missed = parent_no_show — the coach showed
+    // up and waited, so deduct 1 + pay the coach + NO summary. Route the status +
+    // disposition + deduct + payout through the SSOT helper (helper OWNS the status write
+    // for tuition, so the direct status update below is NOT run — status is written once).
+    // Coaching (or no enrollment) is byte-identical to before: direct status='missed' write,
+    // no deduct/pay/disposition. The no-show counter (dispatch) + notify below are UNCHANGED
+    // for both paths and fire exactly once.
+    let isTuition = false;
+    const enrollmentId = session.enrollment_id ?? null;
+    if (enrollmentId) {
+      const { data: enr } = await supabase
+        .from('enrollments')
+        .select('enrollment_type')
+        .eq('id', enrollmentId)
+        .single();
+      isTuition = enr?.enrollment_type === 'tuition';
+    }
+
+    if (isTuition) {
+      const closeResult = await closeTuitionSession({
+        supabase,
+        sessionId,
+        session: {
+          enrollment_id: enrollmentId,
+          child_id: session.child_id,
+          coach_id: session.coach_id,
+          session_type: 'tuition',
+        },
+        requestId: randomUUID(),
+        setStatus: true,
+        status: 'missed',
+        disposition: 'parent_no_show',
+        extraSessionFields: { coach_notes: coachNotes, updated_at: new Date().toISOString() },
+        deductBalance: true,
+        insertPayout: true,
+        dispatchSummary: false,
+        sessionsDelivered: 1,
+        deductActor: auth.email,
+        appUrl: APP_URL,
+      });
+      // Idempotency: a re-POST to the same session is gated above by VALID_PREVIOUS_STATUSES
+      // (status must be scheduled/pending). If one ever reaches here, the 2B.1 ledger guard
+      // (session_id unique) makes the deduct an idempotent no-op — no double-deduct.
+      if (closeResult.sessionUpdateError) {
+        console.error('[sessions-missed] Tuition close (status write) failed:', closeResult.sessionUpdateError);
+        return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
+      }
+    } else {
+      const { error: updateError } = await supabase
+        .from('scheduled_sessions')
+        .update({
+          status: 'missed',
+          coach_notes: coachNotes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId);
+
+      if (updateError) {
+        console.error('[sessions-missed] Update failed:', updateError.message);
+        return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
+      }
     }
 
     // Create learning event

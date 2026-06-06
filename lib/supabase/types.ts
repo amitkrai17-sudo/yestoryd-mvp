@@ -11499,6 +11499,7 @@ export type Database = {
           concerns_raised: string[] | null
           confidence_level: number | null
           created_at: string | null
+          disposition: string | null
           duration_minutes: number
           duration_seconds: number | null
           engagement_level: number | null
@@ -11640,6 +11641,7 @@ export type Database = {
           concerns_raised?: string[] | null
           confidence_level?: number | null
           created_at?: string | null
+          disposition?: string | null
           duration_minutes: number
           duration_seconds?: number | null
           engagement_level?: number | null
@@ -11781,6 +11783,7 @@ export type Database = {
           concerns_raised?: string[] | null
           confidence_level?: number | null
           created_at?: string | null
+          disposition?: string | null
           duration_minutes?: number
           duration_seconds?: number | null
           engagement_level?: number | null

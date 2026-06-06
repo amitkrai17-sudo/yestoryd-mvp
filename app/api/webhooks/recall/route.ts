@@ -368,6 +368,18 @@ async function updateSessionStatus(
     updateData.completed_at = new Date().toISOString();
   }
 
+  // 2B.3 fault axis: unify disposition with the no-show status (coaching / recall path),
+  // written in this SAME atomic update. status 'no_show' → 'parent_no_show', 'coach_no_show'
+  // → 'coach_no_show'. NO deduct/pay here — recall sessions do not traverse the tuition close
+  // path. Respects an explicit caller-provided disposition (additionalData) if present.
+  if (updateData.disposition === undefined) {
+    if (status === 'no_show') {
+      updateData.disposition = 'parent_no_show';
+    } else if (status === 'coach_no_show') {
+      updateData.disposition = 'coach_no_show';
+    }
+  }
+
   await supabase
     .from('scheduled_sessions')
     .update(updateData)

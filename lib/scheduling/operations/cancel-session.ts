@@ -15,7 +15,10 @@ const logger = createLogger('session-manager');
 export async function cancelSession(
   sessionId: string,
   reason: string,
-  cancelledBy: string = 'system'
+  cancelledBy: string = 'system',
+  // 2B.3 fault axis — merged into the SAME atomic status update below. Optional:
+  // undefined → key omitted → byte-equivalent for existing callers (e.g. cancel-request).
+  disposition?: string,
 ): Promise<SessionResult> {
   const supabase = getSupabase();
 
@@ -64,6 +67,7 @@ export async function cancelSession(
         status: 'cancelled',
         coach_notes: `Cancelled by ${cancelledBy}: ${reason}`,
         updated_at: new Date().toISOString(),
+        ...(disposition ? { disposition } : {}),
       })
       .eq('id', sessionId);
 

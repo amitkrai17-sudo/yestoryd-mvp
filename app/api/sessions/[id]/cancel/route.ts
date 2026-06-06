@@ -43,6 +43,13 @@ export async function POST(
       return NextResponse.json({ error: 'Reason is required' }, { status: 400 });
     }
 
+    // 2B.3 disposition (fault axis). A coach-initiated cancel = coach_cancelled. The cancel
+    // UI does not yet capture a "coach didn't show" signal, so coach_no_show cannot be
+    // distinguished here without inventing a flag the client can't supply. No balance touch
+    // (correct — tuition never deducts pre-completion, nothing to restore).
+    // 2B.6: distinguish coach_no_show once the cancel UI captures it.
+    const disposition = 'coach_cancelled';
+
     const supabase = createAdminClient();
 
     // Validate session exists and coach owns it
@@ -93,6 +100,7 @@ export async function POST(
         sessionId,
         reason,
         cancelledBy,
+        disposition,
         requestId: randomUUID(),
       });
     } catch (orchError) {
@@ -107,6 +115,7 @@ export async function POST(
           status: 'cancelled',
           coach_notes: `Cancelled by ${cancelledBy}: ${reason}`,
           updated_at: new Date().toISOString(),
+          disposition,
         })
         .eq('id', sessionId);
 

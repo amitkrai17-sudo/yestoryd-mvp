@@ -65,6 +65,21 @@ export interface CloseTuitionSessionOptions {
    */
   setStatus?: boolean;
 
+  /**
+   * Terminal status written by op (1) when setStatus=true. Default 'completed' — byte-equivalent
+   * to pre-2B.3 (status was hardcoded 'completed'). 2B.3 matrix passes 'missed' (parent_no_show)
+   * or 'cancelled' (coach_no_show / coach_cancelled). Does NOT auto-imply any side effect — the
+   * deduct/pay/summary booleans below still gate independently at the call site.
+   */
+  status?: string;
+  /**
+   * Canonical fault axis (scheduled_sessions.disposition), merged into the SAME atomic update.
+   * Default null → not written (byte-equivalent for existing callers). Matrix values:
+   * 'delivered' | 'parent_no_show' | 'coach_no_show' | 'coach_cancelled'. Records WHO, never a
+   * side effect — balance moves via the ledger, no-show counters via orchestrator dispatch.
+   */
+  disposition?: string | null;
+
   /** Write completed_at alongside status. Default true (every path does this today). */
   setCompletedAt?: boolean;
   /**
@@ -127,6 +142,8 @@ export async function closeTuitionSession(
     session,
     requestId,
     setStatus = true,
+    status = 'completed',
+    disposition = null,
     setCompletedAt = true,
     extraSessionFields = {},
     deductBalance = false,
@@ -146,8 +163,12 @@ export async function closeTuitionSession(
   // sessionUpdateError stays null and completed stays false in that case — caller owns status.
   if (setStatus) {
     const sessionUpdate: ScheduledSessionUpdate = {
-      status: 'completed',
-      ...(setCompletedAt ? { completed_at: new Date().toISOString() } : {}),
+      status,
+      // completed_at stamped ONLY on a 'completed' close — a 'missed' / 'cancelled' close must
+      // NOT stamp it. Default status='completed' → byte-equivalent to pre-2B.3 for all callers.
+      ...(status === 'completed' && setCompletedAt ? { completed_at: new Date().toISOString() } : {}),
+      // disposition merged when set; null default omits the key (byte-equivalent for existing callers).
+      ...(disposition !== null ? { disposition } : {}),
       ...extraSessionFields,
     };
     const { error: sessionUpdateError } = await supabase

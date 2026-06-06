@@ -6,6 +6,12 @@
 // (zero behavior change): per-option-flag gating, single-atomic-update,
 // arg passthrough, payout idempotency, summary-body merge, and op order.
 //
+// 2B.3: adds status (default 'completed') + disposition (default null) params.
+// Asserts byte-equivalence of existing callers (default args), completed_at gated
+// to status==='completed', disposition merged into the SAME atomic update, and the
+// four matrix combos (delivered / parent_no_show / coach_no_show / coach_cancelled).
+// disposition does NOT auto-imply side effects — the booleans still gate.
+//
 // Boundary mocks: deductTuitionBalance, qstash, payout-config. supabase is
 // passed in via opts, so it is a per-test stub (not a module mock).
 // =============================================================================
@@ -238,5 +244,120 @@ describe('closeTuitionSession() — option-flag matrix', () => {
     expect(res.completed).toBe(true);
     expect(res.sessionUpdateError).toBeNull();
     expect(res.deductResult).toMatchObject({ newBalance: 5, alertSent: 'none' });
+  });
+});
+
+describe('closeTuitionSession() — 2B.3 status + disposition', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    harness.callOrder = [];
+    harness.deductArgs = [];
+    harness.publishCalls = [];
+    harness.tuitionRows = [{ session_rate: 50000, session_duration_minutes: 60, child_name: 'Test Child' }];
+    harness.existingPayout = [];
+    harness.updateCalls = [];
+    harness.insertCalls = [];
+    harness.updateError = null;
+  });
+
+  const ssUpd = () => harness.updateCalls.filter(u => u.table === 'scheduled_sessions')[0].obj;
+  const payouts = () => harness.insertCalls.filter(i => i.table === 'coach_payouts');
+
+  // ── byte-equivalence: default args reproduce pre-2B.3 ──
+  it('DEFAULT (no status/disposition args) → status completed, completed_at stamped, NO disposition key', async () => {
+    await closeTuitionSession(baseOpts({ setStatus: true }));
+    const obj = ssUpd();
+    expect(obj.status).toBe('completed');
+    expect(typeof obj.completed_at).toBe('string');
+    expect('disposition' in obj).toBe(false); // null default omits key — byte-equivalent
+  });
+
+  // ── status='missed'/'cancelled' → no completed_at ──
+  it("status:'missed' → status written, completed_at NOT stamped, disposition written", async () => {
+    await closeTuitionSession(baseOpts({ setStatus: true, status: 'missed', disposition: 'parent_no_show' }));
+    const obj = ssUpd();
+    expect(obj.status).toBe('missed');
+    expect('completed_at' in obj).toBe(false);
+    expect(obj.disposition).toBe('parent_no_show');
+  });
+
+  it("status:'cancelled' → status written, completed_at NOT stamped, disposition written", async () => {
+    await closeTuitionSession(baseOpts({ setStatus: true, status: 'cancelled', disposition: 'coach_cancelled' }));
+    const obj = ssUpd();
+    expect(obj.status).toBe('cancelled');
+    expect('completed_at' in obj).toBe(false);
+    expect(obj.disposition).toBe('coach_cancelled');
+  });
+
+  // ── disposition merge + single atomic update ──
+  it('disposition lands in the SAME atomic update as status (single update)', async () => {
+    await closeTuitionSession(baseOpts({ setStatus: true, status: 'completed', disposition: 'delivered' }));
+    const ssUpdates = harness.updateCalls.filter(u => u.table === 'scheduled_sessions');
+    expect(ssUpdates).toHaveLength(1);
+    expect(ssUpdates[0].obj.disposition).toBe('delivered');
+  });
+
+  // ── disposition does NOT auto-imply side effects ──
+  it('disposition alone does NOT trigger deduct/pay/summary (booleans still gate)', async () => {
+    await closeTuitionSession(baseOpts({ setStatus: true, status: 'missed', disposition: 'parent_no_show' }));
+    expect(harness.deductArgs).toHaveLength(0);
+    expect(payouts()).toHaveLength(0);
+    expect(harness.publishCalls).toHaveLength(0);
+  });
+
+  // ── matrix combos ──
+  it('MATRIX delivered → deduct+pay+summary, status completed, disposition delivered, completed_at stamped', async () => {
+    await closeTuitionSession(baseOpts({
+      setStatus: true, status: 'completed', disposition: 'delivered',
+      deductBalance: true, insertPayout: true, dispatchSummary: true,
+    }));
+    const obj = ssUpd();
+    expect(obj.status).toBe('completed');
+    expect(obj.disposition).toBe('delivered');
+    expect(typeof obj.completed_at).toBe('string');
+    expect(harness.deductArgs).toHaveLength(1);
+    expect(payouts()).toHaveLength(1);
+    expect(harness.publishCalls).toHaveLength(1);
+  });
+
+  it('MATRIX parent_no_show → deduct+pay, NO summary, status missed, disposition parent_no_show, no completed_at', async () => {
+    await closeTuitionSession(baseOpts({
+      setStatus: true, status: 'missed', disposition: 'parent_no_show',
+      deductBalance: true, insertPayout: true, dispatchSummary: false,
+    }));
+    const obj = ssUpd();
+    expect(obj.status).toBe('missed');
+    expect(obj.disposition).toBe('parent_no_show');
+    expect('completed_at' in obj).toBe(false);
+    expect(harness.deductArgs).toHaveLength(1);
+    expect(payouts()).toHaveLength(1);
+    expect(harness.publishCalls).toHaveLength(0);
+  });
+
+  it('MATRIX coach_cancelled → NO deduct/pay/summary, status cancelled, disposition coach_cancelled', async () => {
+    await closeTuitionSession(baseOpts({
+      setStatus: true, status: 'cancelled', disposition: 'coach_cancelled',
+      deductBalance: false, insertPayout: false, dispatchSummary: false,
+    }));
+    const obj = ssUpd();
+    expect(obj.status).toBe('cancelled');
+    expect(obj.disposition).toBe('coach_cancelled');
+    expect('completed_at' in obj).toBe(false);
+    expect(harness.deductArgs).toHaveLength(0);
+    expect(payouts()).toHaveLength(0);
+    expect(harness.publishCalls).toHaveLength(0);
+  });
+
+  it('MATRIX coach_no_show → NO deduct/pay/summary, status cancelled, disposition coach_no_show', async () => {
+    await closeTuitionSession(baseOpts({
+      setStatus: true, status: 'cancelled', disposition: 'coach_no_show',
+      deductBalance: false, insertPayout: false, dispatchSummary: false,
+    }));
+    const obj = ssUpd();
+    expect(obj.status).toBe('cancelled');
+    expect(obj.disposition).toBe('coach_no_show');
+    expect(harness.deductArgs).toHaveLength(0);
+    expect(payouts()).toHaveLength(0);
+    expect(harness.publishCalls).toHaveLength(0);
   });
 });
