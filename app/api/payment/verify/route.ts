@@ -278,53 +278,52 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Revenue split — internal coach path (Rucha)
-      try {
-        const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
-        await calculateRevenueSplit(
-          tuitionEnrollmentId, verifiedAmount, coach, 'yestoryd', null,
-          tuitionEnrollment.child_id || '', body.childName, requestId, 1,
-        );
-      } catch (revErr: unknown) {
-        console.error(JSON.stringify({ requestId, event: 'tuition_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
+      // Revenue split — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1). enrollment_revenue is
+      // the activation terms-snapshot (one row per enrollment, unique on enrollment_id);
+      // a renewal/top-up never changes grandfather-frozen terms, so it is written once.
+      // Per-class coach revenue is realized in coach_payouts at delivery. Skipping on
+      // renewal avoids double-counting AND the duplicate-key collision. Do NOT upsert.
+      if (isFirstPayment) {
+        try {
+          const coach = await getCoach(tuitionEnrollment.coach_id || null, requestId);
+          await calculateRevenueSplit(
+            tuitionEnrollmentId, verifiedAmount, coach, 'yestoryd', null,
+            tuitionEnrollment.child_id || '', body.childName, requestId, 1,
+          );
+        } catch (revErr: unknown) {
+          console.error(JSON.stringify({ requestId, event: 'tuition_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
+        }
       }
 
-      // Auto-schedule tuition sessions
+      // Auto-schedule tuition sessions — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1).
+      // Renewals/top-ups must NOT re-run full-pack scheduling: the scheduler schedules
+      // (sessions_remaining - unfinished_scheduled), which on a top-up re-creates the
+      // already-delivered pack as back-dated sessions. Balance is credited via
+      // addTuitionBalance above; the coach schedules extra sessions via /api/tuition/schedule.
       let tuitionSessionsCreated = 0;
-      try {
-        // For renewals, schedule after last existing session
-        let startAfter: string | undefined;
-        if (!isFirstPayment) {
-          const { data: lastSession } = await supabase
-            .from('scheduled_sessions')
-            .select('scheduled_date')
-            .eq('enrollment_id', tuitionEnrollmentId)
-            .order('scheduled_date', { ascending: false })
-            .limit(1)
-            .single();
-          startAfter = lastSession?.scheduled_date || undefined;
+      if (isFirstPayment) {
+        try {
+          const schedResult = await scheduleTuitionSessions(
+            tuitionEnrollmentId, undefined, supabase as any
+          );
+          tuitionSessionsCreated = schedResult.sessionsCreated;
+
+          console.log(JSON.stringify({
+            requestId,
+            event: 'tuition_sessions_auto_scheduled',
+            enrollmentId: tuitionEnrollmentId,
+            sessionsCreated: schedResult.sessionsCreated,
+            isFirstPayment,
+            errors: schedResult.errors,
+          }));
+        } catch (schedErr: unknown) {
+          console.error(JSON.stringify({
+            requestId,
+            event: 'tuition_auto_schedule_error',
+            error: schedErr instanceof Error ? schedErr.message : String(schedErr),
+          }));
+          // Non-fatal: coach can manually schedule as fallback
         }
-
-        const schedResult = await scheduleTuitionSessions(
-          tuitionEnrollmentId, startAfter, supabase as any
-        );
-        tuitionSessionsCreated = schedResult.sessionsCreated;
-
-        console.log(JSON.stringify({
-          requestId,
-          event: 'tuition_sessions_auto_scheduled',
-          enrollmentId: tuitionEnrollmentId,
-          sessionsCreated: schedResult.sessionsCreated,
-          isFirstPayment,
-          errors: schedResult.errors,
-        }));
-      } catch (schedErr: unknown) {
-        console.error(JSON.stringify({
-          requestId,
-          event: 'tuition_auto_schedule_error',
-          error: schedErr instanceof Error ? schedErr.message : String(schedErr),
-        }));
-        // Non-fatal: coach can manually schedule as fallback
       }
 
       // Queue enrollment-complete for calendar scheduling (all payments — new sessions need Calendar events)

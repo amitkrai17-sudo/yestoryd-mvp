@@ -150,44 +150,47 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
     }
   }
 
-  // 7. Revenue split
-  try {
-    const coach = await getCoach(enrollment.coach_id || null, requestId);
-    await calculateRevenueSplit(
-      body.enrollment_id, body.amount, coach, 'yestoryd', null,
-      enrollment.child_id || '', childName, requestId, 1,
-    );
-  } catch (revErr: unknown) {
-    console.error(JSON.stringify({ requestId, event: 'offline_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
+  // 7. Revenue split — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1).
+  // enrollment_revenue is the activation terms-snapshot (one row per enrollment,
+  // unique on enrollment_id). Grandfather-frozen rates mean a top-up never changes
+  // terms, so it is written once at activation. Per-class coach revenue is realized
+  // in coach_payouts at delivery (fires for every session incl. top-ups) — that is
+  // the SSOT for earnings. Skipping on top-up avoids double-counting AND the
+  // duplicate-key collision (enrollment_revenue_enrollment_id_key). Do NOT upsert.
+  if (isFirstPayment) {
+    try {
+      const coach = await getCoach(enrollment.coach_id || null, requestId);
+      await calculateRevenueSplit(
+        body.enrollment_id, body.amount, coach, 'yestoryd', null,
+        enrollment.child_id || '', childName, requestId, 1,
+      );
+    } catch (revErr: unknown) {
+      console.error(JSON.stringify({ requestId, event: 'offline_revenue_error', error: revErr instanceof Error ? revErr.message : String(revErr) }));
+    }
   }
 
-  // 7b. Auto-schedule tuition sessions
-  try {
-    let startAfter: string | undefined;
-    if (!isFirstPayment) {
-      const { data: lastSession } = await supabase
-        .from('scheduled_sessions')
-        .select('scheduled_date')
-        .eq('enrollment_id', body.enrollment_id)
-        .order('scheduled_date', { ascending: false })
-        .limit(1)
-        .single();
-      startAfter = lastSession?.scheduled_date || undefined;
+  // 7b. Auto-schedule tuition sessions — INITIAL ACTIVATION ONLY (OFFLINE-PAY.1).
+  // Top-ups must NOT re-run full-pack scheduling: scheduleTuitionSessions schedules
+  // (sessions_remaining - unfinished_scheduled), which on a top-up re-creates the
+  // already-delivered pack as back-dated sessions. Balance is credited via
+  // addTuitionBalance('top_up') above; the coach schedules the extra sessions
+  // through the /api/tuition/schedule flow.
+  if (isFirstPayment) {
+    try {
+      const schedResult = await scheduleTuitionSessions(
+        body.enrollment_id, undefined, supabase as any
+      );
+      console.log(JSON.stringify({
+        requestId, event: 'offline_tuition_sessions_scheduled',
+        sessionsCreated: schedResult.sessionsCreated,
+        errors: schedResult.errors,
+      }));
+    } catch (schedErr: unknown) {
+      console.error(JSON.stringify({
+        requestId, event: 'offline_tuition_schedule_error',
+        error: schedErr instanceof Error ? schedErr.message : String(schedErr),
+      }));
     }
-
-    const schedResult = await scheduleTuitionSessions(
-      body.enrollment_id, startAfter, supabase as any
-    );
-    console.log(JSON.stringify({
-      requestId, event: 'offline_tuition_sessions_scheduled',
-      sessionsCreated: schedResult.sessionsCreated,
-      errors: schedResult.errors,
-    }));
-  } catch (schedErr: unknown) {
-    console.error(JSON.stringify({
-      requestId, event: 'offline_tuition_schedule_error',
-      error: schedErr instanceof Error ? schedErr.message : String(schedErr),
-    }));
   }
 
   // 7c. Queue enrollment-complete for calendar scheduling
