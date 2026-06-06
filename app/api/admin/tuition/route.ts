@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/lib/api/with-api-handler';
+import { last10Digits, type LastWa } from '@/lib/tuition/admin-list-enrichment';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,8 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
       status, admin_filled_at, parent_form_completed_at,
       created_at, updated_at
     `)
+    // UI-1.2: soft-dismissed records vanish from the board but persist in DB.
+    .neq('status', 'archived')
     .order('created_at', { ascending: false });
 
   if (onboardErr) {
@@ -69,12 +72,49 @@ export const GET = withApiHandler(async (_req, { supabase, requestId }) => {
     }
   }
 
-  // 4. Merge results
+  // 4. Read-only enrichments (UI-1.1b): ONE STABLE RPC does both aggregations,
+  //    normalizing phones in SQL so malformed stored formats (e.g.
+  //    '91+919920828303') match — the prior JS candidate-set pre-filter dropped
+  //    those rows before normalization. See migration get_admin_tuition_enrichments.
+  const parentPhones = (onboardings || [])
+    .map(o => o.parent_phone)
+    .filter((p): p is string => !!p);
+
+  const lifetimeMap: Record<string, number> = {};
+  const lastWaByKey: Record<string, LastWa> = {};
+
+  if (enrollmentIds.length > 0 || parentPhones.length > 0) {
+    const { data: enrichRows, error: enrichErr } = await supabase.rpc('get_admin_tuition_enrichments', {
+      p_enrollment_ids: enrollmentIds,
+      p_phones: parentPhones,
+    });
+    if (enrichErr) {
+      // Non-fatal: enrichment is additive — log and serve rows without it.
+      console.error(JSON.stringify({ requestId, event: 'tuition_enrichment_error', error: enrichErr.message }));
+    }
+    for (const row of enrichRows || []) {
+      if (row.enrollment_id) {
+        lifetimeMap[row.enrollment_id] = row.lifetime_credited ?? 0;
+      } else if (row.match_last10) {
+        lastWaByKey[row.match_last10] = {
+          template_code: row.template_code ?? '',
+          sent_at: row.sent_at ?? null,
+          wa_sent: row.wa_sent ?? false,
+          error_message: row.error_message ?? null,
+          channel: row.channel ?? null,
+        };
+      }
+    }
+  }
+
+  // 5. Merge results (existing fields unchanged; lifetime_credited + last_wa additive)
   const results = (onboardings || []).map(o => ({
     ...o,
     coach_name: coachMap[o.coach_id] || null,
     enrollment_status: o.enrollment_id ? enrollmentMap[o.enrollment_id]?.status ?? null : null,
     enrollment_sessions_remaining: o.enrollment_id ? enrollmentMap[o.enrollment_id]?.sessions_remaining ?? null : null,
+    lifetime_credited: o.enrollment_id ? (lifetimeMap[o.enrollment_id] ?? 0) : null,
+    last_wa: lastWaByKey[last10Digits(o.parent_phone)] ?? null,
   }));
 
   return NextResponse.json({ onboardings: results, total: results.length });

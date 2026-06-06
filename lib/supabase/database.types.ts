@@ -15730,6 +15730,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_admin_tuition_enrichments: {
+        Args: { p_enrollment_ids: string[]; p_phones: string[] }
+        Returns: {
+          enrollment_id: string | null
+          lifetime_credited: number | null
+          match_last10: string | null
+          template_code: string | null
+          sent_at: string | null
+          wa_sent: boolean | null
+          error_message: string | null
+          channel: string | null
+        }[]
+      }
       get_age_band_config: {
         Args: { child_age: number }
         Returns: {
