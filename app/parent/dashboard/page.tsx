@@ -11,7 +11,7 @@ import Link from 'next/link';
 import {
   Calendar, ChevronRight, AlertCircle, RefreshCw,
   Sparkles, BookOpen, Users, HelpCircle, MessageCircle,
-  Brain, UserCircle,
+  Brain, UserCircle, IndianRupee,
 } from 'lucide-react';
 import ReEnrollmentBanner from '@/components/parent/ReEnrollmentBanner';
 import type { LearningProfile } from '@/components/parent/AIInsightCard';
@@ -55,6 +55,61 @@ interface Enrollment {
   } | null;
 }
 
+// PARENT-PAY.2: pay_state from /api/parent/payments (drives the Home pay banner).
+interface PayState {
+  enrollment_id: string;
+  status: string;
+  sessions_remaining: number;
+  lifetime_credited: number;
+  pay_due: 'initial' | 'low' | null;
+  pay_url: string;
+}
+
+/**
+ * State-driven Home pay banner. 'initial' = payment_pending (first payment),
+ * 'low' = active/paused with <=2 sessions left. pay_url is the canonical
+ * /tuition/pay/[id] (Option A). Parent theme (light/pink).
+ */
+function PayBanner({ pay, childName }: { pay: PayState; childName: string }) {
+  if (pay.pay_due === 'initial') {
+    return (
+      <div className="rounded-2xl bg-white border border-gray-100 p-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900">Complete your payment to start {childName || 'your child'}&apos;s classes</p>
+          <p className="text-xs text-gray-500 mt-0.5">Secure your sessions to begin</p>
+        </div>
+        <a
+          href={pay.pay_url}
+          className="flex-shrink-0 bg-[#FF0099] text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-[#cc007a] transition-colors min-h-[44px] flex items-center"
+        >
+          Pay now
+        </a>
+      </div>
+    );
+  }
+  if (pay.pay_due === 'low') {
+    return (
+      <div className="rounded-2xl bg-white border border-gray-100 p-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900">
+            {pay.sessions_remaining <= 0
+              ? 'Sessions have run out'
+              : `Only ${pay.sessions_remaining} session${pay.sessions_remaining === 1 ? '' : 's'} left`}
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">Add more to continue learning</p>
+        </div>
+        <a
+          href={pay.pay_url}
+          className="flex-shrink-0 bg-[#FF0099] text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-[#cc007a] transition-colors min-h-[44px] flex items-center"
+        >
+          Renew
+        </a>
+      </div>
+    );
+  }
+  return null;
+}
+
 // Safe localStorage access
 function safeGetItem(key: string): string | null {
   try {
@@ -79,6 +134,7 @@ export default function ParentDashboardPage() {
   const [childId, setChildId] = useState<string | null>(null);
   const [childName, setChildName] = useState('');
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [payStates, setPayStates] = useState<PayState[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [completedSessions, setCompletedSessions] = useState<number>(0);
   const [totalSessions, setTotalSessions] = useState<number>(0);
@@ -198,6 +254,13 @@ export default function ParentDashboardPage() {
       if (enrollmentData) {
         setEnrollment(enrollmentData as any);
       }
+
+      // PARENT-PAY.2: pay_state for the Home banner. Independent of the active-only
+      // enrollment query above, so payment_pending ('initial') families surface here.
+      fetch('/api/parent/payments')
+        .then(r => r.json())
+        .then(d => { if (Array.isArray(d?.enrollments)) setPayStates(d.enrollments); })
+        .catch(() => {});
 
       // Fire-and-forget: task stats
       fetch(`/api/parent/tasks/${enrolledChild.id}`)
@@ -402,6 +465,9 @@ export default function ParentDashboardPage() {
     return `Last session ${diff} days ago`;
   }
 
+  // PARENT-PAY.2: the single actionable pay_state (payment due), if any.
+  const actionablePay = payStates.find(p => p.pay_due) ?? null;
+
   // --- Loading ---
   if (loading) {
     return (
@@ -434,8 +500,28 @@ export default function ParentDashboardPage() {
     );
   }
 
-  // --- No enrollment ---
+  // --- No enrolled child context ---
   if (!childId) {
+    // payment_pending families have an unpaid enrollment but may have no active
+    // child context yet — surface the pay CTA instead of the assessment prompt.
+    if (actionablePay?.pay_due === 'initial') {
+      return (
+        <div className="flex items-center justify-center min-h-[60vh] p-4">
+          <div className="max-w-sm w-full rounded-2xl bg-white border border-gray-100 p-6 text-center">
+            <IndianRupee className="w-12 h-12 text-[#FF0099] mx-auto mb-3" />
+            <h2 className="text-lg font-medium text-gray-900 mb-1">Complete your payment</h2>
+            <p className="text-sm text-gray-500 mb-4">Pay to start your child&apos;s English classes.</p>
+            <a
+              href={actionablePay.pay_url}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF0099] text-white rounded-xl text-sm font-medium hover:bg-[#cc007a] transition-colors min-h-[44px]"
+            >
+              Pay now
+              <ChevronRight className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="text-center max-w-sm rounded-2xl bg-white border border-gray-100 p-6">
@@ -482,42 +568,19 @@ export default function ParentDashboardPage() {
           </div>
         </div>
 
-        {/* ── RE-ENROLLMENT BANNER ── */}
-        {enrollment && childId && (() => {
-          const isTuition = enrollment.enrollment_type === 'tuition';
-          if (isTuition && (enrollment.sessions_remaining ?? 0) <= 2) {
-            return (
-              <div className="rounded-2xl bg-white border border-gray-100 p-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {(enrollment.sessions_remaining ?? 0) <= 0
-                      ? `Sessions have run out`
-                      : `Only ${enrollment.sessions_remaining} session${(enrollment.sessions_remaining ?? 0) === 1 ? '' : 's'} left`
-                    }
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Add more to continue learning</p>
-                </div>
-                <a
-                  href={`/tuition/pay/${enrollment.id}?renewal=true`}
-                  className="flex-shrink-0 bg-[#FF0099] text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-[#cc007a] transition-colors min-h-[44px] flex items-center"
-                >
-                  Renew
-                </a>
-              </div>
-            );
-          }
-          if (!isTuition && sessionsRemaining <= 2 && sessionsRemaining >= 0) {
-            return (
-              <ReEnrollmentBanner
-                childId={childId}
-                childName={childName}
-                sessionsRemaining={sessionsRemaining}
-                croSettings={croSettings}
-              />
-            );
-          }
-          return null;
-        })()}
+        {/* ── PAY BANNER (tuition) — pay_state-driven: 'initial' or 'low' ── */}
+        {actionablePay && <PayBanner pay={actionablePay} childName={childName} />}
+
+        {/* ── RE-ENROLLMENT BANNER (coaching) ── */}
+        {enrollment && childId && enrollment.enrollment_type !== 'tuition'
+          && sessionsRemaining <= 2 && sessionsRemaining >= 0 && (
+          <ReEnrollmentBanner
+            childId={childId}
+            childName={childName}
+            sessionsRemaining={sessionsRemaining}
+            croSettings={croSettings}
+          />
+        )}
 
         {/* ── SECTION 2: HERO PROGRESS + INLINE TASK ── */}
         <div className="rounded-2xl bg-white border border-gray-100 p-4 md:p-5">

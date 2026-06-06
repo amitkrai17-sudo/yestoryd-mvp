@@ -73,6 +73,7 @@ export const navigationConfig: Record<PortalType, PortalNavConfig> = {
       { id: 'journey', label: 'Journey', href: '/parent/journey', icon: MapPin, group: 'Learning' },
       { id: 'elearning', label: 'E-Learning', href: '/parent/elearning', icon: BookOpen, group: 'Learning', requiredFeature: 'elearning_access' },
       // Account
+      { id: 'payments', label: 'Payments', href: '/parent/payments', icon: IndianRupee, group: 'Account' },
       { id: 'support', label: 'Support', href: '/parent/support', icon: HelpCircle, group: 'Account' },
     ],
   },
