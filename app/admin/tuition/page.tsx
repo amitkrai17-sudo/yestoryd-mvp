@@ -11,6 +11,7 @@ import {
   GraduationCap, Users, Clock, AlertTriangle, Plus,
   RefreshCw, Send, ChevronDown, ChevronUp, IndianRupee,
   BookOpen, UserCheck, Pause, ArrowUpDown, ArrowLeftRight, Play,
+  Trash2, CheckCircle2, XCircle, MessageCircle,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -42,6 +43,15 @@ interface Onboarding {
   enrollment_status: string | null;
   enrollment_sessions_remaining: number | null;
   batch_id: string | null;
+  // UI-1.1 read-only enrichments (consumed by UI-1.3):
+  lifetime_credited: number | null; // SUM(positive ledger deltas) — balance denominator "Y"
+  last_wa: {
+    template_code: string;
+    sent_at: string | null;
+    wa_sent: boolean;
+    error_message: string | null;
+    channel: string | null;
+  } | null;
 }
 
 interface LedgerEntry {
@@ -65,6 +75,77 @@ interface PausedEnrollment {
 }
 
 // ============================================================
+// WA-CHIP HELPERS (UI-1.3) — pure, render-only
+// ============================================================
+
+const WA_TEMPLATE_LABELS: Record<string, string> = {
+  parent_session_summary_v3: 'Summary',
+  parent_session_noshow_v3: 'No-show',
+  parent_session_reminder_24h: 'Reminder',
+  parent_session_reminder_1h: 'Reminder',
+  parent_tuition_onboarding_v4: 'Onboarding',
+  parent_assessment_results_v3: 'Results',
+  parent_practice_nudge_v3: 'Practice nudge',
+  parent_tuition_low_balance_v3: 'Low balance',
+  parent_tuition_renewal_v3: 'Renewal',
+  parent_renewal_intent_v1: 'Renewal',
+  parent_payment_confirmed_v3: 'Payment',
+  parent_session_cancelled_v5: 'Cancelled',
+};
+
+function humanizeTemplate(code: string): string {
+  if (WA_TEMPLATE_LABELS[code]) return WA_TEMPLATE_LABELS[code];
+  const cleaned = code.replace(/^(parent|coach|admin)_/, '').replace(/_v\d+$/, '').replace(/_/g, ' ').trim();
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : code;
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const m = Math.floor((Date.now() - then) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function getBalanceBarColor(remaining: number | null): string {
+  if (remaining === null) return 'bg-text-tertiary';
+  if (remaining <= 0) return 'bg-red-400';
+  if (remaining <= 2) return 'bg-amber-400';
+  return 'bg-green-400';
+}
+
+/** Compact WhatsApp status chip from the row's last_wa (UI-1.1b). */
+function WaChip({ wa }: { wa: Onboarding['last_wa'] }) {
+  if (!wa) {
+    return (
+      <span className="inline-flex items-center gap-1 text-text-tertiary">
+        <MessageCircle className="w-3 h-3" /> No messages
+      </span>
+    );
+  }
+  const label = humanizeTemplate(wa.template_code);
+  if (wa.wa_sent) {
+    const when = relativeTime(wa.sent_at);
+    return (
+      <span className="inline-flex items-center gap-1 text-green-400 truncate">
+        <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+        <span className="truncate">{label}{when && <span className="text-text-tertiary"> · {when}</span>}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-red-400 truncate">
+      <XCircle className="w-3 h-3 flex-shrink-0" />
+      <span className="truncate">{label} · failed</span>
+    </span>
+  );
+}
+
+// ============================================================
 // COMPONENT
 // ============================================================
 
@@ -73,6 +154,8 @@ export default function AdminTuitionPage() {
   const [onboardings, setOnboardings] = useState<Onboarding[]>([]);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState<string | null>(null);
+  const [waOpen, setWaOpen] = useState<string | null>(null);
 
   // New student form
   const [showNewForm, setShowNewForm] = useState(false);
@@ -154,6 +237,20 @@ export default function AdminTuitionPage() {
       fetchData();
     } catch { /* */ }
     setResending(null);
+  }
+
+  async function handleArchive(id: string, childName: string) {
+    if (!window.confirm(`Remove ${childName} from the queue? They'll no longer appear here.`)) return;
+    setArchiving(id);
+    try {
+      const res = await fetch(`/api/admin/tuition/${id}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) fetchData();
+    } catch { /* */ }
+    setArchiving(null);
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -298,7 +395,10 @@ export default function AdminTuitionPage() {
   }
 
   // ---- Derived data ----
-  const pendingOnboardings = onboardings.filter(o => o.status !== 'parent_completed' || !o.enrollment_id);
+  // UI-1.3: split the old "pending" bucket so the count divergence is explicit.
+  // (archived never reaches the client — the list route excludes it.)
+  const awaitingOnboardings = onboardings.filter(o => !o.enrollment_id && (o.status === 'draft' || o.status === 'parent_pending'));
+  const expiredOnboardings = onboardings.filter(o => !o.enrollment_id && o.status === 'expired');
   const activeStudents = onboardings.filter(o => o.enrollment_id);
   const pausedStudents = onboardings.filter(o =>
     o.enrollment_id && (o.enrollment_status === 'paused' || o.enrollment_status === 'tuition_paused')
@@ -346,11 +446,11 @@ export default function AdminTuitionPage() {
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { label: 'Active', value: stats.activeStudents, icon: UserCheck, color: 'text-green-400' },
-              { label: 'Paused', value: stats.pausedStudents, icon: Pause, color: 'text-red-400' },
-              { label: 'Low Balance', value: stats.lowBalance, icon: AlertTriangle, color: 'text-amber-400' },
-              { label: 'Sessions/Month', value: stats.sessionsThisMonth, icon: BookOpen, color: 'text-blue-400' },
-              { label: 'Pending', value: stats.pendingOnboardings, icon: Clock, color: 'text-purple-400' },
+              { label: 'Active', value: stats.activeStudents, icon: UserCheck, color: 'text-green-400', subtitle: undefined as string | undefined },
+              { label: 'Paused', value: stats.pausedStudents, icon: Pause, color: 'text-red-400', subtitle: undefined as string | undefined },
+              { label: 'Low Balance', value: stats.lowBalance, icon: AlertTriangle, color: 'text-amber-400', subtitle: '≤2 left' },
+              { label: 'Sessions/Month', value: stats.sessionsThisMonth, icon: BookOpen, color: 'text-blue-400', subtitle: stats.sessionsThisMonth === 0 ? 'None billed this month yet' : undefined },
+              { label: 'Pending', value: stats.pendingOnboardings, icon: Clock, color: 'text-purple-400', subtitle: undefined as string | undefined },
             ].map(s => (
               <div key={s.label} className="bg-surface-1 rounded-2xl p-4 border border-border">
                 <div className="flex items-center gap-2 mb-1">
@@ -358,6 +458,7 @@ export default function AdminTuitionPage() {
                   <span className="text-xs text-text-tertiary">{s.label}</span>
                 </div>
                 <p className="text-xl font-bold text-white">{s.value}</p>
+                {s.subtitle && <p className="text-[10px] text-text-tertiary mt-0.5 leading-tight">{s.subtitle}</p>}
               </div>
             ))}
           </div>
@@ -482,15 +583,15 @@ export default function AdminTuitionPage() {
           </div>
         )}
 
-        {/* Pending Onboardings */}
-        {pendingOnboardings.length > 0 && (
+        {/* Awaiting parent (draft / parent_pending) */}
+        {awaitingOnboardings.length > 0 && (
           <div>
             <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-400" />
-              Pending Onboardings ({pendingOnboardings.length})
+              Awaiting parent ({awaitingOnboardings.length})
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {pendingOnboardings.map(o => (
+              {awaitingOnboardings.map(o => (
                 <div key={o.id} className="bg-surface-1 rounded-2xl p-4 border border-border">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-white text-sm">{o.child_name}</span>
@@ -506,12 +607,56 @@ export default function AdminTuitionPage() {
                     <button
                       onClick={() => handleResend(o.id)}
                       disabled={resending === o.id}
-                      className="mt-3 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                      className="mt-3 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
                     >
                       {resending === o.id ? <Spinner size="sm" color="muted" /> : <Send className="w-3 h-3" />}
                       Resend Link
                     </button>
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Expired — revive (resend) or remove (archive). BE shipped in UI-1.2. */}
+        {expiredOnboardings.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              Expired ({expiredOnboardings.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {expiredOnboardings.map(o => (
+                <div key={o.id} className="bg-surface-1 rounded-2xl p-4 border border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-white text-sm">{o.child_name}</span>
+                    <span className="bg-red-500/10 text-red-400 text-xs px-2 py-0.5 rounded-lg font-medium">Expired</span>
+                  </div>
+                  <div className="text-xs text-text-tertiary space-y-1">
+                    <p>{o.parent_name_hint || o.parent_phone}</p>
+                    <p>{o.sessions_purchased} sessions at &#8377;{o.session_rate / 100}</p>
+                    {o.coach_name && <p>Coach: {o.coach_name}</p>}
+                    <p>Created {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <button
+                      onClick={() => handleResend(o.id)}
+                      disabled={resending === o.id || archiving === o.id}
+                      className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                    >
+                      {resending === o.id ? <Spinner size="sm" color="muted" /> : <Send className="w-3 h-3" />}
+                      Resend link
+                    </button>
+                    <button
+                      onClick={() => handleArchive(o.id, o.child_name)}
+                      disabled={archiving === o.id || resending === o.id}
+                      className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-red-400 disabled:opacity-50 min-h-[44px] sm:min-h-0"
+                    >
+                      {archiving === o.id ? <Spinner size="sm" color="muted" /> : <Trash2 className="w-3 h-3" />}
+                      Remove from queue
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -551,13 +696,37 @@ export default function AdminTuitionPage() {
                   <div key={o.id}>
                     {/* Row */}
                     <div className="grid grid-cols-2 sm:grid-cols-7 gap-2 px-4 py-3 border-b border-border hover:bg-surface-2/50 items-center">
-                      <div>
-                        <p className="text-sm font-medium text-white">{o.child_name}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{o.child_name}</p>
+                        {/* WA status chip — tap to expand last-send detail (UI-1.3) */}
+                        <button
+                          onClick={() => setWaOpen(waOpen === o.id ? null : o.id)}
+                          className="mt-1 inline-flex items-center text-[11px] max-w-full"
+                          aria-label="WhatsApp message status"
+                          title="WhatsApp message status"
+                        >
+                          <WaChip wa={o.last_wa} />
+                        </button>
                       </div>
                       <div className="text-xs text-text-secondary">{o.parent_name_hint || o.parent_phone}</div>
                       <div className="text-xs text-text-secondary">&#8377;{o.session_rate / 100}/s</div>
-                      <div className={`text-sm font-bold ${getBalanceColor(remaining)}`}>
-                        {remaining !== null ? `${remaining} / ${o.sessions_purchased}` : '--'}
+                      {/* Balance: "X left of Y" (Y = lifetime credited, SSOT denominator) + progress bar */}
+                      <div className="min-w-0">
+                        {remaining !== null && o.lifetime_credited !== null ? (
+                          <>
+                            <p className={`text-sm font-bold ${getBalanceColor(remaining)}`}>
+                              {remaining}<span className="text-xs font-normal text-text-tertiary"> left of {o.lifetime_credited}</span>
+                            </p>
+                            <div className="mt-1 h-1.5 w-full max-w-[120px] bg-surface-0 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${getBalanceBarColor(remaining)}`}
+                                style={{ width: `${o.lifetime_credited > 0 ? Math.min(100, Math.max(0, (remaining / o.lifetime_credited) * 100)) : 0}%` }}
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-sm font-bold text-text-tertiary">--</span>
+                        )}
                       </div>
                       <div>{getStatusBadge(status)}</div>
                       <div className="text-xs text-text-secondary">{o.coach_name || '--'}</div>
@@ -566,22 +735,25 @@ export default function AdminTuitionPage() {
                           <>
                             <button
                               onClick={() => setAdjusting(adjusting === o.enrollment_id ? null : o.enrollment_id)}
-                              className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-surface-2"
+                              className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
                               title="Adjust balance"
+                              aria-label="Adjust balance"
                             >
                               <ArrowUpDown className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => loadLedger(o.enrollment_id!)}
-                              className="text-xs text-text-tertiary hover:text-white px-2 py-1 rounded-lg hover:bg-surface-2"
+                              className="text-xs text-text-tertiary hover:text-white px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
                               title="View ledger"
+                              aria-label="View ledger"
                             >
                               {ledgerOpen === o.enrollment_id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                             </button>
                             <button
                               onClick={() => { setSwitchTarget(o); setSwitchType('coaching'); }}
-                              className="text-xs text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg hover:bg-surface-2"
+                              className="text-xs text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg hover:bg-surface-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
                               title="Switch to Coaching"
+                              aria-label="Switch to Coaching"
                             >
                               <ArrowLeftRight className="w-3.5 h-3.5" />
                             </button>
@@ -639,6 +811,39 @@ export default function AdminTuitionPage() {
                                 </span>
                               </div>
                             ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* WA last-send detail (UI-1.3) — reuses the lazy-expander pattern.
+                        v1 shows only the single last_wa we have. future: full WA timeline. */}
+                    {waOpen === o.id && (
+                      <div className="px-4 py-3 bg-surface-2/50 border-b border-border">
+                        {!o.last_wa ? (
+                          <p className="text-xs text-text-tertiary">No WhatsApp messages sent to this parent yet.</p>
+                        ) : (
+                          <div className="text-xs space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {o.last_wa.wa_sent
+                                ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                                : <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />}
+                              <span className="text-white font-medium">{humanizeTemplate(o.last_wa.template_code)}</span>
+                              <span className={o.last_wa.wa_sent ? 'text-green-400' : 'text-red-400'}>
+                                {o.last_wa.wa_sent ? 'Sent' : 'Failed'}
+                              </span>
+                              {o.last_wa.channel && (
+                                <span className="text-text-tertiary bg-surface-0 px-1.5 py-0.5 rounded">{o.last_wa.channel}</span>
+                              )}
+                            </div>
+                            {o.last_wa.sent_at && (
+                              <p className="text-text-tertiary">
+                                {new Date(o.last_wa.sent_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                              </p>
+                            )}
+                            {!o.last_wa.wa_sent && o.last_wa.error_message && (
+                              <p className="text-red-400/80 break-words">Error: {o.last_wa.error_message}</p>
+                            )}
                           </div>
                         )}
                       </div>
