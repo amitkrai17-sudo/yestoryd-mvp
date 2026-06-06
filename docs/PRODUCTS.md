@@ -318,6 +318,25 @@ this is BACKLOG B6 to surface).
 
 ---
 
+## Canonical counters (Option A — SSOT, 2B.2)
+
+`tuition_session_ledger` is the CANONICAL source for tuition balance + session count.
+`enrollments.sessions_remaining` + `enrollments.sessions_completed` are a DERIVED CACHE,
+written only inside the ledger-writing path (`deductTuitionBalance` / `addTuitionBalance`),
+rebuildable anytime by `reconcile_tuition_counters(p_enrollment_id, p_apply)`. Nothing
+reads or writes these counters as independent truth — they are a projection of the ledger.
+
+Semantics lock: for tuition, `sessions_completed` ≡ **BILLED** sessions (count of
+`tuition_session_ledger` rows with `reason='session_completed'`), NOT **delivered**
+(count of `scheduled_sessions` with `status='completed'`). The two can diverge by design
+— e.g. a delivered-but-unbilled session (admin force-complete omits the deduct) leaves
+delivered > billed. `reconcile_tuition_counters` reports `delivered`, `billed`, and
+`delivered_minus_billed` as cross-checks but folds ONLY the ledger-derived values into the
+cache. The lone reader of `enrollments.sessions_completed` is the coach dashboard, and only
+for COACHING enrollments — no tuition surface consumes it.
+
+---
+
 ## Source citations
 
 This doc cites code files and tables rather than restating numbers. When a number

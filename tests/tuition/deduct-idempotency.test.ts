@@ -10,6 +10,11 @@
 //   (a) balance decremented exactly ONCE, (b) exactly ONE committed ledger row
 //   (2nd insert rejected with 23505), (c) 2nd call returns idempotentSkip:true and
 //   does NOT throw, (d) differing requestId does NOT defeat dedupe (key = session_id).
+//
+// Phase 2B.2: the same atomic update that decrements sessions_remaining also
+// increments sessions_completed by sessionsDelivered (BILLED-count semantics).
+// Asserts it increments exactly ONCE on a clean deduct, and does NOT write on
+// idempotent-skip (23505) or non-23505 insert-error — coupled to the gated decrement.
 // =============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -73,6 +78,7 @@ describe('deductTuitionBalance — INSERT-FIRST idempotency (2B.1)', () => {
     state.enrollment = {
       id: ENR,
       sessions_remaining: 5,
+      sessions_completed: 2,
       child_id: 'child-1',
       parent_id: null,
       coach_id: 'coach-1',
@@ -111,6 +117,8 @@ describe('deductTuitionBalance — INSERT-FIRST idempotency (2B.1)', () => {
     const decrements = state.enrollmentUpdateCalls.filter(u => 'sessions_remaining' in u.patch);
     expect(decrements).toHaveLength(1);
     expect(decrements[0].patch.sessions_remaining).toBe(4);
+    // (2B.2) same atomic update increments sessions_completed by sessionsDelivered (2 → 3)
+    expect(decrements[0].patch.sessions_completed).toBe(3);
   });
 
   it('double-call same session (different requestId) → single decrement, 2nd idempotentSkip, no throw', async () => {
@@ -130,6 +138,8 @@ describe('deductTuitionBalance — INSERT-FIRST idempotency (2B.1)', () => {
     // (a) balance decremented exactly ONCE across both calls
     const decrements = state.enrollmentUpdateCalls.filter(u => 'sessions_remaining' in u.patch);
     expect(decrements).toHaveLength(1);
+    // (2B.2) sessions_completed incremented exactly ONCE (2 → 3); idempotent-skip did NOT re-increment
+    expect(decrements[0].patch.sessions_completed).toBe(3);
 
     // (b) exactly ONE committed ledger row: insert attempted twice, 2nd rejected 23505
     expect(state.ledgerInsertCalls).toHaveLength(2);
@@ -153,5 +163,8 @@ describe('deductTuitionBalance — INSERT-FIRST idempotency (2B.1)', () => {
     // insert-first is the gate → no decrement ran
     const decrements = state.enrollmentUpdateCalls.filter(u => 'sessions_remaining' in u.patch);
     expect(decrements).toHaveLength(0);
+    // (2B.2) and no sessions_completed write either — couples to the gated decrement
+    const completedWrites = state.enrollmentUpdateCalls.filter(u => 'sessions_completed' in u.patch);
+    expect(completedWrites).toHaveLength(0);
   });
 });

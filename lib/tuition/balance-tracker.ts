@@ -47,7 +47,7 @@ export async function deductTuitionBalance(
     // 1. Fetch enrollment with child/parent info
     const { data: enrollment, error: fetchErr } = await supabase
       .from('enrollments')
-      .select('id, sessions_remaining, child_id, parent_id, coach_id, session_rate, enrollment_type, status, is_paused, renewal_intent, renewal_intent_set_at, low_balance_nudges_sent, last_low_balance_nudge_at, parent_renewal_check_sent_at')
+      .select('id, sessions_remaining, sessions_completed, child_id, parent_id, coach_id, session_rate, enrollment_type, status, is_paused, renewal_intent, renewal_intent_set_at, low_balance_nudges_sent, last_low_balance_nudge_at, parent_renewal_check_sent_at')
       .eq('id', enrollmentId)
       .single();
 
@@ -105,11 +105,17 @@ export async function deductTuitionBalance(
     }
 
     // 3. Deduct balance (can go negative — draft mode). Runs ONLY after a clean
-    // ledger insert — the ledger row is the idempotency gate.
+    // ledger insert — the ledger row is the idempotency gate. In the SAME atomic
+    // update, increment sessions_completed so completed↔deduct can never diverge.
+    // SEMANTICS (2B.2): for tuition, sessions_completed = BILLED sessions (ledger
+    // deduct count), NOT delivered. It may trail scheduled_sessions delivered-count
+    // by design (e.g. a delivered-but-unbilled session). Hygiene column; the only
+    // reader is the coaching dashboard (coaching enrollments, not tuition).
     await supabase
       .from('enrollments')
       .update({
         sessions_remaining: newBalance,
+        sessions_completed: (enrollment.sessions_completed || 0) + sessionsDelivered,
         updated_at: new Date().toISOString(),
       })
       .eq('id', enrollmentId);
