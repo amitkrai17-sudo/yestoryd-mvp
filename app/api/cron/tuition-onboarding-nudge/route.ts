@@ -14,7 +14,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 import { verifyCronRequest } from '@/lib/api/verify-cron';
 import { getPolicy, logDecision, logSkippedDecision, isNudgeSuppressed } from '@/lib/backops';
 import type { Json } from '@/lib/supabase/database.types';
@@ -115,15 +114,9 @@ export async function GET(request: NextRequest) {
 
         try { await logDecision({ source: 'cron:tuition-onboarding-nudge', entity_type: 'tuition', entity_id: record.id, decision: 'send_tuition_nudge', reason: { age_hours: ageHours, nudge_number: alreadySent + 1 } as Json, action: 'aisensy:parent_tuition_onboarding_v4', outcome: 'pending' }); } catch {}
 
-        // Send the parent_tuition_onboarding_v4 template (magic link still valid)
-        const parentFullName = await resolveParentFullName(
-          record.parent_name_hint,
-          record.child_id
-        );
-        await sendNotification('parent_tuition_onboarding_v4', record.parent_phone, {
-          parent_name: parentFullName,
-          child_name: (record.child_name && !record.child_name.startsWith('Pending')) ? record.child_name : 'your child',
-        }, {
+        // Send the parent_tuition_onboarding_v5 template (magic link still valid).
+        // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
+        await sendNotification('parent_tuition_onboarding_v5', record.parent_phone, {}, {
           triggeredBy: 'cron',
           contextType: 'tuition_nudge',
           contextId: record.id,

@@ -714,7 +714,7 @@ export async function POST(request: NextRequest) {
           // ═══════════════════════════════════════════════════════════════════════════
           import('@/lib/communication/notify').then(({ sendNotification }) => {
             sendNotification(
-              'parent_assessment_results_v3',
+              'parent_assessment_results_v4',
               parentPhone,
               {
                 child_first_name: name.split(' ')[0],

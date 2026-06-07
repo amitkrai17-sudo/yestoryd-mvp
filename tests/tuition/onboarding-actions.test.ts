@@ -99,7 +99,7 @@ beforeEach(() => {
 });
 
 describe('resend route — revive expired', () => {
-  it('EXPIRED → regenerate token + status→parent_pending + created_at reset + send v4 + log revived', async () => {
+  it('EXPIRED → regenerate token + status→parent_pending + created_at reset + send v5 + log revived', async () => {
     state.onboarding = baseOnboarding({ status: 'expired' });
     const res = await resendPOST(reqNoBody(), params('onb-1'));
     expect(res.status).toBe(200);
@@ -110,7 +110,7 @@ describe('resend route — revive expired', () => {
     expect(upd!.patch.status).toBe('parent_pending');   // revived back into lifecycle
     expect(typeof upd!.patch.created_at).toBe('string'); // clock restarted (no re-expire churn)
 
-    expect(state.notifyCalls[0]?.template).toBe('parent_tuition_onboarding_v4');
+    expect(state.notifyCalls[0]?.template).toBe('parent_tuition_onboarding_v5');
 
     const log = state.insertCalls.find(i => i.table === 'activity_log');
     expect(log!.obj.action).toBe('tuition_onboarding_revived');

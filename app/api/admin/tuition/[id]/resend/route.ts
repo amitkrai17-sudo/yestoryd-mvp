@@ -8,7 +8,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { withParamsHandler } from '@/lib/api/with-api-handler';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,17 +66,9 @@ export const POST = withParamsHandler<{ id: string }>(async (_req: NextRequest, 
   const magicLink = `${APP_URL}/tuition/onboard/${newToken}`;
 
   // 4. Resend WhatsApp
+  // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
   try {
-    const parentFullName = await resolveParentFullName(
-      onboarding.parent_name_hint,
-      onboarding.child_id
-    );
-    await sendNotification('parent_tuition_onboarding_v4', `91${onboarding.parent_phone}`, {
-      parent_name: parentFullName,
-      child_name: onboarding.child_name && !onboarding.child_name.startsWith('Pending')
-        ? onboarding.child_name
-        : 'your child',
-    }, {
+    await sendNotification('parent_tuition_onboarding_v5', `91${onboarding.parent_phone}`, {}, {
       templateButtons: { category: 'utility_cta', url: newToken },
       // WA-FIX.1: a deliberate admin resend must NOT be deduped against the same-day
       // create send. The STEP-6 idempotency key is template:phone:todayIST:firstParam[:contextId];

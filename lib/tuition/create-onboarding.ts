@@ -5,7 +5,6 @@
 
 import crypto from 'crypto';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.yestoryd.com';
 
@@ -124,16 +123,14 @@ export async function createTuitionOnboarding(
   const magicLink = `${APP_URL}/tuition/onboard/${token}`;
 
   // 5. Send WhatsApp to parent
+  // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
   try {
-    const parentFullName = await resolveParentFullName(
-      (params as any).parentName,
-      (params as any).childId
-    );
-    await sendNotification('parent_tuition_onboarding_v4', `91${params.parentPhone}`, {
-      parent_name: parentFullName,
-      child_name: placeholderChildName === `Pending - ${params.parentPhone}` ? 'your child' : placeholderChildName,
-    }, {
+    await sendNotification('parent_tuition_onboarding_v5', `91${params.parentPhone}`, {}, {
       templateButtons: { category: 'utility_cta', url: token },
+      // v5 has an empty body (no wa_variables), so STEP-6 firstParam degrades to ''.
+      // Pin the onboarding token as contextId so the idempotency key stays unique
+      // per onboarding for the same phone+day.
+      contextId: token,
     });
   } catch (waErr) {
     console.error(JSON.stringify({

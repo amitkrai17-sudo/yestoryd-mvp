@@ -9,7 +9,6 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { withApiHandler } from '@/lib/api/with-api-handler';
 import { sendNotification } from '@/lib/communication/notify';
-import { resolveParentFullName } from '@/lib/communication/resolveParentName';
 
 export const dynamic = 'force-dynamic';
 
@@ -132,16 +131,13 @@ export const POST = withApiHandler(async (req: NextRequest, { auth, supabase, re
   const magicLink = `${APP_URL}/tuition/onboard/${token}`;
 
   // 6. Send WhatsApp to parent
+  // v5 has a generic, no-variable body ("Hi Parent, ...") — no name resolution needed.
   try {
-    const parentFullName = await resolveParentFullName(
-      (input as any).parentName,
-      (input as any).childId
-    );
-    await sendNotification('parent_tuition_onboarding_v4', `91${input.parentPhone}`, {
-      parent_name: parentFullName,
-      child_name: (input as any).childName ?? 'your child',
-    }, {
+    await sendNotification('parent_tuition_onboarding_v5', `91${input.parentPhone}`, {}, {
       templateButtons: { category: 'utility_cta', url: token },
+      // v5 empty body degrades STEP-6 firstParam to ''. Pin the onboarding token as
+      // contextId so the idempotency key stays unique per onboarding for the same phone+day.
+      contextId: token,
     });
 
     console.log(JSON.stringify({
